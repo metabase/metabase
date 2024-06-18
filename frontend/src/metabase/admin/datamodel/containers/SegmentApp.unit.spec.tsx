@@ -8,6 +8,7 @@ import {
   setupSegmentsEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   renderWithProviders,
   screen,
   waitFor,
@@ -63,7 +64,7 @@ describe("SegmentApp", () => {
   it("should have beforeunload event when user makes edits to a segment", async () => {
     const { mockEventListener } = setup();
 
-    userEvent.type(screen.getByLabelText("Name Your Segment"), "Name");
+    await userEvent.type(screen.getByLabelText("Name Your Segment"), "Name");
 
     const mockEvent = await waitFor(() => {
       return callMockEvent(mockEventListener, "beforeunload");
@@ -84,42 +85,52 @@ describe("SegmentApp", () => {
   it("does not show custom warning modal when leaving with no changes via SPA navigation", () => {
     const { history } = setup({ initialRoute: "/" });
 
-    history.push(FORM_URL);
-
-    history.goBack();
+    act(() => {
+      history.push(FORM_URL);
+      history.goBack();
+    });
 
     expect(screen.queryByTestId("leave-confirmation")).not.toBeInTheDocument();
   });
 
-  it("shows custom warning modal when leaving with unsaved changes via SPA navigation", () => {
+  it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
     const { history } = setup({ initialRoute: "/" });
 
-    history.push(FORM_URL);
+    act(() => {
+      history.push(FORM_URL);
+    });
 
-    userEvent.type(screen.getByLabelText("Name Your Segment"), "Name");
+    await userEvent.type(
+      await screen.findByLabelText("Name Your Segment"),
+      "Name",
+    );
 
-    history.goBack();
+    act(() => {
+      history.goBack();
+    });
 
-    expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+    expect(await screen.findByTestId("leave-confirmation")).toBeInTheDocument();
   });
 
   it("does not show custom warning modal when saving changes", async () => {
     const { history } = setup();
 
-    userEvent.click(screen.getByText("Select a table"));
+    await userEvent.click(screen.getByText("Select a table"));
 
     await waitForLoaderToBeRemoved();
 
-    userEvent.click(screen.getByText("Orders"));
+    await userEvent.click(await screen.findByText("Orders"));
 
     await waitForLoaderToBeRemoved();
 
-    userEvent.click(screen.getByText("Add filters to narrow your answer"));
-    userEvent.click(screen.getByText("ID"));
-    userEvent.type(screen.getByPlaceholderText("Enter an ID"), "1");
-    userEvent.click(screen.getByText("Add filter"));
-    userEvent.type(screen.getByLabelText("Name Your Segment"), "Name");
-    userEvent.type(
+    await userEvent.click(
+      screen.getByText("Add filters to narrow your answer"),
+    );
+    await userEvent.click(screen.getByText("ID"));
+    await userEvent.type(screen.getByPlaceholderText("Enter an ID"), "1");
+    await userEvent.click(screen.getByText("Add filter"));
+    await userEvent.type(screen.getByLabelText("Name Your Segment"), "Name");
+    await userEvent.type(
       screen.getByLabelText("Describe Your Segment"),
       "Description",
     );
@@ -128,7 +139,7 @@ describe("SegmentApp", () => {
       expect(screen.getByText("Save changes")).toBeEnabled();
     });
 
-    userEvent.click(screen.getByText("Save changes"));
+    await userEvent.click(screen.getByText("Save changes"));
 
     await waitFor(() => {
       expect(history.getCurrentLocation().pathname).toBe(SEGMENTS_URL);

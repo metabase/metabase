@@ -3,7 +3,6 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
-   [malli.core :as mc]
    [metabase.models.setting :refer [defsetting]]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings :as public-settings]
@@ -13,7 +12,7 @@
 
 (defsetting search-typeahead-enabled
   (deferred-tru "Enable typeahead search in the {0} navbar?"
-                (public-settings/application-name-for-setting-descriptions))
+    (public-settings/application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
   :visibility :authenticated
@@ -54,7 +53,7 @@
    "database"       {:db-model :model/Database :alias :database}
    "dataset"        {:db-model :model/Card :alias :card}
    "indexed-entity" {:db-model :model/ModelIndexValue :alias :model-index-value}
-   "metric"         {:db-model :model/LegacyMetric :alias :metric}
+   "metric"         {:db-model :model/Card :alias :card}
    "segment"        {:db-model :model/Segment :alias :segment}
    "table"          {:db-model :model/Table :alias :table}})
 
@@ -74,6 +73,7 @@
   [model]
   (case model
     "dataset" (recur "card")
+    "metric" (recur "card")
     (str/capitalize model)))
 
 (defn model->alias
@@ -95,24 +95,30 @@
 
 (def SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query."
-  (mc/schema
-   [:map {:closed true}
-    [:search-string                                        [:maybe ms/NonBlankString]]
-    [:archived?                                            :boolean]
-    [:current-user-perms                                   [:set perms.u/PathSchema]]
-    [:models                                               [:set SearchableModel]]
-    [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude"]]
-    [:created-at                          {:optional true} ms/NonBlankString]
-    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
-    [:last-edited-at                      {:optional true} ms/NonBlankString]
-    [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
-    [:table-db-id                         {:optional true} ms/PositiveInt]
-    [:limit-int                           {:optional true} ms/Int]
-    [:offset-int                          {:optional true} ms/Int]
-    [:search-native-query                 {:optional true} true?]
-    ;; true to search for verified items only, nil will return all items
-    [:verified                            {:optional true} true?]]))
-
+  [:map {:closed true}
+   ;;
+   ;; required
+   ;;
+   [:archived?          [:maybe :boolean]]
+   [:current-user-id    pos-int?]
+   [:current-user-perms [:set perms.u/PathSchema]]
+   [:model-ancestors?   :boolean]
+   [:models             [:set SearchableModel]]
+   [:search-string      [:maybe ms/NonBlankString]]
+   ;;
+   ;; optional
+   ;;
+   [:created-at                          {:optional true} ms/NonBlankString]
+   [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude"]]
+   [:last-edited-at                      {:optional true} ms/NonBlankString]
+   [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:limit-int                           {:optional true} ms/Int]
+   [:offset-int                          {:optional true} ms/Int]
+   [:search-native-query                 {:optional true} true?]
+   [:table-db-id                         {:optional true} ms/PositiveInt]
+   ;; true to search for verified items only, nil will return all items
+   [:verified                            {:optional true} true?]])
 
 (def all-search-columns
   "All columns that will appear in the search results, and the types of those columns. The generated search query is a
@@ -139,7 +145,9 @@
    :collection_id       :integer
    :collection_name     :text
    :collection_type     :text
+   :collection_location :text
    :collection_authority_level :text
+   :archived_directly   :boolean
    ;; returned for Card and Dashboard
    :collection_position :integer
    :creator_id          :integer
@@ -147,6 +155,8 @@
    :bookmark            :boolean
    ;; returned for everything except Collection
    :updated_at          :timestamp
+   ;; returned only for Collection
+   :location            :text
    ;; returned for Card only, used for scoring and displays
    :dashboardcard_count :integer
    :last_edited_at      :timestamp
@@ -162,6 +172,7 @@
    :database_id         :integer
    ;; returned for Database and Table
    :initial_sync_status :text
+   :database_name       :text
    ;; returned for Action
    :model_id            :integer
    :model_name          :text
@@ -200,6 +211,10 @@
   [_]
   (searchable-columns-for-model "card"))
 
+(defmethod searchable-columns-for-model "metric"
+  [_]
+  (searchable-columns-for-model "card"))
+
 (defmethod searchable-columns-for-model "dashboard"
   [_]
   [:name
@@ -234,10 +249,10 @@
 
 (def ^:private dashboardcard-count-col
   "Subselect to get the count of associated DashboardCards"
-   [{:select [:%count.*]
-     :from   [:report_dashboardcard]
-     :where  [:= :report_dashboardcard.card_id :card.id]}
-    :dashboardcard_count])
+  [{:select [:%count.*]
+    :from   [:report_dashboardcard]
+    :where  [:= :report_dashboardcard.card_id :card.id]}
+   :dashboardcard_count])
 
 (def ^:private table-columns
   "Columns containing information about the Table this model references. Returned for Metrics and Segments."
@@ -266,8 +281,10 @@
 
 (defmethod columns-for-model "card"
   [_]
-  (conj default-columns :collection_id :collection_position :dataset_query :display :creator_id
+  (conj default-columns :collection_id :archived_directly :collection_position :dataset_query :display :creator_id
         [:collection.name :collection_name]
+        [:collection.type :collection_type]
+        [:collection.location :collection_location]
         [:collection.authority_level :collection_authority_level]
         bookmark-col dashboardcard-count-col))
 
@@ -277,6 +294,7 @@
    [:model-index.pk_ref         :pk_ref]
    [:model-index.id             :model_index_id]
    [:collection.name            :collection_name]
+   [:collection.type            :collection_type]
    [:model.collection_id        :collection_id]
    [:model.id                   :model_id]
    [:model.name                 :model_name]
@@ -284,8 +302,9 @@
 
 (defmethod columns-for-model "dashboard"
   [_]
-  (conj default-columns :collection_id :collection_position :creator_id bookmark-col
+  (conj default-columns :archived_directly :collection_id :collection_position :creator_id bookmark-col
         [:collection.name :collection_name]
+        [:collection.type :collection_type]
         [:collection.authority_level :collection_authority_level]))
 
 (defmethod columns-for-model "database"
@@ -299,6 +318,8 @@
         [:name :collection_name]
         [:type :collection_type]
         [:authority_level :collection_authority_level]
+        :archived_directly
+        :location
         bookmark-col))
 
 (defmethod columns-for-model "segment"
@@ -311,18 +332,19 @@
 
 (defmethod columns-for-model "table"
   [_]
-  [:id
-   :name
-   :created_at
-   :display_name
-   :description
-   :updated_at
-   :initial_sync_status
-   [:id :table_id]
-   [:db_id :database_id]
-   [:schema :table_schema]
-   [:name :table_name]
-   [:description :table_description]])
+  [[:table.id :id]
+   [:table.name :name]
+   [:table.created_at :created_at]
+   [:table.display_name :display_name]
+   [:table.description :description]
+   [:table.updated_at :updated_at]
+   [:table.initial_sync_status :initial_sync_status]
+   [:table.id :table_id]
+   [:table.db_id :database_id]
+   [:table.schema :table_schema]
+   [:table.name :table_name]
+   [:table.description :table_description]
+   [:metabase_database.name :database_name]])
 
 (defmulti column->string
   "Turn a complex column into a string"

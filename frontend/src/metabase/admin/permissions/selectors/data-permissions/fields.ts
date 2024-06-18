@@ -1,12 +1,15 @@
+import _ from "underscore";
+
 import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
 import {
   getFieldsPermission,
-  getNativePermission,
+  getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS,
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
@@ -17,10 +20,15 @@ import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
 import type { TableEntityId, PermissionSectionConfig } from "../../types";
 import {
+  DataPermissionValue,
+  DataPermission,
+  DataPermissionType,
+} from "../../types";
+import {
   getPermissionWarning,
   getPermissionWarningModal,
-  getControlledDatabaseWarningModal,
   getRevokingAccessToAllTablesWarningModal,
+  getWillRevokeNativeAccessWarningModal,
 } from "../confirmations";
 
 const buildAccessPermission = (
@@ -28,15 +36,28 @@ const buildAccessPermission = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
+  originalPermissions: GroupsPermissions,
   defaultGroup: Group,
   database: Database,
-) => {
-  const value = getFieldsPermission(permissions, groupId, entityId, "data");
+): PermissionSectionConfig => {
+  const value = getFieldsPermission(
+    permissions,
+    groupId,
+    entityId,
+    DataPermission.VIEW_DATA,
+  );
+
+  const originalValue = getFieldsPermission(
+    originalPermissions,
+    groupId,
+    entityId,
+    DataPermission.VIEW_DATA,
+  );
   const defaultGroupValue = getFieldsPermission(
     permissions,
     defaultGroup.id,
     entityId,
-    "data",
+    DataPermission.VIEW_DATA,
   );
 
   const warning = getPermissionWarning(
@@ -47,7 +68,7 @@ const buildAccessPermission = (
     groupId,
   );
 
-  const confirmations = (newValue: string) => [
+  const confirmations = (newValue: DataPermissionValue) => [
     getPermissionWarningModal(
       newValue,
       defaultGroupValue,
@@ -55,7 +76,9 @@ const buildAccessPermission = (
       defaultGroup,
       groupId,
     ),
-    getControlledDatabaseWarningModal(permissions, groupId, entityId),
+    ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.map(confirmation =>
+      confirmation(permissions, groupId, entityId, newValue),
+    ),
     getRevokingAccessToAllTablesWarningModal(
       database,
       permissions,
@@ -65,24 +88,33 @@ const buildAccessPermission = (
     ),
   ];
 
+  const options = PLUGIN_ADVANCED_PERMISSIONS.addTablePermissionOptions(
+    _.compact([
+      DATA_PERMISSION_OPTIONS.unrestricted,
+      ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
+      originalValue === DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated.value &&
+        DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated,
+    ]),
+    value,
+  );
+  const isDisabled =
+    isAdmin ||
+    (!isAdmin &&
+      (options.length <= 1 ||
+        PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(
+          value,
+          "fields",
+        )));
+
   return {
-    permission: "data",
-    type: "access",
-    isDisabled:
-      isAdmin ||
-      PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(value, "fields"),
+    permission: DataPermission.VIEW_DATA,
+    type: DataPermissionType.ACCESS,
+    isDisabled,
     disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
     isHighlighted: isAdmin,
     value,
     warning,
-    options: PLUGIN_ADVANCED_PERMISSIONS.addTablePermissionOptions(
-      [
-        DATA_PERMISSION_OPTIONS.all,
-        ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
-        DATA_PERMISSION_OPTIONS.noSelfService,
-      ],
-      value,
-    ),
+    options,
     actions: PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
     postActions: PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
     confirmations,
@@ -94,19 +126,43 @@ const buildNativePermission = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
-  accessPermissionValue: string,
-) => {
+  accessPermissionValue: DataPermissionValue,
+): PermissionSectionConfig => {
+  const schemaValue = getTablesPermission(
+    permissions,
+    groupId,
+    entityId,
+    DataPermission.CREATE_QUERIES,
+  );
+
+  const value = getFieldsPermission(
+    permissions,
+    groupId,
+    entityId,
+    DataPermission.CREATE_QUERIES,
+  );
+
+  const disabledTooltip = getNativePermissionDisabledTooltip(
+    isAdmin,
+    accessPermissionValue,
+  );
+
   return {
-    permission: "data",
-    type: "native",
-    isDisabled: true,
-    disabledTooltip: getNativePermissionDisabledTooltip(
-      isAdmin,
-      accessPermissionValue,
-    ),
+    permission: DataPermission.CREATE_QUERIES,
+    type: DataPermissionType.NATIVE,
+    isDisabled: !!disabledTooltip,
+    disabledTooltip,
     isHighlighted: isAdmin,
-    value: getNativePermission(permissions, groupId, entityId),
-    options: [DATA_PERMISSION_OPTIONS.write, DATA_PERMISSION_OPTIONS.none],
+    value,
+    options: _.compact([
+      schemaValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
+        DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
+      DATA_PERMISSION_OPTIONS.queryBuilder,
+      DATA_PERMISSION_OPTIONS.no,
+    ]),
+    confirmations: () => [
+      getWillRevokeNativeAccessWarningModal(permissions, groupId, entityId),
+    ],
   };
 };
 
@@ -115,6 +171,7 @@ export const buildFieldsPermissions = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
+  originalPermissions: GroupsPermissions,
   defaultGroup: Group,
   database: Database,
 ): PermissionSectionConfig[] => {
@@ -123,6 +180,7 @@ export const buildFieldsPermissions = (
     groupId,
     isAdmin,
     permissions,
+    originalPermissions,
     defaultGroup,
     database,
   );
@@ -135,8 +193,12 @@ export const buildFieldsPermissions = (
     accessPermission.value,
   );
 
-  return [
-    accessPermission,
+  const hasAnyAccessOptions = accessPermission.options.length > 1;
+  const shouldShowViewDataColumn =
+    PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn && hasAnyAccessOptions;
+
+  return _.compact([
+    shouldShowViewDataColumn && accessPermission,
     nativePermission,
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions(
       entityId,
@@ -147,5 +209,5 @@ export const buildFieldsPermissions = (
       defaultGroup,
       "fields",
     ),
-  ];
+  ]);
 };

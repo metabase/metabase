@@ -1,10 +1,12 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
 import TokenField from "metabase/components/TokenField";
 import UserAvatar from "metabase/components/UserAvatar";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { recipientIsValid } from "metabase/lib/pulse";
 import MetabaseSettings from "metabase/lib/settings";
@@ -74,11 +76,11 @@ export default class RecipientPicker extends Component {
             multi
             valueRenderer={value => value.common_name ?? value.email}
             optionRenderer={option => (
-              <div className="flex align-center">
-                <Text color="white">
+              <div className={cx(CS.flex, CS.alignCenter)}>
+                <Text color="text-white">
                   <UserAvatar user={option.value} />
                 </Text>
-                <span className="ml1">{option.value.common_name}</span>
+                <span className={CS.ml1}>{option.value.common_name}</span>
               </div>
             )}
             filterOption={filterOption}

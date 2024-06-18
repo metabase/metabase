@@ -2,60 +2,57 @@ body {
   background-color: transparent;
 }
 
-:global(.EmbedFrame) {
-  background-color: white;
+.EmbedFrame {
+  background-color: var(--mb-color-bg-dashboard);
 }
 
-:global(.EmbedFrame-header),
-:global(.EmbedFrame-footer) {
-  color: var(--color-text-dark);
-  background-color: white;
+.EmbedFrameHeader,
+.EmbedFrameFooter {
+  color: var(--mb-color-text-dark);
+  background-color: var(--mb-color-bg-dashboard);
 }
 
-:global(.Theme--night.EmbedFrame) {
-  background-color: var(--color-bg-black);
-  border: 1px solid var(--color-bg-dark);
+.ThemeNight.EmbedFrame {
+  background-color: var(--mb-color-bg-black);
+  border-color: var(--mb-color-bg-dark);
 }
 
-:global(.Theme--night .EmbedFrame-header),
-:global(.Theme--night .EmbedFrame-footer) {
-  color: color-mod(var(--color-text-white) alpha(-14%));
-  background-color: var(--color-bg-black);
-  border-color: var(--color-bg-dark);
+.ThemeNight .EmbedFrameHeader,
+.ThemeNight .EmbedFrameFooter {
+  color: var(--mb-color-text-white-alpha-85);
+  background-color: var(--mb-color-bg-black);
+  border-color: var(--mb-color-bg-dark);
 }
 
-:global(.Theme--night.EmbedFrame) .fullscreenNightText {
-  color: color-mod(var(--color-text-white) alpha(-14%));
+.ThemeNight.EmbedFrame .fullscreenNightText {
+  color: var(--mb-color-text-white-alpha-85);
   transition: color 1s linear;
 }
 
-:global(.Theme--night.EmbedFrame svg text) {
-  fill: color-mod(var(--color-text-white) alpha(-14%)) !important;
+.ThemeNight.EmbedFrame svg text {
+  fill: var(--mb-color-text-white-alpha-85) !important;
   stroke: none !important;
 }
 
-:global(.Theme--night.EmbedFrame) .DashCard .Card {
-  background-color: var(--color-bg-black);
-  border: 1px solid var(--color-bg-dark);
+.ThemeNight.EmbedFrame .DashCard .Card {
+  background-color: var(--mb-color-bg-black);
+  border: 1px solid var(--mb-color-bg-dark);
 }
 
-:global(.Theme--night.EmbedFrame
-    .enable-dots-onhover
-    .dc-tooltip
-    circle.dot:hover),
-:global(.Theme--night.EmbedFrame .enable-dots .dc-tooltip circle.dot) {
+.ThemeNight.EmbedFrame .enableDotsOnHover :global(.dc-tooltip circle.dot:hover),
+.ThemeNight.EmbedFrame .enableDots :global(.dc-tooltip circle.dot) {
   fill: currentColor;
 }
 
-:global(.Theme--transparent.EmbedFrame) {
+.ThemeTransparent.EmbedFrame {
   background-color: transparent;
 }
 
-:global(.Theme--transparent .EmbedFrame-header),
-:global(.Theme--transparent .EmbedFrame-footer) {
+.ThemeTransparent .EmbedFrameHeader,
+.ThemeTransparent .EmbedFrameFooter {
   background-color: transparent;
 }
 
-:global(.Theme--transparent.EmbedFrame) .DashCard .Card {
+.ThemeTransparent.EmbedFrame .DashCard .Card {
   background-color: transparent;
 }

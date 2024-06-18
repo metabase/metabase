@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.automagic-dashboards.core :as magic]
    [metabase.models :refer [Action Card Collection Dashboard DashboardCard DashboardCardSeries
                             Database Field Pulse PulseCard Revision Table]]
    [metabase.models.collection :as collection]
@@ -11,6 +10,7 @@
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
+   [metabase.models.pulse-channel-test :as pulse-channel-test]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.models.user :as user]
@@ -18,6 +18,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.xrays.automagic-dashboards.core :as magic]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -37,6 +38,7 @@
                              DashboardCardSeries _                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}
                              DashboardCardSeries _                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]
       (is (= {:name                "Test Dashboard"
+              :archived_directly   false
               :auto_apply_filters  true
               :collection_id       nil
               :description         nil
@@ -73,20 +75,20 @@
     (t2.with-temp/with-temp [Dashboard           {dashboard-id :id :as dashboard} {:name "Test Dashboard"}
                              :model/DashboardTab {tab-id :id}                     {:dashboard_id dashboard-id :name "Test Tab" :position 0}
                              DashboardCard       {dashcard-id :id}                {:dashboard_id dashboard-id :dashboard_tab_id tab-id}]
-      (is (=? {:name               "Test Dashboard"
-               :auto_apply_filters true
-               :collection_id      nil
-               :description        nil
-               :cache_ttl          nil
-               :cards              [{:size_x           4
-                                     :size_y           4
-                                     :row              0
-                                     :col              0
-                                     :id               dashcard-id
-                                     :dashboard_tab_id tab-id}]
-               :tabs               [{:id      tab-id
-                                     :name    "Test Tab"
-                                     :position 0}]}
+      (is (=? {:name                       "Test Dashboard"
+               :auto_apply_filters         true
+               :collection_id              nil
+               :description                nil
+               :cache_ttl                  nil
+               :cards                      [{:size_x           4
+                                             :size_y           4
+                                             :row              0
+                                             :col              0
+                                             :id               dashcard-id
+                                             :dashboard_tab_id tab-id}]
+               :tabs                       [{:id       tab-id
+                                             :name     "Test Tab"
+                                             :position 0}]}
               (revision/serialize-instance Dashboard (:id dashboard) dashboard))))))
 
 (deftest ^:parallel diff-dashboards-str-test
@@ -242,32 +244,32 @@
 
     (testing "dashboard ---"
       (t2.with-temp/with-temp
-        [:model/Dashboard dashboard {:name               "A Dashboard"
-                                     :description        "An insightful Dashboard"
+        [:model/Dashboard dashboard {:name                "A Dashboard"
+                                     :description         "An insightful Dashboard"
                                      :collection_position 0
                                      :position            10
                                      :cache_ttl           1000
-                                     :parameters          [{:name       "Category Name"
-                                                            :slug       "category_name"
-                                                            :id         "_CATEGORY_NAME_"
-                                                            :type       "category"}]}
+                                     :parameters          [{:name "Category Name"
+                                                            :slug "category_name"
+                                                            :id   "_CATEGORY_NAME_"
+                                                            :type "category"}]}
          Collection       coll      {:name "A collection"}]
         (mt/with-temporary-setting-values [enable-public-sharing true]
           (let [columns    (set/difference (set (keys dashboard)) (set @#'dashboard/excluded-columns-for-dashboard-revision))
                 update-col (fn [col value]
                              (cond
-                               (= col :collection_id)     (:id coll)
-                               (= col :parameters)        (cons {:name "Category ID"
-                                                                 :slug "category_id"
-                                                                 :id   "_CATEGORY_ID_"
-                                                                 :type "number"}
-                                                                value)
-                               (= col :made_public_by_id) (mt/user->id :crowberto)
-                               (= col :embedding_params)  {:category_name "locked"}
-                               (= col :public_uuid)       (str (random-uuid))
-                               (int? value)               (inc value)
-                               (boolean? value)           (not value)
-                               (string? value)            (str value "_changed")))]
+                               (= col :collection_id)              (:id coll)
+                               (= col :parameters)                 (cons {:name "Category ID"
+                                                                          :slug "category_id"
+                                                                          :id   "_CATEGORY_ID_"
+                                                                          :type "number"}
+                                                                         value)
+                               (= col :made_public_by_id)          (mt/user->id :crowberto)
+                               (= col :embedding_params)           {:category_name "locked"}
+                               (= col :public_uuid)                (str (random-uuid))
+                               (int? value)                        (inc value)
+                               (boolean? value)                    (not value)
+                               (string? value)                     (str value "_changed")))]
             (doseq [col columns]
               (let [before  (select-keys dashboard [col])
                     changes {col (update-col col (get dashboard col))}]
@@ -279,9 +281,10 @@
                 (testing (format "we should track when %s changes" col)
                   (is (= 2 (t2/count Revision :model "Dashboard" :model_id (:id dashboard)))))
 
-                ;; we don't need a description for made_public_by_id because whenever this field changes
-                ;; public_uuid will changes and we had a description for it.
-                (when-not (#{:made_public_by_id} col)
+                ;; we don't need a description for made_public_by_id because whenever this field changes public_uuid
+                ;; will changes and we had a description for it. Same is true for `archived_directly` -
+                ;; `archived` will always change with it.
+                (when-not (#{:made_public_by_id :archived_directly} col)
                   (testing (format "we should have a revision description for %s" col)
                     (is (some? (u/build-sentence
                                  (revision/diff-strings
@@ -302,15 +305,15 @@
                               :dashboard_id :id)
              update-col (fn [col value]
                           (cond
-                            (= col :action_id)          (:id action)
-                            (= col :card_id)            (:id card)
-                            (= col :dashboard_tab_id)   (:id dashtab)
-                            (= col :parameter_mappings) [{:parameter_id "_CATEGORY_NAME_"
-                                                          :target       [:dimension (mt/$ids $categories.name)]}]
+                            (= col :action_id)              (:id action)
+                            (= col :card_id)                (:id card)
+                            (= col :dashboard_tab_id)       (:id dashtab)
+                            (= col :parameter_mappings)     [{:parameter_id "_CATEGORY_NAME_"
+                                                              :target       [:dimension (mt/$ids $categories.name)]}]
                             (= col :visualization_settings) {:text "now it's a text card"}
-                            (int? value)                (inc value)
-                            (boolean? value)            (not value)
-                            (string? value)             (str value "_changed")))]
+                            (int? value)                    (inc value)
+                            (boolean? value)                (not value)
+                            (string? value)                 (str value "_changed")))]
          (doseq [col columns]
            (clean-revisions-for-dashboard (:id dashboard))
            ;; do the update
@@ -328,8 +331,8 @@
                               :dashboard_id :id)
              update-col (fn [_col value]
                           (cond
-                            (int? value)                (inc value)
-                            (string? value)             (str value "_changed")))]
+                            (int? value)    (inc value)
+                            (string? value) (str value "_changed")))]
          (doseq [col columns]
            (clean-revisions-for-dashboard (:id dashboard))
            ;; do the update
@@ -353,6 +356,7 @@
                                          :card_id (= card-id card_id)
                                          :series  (= [series-id-1 series-id-2] series))])
           empty-dashboard      {:name                "Revert Test"
+                                :archived_directly   false
                                 :description         "something"
                                 :auto_apply_filters  true
                                 :collection_id       nil
@@ -368,6 +372,7 @@
           serialized-dashboard (revision/serialize-instance Dashboard (:id dashboard) dashboard)]
       (testing "original state"
         (is (= {:name                "Test Dashboard"
+                :archived_directly   false
                 :description         nil
                 :cache_ttl           nil
                 :auto_apply_filters  true
@@ -405,6 +410,7 @@
       (testing "now do the reversion; state should return to original"
         (revision/revert-to-revision! Dashboard dashboard-id (test.users/user->id :crowberto) serialized-dashboard)
         (is (= {:name                "Test Dashboard"
+                :archived_directly   false
                 :description         nil
                 :cache_ttl           nil
                 :auto_apply_filters  true
@@ -755,6 +761,24 @@
         (is (=? {:name "unnamed"
                  :slug "unnamed"}
                 (first (:parameters dashboard))))))))
+
+(deftest archive-dashboard-delete-pulse-test
+  (pulse-channel-test/with-send-pulse-setup!
+    (mt/with-temp [:model/Card          {card-id :id}     {}
+                   :model/Dashboard     {dash-id :id}     {}
+                   :model/DashboardCard {dc-id :id}       {:dashboard_id dash-id
+                                                           :card_id      card-id}
+                   :model/Pulse        {pulse-id :id}    {:dashboard_id dash-id}
+                   :model/PulseChannel _        {:pulse_id pulse-id}
+                   :model/PulseCard    _         {:pulse_id pulse-id
+                                                  :card_id  card-id
+                                                  :dashboard_card_id dc-id}]
+      (testing "sanity check that we have a trigger"
+        (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id)))))
+      (t2/update! :model/Dashboard dash-id {:archived true})
+      (testing "archiving a Dashboard should delete its Pulse and SendPulse triggers"
+        (is (nil? (t2/select-one :model/Pulse pulse-id)))
+        (is (= 0 (count (pulse-channel-test/send-pulse-triggers pulse-id))))))))
 
 (deftest post-update-test
   (t2.with-temp/with-temp [Collection    {collection-id-1 :id} {}

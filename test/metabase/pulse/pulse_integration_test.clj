@@ -197,16 +197,6 @@
              (zipmap h (apply mapv vector r)))])))
      (into {}))))
 
-(defn- slugify-fname
-  "Slugify a filename while preserving the extension.
-  Useful for writing tests that require a stable filename as a key.
-
-  Eg. Some File Name.csv -> some_file_name.csv"
-  [s]
-  (let [parts (str/split s #"\.")
-        ext (last parts)]
-    (str (u/slugify (str/join "." (butlast parts))) "." ext)))
-
 (deftest apply-formatting-in-csv-dashboard-test
   (testing "An exported dashboard should preserve the formatting specified in the column metadata (#36320)"
     (with-metadata-data-cards [base-card-id model-card-id question-card-id]
@@ -219,7 +209,7 @@
                                                                 :card_id      question-card-id}
                      Pulse {pulse-id :id
                             :as      pulse} {:name         "Test Pulse"
-                            :dashboard_id dash-id}
+                                             :dashboard_id dash-id}
                      PulseCard _ {:pulse_id          pulse-id
                                   :card_id           base-card-id
                                   :dashboard_card_id base-dash-card-id}
@@ -236,11 +226,11 @@
                                               :user_id          (mt/user->id :rasta)}]
         (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
           (testing "The base model has no special formatting"
-            (is (all-float? (get-in parsed-data [(slugify-fname "Base question - no special metadata.csv") "Tax Rate"]))))
+            (is (all-float? (get-in parsed-data ["Base question - no special metadata.csv" "Tax Rate"]))))
           (testing "The model with metadata formats the Tax Rate column with the user-defined semantic type"
-            (is (all-pct-2d? (get-in parsed-data [(slugify-fname "Model with percent semantic type.csv") "Tax Rate"]))))
+            (is (all-pct-2d? (get-in parsed-data ["Model with percent semantic type.csv" "Tax Rate"]))))
           (testing "The query based on the model uses the model's semantic typ information for formatting"
-            (is (all-pct-2d? (get-in parsed-data [(slugify-fname "Query based on model.csv") "Tax Rate"])))))))))
+            (is (all-pct-2d? (get-in parsed-data ["Query based on model.csv" "Tax Rate"])))))))))
 
 (deftest apply-formatting-in-csv-no-dashboard-test
   (testing "Exported cards should preserve the formatting specified in their column metadata (#36320)"
@@ -256,7 +246,7 @@
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
           (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
-            (is (all-float? (get-in parsed-data [(slugify-fname "Base question - no special metadata.csv") "Tax Rate"]))))))
+            (is (all-float? (get-in parsed-data ["Base question - no special metadata.csv" "Tax Rate"]))))))
       (testing "The attached data from the second question (a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
                               :as      pulse} {:name "Test Pulse"}
@@ -268,7 +258,7 @@
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
           (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
-            (is (all-pct-2d? (get-in parsed-data [(slugify-fname "Model with percent semantic type.csv") "Tax Rate"]))))))
+            (is (all-pct-2d? (get-in parsed-data ["Model with percent semantic type.csv" "Tax Rate"]))))))
       (testing "The attached data from the last question (based on a a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
                               :as      pulse} {:name "Test Pulse"}
@@ -280,7 +270,7 @@
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
           (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
-            (is (all-pct-2d? (get-in parsed-data [(slugify-fname "Query based on model.csv") "Tax Rate"])))))))))
+            (is (all-pct-2d? (get-in parsed-data ["Query based on model.csv" "Tax Rate"])))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Consistent Date Formatting ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -292,7 +282,7 @@
   [date-str n]
   (format
     "WITH T AS (SELECT CAST('%s' AS TIMESTAMP) AS example_timestamp),
-          SAMPLE AS (SELECT T.example_timestamp                                   AS full_datetime_utc,
+          \"SAMPLE\" AS (SELECT T.example_timestamp                                   AS full_datetime_utc,
                             T.example_timestamp AT TIME ZONE 'US/Pacific'         AS full_datetime_pacific,
                             CAST(T.example_timestamp AS TIMESTAMP)                AS example_timestamp,
                             CAST(T.example_timestamp AS TIMESTAMP WITH TIME ZONE) AS example_timestamp_with_time_zone,
@@ -301,12 +291,14 @@
                             EXTRACT(YEAR FROM T.example_timestamp)                AS example_year,
                             EXTRACT(MONTH FROM T.example_timestamp)               AS example_month,
                             EXTRACT(DAY FROM T.example_timestamp)                 AS example_day,
+                            EXTRACT(WEEK FROM T.example_timestamp)                AS example_week_number,
+                            T.example_timestamp                                   AS example_week,
                             EXTRACT(HOUR FROM T.example_timestamp)                AS example_hour,
                             EXTRACT(MINUTE FROM T.example_timestamp)              AS example_minute,
                             EXTRACT(SECOND FROM T.example_timestamp)              AS example_second
                      FROM T)
      SELECT *
-     FROM SAMPLE
+     FROM \"SAMPLE\"
               CROSS JOIN
           generate_series(1, %s);"
     date-str n))
@@ -321,6 +313,8 @@
                   [:field "EXAMPLE_YEAR" {:base-type :type/Integer}]
                   [:field "EXAMPLE_MONTH" {:base-type :type/Integer}]
                   [:field "EXAMPLE_DAY" {:base-type :type/Integer}]
+                  [:field "EXAMPLE_WEEK_NUMBER" {:base-type :type/Integer}]
+                  [:field "EXAMPLE_WEEK" {:base-type :type/DateTime, :temporal-unit :week}]
                   [:field "EXAMPLE_HOUR" {:base-type :type/Integer}]
                   [:field "EXAMPLE_MINUTE" {:base-type :type/Integer}]
                   [:field "EXAMPLE_SECOND" {:base-type :type/Integer}]]
@@ -346,15 +340,15 @@
                                                                              :query    {:source-table
                                                                                         (format "card__%s" model-card-id)}}
                                                     :result_metadata        (mapv
-                                                                              (fn [{column-name :name :as col}]
-                                                                                (cond-> col
-                                                                                  (= "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" column-name)
-                                                                                  (assoc :settings {:date_separator "-"
-                                                                                                    :date_style     "YYYY/M/D"
-                                                                                                    :time_style     "HH:mm"})
-                                                                                  (= "EXAMPLE_TIMESTAMP" column-name)
-                                                                                  (assoc :settings {:time_enabled "seconds"})))
-                                                                              model-metadata)
+                                                                             (fn [{column-name :name :as col}]
+                                                                               (cond-> col
+                                                                                 (= "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" column-name)
+                                                                                 (assoc :settings {:date_separator "-"
+                                                                                                   :date_style     "YYYY/M/D"
+                                                                                                   :time_style     "HH:mm"})
+                                                                                 (= "EXAMPLE_TIMESTAMP" column-name)
+                                                                                 (assoc :settings {:time_enabled "seconds"})))
+                                                                             model-metadata)
                                                     :visualization_settings {:column_settings {"[\"name\",\"FULL_DATETIME_UTC\"]"
                                                                                                {:date_abbreviate true
                                                                                                 :time_enabled    "milliseconds"
@@ -392,7 +386,7 @@
                      PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                               :user_id          (mt/user->id :rasta)}]
         (let [attached-data     (run-pulse-and-return-attached-csv-data pulse)
-              get-res           #(-> attached-data (get (slugify-fname %))
+              get-res           #(-> (get attached-data %)
                                      (update-vals first)
                                      (dissoc "X"))
               native-results    (get-res "NATIVE.csv")
@@ -411,10 +405,14 @@
                     "EXAMPLE_YEAR"                     "2,023"
                     "EXAMPLE_MONTH"                    "12"
                     "EXAMPLE_DAY"                      "11"
+                    "EXAMPLE_WEEK_NUMBER"              "50"
                     "EXAMPLE_HOUR"                     "15"
                     "EXAMPLE_MINUTE"                   "30"
                     "EXAMPLE_SECOND"                   "45"}
-                   native-results)))
+                   ;; the EXAMPLE_WEEK is a normal timestamp.
+                   ;; We care about it in the context of the Model, not the native results
+                   ;; so dissoc it here.
+                   (dissoc native-results "EXAMPLE_WEEK"))))
           (testing "An exported model retains the base format, but does use display names for column names."
             (is (= {"Full Datetime Utc"                "December 11, 2023, 3:30 PM"
                     "Full Datetime Pacific"            "December 11, 2023, 3:30 PM"
@@ -425,6 +423,8 @@
                     "Example Year"                     "2,023"
                     "Example Month"                    "12"
                     "Example Day"                      "11"
+                    "Example Week Number"              "50"
+                    "Example Week"                     "December 10, 2023 - December 16, 2023"
                     "Example Hour"                     "15"
                     "Example Minute"                   "30"
                     "Example Second"                   "45"}
@@ -443,7 +443,10 @@
                    (metamodel-results "Full Datetime Pacific"))))
           (testing "Setting time-enabled to nil for a time column just returns an empty string"
             (is (= ""
-                   (metamodel-results "Example Time")))))))))
+                   (metamodel-results "Example Time"))))
+          (testing "Week Units Are Displayed as a Date Range"
+            (is (= "December 10, 2023 - December 16, 2023"
+                   (metamodel-results "Example Week")))))))))
 
 (deftest renamed-column-names-are-applied-test
   (testing "CSV attachments should have the same columns as displayed in Metabase (#18572)"
@@ -571,16 +574,16 @@
                                           (into {})))]
             (testing "Renaming columns via viz settings is correctly applied to the CSV export"
               (is (= ["THE_ID" "ORDER TAX" "Total Amount" "Discount Applied ($)" "Amount Ordered" "Effective Tax Rate"]
-                     (attachment-name->cols (slugify-fname (format "%s.csv" base-card-name))))))
+                     (attachment-name->cols (format "%s.csv" base-card-name)))))
             (testing "A question derived from another question does not bring forward any renames"
               (is (= ["ID" "Tax" "Total" "Discount ($)" "Quantity" "Tax Rate"]
-                     (attachment-name->cols (slugify-fname (format "%s.csv" model-card-name))))))
+                     (attachment-name->cols (format "%s.csv" model-card-name)))))
             (testing "A model with custom metadata shows the renamed metadata columns"
               (is (= ["ID" "Tax" "Grand Total" "Amount of Discount ($)" "N" "Tax Rate"]
-                     (attachment-name->cols (slugify-fname (format "%s.csv" meta-model-card-name))))))
+                     (attachment-name->cols (format "%s.csv" meta-model-card-name)))))
             (testing "A question based on a model retains the curated metadata column names but overrides these with any existing visualization_settings"
               (is (= ["IDENTIFIER" "Tax" "Grand Total" "Amount of Discount ($)" "Count" "Tax Rate"]
-                     (attachment-name->cols (slugify-fname (format "%s.csv" question-card-name))))))))))))
+                     (attachment-name->cols (format "%s.csv" question-card-name)))))))))))
 
 (defn- run-pulse-and-return-scalars
   "Simulate sending the pulse email, get the html body of the response and return the scalar value of the card."
@@ -690,11 +693,13 @@
                   PulseCard ~'_ {:pulse_id          ~'pulse-id
                                  :card_id           ~'base-card-id
                                  :dashboard_card_id ~'base-dash-card-id
-                                 :include_csv       true}
+                                 :include_csv       true
+                                 :position          1}
                   PulseCard ~'_ {:pulse_id          ~'pulse-id
                                  :card_id           ~'empty-card-id
                                  :dashboard_card_id ~'empty-dash-card-id
-                                 :include_csv       true}
+                                 :include_csv       true
+                                 :position          2}
                   PulseChannel {~'pulse-channel-id :id} {:channel_type :email
                                                          :pulse_id     ~'pulse-id
                                                          :enabled      true}
@@ -813,8 +818,8 @@
   (testing "Dashboards produced by generated by X-Rays should not produce bad results (#38350)"
     (mt/dataset test-data
       (mt/with-model-cleanup [Collection Card Dashboard]
-        (let [generated-dashboard (mt/user-http-request :crowberto :get 200 (format "automagic-dashboards/table/%d" (mt/id :orders)))
-              saved-dashboard     (mt/user-http-request :crowberto :post 200 "dashboard/save" generated-dashboard)
+        (let [generated-dashboard    (mt/user-http-request :crowberto :get 200 (format "automagic-dashboards/table/%d" (mt/id :orders)))
+              saved-dashboard        (mt/user-http-request :crowberto :post 200 "dashboard/save" generated-dashboard)
               {dash-id   :id
                title     :name
                dashcards :dashcards} (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id saved-dashboard)))]
@@ -832,7 +837,7 @@
               (with-redefs [email/bcc-enabled? (constantly false)]
                 (mt/with-test-user nil
                   (metabase.pulse/send-pulse! pulse)))
-              (let [html-body   (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
+              (let [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
                 (is (false? (str/includes? html-body "An error occurred while displaying this card.")))))))))))
 
 (deftest geographic-coordinates-formatting-test

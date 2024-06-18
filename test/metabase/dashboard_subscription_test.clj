@@ -29,7 +29,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- do-with-dashboard-sub-for-card
+(defn do-with-dashboard-sub-for-card
   "Creates a Pulse, Dashboard, and other relevant rows for a `card` (using `pulse` and `pulse-card` properties if
   specified), then invokes
 
@@ -62,7 +62,7 @@
         (f pulse))
       (f pulse))))
 
-(defmacro ^:private with-dashboard-sub-for-card
+(defmacro with-dashboard-sub-for-card
   "e.g.
 
     (with-dashboard-sub-for-card [pulse {:card my-card, :pulse pulse-properties, ...}]
@@ -243,15 +243,19 @@
                     result))))))
 
 (deftest ^:parallel execute-dashboard-test-2
-  (testing "hides empty card when card.hide_empty is true"
+  (testing "hides empty card when card.hide_empty is true and there are no results."
     (mt/with-temp [Card          {card-id-1 :id} {:dataset_query (mt/mbql-query venues)}
-                   Card          {card-id-2 :id} {:dataset_query (mt/mbql-query venues)}
+                   Card          {card-id-2 :id} {:dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
+                   Card          {card-id-3 :id} {:dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
+                   Card          {card-id-4 :id} {:dataset_query (mt/mbql-query venues)}
                    Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :visualization_settings {:card.hide_empty true}}
+                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3}
+                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-4}
                    User {user-id :id} {}]
       (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
-        (is (= (count result) 1))))))
+        (is (= 3 (count result)))))))
 
 (deftest ^:parallel execute-dashboard-test-3
   (testing "dashboard cards are ordered correctly -- by rows, and then by columns (#17419)"
@@ -709,7 +713,7 @@
                                                               {:query "SELECT * FROM venues LIMIT 1"})}
                      DashboardCard _ {:dashboard_id dashboard-id
                                       :card_id      card-id}]
-        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/native-query-editing :yes)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
         (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
                (-> (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)
                    first :result :data :rows)))))))
@@ -891,7 +895,7 @@
   (when (seq rows)
     [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
        (with-open [os baos]
-         (#'messages/stream-api-results-to-export-format :csv os result)
+         (#'messages/stream-api-results-to-export-format :csv true os result)
          (let [output-string (.toString baos "UTF-8")]
            {:type         :attachment
             :content-type :csv
@@ -935,3 +939,9 @@
                          (->> (mapv #(str/split % #",")))
                          first
                          count))))))))))
+
+(deftest attachment-filenames-stay-readable-test
+  (testing "Filenames remain human-readable (#41669)"
+    (let [tmp (#'messages/create-temp-file ".tmp")
+          {:keys [file-name]} (#'messages/create-result-attachment-map :csv "テストSQL質問" tmp)]
+      (is (= "テストSQL質問" (first (str/split file-name #"_")))))))

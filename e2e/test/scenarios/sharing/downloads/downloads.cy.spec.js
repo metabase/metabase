@@ -21,6 +21,15 @@ import {
   resetSnowplow,
   enableTracking,
   addOrUpdateDashboardCard,
+  createQuestion,
+  queryBuilderMain,
+  editDashboard,
+  setFilter,
+  entityPickerModal,
+  entityPickerModalTab,
+  showDashboardCardActions,
+  getDashboardCard,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -59,10 +68,10 @@ describe("scenarios > question > download", () => {
   testCases.forEach(fileType => {
     it(`downloads ${fileType} file`, () => {
       startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders, Count").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
+        cy.findByText("Orders, Count").click();
+      });
 
       visualize();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -72,6 +81,60 @@ describe("scenarios > question > download", () => {
         expect(sheet["A1"].v).to.eq("Count");
         expect(sheet["A2"].v).to.eq(18760);
       });
+    });
+  });
+
+  it("should allow downloading unformatted CSV data", () => {
+    const fieldRef = ["field", ORDERS.TOTAL, null];
+    const columnKey = `["ref",${JSON.stringify(fieldRef)}]`;
+
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          fields: [fieldRef],
+        },
+        visualization_settings: {
+          column_settings: {
+            [columnKey]: {
+              currency: "USD",
+              currency_in_header: false,
+              currency_style: "code",
+              number_style: "currency",
+            },
+          },
+        },
+      },
+      { visitQuestion: true, wrapId: true },
+    );
+
+    queryBuilderMain().findByText("USD 39.72").should("exist");
+
+    cy.get("@questionId").then(questionId => {
+      const opts = { questionId, fileType: "csv" };
+
+      downloadAndAssert(
+        {
+          ...opts,
+          enableFormatting: true,
+        },
+        sheet => {
+          expect(sheet["A1"].v).to.eq("Total");
+          expect(sheet["A2"].v).to.eq("USD 39.72");
+        },
+      );
+
+      downloadAndAssert(
+        {
+          ...opts,
+          enableFormatting: false,
+        },
+        sheet => {
+          expect(sheet["A1"].v).to.eq("Total");
+          expect(sheet["A2"].v).to.eq(39.718145389078366);
+          expect(sheet["A2"].w).to.eq("39.718145389078366");
+        },
+      );
     });
   });
 
@@ -85,13 +148,9 @@ describe("scenarios > question > download", () => {
 
       assertOrdersExport(18760);
 
-      cy.icon("pencil").click();
+      editDashboard();
 
-      cy.icon("filter").click();
-
-      popover().within(() => {
-        cy.contains("ID").click();
-      });
+      setFilter("ID");
 
       cy.findByTestId("dashcard-container").contains("Select…").click();
       popover().contains("ID").eq(0).click();
@@ -100,7 +159,7 @@ describe("scenarios > question > download", () => {
 
       filterWidget().contains("ID").click();
 
-      popover().find("input").type("1");
+      popover().within(() => multiAutocompleteInput().type("1"));
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filter").click();
@@ -200,8 +259,8 @@ describe("scenarios > question > download", () => {
         visitDashboard(dashboard.id);
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q1").realHover();
+      showDashboardCardActions(0);
+      getDashboardCard(0).findByText("Created At").should("be.visible");
       getDashboardCardMenu(0).click();
 
       popover().within(() => {
@@ -209,8 +268,8 @@ describe("scenarios > question > download", () => {
         cy.findByText(".png").click();
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q2").realHover();
+      showDashboardCardActions(1);
+      getDashboardCard(1).findByText("User ID").should("be.visible");
       getDashboardCardMenu(1).click();
 
       popover().within(() => {

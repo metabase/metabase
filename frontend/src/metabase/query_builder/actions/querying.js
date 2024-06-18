@@ -5,14 +5,17 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
-import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
+import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 import { getSensibleDisplays } from "metabase/visualizations";
+import { syncVizSettingsWithSeries } from "metabase/visualizations/lib/sync-settings";
 import * as Lib from "metabase-lib";
 import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
 import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 
 import {
+  getCard,
+  getFirstQueryResult,
   getIsResultDirty,
   getIsRunning,
   getOriginalQuestion,
@@ -94,8 +97,6 @@ export const runQuestionQuery = ({
   shouldUpdateUrl = true,
   ignoreCache = false,
   overrideWithQuestion = null,
-  prevQueryResults = undefined,
-  settingsSyncOptions = undefined,
 } = {}) => {
   return async (dispatch, getState) => {
     dispatch(loadStartUIControls());
@@ -111,11 +112,13 @@ export const runQuestionQuery = ({
       : true;
 
     if (shouldUpdateUrl) {
-      const isAdHocModel =
-        question.type() === "model" &&
+      const isAdHocModelOrMetric =
+        (question.type() === "model" || question.type() === "metric") &&
         isAdHocModelQuestion(question, originalQuestion);
 
-      dispatch(updateUrl(question, { dirty: !isAdHocModel && cardIsDirty }));
+      dispatch(
+        updateUrl(question, { dirty: !isAdHocModelOrMetric && cardIsDirty }),
+      );
     }
 
     const startTime = new Date();
@@ -137,12 +140,7 @@ export const runQuestionQuery = ({
             duration,
           ),
         );
-        return dispatch(
-          queryCompleted(question, queryResults, {
-            prevQueryResults: prevQueryResults ?? getQueryResults(getState()),
-            settingsSyncOptions,
-          }),
-        );
+        return dispatch(queryCompleted(question, queryResults));
       })
       .catch(error => dispatch(queryErrored(startTime, error)));
 
@@ -153,7 +151,9 @@ export const runQuestionQuery = ({
 const loadStartUIControls = createThunkAction(
   LOAD_START_UI_CONTROLS,
   () => (dispatch, getState) => {
-    const loadingMessage = getWhiteLabeledLoadingMessage(getState());
+    const getLoadingMessage = getWhiteLabeledLoadingMessageFactory(getState());
+    const loadingMessage = getLoadingMessage();
+
     const title = {
       onceQueryIsRun: loadingMessage,
       ifQueryTakesLong: t`Still Here...`,
@@ -175,23 +175,25 @@ export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
 
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
-export const queryCompleted = (
-  question,
-  queryResults,
-  { prevQueryResults, settingsSyncOptions } = {},
-) => {
+export const queryCompleted = (question, queryResults) => {
   return async (dispatch, getState) => {
-    const [{ data }] = queryResults;
-    const [{ data: prevData }] = prevQueryResults ?? [{}];
+    const [{ data, error }] = queryResults;
+    const prevCard = getCard(getState());
+    const { data: prevData, error: prevError } =
+      getFirstQueryResult(getState()) ?? {};
+
     const originalQuestion = getOriginalQuestionWithParameterValues(getState());
     const { isEditable } = Lib.queryDisplayInfo(question.query());
     const isDirty = isEditable && question.isDirtyComparedTo(originalQuestion);
 
     if (isDirty) {
-      question = question.syncColumnsAndSettings(
-        queryResults[0],
-        prevQueryResults?.[0],
-        settingsSyncOptions,
+      const series = [{ card: question.card(), data, error }];
+      const previousSeries =
+        prevCard && (prevData || prevError)
+          ? [{ card: prevCard, data: prevData, error: prevError }]
+          : null;
+      question = question.setSettings(
+        syncVizSettingsWithSeries(question.settings(), series, previousSeries),
       );
 
       question = question.maybeResetDisplay(

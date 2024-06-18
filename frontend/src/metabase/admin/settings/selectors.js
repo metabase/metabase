@@ -1,12 +1,10 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { t, jt } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
-import { isPersonalCollectionOrChild } from "metabase/collections/utils";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
@@ -15,12 +13,12 @@ import {
 } from "metabase/plugins";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { PersistedModelsApi, UtilApi } from "metabase/services";
 
 import {
-  trackTrackingPermissionChanged,
   trackCustomHomepageDashboardEnabled,
+  trackTrackingPermissionChanged,
 } from "./analytics";
+import { CloudPanel } from "./components/CloudPanel";
 import { BccToggleWidget } from "./components/Email/BccToggleWidget";
 import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
 import SettingsLicense from "./components/SettingsLicense";
@@ -34,16 +32,14 @@ import {
 import { EmbeddingSwitchWidget } from "./components/widgets/EmbeddingSwitchWidget";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
-import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
 import {
+  EmbeddedResources,
+  PublicLinksActionListing,
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
-  PublicLinksActionListing,
-  EmbeddedResources,
 } from "./components/widgets/PublicLinksListing";
 import RedirectWidget from "./components/widgets/RedirectWidget";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
-import SectionDivider from "./components/widgets/SectionDivider";
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import { updateSetting } from "./settings";
@@ -122,8 +118,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         ],
         getProps: setting => ({
           value: setting.value,
-          collectionFilter: (collection, index, allCollections) =>
-            !isPersonalCollectionOrChild(collection, allCollections),
         }),
         onChanged: (oldVal, newVal) => {
           if (newVal && !oldVal) {
@@ -338,7 +332,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         type: "select",
         options: [
           { name: t`Database Default`, value: "" },
-          ...MetabaseSettings.get("available-timezones"),
+          ...(MetabaseSettings.get("available-timezones") || []),
         ],
         note: t`Not all databases support timezones, in which case this setting won't take effect.`,
         allowValueCollection: true,
@@ -375,32 +369,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
     component: UploadSettings,
     settings: [
       {
-        key: "uploads-enabled",
-        display_name: t`Data Uploads`,
-        description: t`Enable admins to upload data to new database tables from CSV files.`,
-        type: "boolean",
-      },
-      {
-        key: "uploads-database-id",
-        getHidden: settings => !settings["uploads-enabled"],
-        display_name: t`Database`,
-        description: t`Identify a database where upload tables will be created.`,
-        placeholder: t`Select a database`,
-      },
-      {
-        key: "uploads-schema-name",
-        display_name: t`Schema name`,
-        description: t`Identify a database schema where data upload tables will be created.`,
-        type: "string",
-        placeholder: "uploads",
-      },
-      {
-        key: "uploads-table-prefix",
-        display_name: t`Table prefix`,
-        description: t`Identify a table prefix for tables created by data uploads.`,
-        placeholder: "uploaded_",
-        type: "string",
-        required: false,
+        key: "uploads-settings",
       },
     ],
   },
@@ -448,22 +417,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         display_name: t`Embedding`,
         description: null,
         widget: EmbeddingSwitchWidget,
-        onChanged: async (
-          oldValue,
-          newValue,
-          settingsValues,
-          onChangeSetting,
-        ) => {
-          // Generate a secret key if none already exists
-          if (
-            !oldValue &&
-            newValue &&
-            !settingsValues["embedding-secret-key"]
-          ) {
-            const result = await UtilApi.random_token();
-            await onChangeSetting("embedding-secret-key", result.token);
-          }
-        },
       },
       {
         key: "-static-embedding",
@@ -559,100 +512,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
     component: SettingsLicense,
     settings: [],
   },
-  caching: {
-    name: t`Caching`,
-    order: 120,
-    settings: [
-      {
-        key: "enable-query-caching",
-        display_name: t`Saved questions`,
-        type: "boolean",
-      },
-      {
-        key: "query-caching-min-ttl",
-        display_name: t`Minimum Query Duration`,
-        type: "number",
-        getHidden: settings => !settings["enable-query-caching"],
-        allowValueCollection: true,
-      },
-      {
-        key: "query-caching-ttl-ratio",
-        display_name: t`Cache Time-To-Live (TTL) multiplier`,
-        type: "number",
-        getHidden: settings => !settings["enable-query-caching"],
-        allowValueCollection: true,
-      },
-      {
-        key: "query-caching-max-kb",
-        display_name: t`Max Cache Entry Size`,
-        type: "number",
-        getHidden: settings => !settings["enable-query-caching"],
-        allowValueCollection: true,
-      },
-      {
-        widget: SectionDivider,
-      },
-      {
-        key: "persisted-models-enabled",
-        display_name: t`Models`,
-        description: jt`Enabling cache will create tables for your models in a dedicated schema and Metabase will refresh them on a schedule. Questions based on your models will query these tables. ${(
-          <ExternalLink
-            key="model-caching-link"
-            href={MetabaseSettings.docsUrl("data-modeling/models")}
-          >{t`Learn more`}</ExternalLink>
-        )}.`,
-        type: "boolean",
-        disableDefaultUpdate: true,
-        onChanged: async (wasEnabled, isEnabled) => {
-          if (isEnabled) {
-            await PersistedModelsApi.enablePersistence();
-          } else {
-            await PersistedModelsApi.disablePersistence();
-          }
-        },
-      },
-      {
-        key: "persisted-model-refresh-cron-schedule",
-        noHeader: true,
-        type: "select",
-        options: [
-          {
-            value: "0 0 0/1 * * ? *",
-            name: t`Hour`,
-          },
-          {
-            value: "0 0 0/2 * * ? *",
-            name: t`2 hours`,
-          },
-          {
-            value: "0 0 0/3 * * ? *",
-            name: t`3 hours`,
-          },
-          {
-            value: "0 0 0/6 * * ? *",
-            name: t`6 hours`,
-          },
-          {
-            value: "0 0 0/12 * * ? *",
-            name: t`12 hours`,
-          },
-          {
-            value: "0 0 0 ? * * *",
-            name: t`24 hours`,
-          },
-          {
-            value: "custom",
-            name: t`Custom…`,
-          },
-        ],
-        widget: ModelCachingScheduleWidget,
-        disableDefaultUpdate: true,
-        getHidden: settings => !settings["persisted-models-enabled"],
-        onChanged: (previousValue, value) =>
-          PersistedModelsApi.setRefreshSchedule({ cron: value }),
-      },
-    ],
-  },
   metabot: {
     name: t`Metabot`,
     order: 130,
@@ -708,9 +567,16 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
     ],
   },
+  cloud: {
+    name: t`Cloud`,
+    getHidden: settings => settings["token-features"]?.hosting === true,
+    order: 132,
+    component: CloudPanel,
+    settings: [],
+  },
 };
 
-const getSectionsWithPlugins = _.once(() =>
+export const getSectionsWithPlugins = _.once(() =>
   updateSectionsWithPlugins(ADMIN_SETTINGS_SECTIONS),
 );
 

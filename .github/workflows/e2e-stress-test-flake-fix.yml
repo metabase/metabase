@@ -45,6 +45,7 @@ jobs:
     env:
       DISPLAY: ""
       QA_DB_ENABLED: true
+      CYPRESS_QA_DB_MONGO: true
       CYPRESS_REPLAYIO_ENABLED: 1
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}

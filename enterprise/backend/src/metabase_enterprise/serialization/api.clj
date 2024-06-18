@@ -26,6 +26,10 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:dynamic *additive-logging*
+  "If custom loggers should pass logs to parent loggers (to system Metabase logs), used to clean up test output."
+  true)
+
 ;;; Storage
 
 (def parent-dir "Dir for storing serialization API export-in-progress and archives."
@@ -69,7 +73,8 @@
         dst      (io/file (str (.getPath path) ".tar.gz"))
         log-file (io/file path "export.log")
         err      (atom nil)
-        report   (with-open [_logger (logger/for-ns 'metabase-enterprise.serialization log-file)]
+        report   (with-open [_logger (logger/for-ns 'metabase-enterprise.serialization log-file
+                                                    {:additive *additive-logging*})]
                    (try                 ; try/catch inside logging to log errors
                      (let [report (serdes/with-cache
                                     (-> (extract/extract opts)
@@ -96,7 +101,8 @@
   (let [dst      (io/file parent-dir (u.random/random-name))
         log-file (io/file dst "import.log")
         err      (atom nil)
-        report   (with-open [_logger (logger/for-ns 'metabase-enterprise.serialization log-file)]
+        report   (with-open [_logger (logger/for-ns 'metabase-enterprise.serialization log-file
+                                                    {:additive *additive-logging*})]
                    (try                 ; try/catch inside logging to log errors
                      (log/infof "Serdes import, size %s" size)
                      (let [path (u.compress/untgz file dst)]
@@ -155,8 +161,9 @@
                 report
                 error-message
                 callback]} (serialize&pack opts)]
-    (snowplow/track-event! ::snowplow/serialization-export api/*current-user-id*
-                           {:source          "api"
+    (snowplow/track-event! ::snowplow/serialization api/*current-user-id*
+                           {:direction       "export"
+                            :source          "api"
                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
                             :count           (count (:seen report))
                             :collection      (str/join "," (map str collection))
@@ -194,8 +201,9 @@
                   callback]} (unpack&import (get-in raw-params ["file" :tempfile])
                                             (get-in raw-params ["file" :size]))
           imported           (into (sorted-set) (map (comp :model last)) (:seen report))]
-      (snowplow/track-event! ::snowplow/serialization-import api/*current-user-id*
-                             {:source        "api"
+      (snowplow/track-event! ::snowplow/serialization api/*current-user-id*
+                             {:direction     "import"
+                              :source        "api"
                               :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
                               :models        (str/join "," imported)
                               :count         (if (contains? imported "Setting")

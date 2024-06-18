@@ -8,6 +8,7 @@ import _ from "underscore";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 import { hasLatitudeAndLongitudeColumns } from "metabase-lib/v1/types/utils/isa";
 
@@ -186,9 +187,13 @@ export default class PinMap extends Component {
 
     return (
       <div
+        data-element-id="pin-map"
         className={cx(
           className,
-          "PinMap relative hover-parent hover--visibility",
+          DashboardS.PinMap,
+          CS.relative,
+          CS.hoverParent,
+          CS.hoverVisibility,
         )}
         onMouseDownCapture={e => e.stopPropagation() /* prevent dragging */}
       >
@@ -226,8 +231,8 @@ export default class PinMap extends Component {
             CS.m1,
             CS.z2,
             CS.flex,
-            "flex-column",
-            "hover-child",
+            CS.flexColumn,
+            CS.hoverChild,
           )}
         >
           {isEditing || !isDashboard ? (
@@ -238,7 +243,7 @@ export default class PinMap extends Component {
                 ButtonsS.ButtonSmall,
                 CS.mb1,
                 {
-                  "PinMapUpdateButton--disabled": disableUpdateButton,
+                  [DashboardS.PinMapUpdateButtonDisabled]: disableUpdateButton,
                 },
               )}
               onClick={this.updateSettings}

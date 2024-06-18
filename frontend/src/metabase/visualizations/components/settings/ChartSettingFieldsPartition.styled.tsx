@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 import { ColumnItem } from "./ColumnItem";
 
 interface FieldPartitionColumnProps {
@@ -27,7 +25,7 @@ interface DroppableContainerProps {
 
 export const DroppableContainer = styled.div<DroppableContainerProps>`
   background-color: ${({ isDragSource }) =>
-    isDragSource ? color("border") : "none"};
+    isDragSource ? "var(--mb-color-border)" : "none"};
   border-radius: 0.5rem;
   min-height: 40px;
   position: relative;
@@ -38,6 +36,6 @@ export const EmptyColumnPlaceholder = styled.div`
   width: 100%;
   padding: 0.75rem;
   border-radius: 0.5rem;
-  background-color: ${color("bg-light")};
-  color: ${color("text-medium")};
+  background-color: var(--mb-color-bg-light);
+  color: var(--mb-color-text-medium);
 `;

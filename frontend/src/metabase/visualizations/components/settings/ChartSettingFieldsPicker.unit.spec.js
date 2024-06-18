@@ -32,7 +32,7 @@ describe("ChartSettingFieldsPicker", () => {
     expect(screen.getByTestId("remove-count")).toBeInTheDocument();
   });
 
-  it("should show you a button to add another metric if there are unused options", () => {
+  it("should show you a button to add another metric if there are unused options", async () => {
     const onChange = jest.fn();
 
     setup({ value: ["avg"], onChange });
@@ -41,12 +41,12 @@ describe("ChartSettingFieldsPicker", () => {
     expect(screen.queryByTestId("remove-avg")).not.toBeInTheDocument();
     expect(screen.getByText("Add another series")).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("Add another series"));
+    await userEvent.click(screen.getByText("Add another series"));
 
     expect(onChange).toHaveBeenCalledWith(["avg", "count"]);
   });
 
-  it("should allow you to change an existing metric if there are unused options", () => {
+  it("should allow you to change an existing metric if there are unused options", async () => {
     const onChange = jest.fn();
 
     setup({ value: ["avg"], onChange });
@@ -58,12 +58,12 @@ describe("ChartSettingFieldsPicker", () => {
       screen.getByRole("img", { name: /chevrondown/i }),
     ).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("Average of Total"));
+    await userEvent.click(screen.getByText("Average of Total"));
 
     //Check to see that count is in the popover
     expect(screen.getByText("Count")).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("Count"));
+    await userEvent.click(screen.getByText("Count"));
 
     expect(onChange).toHaveBeenCalledWith(["count"]);
   });

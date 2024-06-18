@@ -35,6 +35,7 @@
   (eval . (put 'methodical/defmulti 'clojure-doc-string-elt 2))
   (eval . (put 'mi/define-simple-hydration-method 'clojure-doc-string-elt 3))
   (eval . (put 'mi/define-batched-hydration-method 'clojure-doc-string-elt 3))
+  (eval . (put 'mr/def 'clojure-doc-string-elt 2))
   (eval . (put 'mu/defn 'clojure-doc-string-elt 2))
   ;; Define custom indentation for functions inside metabase.
   ;; This list isn't complete; add more forms as we come across them.
@@ -84,6 +85,7 @@
   (clojure-indent-style . always-align)
   (cljr-favor-prefix-notation . nil)
   (cljr-insert-newline-after-require . t)
+  (cljr-print-right-margin . 118)
   (clojure-docstring-fill-column . 118)
   (cider-preferred-build-tool . clojure-cli)
   (cider-default-cljs-repl . shadow-select)

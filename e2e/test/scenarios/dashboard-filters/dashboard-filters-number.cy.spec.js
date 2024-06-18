@@ -38,9 +38,15 @@ describe("scenarios > dashboard > filters > number", () => {
   });
 
   it("should work when set through the filter widget", () => {
-    Object.entries(DASHBOARD_NUMBER_FILTERS).forEach(([filter]) => {
-      cy.log(`Make sure we can connect ${filter} filter`);
-      setFilter("Number", filter);
+    DASHBOARD_NUMBER_FILTERS.forEach(({ operator, single }) => {
+      cy.log(`Make sure we can connect ${operator} filter`);
+      setFilter("Number", operator);
+
+      if (single) {
+        cy.findAllByRole("radio", { name: "A single value" })
+          .click()
+          .should("be.checked");
+      }
 
       cy.findByText("Select…").click();
       popover().contains("Tax").click();
@@ -48,12 +54,12 @@ describe("scenarios > dashboard > filters > number", () => {
 
     saveDashboard();
 
-    Object.entries(DASHBOARD_NUMBER_FILTERS).forEach(
-      ([filter, { value, representativeResult }], index) => {
+    DASHBOARD_NUMBER_FILTERS.forEach(
+      ({ operator, value, representativeResult }, index) => {
         filterWidget().eq(index).click();
         addWidgetNumberFilter(value);
 
-        cy.log(`Make sure ${filter} filter returns correct result`);
+        cy.log(`Make sure ${operator} filter returns correct result`);
         cy.findByTestId("dashcard").within(() => {
           cy.findByText(representativeResult);
         });
@@ -90,7 +96,7 @@ describe("scenarios > dashboard > filters > number", () => {
   });
 
   it("should support being required", () => {
-    setFilter("Number", "Equal to");
+    setFilter("Number", "Equal to", "Equal to");
     selectDashboardFilter(cy.findByTestId("dashcard"), "Tax");
 
     // Can't save without a default value

@@ -1,0 +1,67 @@
+name: Update Loki Snapshots
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  check-label-and-update-snapshot:
+    if: contains(github.event.pull_request.labels.*.name, 'loki-update')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          ref: ${{ github.head_ref }}
+
+      - name: Prepare frontend environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+
+      - name: Compile CLJS
+        run: yarn build-pure:cljs
+
+      - name: Build Storybook
+        run: yarn build-storybook
+
+      - name: Serve Storybook
+        run: yarn http-server storybook-static -p 6006 &
+        shell: bash
+
+      - name: Wait for Storybook to become available
+        run: |
+          echo "Waiting for Storybook to be served..."
+          while ! curl --silent --fail http://localhost:6006; do
+            sleep 5
+            echo "Retrying..."
+          done
+          echo "Storybook is being served!"
+
+      - name: Update Loki Snapshots
+        run: yarn test-visual:loki-update
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "Metabase Automation"
+          git config --global user.email "github-automation@metabase.com"
+          git add .loki/**
+          git commit -m "Update Loki Snapshots"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      - name: Remove 'loki-update' label
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{secrets.METABASE_AUTOMATION_USER_TOKEN}}
+          script: |
+            github.issues.removeLabel({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'loki-update'
+            })

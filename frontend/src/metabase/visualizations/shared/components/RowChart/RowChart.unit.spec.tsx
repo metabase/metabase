@@ -206,11 +206,11 @@ describe("RowChart", () => {
   });
 
   describe("events", () => {
-    it("should call onClick with the clicked datum info", () => {
+    it("should call onClick with the clicked datum info", async () => {
       const onClick = jest.fn();
 
       const { bars } = setup({ onClick });
-      userEvent.click(bars[0]);
+      await userEvent.click(bars[0]);
 
       expect(onClick).toHaveBeenCalledWith(
         expect.objectContaining({ target: expect.anything() }),
@@ -228,7 +228,7 @@ describe("RowChart", () => {
       onClick.mockClear();
 
       // the last bar
-      userEvent.click(bars[5]);
+      await userEvent.click(bars[5]);
 
       expect(onClick).toHaveBeenCalledWith(
         expect.objectContaining({ target: expect.anything() }),
@@ -244,11 +244,11 @@ describe("RowChart", () => {
       );
     });
 
-    it("should call onHover with the clicked datum info", () => {
+    it("should call onHover with the clicked datum info", async () => {
       const onHover = jest.fn();
 
       const { bars } = setup({ onHover });
-      userEvent.hover(bars[0]);
+      await userEvent.hover(bars[0]);
 
       expect(onHover).toHaveBeenCalledWith(
         expect.objectContaining({ target: expect.anything() }),
@@ -266,7 +266,7 @@ describe("RowChart", () => {
       onHover.mockClear();
 
       // the last bar
-      userEvent.click(bars[5]);
+      await userEvent.click(bars[5]);
 
       expect(onHover).toHaveBeenCalledWith(
         expect.objectContaining({ target: expect.anything() }),

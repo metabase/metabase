@@ -1,6 +1,6 @@
-import type { ColorGetter } from "metabase/static-viz/lib/colors";
 import { formatNumber } from "metabase/static-viz/lib/numbers";
 import { truncateText } from "metabase/static-viz/lib/text";
+import type { ColorGetter } from "metabase/visualizations/types";
 
 import Gauge from "./Gauge";
 import {

@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type * as React from "react";
 import { useEffect, useMemo, useCallback, useRef, useState } from "react";
 import { findDOMNode } from "react-dom";
@@ -8,6 +9,7 @@ import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { sumArray } from "metabase/lib/arrays";
 import {
   COLUMN_SHOW_TOTALS,
@@ -122,7 +124,7 @@ function PivotTable({
   const topHeaderRef = useRef(null);
 
   const getColumnTitle = useCallback(
-    function (columnIndex) {
+    function (columnIndex: number) {
       const column = data.cols.filter(col => !isPivotGroupColumn(col))[
         columnIndex
       ];
@@ -174,7 +176,9 @@ function PivotTable({
   ].every(Boolean);
   const columnsChanged =
     !hasColumnWidths ||
-    (previousRowIndexes && !_.isEqual(pivoted?.rowIndexes, previousRowIndexes));
+    (previousRowIndexes &&
+      !_.isEqual(pivoted?.rowIndexes, previousRowIndexes)) ||
+    leftHeaderWidths?.length !== pivoted?.rowIndexes?.length;
 
   // In cases where there are horizontal scrollbars are visible AND the data grid has to scroll vertically as well,
   // the left sidebar and the main grid can get out of ScrollSync due to slightly differing heights
@@ -312,8 +316,8 @@ function PivotTable({
     >
       <ScrollSync>
         {({ onScroll, scrollLeft, scrollTop }) => (
-          <div className="full-height flex flex-column">
-            <div className="flex" style={{ height: topHeaderHeight }}>
+          <div className={cx(CS.fullHeight, CS.flex, CS.flexColumn)}>
+            <div className={CS.flex} style={{ height: topHeaderHeight }}>
               {/* top left corner - displays left header columns */}
               <PivotTableTopLeftCellsContainer
                 isNightMode={isNightMode}
@@ -363,7 +367,7 @@ function PivotTable({
               {/* top header */}
               <Collection
                 ref={topHeaderRef}
-                className="scroll-hide-all"
+                className={CS.scrollHideAll}
                 isNightMode={isNightMode}
                 width={width - leftHeaderWidth}
                 height={topHeaderHeight}
@@ -397,14 +401,14 @@ function PivotTable({
                 scrollLeft={scrollLeft}
               />
             </div>
-            <div className="flex flex-full">
+            <div className={cx(CS.flex, CS.flexFull)}>
               {/* left header */}
               <div style={{ width: leftHeaderWidth }}>
                 <AutoSizer disableWidth>
                   {({ height }) => (
                     <Collection
                       ref={leftHeaderRef}
-                      className="scroll-hide-all"
+                      className={CS.scrollHideAll}
                       cellCount={leftHeaderItems.length}
                       cellRenderer={({ index, style, key }) => (
                         <LeftHeaderCell
@@ -444,7 +448,7 @@ function PivotTable({
                     <Grid
                       width={width - leftHeaderWidth}
                       height={height}
-                      className="text-dark"
+                      className={CS.textDark}
                       rowCount={rowCount}
                       columnCount={columnCount}
                       rowHeight={CELL_HEIGHT}

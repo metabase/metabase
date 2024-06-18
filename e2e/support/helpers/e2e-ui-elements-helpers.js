@@ -1,15 +1,10 @@
 // various Metabase-specific "scoping" functions like inside popover/modal/navbar/main/sidebar content area
 export const POPOVER_ELEMENT =
-  ".popover[data-state~='visible'],[data-position]:not(.emotion-HoverCard-dropdown)";
+  ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
 
 export function popover() {
   cy.get(POPOVER_ELEMENT).should("be.visible");
   return cy.get(POPOVER_ELEMENT);
-}
-
-export function mantinePopover() {
-  const MANTINE_POPOVER = "[data-popover=mantine-popover]";
-  return cy.get(MANTINE_POPOVER).should("be.visible");
 }
 
 const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']:visible";
@@ -28,13 +23,44 @@ export function menu() {
 }
 
 export function modal() {
-  const LEGACY_MODAL_SELECTOR = ".Modal";
   const MODAL_SELECTOR = ".emotion-Modal-content[role='dialog']";
+  const LEGACY_MODAL_SELECTOR = "[data-testid=modal]";
   return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
 
 export function entityPickerModal() {
   return cy.findByTestId("entity-picker-modal");
+}
+
+export function entityPickerModalLevel(level) {
+  return cy.findByTestId(`item-picker-level-${level}`);
+}
+
+export function entityPickerModalItem(level, name) {
+  return entityPickerModalLevel(level).findByText(name).parents("button");
+}
+
+export function entityPickerModalTab(name) {
+  return cy.findAllByRole("tab").filter(`:contains(${name})`);
+}
+
+// displays at least these tabs:
+export function shouldDisplayTabs(tabs) {
+  tabs.forEach(tab => {
+    entityPickerModalTab(tab).should("exist");
+  });
+}
+
+export function tabsShouldBe(selected, tabs) {
+  cy.log(tabs);
+  cy.findAllByRole("tab").should("have.length", tabs.length);
+  tabs.forEach(tab => {
+    if (tab === selected) {
+      entityPickerModalTab(tab).and("have.attr", "aria-selected", "true");
+    } else {
+      entityPickerModalTab(tab).should("exist");
+    }
+  });
 }
 
 export function collectionOnTheGoModal() {
@@ -63,15 +89,16 @@ export function appBar() {
 
 export function openNavigationSidebar() {
   appBar().findByTestId("sidebar-toggle").click();
+  navigationSidebar().should("be.visible");
 }
 
 export function closeNavigationSidebar() {
   appBar().findByTestId("sidebar-toggle").click();
+  navigationSidebar().should("not.be.visible");
 }
 
-export function browse() {
-  // takes you to `/browse` (reflecting changes made in `0.38-collection-redesign)
-  return navigationSidebar().findByText("Browse data");
+export function browseDatabases() {
+  return navigationSidebar().findByLabelText("Browse databases");
 }
 
 /**
@@ -112,7 +139,7 @@ export function setFilterWidgetValue(
 ) {
   filterWidget().eq(0).click();
   popover().within(() => {
-    cy.icon("close").click();
+    removeMultiAutocompleteValue(0);
     if (value) {
       cy.findByPlaceholderText(targetPlaceholder).type(value).blur();
     }
@@ -179,7 +206,9 @@ export const moveDnDKitElement = (
       button: 0,
     })
     .wait(200)
-    .trigger("pointermove", 5, 5, {
+    // This initial move needs to be greater than the activation constraint
+    // of the pointer sensor
+    .trigger("pointermove", 20, 20, {
       force: true,
       isPrimary: true,
       button: 0,
@@ -216,5 +245,50 @@ export const undoToastList = () => {
 };
 
 export function dashboardCards() {
-  return cy.get("#Dashboard-Cards-Container");
+  return cy.get("[data-element-id=dashboard-cards-container]");
+}
+
+export function tableHeaderClick(headerString) {
+  cy.findByTestId("TableInteractive-root").within(() => {
+    cy.findByTextEnsureVisible(headerString).trigger("mousedown");
+  });
+
+  cy.findByTestId("TableInteractive-root").within(() => {
+    cy.findByTextEnsureVisible(headerString).trigger("mouseup");
+  });
+}
+
+/**
+ * selects the global new button
+ * @param {*} menuItem optional, if provided, will click the New button and return the menu item with the text provided
+ * @returns
+ */
+export function newButton(menuItem) {
+  if (menuItem) {
+    cy.findByTestId("app-bar").button("New").click();
+    return popover().findByText(menuItem);
+  }
+
+  return cy.findByTestId("app-bar").button("New");
+}
+
+export function multiSelectInput(filter = ":eq(0)") {
+  return cy.findByRole("combobox").filter(filter).get("input").last();
+}
+
+export function multiAutocompleteInput(filter = ":eq(0)") {
+  return cy.findAllByRole("combobox").filter(filter).get("input").last();
+}
+
+export function multiAutocompleteValue(index, filter = ":eq(0)") {
+  return cy
+    .findAllByRole("combobox")
+    .filter(filter)
+    .get(`[value][index=${index}]`);
+}
+
+export function removeMultiAutocompleteValue(index, filter) {
+  return multiAutocompleteValue(index, filter)
+    .findByRole("button", { hidden: true })
+    .click();
 }

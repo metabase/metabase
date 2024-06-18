@@ -13,7 +13,7 @@ export const LayoutRoot = styled.div`
   position: relative;
   display: flex;
   min-height: 100%;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 `;
 
 export const LayoutBody = styled.div`
@@ -21,15 +21,21 @@ export const LayoutBody = styled.div`
   flex: 1;
 `;
 
-export const LayoutIllustration = styled.div`
+export const LayoutIllustration = styled.div<{
+  backgroundImageSrc: string;
+  isDefault: boolean;
+}>`
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  filter: hue-rotate(${hueRotate("brand")}deg);
-  background-image: url("app/img/bridge.svg");
-  background-size: max(2592px, 100%) auto;
+  filter: ${({ isDefault }) =>
+    isDefault && `hue-rotate(${hueRotate("brand")}deg)`};
+  background-image: ${({ backgroundImageSrc }) =>
+    `url("${backgroundImageSrc}")`};
+  background-size: ${({ isDefault }) =>
+    isDefault ? "max(2592px, 100%) auto" : "100% auto"};
   background-repeat: no-repeat;
   background-position: right bottom;
 `;
@@ -38,8 +44,8 @@ export const LayoutCard = styled.div`
   width: 100%;
   margin-top: 1.5rem;
   padding: 2.5rem 1.5rem;
-  background-color: ${color("white")};
-  box-shadow: 0 1px 15px ${color("shadow")};
+  background-color: var(--mb-color-bg-white);
+  box-shadow: 0 1px 15px var(--mb-color-shadow);
   border-radius: 6px;
   min-height: 20rem;
   min-width: 35rem;
@@ -57,6 +63,6 @@ export const LayoutCard = styled.div`
 export const CheckmarkIcon = styled(Icon)`
   border-radius: 100%;
   padding: 1rem;
-  color: ${color("brand")};
-  background: ${alpha(color("brand"), 0.3)};
+  color: var(--mb-color-brand);
+  background: ${() => alpha(color("brand"), 0.3)};
 `;

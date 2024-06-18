@@ -1,14 +1,15 @@
 import { useMemo, useState } from "react";
-import { useAsync, useDebounce } from "react-use";
+import { useDebounce } from "react-use";
 import { t } from "ttag";
 
+import { useSearchFieldValuesQuery } from "metabase/api";
 import { MultiAutocomplete } from "metabase/ui";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
 import { getFieldOptions } from "../utils";
 
-import { SEARCH_DEBOUNCE } from "./constants";
-import { shouldSearch, getSearchValues } from "./utils";
+import { SEARCH_DEBOUNCE, SEARCH_LIMIT } from "./constants";
+import { shouldSearch } from "./utils";
 
 interface SearchValuePickerProps {
   fieldId: FieldId;
@@ -16,7 +17,7 @@ interface SearchValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
-  shouldCreate: (query: string) => boolean;
+  shouldCreate?: (query: string, values: string[]) => boolean;
   autoFocus?: boolean;
   onChange: (newValues: string[]) => void;
 }
@@ -34,9 +35,16 @@ export function SearchValuePicker({
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
 
-  const { value: fieldValues = initialFieldValues } = useAsync(
-    () => getSearchValues(fieldId, searchFieldId, searchQuery),
-    [fieldId, searchFieldId, searchQuery],
+  const { data: fieldValues = initialFieldValues } = useSearchFieldValuesQuery(
+    {
+      fieldId,
+      searchFieldId,
+      value: searchQuery,
+      limit: SEARCH_LIMIT,
+    },
+    {
+      skip: !searchQuery,
+    },
   );
 
   const options = useMemo(() => getFieldOptions(fieldValues), [fieldValues]);

@@ -45,7 +45,19 @@ function AddMappingRow({
   return (
     <tr>
       <td colSpan={3} style={{ padding: 0 }}>
-        <div className="m2 p1 bordered border-brand justify-between rounded relative flex align-center">
+        <div
+          className={cx(
+            CS.m2,
+            CS.p1,
+            CS.bordered,
+            CS.borderBrand,
+            CS.justifyBetween,
+            CS.rounded,
+            CS.relative,
+            CS.flex,
+            CS.alignCenter,
+          )}
+        >
           <input
             aria-label="new-group-mapping-name-input"
             className={cx(CS.inputBorderless, CS.h3, CS.ml1, CS.flexFull)}
@@ -59,7 +71,7 @@ function AddMappingRow({
           <div>
             <Button borderless onClick={handleCancelClick}>{t`Cancel`}</Button>
             <Button
-              className="ml2"
+              className={CS.ml2}
               type="submit"
               primary={!!isMappingNameUnique}
               disabled={!isMappingNameUnique}

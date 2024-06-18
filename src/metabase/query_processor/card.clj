@@ -10,14 +10,15 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.models.cache-config :as cache-config]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.query :as query]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
@@ -30,19 +31,12 @@
 
 (set! *warn-on-reflection* true)
 
-(defenterprise granular-cache-strategy
-  "Returns cache strategy for a card. On EE, this checks the hierarchy for the card, dashboard, or
-   database (in that order). Returns nil on OSS."
-  metabase-enterprise.caching.strategies
-  [_card _dashboard-id])
-
-(defn- cache-strategy
-  [card dashboard-id]
-  (when (public-settings/enable-query-caching)
-    (or (granular-cache-strategy card dashboard-id)
-        {:type            :ttl
-         :multiplier      (public-settings/query-caching-ttl-ratio)
-         :min_duration_ms (long (* (public-settings/query-caching-min-ttl) 1000))})))
+(defenterprise cache-strategy
+  "Returns cache strategy for a card. In EE, this checks the hierarchy for the card, dashboard, or
+   database (in that order). In OSS returns root configuration."
+  metabase-enterprise.cache.strategies
+  [_card _dashboard-id]
+  (cache-config/card-strategy (cache-config/root-strategy) nil))
 
 (defn- enrich-strategy [strategy query]
   (case (:type strategy)
@@ -172,11 +166,11 @@
 (mu/defn process-query-for-card-default-qp :- :some
   "Default value of the `:qp` option for [[process-query-for-card]]."
   [query :- ::qp.schema/query
-   rff   :- ::qp.schema/rff]
+   rff   :- [:maybe ::qp.schema/rff]]
   (qp/process-query (qp/userland-query query) rff))
 
-(defn- process-query-for-card-default-run-fn
-  "Create the default `:run` function for [[process-query-for-card]]."
+(defn process-query-for-card-default-run-fn
+  "Create the default `:make-run` function for [[process-query-for-card]]."
   [qp export-format]
   (^:once fn* [query info]
    (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
@@ -185,10 +179,14 @@
 (mu/defn process-query-for-card
   "Run the query for Card with `parameters` and `constraints`. By default, returns results in a
   `metabase.async.streaming_response.StreamingResponse` (see [[metabase.async.streaming-response]]) that should be
-  returned as the result of an API endpoint fn, but you can return something different by passing a different `:run`
-  option. `:run` has a signature
+  returned as the result of an API endpoint fn, but you can return something different by passing a different `:make-run`
+  option. `:make-run` has a signature.
 
-    (run query info) => result
+    (make-run qp export-format) => (fn run [query info])
+
+  The produced `run` fn has a signature, it should use the qp in to produce the results.
+
+    (run query info) => results
 
   Will throw an Exception if preconditions (such as read perms) are not met *before* returning the
   `StreamingResponse`.
@@ -198,26 +196,31 @@
   options."
   [card-id :- ::lib.schema.id/card
    export-format
-   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp run ignore-cache]
+   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp make-run ignore-cache]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
-             qp          process-query-for-card-default-qp
-             ;; param `run` can be used to control how the query is ran, e.g. if you need to customize the `context`
+             ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
              ;; passed to the QP
-             run         (process-query-for-card-default-run-fn qp export-format)}}]
+             make-run    process-query-for-card-default-run-fn}}]
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
   (let [dash-viz (when (and (not= context :question)
                             dashcard-id)
                    (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
-        card     (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id
-                                                 :type :result_metadata :visualization_settings]
+        card     (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :collection_id
+                                                 :type :result_metadata :visualization_settings :display
+                                                 :cache_invalidated_at]
                                                 :id card-id))
+        ;; We need to check this here because dashcards don't get selected until this point
+        qp       (if (= :pivot (:display card))
+                   qp.pivot/run-pivot-query
+                   (or qp process-query-for-card-default-qp))
+        runner   (make-run qp export-format)
         query    (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                      (update :viz-settings (fn [viz] (merge viz dash-viz)))
                      (update :middleware (fn [middleware]
                                            (merge
-                                            {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
-                                            middleware))))
+                                             {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
+                                             middleware))))
         info     (cond-> {:executed-by            api/*current-user-id*
                           :context                context
                           :card-id                card-id
@@ -226,10 +229,9 @@
                           :visualization-settings (:visualization_settings card)}
                    (and (= (:type card) :model) (seq (:result_metadata card)))
                    (assoc :metadata/model-metadata (:result_metadata card)))]
-    (api/check-not-archived card)
     (when (seq parameters)
       (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id
                 (u/pprint-to-str query))
     (binding [qp.perms/*card-id* card-id]
-      (run query info))))
+      (runner query info))))

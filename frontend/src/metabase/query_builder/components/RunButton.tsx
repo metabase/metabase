@@ -4,6 +4,7 @@ import { forwardRef } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 
 interface RunButtonProps {
@@ -45,7 +46,7 @@ const RunButton = forwardRef(function RunButton(
         [QueryBuilderS.RunButtonHidden]: hidden,
         [QueryBuilderS.RunButtonCompact]:
           circular && !props.borderless && compact,
-        circular: circular,
+        [CS.circular]: circular,
       })}
       data-testid="run-button"
       onClick={isRunning ? onCancel : onRun}

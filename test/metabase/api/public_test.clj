@@ -2,6 +2,7 @@
   "Tests for `api/public/` (public links) endpoints."
   (:require
    [cheshire.core :as json]
+   [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -12,7 +13,6 @@
    [metabase.api.pivots :as api.pivots]
    [metabase.api.public :as api.public]
    [metabase.config :as config]
-   [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card Collection Dashboard DashboardCard DashboardCardSeries
@@ -21,7 +21,6 @@
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [metabase.util :as u]
    [throttle.core :as throttle]
@@ -47,7 +46,7 @@
                                           :type         :number
                                           :required     false}}}})
 
-(defn- do-with-temp-public-card [m f]
+(defn do-with-temp-public-card [m f]
   (let [m (merge (when-not (:dataset_query m)
                    {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})})
                  (when-not (:parameters m)
@@ -64,13 +63,14 @@
       ;; public sharing is disabled; but we still want to test it
       (f (assoc card :public_uuid (:public_uuid m))))))
 
-(defmacro ^:private with-temp-public-card {:style/indent 1} [[binding & [card]] & body]
+(defmacro with-temp-public-card {:style/indent 1} [[binding & [card]] & body]
   `(do-with-temp-public-card
     ~card
     (fn [~binding]
       ~@body)))
 
-(defn- do-with-temp-public-dashboard [m f]
+(defn do-with-temp-public-dashboard
+  [m f]
   (let [m (merge
            (when-not (:parameters m)
              {:parameters [{:id      "_VENUE_ID_"
@@ -84,13 +84,13 @@
     (t2.with-temp/with-temp [Dashboard dashboard m]
       (f (assoc dashboard :public_uuid (:public_uuid m))))))
 
-(defmacro ^:private with-temp-public-dashboard {:style/indent 1} [[binding & [dashboard]] & body]
+(defmacro with-temp-public-dashboard {:style/indent 1} [[binding & [dashboard]] & body]
   `(do-with-temp-public-dashboard
     ~dashboard
     (fn [~binding]
       ~@body)))
 
-(defn- add-card-to-dashboard! [card dashboard & {parameter-mappings :parameter_mappings, :as kvs}]
+(defn add-card-to-dashboard! [card dashboard & {parameter-mappings :parameter_mappings, :as kvs}]
   (first (t2/insert-returning-instances! DashboardCard (merge {:dashboard_id       (u/the-id dashboard)
                                                                :card_id            (u/the-id card)
                                                                :row                0
@@ -105,7 +105,7 @@
 
 ;; TODO -- we can probably use [[metabase.api.dashboard-test/with-chain-filter-fixtures]] for mocking this stuff
 ;; instead since it does mostly the same stuff anyway
-(defmacro ^:private with-temp-public-dashboard-and-card
+(defmacro with-temp-public-dashboard-and-card
   {:style/indent 1}
   [[dashboard-binding card-binding & [dashcard-binding]] & body]
   (let [dashcard-binding (or dashcard-binding (gensym "dashcard"))]
@@ -129,8 +129,7 @@
 
       (with-temp-public-card [{uuid :public_uuid, card-id :id}]
         (testing "Happy path -- should be able to fetch the Card"
-          (is (= #{:dataset_query :description :display :id :name :visualization_settings :parameters :param_values :param_fields}
-                 (set (keys (client/client :get 200 (str "public/card/" uuid)))))))
+          (client/client :get 200 (str "public/card/" uuid)))
 
         (testing "Check that we cannot fetch a public Card if public sharing is disabled"
           (mt/with-temporary-setting-values [enable-public-sharing false]
@@ -526,7 +525,9 @@
         (is (= "Not found."
                (client/client :get 404 (str "public/dashboard/" (random-uuid)))))))))
 
-(defn- fetch-public-dashboard [{uuid :public_uuid}]
+(defn fetch-public-dashboard
+  "Fetch a public dashboard by it's public UUID."
+  [{uuid :public_uuid}]
   (-> (client/client :get 200 (str "public/dashboard/" uuid))
       (select-keys [:name :dashcards :tabs])
       (update :name boolean)
@@ -548,18 +549,6 @@
          (t2/update! :model/Dashboard :id dashboard-id (shared-obj))
          (is (= {:name true, :dashcards 2, :tabs 2}
                 (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
-
-(deftest public-dashboard-logs-view-test
-  (when (premium-features/log-enabled?)
-    (testing "Viewing a public dashboard logs the correct view log event."
-      (mt/with-temporary-setting-values [enable-public-sharing true]
-        (with-temp-public-dashboard-and-card [dash _]
-          (fetch-public-dashboard dash)
-          (is (partial=
-               {:model      "dashboard"
-                :model_id   (:id dash)
-                :has_access true}
-               (view-log-test/latest-view nil (:id dash)))))))))
 
 (deftest public-dashboard-with-implicit-action-only-expose-unhidden-fields
   (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -620,7 +609,7 @@
 
 ;;; --------------------------------- GET /api/public/dashboard/:uuid/card/:card-id ----------------------------------
 
-(defn- dashcard-url
+(defn dashcard-url
   "URL for fetching results of a public DashCard."
   [dash card dashcard]
   (format "public/dashboard/%s/dashcard/%d/card/%d" (:public_uuid dash) (u/the-id dashcard) (u/the-id card)))
@@ -1427,7 +1416,7 @@
             (testing "parameter with source is card"
               (is (= {:values          [["African"]]
                       :has_more_values false}
-                     (client/client :get 200 (param-values-url :dashboard uuid (:card param-keys) "af")))))
+                     (client/client :get 200 (param-values-url :dashboard uuid (:card param-keys) "afr")))))
 
             (testing "parameter with source is a chain filter"
               (is (= {:values          [["Fast Food"] ["Food Truck"] ["Seafood"]]
@@ -1452,8 +1441,8 @@
                      (client/client :get 200 (param-values-url :card card-uuid (:static-list param-keys))))))
 
             (testing "parameter with source is a card"
-              (is (= {:values          [["Brite Spot Family Restaurant"] ["Red Medicine"]
-                                        ["Stout Burgers & Beers"] ["The Apple Pan"] ["Wurstküche"]]
+              (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
+                                        ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
                       :has_more_values false}
                      (client/client :get 200 (param-values-url :card card-uuid (:card param-keys))))))
 
@@ -1474,7 +1463,7 @@
                      (client/client :get 200 (param-values-url :card card-uuid (:static-list param-keys) "af")))))
 
             (testing "parameter with source is a card"
-              (is (= {:values          [["Red Medicine"]]
+              (is (= {:values          [["Fred 62"] ["Red Medicine"]]
                       :has_more_values false}
                      (client/client :get 200 (param-values-url :card card-uuid (:card param-keys) "red")))))
 
@@ -1523,17 +1512,17 @@
                           :has_more_values false}
                          (client/client :get 200 (param-values-url :card uuid (:static-list param-keys)))))
 
-                  (is (= {:values          [["Brite Spot Family Restaurant"] ["Red Medicine"]
-                                            ["Stout Burgers & Beers"] ["The Apple Pan"] ["Wurstküche"]]
+                  (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
+                                            ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
                           :has_more_values false}
                          (client/client :get 200 (param-values-url :card uuid (:card param-keys))))))
 
                 (testing "GET /api/public/card/:uuid/params/:param-key/search/:query"
                   (is (= {:values          [["African"]]
                           :has_more_values false}
-                         (client/client :get 200 (param-values-url :card uuid (:static-list param-keys) "af"))))
+                         (client/client :get 200 (param-values-url :card uuid (:static-list param-keys) "afr"))))
 
-                  (is (= {:values          [["Red Medicine"]]
+                  (is (= {:values          [["Fred 62"] ["Red Medicine"]]
                           :has_more_values false}
                          (client/client :get 200 (param-values-url :card uuid (:card param-keys) "red")))))))))))))
 
@@ -1561,56 +1550,90 @@
   [dash card dashcard]
   (format "public/pivot/dashboard/%s/dashcard/%d/card/%d" (:public_uuid dash) (u/the-id dashcard) (u/the-id card)))
 
+(defn- do-with-temp-dashboard-and-public-pivot-card [f]
+  (mt/dataset test-data
+    (with-temp-public-dashboard [dash {:parameters [{:id      "_STATE_"
+                                                     :name    "State"
+                                                     :slug    "state"
+                                                     :type    "text"
+                                                     :target  [:dimension (mt/$ids $orders.user_id->people.state)]
+                                                     :default nil}]}]
+      (with-temp-public-card [card (api.pivots/pivot-card)]
+        (let [dashcard (add-card-to-dashboard!
+                        card
+                        dash
+                        :parameter_mappings [{:parameter_id "_STATE_"
+                                              :card_id      (u/the-id card)
+                                              :target       [:dimension (mt/$ids $orders.user_id->people.state)]}])]
+          (f dash card dashcard))))))
+
 (deftest pivot-public-dashcard-test
   (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
     (mt/test-drivers (api.pivots/applicable-drivers)
-      (mt/dataset test-data
-        (mt/with-temporary-setting-values [enable-public-sharing true]
-          (with-temp-public-dashboard [dash {:parameters [{:id      "_STATE_"
-                                                           :name    "State"
-                                                           :slug    "state"
-                                                           :type    "text"
-                                                           :target  [:dimension (mt/$ids $orders.user_id->people.state)]
-                                                           :default nil}]}]
-            (with-temp-public-card [card (api.pivots/pivot-card)]
-              (let [dashcard (add-card-to-dashboard!
-                              card
-                              dash
-                              :parameter_mappings [{:parameter_id "_STATE_"
-                                                    :card_id      (u/the-id card)
-                                                    :target       [:dimension (mt/$ids $orders.user_id->people.state)]}])]
-                (letfn [(results [& query-parameters]
-                          (apply client/client :get 202 (pivot-dashcard-url dash card dashcard) query-parameters))]
-                  (testing "without parameters"
-                    (let [result (results)]
-                      (is (=? {:status "completed"}
-                              result))
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (do-with-temp-dashboard-and-public-pivot-card
+         (fn [dash card dashcard]
+           (letfn [(results [& query-parameters]
+                     (apply client/client :get 202 (pivot-dashcard-url dash card dashcard) query-parameters))]
+             (testing "without parameters"
+               (let [result (results)]
+                 (is (=? {:status "completed"}
+                         result))
                       ;; [[metabase.api.public/transform-results]] should remove `row_count`
-                      (testing "row_count isn't included in public endpoints"
-                        (is (nil? (:row_count result))))
-                      (is (= 6 (count (get-in result [:data :cols]))))
-                      (let [rows (mt/rows result)]
-                        (is (= 1144 (count rows)))
-                        (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
-                        (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
-                        (is (= [nil nil nil 7 18760 69540] (last rows))))))
+                 (testing "row_count isn't included in public endpoints"
+                   (is (nil? (:row_count result))))
+                 (is (= 6 (count (get-in result [:data :cols]))))
+                 (let [rows (mt/rows result)]
+                   (is (= 1144 (count rows)))
+                   (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+                   (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
+                   (is (= [nil nil nil 7 18760 69540] (last rows))))))
 
-                  (testing "with parameters"
-                    (let [result (results :parameters (json/encode [{:name   "State"
-                                                                     :id     "_STATE_"
-                                                                     :slug   :state
-                                                                     :target [:dimension (mt/$ids $orders.user_id->people.state)]
-                                                                     :value  ["CA" "WA"]}]))]
-                      (is (=? {:status "completed"}
-                              result))
-                      (testing "row_count isn't included in public endpoints"
-                        (is (nil? (:row_count result))))
-                      (is (= 6 (count (get-in result [:data :cols]))))
-                      (let [rows (mt/rows result)]
-                        (is (= 80 (count rows)))
-                        (is (= ["CA" "Affiliate" "Doohickey" 0 16 48] (first rows)))
-                        (is (= [nil "Google" "Gizmo" 1 52 186] (nth rows 50)))
-                        (is (= [nil nil nil 7 1015 3758] (last rows)))))))))))))))
+             (testing "with parameters"
+               (let [result (results :parameters (json/encode [{:name   "State"
+                                                                :id     "_STATE_"
+                                                                :slug   :state
+                                                                :target [:dimension (mt/$ids $orders.user_id->people.state)]
+                                                                :value  ["CA" "WA"]}]))]
+                 (is (=? {:status "completed"}
+                         result))
+                 (testing "row_count isn't included in public endpoints"
+                   (is (nil? (:row_count result))))
+                 (is (= 6 (count (get-in result [:data :cols]))))
+                 (let [rows (mt/rows result)]
+                   (is (= 80 (count rows)))
+                   (is (= ["CA" "Affiliate" "Doohickey" 0 16 48] (first rows)))
+                   (is (= [nil "Google" "Gizmo" 1 52 186] (nth rows 50)))
+                   (is (= [nil nil nil 7 1015 3758] (last rows)))))))))))))
+
+(deftest public-pivot-dashcard-errors-test
+  (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
+    (mt/test-drivers (api.pivots/applicable-drivers)
+      (do-with-temp-dashboard-and-public-pivot-card
+       (fn [dash card dashcard]
+         (testing "Shouldn't be able to execute a public DashCard if public sharing is disabled"
+           (mt/with-temporary-setting-values [enable-public-sharing false]
+             (is (= "An error occurred."
+                    (client/client :get 400 (pivot-dashcard-url dash card dashcard)))))
+           (mt/with-temporary-setting-values [enable-public-sharing true]
+             (testing "Should get a 404"
+               (testing "if the Dashboard doesn't exist"
+                 (is (= "Not found."
+                        (client/client :get 404 (dashcard-url {:public_uuid (random-uuid)} card dashcard)))))
+
+               (testing "if the Card doesn't exist"
+                 (is (= "Not found."
+                        (client/client :get 404 (dashcard-url dash Integer/MAX_VALUE dashcard)))))
+
+               (testing "if the Card exists, but it's not part of this Dashboard"
+                 (t2.with-temp/with-temp [Card card]
+                   (is (= "Not found."
+                          (client/client :get 404 (dashcard-url dash card dashcard))))))
+
+               (testing "if the Card has been archived."
+                 (t2/update! Card (u/the-id card) {:archived true})
+                 (is (= "Not found."
+                        (client/client :get 404 (dashcard-url dash card dashcard)))))))))))))
 
 ;;; ------------------------- POST /api/public/dashboard/:dashboard-uuid/dashcard/:uuid/execute ------------------------------
 
@@ -1736,3 +1759,23 @@
                                  "type"      "query"}
                         :user-id nil}
                        (last (snowplow-test/pop-event-data-and-user-id!))))))))))))
+
+(deftest format-export-middleware-test
+  (mt/with-temporary-setting-values [enable-public-sharing true]
+    (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
+      (let [q             {:database (mt/id)
+                           :type     :native
+                           :native   {:query "SELECT 2000 AS number, '2024-03-26'::DATE AS date;"}}
+            output-helper {:csv  (fn [output] (->> output csv/read-csv last))
+                           :json (fn [output] (->> output (map (juxt :NUMBER :DATE)) last))}]
+        (with-temp-public-card [{uuid :public_uuid} {:display :table :dataset_query q}]
+          (doseq [[export-format apply-formatting? expected] [[:csv true ["2,000" "March 26, 2024"]]
+                                                              [:csv false ["2000" "2024-03-26"]]
+                                                              [:json true ["2,000" "March 26, 2024"]]
+                                                              [:json false [2000 "2024-03-26"]]]]
+              (testing (format "export_format %s yields expected output for %s exports." apply-formatting? export-format)
+                (is (= expected
+                       (->> (mt/user-http-request
+                             :crowberto :get 200
+                             (format "public/card/%s/query/%s?format_rows=%s" uuid (name export-format) apply-formatting?))
+                            ((get output-helper export-format))))))))))))

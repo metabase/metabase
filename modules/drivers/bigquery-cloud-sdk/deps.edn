@@ -3,7 +3,7 @@
 
  :deps
  ;; TODO: figure out how to be able to leave off this version string and use the version from the BOM
- {com.google.cloud/google-cloud-bigquery      {:mvn/version "2.37.1"}
-  com.google.guava/guava                      {:mvn/version "32.1.3-jre"} ; specified separately so that Snyk is happy
+ {com.google.cloud/google-cloud-bigquery      {:mvn/version "2.38.1"}
+  com.google.guava/guava                      {:mvn/version "33.1.0-jre"} ; specified separately so that Snyk is happy
   com.google.code.gson/gson                   {:mvn/version "2.10.1"}
-  com.google.oauth-client/google-oauth-client {:mvn/version "1.34.1"}}}
+  com.google.oauth-client/google-oauth-client {:mvn/version "1.35.0"}}}

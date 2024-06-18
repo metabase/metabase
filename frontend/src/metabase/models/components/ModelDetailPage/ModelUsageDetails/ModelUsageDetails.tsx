@@ -1,14 +1,14 @@
 import { t } from "ttag";
 
+import { useListCardsQuery } from "metabase/api";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import Questions, { getIcon } from "metabase/entities/questions";
+import { getIcon } from "metabase/entities/questions";
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { Center, Icon, Loader } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import * as ML_Urls from "metabase-lib/v1/urls";
-import type { State } from "metabase-types/store";
 
 import {
   EmptyStateActionContainer,
@@ -18,19 +18,29 @@ import {
 
 import { CardListItem, CardTitle } from "./ModelUsageDetails.styled";
 
-interface OwnProps {
+type ModelUsageDetailsProps = {
   model: Question;
   hasNewQuestionLink: boolean;
-}
+};
 
-interface EntityLoaderProps {
-  questions: Question[];
-}
+export function ModelUsageDetails({
+  model,
+  hasNewQuestionLink,
+}: ModelUsageDetailsProps) {
+  const { data: cards = [], isLoading } = useListCardsQuery({
+    f: "using_model",
+    model_id: model.id(),
+  });
 
-type Props = OwnProps & EntityLoaderProps;
+  if (isLoading) {
+    return (
+      <Center h="100%">
+        <Loader />
+      </Center>
+    );
+  }
 
-function ModelUsageDetails({ model, questions, hasNewQuestionLink }: Props) {
-  if (questions.length === 0) {
+  if (cards.length === 0) {
     return (
       <EmptyStateContainer>
         <EmptyStateTitle>{t`This model is not used by any questions yet.`}</EmptyStateTitle>
@@ -49,29 +59,14 @@ function ModelUsageDetails({ model, questions, hasNewQuestionLink }: Props) {
 
   return (
     <ul>
-      {questions.map(question => (
-        <li key={question.id()}>
-          <CardListItem
-            to={Urls.question(question.card())}
-            aria-label={question.displayName() ?? ""}
-          >
-            <Icon name={getIcon(question.card()).name as IconName} />
-            <CardTitle>{question.displayName()}</CardTitle>
+      {cards.map(card => (
+        <li key={card.id}>
+          <CardListItem to={Urls.question(card)} aria-label={card.name}>
+            <Icon name={getIcon(card).name as IconName} />
+            <CardTitle>{card.name}</CardTitle>
           </CardListItem>
         </li>
       ))}
     </ul>
   );
 }
-
-function getCardListingQuery(state: State, { model }: OwnProps) {
-  return {
-    f: "using_model",
-    model_id: model.id(),
-  };
-}
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Questions.loadList({
-  query: getCardListingQuery,
-})(ModelUsageDetails);

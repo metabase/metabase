@@ -5,4 +5,4 @@
 (defn migrate!
   "Migrate the Metabase application DB."
   [direction]
-  (mdb/migrate! (mdb/db-type) (mdb/data-source) (keyword direction)))
+  (mdb/migrate! (mdb/data-source) (keyword direction)))

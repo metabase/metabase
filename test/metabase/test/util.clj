@@ -12,6 +12,7 @@
    [environ.core :as env]
    [java-time.api :as t]
    [mb.hawk.parallel]
+   [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.models
@@ -55,7 +56,7 @@
    (java.io File FileInputStream)
    (java.net ServerSocket)
    (java.util Locale)
-   (java.util.concurrent TimeoutException)
+   (java.util.concurrent CountDownLatch TimeoutException)
    (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
    (org.quartz.impl StdSchedulerFactory)))
 
@@ -147,10 +148,12 @@
 
    :model/Database
    (fn [_] (default-timestamped
-             {:details   {}
-              :engine    :h2
-              :is_sample false
-              :name      (u.random/random-name)}))
+             {:details                     {}
+              :engine                      :h2
+              :is_sample                   false
+              :name                        (u.random/random-name)
+              :metadata_sync_schedule      "0 50 * * * ? *"
+              :cache_field_values_schedule "0 50 0 * * ? *"}))
 
    :model/Dimension
    (fn [_] (default-timestamped
@@ -257,6 +260,7 @@
        {:db_id      (data/id)
         :task       (u.random/random-name)
         :started_at started
+        :status     :success
         :ended_at   ended
         :duration   (.toMillis (t/duration started ended))}))
 
@@ -407,9 +411,10 @@
   If `raw-setting?` is `true`, this works like [[with-temp*]] against the `Setting` table, but it ensures no exception
   is thrown if the `setting-k` already exists.
 
-  If `skip-init`?` is `true`, this will skip any `:init` function on the setting, and return `nil` if it is not defined.
+  If `skip-init?` is `true`, this will skip any `:init` function on the setting, and return `nil` if it is not defined.
 
-  Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function directly."
+  Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function
+  directly."
   [setting-k value thunk & {:keys [raw-setting? skip-init?]}]
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
   (mb.hawk.parallel/assert-test-is-not-parallel "do-with-temporary-setting-value")
@@ -584,6 +589,8 @@
 ;; Various functions for letting us check that things get scheduled properly. Use these to put a temporary scheduler
 ;; in place and then check the tasks that get scheduled
 
+(def in-memory-scheduler-thread-count 1)
+
 (defn- in-memory-scheduler
   "An in-memory Quartz Scheduler separate from the usual database-backend one we normally use. Every time you call this
   it returns the same scheduler! So make sure you shut it down when you're done using it."
@@ -593,20 +600,24 @@
     (doto (java.util.Properties.)
       (.setProperty StdSchedulerFactory/PROP_SCHED_INSTANCE_NAME (str `in-memory-scheduler))
       (.setProperty StdSchedulerFactory/PROP_JOB_STORE_CLASS (.getCanonicalName org.quartz.simpl.RAMJobStore))
-      (.setProperty (str StdSchedulerFactory/PROP_THREAD_POOL_PREFIX ".threadCount") "1")))))
+      (.setProperty (str StdSchedulerFactory/PROP_THREAD_POOL_PREFIX ".threadCount") (str in-memory-scheduler-thread-count))))))
 
 (defn do-with-unstarted-temp-scheduler [thunk]
   (let [temp-scheduler (in-memory-scheduler)
         already-bound? (identical? @task/*quartz-scheduler* temp-scheduler)]
     (if already-bound?
       (thunk)
-      (binding [task/*quartz-scheduler* (atom temp-scheduler)]
-        (try
-          (assert (not (qs/started? temp-scheduler))
-                  "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
-          (thunk)
-          (finally
-            (qs/shutdown temp-scheduler)))))))
+      (try
+        (assert (not (qs/started? temp-scheduler))
+                "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
+        (with-redefs [task/*quartz-scheduler* (atom temp-scheduler)
+                      qs/initialize (constantly temp-scheduler)
+                      ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
+                      ;; after it's done, but we need the scheduler for testing
+                      qs/shutdown   (constantly nil)]
+          (thunk))
+        (finally
+          (qs/shutdown temp-scheduler))))))
 
 (defn do-with-temp-scheduler [thunk]
   ;; not 100% sure we need to initialize the DB anymore since the temp scheduler is in-memory-only now.
@@ -619,8 +630,10 @@
 
 (defmacro with-temp-scheduler
   "Execute `body` with a temporary scheduler in place.
+  This does not initialize the all the jobs for performance reasons, so make sure you init it yourself!
 
     (with-temp-scheduler
+      (task.sync-databases/job-init) ;; init the jobs
       (do-something-to-schedule-tasks)
       ;; verify that the right thing happened
       (scheduler-current-tasks))"
@@ -676,7 +689,7 @@
 (defmethod with-model-cleanup-additional-conditions :model/Database
   [_]
   ;; Don't delete the audit database
-  [:not= :id perms/audit-db-id])
+  [:not= :id audit/audit-db-id])
 
 (defmulti with-max-model-id-additional-conditions
   "Additional conditions applied to the query to find the max ID for a model prior to a test run. This can be used to
@@ -694,7 +707,7 @@
 
 (defmethod with-max-model-id-additional-conditions :model/Database
   [_]
-  [:not= :id perms/audit-db-id])
+  [:not= :id audit/audit-db-id])
 
 (defn- model->model&pk [model]
   (if (vector? model)
@@ -763,8 +776,8 @@
           (testing "Shouldn't delete other Cards"
             (is (pos? (t2/count Card)))))))))
 
-(defn do-with-verified-cards
-  "Impl for [[with-verified-cards]]."
+(defn do-with-verified-cards!
+  "Impl for [[with-verified-cards!]]."
   [card-or-ids thunk]
   (with-model-cleanup [:model/ModerationReview]
     (doseq [card-or-id card-or-ids]
@@ -777,15 +790,15 @@
           :status              status})))
     (thunk)))
 
-(defmacro with-verified-cards
+(defmacro with-verified-cards!
   "Execute the body with all `card-or-ids` verified."
   [card-or-ids & body]
-  `(do-with-verified-cards ~card-or-ids (fn [] ~@body)))
+  `(do-with-verified-cards! ~card-or-ids (fn [] ~@body)))
 
 (deftest with-verified-cards-test
   (t2.with-temp/with-temp
     [:model/Card {card-id :id} {}]
-    (with-verified-cards [card-id]
+    (with-verified-cards! [card-id]
       (is (=? #{{:moderated_item_id   card-id
                  :moderated_item_type :card
                  :most_recent         true
@@ -847,7 +860,7 @@
     (deliver pause-query true)
     ::success))
 
-(defmacro throw-if-called
+(defmacro throw-if-called!
   "Redefines `fn-var` with a function that throws an exception if it's called"
   {:style/indent 1}
   [fn-symb & body]
@@ -1398,3 +1411,15 @@
                   {:order-by [[:id :desc]]
                    :where [:and (when topic [:= :topic (name topic)])
                                 (when model-id [:= :model_id model-id])]})))
+
+(defn repeat-concurrently
+  "Run `f` `n` times concurrently. Returns a vector of the results of each invocation of `f`."
+  [n f]
+  ;; Use a latch to ensure that the functions start as close to simultaneously as possible.
+  (let [latch   (CountDownLatch. n)
+        futures (atom [])]
+    (dotimes [_ n]
+      (swap! futures conj (future (.countDown latch)
+                                  (.await latch)
+                                  (f))))
+    (mapv deref @futures)))

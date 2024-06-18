@@ -1,4 +1,5 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -12,7 +13,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import Detail from "metabase/reference/components/Detail";
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
-import Formula from "metabase/reference/components/Formula";
+import { Formula } from "metabase/reference/components/Formula";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -143,7 +144,7 @@ const SegmentDetail = props => {
   });
 
   return (
-    <form style={style} className="full" onSubmit={handleSubmit}>
+    <form style={style} className={CS.full} onSubmit={handleSubmit}>
       {isEditing && (
         <EditHeader
           hasRevisionHistory={true}
@@ -180,7 +181,18 @@ const SegmentDetail = props => {
       >
         {() => (
           <div className={CS.wrapper}>
-            <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
+            <div
+              className={cx(
+                CS.pl4,
+                CS.pr3,
+                CS.pt4,
+                CS.mb4,
+                CS.mb1,
+                CS.bgWhite,
+                CS.rounded,
+                CS.bordered,
+              )}
+            >
               <List>
                 <li>
                   <div className={S.detail}>
@@ -192,10 +204,16 @@ const SegmentDetail = props => {
                         {table && (
                           <div>
                             <Link
-                              className="text-brand text-bold text-paragraph"
+                              className={cx(
+                                CS.textBrand,
+                                CS.textBold,
+                                CS.textParagraph,
+                              )}
                               to={`/reference/databases/${table.db_id}/tables/${table.id}`}
                             >
-                              <span className="pt1">{table.display_name}</span>
+                              <span className={CS.pt1}>
+                                {table.display_name}
+                              </span>
                             </Link>
                           </div>
                         )}
@@ -203,7 +221,7 @@ const SegmentDetail = props => {
                     </div>
                   </div>
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="description"
                     name={t`Description`}
@@ -213,7 +231,7 @@ const SegmentDetail = props => {
                     field={getFormField("description")}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="points_of_interest"
                     name={t`Why this Segment is interesting`}
@@ -223,7 +241,7 @@ const SegmentDetail = props => {
                     field={getFormField("points_of_interest")}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="caveats"
                     name={t`Things to be aware of about this Segment`}
@@ -234,14 +252,14 @@ const SegmentDetail = props => {
                   />
                 </li>
                 {!isEditing && (
-                  <li className="relative">
+                  <li className={CS.relative}>
                     <UsefulQuestions
                       questions={interestingQuestions(table, entity, metadata)}
                     />
                   </li>
                 )}
                 {table && !isEditing && (
-                  <li className="relative mb4">
+                  <li className={cx(CS.relative, CS.mb4)}>
                     <Formula
                       type="segment"
                       entity={entity}

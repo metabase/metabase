@@ -8,7 +8,6 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.config :as config]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
@@ -44,7 +43,6 @@
 (p/import-vars
  [models.dispatch
   toucan-instance?
-  InstanceOf
   instance-of?
   model
   instance])
@@ -170,15 +168,13 @@
 (defn- deserialize-mlv2-query
   "Reading MLv2 queries​: normalize them, then attach a MetadataProvider based on their Database."
   [query]
-  (let [{database-id :database, :as normalized} (lib/normalize query)
-        metadata-provider                       (if (lib.metadata.protocols/metadata-provider? (:lib/metadata normalized))
-                                                  ;; in case someone passes in an already-normalized query
-                                                  ;; to [[maybe-normalize-query]] below, preserve the existing metadata
-                                                  ;; provider.
-                                                  (:lib/metadata normalized)
-                                                  ((requiring-resolve 'metabase.lib.metadata.jvm/application-database-metadata-provider)
-                                                   (u/the-id database-id)))]
-    (lib/query metadata-provider normalized)))
+  (let [metadata-provider (if (lib.metadata.protocols/metadata-provider? (:lib/metadata query))
+                            ;; in case someone passes in an already-normalized query to [[maybe-normalize-query]] below,
+                            ;; preserve the existing metadata provider.
+                            (:lib/metadata query)
+                            ((requiring-resolve 'metabase.lib.metadata.jvm/application-database-metadata-provider)
+                             (u/the-id (some #(get query %) [:database "database"]))))]
+    (lib/query metadata-provider query)))
 
 (mu/defn maybe-normalize-query
   "For top-level query maps like `Card.dataset_query`. Normalizes them on the way in & out."
@@ -209,8 +205,7 @@
     (try
       (doall (f query))
       (catch Throwable e
-        (log/error e (tru "Unable to normalize:") "\n"
-                   (u/pprint-to-str 'red query))
+        (log/errorf e "Unable to normalize:\n%s" (u/pprint-to-str 'red query))
         nil))))
 
 (defn normalize-parameters-list
@@ -282,11 +277,6 @@
   {:in  encrypted-json-in
    :out cached-encrypted-json-out})
 
-(def transform-encrypted-text
-  "Transform for encrypted text."
-  {:in  encryption/maybe-encrypt
-   :out encryption/maybe-decrypt})
-
 (defn normalize-visualization-settings
   "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
    to modern MBQL clauses so things work correctly."
@@ -304,8 +294,14 @@
           (normalize-mbql-clauses [form]
             (walk/postwalk
              (fn [form]
-               (cond-> form
-                 (mbql-field-clause? form) mbql.normalize/normalize))
+               (try
+                 (cond-> form
+                   (mbql-field-clause? form) mbql.normalize/normalize)
+                 (catch Exception e
+                   (log/warnf "Unable to normalize visualization-settings part %s: %s"
+                              (u/pprint-to-str 'red form)
+                              (ex-message e))
+                   form)))
              form))]
     (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings" "graph.metrics"))
       (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
@@ -343,22 +339,20 @@
 
 (def ^{:arglists '([s])} ^:private validate-cron-string
   (let [validator (mc/validator u.cron/CronScheduleString)]
-    (fn [s]
-      (when (validator s)
-        s))))
+    (partial mu/validate-throw validator)))
 
 (def transform-cron-string
   "Transform for encrypted json."
   {:in  validate-cron-string
    :out identity})
 
-(def ^:private MetricSegmentDefinition
+(def ^:private LegacyMetricSegmentDefinition
   [:map
    [:filter      {:optional true} [:maybe mbql.s/Filter]]
-   [:aggregation {:optional true} [:maybe [:sequential mbql.s/Aggregation]]]])
+   [:aggregation {:optional true} [:maybe [:sequential ::mbql.s/Aggregation]]]])
 
-(def ^:private ^{:arglists '([definition])} validate-metric-segment-definition
-  (let [explainer (mr/explainer MetricSegmentDefinition)]
+(def ^:private ^{:arglists '([definition])} validate-legacy-metric-segment-definition
+  (let [explainer (mr/explainer LegacyMetricSegmentDefinition)]
     (fn [definition]
       (if-let [error (explainer definition)]
         (let [humanized (me/humanize error)]
@@ -368,16 +362,16 @@
         definition))))
 
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
-(defn- normalize-metric-segment-definition [definition]
+(defn- normalize-legacy-metric-segment-definition [definition]
   (when (seq definition)
     (u/prog1 (mbql.normalize/normalize-fragment [:query] definition)
-      (validate-metric-segment-definition <>))))
+      (validate-legacy-metric-segment-definition <>))))
 
 
-(def transform-metric-segment-definition
+(def transform-legacy-metric-segment-definition
   "Transform for inner queries like those in Metric definitions."
-  {:in  (comp json-in normalize-metric-segment-definition)
-   :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization)})
+  {:in  (comp json-in normalize-legacy-metric-segment-definition)
+   :out (comp (catch-normalization-exceptions normalize-legacy-metric-segment-definition) json-out-with-keywordization)})
 
 (defn- blob->bytes [^Blob b]
   (.getBytes ^Blob b 0 (.length ^Blob b)))
@@ -473,10 +467,11 @@
       add-entity-id))
 
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 
 ;; --- helper fns
-(defn pre-update-changes
-  "Returns the changes used for pre-update hooks.
+(defn changes-with-pk
+  "The row merged with the changes in pre-update hooks.
   This is to match the input of pre-update for toucan1 methods"
   [row]
   (t2.protocols/with-current row (merge (t2.model/primary-key-values-map row)
@@ -497,14 +492,14 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
 (def ^{:arglists '([x & _args])} dispatch-on-model
   "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
-  t2.u/dispatch-on-first-arg)
+  ;; make sure model namespace gets loaded e.g. `:model/Database` should load `metabase.model.database` if needed.
+  (comp t2/resolve-model t2.u/dispatch-on-first-arg))
 
 (defmulti perms-objects-set
-  "Return a set of permissions object paths that a user must have access to in order to access this object. This should be
-  something like
+  "Return a set of permissions object paths that a user must have access to in order to access this object. This should
+  be something like
 
     #{\"/db/1/schema/public/table/20/\"}
 
@@ -705,27 +700,6 @@
   [_original-model dest-key _hydrated-key]
   [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])
 
-(methodical/defmethod t2.hydrate/hydrate-with-strategy :around ::t2.hydrate/multimethod-simple
-  "Throws an error if do simple hydrations that make DB call on a sequence."
-  [model strategy k instances]
-  (if (or config/is-prod?
-          (< (count instances) 2)
-          ;; we skip checking these keys because most of the times its call count
-          ;; are from deferencing metabase.api.common/*current-user-permissions-set*
-          (#{:can_write :can_read} k))
-    (next-method model strategy k instances)
-    (t2/with-call-count [call-count]
-      (let [res (next-method model strategy k instances)
-            ;; if it's a lazy-seq then we need to realize it so call-count is counted
-            res (if (instance? clojure.lang.LazySeq res)
-                  (doall res)
-                  res)]
-        ;; only throws an exception if the simple hydration makes a DB call
-        (when (pos-int? (call-count))
-          (throw (ex-info (format "N+1 hydration detected!!! Model %s, key %s]" (pr-str model) k)
-                          {:model model :strategy strategy :k k :items-count (count instances) :db-calls (call-count)})))
-        res))))
-
 (mu/defn instances-with-hydrated-data
   "Helper function to write batched hydrations.
   Assoc to each `instances` a key `hydration-key` with data from calling `instance-key->hydrated-data-fn` by `instance-key`.
@@ -747,4 +721,16 @@
   (when (seq instances)
     (let [key->hydrated-items (instance-key->hydrated-data-fn)]
       (for [item instances]
-        (assoc item hydration-key (get key->hydrated-items (get item instance-key) default))))))
+        (when item
+          (assoc item hydration-key (get key->hydrated-items (get item instance-key) default)))))))
+
+(defmulti exclude-internal-content-hsql
+  "Returns a HoneySQL expression to exclude instances of the model that were created automatically as part of internally
+   used content, such as Metabase Analytics, the sample database, or the sample dashboard. If a `table-alias` (string
+   or keyword) is provided any columns will have a table alias in the returned expression."
+  {:arglists '([model & {:keys [table-alias]}])}
+  dispatch-on-model)
+
+(defmethod exclude-internal-content-hsql :default
+  [_model & _]
+  [:= [:inline 1] [:inline 1]])

@@ -2,7 +2,7 @@ import {
   getApplicationName,
   getIsWhiteLabeling,
   getShowMetabaseLinks,
-  getWhiteLabeledLoadingMessage,
+  getWhiteLabeledLoadingMessageFactory,
   getCanWhitelabel,
 } from "..";
 
@@ -12,10 +12,10 @@ describe("getWhiteLabeledLoadingMessage (OSS)", () => {
   it("should return 'Doing science...' when loading-message is set to 'doing-science'", () => {
     const { getState } = setup({ loadingMessage: "doing-science" });
 
-    expect(getWhiteLabeledLoadingMessage(getState())(false)).toBe(
+    expect(getWhiteLabeledLoadingMessageFactory(getState())(false)).toBe(
       "Doing science...",
     );
-    expect(getWhiteLabeledLoadingMessage(getState())(true)).toBe(
+    expect(getWhiteLabeledLoadingMessageFactory(getState())(true)).toBe(
       "Waiting for results...",
     );
   });
@@ -23,10 +23,10 @@ describe("getWhiteLabeledLoadingMessage (OSS)", () => {
   it("should return 'Doing science...' when loading-message is set to 'loading-results'", () => {
     const { getState } = setup({ loadingMessage: "loading-results" });
 
-    expect(getWhiteLabeledLoadingMessage(getState())(false)).toBe(
+    expect(getWhiteLabeledLoadingMessageFactory(getState())(false)).toBe(
       "Doing science...",
     );
-    expect(getWhiteLabeledLoadingMessage(getState())(true)).toBe(
+    expect(getWhiteLabeledLoadingMessageFactory(getState())(true)).toBe(
       "Waiting for results...",
     );
   });
@@ -34,10 +34,10 @@ describe("getWhiteLabeledLoadingMessage (OSS)", () => {
   it("should return 'Doing science...' when loading-message is set to 'running-query'", () => {
     const { getState } = setup({ loadingMessage: "running-query" });
 
-    expect(getWhiteLabeledLoadingMessage(getState())(false)).toBe(
+    expect(getWhiteLabeledLoadingMessageFactory(getState())(false)).toBe(
       "Doing science...",
     );
-    expect(getWhiteLabeledLoadingMessage(getState())(true)).toBe(
+    expect(getWhiteLabeledLoadingMessageFactory(getState())(true)).toBe(
       "Waiting for results...",
     );
   });

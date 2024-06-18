@@ -1,6 +1,11 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, visitQuestionAdhoc, popover } from "e2e/support/helpers";
+import {
+  restore,
+  visitQuestionAdhoc,
+  popover,
+  tableHeaderClick,
+} from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -30,7 +35,7 @@ describe("scenarios > visualizations > pie chart", () => {
 
     cy.log("#35244");
     cy.findByLabelText("Switch to data").click();
-    cy.findAllByTestId("header-cell").contains("Count").click();
+    tableHeaderClick("Count");
     popover().within(() => {
       cy.findByRole("img", { name: /filter/ }).should("exist");
       cy.findByRole("img", { name: /gear/ }).should("not.exist");
@@ -65,7 +70,7 @@ function ensurePieChartRendered(rows, totalValue) {
 
     // legend
     rows.forEach((name, i) => {
-      cy.get(".LegendItem").contains(name).should("be.visible");
+      cy.findAllByTestId("legend-item").contains(name).should("be.visible");
     });
   });
 }

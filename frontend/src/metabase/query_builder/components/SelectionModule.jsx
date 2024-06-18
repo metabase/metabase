@@ -126,7 +126,7 @@ export default class SelectionModule extends Component {
             key={index}
           >
             <Icon name="check" size={12} />
-            <div className="flex-full">
+            <div className={CS.flexFull}>
               <div className={QueryBuilderS.SelectionModuleDisplay}>
                 {display}
               </div>
@@ -203,7 +203,7 @@ export default class SelectionModule extends Component {
             <ul
               className={cx(
                 QueryBuilderS.SelectionList,
-                "scroll-show",
+                CS.scrollShow,
                 CS.scrollY,
               )}
             >
@@ -235,7 +235,13 @@ export default class SelectionModule extends Component {
     if (this.props.remove) {
       remove = (
         <a
-          className="text-light no-decoration pr1 flex align-center"
+          className={cx(
+            CS.textLight,
+            CS.noDecoration,
+            CS.pr1,
+            CS.flex,
+            CS.alignCenter,
+          )}
           onClick={this.props.remove.bind(null, this.props.index)}
         >
           <Icon name="close" />
@@ -248,9 +254,9 @@ export default class SelectionModule extends Component {
         className={moduleClasses + " " + this.props.className}
         ref={this.rootRef}
       >
-        <div className="SelectionModule-trigger flex align-center">
+        <div className={cx("SelectionModule-trigger", CS.flex, CS.alignCenter)}>
           <a
-            className="QueryOption p1 flex align-center"
+            className={cx("QueryOption", CS.p1, CS.flex, CS.alignCenter)}
             onClick={this._toggleOpen}
           >
             {placeholder}

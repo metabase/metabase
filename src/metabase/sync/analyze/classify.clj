@@ -18,15 +18,10 @@
   In the future, we plan to add more classifiers, including ML ones that run offline."
   (:require
    [clojure.data :as data]
+   [metabase.analyze :as analyze]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.query-processor.store :as qp.store]
-   [metabase.sync.analyze.classifiers.category :as classifiers.category]
-   [metabase.sync.analyze.classifiers.name :as classifiers.name]
-   [metabase.sync.analyze.classifiers.no-preview-display
-    :as classifiers.no-preview-display]
-   [metabase.sync.analyze.classifiers.text-fingerprint
-    :as classifiers.text-fingerprint]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -57,9 +52,9 @@
   (assert (= (type original-model) (type updated-model)))
   (let [[_ values-to-set] (data/diff original-model updated-model)]
     (when (seq values-to-set)
-      (log/debug (format "Based on classification, updating these values of %s: %s"
-                         (sync-util/name-for-logging original-model)
-                         values-to-set)))
+      (log/debugf "Based on classification, updating these values of %s: %s"
+                  (sync-util/name-for-logging original-model)
+                  values-to-set))
     ;; Check that we're not trying to set anything that we're not allowed to
     (doseq [k (keys values-to-set)]
       (when-not (contains? (updateable-columns (mi/model original-model)) k)
@@ -70,34 +65,6 @@
                   values-to-set)
       true)))
 
-
-(def ^:private classifiers
-  "Various classifier functions available. These should all take two args, a `FieldInstance` and a possibly `nil`
-  `Fingerprint`, and return `FieldInstance` with any inferred property changes, or `nil` if none could be inferred.
-  Order is important!
-
-  A classifier may see the original field (before any classifiers were run) in the metadata of the field at
-  `:sync.classify/original`."
-  [#'classifiers.name/infer-and-assoc-semantic-type
-   #'classifiers.category/infer-is-category-or-list
-   #'classifiers.no-preview-display/infer-no-preview-display
-   #'classifiers.text-fingerprint/infer-semantic-type])
-
-(mu/defn run-classifiers :- i/FieldInstance
-  "Run all the available `classifiers` against `field` and `fingerprint`, and return the resulting `field` with
-  changes decided upon by the classifiers. The original field can be accessed in the metadata at
-  `:sync.classify/original`."
-  [field       :- i/FieldInstance
-   fingerprint :- [:maybe i/Fingerprint]]
-  (reduce (fn [field classifier]
-            (or (sync-util/with-error-handling (format "Error running classifier on %s"
-                                                       (sync-util/name-for-logging field))
-                  (classifier field fingerprint))
-                field))
-          (vary-meta field assoc :sync.classify/original field)
-          classifiers))
-
-
 (mu/defn ^:private classify!
   "Run various classifiers on `field` and its `fingerprint`, and save any detected changes."
   ([field :- i/FieldInstance]
@@ -106,10 +73,10 @@
                           (:fingerprint (lib.metadata/field (qp.store/metadata-provider) (u/the-id field))))
                         (t2/select-one-fn :fingerprint :model/Field :id (u/the-id field)))))
 
-  ([field      :- i/FieldInstance
-    fingerprint :- [:maybe i/Fingerprint]]
+  ([field       :- i/FieldInstance
+    fingerprint :- [:maybe analyze/Fingerprint]]
    (sync-util/with-error-handling (format "Error classifying %s" (sync-util/name-for-logging field))
-     (let [updated-field (run-classifiers field fingerprint)]
+     (let [updated-field (analyze/run-classifiers field fingerprint)]
        (when-not (= field updated-field)
          (save-model-updates! field updated-field))))))
 
@@ -143,7 +110,7 @@
   [table :- i/TableInstance]
   (let [updated-table (sync-util/with-error-handling (format "Error running classifier on %s"
                                                              (sync-util/name-for-logging table))
-                        (classifiers.name/infer-entity-type table))]
+                        (analyze/infer-entity-type-by-name table))]
     (if (instance? Exception updated-table)
       table
       (save-model-updates! table updated-table))))

@@ -1,5 +1,11 @@
 (ns metabase.lib.walk
-  "Tools for walking and transforming a query.")
+  "Tools for walking and transforming a query."
+  (:require
+   [metabase.lib.join :as lib.join]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (declare walk-stages*)
 
@@ -139,3 +145,60 @@
    (fn [query path-type path stage-or-join]
      (when (= path-type :lib.walk/stage)
        (f query path stage-or-join)))))
+
+(mr/def ::path.stages-part
+  [:cat
+   [:= :stages]
+   ::lib.schema.common/int-greater-than-or-equal-to-zero])
+
+(mr/def ::path.joins-part
+  [:cat
+   [:= :joins]
+   ::lib.schema.common/int-greater-than-or-equal-to-zero])
+
+;;; A path to a specific stage.
+(mr/def ::stage-path
+  [:cat
+   ::path.stages-part
+   [:*
+    [:cat
+     ::path.joins-part
+     ::path.stages-part]]])
+
+;; a path to a specific stage OR a specific join.
+(mr/def ::path
+  [:cat
+   ::stage-path
+   [:? ::path.joins-part]])
+
+(mu/defn query-for-path :- [:map
+                            [:query ::lib.schema/query]
+                            [:stage-number :int]]
+  "For compatibility with functions that take query + stage-number. Create a fake query with the top-level `:stages`
+   pointing to the stages in `path`; return a map with this fake `:query` and `stage-number`.
+   A join path will return `0` for `stage-number`
+
+   Lets you use stuff like [[metabase.lib.aggregation/resolve-aggregation]] in combination with [[walk-stages]]."
+  [query      :- ::lib.schema/query
+   stage-path :- ::path]
+  (let [[_stages stage-number & more] stage-path]
+    (if (empty? more)
+      {:query query, :stage-number stage-number}
+      (let [[_joins join-number & more] more
+            join                        (nth (lib.join/joins query stage-number) join-number)
+            query'                      (assoc query :stages (:stages join))]
+        (recur query' (if (empty? more) [:stages 0] more))))))
+
+(defn apply-f-for-stage-at-path
+  "Use a function that takes top-level `query` and `stage-number` with a `query` and `path`,
+  via [[query-for-stage-at-path]]. Lets you use stuff like [[metabase.lib.aggregation/resolve-aggregation]] in
+  combination with [[walk-stages]].
+
+    (lib.walk/apply-f-for-stage-at-path f query path x y)
+
+    =>
+
+    (f <query> <stage-number> x y)"
+  [f query stage-path & args]
+  (let [{:keys [query stage-number]} (query-for-path query stage-path)]
+    (apply f query stage-number args)))

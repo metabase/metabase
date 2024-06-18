@@ -1,7 +1,9 @@
+import cx from "classnames";
 import { useState, useEffect } from "react";
 import { t } from "ttag";
 
 import LogoIcon from "metabase/components/LogoIcon";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { Button, Icon } from "metabase/ui";
@@ -42,7 +44,7 @@ export const AdminNavbar = ({
     >
       <AdminLogoLink to="/admin">
         <AdminLogoContainer>
-          <LogoIcon className="text-brand my2" dark />
+          <LogoIcon className={cx(CS.textBrand, CS.my2)} dark />
           {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
           <AdminLogoText>{t`Metabase Admin`}</AdminLogoText>
         </AdminLogoContainer>
@@ -95,7 +97,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
         variant="subtle"
         p="0.25rem"
       >
-        <Icon name="burger" size={32} color="white" />
+        <Icon name="burger" size={32} color="text-white" />
       </Button>
       {mobileNavOpen && (
         <AdminMobileNavBarItems>

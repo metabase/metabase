@@ -9,7 +9,7 @@
 
 ;;; --------------------------------------------- source=card ----------------------------------------------
 
-(deftest with-mbql-card-test
+(deftest ^:parallel with-mbql-card-test
   (doseq [model? [true false]]
     (testing (format "source card is a %s" (if model? "model" "question"))
       (binding [custom-values/*max-rows* 3]
@@ -33,47 +33,71 @@
                       (mt/$ids $venues.name)
                       "bakery"))))))))))
 
-(deftest with-mbql-card-test-2
-  (doseq [model? [true false]]
-    (testing (format "source card is a %s" (if model? "model" "question"))
-      (binding [custom-values/*max-rows* 3]
-        (testing "has aggregation column"
-          (mt/with-temp
-            [Card {card-id :id} (merge (mt/card-with-source-metadata-for-query
-                                        (mt/mbql-query venues
-                                                       {:aggregation [[:sum $venues.price]]
-                                                        :breakout    [[:field %categories.name {:source-field %venues.category_id}]]}))
-                                       {:database_id     (mt/id)
-                                        :type            (if model? :model :question)
-                                        :table_id        (mt/id :venues)})]
-            (testing "get values from breakout columns"
-              (is (= {:has_more_values true
-                      :values          [["American"] ["Artisan"] ["Asian"]]}
-                     (custom-values/values-from-card
-                      (t2/select-one Card :id card-id)
-                      (mt/$ids $categories.name)))))
-            (testing "get values from aggregation column"
-              (is (= {:has_more_values true
-                      :values          [[1] [2] [3]]}
-                     (custom-values/values-from-card
-                      (t2/select-one Card :id card-id)
-                      [:field "sum" {:base-type :type/Float}]))))
-            (testing "can search on aggregation column"
-              (is (= {:has_more_values false
-                      :values          [[2]]}
-                     (custom-values/values-from-card
-                      (t2/select-one Card :id card-id)
-                      [:field "sum" {:base-type :type/Float}]
-                      2))))
-            (testing "doing case in-sensitve search on breakout columns"
-              (is (= {:has_more_values false
-                      :values          [["Bakery"]]}
-                     (custom-values/values-from-card
-                      (t2/select-one Card :id card-id)
-                      [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]
-                      "bakery"))))))))))
+(deftest ^:parallel with-mbql-card-test-2
+  (testing "source card is a model" ; Models are opaque, so this sees the post-aggregation columns.
+    (binding [custom-values/*max-rows* 3]
+      (testing "has aggregation column"
+        (mt/with-temp
+          [Card {card-id :id} (merge (mt/card-with-source-metadata-for-query
+                                       (mt/mbql-query venues
+                                                      {:aggregation [[:sum $venues.price]]
+                                                       :breakout    [[:field %categories.name {:source-field %venues.category_id}]]}))
+                                     {:database_id     (mt/id)
+                                      :type            :model
+                                      :table_id        (mt/id :venues)})]
+          (testing "get values from breakout columns"
+            (is (= {:has_more_values true
+                    :values          [["American"] ["Artisan"] ["Asian"]]}
+                   (custom-values/values-from-card
+                     (t2/select-one Card :id card-id)
+                     [:field "NAME" {:base-type :type/Text}]))))
+          (testing "get values from aggregation column"
+            (is (= {:has_more_values true
+                    :values          [[1] [2] [3]]}
+                   (custom-values/values-from-card
+                     (t2/select-one Card :id card-id)
+                     [:field "sum" {:base-type :type/Float}]))))
+          (testing "can search on aggregation column"
+            (is (= {:has_more_values false
+                    :values          [[2]]}
+                   (custom-values/values-from-card
+                     (t2/select-one Card :id card-id)
+                     [:field "sum" {:base-type :type/Float}]
+                     2))))
+          (testing "doing case in-sensitve search on breakout columns"
+            (is (= {:has_more_values false
+                    :values          [["Bakery"]]}
+                   (custom-values/values-from-card
+                     (t2/select-one Card :id card-id)
+                     [:field "NAME" {:base-type :type/Text}]
+                     "bakery"))))))))
 
-(deftest with-mbql-card-test-3
+  (testing "source card is a question" ; Questions are transparent, so this can drop the aggregations and filter the original.
+    (binding [custom-values/*max-rows* 3]
+      (testing "has aggregation column"
+        (mt/with-temp
+          [Card {card-id :id} (merge (mt/card-with-source-metadata-for-query
+                                       (mt/mbql-query venues
+                                                      {:aggregation [[:sum $venues.price]]
+                                                       :breakout    [[:field %categories.name {:source-field %venues.category_id}]]}))
+                                     {:database_id     (mt/id)
+                                      :type            :question
+                                      :table_id        (mt/id :venues)})]
+          (testing "get values from breakout columns"
+            (is (= {:has_more_values true
+                    :values          [["American"] ["Artisan"] ["Asian"]]}
+                   (custom-values/values-from-card
+                     (t2/select-one Card :id card-id)
+                     [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]))))
+          (testing "doing case in-sensitve search on breakout columns"
+            (is (= {:has_more_values false
+                    :values          [["Bakery"]]}
+                   (custom-values/values-from-card
+                     (t2/select-one Card :id card-id)
+                     [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]
+                     "bakery")))))))))
+
+(deftest ^:parallel with-mbql-card-test-3
   (doseq [model? [true false]]
     (testing (format "source card is a %s" (if model? "model" "question"))
       (binding [custom-values/*max-rows* 3]
@@ -100,7 +124,7 @@
                         (mt/$ids $venues.category_id)
                         2)))))))))))
 
-(deftest with-native-card-test
+(deftest ^:parallel with-native-card-test
   (doseq [model? [true false]]
     (testing (format "source card is a %s with native question" (if model? "model" "question"))
       (binding [custom-values/*max-rows* 3]

@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   convertSavedQuestionToVirtualTable,
@@ -17,20 +17,28 @@ import { createMockCollection } from "metabase-types/api/mocks";
 
 import { PERMISSION_ERROR } from "./constants";
 
+const mockTrashCollection = createMockCollection({
+  id: 20000000,
+  name: "Trash",
+});
+
 export interface CollectionEndpoints {
   collections: Collection[];
   rootCollection?: Collection;
+  trashCollection?: Collection;
 }
 
 export function setupCollectionsEndpoints({
   collections,
   rootCollection = createMockCollection(ROOT_COLLECTION),
+  trashCollection = mockTrashCollection,
 }: CollectionEndpoints) {
   fetchMock.get("path:/api/collection/root", rootCollection);
+  fetchMock.get(`path:/api/collection/trash`, trashCollection);
   fetchMock.get(
     {
       url: "path:/api/collection/tree",
-      query: { tree: true, "exclude-archived": true },
+      query: { "exclude-archived": true },
       overwriteRoutes: false,
     },
     collections.filter(collection => !collection.archived),
@@ -38,7 +46,6 @@ export function setupCollectionsEndpoints({
   fetchMock.get(
     {
       url: "path:/api/collection/tree",
-      query: { tree: true },
       overwriteRoutes: false,
     },
     collections,
@@ -126,6 +133,10 @@ export function setupUnauthorizedCollectionsEndpoints(
 
 export function setupUnauthorizedCollectionEndpoints(collection: Collection) {
   fetchMock.get(`path:/api/collection/${collection.id}`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
+  fetchMock.get(`path:/api/collection/${collection.id}/items`, {
     status: 403,
     body: PERMISSION_ERROR,
   });

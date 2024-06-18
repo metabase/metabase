@@ -1,0 +1,617 @@
+[
+  {
+    "card": {
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-03-05T20:03:08.357471Z",
+      "dataset": false,
+      "parameters": [],
+      "metabase_version": "v0.48.1-SNAPSHOT (c375960)",
+      "collection": null,
+      "visualization_settings": {
+        "stackable.stack_type": "stacked",
+        "graph.x_axis.scale": "linear",
+        "graph.dimensions": ["TAX", "SOURCE"],
+        "graph.metrics": ["count"]
+      },
+      "collection_preview": true,
+      "entity_id": "HubSfkHvZwCrCWQYM8adq",
+      "display": "bar",
+      "parameter_mappings": [],
+      "id": 61,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              38,
+              {
+                "base-type": "type/Float",
+                "binning": {
+                  "strategy": "num-bins",
+                  "num-bins": 50
+                }
+              }
+            ],
+            [
+              "field",
+              45,
+              {
+                "base-type": "type/Text",
+                "source-field": 43
+              }
+            ]
+          ]
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-03-05T20:03:08.357471Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": null,
+      "type": "question",
+      "dashboard_count": 0,
+      "last_query_start": null,
+      "name": "x-axis: numeric stacking",
+      "query_type": "query",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 1,
+      "can_write": true,
+      "initially_published_at": null,
+      "result_metadata": [
+        {
+          "description": "This is the amount of local and federal taxes that are collected on the purchase. Note that other governmental fees on some products are not included here, but instead are accounted for in the subtotal.",
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "TAX",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            38,
+            {
+              "base-type": "type/Float",
+              "binning": {
+                "strategy": "num-bins",
+                "num-bins": 50,
+                "min-value": 0,
+                "max-value": 11.25,
+                "bin-width": 0.25
+              }
+            }
+          ],
+          "effective_type": "type/Float",
+          "id": 38,
+          "visibility_type": "normal",
+          "display_name": "Tax",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 797,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 0,
+                "q1": 2.273340386603857,
+                "q3": 5.337275338216307,
+                "max": 11.12,
+                "sd": 2.3206651358900316,
+                "avg": 3.8722100000000004
+              }
+            }
+          },
+          "base_type": "type/Float"
+        },
+        {
+          "description": "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter",
+          "semantic_type": "type/Source",
+          "coercion_strategy": null,
+          "name": "SOURCE",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            45,
+            {
+              "base-type": "type/Text",
+              "source-field": 43
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 45,
+          "visibility_type": "normal",
+          "display_name": "User → Source",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 7.4084
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 132,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 32.7019948847877,
+                "q3": 140.89834943833432,
+                "max": 421,
+                "sd": 72.57859087305046,
+                "avg": 89.33333333333333
+              }
+            }
+          }
+        }
+      ],
+      "table_id": 5,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        [0, "Affiliate", 290],
+        [0, "Facebook", 364],
+        [0, "Google", 392],
+        [0, "Organic", 421],
+        [0, "Twitter", 312],
+        [0.5, "Affiliate", 3],
+        [0.5, "Facebook", 2],
+        [0.5, "Google", 3],
+        [0.5, "Organic", 2],
+        [0.5, "Twitter", 5],
+        [0.75, "Affiliate", 29],
+        [0.75, "Facebook", 15],
+        [0.75, "Google", 20],
+        [0.75, "Organic", 18],
+        [0.75, "Twitter", 18],
+        [1, "Affiliate", 50],
+        [1, "Facebook", 43],
+        [1, "Google", 50],
+        [1, "Organic", 38],
+        [1, "Twitter", 47],
+        [1.25, "Affiliate", 97],
+        [1.25, "Facebook", 75],
+        [1.25, "Google", 94],
+        [1.25, "Organic", 81],
+        [1.25, "Twitter", 91],
+        [1.5, "Affiliate", 109],
+        [1.5, "Facebook", 119],
+        [1.5, "Google", 106],
+        [1.5, "Organic", 104],
+        [1.5, "Twitter", 126],
+        [1.75, "Affiliate", 137],
+        [1.75, "Facebook", 132],
+        [1.75, "Google", 154],
+        [1.75, "Organic", 132],
+        [1.75, "Twitter", 146],
+        [2, "Affiliate", 177],
+        [2, "Facebook", 197],
+        [2, "Google", 171],
+        [2, "Organic", 168],
+        [2, "Twitter", 146],
+        [2.25, "Affiliate", 152],
+        [2.25, "Facebook", 174],
+        [2.25, "Google", 172],
+        [2.25, "Organic", 143],
+        [2.25, "Twitter", 166],
+        [2.5, "Affiliate", 185],
+        [2.5, "Facebook", 191],
+        [2.5, "Google", 206],
+        [2.5, "Organic", 190],
+        [2.5, "Twitter", 202],
+        [2.75, "Affiliate", 180],
+        [2.75, "Facebook", 155],
+        [2.75, "Google", 158],
+        [2.75, "Organic", 159],
+        [2.75, "Twitter", 187],
+        [3, "Affiliate", 175],
+        [3, "Facebook", 182],
+        [3, "Google", 187],
+        [3, "Organic", 175],
+        [3, "Twitter", 195],
+        [3.25, "Affiliate", 181],
+        [3.25, "Facebook", 181],
+        [3.25, "Google", 163],
+        [3.25, "Organic", 161],
+        [3.25, "Twitter", 212],
+        [3.5, "Affiliate", 137],
+        [3.5, "Facebook", 156],
+        [3.5, "Google", 153],
+        [3.5, "Organic", 133],
+        [3.5, "Twitter", 134],
+        [3.75, "Affiliate", 126],
+        [3.75, "Facebook", 145],
+        [3.75, "Google", 146],
+        [3.75, "Organic", 121],
+        [3.75, "Twitter", 148],
+        [4, "Affiliate", 153],
+        [4, "Facebook", 173],
+        [4, "Google", 153],
+        [4, "Organic", 147],
+        [4, "Twitter", 145],
+        [4.25, "Affiliate", 132],
+        [4.25, "Facebook", 141],
+        [4.25, "Google", 116],
+        [4.25, "Organic", 138],
+        [4.25, "Twitter", 104],
+        [4.5, "Affiliate", 119],
+        [4.5, "Facebook", 161],
+        [4.5, "Google", 130],
+        [4.5, "Organic", 164],
+        [4.5, "Twitter", 152],
+        [4.75, "Affiliate", 149],
+        [4.75, "Facebook", 147],
+        [4.75, "Google", 120],
+        [4.75, "Organic", 123],
+        [4.75, "Twitter", 122],
+        [5, "Affiliate", 115],
+        [5, "Facebook", 102],
+        [5, "Google", 125],
+        [5, "Organic", 104],
+        [5, "Twitter", 105],
+        [5.25, "Affiliate", 91],
+        [5.25, "Facebook", 115],
+        [5.25, "Google", 93],
+        [5.25, "Organic", 106],
+        [5.25, "Twitter", 93],
+        [5.5, "Affiliate", 91],
+        [5.5, "Facebook", 98],
+        [5.5, "Google", 81],
+        [5.5, "Organic", 101],
+        [5.5, "Twitter", 82],
+        [5.75, "Affiliate", 63],
+        [5.75, "Facebook", 85],
+        [5.75, "Google", 79],
+        [5.75, "Organic", 86],
+        [5.75, "Twitter", 88],
+        [6, "Affiliate", 48],
+        [6, "Facebook", 62],
+        [6, "Google", 68],
+        [6, "Organic", 57],
+        [6, "Twitter", 81],
+        [6.25, "Affiliate", 69],
+        [6.25, "Facebook", 76],
+        [6.25, "Google", 65],
+        [6.25, "Organic", 80],
+        [6.25, "Twitter", 76],
+        [6.5, "Affiliate", 53],
+        [6.5, "Facebook", 64],
+        [6.5, "Google", 59],
+        [6.5, "Organic", 71],
+        [6.5, "Twitter", 73],
+        [6.75, "Affiliate", 72],
+        [6.75, "Facebook", 81],
+        [6.75, "Google", 74],
+        [6.75, "Organic", 80],
+        [6.75, "Twitter", 79],
+        [7, "Affiliate", 43],
+        [7, "Facebook", 60],
+        [7, "Google", 66],
+        [7, "Organic", 66],
+        [7, "Twitter", 50],
+        [7.25, "Affiliate", 46],
+        [7.25, "Facebook", 69],
+        [7.25, "Google", 78],
+        [7.25, "Organic", 52],
+        [7.25, "Twitter", 67],
+        [7.5, "Affiliate", 68],
+        [7.5, "Facebook", 68],
+        [7.5, "Google", 62],
+        [7.5, "Organic", 70],
+        [7.5, "Twitter", 64],
+        [7.75, "Affiliate", 34],
+        [7.75, "Facebook", 50],
+        [7.75, "Google", 53],
+        [7.75, "Organic", 46],
+        [7.75, "Twitter", 45],
+        [8, "Affiliate", 42],
+        [8, "Facebook", 49],
+        [8, "Google", 40],
+        [8, "Organic", 59],
+        [8, "Twitter", 37],
+        [8.25, "Affiliate", 25],
+        [8.25, "Facebook", 34],
+        [8.25, "Google", 43],
+        [8.25, "Organic", 27],
+        [8.25, "Twitter", 41],
+        [8.5, "Affiliate", 35],
+        [8.5, "Facebook", 43],
+        [8.5, "Google", 34],
+        [8.5, "Organic", 46],
+        [8.5, "Twitter", 35],
+        [8.75, "Affiliate", 17],
+        [8.75, "Facebook", 33],
+        [8.75, "Google", 25],
+        [8.75, "Organic", 24],
+        [8.75, "Twitter", 25],
+        [9, "Affiliate", 10],
+        [9, "Facebook", 23],
+        [9, "Google", 15],
+        [9, "Organic", 25],
+        [9, "Twitter", 20],
+        [9.25, "Affiliate", 6],
+        [9.25, "Facebook", 13],
+        [9.25, "Google", 14],
+        [9.25, "Organic", 20],
+        [9.25, "Twitter", 15],
+        [9.5, "Affiliate", 3],
+        [9.5, "Facebook", 13],
+        [9.5, "Google", 8],
+        [9.5, "Organic", 7],
+        [9.5, "Twitter", 10],
+        [9.75, "Affiliate", 5],
+        [9.75, "Facebook", 8],
+        [9.75, "Google", 7],
+        [9.75, "Organic", 9],
+        [9.75, "Twitter", 14],
+        [10, "Affiliate", 3],
+        [10, "Facebook", 4],
+        [10, "Google", 5],
+        [10, "Organic", 6],
+        [10, "Twitter", 4],
+        [10.25, "Facebook", 3],
+        [10.25, "Google", 4],
+        [10.25, "Organic", 3],
+        [10.25, "Twitter", 7],
+        [10.5, "Google", 1],
+        [10.75, "Google", 3],
+        [10.75, "Twitter", 1],
+        [11, "Google", 2],
+        [11, "Organic", 1],
+        [11, "Twitter", 2]
+      ],
+      "cols": [
+        {
+          "description": "This is the amount of local and federal taxes that are collected on the purchase. Note that other governmental fees on some products are not included here, but instead are accounted for in the subtotal.",
+          "semantic_type": null,
+          "table_id": 5,
+          "coercion_strategy": null,
+          "binning_info": {
+            "num_bins": 50,
+            "min_value": 0,
+            "max_value": 11.25,
+            "bin_width": 0.25,
+            "binning_strategy": "num-bins"
+          },
+          "name": "TAX",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            38,
+            {
+              "base-type": "type/Float",
+              "binning": {
+                "strategy": "num-bins",
+                "num-bins": 50,
+                "min-value": 0,
+                "max-value": 11.25,
+                "bin-width": 0.25
+              }
+            }
+          ],
+          "effective_type": "type/Float",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 38,
+          "position": 4,
+          "visibility_type": "normal",
+          "display_name": "Tax",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 797,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 0,
+                "q1": 2.273340386603857,
+                "q3": 5.337275338216307,
+                "max": 11.12,
+                "sd": 2.3206651358900316,
+                "avg": 3.8722100000000004
+              }
+            }
+          },
+          "base_type": "type/Float"
+        },
+        {
+          "description": "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter",
+          "semantic_type": "type/Source",
+          "table_id": 3,
+          "coercion_strategy": null,
+          "name": "SOURCE",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "fk_field_id": 43,
+          "field_ref": [
+            "field",
+            45,
+            {
+              "base-type": "type/Text",
+              "source-field": 43
+            }
+          ],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 45,
+          "position": 8,
+          "visibility_type": "normal",
+          "display_name": "User → Source",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 7.4084
+              }
+            }
+          },
+          "base_type": "type/Text",
+          "source_alias": "PEOPLE__via__USER_ID"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT FLOOR((\"PUBLIC\".\"ORDERS\".\"TAX\" / 0.25)) * 0.25 AS \"TAX\", \"PEOPLE__via__USER_ID\".\"SOURCE\" AS \"PEOPLE__via__USER_ID__SOURCE\", COUNT(*) AS \"count\" FROM \"PUBLIC\".\"ORDERS\" LEFT JOIN \"PUBLIC\".\"PEOPLE\" AS \"PEOPLE__via__USER_ID\" ON \"PUBLIC\".\"ORDERS\".\"USER_ID\" = \"PEOPLE__via__USER_ID\".\"ID\" GROUP BY FLOOR((\"PUBLIC\".\"ORDERS\".\"TAX\" / 0.25)) * 0.25, \"PEOPLE__via__USER_ID\".\"SOURCE\" ORDER BY FLOOR((\"PUBLIC\".\"ORDERS\".\"TAX\" / 0.25)) * 0.25 ASC, \"PEOPLE__via__USER_ID\".\"SOURCE\" ASC",
+        "params": null
+      },
+      "results_timezone": "America/Montevideo",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "This is the amount of local and federal taxes that are collected on the purchase. Note that other governmental fees on some products are not included here, but instead are accounted for in the subtotal.",
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "TAX",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              38,
+              {
+                "base-type": "type/Float",
+                "binning": {
+                  "strategy": "num-bins",
+                  "num-bins": 50,
+                  "min-value": 0,
+                  "max-value": 11.25,
+                  "bin-width": 0.25
+                }
+              }
+            ],
+            "effective_type": "type/Float",
+            "id": 38,
+            "visibility_type": "normal",
+            "display_name": "Tax",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 797,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 0,
+                  "q1": 2.273340386603857,
+                  "q3": 5.337275338216307,
+                  "max": 11.12,
+                  "sd": 2.3206651358900316,
+                  "avg": 3.8722100000000004
+                }
+              }
+            },
+            "base_type": "type/Float"
+          },
+          {
+            "description": "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter",
+            "semantic_type": "type/Source",
+            "coercion_strategy": null,
+            "name": "SOURCE",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              45,
+              {
+                "base-type": "type/Text",
+                "source-field": 43
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 45,
+            "visibility_type": "normal",
+            "display_name": "User → Source",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 7.4084
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 132,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 32.7019948847877,
+                  "q3": 140.89834943833432,
+                  "max": 421,
+                  "sd": 72.57859087305046,
+                  "avg": 89.33333333333333
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

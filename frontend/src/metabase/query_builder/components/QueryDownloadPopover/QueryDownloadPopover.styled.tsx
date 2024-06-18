@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export interface DownloadPopoverRootProps {
   isExpanded?: boolean;
 }
@@ -12,6 +10,10 @@ export const DownloadPopoverRoot = styled.div<DownloadPopoverRootProps>`
 `;
 
 export const DownloadPopoverHeader = styled.div`
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
   padding: 0.5rem;
 `;
 
@@ -22,7 +24,7 @@ export const DownloadPopoverMessage = styled.div`
 export const DownloadButtonRoot = styled.button`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: space-between;
   width: 100%;
   margin: 0.5rem 0;
   padding: 0.5rem;
@@ -30,15 +32,24 @@ export const DownloadButtonRoot = styled.button`
   cursor: pointer;
 
   &:hover {
-    background-color: ${color("brand")};
+    background-color: var(--mb-color-brand);
   }
 `;
 
 export const DownloadButtonText = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: bold;
 
   ${DownloadButtonRoot}:hover & {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
+  }
+`;
+
+export const DownloadButtonSecondaryText = styled.div`
+  color: var(--mb-color-text-light);
+  font-weight: bold;
+
+  ${DownloadButtonRoot}:hover & {
+    color: var(--mb-color-text-white);
   }
 `;

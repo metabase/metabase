@@ -2,7 +2,10 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel do-not-normalize-native-queries-test
   (testing "native queries should NOT get normalized"
@@ -82,3 +85,22 @@
             :stages       [{:lib/type :mbql.stage/native
                             :native   "SELECT *;"}]}
            (lib/normalize query)))))
+
+(deftest ^:parallel add-uuids-test
+  (testing "Normalization should add :lib/uuid if it is missing"
+    (is (=? {:lib/type :mbql/query
+             :database 1
+             :stages   [{:lib/type     :mbql.stage/mbql
+                         :source-table 1
+                         :aggregation  [[:count {:lib/uuid string?}]]
+                         :filters      [[:=
+                                         {:lib/uuid string?}
+                                         [:field {:lib/uuid string?} 1]
+                                         4]]}]}
+            (lib/normalize
+             {"lib/type" "mbql/query"
+              "database" 1
+              "stages"   [{"lib/type"     "mbql.stage/mbql"
+                           "source-table" 1
+                           "aggregation"  [["count" {}]]
+                           "filters"      [["=" {} ["field" {} 1] 4]]}]})))))

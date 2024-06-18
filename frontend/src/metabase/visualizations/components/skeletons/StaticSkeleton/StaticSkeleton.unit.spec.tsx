@@ -56,10 +56,10 @@ describe("StaticSkeleton", () => {
       expect(screen.getByText(MARKDOWN_AS_TEXT)).toBeInTheDocument();
     });
 
-    it("should show description tooltip with markdown formatting on hover", () => {
+    it("should show description tooltip with markdown formatting on hover", async () => {
       setup({ description: MARKDOWN });
 
-      userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
+      await userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
 
       expect(screen.getByRole("tooltip")).toHaveTextContent(MARKDOWN_AS_TEXT);
     });

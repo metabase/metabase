@@ -1,0 +1,230 @@
+[
+  {
+    "card": {
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-03-29T07:14:45.982888Z",
+      "dataset": false,
+      "parameters": [],
+      "metabase_version": "v0.48.1-SNAPSHOT (04238f7)",
+      "collection": null,
+      "visualization_settings": {
+        "graph.y_axis.title_text": "Custom Y label",
+        "graph.show_values": true,
+        "graph.y_axis.max": 100,
+        "graph.series_order_dimension": null,
+        "graph.x_axis.axis_enabled": "rotate-45",
+        "graph.metrics": ["Y"],
+        "graph.y_axis.axis_enabled": true,
+        "graph.series_order": null,
+        "graph.y_axis.auto_range": false,
+        "graph.x_axis.scale": "ordinal",
+        "graph.dimensions": ["X"],
+        "graph.y_axis.min": -100
+      },
+      "collection_preview": true,
+      "entity_id": "l-3bw7IqSJqQS9w4KrkX9",
+      "display": "waterfall",
+      "parameter_mappings": [],
+      "id": 119,
+      "dataset_query": {
+        "database": 1,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "select 'foo' x, 100 y\nunion all select null, -25\nunion all select 'bar', 30"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-03-29T07:14:45.982888Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": null,
+      "type": "question",
+      "dashboard_count": 0,
+      "last_query_start": null,
+      "name": "wat",
+      "query_type": "native",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 1,
+      "can_write": true,
+      "initially_published_at": null,
+      "result_metadata": [
+        {
+          "display_name": "X",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0.3333333333333333
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 2
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Y",
+          "field_ref": [
+            "field",
+            "Y",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": -25,
+                "q1": -11.25,
+                "q3": 82.5,
+                "max": 100,
+                "sd": 62.64982043070834,
+                "avg": 35
+              }
+            }
+          }
+        }
+      ],
+      "table_id": null,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["foo", 100],
+        [null, -25],
+        ["bar", 30]
+      ],
+      "cols": [
+        {
+          "display_name": "X",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Text",
+          "effective_type": "type/Text"
+        },
+        {
+          "display_name": "Y",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "Y",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "query": "select 'foo' x, 100 y\nunion all select null, -25\nunion all select 'bar', 30",
+        "params": null
+      },
+      "results_timezone": "America/Montevideo",
+      "requested_timezone": "Pacific/Guam",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "X",
+            "field_ref": [
+              "field",
+              "X",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "name": "X",
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0.3333333333333333
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 2
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Y",
+            "field_ref": [
+              "field",
+              "Y",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "Y",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": -25,
+                  "q1": -11.25,
+                  "q3": 82.5,
+                  "max": 100,
+                  "sd": 62.64982043070834,
+                  "avg": 35
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

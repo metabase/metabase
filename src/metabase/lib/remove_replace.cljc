@@ -9,13 +9,16 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- stage-paths
   [query stage-number]
@@ -339,7 +342,7 @@
    replacement      :- :metabase.lib.schema.expression/expression]
   (mu/disable-enforcement
     (loop [query (tweak-expression unmodified-query stage-number target replacement)]
-      (let [explanation (mc/explain :metabase.lib.schema/query query)
+      (let [explanation (mr/explain ::lib.schema/query query)
             error-paths (->> (:errors explanation)
                              (keep #(on-stage-path query %))
                              distinct)]
@@ -396,12 +399,12 @@
     (lib.join/with-join-alias field new-name)))
 
 (defn- rename-join-in-stage
-  [stage idx new-name]
+  [metadata-providerable stage idx new-name]
   (let [the-joins      (:joins stage)
         [idx old-name] (when (< -1 idx (count the-joins))
                          [idx (get-in the-joins [idx :alias])])]
     (if (and idx (not= old-name new-name))
-      (let [unique-name-fn (lib.util/unique-name-generator)
+      (let [unique-name-fn (lib.util/unique-name-generator (lib.metadata/->metadata-provider metadata-providerable))
             _              (run! unique-name-fn (map :alias the-joins))
             unique-name    (unique-name-fn new-name)]
         (-> stage
@@ -436,7 +439,7 @@
     join-spec    :- [:or :metabase.lib.schema.join/join :string :int]
     new-name     :- :metabase.lib.schema.common/non-blank-string]
    (if-let [idx (join-spec->clause query stage-number join-spec)]
-     (lib.util/update-query-stage query stage-number rename-join-in-stage idx new-name)
+     (lib.util/update-query-stage query stage-number (partial rename-join-in-stage query) idx new-name)
      query)))
 
 (defn- remove-matching-missing-columns

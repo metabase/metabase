@@ -26,6 +26,10 @@ const getMessage = (question: Question, collectionLink: JSX.Element) => {
     return jt`Model moved to ${collectionLink}`;
   }
 
+  if (type === "metric") {
+    return jt`Metric moved to ${collectionLink}`;
+  }
+
   throw new Error(`Unknown question.type(): ${type}`);
 };
 

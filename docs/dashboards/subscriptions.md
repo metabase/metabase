@@ -29,13 +29,56 @@ Let's say we want to email a dashboard. We'll click on the **Email it** option i
 
 For emails, we can:
 
-- **Add subscribers**. Add email addresses to register subscribers. On Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise), admins can limit email recipients to [approved domains for notifications](../configuring-metabase/email.md#approved-domains-for-notifications) and [configure which recipients Metabase suggests](../configuring-metabase/email.md#suggest-recipients-on-dashboard-subscriptions-and-alerts).
-- **Determine frequency and timing**. Tell Metabase how often it should send the dashboard (daily, weekly, or monthly), and what time of day to send the dashboard.
-- **Send email now** sends an email to all subscribers.
-- **Skip updates without results**. If there are no results, we can tell Metabase to skip sending the email.
-- **Attach results**. Tell Metabase if it should attach results to the email as a file, in addition to displaying the table in the email body. You can choose between CSV and XLSX file formats. The attached file will include up to 2000 rows by default. If you're self-hosting Metabase, you can adjust this row limit by setting the environment variable [MB_UNAGGREGATED_QUERY_ROW_LIMIT](../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit).
+### Add subscribers
+
+Add email addresses to register subscribers. On Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise), admins can limit email recipients to [approved domains for notifications](../configuring-metabase/email.md#approved-domains-for-notifications) and [configure which recipients Metabase suggests](../configuring-metabase/email.md#suggest-recipients-on-dashboard-subscriptions-and-alerts).
+
+### Determine frequency and timing
+
+Tell Metabase how often it should send the dashboard:
+
+- Hourly
+- Daily
+- Weekly
+- Monthly
+
+And what time of day to send the dashboard.
+
+### Send email now
+
+A button that sends an email to all subscribers each time you touch it.
+
+### Don't send if there aren't results
+
+If there are no results, you can tell Metabase to skip sending the email.
+
+### Set filter values for when this gets sent
+
+Here you can set filters to apply when Metabase sends the subscription.
+
+### Attach results
+
+Tell Metabase if it should attach results to the email as a file, in addition to displaying the table in the email body.
 
 If you've added filters to your dashboard and set default values for those filters, Metabase will apply those default values to your subscriptions, filtering the results of all questions that are connected to those filters when the subscriptions are sent. To learn more, check out [dashboard filters](./filters.md).
+
+#### File format
+
+You can choose between the following file formats:
+
+- .csv
+- .xlsx
+- .json
+
+#### Use unformatted values in attachments
+
+If you check this box, Metabase will drop any visualization settings applied to the questions' results (e.g., date formatting) and send only the raw, unformatted results.
+
+#### Questions to attach
+
+Here you can specify which questions Metabase should attach results for.
+
+The attached files will include up to 2000 rows by default. If you're self-hosting Metabase, you can adjust this row limit by setting the environment variable [MB_UNAGGREGATED_QUERY_ROW_LIMIT](../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit).
 
 ## Slack subscription options
 
@@ -63,9 +106,9 @@ To remove a subscription from a dashboard, select the subscription you'd like to
 
 ## Viewing existing dashboard subscriptions
 
-{% include plans-blockquote.html feature="Audit logs" %}
+{% include plans-blockquote.html feature="Usage analytics" %}
 
-To view a list of all alerts and dashboard subscriptions that people have set up in your Metabase, click on the **gear** icon in the upper right and select **Admin settings** > **Audit** > **Subscriptions & Alerts**. See [Audit logs](../usage-and-performance-tools/audit.md).
+You can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in **Metabase analytics** collection. See [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
 
 ## Customize filter values for each dashboard subscription
 
@@ -92,4 +135,4 @@ See [Notification permissions](../permissions/notifications.md).
 - [Alerts](../questions/sharing/alerts.md)
 - [Setting up email](../configuring-metabase/email.md)
 - [Setting up Slack](../configuring-metabase/slack.md)
-- [Auditing Metabase](../usage-and-performance-tools/audit.md)
+- [Usage analytics](../usage-and-performance-tools/usage-analytics.md)

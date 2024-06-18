@@ -15,7 +15,7 @@ import { QuestionDataSource } from "./components/QuestionDataSource";
 export const ViewHeaderContainer = styled(ViewSection)<{
   isNavBarOpen?: boolean;
 }>`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
 
@@ -52,7 +52,7 @@ export const AdHocViewHeading = styled(ViewHeading)`
 `;
 
 export const BackButton = styled(Button)`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   padding: 0.75rem;
 `;
 
@@ -61,28 +61,28 @@ export const BackButtonContainer = styled.span`
 `;
 
 export const SaveButton = styled(Link)`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: bold;
   padding: 0.5rem 1rem;
   border-radius: 8px;
-  background-color: ${color("bg-white")};
+  background-color: var(--mb-color-bg-white);
 
   :hover {
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
   }
 `;
 
 export const SavedQuestionHeaderButtonContainer = styled.div<{
-  isModel: boolean;
+  isModelOrMetric: boolean;
 }>`
-  right: ${props => (props.isModel ? "0px" : "0.38rem")};
+  right: ${props => (props.isModelOrMetric ? "0px" : "0.38rem")};
 `;
 
 export const HeaderButton = styled(Button)<{ active: boolean }>`
   font-size: 0.875rem;
   background-color: ${({ active, color = getDefaultColor() }) =>
     active ? color : "transparent"};
-  color: ${({ active }) => (active ? "white" : color("text-dark"))};
+  color: ${({ active }) => (active ? color("text-white") : color("text-dark"))};
   &:hover {
     background-color: ${({ color = getDefaultColor() }) => alpha(color, 0.15)};
     color: ${({ color }) => color};
@@ -104,7 +104,7 @@ export const IconHeaderButton = styled(HeaderButton)`
 
 const getDefaultColor = () => color("brand");
 export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   //margin-left: 4px;
 
   ${breakpointMaxSmall} {
@@ -169,7 +169,7 @@ export const HeaderDivider = styled.span`
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: 700;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   padding-left: 0.5rem;
   padding-right: 0.25rem;
 `;
@@ -184,7 +184,7 @@ export const ViewHeaderActionPanel = styled.div`
     margin-left: 0;
     width: 100%;
     justify-content: space-between;
-    border-top: 1px solid ${color("border")};
+    border-top: 1px solid var(--mb-color-border);
     margin-top: 1rem;
     padding: 0.5rem 2.5rem 0 2rem;
   }
@@ -197,8 +197,8 @@ export const ViewHeaderIconButtonContainer = styled.div`
     width: 2rem;
 
     &:hover {
-      color: ${color("brand")};
-      background-color: ${color("bg-medium")};
+      color: var(--mb-color-brand);
+      background-color: var(--mb-color-bg-medium);
     }
   }
 `;
@@ -210,9 +210,9 @@ interface ViewRunButtonWithTooltipProps {
 export const ViewRunButtonWithTooltip = styled(
   RunButtonWithTooltip,
 )<ViewRunButtonWithTooltipProps>`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 
   &:hover {
-    color: ${props => (props.isDirty ? color("white") : color("brand"))};
+    color: ${props => (props.isDirty ? color("text-white") : color("brand"))};
   }
 `;

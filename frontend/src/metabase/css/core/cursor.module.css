@@ -1,15 +1,11 @@
-:global(.cursor-pointer),
-.cursor-pointer,
 .cursorPointer {
   cursor: pointer;
 }
 
-:global(.cursor-grab),
 .cursorGrab {
   cursor: grab;
 }
 
-:global(.cursor-default),
-.cursor-default {
+.cursorDefault {
   cursor: default;
 }

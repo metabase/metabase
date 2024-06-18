@@ -13,9 +13,11 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.database :as lib.database]
    [metabase.lib.drill-thru :as lib.drill-thru]
+   [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
    [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.extraction :as lib.extraction]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
@@ -55,10 +57,10 @@
          lib.filter/keep-me
          lib.filter.update/keep-me
          lib.join/keep-me
+         lib.metric/keep-me
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
          lib.metadata.composed-provider/keep-me
-         lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
          lib.order-by/keep-me
@@ -105,7 +107,8 @@
   breakout-column
   breakoutable-columns
   breakouts
-  breakouts-metadata]
+  breakouts-metadata
+  remove-all-breakouts]
  [lib.column-group
   columns-group-columns
   group-columns]
@@ -118,6 +121,8 @@
  [lib.drill-thru
   available-drill-thrus
   drill-thru]
+ [lib.drill-thru.column-extract
+  extractions-for-drill]
  [lib.drill-thru.pivot
   pivot-columns-for-type
   pivot-types]
@@ -170,9 +175,15 @@
   ltrim
   rtrim
   upper
-  lower]
+  lower
+  offset]
+ [lib.extraction
+  column-extractions
+  extract
+  extraction-expression]
  [lib.fe-util
   dependent-metadata
+  table-or-card-dependent-metadata
   expression-clause
   expression-parts
   filter-args-display-name]
@@ -190,6 +201,7 @@
   filterable-column-operators
   filter-clause
   filter-operator
+  filter-parts
   find-filter-for-legacy-filter
   find-filterable-column-for-legacy-ref
   and
@@ -230,6 +242,9 @@
   with-join-fields
   with-join-strategy
   with-join-conditions]
+ [lib.metric
+  available-metrics
+  metric-based?]
  [lib.limit
   current-limit
   limit]
@@ -246,8 +261,6 @@
   visible-columns]
  [lib.metadata.composed-provider
   composed-metadata-provider]
- [lib.metric
-  available-metrics]
  [lib.native
   engine
   extract-template-tags
@@ -272,8 +285,10 @@
  [lib.normalize
   normalize]
  [lib.query
+  can-preview
   can-run
   can-save
+  preview-query
   query
   stage-count
   uses-metric?
@@ -301,6 +316,8 @@
   describe-temporal-interval
   describe-relative-datetime
   available-temporal-buckets
+  available-temporal-units
+  raw-temporal-bucket
   temporal-bucket
   with-temporal-bucket]
  [lib.util

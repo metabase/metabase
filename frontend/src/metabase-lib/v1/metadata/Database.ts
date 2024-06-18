@@ -19,6 +19,9 @@ interface Database extends Omit<NormalizedDatabase, "tables" | "schemas"> {
   metadata?: Metadata;
 }
 
+/**
+ * @deprecated use RTK Query endpoints and plain api objects from metabase-types/api
+ */
 class Database {
   private readonly _plainObject: NormalizedDatabase;
 

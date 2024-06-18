@@ -1,36 +1,37 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+import type { ResizableBoxProps } from "react-resizable";
 import { ResizableBox } from "react-resizable";
 
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { color, darken } from "metabase/lib/colors";
 
-const aceEditorStyle = css`
+const getAceEditorStyles = () => css`
   .ace_editor {
     height: 100%;
-    background-color: ${color("bg-light")};
-    color: ${color("text-dark")};
+    background-color: var(--mb-color-bg-light);
+    color: var(--mb-color-text-dark);
   }
 
   .ace_search {
     font-family: Lato;
-    background-color: ${color("bg-light")};
-    color: ${color("text-dark")};
-    border-color: ${color("border")};
+    background-color: var(--mb-color-bg-light);
+    color: var(--mb-color-text-dark);
+    border-color: var(--mb-color-border);
     padding-bottom: 2px;
   }
 
   .ace_search_field,
   .ace_searchbtn,
   .ace_button {
-    background-color: ${color("white")};
+    background-color: var(--mb-color-bg-white);
     border-radius: 5px;
-    border: 1px solid ${color("border")};
+    border: 1px solid var(--mb-color-border);
   }
 
   .ace_nomatch {
     border-radius: 5px;
-    outline: 1px solid ${color("error")};
+    outline: 1px solid var(--mb-color-error);
   }
 
   .ace_searchbtn {
@@ -60,7 +61,7 @@ const aceEditorStyle = css`
   }
 
   .ace_editor .ace_templateTag {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 
   .react-resizable {
@@ -83,7 +84,7 @@ const aceEditorStyle = css`
     padding-top: 2px;
     font-size: 10px;
     font-weight: 700;
-    color: ${color("text-light")};
+    color: var(--mb-color-text-light);
     padding-left: 0;
     padding-right: 7px;
     display: block;
@@ -91,7 +92,7 @@ const aceEditorStyle = css`
   }
 
   .ace_editor .ace_gutter {
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
   }
 `;
 
@@ -107,13 +108,13 @@ export const aceEditorStyles = css`
 
   .ace_editor.ace_autocomplete .ace_marker-layer .ace_active-line,
   .ace_editor.ace_autocomplete .ace_marker-layer .ace_line-hover {
-    background-color: ${color("brand-light")};
+    background-color: var(--mb-color-brand-light);
     border: none;
     outline: none;
   }
 
   .ace_completion-highlight {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 
   .ace_editor.ace_autocomplete .ace_line {
@@ -128,9 +129,9 @@ export const aceEditorStyles = css`
 
 export const NativeQueryEditorRoot = styled.div`
   width: 100%;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 
-  ${aceEditorStyle}
+  ${() => getAceEditorStyles()}
 
   .${QueryBuilderS.GuiBuilderData} {
     border-right: none;
@@ -154,7 +155,7 @@ export const DragHandleContainer = styled.div`
 export const DragHandle = styled.div`
   width: 100px;
   height: 5px;
-  background-color: ${darken("border", 0.03)};
+  background-color: ${() => darken("border", 0.03)};
   border-radius: 4px;
 `;
 
@@ -162,9 +163,11 @@ export const EditorRoot = styled.div`
   flex: 1 0 auto;
 `;
 
-export const StyledResizableBox = styled(ResizableBox)<{
-  isOpen: boolean;
-}>`
+export const StyledResizableBox = styled(ResizableBox)<
+  ResizableBoxProps & {
+    isOpen: boolean;
+  }
+>`
   display: ${props => (props.isOpen ? "flex" : "none")};
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;

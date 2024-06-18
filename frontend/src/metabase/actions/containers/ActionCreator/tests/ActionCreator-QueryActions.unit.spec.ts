@@ -35,7 +35,7 @@ describe("ActionCreator > Query Actions", () => {
 
     it("should show clickable data reference icon", async () => {
       await setup();
-      userEvent.click(getIcon("reference"));
+      await userEvent.click(getIcon("reference"));
 
       expect(screen.getAllByText("Data Reference")).toHaveLength(2);
       expect(
@@ -56,20 +56,18 @@ describe("ActionCreator > Query Actions", () => {
 
         // put query into textbox
         const view = screen.getByTestId("mock-native-query-editor");
-        userEvent.paste(
-          within(view).getByRole("textbox"),
-          "select * from orders where {{paramNane}}",
-        );
+        await userEvent.click(within(view).getByRole("textbox"));
+        await userEvent.paste("select * from orders where {{paramNane}}");
 
-        userEvent.click(screen.getByRole("button", { name: "Save" }));
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
         // form is rendered
         expect(
-          screen.getByPlaceholderText("My new fantastic action"),
+          await screen.findByPlaceholderText("My new fantastic action"),
         ).toBeInTheDocument();
-        expect(screen.getByTestId("select-button-content")).toHaveTextContent(
-          "Select a model",
-        );
+        expect(
+          screen.getByTestId("collection-picker-button"),
+        ).toHaveTextContent("Select a model");
       });
       it("should preselect model", async () => {
         const MODEL_NAME = "Awesome Model";
@@ -82,21 +80,19 @@ describe("ActionCreator > Query Actions", () => {
 
         // put query into textbox
         const view = screen.getByTestId("mock-native-query-editor");
-        userEvent.paste(
-          within(view).getByRole("textbox"),
-          "select * from orders where {{paramNane}}",
-        );
+        await userEvent.click(within(view).getByRole("textbox"));
+        await userEvent.paste("select * from orders where {{paramNane}}");
 
-        userEvent.click(screen.getByRole("button", { name: "Save" }));
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
         // form is rendered
         expect(
           screen.getByPlaceholderText("My new fantastic action"),
         ).toBeInTheDocument();
         // model is preselected
-        expect(screen.getByTestId("select-button-content")).toHaveTextContent(
-          MODEL_NAME,
-        );
+        expect(
+          screen.getByTestId("collection-picker-button"),
+        ).toHaveTextContent(MODEL_NAME);
       });
     });
   });
@@ -147,7 +143,7 @@ describe("ActionCreator > Query Actions", () => {
 
       screen.getByLabelText("Action settings").click();
 
-      expect(screen.getByLabelText("Success message")).toBeDisabled();
+      expect(await screen.findByLabelText("Success message")).toBeDisabled();
     });
 
     it("blocks editing if actions are disabled for the database", async () => {
@@ -165,7 +161,7 @@ describe("ActionCreator > Query Actions", () => {
 
       screen.getByLabelText("Action settings").click();
 
-      expect(screen.getByLabelText("Success message")).toBeDisabled();
+      expect(await screen.findByLabelText("Success message")).toBeDisabled();
     });
   });
 });

@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [malli.core :as mc]
    [malli.error :as me]
+   [metabase.analyze.query-results :as qr]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
@@ -15,7 +16,6 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
-   [metabase.sync.analyze.query-results :as qr]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -367,3 +367,12 @@
                                                  (when (= field-name "Tax Rate")
                                                    field-metadata)))
                                          :semantic_type)))))))))
+
+(deftest ^:parallel skip-results-metadata-test
+  (let [query (mt/mbql-query venues {:limit 1})]
+    (is (=? {:status :completed
+             :data   {:results_metadata {:columns some?}}}
+            (qp/process-query query)))
+    (is (=? {:status :completed
+             :data   {:results_metadata (symbol "nil #_\"key is not present.\"")}}
+            (qp/process-query (assoc-in query [:middleware :skip-results-metadata?] true))))))

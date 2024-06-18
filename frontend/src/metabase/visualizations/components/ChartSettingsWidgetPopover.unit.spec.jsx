@@ -70,7 +70,7 @@ it("should change tabs when clicked", async () => {
   //Should Default to rendering formatting
   expect(await screen.findByText("Foo")).toBeInTheDocument();
 
-  userEvent.click(await screen.findByText("Style"));
+  await userEvent.click(await screen.findByText("Style"));
 
   expect(await screen.findByText("Bar")).toBeInTheDocument();
 });

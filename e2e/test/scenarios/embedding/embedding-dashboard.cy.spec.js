@@ -26,7 +26,9 @@ import {
   publishChanges,
   setEmbeddingParameter,
   assertEmbeddingParameter,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
@@ -106,9 +108,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       popover().within(() => {
-        cy.findByPlaceholderText("Search by Name or enter an ID").type(
-          "1{enter}3{enter}",
-        );
+        cy.findByPlaceholderText("Search by Name or enter an ID").type("1,3,");
 
         cy.button("Add filter").click();
       });
@@ -139,7 +139,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       openFilterOptions("Name");
 
       cy.findByPlaceholderText("Search by Name").type("L");
-      popover().findByText("Lina Heaney").click();
+      popover().last().findByText("Lina Heaney").click();
 
       cy.button("Add filter").click();
 
@@ -316,19 +316,33 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       openFilterOptions("Id");
       popover().within(() => {
-        cy.findByPlaceholderText("Search by Name or enter an ID").type("Aly");
-
-        cy.contains("Alycia McCullough - 2016");
+        multiAutocompleteInput().type("Aly");
       });
+
+      popover().last().contains("Alycia McCullough - 2016");
+
+      // close the suggestions popover
+      popover()
+        .first()
+        .within(() => {
+          multiAutocompleteInput().blur();
+        });
 
       cy.log("should allow searching PEOPLE.NAME by PEOPLE.NAME");
 
       openFilterOptions("Name");
       popover().within(() => {
-        cy.findByPlaceholderText("Search by Name").type("Aly");
-
-        cy.contains("Alycia McCullough");
+        multiAutocompleteInput().type("{backspace}Aly");
       });
+
+      popover().last().contains("Alycia McCullough");
+
+      // close the suggestions popover
+      popover()
+        .first()
+        .within(() => {
+          multiAutocompleteInput().blur();
+        });
 
       cy.log("should show values for PEOPLE.SOURCE");
 
@@ -339,10 +353,17 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       openFilterOptions("User");
       popover().within(() => {
-        cy.findByPlaceholderText("Search by Name or enter an ID").type("Aly");
-
-        cy.contains("Alycia McCullough - 2016");
+        multiAutocompleteInput().type("Aly");
       });
+
+      popover().last().contains("Alycia McCullough - 2016");
+
+      // close the suggestions popover
+      popover()
+        .first()
+        .within(() => {
+          multiAutocompleteInput().blur();
+        });
 
       cy.log("should accept url parameters");
 
@@ -406,21 +427,21 @@ describe("scenarios > embedding > dashboard parameters", () => {
       },
     };
 
-    const dashboardCategoryParameter = {
+    const dashboardCategoryParameter = createMockParameter({
       name: "Category",
       slug: "category",
       id: "9cd1ee78",
       type: "string/=",
       sectionId: "string",
       values_query_type: "none",
-    };
-    const dashboardCreatedAtParameter = {
+    });
+    const dashboardCreatedAtParameter = createMockParameter({
       name: "Created At",
       slug: "createdAt",
       id: "98831577",
       type: "date/month-year",
       sectionId: "date",
-    };
+    });
     const dashboardDetails = {
       name: "dashboard with parameters",
       parameters: [dashboardCategoryParameter, dashboardCreatedAtParameter],
@@ -554,12 +575,13 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
   });
 
   it("should not rerender the static embed preview unnecessarily (metabase#38271)", () => {
-    const textFilter = {
+    const textFilter = createMockParameter({
       id: "3",
       name: "Text filter",
       slug: "filter-text",
       type: "string/contains",
-    };
+      sectionId: "string",
+    });
 
     const dashboardDetails = {
       name: "dashboard name",
@@ -612,12 +634,21 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
       cy.log("Assert dashboard theme");
       getIframeBody()
         .findByTestId("embed-frame")
-        .should("not.have.class", "Theme--transparent");
+        .invoke("attr", "data-embed-theme")
+        .then(embedTheme => {
+          expect(embedTheme).to.eq("light"); // default value
+        });
+
       // We're getting an input element which is 0x0 in size
       cy.findByLabelText("Transparent").click({ force: true });
+      cy.wait(1000);
       getIframeBody()
         .findByTestId("embed-frame")
-        .should("have.class", "Theme--transparent");
+        .invoke("attr", "data-embed-theme")
+        .then(embedTheme => {
+          expect(embedTheme).to.eq("transparent");
+        });
+
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
 
       cy.log("Assert dashboard title");

@@ -2,6 +2,7 @@
   (:require
    [metabase.async.streaming-response :as streaming-response]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming.csv :as qp.csv]
@@ -11,12 +12,12 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli :as mu])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.io OutputStream)
-   (metabase.async.streaming_response StreamingResponse)))
+   (metabase.async.streaming_response StreamingResponse)
+   (org.eclipse.jetty.io EofException)))
 
 (set! *warn-on-reflection* true)
 
@@ -109,14 +110,14 @@
     [ordered-cols output-order]))
 
 (mu/defn ^:private streaming-rff :- ::qp.schema/rff
-  [results-writer :- (ms/InstanceOfClass metabase.query_processor.streaming.interface.StreamingResultsWriter)]
+  [results-writer :- (lib.schema.common/instance-of-class metabase.query_processor.streaming.interface.StreamingResultsWriter)]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
     (let [[ordered-cols output-order] (order-cols cols viz-settings)
           viz-settings'               (assoc viz-settings :output-order output-order)
           row-count                   (volatile! 0)]
       (fn
         ([]
-         (log/tracef "Writing initial metadata to results writer.")
+         (log/trace "Writing initial metadata to results writer.")
          (qp.si/begin! results-writer
                        {:data (assoc initial-metadata :ordered-cols ordered-cols)}
                        viz-settings')
@@ -128,18 +129,21 @@
                 :status :completed))
 
         ([metadata row]
-         (log/tracef "Writing one row to results writer.")
+         (log/trace "Writing one row to results writer.")
          (qp.si/write-row! results-writer row (dec (vswap! row-count inc)) ordered-cols viz-settings')
          metadata)))))
 
 (mu/defn ^:private streaming-result-fn :- fn?
-  [results-writer   :- (ms/InstanceOfClass metabase.query_processor.streaming.interface.StreamingResultsWriter)
-   ^OutputStream os :- (ms/InstanceOfClass OutputStream)]
+  [results-writer   :- (lib.schema.common/instance-of-class metabase.query_processor.streaming.interface.StreamingResultsWriter)
+   ^OutputStream os :- (lib.schema.common/instance-of-class OutputStream)]
   (let [orig qp.pipeline/*result*]
     (fn result [result]
       (when (= (:status result) :completed)
         (log/debug "Finished writing results; closing results writer.")
-        (qp.si/finish! results-writer result)
+        (try
+          (qp.si/finish! results-writer result)
+          (catch EofException e
+            (log/error e "Client closed connection prematurely")))
         (u/ignore-exceptions
           (.flush os)
           (.close os)))

@@ -16,7 +16,8 @@
    [metabase.query-processor.middleware.resolve-joins :as qp.middleware.resolve-joins]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (defn- joined-fields [inner-query]
   (m/distinct-by
@@ -45,15 +46,42 @@
     {:table_id (:table-id field)
      :name     (:name field)}))
 
+(defn- ->nominal-ref
+  "Transforms a ref into a simplified version of the form it would take as a nominal ref in a later stage.
+
+  Nominal refs use the `desired-alias` as its `id-or-name`, and have `::add/source-table ::add/source` in the options.
+
+  Other options (`:position`, `:join-alias`, other aliases) are dropped, since those are internal to the stage where the
+  column joined the party, not to later stages.
+
+  Refs which are either missing `::add/desired-alias`, or which are coming directly from a table or join, are skipped.
+  We want to pick up the usages only, not anything from `:fields` lists."
+  [[_tag _id-or-name {::add/keys [source-alias source-table]}]]
+  (when (and source-alias
+             (= source-table ::add/source))
+    [:field source-alias {::add/source-table ::add/source}]))
+
 (defn- remove-unused-fields [inner-query source]
-  (let [used-fields (-> #{}
-                        (into (map keep-source+alias-props) (lib.util.match/match inner-query :field))
-                        (into (map keep-source+alias-props) (lib.util.match/match inner-query :expression)))
-        nfc-roots (into #{} (keep nfc-root) used-fields)]
-    (update source :fields (fn [fields]
-                             (filterv #(or (-> % keep-source+alias-props used-fields)
-                                           (-> % field-id-props nfc-roots))
-                                      fields)))))
+  (let [usages         (lib.util.match/match inner-query #{:field :expression})
+        used-fields    (into #{} (map keep-source+alias-props) usages)
+        nominal-fields (into #{} (keep ->nominal-ref) usages)
+        nfc-roots      (into #{} (keep nfc-root) used-fields)]
+    (letfn [(used? [[_tag id-or-name {::add/keys [source-table]}, :as field]]
+              (or (contains? used-fields (keep-source+alias-props field))
+                  ;; We should also consider a Field to be used if we're referring to it with a nominal field literal
+                  ;; ref in the next stage -- that's actually how you're supposed to be doing it anyway.
+                  (and (integer? id-or-name)
+                       (= source-table ::add/source)
+                       (contains? nominal-fields (->nominal-ref field)))
+                  (contains? nfc-roots (field-id-props field))))
+            (used?* [field]
+              (u/prog1 (used? field)
+                (if <>
+                  (log/debugf "Keeping used field:\n%s" (u/pprint-to-str field))
+                  (log/debugf "Removing unused field:\n%s" (u/pprint-to-str (keep-source+alias-props field))))))
+            (remove-unused [fields]
+              (filterv used?* fields))]
+      (update source :fields remove-unused))))
 
 (defn- nest-source [inner-query]
   (let [filter-clause (:filter inner-query)
@@ -121,6 +149,12 @@
                            desired-alias (assoc ::add/source-alias desired-alias
                                                 ::add/desired-alias desired-alias))])
 
+    ;; Some refs in the outer stage might be referring to these fields by `:name` (eg. ID) and not
+    ;; properly by their `desired-alias`/this ref's `source-alias` (eg. "People - User__ID")
+    ;; Since these refs are across stages, there's no need to adjust `:expression` refs.
+    [:field (id-or-name :guard string?) (opts :guard ::add/source-alias)]
+    [:field (::add/source-alias opts) opts]
+
     ;; when recursing into joins use the refs from the parent level.
     (m :guard (every-pred map? :joins))
     (let [{:keys [joins]} m]
@@ -130,18 +164,37 @@
                                 (assoc join :qp/refs (:qp/refs query)))
                               joins))))))
 
+(defn- should-nest-expressions?
+  "Whether we should nest the expressions in a inner query; true if
+
+  1. there are some expression definitions in the inner query, AND
+
+  2. there are some breakouts OR some aggregations in the inner query
+
+  3. AND the breakouts/aggregations contain at least `:expression` reference."
+  [{:keys [expressions], breakouts :breakout, aggregations :aggregation, :as _inner-query}]
+  (and
+   ;; 1. has some expression definitions
+   (seq expressions)
+   ;; 2. has some breakouts or aggregations
+   (or (seq breakouts)
+       (seq aggregations))
+   ;; 3. contains an `:expression` ref
+   (lib.util.match/match-one (concat breakouts aggregations)
+                             :expression)))
+
 (defn nest-expressions
   "Pushes the `:source-table`/`:source-query`, `:expressions`, and `:joins` in the top-level of the query into a
   `:source-query` and updates `:expression` references and `:field` clauses with `:join-alias`es accordingly. See
   tests for examples. This is used by the SQL QP to make sure expressions happen in a subselect."
-  [query]
-  (let [{:keys [expressions], :as query} (m/update-existing query :source-query nest-expressions)]
-    (if (empty? expressions)
-      query
-      (let [{:keys [source-query], :as query} (nest-source query)
-            query                             (rewrite-fields-and-expressions query)
-            source-query                      (assoc source-query :expressions expressions)]
-        (-> query
+  [inner-query]
+  (let [{:keys [expressions], :as inner-query} (m/update-existing inner-query :source-query nest-expressions)]
+    (if-not (should-nest-expressions? inner-query)
+      inner-query
+      (let [{:keys [source-query], :as inner-query} (nest-source inner-query)
+            inner-query                             (rewrite-fields-and-expressions inner-query)
+            source-query                            (assoc source-query :expressions expressions)]
+        (-> inner-query
             (dissoc :source-query :expressions)
             (assoc :source-query source-query)
             add/add-alias-info)))))

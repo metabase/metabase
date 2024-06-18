@@ -1,0 +1,56 @@
+import { useState } from "react";
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Box, Alert, Icon, Stack, Text, TextInput } from "metabase/ui";
+
+export const args = {
+  icon: <Icon name="warning" />,
+  title: "Bummer!",
+  withCloseButton: false,
+};
+
+export const argTypes = {
+  color: {
+    control: { type: "text" },
+  },
+  title: {
+    control: { type: "text" },
+  },
+  withCloseButton: {
+    control: { type: "toggle" },
+  },
+};
+
+<Meta
+  title="Feedback/Alert"
+  component={Alert}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# Alert
+
+Show helpful alerts when things go sideways (or maybe it's a happy alert. It happens)
+
+## Examples
+
+export const DefaultTemplate = args => {
+  return (
+    <Alert {...args}>
+      <Text>The No self-service access level for View data is going away.</Text>
+      <Text>
+        In a future release, if a group’s View data access for a database (or
+        any of its schemas or tables) is still set to No self-service
+        (deprecated), Metabase will automatically change that group’s View data
+        access for the entire database to Blocked. We’ll be defaulting to
+        Blocked, the least permissive View data access, to prevent any
+        unattended access to data. Need help? See our docs.
+      </Text>
+    </Alert>
+  );
+};
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>

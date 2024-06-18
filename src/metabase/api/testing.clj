@@ -80,15 +80,7 @@
       ;; parameterization doesn't work with view names. If someone maliciously named a table, this is bad. On the
       ;; other hand, this is not running in prod and you already had to have enough access to maliciously name the
       ;; table, so this is probably safe enough.
-      (jdbc/execute! {:connection conn} (format "ALTER VIEW %s RECOMPILE" table-name))))
-  ;; don't know why this happens but when I try to test things locally with `yarn-test-cypress-open-no-backend` and a
-  ;; backend server started with `dev/start!` the snapshots are always missing columms added by DB migrations. So let's
-  ;; just check and make sure it's fully up to date in this scenario. Not doing this outside of dev because it seems to
-  ;; work fine for whatever reason normally and we don't want tests taking 5 million years to run because we're wasting
-  ;; a bunch of time initializing Liquibase and checking for unrun migrations for every test when we don't need to. --
-  ;; Cam
-  (when config/is-dev?
-    (mdb/migrate! (mdb/db-type) (mdb/app-db) :up)))
+      (jdbc/execute! {:connection conn} (format "ALTER VIEW %s RECOMPILE" table-name)))))
 
 (defn- restore-snapshot! [snapshot-name]
   (assert-h2 (mdb/app-db))
@@ -102,7 +94,18 @@
       (restore-app-db-from-snapshot! path)
       (mdb/increment-app-db-unique-indentifier!)
       (finally
-        (.. lock writeLock unlock))))
+        (.. lock writeLock unlock)
+        ;; don't know why this happens but when I try to test things locally with `yarn-test-cypress-open-no-backend`
+        ;; and a backend server started with `dev/start!` the snapshots are always missing columms added by DB
+        ;; migrations. So let's just check and make sure it's fully up to date in this scenario. Not doing this outside
+        ;; of dev because it seems to work fine for whatever reason normally and we don't want tests taking 5 million
+        ;; years to run because we're wasting a bunch of time initializing Liquibase and checking for unrun migrations
+        ;; for every test when we don't need to. -- Cam
+        ;;
+        ;; Important! This needs to happen AFTER we unlock the app DB, otherwise migrations will hang for the evil ones
+        ;; that are initializing Quartz and opening new connections to do stuff on different threads.
+        (when config/is-dev?
+          (mdb/migrate! (mdb/app-db) :up)))))
   :ok)
 
 (api/defendpoint POST "/restore/:name"

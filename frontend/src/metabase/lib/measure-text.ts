@@ -13,7 +13,10 @@ export const measureText: TextMeasurer = (text: string, style: FontStyle) => {
     throw new Error("Could not create canvas context");
   }
 
-  context.font = `${style.weight} ${style.size} ${style.family}`;
+  const fontSize =
+    typeof style.size === "number" ? `${style.size}px` : style.size;
+
+  context.font = `${style.weight} ${fontSize} ${style.family}`;
   const textMetrics = context.measureText(text);
 
   return {

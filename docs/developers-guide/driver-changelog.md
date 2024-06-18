@@ -9,6 +9,81 @@ title: Driver interface changelog
 - The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to
   use these namespaces in your driver, but if you did, please update them.
 
+- The multimethod `metabase.driver/truncate!` has been added. This method is used to delete a table's rows in the most
+  efficient way possible. This is currently only required for drivers that support the `:uploads` feature, and has
+  a default implementation for JDBC-based drivers.
+
+- New feature `:window-functions/cumulative` has been added. Drivers that implement this method are expected to
+  implement the cumulative sum (`:cum-sum`) and cumulative count (`:cum-count`) aggregation clauses in their native
+  query language. For non-SQL drivers (drivers not based on our `:sql` or `:sql-jdbc` drivers), this feature flag is
+  set to `false` by default; the old (broken) post-processing implementations of cumulative aggregations will continue
+  to be used. (See issues [#13634](https://github.com/metabase/metabase/issues/13634) and
+  [#15118](https://github.com/metabase/metabase/issues/15118) for more information on why the old implementation is
+  broken.)
+
+  Non-SQL drivers should be updated to implement cumulative aggregations natively if possible.
+
+  The SQL implementation uses `OVER (...)` expressions. It will automatically move `GROUP BY` expressions like
+  `date_trunc()` into a `SUBSELECT` so fussy databases like BigQuery can reference plain column identifiers. The
+  actual SQL generated will look something like
+
+  ```sql
+  SELECT
+    created_at_month,
+    sum(sum(total) OVER (ORDER BY created_at_month ROWS UNBOUNDED PRECEDING) AS cumulative_sum
+  FROM (
+    SELECT
+      date_trunc('month', created_at) AS created_at_month,
+      total
+    FROM
+      my_table
+    ) source
+  GROUP BY
+    created_at_month
+  ORDER BY
+    created_at_month
+  ```
+
+  Non-SQL drivers can use
+  `metabase.query-processor.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation`
+  if they want to leverage the same query transformation. See the default `:sql` implementation of
+  `metabase.driver.sql.query-processor/preprocess` for an example of using this transformation when needed.
+
+  You can run the new tests in `metabase.query-processor-test.cumulative-aggregation-test` to verify that your driver
+  implementation is working correctly.
+
+- `metabase.driver.common/class->base-type` no longer supports Joda Time classes. They have been deprecated since 2019.
+
+- New feature `:window-functions/offset` has been added to signify that a driver supports the new MBQL `:offset`
+  clause (equivalent of SQL `lead` and `lag` functions). This is enabled by default for `:sql` and `:sql-jdbc`-based
+  drivers. Other drivers should add an implementation for this clause and enable the feature flag.
+
+- `:type/field-values-unsupported` was added in `metabase.types` namespace. It is used in field values computation
+  logic, to determine whether a specific field should have its field values computed or not. At the time of writing
+  that is performed in `metabase.models.field-values/field-should-have-field-values?`. Deriving from it, driver
+  developers have a way to out of field values computation for fields that are incompatible with the query used for
+  computation. Example could be Druid's `COMPLEX<JSON>` database type fields. See the `:druid-jdbc` implementation
+  of `sql-jdbc.sync/database-type->base-type` in the `metabase.driver.druid-jdbc` and derivations in the
+  `metabase.types` namespace for an example.
+
+- New feature `:metadata/key-constraints` has been added to signify that a driver support defining and enforcing foreign
+  key constraints at the schema level. This is a different, stronger condition than `:foreign-keys`. Some databases
+  (Presto, Athena, etc.) support *querying* over foreign key relationships (`:foreign-keys`) but do not track or enforce
+  those relationships in the schema. Defaults to `true` in `:sql` and `:sql-jdbc` drivers; set to `false` in the
+  first-party SparkSQL, Presto and Athena drivers.
+
+- New feature `:connection/multiple-databases` has been added to indicate whether a *connection* to this driver
+  corresponds to multiple databases or just one. The default is `false`, where a connection specifies a single database.
+  This is the common case for classic relational DBs like Postgres, and some cloud databases. In contrast, a driver like
+  Athena sets this to `true` because it connects to an S3 bucket and treats each file within it as a database.
+
+## Metabase 0.49.9
+
+- Another driver feature has been added: `upload-with-auto-pk`. It only affects drivers that support `uploads`, and
+  is optional to support. Drivers support this feature by default, and can choose not to support it if there is no way
+  to create a table with an auto-incrementing integer column. The driver can override the default using
+  `driver/database-supports?`.
+
 ## Metabase 0.49.1
 
 - Another driver feature has been added: `describe-fields`. If a driver opts-in to supporting this feature, The
@@ -147,7 +222,7 @@ title: Driver interface changelog
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in
   schemas (also known as namespaces) or not. Most databases have schemas so this feature is on by default.
-  An implemention of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the
+  An implementation of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the
   database doesn't store tables in schemas.
 
 - Another driver feature has been added: `:uploads`. The `:uploads` feature signals whether the database supports

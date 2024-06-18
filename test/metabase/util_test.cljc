@@ -9,7 +9,10 @@
    [flatland.ordered.map :refer [ordered-map]]
    #_:clj-kondo/ignore
    [malli.generator :as mg]
-   [metabase.util :as u]))
+   [metabase.util :as u])
+  #?(:clj (:import [java.time Month DayOfWeek])))
+
+#?(:clj (set! *warn-on-reflection* true))
 
 (deftest ^:parallel add-period-test
   (is (= "This sentence needs a period."
@@ -215,7 +218,7 @@
 
 (deftest ^:parallel snake-key-test
   (is (= {:num_cans 2, :lisp_case? {:nested_maps? true}}
-         (u/snake-keys {:num-cans 2, :lisp-case? {:nested-maps? true}}))))
+         (u/deep-snake-keys {:num-cans 2, :lisp-case? {:nested-maps? true}}))))
 
 (deftest ^:parallel one-or-many-test
   (are [input expected] (= expected
@@ -426,14 +429,27 @@
     (is (= {:m true}
            (meta (u/assoc-default ^:m {:x 0} :y 1 :z 2 :a nil))))))
 
-(deftest ^:parallel classify-changes-test
+(deftest ^:parallel row-diff-test
   (testing "classify correctly"
-    (is (= {:to-update [{:id 2 :name "c3"} {:id 4 :name "c4"}]
+    (is (= {:to-update [{:id 2 :name "c3"}]
             :to-delete [{:id 1 :name "c1"} {:id 3 :name "c3"}]
-            :to-create [{:id -1 :name "-c1"}]}
-           (u/classify-changes
-             [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
-             [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}])))))
+            :to-create [{:id -1 :name "-c1"}]
+            :to-skip   [{:id 4 :name "c4"}]}
+           (u/row-diff
+            [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
+            [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}])))
+    (is (= {:to-skip   [{:god_id 10, :name "Zeus", :job "God of Thunder"}]
+            :to-delete [{:id 2, :god_id 20, :name "Odin", :job "God of Thunder"}]
+            :to-update [{:god_id 30, :name "Osiris", :job "God of Afterlife"}]
+            :to-create [{:god_id 40, :name "Perun", :job "God of Thunder"}]}
+           (u/row-diff [{:id 1 :god_id 10 :name "Zeus" :job "God of Thunder"}
+                        {:id 2 :god_id 20 :name "Odin" :job "God of Thunder"}
+                        {:id 3 :god_id 30 :name "Osiris" :job "God of Fertility"}]
+                       [{:god_id 10 :name "Zeus" :job "God of Thunder"}
+                        {:god_id 30 :name "Osiris" :job "God of Afterlife"}
+                        {:god_id 40 :name "Perun" :job "God of Thunder"}]
+                       {:id-fn   :god_id
+                        :to-compare #(dissoc % :id :god_id)})))))
 
 (deftest ^:parallel empty-or-distinct?-test
   (are [xs expected] (= expected
@@ -495,3 +511,21 @@
        (let [expected (reduce + (u/map-all (fnil + 0 0 0) xs ys zs))
              sum (+ (reduce + 0 xs) (reduce + 0 ys) (reduce + 0 zs))]
          (= expected sum)))))
+
+#?(:clj
+   (deftest ^:parallel case-enum-test
+     (testing "case does not work"
+       (is (= 3 (case Month/MAY
+                  Month/APRIL 1
+                  Month/MAY   2
+                  3))))
+     (testing "case-enum works"
+       (is (= 2 (u/case-enum Month/MAY
+                  Month/APRIL 1
+                  Month/MAY   2
+                  3))))
+     (testing "checks for type of cases"
+       (is (thrown? Exception #"`case-enum` only works.*"
+                    (u/case-enum Month/JANUARY
+                      Month/JANUARY    1
+                      DayOfWeek/SUNDAY 2))))))

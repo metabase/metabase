@@ -2,8 +2,19 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getColorsForValues } from "metabase/lib/colors/charts";
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
+import {
+  SERIES_COLORS_SETTING_KEY,
+  getSeriesDefaultLinearInterpolate,
+  getSeriesDefaultLineMarker,
+  getSeriesDefaultLineMissing,
+  getSeriesColors,
+  getSeriesDefaultDisplay,
+  SERIES_SETTING_KEY,
+  getSeriesDefaultShowSeriesValues,
+  getSeriesDefaultLineStyle,
+  getSeriesDefaultLineSize,
+} from "metabase/visualizations/shared/settings/series";
 
 import { getNameForCard } from "../series";
 
@@ -16,16 +27,13 @@ export function keyForSingleSeries(single) {
 
 const LINE_DISPLAY_TYPES = new Set(["line", "area"]);
 
-export const SETTING_ID = "series_settings";
-export const COLOR_SETTING_ID = "series_settings.colors";
-
 export function seriesSetting({
   readDependencies = [],
   noPadding,
   ...def
 } = {}) {
   const COMMON_SETTINGS = {
-    // title, and color don't need widgets because they're handled direclty in ChartNestedSettingSeries
+    // title, and color don't need widgets because they're handled directly in ChartNestedSettingSeries
     title: {
       getDefault: (single, settings, { series, settings: vizSettings }) => {
         const legacyTitles = vizSettings["graph.series_labels"];
@@ -56,25 +64,27 @@ export function seriesSetting({
       },
 
       getDefault: (single, settings, { series }) => {
-        if (single.card.display === "combo") {
-          const index = series.indexOf(single);
-          if (index === 0) {
-            return "line";
-          } else {
-            return "bar";
-          }
-        } else {
-          return single.card.display;
-        }
+        // FIXME: will move to Cartesian series model further, but now this code is used by other legacy charts
+        const transformedSeriesIndex = series.findIndex(
+          s => keyForSingleSeries(s) === keyForSingleSeries(single),
+        );
+
+        return getSeriesDefaultDisplay(
+          series[transformedSeriesIndex].card.display,
+          transformedSeriesIndex,
+        );
       },
     },
     color: {
       getDefault: (single, settings, { settings: vizSettings }) =>
         // get the color for series key, computed in the setting
-        getIn(vizSettings, [COLOR_SETTING_ID, keyForSingleSeries(single)]),
+        getIn(vizSettings, [
+          SERIES_COLORS_SETTING_KEY,
+          keyForSingleSeries(single),
+        ]),
     },
     "line.interpolate": {
-      title: t`Line style`,
+      title: t`Line shape`,
       widget: "segmentedControl",
       props: {
         options: [
@@ -87,7 +97,37 @@ export function seriesSetting({
         !LINE_DISPLAY_TYPES.has(settings["display"]),
       getDefault: (single, settings, { settings: vizSettings }) =>
         // use legacy global line.interpolate setting if present
-        vizSettings["line.interpolate"] || "linear",
+        getSeriesDefaultLinearInterpolate(vizSettings),
+      readDependencies: ["display"],
+    },
+    "line.style": {
+      title: t`Line style`,
+      widget: "segmentedControl",
+      props: {
+        options: [
+          { icon: "line_style_solid", value: "solid" },
+          { icon: "line_style_dashed", value: "dashed" },
+          { icon: "line_style_dotted", value: "dotted" },
+        ],
+      },
+      getDefault: (series, settings) => getSeriesDefaultLineStyle(settings),
+      getHidden: (single, settings) =>
+        !LINE_DISPLAY_TYPES.has(settings["display"]),
+      readDependencies: ["display"],
+    },
+    "line.size": {
+      title: t`Line size`,
+      widget: "segmentedControl",
+      props: {
+        options: [
+          { name: "S", value: "S" },
+          { name: "M", value: "M" },
+          { name: "L", value: "L" },
+        ],
+      },
+      getDefault: (series, settings) => getSeriesDefaultLineSize(settings),
+      getHidden: (single, settings) =>
+        !LINE_DISPLAY_TYPES.has(settings["display"]),
       readDependencies: ["display"],
     },
     "line.marker_enabled": {
@@ -104,9 +144,7 @@ export function seriesSetting({
         !LINE_DISPLAY_TYPES.has(settings["display"]),
       getDefault: (single, settings, { settings: vizSettings }) =>
         // use legacy global line.marker_enabled setting if present
-        vizSettings["line.marker_enabled"] == null
-          ? null
-          : vizSettings["line.marker_enabled"],
+        getSeriesDefaultLineMarker(vizSettings),
       readDependencies: ["display"],
     },
     "line.missing": {
@@ -123,7 +161,7 @@ export function seriesSetting({
         !LINE_DISPLAY_TYPES.has(settings["display"]),
       getDefault: (single, settings, { settings: vizSettings }) =>
         // use legacy global line.missing setting if present
-        vizSettings["line.missing"] || "interpolate",
+        getSeriesDefaultLineMissing(vizSettings),
       readDependencies: ["display"],
     },
     axis: {
@@ -146,10 +184,10 @@ export function seriesSetting({
       inline: true,
       getHidden: (single, seriesSettings, { settings, series }) =>
         series.length <= 1 || // no need to show series-level control if there's only one series
-        !Object.prototype.hasOwnProperty.call(settings, "graph.show_values") || // don't show it unless this chart has a global setting
+        !settings["graph.show_values"] || // don't show it unless this chart has a global setting
         settings["stackable.stack_type"], // hide series controls if the chart is stacked
       getDefault: (single, seriesSettings, { settings }) =>
-        settings["graph.show_values"],
+        getSeriesDefaultShowSeriesValues(settings),
       readDependencies: ["graph.show_values", "stackable.stack_type"],
     },
   };
@@ -159,7 +197,7 @@ export function seriesSetting({
   }
 
   return {
-    ...nestedSettings(SETTING_ID, {
+    ...nestedSettings(SERIES_SETTING_KEY, {
       getHidden: ([{ card }], settings, { isDashboard }) =>
         !isDashboard || card?.display === "waterfall",
       getSection: (series, settings, { isDashboard }) =>
@@ -169,7 +207,7 @@ export function seriesSetting({
       getObjectKey: keyForSingleSeries,
       getSettingDefinitionsForObject: getSettingDefinitionsForSingleSeries,
       component: ChartNestedSettingSeries,
-      readDependencies: [COLOR_SETTING_ID, ...readDependencies],
+      readDependencies: [SERIES_COLORS_SETTING_KEY, ...readDependencies],
       noPadding: true,
       getExtraProps: series => ({
         seriesCardNames: series.reduce((memo, singleSeries) => {
@@ -182,26 +220,10 @@ export function seriesSetting({
       ...def,
     }),
     // colors must be computed as a whole rather than individually
-    [COLOR_SETTING_ID]: {
+    [SERIES_COLORS_SETTING_KEY]: {
       getValue(series, settings) {
         const keys = series.map(single => keyForSingleSeries(single));
-
-        const assignments = _.chain(keys)
-          .map(key => [key, getIn(settings, [SETTING_ID, key, "color"])])
-          .filter(([key, color]) => color != null)
-          .object()
-          .value();
-
-        const legacyColors = settings["graph.colors"];
-        if (legacyColors) {
-          for (const [index, key] of keys.entries()) {
-            if (!(key in assignments)) {
-              assignments[key] = legacyColors[index];
-            }
-          }
-        }
-
-        return getColorsForValues(keys, assignments);
+        return getSeriesColors(keys, settings);
       },
     },
   };

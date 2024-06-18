@@ -11,6 +11,9 @@ interface Schema extends Omit<NormalizedSchema, "database" | "tables"> {
   metadata?: Metadata;
 }
 
+/**
+ * @deprecated use RTK Query endpoints and plain api objects from metabase-types/api
+ */
 class Schema {
   private readonly _plainObject: NormalizedSchema;
 

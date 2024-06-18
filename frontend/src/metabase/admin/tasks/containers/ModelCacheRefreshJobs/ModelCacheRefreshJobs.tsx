@@ -7,10 +7,11 @@ import { t } from "ttag";
 import NoResults from "assets/img/no_results.svg";
 import DateTime from "metabase/components/DateTime";
 import EmptyState from "metabase/components/EmptyState";
-import PaginationControls from "metabase/components/PaginationControls";
+import { PaginationControls } from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
 import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import PersistedModels from "metabase/entities/persisted-models";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { capitalize } from "metabase/lib/formatting";
@@ -147,7 +148,7 @@ function ModelCacheRefreshJobs({ children, onRefresh }: Props) {
 
           return (
             <div data-testid="model-cache-logs">
-              <table className={cx(AdminS.ContentTable, "border-bottom")}>
+              <table className={cx(AdminS.ContentTable, CS.borderBottom)}>
                 <colgroup>
                   <col style={{ width: "30%" }} />
                   <col style={{ width: "40%" }} />

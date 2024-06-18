@@ -1,10 +1,11 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-use";
+import scrollIntoView from "scroll-into-view-if-needed";
 import { jt } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { alpha, color } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 
 import { settingToFormFieldId, getEnvVarDocsUrl } from "../utils";
 
@@ -44,15 +45,17 @@ export const SettingsSetting = props => {
 
   useEffect(() => {
     if (hash === `#${setting.key}` && thisRef.current) {
-      thisRef.current.scrollIntoView({
+      scrollIntoView(thisRef.current, {
         behavior: "smooth",
         block: "center",
+        scrollMode: "if-needed",
       });
+
       thisRef.current.focus();
 
       setFancyStyle({
         background: alpha("brand", 0.1),
-        boxShadow: `0 0 0 1px ${color("brand")}`,
+        boxShadow: `0 0 0 1px var(--mb-color-brand)`,
       });
 
       setTimeout(() => {

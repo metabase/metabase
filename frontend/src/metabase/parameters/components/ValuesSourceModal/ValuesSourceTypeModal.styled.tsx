@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import TextArea from "metabase/core/components/TextArea";
-import { color } from "metabase/lib/colors";
 import { ModalBody } from "metabase/parameters/components/ValuesSourceModal/ValuesSourceModal.styled";
 
 export const ModalBodyWithPane = styled(ModalBody)`
@@ -25,7 +24,7 @@ export const ModalSection = styled.div`
 
 export const ModalLabel = styled.label`
   display: block;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-bottom: 0.5rem;
   font-weight: bold;
 `;
@@ -36,15 +35,15 @@ export const ModalTextArea = styled(TextArea)`
 `;
 
 export const ModalHelpMessage = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-top: 0.25rem;
   margin-left: 1.25rem;
 `;
 
 export const ModalErrorMessage = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   padding: 1rem;
-  border: 1px solid ${color("error")};
+  border: 1px solid var(--mb-color-error);
   border-radius: 0.5rem;
 `;
 
@@ -54,10 +53,10 @@ export const ModalEmptyState = styled.div`
   justify-content: center;
   align-items: center;
   padding: 2rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
-  background-color: ${color("bg-light")};
-  color: ${color("text-medium")};
+  background-color: var(--mb-color-bg-light);
+  color: var(--mb-color-text-medium);
   font-weight: bold;
   line-height: 1.5rem;
   text-align: center;

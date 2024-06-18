@@ -169,6 +169,8 @@ export class ClickActionsPopover extends Component<
               name: "preventOverflow",
               options: {
                 padding: 16,
+                altAxis: true,
+                tether: false,
               },
             },
           ],
@@ -179,6 +181,7 @@ export class ClickActionsPopover extends Component<
           ) : (
             <ClickActionsView
               clickActions={clickActions}
+              close={this.close}
               onClick={this.handleClickAction}
             />
           )

@@ -9,6 +9,7 @@ import {
   parse as oldParser,
   useShorthands,
   adjustCase,
+  adjustOffset,
   adjustOptions,
 } from "metabase-lib/v1/expressions/recursive-parser";
 import { resolve } from "metabase-lib/v1/expressions/resolver";
@@ -24,7 +25,7 @@ interface Opts {
 
 export function compile(source: string, type: Type, opts: Opts = {}) {
   const { throwOnError } = opts;
-  const passes = [adjustOptions, useShorthands, adjustCase];
+  const passes = [adjustOptions, useShorthands, adjustOffset, adjustCase];
   return newCompile(
     parse(lexify(source), {
       throwOnError,

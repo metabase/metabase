@@ -44,6 +44,23 @@ const STRING_CASES = [
     expectedRowCount: 47,
   },
   {
+    title: "contains, multiple options",
+    columnName: "Title",
+    operator: "Contains",
+    values: ["Al", "Me"],
+    expectedDisplayName: "Title contains 2 selections",
+    expectedRowCount: 68,
+  },
+  {
+    title: "contains, multiple options, case sensitive",
+    columnName: "Title",
+    operator: "Contains",
+    values: ["Al", "Me"],
+    options: ["Case sensitive"],
+    expectedDisplayName: "Title contains 2 selections",
+    expectedRowCount: 28,
+  },
+  {
     title: "contains, case sensitive",
     columnName: "Title",
     operator: "Contains",
@@ -59,6 +76,23 @@ const STRING_CASES = [
     values: ["Al"],
     expectedDisplayName: "Title does not contain Al",
     expectedRowCount: 153,
+  },
+  {
+    title: "does not contain, multiple options",
+    columnName: "Title",
+    operator: "Does not contain",
+    values: ["Al", "Me"],
+    expectedDisplayName: "Title does not contain 2 selections",
+    expectedRowCount: 132,
+  },
+  {
+    title: "does not contain, multiple options, case sensitive",
+    columnName: "Title",
+    operator: "Does not contain",
+    values: ["Al", "Me"],
+    options: ["Case sensitive"],
+    expectedDisplayName: "Title does not contain 2 selections",
+    expectedRowCount: 172,
   },
   {
     title: "does not contain, case sensitive",
@@ -78,13 +112,30 @@ const STRING_CASES = [
     expectedRowCount: 11,
   },
   {
+    title: "starts with, multiple options",
+    columnName: "Title",
+    operator: "Starts with",
+    values: ["sm", "Me"],
+    expectedDisplayName: "Title starts with 2 selections",
+    expectedRowCount: 25,
+  },
+  {
+    title: "starts with, multiple options, case sensitive",
+    columnName: "Title",
+    operator: "Starts with",
+    values: ["sm", "Me"],
+    options: ["Case sensitive"],
+    expectedDisplayName: "Title starts with 2 selections",
+    expectedRowCount: 14,
+  },
+  {
     title: "starts with, case sensitive",
     columnName: "Title",
     operator: "Starts with",
-    values: ["Sm"],
+    values: ["sm"],
     options: ["Case sensitive"],
-    expectedDisplayName: "Title starts with Sm",
-    expectedRowCount: 11,
+    expectedDisplayName: "Title starts with sm",
+    expectedRowCount: 0,
   },
   {
     title: "ends with",
@@ -93,6 +144,23 @@ const STRING_CASES = [
     values: ["At"],
     expectedDisplayName: "Title ends with At",
     expectedRowCount: 22,
+  },
+  {
+    title: "ends with, multiple options",
+    columnName: "Title",
+    operator: "Ends with",
+    values: ["At", "es"],
+    expectedDisplayName: "Title ends with 2 selections",
+    expectedRowCount: 38,
+  },
+  {
+    title: "ends with, multiple options, case sensitive",
+    columnName: "Title",
+    operator: "Ends with",
+    values: ["At", "es"],
+    options: ["Case sensitive"],
+    expectedDisplayName: "Title ends with 2 selections",
+    expectedRowCount: 16,
   },
   {
     title: "ends with, case sensitive",
@@ -416,8 +484,11 @@ describe("scenarios > filters > filter types", () => {
           popover().findByText(columnName).click();
           selectFilterOperator(operator);
           popover().within(() => {
-            values.forEach((value, index) => {
-              cy.findByLabelText("Filter value").focus().type(value).blur();
+            values.forEach(value => {
+              cy.findByLabelText("Filter value")
+                .focus()
+                .type(`${value},`, { delay: 50 })
+                .blur();
             });
             options.forEach(option => cy.findByText(option).click());
             cy.button("Add filter").click();
@@ -451,7 +522,10 @@ describe("scenarios > filters > filter types", () => {
             .first()
             .within(() => {
               values.forEach(value => {
-                cy.findByLabelText("Filter value").focus().type(value).blur();
+                cy.findByLabelText("Filter value")
+                  .focus()
+                  .type(`${value},`, { delay: 50 })
+                  .blur();
               });
               cy.button("Add filter").click();
             });

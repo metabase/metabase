@@ -32,7 +32,7 @@ const ModalWarningIcon = () => (
 
 const Title = ({ children }: { children: string }) => (
   <Box
-    c={color("text-dark")}
+    c="text-dark"
     fz={rem(20)}
     lh={rem(24)}
     fw="bold"
@@ -53,7 +53,7 @@ const CloseButton = ({ onClose }: Pick<NativeQueryPreviewProps, "onClose">) => (
 );
 
 const Divider = () => (
-  <Box mb="lg" style={{ borderTop: `1px solid ${color("border")}` }}></Box>
+  <Box mb="lg" style={{ borderTop: "1px solid var(--mb-color-border)" }}></Box>
 );
 
 const Footer = ({ children }: { children: ReactNode }) => (
@@ -82,7 +82,7 @@ export const NativeQueryPreview = ({
       <Header>
         {error && <ModalWarningIcon />}
         <Title>{error ? t`An error occurred in your query` : title}</Title>
-        <CloseButton onClose={onClose} />
+        {onClose && <CloseButton onClose={onClose} />}
       </Header>
       {error && <Divider />}
       <Flex

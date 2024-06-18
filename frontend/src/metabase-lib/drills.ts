@@ -2,13 +2,14 @@ import * as ML from "cljs/metabase.lib.js";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 
 import type {
-  FilterDrillDetails,
-  ColumnMetadata,
+  AggregationDrillDetails,
   ClickObjectDataRow,
   ClickObjectDimension,
+  ColumnMetadata,
   DrillThru,
-  Query,
+  FilterDrillDetails,
   PivotType,
+  Query,
 } from "./types";
 
 // NOTE: value might be null or undefined, and they mean different things!
@@ -43,6 +44,12 @@ export function drillThru(
 
 export function filterDrillDetails(drillThru: DrillThru): FilterDrillDetails {
   return ML.filter_drill_details(drillThru);
+}
+
+export function aggregationDrillDetails(
+  drillThru: DrillThru,
+): AggregationDrillDetails {
+  return ML.aggregation_drill_details(drillThru);
 }
 
 export function pivotTypes(drillThru: DrillThru): PivotType[] {

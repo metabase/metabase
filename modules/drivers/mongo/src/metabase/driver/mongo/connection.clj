@@ -21,7 +21,7 @@
 
 (defn db-details->connection-string
   "Generate connection string from database details."
-  [{:keys [use-conn-uri conn-uri host port dbname additional-options use-srv ssl] :as _db-details}]
+  [{:keys [use-conn-uri conn-uri host port additional-options use-srv ssl] :as _db-details}]
   ;; Connection string docs:
   ;; http://mongodb.github.io/mongo-java-driver/4.11/apidocs/mongodb-driver-core/com/mongodb/ConnectionString.html
   (if use-conn-uri
@@ -33,7 +33,6 @@
      host
      (when (and (not use-srv) (some? port)) (str ":" port))
      "/"
-     dbname
      "?connectTimeoutMS=" (driver.u/db-connection-timeout-ms)
      "&serverSelectionTimeoutMS=" (driver.u/db-connection-timeout-ms)
      (when ssl "&ssl=true")

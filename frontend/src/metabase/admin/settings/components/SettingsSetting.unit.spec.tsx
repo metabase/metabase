@@ -1,4 +1,4 @@
-import { render, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import { SettingsSetting } from "./SettingsSetting";
 
@@ -9,7 +9,7 @@ const SETTING = {
 };
 
 const setup = () => {
-  render(<SettingsSetting setting={SETTING} />);
+  renderWithProviders(<SettingsSetting setting={SETTING} />);
 };
 
 describe("SettingsSetting", () => {
@@ -19,20 +19,13 @@ describe("SettingsSetting", () => {
   });
 
   it("highlights itself if it's key is in location.hash", () => {
-    const ogScrollIntoView = window.HTMLElement.prototype.scrollIntoView;
     window.location.hash = "#site-name";
-    const mockScroll = jest.fn();
-    window.HTMLElement.prototype.scrollIntoView = mockScroll;
 
     setup();
 
     expect(screen.getByTestId("site-name-setting")).toHaveStyle(
-      "box-shadow: 0 0 0 1px #509EE3",
+      "box-shadow: 0 0 0 1px var(--mb-color-brand)",
     );
-
-    expect(mockScroll).toHaveBeenCalled();
-
     window.location.hash = "";
-    window.HTMLElement.prototype.scrollIntoView = ogScrollIntoView;
   });
 });

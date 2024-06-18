@@ -70,6 +70,9 @@ const LONG_TEXT_MIN = 80;
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
 
+/**
+ * @deprecated use RTK Query endpoints and plain api objects from metabase-types/api
+ */
 class FieldInner extends Base {
   id: FieldId | FieldReference;
   name: string;

@@ -1,9 +1,8 @@
 import cx from "classnames";
-import type { Location } from "history";
-import { type MouseEvent, type ReactNode, useState, Fragment } from "react";
+import type { Location, Query } from "history";
+import { type MouseEvent, useState, Fragment } from "react";
 import { useMount } from "react-use";
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import {
@@ -23,6 +22,7 @@ import type { NewDashCardOpts } from "metabase/dashboard/actions";
 import {
   addActionToDashboard,
   addSectionToDashboard,
+  addTemporalUnitParameter,
   cancelEditingDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
@@ -34,11 +34,16 @@ import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/Tex
 import type { SectionLayout } from "metabase/dashboard/sections";
 import { layoutOptions } from "metabase/dashboard/sections";
 import {
+  getHasModelActionsEnabled,
   getIsShowDashboardInfoSidebar,
   getMissingRequiredParameters,
 } from "metabase/dashboard/selectors";
-import type { FetchDashboardResult } from "metabase/dashboard/types";
-import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
+import type {
+  DashboardFullscreenControls,
+  DashboardRefreshPeriodControls,
+  EmbedThemeControls,
+  FetchDashboardResult,
+} from "metabase/dashboard/types";
 import Bookmark from "metabase/entities/bookmarks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
@@ -55,8 +60,6 @@ import type {
   DashboardId,
   DashboardTabId,
   Dashboard,
-  DatabaseId,
-  Database,
   CardId,
   ParameterMappingOptions,
 } from "metabase-types/api";
@@ -65,7 +68,7 @@ import type {
   DashboardSidebarState,
 } from "metabase-types/store";
 
-import { SIDEBAR_NAME } from "../../constants";
+import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
 import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
 
 import {
@@ -76,24 +79,18 @@ import {
 import { DashboardHeaderComponent } from "./DashboardHeaderView";
 import { SectionLayoutPreview } from "./SectionLayoutPreview";
 
-interface DashboardHeaderProps {
+type DashboardHeaderProps = {
   dashboardId: DashboardId;
   dashboard: Dashboard;
   dashboardBeforeEditing?: Dashboard | null;
-  databases: Record<DatabaseId, Database>;
   sidebar: DashboardSidebarState;
   location: Location;
-  refreshPeriod: number | null;
   isAdmin: boolean;
   isDirty: boolean;
   isEditing: boolean;
-  isFullscreen: boolean;
-  isNightMode: boolean;
   isAdditionalInfoVisible: boolean;
   isAddParameterPopoverOpen: boolean;
   canManageSubscriptions: boolean;
-  hasNightModeToggle: boolean;
-  parametersWidget?: ReactNode;
 
   addCardToDashboard: (opts: {
     dashId: DashboardId;
@@ -106,7 +103,7 @@ interface DashboardHeaderProps {
 
   fetchDashboard: (opts: {
     dashId: DashboardId;
-    queryParams?: Record<string, unknown>;
+    queryParams?: Query;
     options?: {
       clearCache?: boolean;
       preserveParameters?: boolean;
@@ -116,7 +113,6 @@ interface DashboardHeaderProps {
     key: Key,
     value: Dashboard[Key],
   ) => void;
-  setRefreshElapsedHook?: (hook: (elapsed: number) => void) => void;
   updateDashboardAndCards: () => void;
 
   addParameter: (option: ParameterMappingOptions) => void;
@@ -124,17 +120,16 @@ interface DashboardHeaderProps {
   hideAddParameterPopover: () => void;
 
   onEditingChange: (arg: Dashboard | null) => void;
-  onRefreshPeriodChange: (period: number | null) => void;
-  onFullscreenChange: (
-    isFullscreen: boolean,
-    browserFullscreen?: boolean,
-  ) => void;
   onSharingClick: () => void;
-  onNightModeChange: () => void;
 
   setSidebar: (opts: { name: DashboardSidebarName }) => void;
   closeSidebar: () => void;
-}
+} & DashboardFullscreenControls &
+  DashboardRefreshPeriodControls &
+  Pick<
+    EmbedThemeControls,
+    "isNightMode" | "onNightModeChange" | "hasNightModeToggle"
+  >;
 
 export const DashboardHeader = (props: DashboardHeaderProps) => {
   const {
@@ -149,13 +144,11 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
     isEditing,
     location,
     dashboard,
-    parametersWidget,
     isFullscreen,
     onFullscreenChange,
     sidebar,
     setSidebar,
     closeSidebar,
-    databases,
     isAddParameterPopoverOpen,
     showAddParameterPopover,
     hideAddParameterPopover,
@@ -166,11 +159,11 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
 
   const [showCancelWarning, setShowCancelWarning] = useState(false);
 
+  const dispatch = useDispatch();
+
   useMount(() => {
     dispatch(fetchPulseFormInput());
   });
-
-  const dispatch = useDispatch();
 
   const formInput = useSelector(getPulseFormInput);
   const isNavBarOpen = useSelector(getIsNavbarOpen);
@@ -194,6 +187,8 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
     dashboardId: dashboard.id,
     bookmarks,
   });
+
+  const hasModelActionsEnabled = useSelector(getHasModelActionsEnabled);
 
   const handleEdit = (dashboard: Dashboard) => {
     onEditingChange(dashboard);
@@ -288,7 +283,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
   };
 
   const saveAsPDF = async () => {
-    const cardNodeSelector = "#Dashboard-Cards-Container";
+    const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
     await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
       trackExportDashboardToPDF(dashboard.id);
     });
@@ -350,19 +345,11 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
   };
 
   const getHeaderButtons = () => {
-    const canEdit = dashboard.can_write;
+    const canEdit = dashboard.can_write && !dashboard.archived;
     const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
-
-    const hasModelActionsEnabled = Object.values(databases).some(
-      hasDatabaseActionsEnabled,
-    );
 
     const buttons = [];
     const extraButtons = [];
-
-    if (isFullscreen && parametersWidget) {
-      buttons.push(parametersWidget);
-    }
 
     if (isEditing) {
       const activeSidebarName = sidebar.name;
@@ -438,9 +425,23 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
         </Menu>,
       );
 
-      // Parameters
+      // Temporal unit parameters
       buttons.push(
-        <span key="add-a-filter">
+        <Tooltip
+          key="add-temporal-unit-parameter"
+          label={t`Add a Unit of Time widget`}
+        >
+          <DashboardHeaderButton
+            icon="clock"
+            aria-label={t`Add a Unit of Time widget`}
+            onClick={() => dispatch(addTemporalUnitParameter())}
+          />
+        </Tooltip>,
+      );
+
+      // Filter parameters
+      buttons.push(
+        <span key="add-filter-parameter">
           <TippyPopover
             placement="bottom-start"
             onClose={hideAddParameterPopover}
@@ -456,11 +457,10 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
               <Tooltip label={t`Add a filter`}>
                 <DashboardHeaderButton
                   key="parameters"
+                  icon="filter"
                   onClick={showAddParameterPopover}
                   aria-label={t`Add a filter`}
-                >
-                  <Icon name="filter" />
-                </DashboardHeaderButton>
+                />
               </Tooltip>
             </div>
           </TippyPopover>
@@ -556,8 +556,8 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
         extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
 
         extraButtons.push({
-          title: t`Archive`,
-          icon: "view_archive",
+          title: t`Move to trash`,
+          icon: "trash",
           link: `${location.pathname}/archive`,
           event: "Dashboard;Archive",
         });
@@ -569,14 +569,18 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
     if (!isEditing) {
       buttons.push(
         ...[
-          <DashboardHeaderActionDivider key="dashboard-button-divider" />,
-          <DashboardBookmark
-            key="dashboard-bookmark-button"
-            dashboard={dashboard}
-            onCreateBookmark={handleCreateBookmark}
-            onDeleteBookmark={handleDeleteBookmark}
-            isBookmarked={isBookmarked}
-          />,
+          buttons.length > 0 && (
+            <DashboardHeaderActionDivider key="dashboard-button-divider" />
+          ),
+          !dashboard.archived && (
+            <DashboardBookmark
+              key="dashboard-bookmark-button"
+              dashboard={dashboard}
+              onCreateBookmark={handleCreateBookmark}
+              onDeleteBookmark={handleDeleteBookmark}
+              isBookmarked={isBookmarked}
+            />
+          ),
           <Tooltip key="dashboard-info-button" label={t`More info`}>
             <DashboardHeaderButton
               icon="info"
@@ -591,14 +595,14 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
         ].filter(Boolean),
       );
 
-      if (extraButtons.length > 0) {
+      if (extraButtons.length > 0 && !dashboard.archived) {
         buttons.push(
           <EntityMenu
             key="dashboard-action-menu-button"
             triggerAriaLabel="dashboard-menu-button"
             items={extraButtons}
             triggerIcon="ellipsis"
-            tooltip={t`Move, archive, and more...`}
+            tooltip={t`Move, trash, and more...`}
             // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
             transitionDuration={0}
           />,
@@ -612,7 +616,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
           key="expand"
           aria-label={t`Enter Fullscreen`}
           icon="expand"
-          className="text-brand-hover cursor-pointer"
+          className={CS.cursorPointer}
           onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
         />,
       );
@@ -638,7 +642,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
     <>
       <DashboardHeaderComponent
         headerClassName={CS.wrapper}
-        location={location}
         dashboard={dashboard}
         collection={collection}
         isEditing={isEditing}

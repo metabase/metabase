@@ -7,125 +7,115 @@ redirect_from:
 
 # Caching query results
 
-If your question results don't change frequently, you may want to store the results in Metabase so that the next time you visit the question, Metabase can retrieve the stored results rather than query the database again.
+If your question results don't change frequently, you may want to store the results so that the next time anyone visits the question, Metabase can retrieve the stored results rather than query the database again.
 
-For example, if your data only updates once a day, there's no point in querying the database more than once a day, as they data won't have changed. Returning cached results can be significantly faster, as the database won't have to recompute the results to load your question.
+For example, if your data only updates once a day, there's no point in querying the database more than once a day, as the data won't have changed. Returning cached results can be significantly faster, as the database won't have to recompute the results to load your question.
 
-Metabase gives you the ability to automatically cache question results that meet a [minimum query duration](#minimum-query-duration).
+## Cache invalidation policies
 
-If your questions share a common model, you can enable [model caching](../data-modeling/models.md#model-caching) instead.
+These policies determines how long cached results will be stored.
 
-## Caching doesn't work with data sandboxing
+- [Duration](#duration-caching-policy)
+- [Schedule](#schedule-caching-policy)
+- [Adaptive](#adaptive-caching-policy)
+- [Don't cache results](#dont-cache-results)
 
-Just something to keep in mind: if someone in a [sandboxed](../permissions/data-sandboxes.md) group views a table, Metabase will skip the cached results and query the table directly, returning only the results the person is allowed to see.
+### Duration caching policy
 
-## Enabling global caching
+{% include plans-blockquote.html feature="Duration caching policy" %}
 
-1. Go to **Admin settings** > **Caching** (in the sidebar).
-2. Click the toggle under **Saved Questions**.
+Keep the cache for a number of hours. When someone runs a query, Metabase will first check if it's cached the results. If not, it runs the query and caches the results for as long as you set the duration.
 
-Once you've enabled caching, you can choose when and what to cache from your [caching settings](#caching-settings).
+### Schedule caching policy
 
-By default, questions will get cached once their [average execution time](#average-query-execution-time) meets a [minimum query duration](#minimum-query-duration) of 60 seconds.
+{% include plans-blockquote.html feature="Schedule caching policy" %}
+
+Pick when to regularly invalidate the cache. Metabase will only store results when people run a query, and it will clear the cached results according to the cadence you set here.
+
+You can schedule caching to invalidate:
+
+- Hourly
+- Daily
+- Weekly
+- Monthly
+
+We do not yet support lunar cycles.
+
+### Adaptive caching policy
+
+Use a query’s average execution time to determine how long to cache the query's results.
+
+- **Minimum query duration**: Metabase will cache this question if it has an average query execution time greater than this many seconds.
+- **Multiplier**: Metabase will cache questions with an average query execution time greater than this many seconds. For example, if a question takes on average 10 seconds to return results, and you set a multiplier of 100, Metabase will store the cache for 10 x 100 seconds: 1,000 seconds (~16 minutes).
+
+On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans, you can view querying and caching stats in the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection.
+
+### Don’t cache results
+
+Always re-run the query to refresh results.
+
+## Set caching policies at different levels
+
+You can set up caching at different levels, from largest to smallest scope. Policies set at more restricted scopes override policies set at larger scopes. So a policy set on a question will take precedence over a dashboard, database, or default policy.
+
+- [Setting a default caching policy](#default-caching-policy)
+- [Database caching policy (specific to each connected database)](#database-caching-policy)*
+- [Dashboard caching](#dashboard-caching-policy)*
+- [Question caching](#question-caching-policy)*
+
+_* Denotes [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) features._
+
+### Default caching policy
+
+![Database caching settings in the Admin settings under the Performance tab](./images/data-caching-settings.png)
+
+To set up a default caching policy for your Metabase: Hit Cmd/Ctrl + k to bring up the command palette and search for **Performance**. Or, click through **Gear** settings icon > **Admin settings** > **Performance** > **Database caching settings**.
+
+Click on the button next to **Default policy**, and select a [cache invalidation policy](#cache-invalidation-policies).
+
+### Database caching policy
+
+{% include plans-blockquote.html feature="Database caching" %}
+
+Same as the default caching policy, though you can set a caching policy for specific databases.
+
+### Dashboard caching policy
+
+{% include plans-blockquote.html feature="Dashboard caching" %}
+
+To set a caching policy for a dashboard, you must have [curate access](../permissions/collections.md#curate-access) to the dashboard's collection.
+
+1. Go to your dashboard.
+2. Click on the **info** icon.
+3. Click **Caching policy**.
+4. Select the [caching invalidation policy](#cache-invalidation-policies).
+5. Save your changes.
+
+### Question caching policy
+
+{% include plans-blockquote.html feature="Question caching" %}
+
+To set a caching policy for a question, you must have [curate access](../permissions/collections.md#curate-access) to the question's collection.
+
+1. Go to your question.
+2. Click on the **info** icon.
+3. Click **Caching policy**.
+4. Select the [caching invalidation policy](#cache-invalidation-policies).
+5. Save your changes.
+
+## Clearing the cache
+
+To clear the cache and refresh the results:
+
+- **Questions and dashboards**: Vist the item and click through the **Info > Caching policy > Clear cache** (the "Clear cache" button is at the bottom of the sidebar).
+- **Database**: Click the **Gear** icon and click through **Admin settings** > **Performance** > **Database caching settings**. Select your database and click the **Clear cache** button (at the bottom of the page).
 
 ## Caching location
 
 If you're self-hosting Metabase, cached question results will be saved to your [application database](../installation-and-operation/configuring-application-database.md).
 
-If you're using Metabase Cloud, cached question results will be saved to Metabase's servers in the United States.
+If you're using Metabase Cloud, cached question results will be saved to Metabase's servers in the United States (as our Cloud service manages your application database for you.)
 
-## Last updated at
+## Further reading
 
-Questions that use the cache will display a "last cached at" timestamp in the question's **info** panel.
-
-## Getting fresh results
-
-To override a cached question result, re-run the question using the **refresh** button (counterclockwise arrow).
-
-## Average query execution time
-
-Your Metabase instance keeps track of how long it takes each question to run. The average query execution time is used in your [caching settings](#caching-settings).
-
-On [paid plans](https://www.metabase.com/pricing/), you can view statistics about query execution time from your [auditing tools](../usage-and-performance-tools/audit.md).
-
-## Caching settings
-
-You can tell Metabase when and what to cache from **Admin settings** > **Caching**:
-
-- [Minimum query duration](#minimum-query-duration)
-- [Cache time-to-live (TTL) multiplier](#cache-time-to-live-ttl-multiplier)
-- [Max cache entry size](#max-cache-entry-size)
-
-### Minimum query duration
-
-Metabase uses this number to decide whether a question will be cached or not.
-
-Choose a duration (in seconds) that will trigger the cache. For example, you'd enter "60" if you want to cache all questions that take longer than 1 minute to load ([on average](#average-query-execution-time)).
-
-### Cache time-to-live (TTL) multiplier
-
-The TTL multiplier tells Metabase how long to persist a cached question result:
-
-> Cache lifetime per question = TTL multiplier x [average execution time](#average-query-execution-time) per question
-
-For example, if you enter a TTL multiplier of 10, a question that takes 5 seconds on average will be cached for 50 seconds. A question that takes 10 minutes will be cached for 100 minutes. This way, each question's cache lifetime is proportional to that question's execution time.
-
-### Max cache entry size
-
-To prevent cached results from taking up too much space on your server, you can set the maximum size of the cache (per question) in kilobytes.
-
-## Advanced caching controls
-
-{% include plans-blockquote.html feature="Advanced caching controls" %}
-
-All Metabase editions include global caching controls. On [paid plans](https://www.metabase.com/pricing/), you can override your global [time-to-live (TTL) setting](#cache-time-to-live-ttl-multiplier) to set different cache lifetimes for specific databases, questions, or dashboards.
-
-### Caching per database
-
-This setting tells Metabase how long to keep the cached results from a specific database.
-
-1. Make sure [caching is enabled](#enabling-global-caching).
-2. Go to **Admin settings** > **Databases** and select your database.
-3. Open **Advanced options** and find the **Default result cache duration**.
-4. Click **Custom** and enter a cache duration in hours.
-
-The cache duration setting is useful for databases that take longer to query, or databases that are kept up to date on a special cadence.
-
-This setting will override your [global cache duration](#cache-time-to-live-ttl-multiplier).
-
-### Caching per question
-
-You can tell Metabase how long to keep the cached results for specific questions. You'll only find these cache settings on questions that exceed the [minimum query duration](#minimum-query-duration).
-
-1. Make sure [caching is enabled](#enabling-global-caching).
-2. Go to your question.
-3. Click on the **info** icon.
-4. Click **Cache configuration**.
-5. Enter a cache duration in hours.
-6. Click **Save changes**.
-
-You can use this setting to update questions on the same cadence as your data. For example, if your data gets updated daily, you can set the **Cache configuration** to 24 hours.
-
-If set, your question cache duration will override the:
-
-- [global cache duration](#cache-time-to-live-ttl-multiplier)
-- [database cache duration](#caching-per-database)
-
-### Caching per dashboard
-
-You can tell Metabase how long to keep the cached results for each of the questions on a dashboard.
-
-1. Make sure [caching is enabled](#enabling-global-caching).
-2. Go to your dashboard.
-3. Click on the **info** icon.
-4. Click **Cache configuration**.
-5. Enter a cache duration in hours.
-6. Click **Save changes**.
-
-> This setting won't cache the entire dashboard at once. The dashboard cache duration will only apply to questions that exceed the [minimum query duration](#minimum-query-duration).
-
-If set, your dashboard cache duration will override the:
-
-- [global cache duration](#cache-time-to-live-ttl-multiplier)
-- [database cache duration](#caching-per-database)
-- [question cache duration](#caching-per-question)
+- [Model persistence](../data-modeling/model-persistence.md)

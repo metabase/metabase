@@ -4,14 +4,14 @@ import cx from "classnames";
 import { Component } from "react";
 import ReactDOM from "react-dom";
 
-import styles from "./Legend.module.css";
+import LegendS from "./Legend.module.css";
 import LegendItem from "./LegendItem";
 
 export default class LegendHorizontal extends Component {
   render() {
     const { className, titles, colors, hovered, onHoverChange } = this.props;
     return (
-      <ol className={cx(className, styles.Legend, styles.horizontal)}>
+      <ol className={cx(className, LegendS.Legend, LegendS.horizontal)}>
         {titles.map((title, index) => {
           const isMuted =
             hovered && hovered.index != null && index !== hovered.index;

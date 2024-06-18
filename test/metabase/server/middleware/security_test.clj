@@ -91,3 +91,93 @@
            (is (str/includes? style-src (str "nonce-" nonce))))
           (testing "The same nonce is in the body of the rendered page"
             (is (str/includes? (:body response) nonce))))))))
+
+(deftest test-parse-url
+  (testing "Should parse valid urls"
+    (is (= (mw.security/parse-url "http://example.com") {:protocol "http" :domain "example.com" :port nil}))
+    (is (= (mw.security/parse-url "https://example.com") {:protocol "https" :domain "example.com" :port nil}))
+    (is (= (mw.security/parse-url "http://example.com:8080") {:protocol "http" :domain "example.com" :port "8080"}))
+    (is (= (mw.security/parse-url "example.com:80") {:protocol nil :domain "example.com" :port "80"}))
+    (is (= (mw.security/parse-url "example.com:*") {:protocol nil :domain "example.com" :port "*"})))
+
+  (testing "Should return nil for invalid urls"
+    (is (nil? (mw.security/parse-url "ftp://example.com")))
+    (is (nil? (mw.security/parse-url "://example.com")))
+    (is (nil? (mw.security/parse-url "example:com")))))
+
+(deftest test-parse-approved-origins
+  (testing "Should not break on multiple spaces in a row"
+    (is (= 2 (count (mw.security/parse-approved-origins "example.com      example.org"))))
+    (is (= 2 (count (mw.security/parse-approved-origins "   example.com      example.org   ")))))
+  (testing "Should filter out invalid origins without throwing"
+    (is (= 1 (count (mw.security/parse-approved-origins "example.org ://example.com"))))
+    (is (= 1 (count (mw.security/parse-approved-origins "example.org http:/example.com"))))))
+
+(deftest test-approved-domain?
+  (testing "Exact match"
+    (is (true? (mw.security/approved-domain? "example.com" "example.com")))
+    (is (false? (mw.security/approved-domain? "example.com" "example.org"))))
+
+  (testing "Should support wildcards for subdomains"
+    (is (true? (mw.security/approved-domain? "sub.example.com" "*.example.com")))
+    (is (false? (mw.security/approved-domain? "example.com" "*.example.com")))
+    (is (false? (mw.security/approved-domain? "sub.example.org" "*.example.com"))))
+
+  (testing "Should not allow subdomains if no wildcard is present"
+    (is (false? (mw.security/approved-domain? "sub.example.com" "example.com")))))
+
+(deftest test-approved-protocol?
+  (testing "Exact protocol match"
+    (is (true? (mw.security/approved-protocol? "http" "http")))
+    (is (true? (mw.security/approved-protocol? "https" "https")))
+    (is (false? (mw.security/approved-protocol? "http" "https"))))
+
+  (testing "Nil reference should allow any protocol"
+    (is (true? (mw.security/approved-protocol? "http" nil)))
+    (is (true? (mw.security/approved-protocol? "https" nil)))))
+
+(deftest test-approved-port?
+  (testing "Exact port match"
+    (is (true? (mw.security/approved-port? "80" "80")))
+    (is (false? (mw.security/approved-port? "80" "8080"))))
+
+  (testing "Wildcard port match"
+    (is (true? (mw.security/approved-port? "80" "*")))
+    (is (true? (mw.security/approved-port? "8080" "*")))))
+
+(deftest test-approved-origin?
+  (testing "Should return false if parameters are nil"
+    (is (false? (mw.security/approved-origin? nil "example.com")))
+    (is (false? (mw.security/approved-origin? "example.com" nil))))
+
+  (testing "Approved origins with exact protocol and port match"
+    (let [approved "http://example1.com http://example2.com:3000 https://example3.com"]
+      (is (true? (mw.security/approved-origin? "http://example1.com" approved)))
+      (is (true? (mw.security/approved-origin? "http://example2.com:3000" approved)))
+      (is (true? (mw.security/approved-origin? "https://example3.com" approved)))))
+
+  (testing "Different protocol should fail"
+    (is (false? (mw.security/approved-origin? "https://example1.com" "http://example1.com"))))
+
+  (testing "Origins without protocol should accept both http and https"
+    (let [approved "example.com"]
+      (is (true? (mw.security/approved-origin? "http://example.com" approved)))
+      (is (true? (mw.security/approved-origin? "https://example.com" approved)))))
+
+  (testing "Different ports should fail"
+    (is (false? (mw.security/approved-origin? "http://example.com:3000" "http://example.com:3003"))))
+
+  (testing "Should allow anything with *"
+    (is (true? (mw.security/approved-origin? "http://example.com" "*")))
+    (is (true? (mw.security/approved-origin? "http://example.com" "http://somethingelse.com *"))))
+
+  (testing "Should allow subdomains when *.example.com"
+    (is (true? (mw.security/approved-origin? "http://subdomain.example.com" "*.example.com")))
+    (is (false? (mw.security/approved-origin? "http://subdomain.example.com" "*.somethingelse.com"))))
+
+  (testing "Should allow any port with example.com:*"
+    (is (true? (mw.security/approved-origin? "http://example.com" "example.com:*")))
+    (is (true? (mw.security/approved-origin? "http://example.com:8080" "example.com:*"))))
+
+  (testing "Should handle invalid origins"
+    (is (true? (mw.security/approved-origin? "http://example.com" "  fpt://something http://example.com ://123  4")))))

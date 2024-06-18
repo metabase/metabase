@@ -1,41 +1,23 @@
-import { useMemo } from "react";
 import { push } from "react-router-redux";
 
-import { useRecentItemListQuery } from "metabase/common/hooks";
-import RecentItems from "metabase/entities/recent-items";
+import { useListRecentsQuery } from "metabase/api";
+import { getName } from "metabase/lib/name";
 import { useDispatch } from "metabase/lib/redux";
 import { RecentsListContent } from "metabase/nav/components/search/RecentsList/RecentsListContent";
-import {
-  getItemName,
-  getItemUrl,
-} from "metabase/nav/components/search/RecentsList/util";
-import type { IconName } from "metabase/ui";
 import { Paper } from "metabase/ui";
 import type { RecentItem, UnrestrictedLinkEntity } from "metabase-types/api";
+
+import { getItemUrl, recentsFilter } from "./util";
 
 type RecentsListProps = {
   onClick?: (elem: UnrestrictedLinkEntity) => void;
   className?: string;
 };
 
-export interface WrappedRecentItem extends RecentItem {
-  getUrl: () => string;
-  getIcon: () => {
-    name: IconName;
-    size?: number;
-    width?: number;
-    height?: number;
-  };
-}
-
 export const RecentsList = ({ onClick, className }: RecentsListProps) => {
-  const { data = [], isLoading: isRecentsListLoading } = useRecentItemListQuery(
-    { reload: true },
-  );
-
-  const wrappedResults: WrappedRecentItem[] = useMemo(
-    () => data.map(item => RecentItems.wrapEntity(item)),
-    [data],
+  const { data = [], isLoading: isRecentsListLoading } = useListRecentsQuery(
+    undefined,
+    { refetchOnMountOrArgChange: true },
   );
 
   const dispatch = useDispatch();
@@ -50,10 +32,9 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
   const onContainerClick = (item: RecentItem) => {
     if (onClick) {
       onClick({
-        ...item.model_object,
-        model: item.model,
-        name: getItemName(item),
-        id: item.model_id,
+        ...item,
+        description: item.description ?? undefined,
+        name: getName(item),
       });
     } else {
       onChangeLocation(item);
@@ -64,7 +45,7 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
     <Paper withBorder className={className}>
       <RecentsListContent
         isLoading={isRecentsListLoading}
-        results={wrappedResults}
+        results={recentsFilter(data)}
         onClick={onContainerClick}
       />
     </Paper>

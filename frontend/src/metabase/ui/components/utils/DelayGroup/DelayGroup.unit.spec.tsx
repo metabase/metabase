@@ -29,6 +29,10 @@ describe("DelayGroup", () => {
   it("should be delayed by default and only remove delay after a timeout", async () => {
     jest.useFakeTimers();
 
+    const user = userEvent.setup({
+      advanceTimers: jest.advanceTimersByTime,
+    });
+
     const timeout = 500;
     setup({ timeout });
 
@@ -36,18 +40,21 @@ describe("DelayGroup", () => {
 
     expect(button).toHaveTextContent("delay: true");
 
-    userEvent.hover(button);
+    await user.hover(button);
+
     expect(button).toHaveTextContent("delay: false");
 
-    userEvent.unhover(button);
+    await user.unhover(button);
     expect(button).toHaveTextContent("delay: false");
 
     act(function () {
       jest.advanceTimersByTime(timeout / 2);
-      expect(button).toHaveTextContent("delay: false");
-
-      jest.advanceTimersByTime(timeout / 2 + 1);
-      expect(button).toHaveTextContent("delay: true");
     });
+    expect(button).toHaveTextContent("delay: false");
+
+    act(function () {
+      jest.advanceTimersByTime(timeout / 2 + 1);
+    });
+    expect(button).toHaveTextContent("delay: true");
   });
 });

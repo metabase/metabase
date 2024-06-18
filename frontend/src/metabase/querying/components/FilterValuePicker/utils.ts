@@ -1,7 +1,7 @@
-import type { SelectItem } from "metabase/ui";
+import type { SelectOption } from "metabase/ui";
 import type { FieldValuesSearchInfo } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import type { FieldValue, FieldValuesResult } from "metabase-types/api";
+import type { FieldValue, GetFieldValuesResponse } from "metabase-types/api";
 
 export function canLoadFieldValues({
   fieldId,
@@ -13,13 +13,13 @@ export function canLoadFieldValues({
 export function canListFieldValues({
   values,
   has_more_values,
-}: FieldValuesResult): boolean {
+}: GetFieldValuesResponse): boolean {
   return values.length > 0 && !has_more_values;
 }
 
 export function canSearchFieldValues(
   { fieldId, searchFieldId, hasFieldValues }: FieldValuesSearchInfo,
-  fieldData: FieldValuesResult | undefined,
+  fieldData: GetFieldValuesResponse | undefined,
 ): boolean {
   return (
     fieldId != null &&
@@ -29,7 +29,7 @@ export function canSearchFieldValues(
   );
 }
 
-export function getFieldOptions(fieldValues: FieldValue[]): SelectItem[] {
+export function getFieldOptions(fieldValues: FieldValue[]): SelectOption[] {
   return fieldValues
     .filter(([value]) => value != null)
     .map(([value, label = value]) => ({
@@ -38,7 +38,7 @@ export function getFieldOptions(fieldValues: FieldValue[]): SelectItem[] {
     }));
 }
 
-function getSelectedOptions(selectedValues: string[]): SelectItem[] {
+function getSelectedOptions(selectedValues: string[]): SelectOption[] {
   return selectedValues.map(value => ({
     value,
   }));
@@ -48,7 +48,7 @@ export function getEffectiveOptions(
   fieldValues: FieldValue[],
   selectedValues: string[],
   elevatedValues: string[] = [],
-): SelectItem[] {
+): SelectOption[] {
   const options = [
     ...getSelectedOptions(elevatedValues),
     ...getFieldOptions(fieldValues),

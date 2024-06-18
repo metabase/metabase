@@ -44,7 +44,7 @@ describe("DataUsageStep", () => {
 
     const toggle = screen.getByRole("switch", { name: /Allow Metabase/ });
     expect(toggle).toBeChecked();
-    userEvent.click(toggle);
+    await userEvent.click(toggle);
 
     await waitFor(() => {
       expect(fetchMock.called(TRACKING_PATH, { method: "PUT" })).toBeTruthy();
@@ -59,7 +59,7 @@ describe("DataUsageStep", () => {
 
     const toggle = screen.getByRole("switch", { name: /Allow Metabase/ });
     expect(toggle).toBeChecked();
-    userEvent.click(toggle);
+    await userEvent.click(toggle);
 
     await waitFor(() => {
       expect(fetchMock.called(TRACKING_PATH, { method: "PUT" })).toBeTruthy();

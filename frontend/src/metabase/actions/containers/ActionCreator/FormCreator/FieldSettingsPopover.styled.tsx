@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
@@ -10,7 +9,7 @@ export const SettingsPopoverBody = styled.div`
 
 export const SectionLabel = styled.label`
   display: block;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-weight: bold;
   padding-left: ${space(0)};
   margin-bottom: ${space(1)};
@@ -21,7 +20,7 @@ export const RequiredToggleLabel = styled.label`
 `;
 
 export const Divider = styled.div`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   margin: ${space(2)} 0;
 `;
 
@@ -34,8 +33,8 @@ export const ToggleContainer = styled.div`
 `;
 
 export const SettingsTriggerIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

@@ -97,6 +97,7 @@ const NewItemMenu = ({
         action: () => dispatch(setOpenModal("collection")),
       },
     );
+
     if (hasNativeWrite) {
       const collectionQuery = collectionId
         ? `?collectionId=${collectionId}`
@@ -118,6 +119,19 @@ const NewItemMenu = ({
       });
     }
 
+    if (hasDataAccess) {
+      items.push({
+        title: t`Metric`,
+        icon: "metric",
+        link: Urls.newQuestion({
+          mode: "query",
+          cardType: "metric",
+          collectionId,
+        }),
+        onClose: onCloseNavbar,
+      });
+    }
+
     return items;
   }, [
     hasDataAccess,
@@ -127,8 +141,8 @@ const NewItemMenu = ({
     collectionId,
     onCloseNavbar,
     hasDatabaseWithJsonEngine,
-    lastUsedDatabaseId,
     dispatch,
+    lastUsedDatabaseId,
   ]);
 
   return (

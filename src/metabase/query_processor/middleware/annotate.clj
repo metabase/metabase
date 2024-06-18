@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.analyze :as analyze]
    [metabase.driver.common :as driver.common]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -13,6 +14,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.humanization :as humanization]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -20,11 +22,9 @@
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
-   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli :as mu]))
 
 (def ^:private Col
   "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."
@@ -35,7 +35,7 @@
    [:name         :string]
    [:display_name :string]
    ;; type of the Field. For Native queries we look at the values in the first 100 rows to make an educated guess
-   [:base_type    ms/FieldType]
+   [:base_type    ::lib.schema.common/base-type]
    ;; effective_type, coercion, etc don't go here. probably best to rename base_type to effective type in the return
    ;; from the metadata but that's for another day
    ;; where this column came from in the original query.
@@ -79,7 +79,7 @@
                   :type             qp.error-type/qp}))))))
 
 (defn- annotate-native-cols [cols]
-  (let [unique-name-fn (mbql.u/unique-name-generator)]
+  (let [unique-name-fn (lib.util/unique-name-generator (qp.store/metadata-provider))]
     (vec (for [{col-name :name, base-type :base_type, :as driver-col-metadata} cols]
            (let [col-name (name col-name)]
              (merge
@@ -105,7 +105,7 @@
 
 (mu/defn ^:private join-with-alias :- [:maybe mbql.s/Join]
   [{:keys [joins source-query]} :- :map
-   join-alias                   :- ms/NonBlankString]
+   join-alias                   :- ::lib.schema.common/non-blank-string]
   (or (some
        (fn [{:keys [alias], :as join}]
          (when (= alias join-alias)
@@ -207,15 +207,29 @@
     :else
     {:base_type :type/*}))
 
+(defn- fe-friendly-expression-ref
+  "Apparently the FE viz code breaks for pivot queries if `field_ref` comes back with extra 'non-traditional' MLv2
+  info (`:base-type` or `:effective-type` in `:expression`), so we better just strip this info out to be sure. If you
+  don't believe me remove this and run `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` and you
+  will see."
+  [a-ref]
+  (let [a-ref (mbql.u/remove-namespaced-options a-ref)]
+    (lib.util.match/replace a-ref
+      [:expression expression-name (opts :guard (some-fn :base-type :effective-type))]
+      (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
+        (if (seq fe-friendly-opts)
+          [:expression expression-name fe-friendly-opts]
+          [:expression expression-name])))))
+
 (defn- col-info-for-expression
-  [inner-query [_ expression-name :as clause]]
+  [inner-query [_expression expression-name :as clause]]
   (merge
    (infer-expression-type (mbql.u/expression-with-name inner-query expression-name))
    {:name            expression-name
     :display_name    expression-name
     ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
     :expression_name expression-name
-    :field_ref       clause}))
+    :field_ref       (fe-friendly-expression-ref clause)}))
 
 (mu/defn ^:private col-info-for-field-clause*
   [{:keys [source-metadata], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
@@ -353,16 +367,19 @@
           (update-keys u/->snake_case_en)
           (dissoc :lib/type)))))
 
+(def ^:private LegacyInnerQuery
+  [:and
+   :map
+   [:fn
+    {:error/message "legacy inner-query with :source-table or :source-query"}
+    (some-fn :source-table :source-query)]])
+
 (mu/defn aggregation-name :- ::lib.schema.common/non-blank-string
   "Return an appropriate aggregation name/alias *used inside a query* for an `:aggregation` subclause (an aggregation
   or expression). Takes an options map as schema won't support passing keypairs directly as a varargs.
 
   These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
-  [inner-query :- [:and
-                   :map
-                   [:fn
-                    {:error/message "legacy inner-query with :source-table or :source-query"}
-                    (some-fn :source-table :source-query)]]
+  [inner-query :- LegacyInnerQuery
    ag-clause]
   (lib/column-name (mlv2-query inner-query) (lib.convert/->pMBQL ag-clause)))
 
@@ -482,7 +499,7 @@
       cols)))
 
 (defn- restore-cumulative-aggregations
-  [{aggregations :aggregation breakouts :breakout :as inner-query} replaced-indices]
+  [{aggregations :aggregation breakouts :breakout :as inner-query} replaced-indexes]
   (let [offset   (count breakouts)
         restored (reduce (fn [aggregations index]
                            (lib.util.match/replace-in aggregations [(- index offset)]
@@ -490,15 +507,15 @@
                              [:count field] [:cum-count field]
                              [:sum field]   [:cum-sum field]))
                          (vec aggregations)
-                         replaced-indices)]
+                         replaced-indexes)]
     (assoc inner-query :aggregation restored)))
 
 (defmethod column-info :query
   [{inner-query :query,
-    replaced-indices :metabase.query-processor.middleware.cumulative-aggregations/replaced-indices}
+    replaced-indexes :metabase.query-processor.middleware.cumulative-aggregations/replaced-indexes}
    results]
   (u/prog1 (mbql-cols (cond-> inner-query
-                        replaced-indices (restore-cumulative-aggregations replaced-indices))
+                        replaced-indexes (restore-cumulative-aggregations replaced-indexes))
                       results)
     (check-correct-number-of-columns-returned <> results)))
 
@@ -575,11 +592,11 @@
   If the driver returned a base type more specific than :type/*, use that; otherwise look at the sample
   of rows and infer the base type based on the classes of the values"
   [{:keys [cols]}]
-  (apply fingerprinters/col-wise
+  (apply analyze/col-wise
          (for [{driver-base-type :base_type} cols]
            (if (contains? #{nil :type/*} driver-base-type)
              (driver.common/values->base-type)
-             (fingerprinters/constant-fingerprinter driver-base-type)))))
+             (analyze/constant-fingerprinter driver-base-type)))))
 
 (defn- add-column-info-xform
   [query metadata rf]

@@ -34,6 +34,7 @@ const setupEnterprise = (opts?: SetupOpts) => {
 };
 
 const sampleToken = "a".repeat(64);
+const airgapToken = "airgap_toucan";
 
 describe("setup (EE, no token)", () => {
   beforeEach(() => {
@@ -42,7 +43,7 @@ describe("setup (EE, no token)", () => {
 
   it("default step order should be correct, with the commercial step in place", async () => {
     await setupEnterprise();
-    skipWelcomeScreen();
+    await skipWelcomeScreen();
     expectSectionToHaveLabel("What's your preferred language?", "1");
     expectSectionToHaveLabel("What should we call you?", "2");
     expectSectionToHaveLabel("What will you use Metabase for?", "3");
@@ -56,11 +57,11 @@ describe("setup (EE, no token)", () => {
   describe("License activation step", () => {
     async function setupForLicenseStep() {
       await setupEnterprise();
-      skipWelcomeScreen();
-      skipLanguageStep();
+      await skipWelcomeScreen();
+      await skipLanguageStep();
       await submitUserInfoStep();
-      selectUsageReason("embedding"); // to skip the db connection step
-      clickNextStep();
+      await selectUsageReason("embedding"); // to skip the db connection step
+      await clickNextStep();
 
       expect(
         await screen.findByText(
@@ -73,30 +74,34 @@ describe("setup (EE, no token)", () => {
       await setupForLicenseStep();
       setupForTokenCheckEndpoint({ valid: false });
 
-      inputToken(sampleToken);
+      await inputToken(sampleToken);
       await submit();
 
       expect(await errMsg()).toBeInTheDocument();
     });
 
-    it("should have the Activate button disabled when the token is not 64 characters long", async () => {
+    it("should have the Activate button disabled when the token is not 64 characters long (unless the token begins with 'airgap_')", async () => {
       await setupForLicenseStep();
 
-      inputToken("a".repeat(63));
+      await inputToken("a".repeat(63));
       expect(await submitBtn()).toBeDisabled();
 
-      userEvent.type(input(), "a"); //64 characters
+      await userEvent.type(input(), "a"); //64 characters
       expect(await submitBtn()).toBeEnabled();
 
-      userEvent.type(input(), "a"); //65 characters
+      await userEvent.type(input(), "a"); //65 characters
       expect(await submitBtn()).toBeDisabled();
+
+      await userEvent.clear(input());
+      await userEvent.type(input(), "airgap_");
+      expect(await submitBtn()).toBeEnabled();
     });
 
     it("should ignore whitespace around the token", async () => {
       await setupForLicenseStep();
       setupForTokenCheckEndpoint({ valid: true });
 
-      inputToken(`    ${sampleToken}   `);
+      await inputToken(`    ${sampleToken}   `);
       expect(input()).toHaveValue(sampleToken);
       expect(await submitBtn()).toBeEnabled();
       const submitCall = await submit();
@@ -106,12 +111,28 @@ describe("setup (EE, no token)", () => {
       });
     });
 
-    it("should go to the next step when activating a valid token", async () => {
+    it("should go to the next step when activating a typical, valid token", async () => {
       await setupForLicenseStep();
 
       setupForTokenCheckEndpoint({ valid: true });
 
-      inputToken(sampleToken);
+      await inputToken(sampleToken);
+      await submit();
+
+      expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(true);
+
+      expect(getSection("Usage data preferences")).toHaveAttribute(
+        "aria-current",
+        "step",
+      );
+    });
+
+    it("should go to the next step when activating an airgap-specific token", async () => {
+      await setupForLicenseStep();
+
+      setupForTokenCheckEndpoint({ valid: true });
+
+      await inputToken(airgapToken);
       await submit();
 
       expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(true);
@@ -125,7 +146,7 @@ describe("setup (EE, no token)", () => {
     it("should be possible to skip the step without a token", async () => {
       await setupForLicenseStep();
 
-      clickOnSkip();
+      await clickOnSkip();
 
       expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(false);
 
@@ -139,7 +160,7 @@ describe("setup (EE, no token)", () => {
       await setupForLicenseStep();
       setupForTokenCheckEndpoint({ valid: true });
 
-      inputToken(sampleToken);
+      await inputToken(sampleToken);
       const submitCall = await submit();
 
       expect(await submitCall?.request?.json()).toEqual({
@@ -151,7 +172,8 @@ describe("setup (EE, no token)", () => {
 
 const input = () => screen.getByRole("textbox", { name: "Token" });
 
-const inputToken = (token: string) => userEvent.paste(input(), token);
+const inputToken = async (token: string) =>
+  await userEvent.type(input(), token);
 
 const errMsg = () => screen.findByText(/This token doesn’t seem to be valid/);
 
@@ -165,5 +187,5 @@ const submit = async () => {
   return fetchMock.lastCall(settingEndpoint);
 };
 
-const clickOnSkip = () =>
-  userEvent.click(screen.getByRole("button", { name: "Skip" }));
+const clickOnSkip = async () =>
+  await userEvent.click(screen.getByRole("button", { name: "Skip" }));

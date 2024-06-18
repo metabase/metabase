@@ -35,15 +35,15 @@ describe("DashboardInfoSidebar", () => {
     expect(screen.getByText("About")).toBeInTheDocument();
   });
 
-  it("should allow to set description", () => {
+  it("should allow to set description", async () => {
     const { setDashboardAttribute } = setup();
 
-    userEvent.click(screen.getByTestId("editable-text"));
-    userEvent.type(
+    await userEvent.click(screen.getByTestId("editable-text"));
+    await userEvent.type(
       screen.getByPlaceholderText("Add description"),
       "some description",
     );
-    userEvent.tab();
+    await userEvent.tab();
 
     expect(setDashboardAttribute).toHaveBeenCalledWith(
       "description",
@@ -51,14 +51,14 @@ describe("DashboardInfoSidebar", () => {
     );
   });
 
-  it("should allow to clear description", () => {
+  it("should allow to clear description", async () => {
     const { setDashboardAttribute } = setup({
       dashboard: createMockDashboard({ description: "some description" }),
     });
 
-    userEvent.click(screen.getByTestId("editable-text"));
-    userEvent.clear(screen.getByPlaceholderText("Add description"));
-    userEvent.tab();
+    await userEvent.click(screen.getByTestId("editable-text"));
+    await userEvent.clear(screen.getByPlaceholderText("Add description"));
+    await userEvent.tab();
 
     expect(setDashboardAttribute).toHaveBeenCalledWith("description", "");
   });

@@ -92,6 +92,9 @@ const enableImplicitActionsForModel =
 const CREATE_PUBLIC_LINK = "metabase/entities/actions/CREATE_PUBLIC_LINK";
 const DELETE_PUBLIC_LINK = "metabase/entities/actions/DELETE_PUBLIC_LINK";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Actions = createEntity({
   name: "actions",
   nameOne: "action",

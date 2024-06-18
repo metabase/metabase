@@ -21,7 +21,7 @@ import { getSetting } from "metabase/selectors/settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { Card, Collection, WritebackAction } from "metabase-types/api";
+import type { Card, CollectionId, WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 type OwnProps = {
@@ -51,7 +51,7 @@ type DispatchProps = {
   onChangeModel: (card: Card) => void;
   onChangeCollection: (
     card: Card,
-    collection: Collection,
+    collection: { id: CollectionId },
     opts: ToastOpts,
   ) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
@@ -145,7 +145,7 @@ function ModelDetailPage({
   }, [model, tab, hasActionsTab, onChangeLocation]);
 
   const handleNameChange = useCallback(
-    name => {
+    (name: string | undefined) => {
       if (name && name !== model.displayName()) {
         const nextCard = model.setDisplayName(name).card();
         onChangeModel(nextCard as Card);
@@ -155,7 +155,7 @@ function ModelDetailPage({
   );
 
   const handleDescriptionChange = useCallback(
-    description => {
+    (description?: string | null) => {
       if (model.description() !== description) {
         const nextCard = model.setDescription(description).card();
         onChangeModel(nextCard as Card);
@@ -165,7 +165,7 @@ function ModelDetailPage({
   );
 
   const handleCollectionChange = useCallback(
-    (collection: Collection) => {
+    (collection: { id: CollectionId }) => {
       onChangeCollection(model.card() as Card, collection, {
         notify: {
           message: (

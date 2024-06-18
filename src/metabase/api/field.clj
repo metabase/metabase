@@ -21,7 +21,6 @@
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.types :as types]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -43,16 +42,14 @@
   "Schema for a valid `Field` visibility type."
   (into [:enum] (map name field/visibility-types)))
 
-(api/defendpoint GET "/:id"
+(defn get-field
   "Get `Field` with ID."
-  [id include_editable_data_model]
-  {id                          ms/PositiveInt
-   include_editable_data_model ms/BooleanValue}
-  (let [field                       (-> (api/check-404 (t2/select-one Field :id id))
-                                        (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
-        field                       (if include_editable_data_model
-                                      (field/hydrate-target-with-write-perms field)
-                                      (t2/hydrate field :target))]
+  [id {:keys [include-editable-data-model?]}]
+  (let [field (-> (api/check-404 (t2/select-one Field :id id))
+                  (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
+        field (if include-editable-data-model?
+                (field/hydrate-target-with-write-perms field)
+                (t2/hydrate field :target))]
     ;; Normal read perms = normal access.
     ;;
     ;; There's also a special case where we allow you to fetch a Field even if you don't have full read permissions for
@@ -61,11 +58,25 @@
     ;; differently in other endpoints such as the FieldValues fetching endpoint.
     ;;
     ;; Check for permissions and throw 403 if we don't have them...
-    (if include_editable_data_model
+    (if include-editable-data-model?
       (api/write-check Table (:table_id field))
       (api/check-403 (mi/can-read? field)))
     ;; ...but if we do, return the Field <3
     field))
+
+(defn get-fields
+  "Get `Field`s with IDs in `ids`."
+  [ids]
+  (when (seq ids)
+    (-> (filter mi/can-read? (t2/select Field :id [:in ids]))
+        (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))))
+
+(api/defendpoint GET "/:id"
+  "Get `Field` with ID."
+  [id include_editable_data_model]
+  {id                          ms/PositiveInt
+   include_editable_data_model ms/BooleanValue}
+  (get-field id {:include-editable-data-model? include_editable_data_model}))
 
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
@@ -351,26 +362,6 @@
     (t2/select-one Field :id fk-target-field-id)
     field))
 
-(defn- search-values-query
-  "Generate the MBQL query used to power FieldValues search in [[search-values]] below. The actual query generated
-  differs slightly based on whether the two Fields are the same Field.
-
-  Note: the generated MBQL query assume that both `field` and `search-field` are from the same table."
-  [field search-field value limit]
-  {:database (db-id field)
-   :type     :query
-   :query    {:source-table (table-id field)
-              :filter       (when (some? value)
-                              [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}])
-              ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
-              ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
-              ;; identifiers/aliases
-              :breakout     (if (= (u/the-id field) (u/the-id search-field))
-                              [[:field (u/the-id field) nil]]
-                              [[:field (u/the-id field) nil]
-                               [:field (u/the-id search-field) nil]])
-              :limit        limit}})
-
 (mu/defn search-values :- [:maybe ms/FieldValuesList]
   "Search for values of `search-field` that contain `value` (up to `limit`, if specified), and return pairs like
 
@@ -398,12 +389,11 @@
    (try
     (let [field        (follow-fks field)
           search-field (follow-fks search-field)
-          limit        (or maybe-limit default-max-field-search-limit)
-          results      (qp/process-query (search-values-query field search-field value limit))]
-      (get-in results [:data :rows]))
+          limit        (or maybe-limit default-max-field-search-limit)]
+      (metadata-queries/search-values-query field search-field value limit))
     (catch Throwable e
-      (log/error e (trs "Error searching field values"))
-      nil))))
+      (log/error e "Error searching field values")
+      []))))
 
 (api/defendpoint GET "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
@@ -444,7 +434,7 @@
       (first (get-in results [:data :rows])))
     ;; as with fn above this error can usually be safely ignored which is why log level is log/debug
     (catch Throwable e
-      (log/debug e (trs "Error searching for remapping"))
+      (log/debug e "Error searching for remapping")
       nil)))
 
 (defn parse-query-param-value-for-field

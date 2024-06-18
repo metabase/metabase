@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-dataset: false
 cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
@@ -93,7 +92,60 @@ dataset_query:
         - 0
     source-table: P6Ityjj7igswKh4NgZZjz
   type: query
-result_metadata: null
+result_metadata:
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_view_log
+    - entity_id
+  - base-type: type/Integer
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_view_log
+  - entity_id
+  name: entity_id
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Content - Entity Qualified → Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - name
+  - base-type: type/Text
+    join-alias: Content - Entity Qualified
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - name
+  name: name
+  semantic_type: type/Name
+  settings: null
+  visibility_type: normal
+- base_type: type/BigInteger
+  display_name: Count
+  effective_type: type/BigInteger
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
 visualization_settings:
   column_settings:
     '["name","count"]':
@@ -147,5 +199,6 @@ serdes/meta:
   label: most_viewed_cards
   model: Card
 initially_published_at: null
+last_used_at: null
 metabase_version: null
 type: question

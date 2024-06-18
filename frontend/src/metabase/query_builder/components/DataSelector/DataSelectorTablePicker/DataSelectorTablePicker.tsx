@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
@@ -7,6 +8,7 @@ import {
 } from "metabase/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import AccordionList from "metabase/core/components/AccordionList";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import MetabaseSettings from "metabase/lib/settings";
 import { isSyncCompleted } from "metabase/lib/syncing";
@@ -82,6 +84,7 @@ const DataSelectorTablePicker = ({
           database: selectedDatabase,
         })),
         loading: tables.length === 0 && isLoading,
+        type: "back",
       },
     ];
 
@@ -92,10 +95,7 @@ const DataSelectorTablePicker = ({
       table && selectedTable ? table.id === selectedTable.id : false;
 
     const renderItemIcon = ({ table }: { table: Table }) =>
-      table ? <Icon name="table" /> : null;
-
-    const renderItemExtra = ({ table }: { table: Table }) =>
-      table && <TableInfoIcon table={table} position="right" showIfEmpty />;
+      table ? <TableInfoIcon table={table} position="top-start" /> : null;
 
     const renderItemWrapper = (content: ReactNode) => (
       <HoverParent>{content}</HoverParent>
@@ -114,7 +114,7 @@ const DataSelectorTablePicker = ({
           <AccordionList
             id="TablePicker"
             key="tablePicker"
-            className="text-brand"
+            className={CS.textBrand}
             hasInitialFocus={hasInitialFocus}
             sections={sections}
             maxHeight={Infinity}
@@ -124,7 +124,6 @@ const DataSelectorTablePicker = ({
             showSpinner={showSpinner}
             itemIsSelected={checkIfItemIsSelected}
             itemIsClickable={checkIfItemIsClickable}
-            renderItemExtra={renderItemExtra}
             renderItemIcon={renderItemIcon}
             renderItemWrapper={renderItemWrapper}
             showItemArrows={hasNextStep}
@@ -152,7 +151,7 @@ const LinkToDocsOnReferencingSavedQuestionsInQueries = () => (
     ta="center"
     bg={color("bg-light")}
     style={{
-      borderTop: `1px solid ${color("border")}`,
+      borderTop: "1px solid var(--mb-color-border)",
     }}
   >
     {t`Is a question missing?`}
@@ -162,7 +161,7 @@ const LinkToDocsOnReferencingSavedQuestionsInQueries = () => (
         "questions/native-editor/referencing-saved-questions-in-queries",
       )}
       target="_blank"
-      className="block link"
+      className={cx(CS.block, CS.link)}
     >
       {t`Learn more about nested queries`}
     </ExternalLink>

@@ -1,7 +1,9 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { isElementOfType } from "react-dom/test-utils";
 
+import { mockSettings } from "__support__/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import Link from "metabase/core/components/Link";
 import {
   capitalize,
   formatNumber,
@@ -14,8 +16,15 @@ import {
   getCurrencySymbol,
 } from "metabase/lib/formatting";
 import { TYPE } from "metabase-lib/v1/types/constants";
+import { createMockColumn } from "metabase-types/api/mocks";
+
+const SITE_URL = "http://localhost:3000";
 
 describe("formatting", () => {
+  beforeAll(() => {
+    mockSettings({ site_url: SITE_URL });
+  });
+
   describe("capitalize", () => {
     it("capitalizes a single word", () => {
       expect(capitalize("hello")).toBe("Hello");
@@ -246,11 +255,40 @@ describe("formatting", () => {
         }),
       ).toEqual("122.41940000° W");
     });
-    it("should return a component for links in jsx + rich mode", () => {
+    it("should return the component for external links in jsx + rich mode", () => {
       expect(
         isElementOfType(
           formatValue("http://metabase.com/", { jsx: true, rich: true }),
           ExternalLink,
+        ),
+      ).toEqual(true);
+    });
+    it("should return a component for internal links in jsx + rich mode", () => {
+      expect(
+        isElementOfType(formatValue(SITE_URL, { jsx: true, rich: true }), Link),
+      ).toBe(true);
+    });
+    it("should return a component for relative links in jsx + rich mode", () => {
+      const column = createMockColumn({
+        name: "column_name",
+        base_type: "type/Text",
+        effective_type: "type/Text",
+        semantic_type: "type/URL",
+      });
+      expect(
+        isElementOfType(
+          formatValue("/question/12", {
+            jsx: true,
+            rich: true,
+            view_as: "link",
+            link_url: "{{column_name}}",
+            clicked: {
+              value: "/question/12",
+              column: column,
+              data: [{ value: "question/12", col: column }],
+            },
+          }),
+          Link,
         ),
       ).toEqual(true);
     });
@@ -268,8 +306,8 @@ describe("formatting", () => {
       });
       // it's not actually a link
       expect(isElementOfType(formatted, ExternalLink)).toEqual(false);
-      // but it's formatted as a link
-      expect(formatted.props.className).toEqual("link link--wrappable");
+      // expect the text to be in a div (which has link formatting) rather than ExternalLink
+      expect(formatted.props["data-testid"]).toEqual("link-formatted-text");
     });
     it("should render image", () => {
       const formatted = formatValue("http://metabase.com/logo.png", {
@@ -498,8 +536,8 @@ describe("formatting", () => {
 
         // it is not a link set on the question level
         expect(isElementOfType(formatted, ExternalLink)).toEqual(false);
-        // it is formatted as a link cell for the dashboard level click behavior
-        expect(formatted.props.className).toEqual("link link--wrappable");
+        // expect the text to be in a div (which has link formatting) rather than ExternalLink
+        expect(formatted.props["data-testid"]).toEqual("link-formatted-text");
       });
     });
 

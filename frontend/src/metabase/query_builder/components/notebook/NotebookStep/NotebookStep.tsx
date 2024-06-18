@@ -4,11 +4,11 @@ import { t } from "ttag";
 
 import ExpandingContent from "metabase/components/ExpandingContent";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { color as c } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 import type { Query } from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 
 import NotebookStepPreview from "../NotebookStepPreview";
 import type {
@@ -18,23 +18,22 @@ import type {
 
 import ActionButton from "./ActionButton";
 import {
+  PreviewButton,
   StepActionsContainer,
   StepBody,
+  StepButtonContainer,
   StepContent,
   StepHeader,
-  StepButtonContainer,
   StepRoot,
-  PreviewButton,
 } from "./NotebookStep.styled";
-import { STEP_UI } from "./steps";
+import { getStepUIConfig } from "./steps";
 
 function hasLargeButton(action: NotebookStepAction) {
-  return !STEP_UI[action.type].compact;
+  return !getStepUIConfig(action.type)?.compact;
 }
 
 interface NotebookStepProps {
   step: INotebookStep;
-  sourceQuestion?: Question;
   isLastStep: boolean;
   isLastOpened: boolean;
   reportTimezone: string;
@@ -45,7 +44,6 @@ interface NotebookStepProps {
 
 function NotebookStep({
   step,
-  sourceQuestion,
   isLastStep,
   isLastOpened,
   reportTimezone,
@@ -63,17 +61,21 @@ function NotebookStep({
 
     actions.push(
       ...step.actions.map(action => {
-        const stepUi = STEP_UI[action.type];
+        const stepUi = getStepUIConfig(action.type);
+        const title = stepUi.title;
         return {
           priority: stepUi.priority,
           button: (
             <ActionButton
-              key={`actionButton_${stepUi.title}`}
-              className={cx({ "mr2 mt2": isLastStep, mr1: !isLastStep })}
-              color={stepUi.getColor()}
+              key={`actionButton_${title}`}
+              className={cx({
+                [cx(CS.mr2, CS.mt2)]: isLastStep,
+                [CS.mr1]: !isLastStep,
+              })}
               large={hasLargeActionButtons}
               {...stepUi}
-              aria-label={stepUi.title}
+              title={title}
+              aria-label={title}
               onClick={() => action.action({ openStep })}
             />
           ),
@@ -99,26 +101,30 @@ function NotebookStep({
 
   const {
     title,
-    getColor,
+    color,
     component: NotebookStepComponent,
-  } = STEP_UI[step.type] || {};
+  } = getStepUIConfig(step.type) || {};
 
-  const color = getColor();
-  const canPreview = Boolean(step.getPreviewQuery);
+  const canPreview = step.previewQuery != null;
   const hasPreviewButton = !isPreviewOpen && canPreview;
-  const canRevert = typeof step.revert === "function" && !readOnly;
+  const canRevert = step.revert != null && !readOnly;
 
   return (
     <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
       <StepRoot
-        className="hover-parent hover--visibility"
+        className={cx(CS.hoverParent, CS.hoverVisibility)}
         data-testid={step.testID}
       >
         <StepHeader color={color}>
           {title}
           {canRevert && (
             <IconButtonWrapper
-              className="ml-auto text-light text-medium-hover hover-child"
+              className={cx(
+                CS.mlAuto,
+                CS.textLight,
+                CS.textMediumHover,
+                CS.hoverChild,
+              )}
               onClick={handleClickRevert}
             >
               <Icon
@@ -138,7 +144,6 @@ function NotebookStep({
                 step={step}
                 query={step.query}
                 stageIndex={step.stageIndex}
-                sourceQuestion={sourceQuestion}
                 updateQuery={updateQuery}
                 isLastOpened={isLastOpened}
                 reportTimezone={reportTimezone}

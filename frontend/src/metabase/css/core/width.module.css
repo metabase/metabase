@@ -1,4 +1,3 @@
-:global(.w-full),
-.w-full {
+.wFull {
   width: 100%;
 }

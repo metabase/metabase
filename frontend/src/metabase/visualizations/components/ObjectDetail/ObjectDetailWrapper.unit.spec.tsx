@@ -111,12 +111,12 @@ describe("Object Detail Wrapper", () => {
 
     // first tab should focus on the close button, since there's only
     // one element to show here.
-    userEvent.tab();
+    await userEvent.tab();
     expect(screen.getByTestId("object-detail-close-button")).toHaveFocus();
 
     // second tab should *keep* focus on the close button, not go
     // to the body
-    userEvent.tab();
+    await userEvent.tab();
     expect(screen.getByTestId("object-detail-close-button")).toHaveFocus();
   });
 });

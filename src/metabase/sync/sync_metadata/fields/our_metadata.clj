@@ -4,11 +4,8 @@
   `metabase.sync.sync-metadata.fields.*` namespaces to determine what sync operations need to be performed by
   comparing the differences in the two sets of Metadata."
   (:require
-   [clojure.set :as set]
    [medley.core :as m]
-   [metabase.driver :as driver]
    [metabase.models.table :as table]
-   [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.common :as common]
    [metabase.util :as u]
@@ -82,16 +79,3 @@
    `TableMetadataField` format returned by `describe-table`."
   [table :- i/TableInstance]
   (-> table table->fields fields->our-metadata))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                      FETCHING METADATA FROM CONNECTED DB                                       |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(mu/defn db-metadata :- [:set i/TableMetadataField]
-  "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
-  implementation of `describe-table` or `describe-fields` if supported."
-  [database :- i/DatabaseInstance
-   table    :- i/TableInstance]
-    (cond-> (fetch-metadata/table-fields-metadata database table)
-      (driver/database-supports? (:engine database) :nested-field-columns database)
-      (set/union (fetch-metadata/nfc-metadata database table))))

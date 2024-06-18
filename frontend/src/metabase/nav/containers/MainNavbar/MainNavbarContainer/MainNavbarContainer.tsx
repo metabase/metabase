@@ -1,8 +1,9 @@
 import type { LocationDescriptor } from "history";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, memo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
+import { useGetCollectionQuery } from "metabase/api";
 import { logout } from "metabase/auth/actions";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import {
@@ -78,8 +79,6 @@ function MainNavbarContainer({
   collections = [],
   rootCollection,
   hasDataAccess,
-  allError,
-  allFetched,
   location,
   params,
   openNavbar,
@@ -90,6 +89,12 @@ function MainNavbarContainer({
   ...props
 }: Props) {
   const [modal, setModal] = useState<NavbarModal>(null);
+
+  const {
+    data: trashCollection,
+    isLoading,
+    error,
+  } = useGetCollectionQuery({ id: "trash" });
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const preparedCollections = [];
@@ -105,6 +110,14 @@ function MainNavbarContainer({
     preparedCollections.push(...displayableCollections);
 
     const tree = buildCollectionTree(preparedCollections);
+    if (trashCollection) {
+      const trash: CollectionTreeItem = {
+        ...trashCollection,
+        icon: getCollectionIcon(trashCollection),
+        children: [],
+      };
+      tree.push(trash);
+    }
 
     if (rootCollection) {
       const root: CollectionTreeItem = {
@@ -116,10 +129,10 @@ function MainNavbarContainer({
     } else {
       return tree;
     }
-  }, [rootCollection, collections, currentUser]);
+  }, [rootCollection, trashCollection, collections, currentUser]);
 
   const reorderBookmarks = useCallback(
-    ({ newIndex, oldIndex }) => {
+    ({ newIndex, oldIndex }: { newIndex: number; oldIndex: number }) => {
       const newBookmarks = [...bookmarks];
       const movedBookmark = newBookmarks[oldIndex];
 
@@ -152,10 +165,12 @@ function MainNavbarContainer({
     return null;
   }, [modal, closeModal, onChangeLocation]);
 
+  const allError = props.allError || !!error;
   if (allError) {
     return <NavbarErrorView />;
   }
 
+  const allFetched = props.allFetched && !isLoading;
   if (!allFetched) {
     return <NavbarLoadingView />;
   }
@@ -205,4 +220,4 @@ export default _.compose(
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),
-)(MainNavbarContainer);
+)(memo(MainNavbarContainer));

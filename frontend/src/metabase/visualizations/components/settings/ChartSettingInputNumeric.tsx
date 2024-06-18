@@ -17,6 +17,7 @@ const ALLOWED_CHARS = [
   "9",
   ".",
   "-",
+  "e",
 ];
 
 interface ChartSettingInputProps {

@@ -219,11 +219,44 @@
                                              :effective-type :type/Integer}
                                             ag-uuid]]}]}))))))
 
+(deftest ^:parallel multi-argument-string-comparison-test
+  (doseq [tag [:contains :starts-with :ends-with :does-not-contain]]
+    (testing (str tag)
+      (testing "with two arguments (legacy style)"
+        (testing "->pMBQL"
+          (is (=? [tag {:lib/uuid string?} [:field {} 12] "ABC"]
+                  (lib.convert/->pMBQL [tag [:field 12 nil] "ABC"])))
+          (is (=? [tag {:lib/uuid string?, :case-sensitive false} [:field {} 12] "ABC"]
+                  (lib.convert/->pMBQL [tag [:field 12 nil] "ABC" {:case-sensitive false}]))))
+        (testing "->legacy-MBQL"
+          (is (=? [tag [:field 12 nil] "ABC"]
+                  (lib.convert/->legacy-MBQL [tag {} [:field {} 12] "ABC"])))
+          (is (=? [tag [:field 12 nil] "ABC" {:case-sensitive false}]
+                  (lib.convert/->legacy-MBQL
+                    (lib.options/ensure-uuid [tag {:case-sensitive false} [:field {} 12] "ABC"]))))))
+
+      (testing "with multiple arguments (pMBQL style)"
+        (testing "->pMBQL"
+          (is (=? [tag {:lib/uuid string?} [:field {} 12] "ABC" "HJK" "XYZ"]
+                  (lib.convert/->pMBQL [tag {} [:field 12 nil] "ABC" "HJK" "XYZ"])))
+          (is (=? [tag {:lib/uuid string?, :case-sensitive false}
+                   [:field {} 12] "ABC" "HJK" "XYZ"]
+                  (lib.convert/->pMBQL [tag {:case-sensitive false}
+                                        [:field 12 nil] "ABC" "HJK" "XYZ"]))))
+
+        (testing "->legacy-MBQL"
+          (is (=? [tag {} [:field 12 nil] "ABC" "HJK" "XYZ"]
+                  (lib.convert/->legacy-MBQL [tag {} [:field {} 12] "ABC" "HJK" "XYZ"])))
+          (is (=? [tag {:case-sensitive false} [:field 12 nil] "ABC" "HJK" "XYZ"]
+                  (lib.convert/->legacy-MBQL
+                    (lib.options/ensure-uuid [tag {:case-sensitive false} [:field {} 12] "ABC" "HJK" "XYZ"])))))))))
+
 (deftest ^:parallel source-card-test
   (let [original {:database 1
                   :type     :query
                   :query    {:source-table "card__100"}}]
     (is (=? {:lib/type :mbql/query
+             :database 1
              :stages   [{:lib/type    :mbql.stage/mbql
                          :source-card 100}]}
             (lib.convert/->pMBQL original)))
@@ -244,9 +277,7 @@
     {:database 282
      :type :query
      :query {:source-table 661
-             :aggregation [[:metric "ga:totalEvents"]]
              :filter [:and
-                      [:segment "gaid::-4"]
                       [:segment 42]
                       [:= [:field 1972 nil] "Run Query"]
                       [:time-interval [:field 1974 nil] -30 :day]
@@ -293,6 +324,16 @@
 
     ;; (#29950)
     [:starts-with [:field 133751 nil] "CHE" {:case-sensitive true}]
+
+    ;; (#41958)
+    [:starts-with      {}                      [:field 133751 nil] "ABC" "HJK" "XYZ"]
+    [:ends-with        {}                      [:field 133751 nil] "ABC" "HJK" "XYZ"]
+    [:contains         {}                      [:field 133751 nil] "ABC" "HJK" "XYZ"]
+    [:does-not-contain {}                      [:field 133751 nil] "ABC" "HJK" "XYZ"]
+    [:starts-with      {:case-sensitive false} [:field 133751 nil] "ABC" "HJK" "XYZ"]
+    [:ends-with        {:case-sensitive false} [:field 133751 nil] "ABC" "HJK" "XYZ"]
+    [:contains         {:case-sensitive false} [:field 133751 nil] "ABC" "HJK" "XYZ"]
+    [:does-not-contain {:case-sensitive false} [:field 133751 nil] "ABC" "HJK" "XYZ"]
 
     ;; (#29938)
     {"First int"  [:case [[[:= [:field 133751 nil] 1] 1]]    {:default 0}]
@@ -765,3 +806,64 @@
                  (lib/->pMBQL x))
       [:time-interval [:field 1 nil] -5 :year nil]
       [:time-interval [:field 1 nil] -5 :year {}])))
+
+(deftest ^:parallel convert-arithmetic-expressions-to-legacy-test
+  (testing "Generate correct expression definitions even if expression contains `:name` (#40982)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/breakout (meta/field-metadata :orders :created-at))
+                    (lib/expression "expr" (lib.options/update-options (lib/+ 1 2) assoc :name "my_expr", :base-type :type/Number)))]
+      (is (=? {:type  :query
+               :query {:expressions {"expr" [:+ 1 2]}}}
+              (lib.convert/->legacy-MBQL query))))))
+
+(deftest ^:parallel convert-with-broken-expression-types-test
+  (testing "be flexible when converting from legacy, metadata type overrides are soometimes dropped (#41122)"
+    (let [legacy {:database (meta/id)
+                  :type     :query
+                  :query    {:filter [:between [:+
+                                                [:field 40 {:base-type :type/Integer}]
+                                                [:interval 1 :year]]
+                                      [:relative-datetime -2 :month]
+                                      [:relative-datetime 0 :month]]}}]
+      (is (=? {:stages [{:filters [[:between {} [:+ {}
+                                                 [:field {:base-type :type/Integer} 40]
+                                                 [:interval {} 1 :year]]
+                                    [:relative-datetime {} -2 :month]
+                                    [:relative-datetime {} 0 :month]]]}]}
+              (lib.convert/->pMBQL legacy))))))
+
+(deftest ^:parallel offset-test
+  (testing "Preserve complete options map when converting :offset to legacy, do not wrap in aggregation-options"
+    (are [options-map] (=? {:aggregation [[:offset options-map
+                                           [:sum
+                                            [:field 16890 {:base-type :type/Float}]]
+                                           -1]]}
+                           (lib.convert/->legacy-MBQL
+                            {:lib/type :mbql.stage/mbql
+                             :aggregation [[:offset options-map
+                                            [:sum
+                                             {:lib/uuid "c88914b9-56d3-48c4-bfaf-1600dd973076"}
+                                             [:field
+                                              {:lib/uuid "aabe0b60-6b0e-44d9-92e1-dce499b7e9ce"
+                                               :base-type :type/Float}
+                                              16890]]
+                                            -1]]}))
+      {:lib/uuid "d5149080-5e1c-4643-9264-bf4a82116abd"}
+      {:lib/uuid "d5149080-5e1c-4643-9264-bf4a82116abd", :name "my_offset"})))
+
+(deftest ^:parallel cumulative-count-test
+  (is (=? {:query {:aggregation [[:aggregation-options
+                                  [:cum-count [:field 48400 {:base-type :type/BigInteger}]]
+                                  {:name "count"}]]}}
+          (lib.convert/->legacy-MBQL
+           {:lib/type :mbql/query
+            :database 48001
+            :stages   [{:lib/type     :mbql.stage/mbql
+                        :source-table 48040
+                        :aggregation  [[:cum-count
+                                        {:lib/uuid "4b4c18e3-5a8c-4735-9476-815eb910cb0a", :name "count"}
+                                        [:field
+                                         {:base-type      :type/BigInteger,
+                                          :effective-type :type/BigInteger,
+                                          :lib/uuid       "8d07e5d2-4806-44c2-ba89-cdf1cfd6c3b3"}
+                                         48400]]]}]}))))

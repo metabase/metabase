@@ -169,17 +169,16 @@
     /                                               ; full root perms"
   (:require
    [clojure.string :as str]
+   [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features
-    :as premium-features
-    :refer [defenterprise]]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -320,10 +319,11 @@
    ;; based on value of read-or-write determine the approprite function used to calculate the perms path
    (let [path-fn (case read-or-write
                    :read  collection-read-path
-                   :write collection-readwrite-path)]
+                   :write collection-readwrite-path)
+         collection-id (:collection_id this)]
      ;; now pass that function our collection_id if we have one, or if not, pass it an object representing the Root
      ;; Collection
-     #{(path-fn (or (:collection_id this)
+     #{(path-fn (or collection-id
                     {:metabase.models.collection.root/is-root? true
                      :namespace                                collection-namespace}))})))
 
@@ -353,9 +353,7 @@
   [permissions]
   (u/prog1 permissions
     (assert-valid permissions)
-    (log/debug (u/colorize 'green (trs "Granting permissions for group {0}: {1}"
-                                       (:group_id permissions)
-                                       (:object permissions))))))
+    (log/debug (u/format-color :green "Granting permissions for group %s: %s" (:group_id permissions) (:object permissions)))))
 
 (t2/define-before-update :model/Permissions
   [_]
@@ -363,9 +361,7 @@
 
 (t2/define-before-delete :model/Permissions
   [permissions]
-  (log/debug (u/colorize 'red (trs "Revoking permissions for group {0}: {1}"
-                                   (:group_id permissions)
-                                   (:object permissions))))
+  (log/debug (u/format-color :red "Revoking permissions for group %s: %s" (:group_id permissions) (:object permissions)))
   (assert-not-admin-group permissions))
 
 
@@ -415,7 +411,7 @@
                                           (distinct (conj (perms.u/->v2-path path) path))))
      ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
      (catch Throwable e
-       (log/error e (u/format-color 'red (tru "Failed to grant permissions")))
+       (log/error e (u/format-color 'red "Failed to grant permissions"))
        ;; if we're running tests, we're doing something wrong here if duplicate permissions are getting assigned,
        ;; mostly likely because tests aren't properly cleaning up after themselves, and possibly causing other tests
        ;; to pass when they shouldn't. Don't allow this during tests
@@ -423,20 +419,6 @@
          (throw e))))))
 
 ; Audit Permissions helper fns
-
-(def audit-db-id
-  "ID of Audit DB which is loaded when running an EE build. ID is placed in OSS code to facilitate permission checks."
-  13371337)
-
-(defenterprise default-audit-collection
-  "OSS implementation of `audit-db/default-audit-collection`, which is an enterprise feature, so does nothing in the OSS
-  version."
-  metabase-enterprise.audit-db [] nil)
-
-(defenterprise default-custom-reports-collection
-  "OSS implementation of `audit-db/default-custom-reports-collection`, which is an enterprise feature, so does nothing in the OSS
-  version."
-  metabase-enterprise.audit-db [] ::noop)
 
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should
@@ -446,7 +428,7 @@
                          vals
                          (map keys)
                          (apply concat))]
-    (when (some #{audit-db-id} changes-ids)
+    (when (some #{audit/audit-db-id} changes-ids)
       (throw (ex-info (tru
                        (str "Audit database permissions can only be changed by updating audit collection permissions."))
                       {:status-code 400})))))
@@ -458,24 +440,13 @@
     [:or [:= namespace-keyword nil] [:= namespace-keyword "analytics"]]
     [:= namespace-keyword namespace-val]))
 
-(defn is-collection-id-audit?
-  "Check if an id is one of the audit collection ids."
-  [id]
-  (contains? (set [(:id (default-audit-collection)) (:id (default-custom-reports-collection))]) id))
-
-(defn is-parent-collection-audit?
-  "Check if an instance's parent collection is the audit collection."
-  [instance]
-  (let [parent-id (:collection_id instance)]
-    (and (some? parent-id) (is-collection-id-audit? parent-id))))
-
 (defn can-read-audit-helper
-  "Audit instances should only be fetched if audit app is enabled."
+  "Audit instances should only be readable if audit app is enabled."
   [model instance]
   (if (and (not (premium-features/enable-audit-app?))
            (case model
-             :model/Collection (is-collection-id-audit? (:id instance))
-             (is-parent-collection-audit? instance)))
+             :model/Collection (audit/is-collection-id-audit? (:id instance))
+             (audit/is-parent-collection-audit? instance)))
     false
     (case model
       :model/Collection (mi/current-user-has-full-permissions? :read instance)
@@ -497,36 +468,49 @@
   (classloader/require 'metabase.models.collection)
   ((resolve 'metabase.models.collection/is-personal-collection-or-descendant-of-one?) collection))
 
-(mu/defn ^:private check-not-personal-collection-or-descendant
-  "Check whether `collection-or-id` refers to a Personal Collection; if so, throw an Exception. This is done because we
-  *should* never be editing granting/etc. permissions for *Personal* Collections to entire Groups! Their owner will
-  get implicit permissions automatically, and of course admins will be able to see them,but a whole group should never
-  be given some sort of access."
+(defn- is-trash-or-descendant? [collection]
+  (classloader/require 'metabase.models.collection)
+  ((resolve 'metabase.models.collection/is-trash-or-descendant?) collection))
+
+(defn- ^:private collection-or-id->collection
+  [collection-or-id]
+  (if (map? collection-or-id)
+    collection-or-id
+    (t2/select-one :model/Collection :id (u/the-id collection-or-id))))
+
+(mu/defn ^:private check-is-modifiable-collection
+  "Check whether `collection-or-id` refers to a collection that can have permissions modified. Personal collections, the
+  Trash, and descendants of those can't have their permissions modified."
   [collection-or-id :- MapOrID]
-  ;; don't apply this check to the Root Collection, because it's never personal
+  ;; skip the whole thing for the root collection, we know it's not a personal collection, trash, or descendant of one
+  ;; of them.
   (when-not (:metabase.models.collection.root/is-root? collection-or-id)
-    ;; ok, once we've confirmed this isn't the Root Collection, see if it's in the DB with a personal_owner_id
-    (let [collection (if (map? collection-or-id)
-                       collection-or-id
-                       (or (t2/select-one 'Collection :id (u/the-id collection-or-id))
-                           (throw (ex-info (tru "Collection does not exist.") {:collection-id (u/the-id collection-or-id)}))))]
+    (let [collection (collection-or-id->collection collection-or-id)]
+      ;; Check whether the collection is the Trash collection or a descendant thereof; if so, throw an Exception. This
+      ;; is done because you can't modify the permissions of things in the Trash, you need to untrash them first.
+      (when (is-trash-or-descendant? collection)
+        (throw (ex-info (tru "You cannot edit permissions for the Trash collection or its descendants.") {})))
+      ;; Check whether the collection is a personal collection or a descendant thereof; if so, throw an Exception.
+      ;; This is done because we *should* never be editing granting/etc. permissions for *Personal* Collections to
+      ;; entire Groups! Their owner will get implicit permissions automatically, and of course admins will be able to
+      ;; see them,but a whole group should never be given some sort of access.
       (when (is-personal-collection-or-descendant-of-one? collection)
-        (throw (Exception. (tru "You cannot edit permissions for a Personal Collection or its descendants.")))))))
+        (throw (ex-info (tru "You cannot edit permissions for a Personal Collection or its descendants.") {}))))))
 
 (mu/defn revoke-collection-permissions!
   "Revoke all access for `group-or-id` to a Collection."
   [group-or-id :- MapOrID collection-or-id :- MapOrID]
-  (check-not-personal-collection-or-descendant collection-or-id)
+  (check-is-modifiable-collection collection-or-id)
   (delete-related-permissions! group-or-id (collection-readwrite-path collection-or-id)))
 
 (mu/defn grant-collection-readwrite-permissions!
   "Grant full access to a Collection, which means a user can view all Cards in the Collection and add/remove Cards."
   [group-or-id :- MapOrID collection-or-id :- MapOrID]
-  (check-not-personal-collection-or-descendant collection-or-id)
+  (check-is-modifiable-collection collection-or-id)
   (grant-permissions! (u/the-id group-or-id) (collection-readwrite-path collection-or-id)))
 
 (mu/defn grant-collection-read-permissions!
   "Grant read access to a Collection, which means a user can view all Cards in the Collection."
   [group-or-id :- MapOrID collection-or-id :- MapOrID]
-  (check-not-personal-collection-or-descendant collection-or-id)
+  (check-is-modifiable-collection collection-or-id)
   (grant-permissions! (u/the-id group-or-id) (collection-read-path collection-or-id)))

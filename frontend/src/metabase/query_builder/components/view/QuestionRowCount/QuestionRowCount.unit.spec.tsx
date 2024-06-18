@@ -151,7 +151,7 @@ describe("QuestionRowCount", () => {
         it("allows setting a limit", async () => {
           const { rowCount } = await setup({ question: getCard() });
 
-          userEvent.click(rowCount);
+          await userEvent.click(rowCount);
           const input = await screen.findByPlaceholderText("Pick a limit");
           fireEvent.change(input, { target: { value: "25" } });
           fireEvent.keyPress(input, { key: "Enter", charCode: 13 });
@@ -166,7 +166,7 @@ describe("QuestionRowCount", () => {
             question: getCard({ dataset_query: getDatasetQueryWithLimit(25) }),
           });
 
-          userEvent.click(rowCount);
+          await userEvent.click(rowCount);
           const input = await screen.findByDisplayValue("25");
           fireEvent.change(input, { target: { value: "400" } });
           fireEvent.keyPress(input, { key: "Enter", charCode: 13 });
@@ -181,8 +181,8 @@ describe("QuestionRowCount", () => {
             question: getCard({ dataset_query: getDatasetQueryWithLimit(25) }),
           });
 
-          userEvent.click(rowCount);
-          userEvent.click(
+          await userEvent.click(rowCount);
+          await userEvent.click(
             await screen.findByRole("radio", { name: /Show maximum/i }),
           );
 
@@ -203,7 +203,7 @@ describe("QuestionRowCount", () => {
             screen.queryByRole("button", { name: "Row count" }),
           ).not.toBeInTheDocument();
 
-          userEvent.click(rowCount);
+          await userEvent.click(rowCount);
 
           expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         });
@@ -261,7 +261,7 @@ describe("QuestionRowCount", () => {
             screen.queryByRole("button", { name: "Row count" }),
           ).not.toBeInTheDocument();
 
-          userEvent.click(rowCount);
+          await userEvent.click(rowCount);
 
           expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         });

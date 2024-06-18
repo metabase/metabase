@@ -22,25 +22,25 @@ describe("TippyPopoverWithTrigger", () => {
 
   it("should show the popover when user clicks the trigger", async () => {
     setup();
-    userEvent.click(screen.getByText("trigger content"));
+    await userEvent.click(screen.getByText("trigger content"));
     expect(await screen.findByText("popover content")).toBeVisible();
   });
 
   it("should hide the popover if the user clicks outside of the popover", async () => {
     setup();
-    userEvent.click(screen.getByText("trigger content"));
+    await userEvent.click(screen.getByText("trigger content"));
     expect(await screen.findByText("popover content")).toBeVisible();
 
-    userEvent.click(screen.getByText("something outside of the popover"));
+    await userEvent.click(screen.getByText("something outside of the popover"));
     expect(await screen.findByText("popover content")).not.toBeVisible();
   });
 
   it("should hide the popover if the user presses the escape key while the popover is open", async () => {
     setup();
-    userEvent.click(screen.getByText("trigger content"));
+    await userEvent.click(screen.getByText("trigger content"));
     expect(await screen.findByText("popover content")).toBeVisible();
 
-    userEvent.type(document.body, "{Escape}");
+    await userEvent.type(document.body, "{Escape}");
     expect(await screen.findByText("popover content")).not.toBeVisible();
   });
 });

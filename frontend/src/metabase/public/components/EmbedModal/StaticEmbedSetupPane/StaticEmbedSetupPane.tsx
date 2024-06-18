@@ -1,8 +1,10 @@
+import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import {
@@ -75,6 +77,7 @@ export const StaticEmbedSetupPane = ({
 
   const siteUrl = useSetting("site-url");
   const secretKey = checkNotNull(useSetting("embedding-secret-key"));
+  const exampleDashboardId = useSetting("example-dashboard-id");
   const initialEmbeddingParams = getDefaultEmbeddingParams(
     resource,
     resourceParameters,
@@ -162,6 +165,7 @@ export const StaticEmbedSetupPane = ({
     trackStaticEmbedPublished({
       artifact: resourceType,
       resource,
+      isExampleDashboard: exampleDashboardId === resource.id,
       params: countEmbeddingParameterOptions({
         ...convertResourceParametersToEmbeddingParams(resourceParameters),
         ...embeddingParams,
@@ -187,7 +191,7 @@ export const StaticEmbedSetupPane = ({
   const getServerEmbedCodePane = (variant: EmbedCodePaneVariant) => {
     return (
       <ServerEmbedCodePane
-        className="flex-full w-full"
+        className={cx(CS.flexFull, CS.wFull)}
         variant={variant}
         initialPreviewParameters={initialPreviewParameters}
         resource={resource}
@@ -316,7 +320,7 @@ export const StaticEmbedSetupPane = ({
                   />
                   <PreviewPane
                     hidden={activePane !== "preview"}
-                    className="flex-full"
+                    className={CS.flexFull}
                     previewUrl={iframeUrl}
                     isTransparent={displayOptions.theme === "transparent"}
                   />
@@ -343,7 +347,7 @@ export const StaticEmbedSetupPane = ({
                   />
                   <PreviewPane
                     hidden={activePane !== "preview"}
-                    className="flex-full"
+                    className={CS.flexFull}
                     previewUrl={iframeUrl}
                     isTransparent={displayOptions.theme === "transparent"}
                   />

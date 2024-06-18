@@ -12,7 +12,6 @@
    [metabase.api.common :as api]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -35,7 +34,7 @@
   (try
     (sso.i/sso-get req)
     (catch Throwable e
-      (log/error #_e (trs "Error returning SSO entry point"))
+      (log/error #_e "Error returning SSO entry point")
       (throw e))))
 
 (mu/defn ^:private sso-error-page
@@ -57,7 +56,7 @@
   (try
     (sso.i/sso-post req)
     (catch Throwable e
-      (log/error e (trs "Error logging in"))
+      (log/error e "Error logging in")
       (sso-error-page e "in"))))
 
 
@@ -99,7 +98,7 @@
   (try
     (sso.i/sso-handle-slo req)
     (catch Throwable e
-      (log/error e (trs "Error handling SLO"))
+      (log/error e "Error handling SLO")
       (sso-error-page e "out"))))
 
 (api/define-routes)

@@ -76,6 +76,16 @@
             (i18n/tru "type-of {0} returned an invalid type {1}" (pr-str expr) (pr-str expr-type)))
     (is-type? expr-type base-type)))
 
+(def ^:dynamic *suppress-expression-type-check?*
+  "Set this `true` to skip any type checks for expressions. This is useful while constructing expressions in MLv2 with
+  full metadata, but it breaks during legacy conversion in some cases.
+
+  In particular, if you override the metadata for a column to eg. treat a `:type/Integer` columns as a `:type/Instant`
+  with `:Coercion/UNIXSeconds->DateTime`, it will have `:base-type :type/Integer` and `:effective-type :type/Instant`.
+  But when converting from legacy, the `:field` refs in eg. a filter will only have `:base-type :type/Integer`, and then
+  the filter fails Malli validation. See #41122."
+  false)
+
 (defn- expression-schema
   "Schema that matches the following rules:
 
@@ -94,7 +104,8 @@
     [false [:ref :metabase.lib.schema.literal/literal]]]
    [:fn
     {:error/message description}
-    #(type-of? % base-type)]])
+    #(or *suppress-expression-type-check?*
+         (type-of? % base-type))]])
 
 (mr/def ::boolean
   (expression-schema :type/Boolean "expression returning a boolean"))
@@ -150,15 +161,16 @@
 (def equality-comparable-types
   "Set of base types that can be compared with equality."
   ;; TODO: Adding :type/* here was necessary to prevent type errors for queries where a field's type in the DB could not
-  ;; be determined better than :type/*. See #36841, where a MySQL enum field gets `:base-type :type/*`, and this check
+  ;; be determined better than :type/*. See #36841, where a MySQL enum field used to get `:base-type :type/*`, and this check
   ;; would fail on `[:= {} [:field ...] "enum-str"]` without `:type/*` here.
   ;; This typing of each input should be replaced with an alternative scheme that checks that it's plausible to compare
   ;; all the args to an `:=` clause. Eg. comparing `:type/*` and `:type/String` is cool. Comparing `:type/IPAddress` to
   ;; `:type/Boolean` should fail; we can prove it's the wrong thing to do.
-  #{:type/Boolean :type/Text :type/Number :type/Temporal :type/IPAddress :type/MongoBSONID :type/Array :type/*})
+  #{:type/Boolean :type/Text :type/Number :type/Temporal :type/IPAddress :type/MySQLEnum :type/MongoBSONID :type/Array :type/*})
 
 (derive :type/Text        ::emptyable)
 (derive :type/MongoBSONID ::emptyable)
+(derive :type/MySQLEnum   ::emptyable)
 
 (mr/def ::emptyable
   (expression-schema ::emptyable "expression returning something emptyable (e.g. a string or BSON ID)"))
@@ -172,7 +184,15 @@
 (mr/def ::expression
   [:maybe (expression-schema :type/* "any type of expression")])
 
+(mr/def ::expression.definition
+  [:and
+   [:ref ::expression]
+   [:cat
+    #_tag :any
+    #_opts [:map
+            [:lib/expression-name [:string {:decode/normalize common/normalize-string-key}]]]
+    #_args [:* :any]]])
+
 ;;; the `:expressions` definition map as found as a top-level key in an MBQL stage
 (mr/def ::expressions
-  [:sequential {:min 1} [:and [:ref ::expression]
-                         [:cat :any [:map [:lib/expression-name :string]] [:* :any]]]])
+  [:sequential {:min 1} [:ref ::expression.definition]])

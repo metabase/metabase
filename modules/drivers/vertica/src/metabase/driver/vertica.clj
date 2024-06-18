@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [honey.sql :as sql]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -17,7 +18,6 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
    (java.sql ResultSet ResultSetMetaData Types)))
@@ -28,10 +28,10 @@
                                       ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set
                                       ::sql.qp.empty-string-is-null/empty-string-is-null})
 
-(doseq [[feature supported?] {:percentile-aggregations   false
+(doseq [[feature supported?] {:convert-timezone          true
                               :datetime-diff             true
                               :now                       true
-                              :convert-timezone          true
+                              :percentile-aggregations   false
                               :test/jvm-timezone-setting false}]
   (defmethod driver/database-supports? [:vertica feature] [_driver _feature _db] supported?))
 
@@ -224,6 +224,35 @@
   [driver [_ arg]]
   [:approximate_median (sql.qp/->honeysql driver arg)])
 
+(defmethod sql.qp/->honeysql [:vertica java.time.LocalDate]
+  [_driver t]
+  (-> [:raw (format "date '%s'" (u.date/format t))]
+      (h2x/with-database-type-info "date")))
+
+(defmethod sql.qp/->honeysql [:vertica java.time.LocalTime]
+  [_driver t]
+  (-> [:raw (format "time '%s'" (u.date/format "HH:mm:ss.SSS" t))]
+      (h2x/with-database-type-info "time")))
+
+(defmethod sql.qp/->honeysql [:vertica java.time.OffsetTime]
+  [_driver t]
+  (-> [:raw (format "time with time zone '%s'" (u.date/format "HH:mm:ss.SSS xxx" t))]
+      (h2x/with-database-type-info "timetz")))
+
+(defmethod sql.qp/->honeysql [:vertica java.time.LocalDateTime]
+  [_driver t]
+  (-> [:raw (format "timestamp '%s'" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS" t))]
+      (h2x/with-database-type-info "timestamp")))
+
+(defmethod sql.qp/->honeysql [:vertica java.time.OffsetDateTime]
+  [_driver t]
+  (-> [:raw (format "timestamp with time zone '%s'" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS xxx" t))]
+      (h2x/with-database-type-info "timestamptz")))
+
+(defmethod sql.qp/->honeysql [:vertica java.time.ZonedDateTime]
+  [driver t]
+  (sql.qp/->honeysql driver (t/offset-date-time t)))
+
 (defmethod sql.qp/add-interval-honeysql-form :vertica
   [_ hsql-form amount unit]
   ;; using `timestampadd` instead of `+ (INTERVAL)` because vertica add inteval for month, or year
@@ -244,7 +273,7 @@
   (try (set (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                         ["SELECT TABLE_SCHEMA AS \"schema\", TABLE_NAME AS \"name\" FROM V_CATALOG.VIEWS;"]))
        (catch Throwable e
-         (log/error e (trs "Failed to fetch materialized views for this database")))))
+         (log/error e "Failed to fetch materialized views for this database"))))
 
 (defmethod driver/describe-database :vertica
   [driver database]

@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-dataset: true
 cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
@@ -103,5 +102,6 @@ serdes/meta:
   label: group_members
   model: Card
 initially_published_at: null
+last_used_at: '2024-05-15T20:43:59.203362Z'
 metabase_version: null
 type: model

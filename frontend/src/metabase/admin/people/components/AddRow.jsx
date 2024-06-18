@@ -22,7 +22,17 @@ export const AddRow = forwardRef(function AddRow(
   return (
     <div
       ref={ref}
-      className="my2 pl1 p1 bordered border-brand rounded relative flex align-center"
+      className={cx(
+        CS.my2,
+        CS.pl1,
+        CS.p1,
+        CS.bordered,
+        CS.borderBrand,
+        CS.rounded,
+        CS.relative,
+        CS.flex,
+        CS.alignCenter,
+      )}
     >
       {children}
       <input
@@ -34,7 +44,7 @@ export const AddRow = forwardRef(function AddRow(
         onKeyDown={onKeyDown}
         onChange={onChange}
       />
-      <span className="link no-decoration cursor-pointer" onClick={onCancel}>
+      <span className={CS.link} onClick={onCancel}>
         {t`Cancel`}
       </span>
       <button

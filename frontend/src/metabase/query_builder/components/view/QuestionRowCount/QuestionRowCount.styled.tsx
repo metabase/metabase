@@ -10,10 +10,10 @@ export const RowCountButton = styled.button<{ highlighted?: boolean }>`
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
 export const RowCountStaticLabel = styled.span`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;

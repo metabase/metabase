@@ -1,5 +1,4 @@
-import { render, screen } from "@testing-library/react";
-
+import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import type { AppBarProps } from "./AppBar";
@@ -7,11 +6,15 @@ import AppBar from "./AppBar";
 
 const NewItemButtonMock = () => <div data-testid="new-button" />;
 const SearchBarMock = () => <div data-testid="search-bar" />;
+const SearchButtonMock = {
+  SearchButton: () => <div data-testid="search-button" />,
+};
 const BreadcrumbsMock = () => <div data-testid="collection-path" />;
 const QuestionLineageMock = () => <div data-testid="question-lineage" />;
 
 jest.mock("../NewItemButton", () => NewItemButtonMock);
 jest.mock("../search/SearchBar/SearchBar", () => SearchBarMock);
+jest.mock("../search/SearchButton/SearchButton", () => SearchButtonMock);
 jest.mock("../../containers/CollectionBreadcrumbs", () => BreadcrumbsMock);
 jest.mock("../../containers/QuestionLineage", () => QuestionLineageMock);
 
@@ -40,11 +43,11 @@ describe("AppBar", () => {
         isLogoVisible: true,
       });
 
-      render(<AppBar {...props} />);
+      renderWithProviders(<AppBar {...props} />);
 
       expect(screen.getByTestId("main-logo")).toBeInTheDocument();
       expect(screen.getByTestId("sidebar-toggle")).toBeInTheDocument();
-      expect(screen.getByTestId("search-bar")).toBeInTheDocument();
+      expect(screen.getByTestId("search-button")).toBeInTheDocument();
       expect(screen.getByTestId("new-button")).toBeInTheDocument();
     });
 
@@ -53,7 +56,7 @@ describe("AppBar", () => {
         isCollectionPathVisible: true,
       });
 
-      render(<AppBar {...props} />);
+      renderWithProviders(<AppBar {...props} />);
 
       expect(screen.getByTestId("collection-path")).toBeInTheDocument();
       expect(screen.queryByTestId("question-lineage")).not.toBeInTheDocument();
@@ -65,10 +68,26 @@ describe("AppBar", () => {
         isQuestionLineageVisible: true,
       });
 
-      render(<AppBar {...props} />);
+      renderWithProviders(<AppBar {...props} />);
 
       expect(screen.getByTestId("question-lineage")).toBeInTheDocument();
       expect(screen.queryByTestId("collection-path")).not.toBeInTheDocument();
+    });
+
+    it("should render the search bar when embedded", () => {
+      const props = getProps({
+        isNavBarEnabled: true,
+        isCollectionPathVisible: true,
+        isSearchVisible: true,
+        isEmbedded: true,
+        isNewButtonVisible: true,
+        isLogoVisible: true,
+      });
+
+      renderWithProviders(<AppBar {...props} />);
+
+      expect(screen.getByTestId("search-bar")).toBeInTheDocument();
+      expect(screen.queryByTestId("search-button")).not.toBeInTheDocument();
     });
   });
 
@@ -86,11 +105,11 @@ describe("AppBar", () => {
         isLogoVisible: true,
       });
 
-      render(<AppBar {...props} />);
+      renderWithProviders(<AppBar {...props} />);
 
       expect(screen.getByTestId("main-logo")).toBeInTheDocument();
       expect(screen.getByTestId("sidebar-toggle")).toBeInTheDocument();
-      expect(screen.getByTestId("search-bar")).toBeInTheDocument();
+      expect(screen.getByTestId("search-button")).toBeInTheDocument();
       expect(screen.queryByTestId("new-button")).not.toBeInTheDocument();
     });
 
@@ -99,7 +118,7 @@ describe("AppBar", () => {
         isCollectionPathVisible: true,
       });
 
-      render(<AppBar {...props} />);
+      renderWithProviders(<AppBar {...props} />);
 
       expect(screen.getByTestId("collection-path")).toBeInTheDocument();
       expect(screen.queryByTestId("question-lineage")).not.toBeInTheDocument();
@@ -111,10 +130,26 @@ describe("AppBar", () => {
         isQuestionLineageVisible: true,
       });
 
-      render(<AppBar {...props} />);
+      renderWithProviders(<AppBar {...props} />);
 
       expect(screen.getByTestId("question-lineage")).toBeInTheDocument();
       expect(screen.queryByTestId("collection-path")).not.toBeInTheDocument();
+    });
+
+    it("should render the search bar when embedded", () => {
+      const props = getProps({
+        isNavBarEnabled: true,
+        isCollectionPathVisible: true,
+        isSearchVisible: true,
+        isEmbedded: true,
+        isNewButtonVisible: true,
+        isLogoVisible: true,
+      });
+
+      renderWithProviders(<AppBar {...props} />);
+
+      expect(screen.getByTestId("search-bar")).toBeInTheDocument();
+      expect(screen.queryByTestId("search-button")).not.toBeInTheDocument();
     });
   });
 });

@@ -1,7 +1,7 @@
 import { renderWithProviders, screen } from "__support__/ui";
+import { delay } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { color } from "metabase/lib/colors";
-import { delay } from "metabase/lib/promise";
 import Visualization from "metabase/visualizations/components/Visualization";
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -10,16 +10,15 @@ registerVisualizations();
 
 describe("Visualization", () => {
   const renderViz = async series => {
-    const utils = renderWithProviders(<Visualization rawSeries={series} />);
+    renderWithProviders(<Visualization rawSeries={series} />);
     // The chart isn't rendered until the next tick. This is due to ExplicitSize
     // not setting the dimensions until after mounting.
     await delay(0);
-    return utils;
   };
 
-  const getBarColors = container => {
-    const bars = [...container.querySelectorAll(".bar")];
-    return bars.map(bar => bar.getAttribute("fill"));
+  const chartPathsWithColor = color => {
+    const container = screen.getByTestId("chart-container");
+    return container.querySelectorAll(`path[fill="${color}"]`);
   };
 
   describe("scalar", () => {
@@ -38,7 +37,7 @@ describe("Visualization", () => {
   describe("bar", () => {
     describe("single series", () => {
       it("should have correct colors", async () => {
-        const { container } = await renderViz([
+        await renderViz([
           {
             card: createMockCard({ name: "Card", display: "bar" }),
             data: {
@@ -53,15 +52,13 @@ describe("Visualization", () => {
             },
           },
         ]);
-        expect(getBarColors(container)).toEqual([
-          color("brand"), // "count"
-          color("brand"), // "count"
-        ]);
+
+        expect(chartPathsWithColor(color("brand"))).toHaveLength(2);
       });
     });
     describe("multiseries: multiple metrics", () => {
       it("should have correct colors", async () => {
-        const { container } = await renderViz([
+        await renderViz([
           {
             card: createMockCard({ name: "Card", display: "bar" }),
             data: {
@@ -77,17 +74,14 @@ describe("Visualization", () => {
             },
           },
         ]);
-        expect(getBarColors(container)).toEqual([
-          color("brand"), // "count"
-          color("brand"), // "count"
-          color("accent1"), // "sum"
-          color("accent1"), // "sum"
-        ]);
+
+        expect(chartPathsWithColor(color("brand"))).toHaveLength(2); // "count"
+        expect(chartPathsWithColor(color("accent1"))).toHaveLength(2); // "sum"
       });
     });
     describe("multiseries: multiple breakouts", () => {
       it("should have correct colors", async () => {
-        const { container } = await renderViz([
+        await renderViz([
           {
             card: createMockCard({ name: "Card", display: "bar" }),
             data: {
@@ -105,23 +99,20 @@ describe("Visualization", () => {
             },
           },
         ]);
-        expect(getBarColors(container)).toEqual([
-          color("accent1"), // "a"
-          color("accent1"), // "a"
-          color("accent2"), // "b"
-          color("accent2"), // "b"
-        ]);
+
+        expect(chartPathsWithColor(color("accent1"))).toHaveLength(2); // "a"
+        expect(chartPathsWithColor(color("accent2"))).toHaveLength(2); // "b"
       });
     });
     describe("multiseries: dashcard", () => {
       it("should have correct colors", async () => {
-        const { container } = await renderViz([
+        await renderViz([
           {
-            card: createMockCard({ name: "Card1", display: "bar" }),
+            card: createMockCard({ id: 1, name: "Card1", display: "bar" }),
             data: {
               cols: [
-                StringColumn({ name: "Dimension" }),
-                NumberColumn({ name: "Count" }),
+                StringColumn({ id: 1, name: "Dimension" }),
+                NumberColumn({ id: 2, name: "Count" }),
               ],
               rows: [
                 ["foo", 1],
@@ -130,11 +121,11 @@ describe("Visualization", () => {
             },
           },
           {
-            card: createMockCard({ name: "Card2", display: "bar" }),
+            card: createMockCard({ id: 2, name: "Card2", display: "bar" }),
             data: {
               cols: [
-                StringColumn({ name: "Dimension" }),
-                NumberColumn({ name: "Count" }),
+                StringColumn({ id: 1, name: "Dimension" }),
+                NumberColumn({ id: 2, name: "Count" }),
               ],
               rows: [
                 ["foo", 3],
@@ -143,12 +134,9 @@ describe("Visualization", () => {
             },
           },
         ]);
-        expect(getBarColors(container)).toEqual([
-          color("brand"), // "count"
-          color("brand"), // "count"
-          color("accent2"), // "Card2"
-          color("accent2"), // "Card2"
-        ]);
+
+        expect(chartPathsWithColor(color("brand"))).toHaveLength(2); // "count"
+        expect(chartPathsWithColor(color("accent2"))).toHaveLength(2); // "Card2"
       });
     });
   });

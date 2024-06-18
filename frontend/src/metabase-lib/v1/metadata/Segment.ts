@@ -8,6 +8,9 @@ interface Segment extends Omit<NormalizedSegment, "table"> {
   metadata?: Metadata;
 }
 
+/**
+ * @deprecated use RTK Query endpoints and plain api objects from metabase-types/api
+ */
 class Segment {
   private readonly _plainObject: NormalizedSegment;
 

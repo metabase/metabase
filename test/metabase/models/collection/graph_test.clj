@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
+   [metabase.audit :as audit]
    [metabase.models :refer [User]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection-permission-graph-revision
@@ -96,7 +97,7 @@
   (testing "Check that the audit collection has :read for admins."
     (mt/with-non-admin-groups-no-root-collection-perms
       (t2.with-temp/with-temp [Collection collection {}]
-        (with-redefs [perms/default-audit-collection (constantly collection)]
+        (with-redefs [audit/default-audit-collection (constantly collection)]
           (is (= {:revision 0
                   :groups   {(u/the-id (perms-group/all-users)) {:root :none,  :COLLECTION :none}
                              (u/the-id (perms-group/admin))     {:root :write, :COLLECTION :read}}}
@@ -275,7 +276,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (let [lucky-personal-collection-id (u/the-id (collection/user->personal-collection (mt/user->id :lucky)))
             path                         [:groups (u/the-id (perms-group/all-users)) lucky-personal-collection-id]]
-        (mt/throw-if-called graph/update-group-permissions!
+        (mt/throw-if-called! graph/update-group-permissions!
           (graph/update-graph! (assoc-in (graph :clear-revisions? true) path :read)))
 
         (testing "double-check that the graph is unchanged"

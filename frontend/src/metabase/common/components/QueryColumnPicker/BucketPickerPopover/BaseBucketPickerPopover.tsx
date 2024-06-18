@@ -11,7 +11,6 @@ import * as Lib from "metabase-lib";
 import {
   Content,
   ChevronDown,
-  Dot,
   MoreButton,
   SelectListItem,
   TriggerButton,
@@ -37,7 +36,6 @@ export interface BaseBucketPickerPopoverProps {
   isEditing: boolean;
   triggerLabel?: string;
   hasArrowIcon?: boolean;
-  hasDot?: boolean;
   hasChevronDown?: boolean;
   color?: ColorName;
   checkBucketIsSelected: (item: BucketListItem) => boolean;
@@ -57,7 +55,6 @@ function _BaseBucketPickerPopover({
   checkBucketIsSelected,
   renderTriggerContent,
   onSelect,
-  hasDot,
   hasChevronDown,
 }: BaseBucketPickerPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
@@ -70,7 +67,7 @@ function _BaseBucketPickerPopover({
     [items],
   );
 
-  const handleExpand = useCallback(evt => {
+  const handleExpand = useCallback((evt: React.MouseEvent) => {
     evt.stopPropagation();
     setIsExpanded(true);
   }, []);
@@ -101,7 +98,6 @@ function _BaseBucketPickerPopover({
       <Popover.Target>
         <TriggerButton
           aria-label={triggerLabel}
-          hasDot={hasDot}
           // Compat with E2E tests around MLv1-based components
           // Prefer using a11y role selectors
           data-testid="dimension-list-item-binning"
@@ -110,7 +106,6 @@ function _BaseBucketPickerPopover({
             setIsOpened(!isOpened);
           }}
         >
-          {hasDot && <Dot />}
           <Ellipsified>
             {renderTriggerContent(triggerContentBucketDisplayInfo)}
           </Ellipsified>

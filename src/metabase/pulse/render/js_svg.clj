@@ -5,7 +5,6 @@
   `toJSMap` functions to turn Clojure's normal datastructures into js native structures."
   (:require
    [cheshire.core :as json]
-   [clojure.string :as str]
    [metabase.config :as config]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.render.js-engine :as js]
@@ -38,7 +37,6 @@
 (def ^:private static-viz-context-delay
   "Delay containing a graal js context. It has the chart bundle and the above `src-api` in its environment suitable
   for creating charts."
-  ;; todo is this thread safe? Should we have a resource pool on top of this? Or create them fresh for each invocation
   (delay (load-viz-bundle (js/context))))
 
 (defn- context
@@ -78,9 +76,20 @@
         (.setAttribute "fill-opacity" "0.0"))
       node)))
 
+(defn- clear-style-node
+  "The echarts library (whose output we get via the :javascript_visualization multimethod) adds a <style> tag that we don't need.
+  It has some invalid styles that Batik warns about, but they're all for :hover states,
+  which have no meaning or effect in the static-viz context anyway."
+  [^Node node]
+  (letfn [(element? [x] (instance? Element x))]
+    (if (and (element? node)
+             (= "style" (.getNodeName ^Element node)))
+      (doto ^Element node
+        (.setTextContent ""))
+      node)))
+
 (defn- parse-svg-string [^String s]
-  (let [s       (str/replace s #"<svg" "<svg xmlns=\"http://www.w3.org/2000/svg\"")
-        factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
+  (let [factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
     (with-open [is (ByteArrayInputStream. (.getBytes s StandardCharsets/UTF_8))]
       (.createDocument factory "file:///fake.svg" is))))
 
@@ -98,7 +107,7 @@
   ^bytes [^SVGOMDocument svg-document]
   (style/register-fonts-if-needed!)
   (with-open [os (ByteArrayOutputStream.)]
-    (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill)
+    (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill clear-style-node)
           in                           (TranscoderInput. fixed-svg-doc)
           out                          (TranscoderOutput. os)
           transcoder                   (PNGTranscoder.)]
@@ -112,17 +121,6 @@
   "Convert a string (from svg rendering) an svg document then return the bytes"
   [s]
   (-> s parse-svg-string render-svg))
-
-(defn waterfall
-  "Clojure entrypoint to render a timeseries or categorical waterfall chart. Rows should be tuples of [datetime numeric-value]. Labels is
-  a map of {:left \"left-label\" :botton \"bottom-label\". Returns a byte array of a png file."
-  [rows labels settings waterfall-type]
-  (let [svg-string (.asString (js/execute-fn-name (context) "waterfall" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)
-                                                  (name waterfall-type)
-                                                  (json/generate-string (public-settings/application-colors))))]
-    (svg-string->bytes svg-string)))
 
 (defn funnel
   "Clojure entrypoint to render a funnel chart. Data should be vec of [[Step Measure]] where Step is {:name name :format format-options} and Measure is {:format format-options} and you go and look to frontend/src/metabase/static-viz/components/FunnelChart/types.ts for the actual format options.
@@ -142,21 +140,6 @@
     (-> response
         (json/parse-string true)
         (update :type (fnil keyword "unknown")))))
-
-(defn combo-chart
-  "Clojure entrypoint to render a combo or multiple chart.
-  These are different conceptions in the BE but being smushed together
-  because they're supposed to display similarly.
-  Series should be list of dicts of {rows: rows, cols: cols, type: type}, where types is 'line' or 'bar' or 'area'.
-  Rows should be tuples of [datetime numeric-value]. Labels is a
-  map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
-  [series-seqs settings]
-  (svg-string->bytes
-   (.asString (js/execute-fn-name (context)
-                                  "combo_chart"
-                                  (json/generate-string series-seqs)
-                                  (json/generate-string settings)
-                                  (json/generate-string (public-settings/application-colors))))))
 
 (defn row-chart
   "Clojure entrypoint to render a row chart."
@@ -199,7 +182,7 @@
 
 (defn- icon-svg-string
   [icon-name color]
-  (str "<svg><path d=\"" (get icon-paths icon-name) "\" fill=\"" color "\"/></svg>"))
+  (str "<svg xmlns=\"http://www.w3.org/2000/svg\"><path d=\"" (get icon-paths icon-name) "\" fill=\"" color "\"/></svg>"))
 
 (defn icon
   "Entrypoint for rendering an SVG icon as a PNG, with a specific color"

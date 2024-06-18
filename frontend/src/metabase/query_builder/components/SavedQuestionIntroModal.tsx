@@ -4,6 +4,7 @@ import { t } from "ttag";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import type Question from "metabase-lib/v1/Question";
 
 interface Props {
@@ -28,6 +29,14 @@ const getLabels = (question: Question) => {
       message: t`You won't make any permanent changes to them unless you edit their query definition.`,
     };
   }
+
+  if (type === "metric") {
+    return {
+      title: t`It's okay to play around with metrics`,
+      message: t`You won't make any permanent changes to them unless you edit their query definition.`,
+    };
+  }
+
   throw new Error(`Unknown question.type(): ${type}`);
 };
 
@@ -40,9 +49,9 @@ export const SavedQuestionIntroModal = ({
 
   return (
     <Modal isOpen={isShowingNewbModal}>
-      <ModalContent title={title} className="Modal-content text-centered py2">
-        <div className="px2 pb2 text-paragraph">{message}</div>
-        <div className="Form-actions flex justify-center py1">
+      <ModalContent title={title} className={cx(CS.textCentered, CS.py2)}>
+        <div className={cx(CS.px2, CS.pb2, CS.textParagraph)}>{message}</div>
+        <div className={cx("Form-actions", CS.flex, CS.justifyCenter, CS.py1)}>
           <button
             className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
             onClick={onClose}

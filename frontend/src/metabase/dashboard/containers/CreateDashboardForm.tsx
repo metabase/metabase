@@ -6,7 +6,7 @@ import _ from "underscore";
 import * as Yup from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
+import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormFooter from "metabase/core/components/FormFooter";

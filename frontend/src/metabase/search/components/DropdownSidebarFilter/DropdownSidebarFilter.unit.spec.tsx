@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
-import userEvent from "@testing-library/user-event";
+import userEvent, {
+  PointerEventsCheckLevel,
+} from "@testing-library/user-event";
 import { useState } from "react";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
@@ -79,7 +81,7 @@ describe("DropdownSidebarFilter", () => {
     expect(screen.queryByText("field-set-legend")).not.toBeInTheDocument();
   });
 
-  it("should render filter display, close button, and filter value in the popover when value is initially selected", () => {
+  it("should render filter display, close button, and filter value in the popover when value is initially selected", async () => {
     setup({ value: ["value1"] });
 
     expect(screen.getByTestId("field-set-legend")).toHaveTextContent(
@@ -89,25 +91,25 @@ describe("DropdownSidebarFilter", () => {
     expect(screen.getByTestId("mock-display-component")).toBeInTheDocument();
     expect(screen.getByLabelText("close icon")).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("Mock Filter"));
+    await userEvent.click(screen.getByText("Mock Filter"));
     expect(
       within(screen.getByTestId("mock-content-component")).getByText("value1"),
     ).toBeInTheDocument();
   });
 
-  it("should render filter content component when popover is open", () => {
+  it("should render filter content component when popover is open", async () => {
     setup();
-    userEvent.click(screen.getByText("Mock Filter"));
+    await userEvent.click(screen.getByText("Mock Filter"));
     expect(screen.getByTestId("mock-content-component")).toBeInTheDocument();
   });
 
-  it("should apply filter and close popup when apply button is clicked", () => {
+  it("should apply filter and close popup when apply button is clicked", async () => {
     const { onChange } = setup();
-    userEvent.click(screen.getByText("Mock Filter"));
-    userEvent.click(screen.getByRole("button", { name: "Update" }));
+    await userEvent.click(screen.getByText("Mock Filter"));
+    await userEvent.click(screen.getByRole("button", { name: "Update" }));
     expect(screen.getByText("new value")).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole("button", { name: "Apply" }));
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
 
     expect(onChange).toHaveBeenCalledWith(["new value"]);
 
@@ -123,17 +125,17 @@ describe("DropdownSidebarFilter", () => {
   it("should revert filter selections when popover is closed", async () => {
     const { onChange } = setup({ value: ["old value"] });
 
-    userEvent.click(screen.getByText("old value"));
-    userEvent.click(screen.getByRole("button", { name: "Update" }));
+    await userEvent.click(screen.getByText("old value"));
+    await userEvent.click(screen.getByRole("button", { name: "Update" }));
     expect(screen.getByText("new value")).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("old value"));
+    await userEvent.click(screen.getByText("old value"));
     expect(onChange).not.toHaveBeenCalled();
     expect(screen.getByTestId("mock-display-component")).toHaveTextContent(
       "old value",
     );
 
-    userEvent.click(screen.getByText("old value"));
+    await userEvent.click(screen.getByText("old value"));
     expect(screen.getByTestId("mock-display-component")).toHaveTextContent(
       "old value",
     );
@@ -141,12 +143,11 @@ describe("DropdownSidebarFilter", () => {
 
   it("should reset filter selections when clear button is clicked", async () => {
     const { onChange } = setup({ value: ["old value"] });
-    userEvent.click(
+    await userEvent.click(
       screen.getByTestId("sidebar-filter-dropdown-button"),
-      undefined,
       // There's a problem with buttons in fieldsets so we have to skip pointer events check for now
       // https://github.com/testing-library/user-event/issues/662
-      { skipPointerEventsCheck: true },
+      { pointerEventsCheck: PointerEventsCheckLevel.Never },
     );
 
     expect(onChange).toHaveBeenCalledWith(null);

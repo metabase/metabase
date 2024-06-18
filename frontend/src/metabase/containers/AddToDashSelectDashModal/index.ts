@@ -1,1 +1,1 @@
-export { ConnectedAddToDashSelectDashModal } from "./AddToDashSelectDashModal";
+export { AddToDashSelectDashModal } from "./AddToDashSelectDashModal";

@@ -163,7 +163,7 @@ const TableTitleSection = ({
   );
 
   return (
-    <div className={cx(CS.bgWhite, CS.flex, "flex-column")}>
+    <div className={cx(CS.bgWhite, CS.flex, CS.flexColumn)}>
       {tab === "columns" ? (
         <>
           <TableNameInput
@@ -224,8 +224,16 @@ const TableVisibilitySection = ({
   );
 
   return (
-    <div className="MetadataTable-header flex align-center py2 text-medium">
-      <span className="mx1 text-uppercase">{t`Visibility`}</span>
+    <div
+      className={cx(
+        "MetadataTable-header",
+        CS.flex,
+        CS.alignCenter,
+        CS.py2,
+        CS.textMedium,
+      )}
+    >
+      <span className={cx(CS.mx1, CS.textUppercase)}>{t`Visibility`}</span>
       <span id="VisibilityTypes">
         <MetadataVisibilityBadge
           isChecked={table.visibility_type == null}
@@ -243,8 +251,10 @@ const TableVisibilitySection = ({
         </MetadataVisibilityBadge>
 
         {table.visibility_type && (
-          <span id="VisibilitySubTypes" className="border-left mx2">
-            <span className="mx2 text-uppercase text-medium">{t`Why Hide?`}</span>
+          <span id="VisibilitySubTypes" className={cx(CS.borderLeft, CS.mx2)}>
+            <span
+              className={cx(CS.mx2, CS.textUppercase, CS.textMedium)}
+            >{t`Why Hide?`}</span>
             <MetadataVisibilityBadge
               isChecked={table.visibility_type === "technical"}
               onClick={handleChangeTechnical}
@@ -294,7 +304,7 @@ interface MetadataTabSectionProps {
 
 const TableTabSection = ({ tab, onChangeTab }: MetadataTabSectionProps) => {
   return (
-    <div className="mx1 border-bottom">
+    <div className={cx(CS.mx1, CS.borderBottom)}>
       <Radio
         colorScheme="default"
         value={tab}
@@ -320,8 +330,8 @@ export default _.compose(
       include_sensitive_fields: true,
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     },
-    fetchType: "fetchMetadata",
-    requestType: "fetchMetadata",
+    fetchType: "fetchMetadataDeprecated",
+    requestType: "fetchMetadataDeprecated",
     selectorName: "getObjectUnfiltered",
   }),
   connect(mapStateToProps, mapDispatchToProps),

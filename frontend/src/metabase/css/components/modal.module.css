@@ -1,18 +1,11 @@
-:root {
-  --modal-background-color: color-mod(var(--color-bg-black) alpha(-40%));
-  --modal-background-color-transition: color-mod(
-    var(--color-bg-black) alpha(-99%)
-  );
-}
-
-:global(.ModalContainer) {
+.ModalContainer {
   z-index: 4;
 }
 
-:global(.Modal) {
+.Modal {
   margin: auto;
   width: 640px;
-  box-shadow: 0 0 6px var(--color-shadow);
+  box-shadow: 0 0 6px var(--mb-color-shadow);
   max-height: 90%;
   overflow-y: auto;
 }
@@ -21,31 +14,31 @@
  * https://github.com/philipwalton/flexbugs/issues/157
  * Set margin to zero when using Flexbox in `WindowModal` component
  */
-:global(.Modal-backdrop > .Modal) {
+.ModalBackdrop > .Modal {
   margin: 0;
 }
 
-:global(.Modal.Modal--small) {
+.Modal.ModalSmall {
   width: 480px;
 } /* TODO - why is this one px? */
-:global(.Modal.Modal--medium) {
+.Modal.ModalMedium {
   width: 65%;
 }
 
-:global(.Modal.Modal--wide) {
+.Modal.ModalWide {
   width: 85%;
 }
 
-:global(.Modal.Modal--fit) {
+.Modal.ModalFit {
   width: auto;
   max-height: 100%;
 }
 
-:global(.Modal.Modal--tall) {
+.Modal.ModalTall {
   min-height: 85%;
 }
 
-:global(.Modal--full) {
+.ModalFull {
   background-color: white;
   position: fixed;
   top: 0;
@@ -55,67 +48,75 @@
   z-index: 3;
 }
 
-:global(.Modal-backdrop) {
-  background-color: color-mod(var(--color-bg-black) alpha(-40%));
+.ModalBackdrop {
+  background-color: var(--mb-color-bg-black-alpha-60);
 }
 
 /* TRANSITIONS */
 
 /* backdrop */
 
-:global(.Modal-backdrop.Modal-appear),
-:global(.Modal-backdrop.Modal-enter) {
-  background-color: color-mod(var(--color-bg-black) alpha(-99%));
+.ModalBackdrop.ModalAppear,
+.ModalBackdrop.ModalEnter {
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-bg-black) 1%,
+    transparent
+  );
 }
 
-:global(.Modal-backdrop.Modal-appear-active),
-:global(.Modal-backdrop.Modal-enter-active) {
+.ModalBackdrop.ModalAppearActive,
+.ModalBackdrop.ModalEnterActive {
   transition: background-color 200ms ease-in-out;
-  background-color: color-mod(var(--color-bg-black) alpha(-40%));
+  background-color: var(--mb-color-bg-black-alpha-60);
 }
 
-:global(.Modal-backdrop.Modal-exit) {
-  background-color: color-mod(var(--color-bg-black) alpha(-40%));
+.ModalBackdrop.ModalExit {
+  background-color: var(--mb-color-bg-black-alpha-60);
 }
 
-:global(.Modal-backdrop.Modal-exit-active) {
+.ModalBackdrop.ModalExitActive {
   transition: background-color 200ms ease-in-out 100ms;
-  background-color: color-mod(var(--color-bg-black) alpha(-99%));
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-bg-black) 1%,
+    transparent
+  );
 }
 
 /* modal */
 
-:global(.Modal-backdrop.Modal-appear .Modal),
-:global(.Modal-backdrop.Modal-enter .Modal) {
+.ModalBackdrop.ModalAppear .Modal,
+.ModalBackdrop.ModalEnter .Modal {
   opacity: 0.01;
   transform: translate(0, 40px);
 }
 
-:global(.Modal-backdrop.Modal-appear-active .Modal),
-:global(.Modal-backdrop.Modal-enter-active .Modal) {
+.ModalBackdrop.ModalAppearActive .Modal,
+.ModalBackdrop.ModalEnterActive .Modal {
   transition: opacity 200ms linear 100ms, transform 200ms ease-in-out 100ms;
   opacity: 1;
   transform: translate(0, 0);
 }
 
-:global(.Modal-backdrop.Modal-exit .Modal) {
+.ModalBackdrop.ModalExit .Modal {
   opacity: 1;
   transform: translate(0, 0);
 }
 
-:global(.Modal-backdrop.Modal-exit-active .Modal) {
+.ModalBackdrop.ModalExitActive .Modal {
   transition: opacity 200ms linear, transform 200ms ease-in-out;
   opacity: 0.01;
   transform: translate(0, -40px);
 }
 
 @media (prefers-reduced-motion) {
-  :global(.Modal-backdrop.Modal-appear),
-  :global(.Modal-backdrop.Modal-enter),
-  :global(.Modal-backdrop.Modal-exit),
-  :global(.Modal-backdrop.Modal-appear .Modal),
-  :global(.Modal-backdrop.Modal-enter .Modal),
-  :global(.Modal-backdrop.Modal-exit .Modal) {
+  .ModalBackdrop.ModalAppear,
+  .ModalBackdrop.ModalEnter,
+  .ModalBackdrop.ModalExit,
+  .ModalBackdrop.ModalAppear .Modal,
+  .ModalBackdrop.ModalEnter .Modal,
+  .ModalBackdrop.ModalExit .Modal {
     transition: none;
   }
 }

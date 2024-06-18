@@ -52,7 +52,7 @@ const DB_WITHOUT_WRITE_ACCESS = createMockDatabase({
 
 const COLLECTION = createMockCollection();
 
-function setup({
+async function setup({
   databases = [SAMPLE_DATABASE, DB_WITH_ACTIONS],
   hasModels = true,
 }: SetupOpts = {}) {
@@ -84,14 +84,14 @@ function setup({
       <NewModals />
     </>,
   );
-  userEvent.click(screen.getByText("New"));
+  await userEvent.click(screen.getByText("New"));
 }
 
 describe("NewItemMenu", () => {
   describe("New Collection", () => {
     it("should open new collection modal on click", async () => {
       setup();
-      userEvent.click(await screen.findByText("Collection"));
+      await userEvent.click(await screen.findByText("Collection"));
       const modal = await screen.findByRole("dialog", {
         name: /new collection/i,
       });
@@ -102,7 +102,7 @@ describe("NewItemMenu", () => {
   describe("New Dashboard", () => {
     it("should open new dashboard modal on click", async () => {
       setup();
-      userEvent.click(await screen.findByText("Dashboard"));
+      await userEvent.click(await screen.findByText("Dashboard"));
       const modal = await screen.findByRole("dialog");
       expect(modal).toHaveTextContent("New dashboard");
     });
@@ -110,26 +110,26 @@ describe("NewItemMenu", () => {
 
   describe("New Action", () => {
     it("should open action editor on click", async () => {
-      setup();
+      await setup();
 
-      userEvent.click(await screen.findByText("Action"));
+      await userEvent.click(await screen.findByText("Action"));
       const modal = screen.getByRole("dialog");
 
       expect(modal).toBeVisible();
     });
 
-    it("should not be visible if there are no databases with actions enabled", () => {
-      setup({ databases: [SAMPLE_DATABASE] });
+    it("should not be visible if there are no databases with actions enabled", async () => {
+      await setup({ databases: [SAMPLE_DATABASE] });
       expect(screen.queryByText("Action")).not.toBeInTheDocument();
     });
 
-    it("should not be visible if user has no models", () => {
-      setup({ hasModels: false });
+    it("should not be visible if user has no models", async () => {
+      await setup({ hasModels: false });
       expect(screen.queryByText("Action")).not.toBeInTheDocument();
     });
 
-    it("should not be visible if user has no write data access", () => {
-      setup({ databases: [DB_WITHOUT_WRITE_ACCESS] });
+    it("should not be visible if user has no write data access", async () => {
+      await setup({ databases: [DB_WITHOUT_WRITE_ACCESS] });
       expect(screen.queryByText("Action")).not.toBeInTheDocument();
     });
   });

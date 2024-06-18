@@ -1,0 +1,15 @@
+{
+  "name": "@metabase/embedding-sdk-react",
+  "version": "0.1.9",
+  "description": "Metabase Embedding SDK for React",
+  "repository": {
+    "url": "git+https://github.com/metabase/metabase.git"
+  },
+  "license": "SEE LICENSE IN LICENSE.txt",
+  "main": "./dist/main.bundle.js",
+  "types": "./dist/enterprise/frontend/src/embedding-sdk/index.d.ts",
+  "peerDependencies": {
+    "react": ">=17 <=18",
+    "react-dom": ">=17 <=18"
+  }
+}

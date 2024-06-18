@@ -4,7 +4,7 @@ import { push, replace } from "react-router-redux";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
-import { initTabs } from "metabase/dashboard/actions";
+import { getIdFromSlug, initTabs, selectTab } from "metabase/dashboard/actions";
 import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { SelectedTabId } from "metabase-types/store";
@@ -66,9 +66,40 @@ export function useSyncURLSlug({ location }: { location: Location }) {
   const { updateURLSlug } = useUpdateURLSlug({ location });
 
   useEffect(() => {
+    if (!tabs || tabs.length === 0) {
+      return;
+    }
+
+    const tabFromSlug = tabs.find(t => t.id === getIdFromSlug(slug));
+
+    // If the tabs haven't been loaded before, the tab data from slug exists,
+    // and the current tab differs from the slug.
+    const isTabFromSlugLoaded =
+      !prevTabs?.length && tabFromSlug && selectedTabId !== tabFromSlug.id;
+
+    // Selects the tab once the tab data has been loaded.
+    if (isTabFromSlugLoaded) {
+      dispatch(selectTab({ tabId: tabFromSlug.id }));
+
+      updateURLSlug({
+        slug: getSlug({
+          tabId: tabFromSlug.id,
+          name: tabFromSlug.name,
+        }),
+      });
+      return;
+    }
+
     const slugChanged = slug && slug !== prevSlug;
     if (slugChanged) {
       dispatch(initTabs({ slug }));
+      const slugId = getIdFromSlug(slug);
+      const hasTabs = tabs.length > 0;
+      const isValidSlug = !!tabs.find(t => t.id === slugId);
+      if (hasTabs && !isValidSlug) {
+        const [tab] = tabs;
+        updateURLSlug({ slug: getSlug({ tabId: tab.id, name: tab.name }) });
+      }
       return;
     }
 

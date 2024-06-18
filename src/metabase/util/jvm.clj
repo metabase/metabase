@@ -299,3 +299,21 @@
   "Run `body` in a `future` and throw an exception if it fails to complete after `timeout-ms`."
   [timeout-ms & body]
   `(do-with-timeout ~timeout-ms (fn [] ~@body)))
+
+(defn poll
+  "Returns `(thunk)` if the result satisfies the `done?` predicate within the timeout and nil otherwise.
+  The default timeout is 1000ms and the default interval is 100ms."
+  [{:keys [thunk done? timeout-ms interval-ms]
+    :or   {timeout-ms 1000 interval-ms 100}}]
+  (let [start-time (System/currentTimeMillis)]
+    (loop []
+      (let [response (thunk)]
+        (if (done? response)
+          response
+          (let [current-time (System/currentTimeMillis)
+                elapsed-time (- current-time start-time)]
+            (if (>= elapsed-time timeout-ms)
+              nil ; timeout reached
+              (do
+                (Thread/sleep (long interval-ms))
+                (recur)))))))))

@@ -618,3 +618,14 @@
                (lib.equality/find-matching-column (lib/ref created-at) columns)))
         (is (= ca-expr
                (lib.equality/find-matching-column (lib/ref ca-expr)    columns)))))))
+
+(deftest ^:parallel disambiguate-matches-using-temporal-unit-if-needed-test
+  (let [created-at-month (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)
+        created-at-year  (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year)]
+    (doseq [col [created-at-month
+                 created-at-year]]
+      (is (= col
+             (lib.equality/find-matching-column
+              (lib/ref col)
+              [created-at-month
+               created-at-year]))))))

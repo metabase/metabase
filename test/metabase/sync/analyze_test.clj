@@ -1,18 +1,18 @@
 (ns ^:mb/once metabase.sync.analyze-test
   (:require
    [clojure.test :refer :all]
+   [metabase.analyze.classifiers.category :as classifiers.category]
+   [metabase.analyze.classifiers.name :as classifiers.name]
+   [metabase.analyze.classifiers.no-preview-display
+    :as classifiers.no-preview-display]
+   [metabase.analyze.classifiers.text-fingerprint
+    :as classifiers.text-fingerprint]
+   [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.table :refer [Table]]
    [metabase.sync.analyze :as analyze]
-   [metabase.sync.analyze.classifiers.category :as classifiers.category]
-   [metabase.sync.analyze.classifiers.name :as classifiers.name]
-   [metabase.sync.analyze.classifiers.no-preview-display
-    :as classifiers.no-preview-display]
-   [metabase.sync.analyze.classifiers.text-fingerprint
-    :as classifiers.text-fingerprint]
-   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -99,7 +99,7 @@
 
 (deftest survive-classify-table-errors
   (testing "Make sure we survive table classification failing"
-    (sync-survives-crash? classifiers.name/infer-entity-type)))
+    (sync-survives-crash? classifiers.name/infer-entity-type-by-name)))
 
 (defn- classified-semantic-type [values]
   (let [field (mi/instance Field {:base_type :type/Text})]

@@ -31,7 +31,7 @@
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log])
   (:import
    (java.io File)
@@ -53,20 +53,23 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
-(doseq [[feature supported?] {:persist-models                         true
+(doseq [[feature supported?] {;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the
+                              ;; server and the columns themselves. Since this isn't something we can really change in
+                              ;; the query itself don't present the option to the users in the UI
+                              :case-sensitivity-string-filter-options false
                               :convert-timezone                       true
                               :datetime-diff                          true
-                              :now                                    true
-                              :regex                                  false
-                              :percentile-aggregations                false
                               :full-join                              false
-                              :uploads                                true
+                              :index-info                             true
+                              :now                                    true
+                              :percentile-aggregations                false
+                              :persist-models                         true
                               :schemas                                false
-                              ;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
-                              ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
-                              ;; users in the UI
-                              :case-sensitivity-string-filter-options false
-                              :index-info                             true}]
+                              :uploads                                true
+                              ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
+                              ;; fully support `offset` we need to do some kooky query transformations just for MySQL
+                              ;; and make this work.
+                              :window-functions/offset                false}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -121,15 +124,15 @@
      (fn [^java.sql.Connection conn]
        (when (unsupported-version? (.getMetaData conn))
          (log/warn
-          (u/format-color 'red
-                          (str
-                           "\n\n********************************************************************************\n"
-                           (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
+          (u/format-color :red
+                          (str "\n\n********************************************************************************\n"
+                               (format
+                                "WARNING: Metabase only officially supports MySQL %s/MariaDB %s and above."
                                 min-supported-mysql-version
                                 min-supported-mariadb-version)
-                           "\n"
-                           (trs "All Metabase features may not work properly when using an unsupported version.")
-                           "\n********************************************************************************\n"))))))))
+                               "\n"
+                               "All Metabase features may not work properly when using an unsupported version."
+                               "\n********************************************************************************\n"))))))))
 
 (defmethod driver/can-connect? :mysql
   [driver details]
@@ -477,7 +480,7 @@
     :DATETIME   :type/DateTime
     :DECIMAL    :type/Decimal
     :DOUBLE     :type/Float
-    :ENUM       :type/*
+    :ENUM       :type/MySQLEnum
     :FLOAT      :type/Float
     :INT        :type/Integer
     :INTEGER    :type/Integer
@@ -543,7 +546,7 @@
         ssl?          (or ssl? (= "true" (get addl-opts-map "useSSL")))
         ssl-cert?     (and ssl? (some? ssl-cert))]
     (when (and ssl? (not (contains? addl-opts-map "trustServerCertificate")))
-      (log/info (trs "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL.")))
+      (log/info "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL."))
     (merge
      default-connection-args
      ;; newer versions of MySQL will complain if you don't specify this when not using SSL

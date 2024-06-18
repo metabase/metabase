@@ -14,7 +14,6 @@
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.models.field-values :refer [FieldValues]]
-   [metabase.models.metric :refer [LegacyMetric]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
@@ -34,7 +33,6 @@
   {Database            [:name :engine]
    Table               [:schema :name :db_id]
    Field               [:name :table_id]
-   LegacyMetric              [:name :table_id]
    Segment             [:name :table_id]
    Collection          [:name :location :namespace]
    Dashboard           [:name :collection_id]
@@ -132,13 +130,13 @@
    entities]
   (let [{:keys [update insert skip]} (group-by-action context model entities)]
     (doseq [[_ entity _] insert]
-      (log/info (trs "Inserting {0}" (name-for-logging (name model) entity))))
+      (log/infof "Inserting %s" (name-for-logging (name model) entity)))
     (doseq [[_ _ existing] skip]
       (if (= mode :skip)
-        (log/info (trs "{0} already exists -- skipping"  (name-for-logging (name model) existing)))
-        (log/info (trs "Skipping {0} (nothing to update)" (name-for-logging (name model) existing)))))
+        (log/infof "%s already exists -- skipping" (name-for-logging (name model) existing))
+        (log/infof "Skipping %s (nothing to update)" (name-for-logging (name model) existing))))
     (doseq [[_ _ existing] update]
-      (log/info (trs "Updating {0}" (name-for-logging (name model) existing))))
+      (log/infof "Updating %s" (name-for-logging (name model) existing)))
     (->> (concat (for [[position _ existing] skip]
                    [(u/the-id existing) position])
                  (map vector (map post-insert-fn

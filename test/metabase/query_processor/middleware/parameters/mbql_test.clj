@@ -1,8 +1,10 @@
 (ns metabase.query-processor.middleware.parameters.mbql-test
   "Tests for *MBQL* parameter substitution."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -279,22 +281,25 @@
 ;; try it with date params as well. Even though there's no way to do this in the frontend AFAIK there's no reason we
 ;; can't handle it on the backend
 (deftest ^:parallel date-params-test
-  (is (= {:query  (str "SELECT COUNT(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
-                       "WHERE ("
-                       "(\"PUBLIC\".\"CHECKINS\".\"DATE\" >= ?) AND (\"PUBLIC\".\"CHECKINS\".\"DATE\" < ?))"
-                       " OR ((\"PUBLIC\".\"CHECKINS\".\"DATE\" >= ?) AND (\"PUBLIC\".\"CHECKINS\".\"DATE\" < ?)"
-                       ")")
-          :params [#t "2014-06-01T00:00Z[UTC]"
-                   #t "2014-07-01T00:00Z[UTC]"
-                   #t "2015-06-01T00:00Z[UTC]"
-                   #t "2015-07-01T00:00Z[UTC]"]}
-         (qp.compile/compile
-           (mt/query checkins
-             {:query      {:aggregation [[:count]]}
-              :parameters [{:name   "date"
-                            :type   "date/month-year"
-                            :target $date
-                            :value  ["2014-06" "2015-06"]}]})))))
+  (is (= {:query  ["SELECT"
+                   "  COUNT(*) AS \"count\""
+                   "FROM"
+                   "  \"PUBLIC\".\"CHECKINS\""
+                   "WHERE"
+                   "  \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?"
+                   "  OR \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?"]
+          :params [#t "2014-06-01"
+                   #t "2014-06-30"
+                   #t "2015-06-01"
+                   #t "2015-06-30"]}
+         (-> (qp.compile/compile
+              (mt/query checkins
+                {:query      {:aggregation [[:count]]}
+                 :parameters [{:name   "date"
+                               :type   "date/month-year"
+                               :target $date
+                               :value  ["2014-06" "2015-06"]}]}))
+             (update :query #(str/split-lines (driver/prettify-native-form :h2 %)))))))
 
 (defn- build-filter-clause [query param]
   (qp.store/with-metadata-provider (mt/id)
@@ -316,7 +321,7 @@
 (deftest ^:parallel handle-fk-forms-test
   (mt/test-drivers (params-test-drivers)
     (qp.store/with-metadata-provider (mt/id)
-      (when (driver/database-supports? driver/*driver* :foreign-keys (mt/db))
+      (when (driver.u/supports? driver/*driver* :foreign-keys (mt/db))
         (testing "Make sure we properly handle paramters that have `fk->` forms in `:dimension` targets (#9017)"
           (is (= [[31 "Bludso's BBQ" 5 33.8894 -118.207 2]
                   [32 "Boneyard Bistro" 5 34.1477 -118.428 3]

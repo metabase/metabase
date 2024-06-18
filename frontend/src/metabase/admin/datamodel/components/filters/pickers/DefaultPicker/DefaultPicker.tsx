@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import { t } from "ttag";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+import PopoverS from "metabase/components/Popover/Popover.module.css";
 import CS from "metabase/css/core/index.css";
 import { getCurrencySymbol } from "metabase/lib/formatting";
 import {
@@ -136,7 +137,6 @@ export function DefaultPicker({
         return (
           <FieldValuesWidget
             key={index}
-            className={CS.input}
             value={values}
             onChange={onValuesChange}
             multi={operator.multi}
@@ -194,7 +194,7 @@ export function DefaultPicker({
   return (
     <DefaultPickerContainer
       data-testid="default-picker-container"
-      className={cx(className, "PopoverBody--marginBottom")}
+      className={cx(className, PopoverS.PopoverBodyMarginBottom)}
     >
       {layout}
     </DefaultPickerContainer>
@@ -210,7 +210,10 @@ const DefaultLayout = ({
 }) => (
   <div>
     {fieldWidgets.map((fieldWidget, index) => (
-      <div key={index} className={index < fieldWidgets.length - 1 ? "mb1" : ""}>
+      <div
+        key={index}
+        className={index < fieldWidgets.length - 1 ? CS.mb1 : ""}
+      >
         {fieldWidget}
       </div>
     ))}

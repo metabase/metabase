@@ -58,7 +58,7 @@ function getActionOverrides(
     }
   }
 
-  if (Lib.isString(column) && typeof value === "string") {
+  if (Lib.isStringOrStringLike(column) && typeof value === "string") {
     const columnName = Lib.displayInfo(query, stageIndex, column).displayName;
     const valueTitle = getTextValueTitle(value);
     const action: Partial<ClickAction> = {

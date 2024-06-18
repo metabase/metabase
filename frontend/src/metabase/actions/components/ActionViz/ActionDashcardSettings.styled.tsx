@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const ActionSettingsWrapper = styled.div`
@@ -57,7 +56,7 @@ export const ActionSettingsRight = styled.div`
   flex: 1;
   flex-direction: column;
   padding-top: ${space(3)};
-  border-left: 1px solid ${color("border")};
+  border-left: 1px solid var(--mb-color-border);
 `;
 
 export const ParameterMapperContainer = styled.div`
@@ -77,5 +76,5 @@ export const ModalActions = styled.div`
   justify-content: flex-end;
   gap: 1rem;
   padding: 1rem;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;

@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [load])
   (:require
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.load :as load]
@@ -14,11 +15,10 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.db :as mdb]
    [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
+   [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]
-   [metabase.models.metric :refer [LegacyMetric]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.segment :refer [Segment]]
@@ -57,27 +57,27 @@
   "Load serialized metabase instance as created by [[dump]] command from directory `path`."
   [path context :- Context]
   (plugins/load-plugins!)
-  (mdb/setup-db!)
+  (mdb/setup-db! :create-sample-content? false)
   (check-premium-token!)
   (when-not (load/compatible? path)
-    (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
+    (log/warn "Dump was produced using a different version of Metabase. Things may break!"))
   (let [context (merge {:mode     :skip
                         :on-error :continue}
                        context)]
     (try
-      (log/info (trs "BEGIN LOAD from {0} with context {1}" path context))
+      (log/infof "BEGIN LOAD from %s with context %s" path context)
       (let [all-res    [(load/load! (str path "/users") context)
                         (load/load! (str path "/databases") context)
                         (load/load! (str path "/collections") context)
                         (load/load-settings! path context)]
             reload-fns (filter fn? all-res)]
         (when (seq reload-fns)
-          (log/info (trs "Finished first pass of load; now performing second pass"))
+          (log/info "Finished first pass of load; now performing second pass")
           (doseq [reload-fn reload-fns]
             (reload-fn)))
-        (log/info (trs "END LOAD from {0} with context {1}" path context)))
+        (log/infof "END LOAD from %s with context %s" path context))
       (catch Throwable e
-        (log/error e (trs "ERROR LOAD from {0}: {1}" path (.getMessage e)))
+        (log/errorf e "ERROR LOAD from %s: %s" path (.getMessage e))
         (throw e)))))
 
 (mu/defn v2-load-internal!
@@ -91,12 +91,12 @@
    & {:keys [token-check?]
       :or   {token-check? true}}]
   (plugins/load-plugins!)
-  (mdb/setup-db!)
+  (mdb/setup-db! :create-sample-content? false)
   (when token-check?
     (check-premium-token!))
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
   ;(when-not (load/compatible? path)
-  ;  (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
+  ;  (log/warn "Dump was produced using a different version of Metabase. Things may break!"))
   (log/infof "Loading serialized Metabase files from %s" path)
   (serdes/with-cache
     (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts)))
@@ -115,8 +115,9 @@
                    (catch Exception e
                      (reset! err e)))
         imported (into (sorted-set) (map (comp :model last)) (:seen report))]
-    (snowplow/track-event! ::snowplow/serialization-import nil
-                           {:source        "cli"
+    (snowplow/track-event! ::snowplow/serialization nil
+                           {:direction     "import"
+                            :source        "cli"
                             :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
                             :models        (str/join "," imported)
                             :count         (if (contains? imported "Setting")
@@ -183,8 +184,8 @@
 (defn v1-dump!
   "Legacy Metabase app data dump"
   [path {:keys [state user include-entity-id] :or {state :active} :as opts}]
-  (log/info (trs "BEGIN DUMP to {0} via user {1}" path user))
-  (mdb/setup-db!)
+  (log/infof "BEGIN DUMP to %s via user %s" path user)
+  (mdb/setup-db! :create-sample-content? false)
   (check-premium-token!)
   (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (let [users       (if user
@@ -203,16 +204,12 @@
         fields      (if (contains? opts :only-db-ids)
                       (t2/select Field :table_id [:in (map :id tables)] {:order-by [[:id :asc]]})
                       (t2/select Field))
-        metrics     (if (contains? opts :only-db-ids)
-                      (t2/select LegacyMetric :table_id [:in (map :id tables)] {:order-by [[:id :asc]]})
-                      (t2/select LegacyMetric))
         collections (select-collections users state)]
     (binding [serialize/*include-entity-id* (boolean include-entity-id)]
       (dump/dump! path
                   databases
                   tables
                   (mapcat field/with-values (u/batches-of 32000 fields))
-                  metrics
                   (select-segments-in-tables tables state)
                   collections
                   (select-entities-in-collections NativeQuerySnippet collections state)
@@ -222,32 +219,41 @@
                   users)))
   (dump/dump-settings! path)
   (dump/dump-dimensions! path)
-  (log/info (trs "END DUMP to {0} via user {1}" path user)))
+  (log/infof "END DUMP to %s via user %s" path user))
 
 (defn v2-dump!
   "Exports Metabase app data to directory at path"
   [path {:keys [collection-ids] :as opts}]
-  (log/info (trs "Exporting Metabase to {0}" path) (u/emoji "🏭 🚛💨"))
-  (mdb/setup-db!)
+  (log/infof "Exporting Metabase to %s" path)
+  (mdb/setup-db! :create-sample-content? false)
   (check-premium-token!)
   (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (let [f (io/file path)]
     (.mkdirs f)
     (when-not (.canWrite f)
       (throw (ex-info (format "Destination path is not writeable: %s" path) {:filename path}))))
-  (let [start  (System/nanoTime)
-        err    (atom nil)
-        report (try
-                 (serdes/with-cache
-                   (-> (cond-> opts
-                         (seq collection-ids)
-                         (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids)))
-                       v2.extract/extract
-                       (v2.storage/store! path)))
-                 (catch Exception e
-                   (reset! err e)))]
-    (snowplow/track-event! ::snowplow/serialization-export nil
-                           {:source          "cli"
+  (let [start                (System/nanoTime)
+        ;; we _ALWAYS_ export the Trash. Its descendants are empty, so we won't export anything extra as a result, but
+        ;; we will export items that are currently in the Trash, assuming they were trashed *from* a place we're
+        ;; exporting.
+        collection-ids+trash (set/union collection-ids
+                                        #{(collection/trash-collection-id)})
+        err                  (atom nil)
+        report               (try
+                               (serdes/with-cache
+                                 (-> (cond-> opts
+                                       (seq collection-ids)
+                                       (assoc :targets
+                                              (v2.extract/make-targets-of-type
+                                               "Collection"
+                                               collection-ids+trash)))
+                                     v2.extract/extract
+                                     (v2.storage/store! path)))
+                               (catch Exception e
+                                 (reset! err e)))]
+    (snowplow/track-event! ::snowplow/serialization nil
+                           {:direction       "export"
+                            :source          "cli"
                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
                             :count           (count (:seen report))
                             :collection      (str/join "," collection-ids)

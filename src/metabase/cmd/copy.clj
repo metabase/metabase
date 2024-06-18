@@ -53,8 +53,6 @@
     :model/Field
     :model/FieldValues
     :model/Segment
-    :model/LegacyMetric
-    :model/LegacyMetricImportantField
     :model/ModerationReview
     :model/Revision
     :model/ViewLog
@@ -97,7 +95,8 @@
     ;; 48+
     :model/TablePrivileges
     :model/AuditLog
-    :model/RecentViews]
+    :model/RecentViews
+    :model/UserParameterValue]
    (when config/ee-available?
      [:model/GroupTableAccessPolicy
       :model/ConnectionImpersonation])))
@@ -110,7 +109,7 @@
   ;; should be ok now that #16344 is resolved -- we might be able to remove this code entirely now. Quoting identifiers
   ;; is still a good idea tho.)
   (let [source-keys (keys (first objs))
-        quote-fn    (partial mdb.setup/quote-for-application-db (mdb/quoting-style target-db-type))
+        quote-fn    (partial mdb/quote-for-application-db (mdb/quoting-style target-db-type))
         dest-keys   (for [k source-keys]
                       (quote-fn (name k)))]
     {:cols dest-keys
@@ -163,6 +162,10 @@
       (map (fn [database]
              (cond-> database
                (= (:engine database) "h2") (assoc :details "{}")))))
+    :model/Setting
+    ;; Never create dumps with read-only-mode turned on.
+    ;; It will be confusing to restore from and prevent key rotation.
+    (remove (fn [{k :key}] (= k "read-only-mode")))
     ;; else
     identity))
 
@@ -180,11 +183,11 @@
        (fn
          ([cnt]
           (when (pos? cnt)
-            (log/info (str " " (u/colorize 'green (trs "copied {0} instances." cnt))))))
+            (log/info (str " " (u/format-color :green "copied %s instances." cnt)))))
          ([cnt chunkk]
           (when (seq chunkk)
             (when (zero? cnt)
-              (log/info (u/colorize 'blue (trs "Copying instances of {0}..." (name model)))))
+              (log/info (u/format-color :blue "Copying instances of %s..." (name model))))
             (try
               (insert-chunk! target-db-type target-db-conn-spec table-name chunkk)
               (catch Throwable e
@@ -195,11 +198,13 @@
        0
        results))))
 
-(defn- assert-db-empty
-  "Make sure [target] application DB is empty before we start copying data."
+(defn- assert-has-no-users
+  "Make sure [target] application DB has no users set up before we start copying data. This is a safety check to make
+   sure we're not accidentally copying data into an existing application DB."
   [data-source]
   ;; check that there are no Users yet
-  (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} "SELECT count(*) AS cnt FROM core_user;")]
+  (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} ["SELECT count(*) AS cnt FROM core_user where not id = ?;"
+                                                               config/internal-mb-user-id])]
     (assert (integer? cnt))
     (when (pos? cnt)
       (throw (ex-info (trs "Target DB is already populated!")
@@ -381,15 +386,15 @@
     (classloader/require ns-symb))
   ;; make sure the source database is up-do-date
   (step (trs "Set up {0} source database and run migrations..." (name source-db-type))
-    (mdb.setup/setup-db! source-db-type source-data-source true))
+    (mdb.setup/setup-db! source-db-type source-data-source true false))
   ;; make sure the dest DB is up-to-date
   ;;
   ;; don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
   (step (trs "Set up {0} target database and run migrations..." (name target-db-type))
-    (mdb.setup/setup-db! target-db-type target-data-source true))
+    (mdb.setup/setup-db! target-db-type target-data-source true false))
   ;; make sure target DB is empty
   (step (trs "Testing if target {0} database is already populated..." (name target-db-type))
-    (assert-db-empty target-data-source))
+    (assert-has-no-users target-data-source))
   ;; clear any rows created by the Liquibase migrations.
   (step (trs "Clearing default entries created by Liquibase migrations...")
     (clear-existing-rows! target-db-type target-data-source))

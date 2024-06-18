@@ -3,7 +3,7 @@ import type {
   DatasetColumn,
   Field,
   FieldDimensionOption,
-  FieldValuesResult,
+  GetFieldValuesResponse,
   Table,
 } from "metabase-types/api";
 import {
@@ -76,13 +76,13 @@ export const REVIEWS = {
 // Field values are not included in the field object in the API response
 // Please use `setupFieldValuesEndpoints` utility from `__support__/server-mocks`
 
-export const ORDER_QUANTITY_VALUES: FieldValuesResult = {
+export const ORDER_QUANTITY_VALUES: GetFieldValuesResponse = {
   field_id: ORDERS.QUANTITY,
   values: Array.from({ length: 101 }, (_, i) => [i]),
   has_more_values: false,
 };
 
-export const PRODUCT_TITLE_VALUES: FieldValuesResult = {
+export const PRODUCT_TITLE_VALUES: GetFieldValuesResponse = {
   field_id: PRODUCTS.TITLE,
   values: [
     ["Aerodynamic Bronze Hat"],
@@ -109,7 +109,7 @@ export const PRODUCT_TITLE_VALUES: FieldValuesResult = {
   has_more_values: false,
 };
 
-export const PRODUCT_EAT_VALUES: FieldValuesResult = {
+export const PRODUCT_EAT_VALUES: GetFieldValuesResponse = {
   field_id: PRODUCTS.EAN,
   values: [
     ["0001664425970"],
@@ -131,31 +131,31 @@ export const PRODUCT_EAT_VALUES: FieldValuesResult = {
   has_more_values: false,
 };
 
-export const PRODUCT_CATEGORY_VALUES: FieldValuesResult = {
+export const PRODUCT_CATEGORY_VALUES: GetFieldValuesResponse = {
   field_id: PRODUCTS.CATEGORY,
   values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
   has_more_values: false,
 };
 
-export const PRODUCT_VENDOR_VALUES: FieldValuesResult = {
+export const PRODUCT_VENDOR_VALUES: GetFieldValuesResponse = {
   field_id: PRODUCTS.VENDOR,
   values: [["Vendor 1"], ["Vendor 2"], ["Vendor 3"], ["Vendor 4"]],
   has_more_values: true,
 };
 
-export const PRODUCT_RATING_VALUES: FieldValuesResult = {
+export const PRODUCT_RATING_VALUES: GetFieldValuesResponse = {
   field_id: PRODUCTS.RATING,
   values: [[1], [2], [3], [4], [5]],
   has_more_values: false,
 };
 
-export const PEOPLE_SOURCE_VALUES: FieldValuesResult = {
+export const PEOPLE_SOURCE_VALUES: GetFieldValuesResponse = {
   field_id: PEOPLE.SOURCE,
   values: [["Affiliate"], ["Facebook"], ["Google"], ["Organic"], ["Twitter"]],
   has_more_values: false,
 };
 
-export const PEOPLE_STATE_VALUES: FieldValuesResult = {
+export const PEOPLE_STATE_VALUES: GetFieldValuesResponse = {
   field_id: PEOPLE.STATE,
   values: [
     ["AK"],
@@ -384,6 +384,7 @@ export const createOrdersProductIdField = (opts?: Partial<Field>): Field =>
     effective_type: "type/Integer",
     semantic_type: "type/FK",
     fk_target_field_id: PRODUCTS.ID,
+    description: "The unique identifier of the product",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 200,
@@ -518,6 +519,7 @@ export const createOrdersCreatedAtField = (opts?: Partial<Field>): Field =>
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
+    description: "The timestamp the order was created",
     default_dimension_option: DEFAULT_TEMPORAL_BUCKETING_OPTION,
     dimension_options: createTemporalFieldBucketingOptions(),
     fingerprint: createMockFingerprint({

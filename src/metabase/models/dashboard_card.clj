@@ -94,7 +94,7 @@
     (let [dashcard-ids        (map :id dashcards)
           dashcard-id->series (when (seq dashcard-ids)
                                 (as-> (t2/select
-                                       [:model/Card :id :name :description :display :dataset_query
+                                       [:model/Card :id :name :description :display :dataset_query :type :database_id
                                         :visualization_settings :collection_id :series.dashboardcard_id]
                                        {:left-join [[:dashboardcard_series :series] [:= :report_card.id :series.card_id]]
                                         :where     [:in :series.dashboardcard_id dashcard-ids]
@@ -114,17 +114,15 @@
       (t2/hydrate :series)))
 
 (defn dashcard->multi-cards
-  "Return the cards which are other cards with respect to this dashboard card
-  in multiple series display for dashboard
+  "Return the cards which have been added to this dashcard using the 'add series' dashboard feature.
 
-  Dashboard (and dashboard only) has this thing where you're displaying multiple cards entirely.
+  Dashboards allow Line, Area, and Bar dashcards to have other questions (series) added to them
+  so that several Questions are displayed in a single dashcard.
 
-  This is actually completely different from the combo display,
-  which is a visualization type in visualization option.
+  It's important to know that this is different from the combo display,
+  which is its own visualization type for Questions.
 
-  This is also actually completely different from having multiple series display
-  from the visualization with same type (line bar or whatever),
-  which is a separate option in line area or bar visualization"
+  This is also different from having multiple series displayed on Line, Area, or Bar Questions."
   [dashcard]
   (mdb.query/query {:select    [:newcard.*]
                     :from      [[:report_dashboardcard :dashcard]]

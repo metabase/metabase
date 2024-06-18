@@ -2,7 +2,6 @@
   "Malli schemas for string, temporal, number, and boolean literals."
   (:require
    #?@(:clj ([metabase.lib.schema.literal.jvm]))
-   [malli.core :as mc]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
@@ -81,7 +80,7 @@
 
 (defmethod expression/type-of-method :dispatch-type/string
   [s]
-  (condp mc/validate s
+  (condp mr/validate s
     ::string.datetime #{:type/Text :type/DateTime}
     ::string.date     #{:type/Text :type/Date}
     ::string.time     #{:type/Text :type/Time}
@@ -97,6 +96,7 @@
 
 (mr/def ::time
   #?(:clj [:or
+           {:doc/title "time literal"}
            ::string.time
            [:time/local-time
             {:error/message    "instance of java.time.LocalTime"

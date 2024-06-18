@@ -27,29 +27,19 @@
    [java-time.api :as t]
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.analyze :as analyze]
+   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
-
-(def ^Long category-cardinality-threshold
-  "Fields with less than this many distinct values should automatically be given a semantic type of `:type/Category`.
-  This no longer has any meaning whatsoever as far as the backend code is concerned; it is used purely to inform
-  frontend behavior such as widget choices."
-  30)
-
-(def ^Long auto-list-cardinality-threshold
-  "Fields with less than this many distincy values should be given a `has_field_values` value of `list`, which means
-  the Field should have FieldValues."
-  1000)
 
 (def ^:private ^Long entry-max-length
   "The maximum character length for a stored FieldValues entry."
@@ -57,7 +47,7 @@
 
 (def ^:dynamic ^Long *total-max-length*
   "Maximum total length for a FieldValues entry (combined length of all values for the field)."
-  (long (* auto-list-cardinality-threshold entry-max-length)))
+  (long (* analyze/auto-list-cardinality-threshold entry-max-length)))
 
 (def ^java.time.Period advanced-field-values-max-age
   "Age of an advanced FieldValues in days.
@@ -242,8 +232,10 @@
            has-field-values :has_field_values} field-or-field-id]
       (boolean
        (and
+        (not (isa? base-type :type/field-values-unsupported))
         (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
         (not (isa? (keyword base-type) :type/Temporal))
+        (not (= (keyword base-type) :type/*))
         (#{:list :auto-list} (keyword has-field-values)))))))
 
 (defn take-by-length
@@ -343,9 +335,8 @@
   FieldValues. You most likely should not be using this directly in code outside of this namespace, unless it's for a
   very specific reason, such as certain cases where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
   [field]
-  (classloader/require 'metabase.db.metadata-queries)
   (try
-    (let [distinct-values         ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)
+    (let [distinct-values         (metadata-queries/field-distinct-values field)
           limited-distinct-values (take-by-length *total-max-length* distinct-values)]
       {:values          limited-distinct-values
        ;; has_more_values=true means the list of values we return is a subset of all possible values.
@@ -359,9 +350,9 @@
                           ;; So, if the returned `distinct-values` has length equal to that exact limit,
                           ;; we assume the returned values is just a subset of what we have in DB.
                           (= (count distinct-values)
-                             @(resolve 'metabase.db.metadata-queries/absolute-max-distinct-values-limit)))})
+                             metadata-queries/absolute-max-distinct-values-limit))})
     (catch Throwable e
-      (log/error e (trs "Error fetching field values"))
+      (log/error e "Error fetching field values")
       nil)))
 
 (defn- delete-duplicates-and-return-latest!
@@ -403,7 +394,7 @@
         field-name                (or (:name field) (:id field))]
     (cond
       ;; If this Field is marked `auto-list`, and the number of values in now over
-      ;; the [[auto-list-cardinality-threshold]] or the accumulated length of all values exceeded
+      ;; the [[analyze/auto-list-cardinality-threshold]] or the accumulated length of all values exceeded
       ;; the [[*total-max-length*]] threshold we need to unmark it as `auto-list`. Switch it to `has_field_values` =
       ;; `nil` and delete the FieldValues; this will result in it getting a Search Widget in the UI when
       ;; `has_field_values` is automatically inferred by the [[metabase.models.field/infer-has-field-values]] hydration
@@ -414,11 +405,13 @@
       ;; way that could make this work. Thus, we are stuck doing it here :(
       (and (= :auto-list (keyword (:has_field_values field)))
            (or has_more_values
-               (> (count values) auto-list-cardinality-threshold)))
+               (> (count values) analyze/auto-list-cardinality-threshold)))
       (do
-        (log/info (trs "Field {0} was previously automatically set to show a list widget, but now has {1} values."
-                       field-name (count values))
-                  (trs "Switching Field to use a search widget instead."))
+        (log/infof
+         (str "Field %s was previously automatically set to show a list widget, but now has %s values."
+              " Switching Field to use a search widget instead.")
+         field-name
+         (count values))
         (t2/update! 'Field (u/the-id field) {:has_field_values nil})
         (clear-field-values-for-field! field)
         ::fv-deleted)
@@ -426,28 +419,28 @@
       (and (= (:values field-values) values)
            (= (:has_more_values field-values) has_more_values))
       (do
-        (log/debug (trs "FieldValues for Field {0} remain unchanged. Skipping..." field-name))
+        (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
         ::fv-skipped)
 
       ;; if the FieldValues object already exists then update values in it
       (and field-values unwrapped-values)
       (do
-       (log/debug (trs "Storing updated FieldValues for Field {0}..." field-name))
-       (t2/update! FieldValues (u/the-id field-values)
-                   (m/remove-vals nil?
-                                  {:has_more_values       has_more_values
-                                   :values                values
-                                   :human_readable_values (fixup-human-readable-values field-values values)}))
-       ::fv-updated)
+        (log/debugf "Storing updated FieldValues for Field %s..." field-name)
+        (t2/update! FieldValues (u/the-id field-values)
+                    (m/remove-vals nil?
+                                   {:has_more_values       has_more_values
+                                    :values                values
+                                    :human_readable_values (fixup-human-readable-values field-values values)}))
+        ::fv-updated)
 
       ;; if FieldValues object doesn't exist create one
       unwrapped-values
       (do
-        (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
+        (log/debugf "Storing FieldValues for Field %s..." field-name)
         (mdb.query/select-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
-          (constantly {:has_more_values       has_more_values
-                       :values                values
-                       :human_readable_values human-readable-values}))
+                                     (constantly {:has_more_values       has_more_values
+                                                  :values                values
+                                                  :human_readable_values human-readable-values}))
         ::fv-created)
 
       ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
@@ -506,13 +499,12 @@
                  (filter field-should-have-field-values?
                          (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
                                      :semantic_type :visibility_type :table_id :has_field_values]
-                           :id [:in field-ids])))
+                                    :id [:in field-ids])))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))]
     (doseq [{table-id :table_id, :as field} fields]
       (when (table-id->is-on-demand? table-id)
-        (log/debug
-         (trs "Field {0} ''{1}'' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
-                 (u/the-id field) (:name field)))
+        (log/debugf "Field %s '%s' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
+                    (u/the-id field) (:name field))
         (create-or-update-full-field-values! field)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

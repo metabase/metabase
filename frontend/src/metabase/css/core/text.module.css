@@ -1,229 +1,107 @@
-:root {
-  --body-text-color: var(--color-text-medium);
-  --70-percent-black: var(--color-text-dark);
-}
-
 /* center */
-:global(.text-centered),
-.text-centered,
 .textCentered {
   text-align: center;
 }
 
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-text-centered) {
-    text-align: center;
-  }
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.md-text-centered) {
-    text-align: center;
-  }
-}
-
-@media screen and (--breakpoint-min-lg) {
-  :global(.lg-text-centered) {
-    text-align: center;
-  }
-}
-
-@media screen and (--breakpoint-min-xl) {
-  :global(.xl-text-centered) {
-    text-align: center;
-  }
-}
-
-:global(.text-left),
-.text-left {
+.textLeft {
   text-align: left;
 }
 
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-text-left) {
-    text-align: left;
-  }
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.md-text-left) {
-    text-align: left;
-  }
-}
-
-@media screen and (--breakpoint-min-lg) {
-  :global(.lg-text-left) {
-    text-align: left;
-  }
-}
-
-@media screen and (--breakpoint-min-xl) {
-  :global(.xl-text-left) {
-    text-align: left;
-  }
-}
-
-:global(.text-right),
-.text-right {
+.textRight {
   text-align: right;
 }
 
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-text-right) {
-    text-align: right;
-  }
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.md-text-right) {
-    text-align: right;
-  }
-}
-
-@media screen and (--breakpoint-min-lg) {
-  :global(.lg-text-right) {
-    text-align: right;
-  }
-}
-
-@media screen and (--breakpoint-min-xl) {
-  :global(.xl-text-right) {
-    text-align: right;
-  }
-}
-
-:global(.text-uppercase),
-.text-uppercase,
 .textUppercase {
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
-:global(.text-lowercase) {
-  text-transform: lowercase;
-}
-
-:global(.text-capitalize) {
-  text-transform: capitalize;
-}
-
-:global(.text-transform-none) {
-  text-transform: none;
-}
-
-:global(.text-normal),
 .textNormal {
   font-weight: 400;
 }
 
-:global(.text-bold),
-.text-bold,
 .textBold {
   font-weight: 700;
 }
 
-:global(.text-heavy) {
+.textHeavy {
   font-weight: 900;
 }
 
 /* text style */
 
-:global(.text-italic) {
+.textItalic {
   font-style: italic;
 }
 
 /* larger text size used for descriptions  */
-:global(.text-body),
-.text-body {
+.textBody {
   font-size: 1.286em;
   line-height: 1.457em;
-  color: var(--color-text-medium); /* TODO - is this bad? */
+  color: var(--mb-color-text-medium); /* TODO - is this bad? */
 }
 
-:global(.text-list) {
+.textList {
   font-size: 1em;
 }
 
-:global(.text-paragraph),
-.text-paragraph {
+.textParagraph {
   font-size: 1.143em;
   line-height: 1.5em;
 }
 
-:global(.text-spaced),
-.text-spaced {
+.textSpaced {
   line-height: 1.5em;
 }
 
-:global(.text-unspaced),
-.text-unspaced {
+.textUnspaced {
   line-height: normal;
 }
 
-:global(.text-small) {
+.textSmall {
   font-size: 0.875em;
 }
 
-:global(.text-smaller) {
+.textSmaller {
   font-size: 0.8em;
 }
 
-:global(.text-current) {
-  color: currentColor;
-}
-
-:global(.text-underline) {
-  text-decoration: underline;
-}
-
-:global(.text-underline-hover:hover) {
-  text-decoration: underline;
-}
-
-:global(.text-ellipsis) {
+.textEllipsis {
   text-overflow: ellipsis;
 }
 
-:global(.text-wrap) {
+.textWrap {
   overflow-wrap: anywhere;
   word-break: break-word;
   word-wrap: anywhere;
 }
 
-:global(.text-nowrap) {
+.textNoWrap {
   white-space: nowrap;
 }
 
-:global(.text-code) {
+.textCode {
   font-family: monospace;
-  color: var(--color-text-medium);
-  background-color: var(--color-bg-medium);
+  color: var(--mb-color-text-medium);
+  background-color: var(--mb-color-bg-medium);
   border-radius: 2px;
   padding: 0.2em 0.4em;
   line-height: 1.4em;
   white-space: pre-wrap;
 }
 
-:global(.text-code-plain) {
-  font-family: monospace;
-  color: var(--color-text-dark);
-  line-height: 1.4em;
-  white-space: pre-wrap;
-}
-
-:global(.text-monospace),
-.text-monospace {
+.textMonospace {
   font-family: Monaco, monospace;
 }
 
-:global(.text-pre-wrap) {
+.textPreWrap {
   white-space: pre-wrap;
 }
 
-:global(.text-measure) {
+.textMeasure {
   max-width: 620px;
 }
 
-:global(.break-anywhere) {
+.breakAnywhere {
   line-break: anywhere;
 }

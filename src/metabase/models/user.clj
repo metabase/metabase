@@ -23,6 +23,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.setup :as setup]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -49,7 +50,8 @@
 
 (doto :model/User
   (derive :metabase/model)
-  (derive :hook/updated-at-timestamped?))
+  (derive :hook/updated-at-timestamped?)
+  (derive :hook/entity-id))
 
 (t2/deftransforms :model/User
   {:login_attributes mi/transform-json-no-keywordization
@@ -118,15 +120,15 @@
   [{user-id :id, superuser? :is_superuser, :as user}]
   (u/prog1 user
     (let [current-version (:tag config/mb-version-info)]
-      (log/info (trs "Setting User {0}''s last_acknowledged_version to {1}, the current version" user-id current-version))
+      (log/infof "Setting User %s's last_acknowledged_version to %s, the current version" user-id current-version)
       ;; Can't use mw.session/with-current-user due to circular require
       (binding [api/*current-user-id*       user-id
                 setting/*user-local-values* (delay (atom (user-local-settings user)))]
         (setting/set! :last-acknowledged-version current-version)))
     ;; add the newly created user to the magic perms groups.
-    (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
+    (log/infof "Adding User %s to All Users permissions group..." user-id)
     (when superuser?
-      (log/info (trs "Adding User {0} to All Users permissions group..." user-id)))
+      (log/infof "Adding User %s to All Users permissions group..." user-id))
     (let [groups (filter some? [(perms-group/all-users)
                                 (when superuser? (perms-group/admin))])]
       (binding [perms-group-membership/*allow-changing-all-users-group-members* true]
@@ -236,6 +238,10 @@
    [:id ms/PositiveInt]
    ;; is_group_manager only included if `advanced-permissions` is enabled
    [:is_group_manager {:optional true} :boolean]])
+
+(defmethod mi/exclude-internal-content-hsql :model/User
+  [_model & {:keys [table-alias]}]
+  [:and [:not= (h2x/identifier :field table-alias :type) [:inline "internal"]]])
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -473,6 +479,44 @@
   :type       :boolean
   :default    false
   :audit      :never)
+
+(defsetting notebook-native-preview-shown
+  (deferred-tru "User preference for the state of the native query preview in the notebook.")
+  :user-local :only
+  :visibility :authenticated
+  :type       :boolean
+  :default    false)
+
+(defsetting notebook-native-preview-sidebar-width
+  (deferred-tru "Last user set sidebar width for the native query preview in the notebook.")
+  :user-local :only
+  :visibility :authenticated
+  :type       :integer
+  :default    nil)
+
+(defsetting expand-browse-in-nav
+  (deferred-tru "User preference for whether the 'Browse' section of the nav is expanded.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    true)
+
+(defsetting expand-bookmarks-in-nav
+  (deferred-tru "User preference for whether the 'Bookmarks' section of the nav is expanded.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    true)
+
+(defsetting browse-filter-only-verified-models
+  (deferred-tru "User preference for whether the 'Browse models' page should be filtered to show only verified models.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    true)
 
 ;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
 

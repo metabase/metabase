@@ -217,7 +217,7 @@
             [:ends-with
              {:lib/uuid "953597df-a96d-4453-a57b-665e845abc69"}
              [:field {:lib/uuid "be28f393-538a-406b-90da-bac5f8ef565e"} (meta/id :venues :name)]
-             "t"]))) ))
+             "t"])))))
 
 (deftest ^:parallel filterable-columns-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
@@ -282,6 +282,24 @@
                  "Venues__PRICE" {"="       {:display-name "=", :long-display-name "Equal to"}
                                   "is-null" {:display-name "Is empty", :long-display-name "Is empty"}}}
                 display-info-by-type-and-op))))))
+
+(deftest ^:parallel filterable-columns-excludes-offset-expressions-test
+  (testing "filterable-columns should exclude expressions which contain :offset"
+    (let [query (-> lib.tu/venues-query
+                    (lib/order-by (meta/field-metadata :venues :id) :asc)
+                    (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
+                    (lib/expression "Nested Offset"
+                                    (lib/* 100 (lib/offset (meta/field-metadata :venues :price) -1))))]
+      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
+        (is (=? [{:id (meta/id :venues :id) :name "ID"}
+                 {:id (meta/id :venues :name) :name "NAME"}
+                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
+                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
+                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
+                 {:id (meta/id :venues :price) :name "PRICE"}
+                 {:id (meta/id :categories :id) :name "ID"}
+                 {:id (meta/id :categories :name) :name "NAME"}]
+                (lib/filterable-columns query)))))))
 
 (deftest ^:parallel filter-clause-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users)))
@@ -573,12 +591,17 @@
        {:clause [:!= nam "A" "B" "C"], :name "Name is not 3 selections"}
        {:clause [:contains nam "ABC"], :name "Name contains ABC"}
        {:clause [:contains nam "ABC"], :options {:case-sensitive true}, :name "Name contains ABC"}
+       {:clause [:contains nam "ABC"], :options {:case-sensitive false}, :name "Name contains ABC"}
+       {:clause [:contains nam "ABC" "HJK" "XYZ"], :name "Name contains 3 selections"}
        {:clause [:does-not-contain nam "ABC"], :name "Name does not contain ABC"}
+       {:clause [:does-not-contain nam "ABC" "HJK" "XYZ"], :name "Name does not contain 3 selections"}
        {:clause [:is-empty nam], :name "Name is empty"}
        {:clause [:not-empty nam], :name "Name is not empty"}
        {:clause [:does-not-contain nam "ABC"], :name "Name does not contain ABC"}
        {:clause [:starts-with nam "ABC"], :name "Name starts with ABC"}
-       {:clause [:ends-with nam "ABC"], :name "Name ends with ABC"}])))
+       {:clause [:starts-with nam "ABC" "HJK" "XYZ"], :name "Name starts with 3 selections"}
+       {:clause [:ends-with nam "ABC"], :name "Name ends with ABC"}
+       {:clause [:ends-with nam "ABC" "HJK" "XYZ"], :name "Name ends with 3 selections"}])))
 
 (deftest ^:parallel boolean-frontend-filter-display-names-test
   (check-display-names
@@ -628,8 +651,8 @@
                  (lib/expression-clause :+
                                         [created-at
                                          (lib/expression-clause :interval [1 :month] nil)] nil)
-                  (lib/expression-clause :relative-datetime [-1 :month] nil)
-                  (lib/expression-clause :relative-datetime [0 :month] nil)],
+                 (lib/expression-clause :relative-datetime [-1 :month] nil)
+                 (lib/expression-clause :relative-datetime [0 :month] nil)],
         :name "Created At is in the previous month, starting 1 month ago"}
        {:clause [:time-interval created-at :current :day], :name "Created At is today"}
        {:clause [:time-interval created-at :current :week], :name "Created At is this week"}

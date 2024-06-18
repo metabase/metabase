@@ -4,7 +4,6 @@ import Segment from "metabase-lib/v1/metadata/Segment";
 import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import {
   createMockDatabase,
-  createMockMetric,
   createMockSegment,
   createMockTable,
 } from "metabase-types/api/mocks";
@@ -32,17 +31,6 @@ const metadata = createMockMetadata({
   databases: [
     createSampleDatabase(),
     createMockDatabase({ id: ANOTHER_DB_ID }),
-  ],
-  metrics: [
-    createMockMetric({
-      id: 1,
-      table_id: ORDERS_ID,
-      name: "Total Order Value",
-      definition: {
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-        "source-table": ORDERS_ID,
-      },
-    }),
   ],
   segments: [
     createMockSegment({
@@ -274,13 +262,6 @@ describe("StructuredQuery", () => {
     });
 
     describe("aggregation name", () => {
-      it("returns a saved metric's name", () => {
-        expect(
-          makeQueryWithAggregation(["metric", 1])
-            .aggregations()[0]
-            .displayName(),
-        ).toBe("Total Order Value");
-      });
       it("returns a standard aggregation name", () => {
         expect(
           makeQueryWithAggregation(["count"]).aggregations()[0].displayName(),

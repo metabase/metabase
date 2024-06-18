@@ -3,12 +3,12 @@
   (:require
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.audit :as audit]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -82,7 +82,7 @@
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user permissions = %s"
                 (pr-str (data-perms/permissions-for-user *current-user-id*)))
-    (when (= perms/audit-db-id database-id)
+    (when (= audit/audit-db-id database-id)
       (check-audit-db-permissions outer-query))
     (let [card-id (or *card-id* (:qp/source-card-id outer-query))
           required-perms (query-perms/required-perms outer-query :already-preprocessed? true)]
@@ -155,7 +155,8 @@
   [{database-id :database, :as _query}]
   (or
    (not *current-user-id*)
-   (data-perms/user-has-permission-for-database? *current-user-id* :perms/native-query-editing :yes database-id)))
+   (= (data-perms/full-db-permission-for-user *current-user-id* :perms/create-queries database-id)
+      :query-builder-and-native)))
 
 (defn check-current-user-has-adhoc-native-query-perms
   "Check that the current user (if bound) has adhoc native query permissions to run `query`, or throw an
@@ -163,4 +164,4 @@
   to native.)"
   [{database-id :database, :as query}]
   (when-not (current-user-has-adhoc-native-query-perms? query)
-    (throw (perms-exception {database-id {:perms/native-query-editing :yes}}))))
+    (throw (perms-exception {database-id {:perms/create-queries :query-builder-and-native}}))))

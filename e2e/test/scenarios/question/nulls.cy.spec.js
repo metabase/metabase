@@ -8,6 +8,7 @@ import {
   rightSidebar,
   updateDashboardCards,
   addOrUpdateDashboardCard,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -147,7 +148,7 @@ describe("scenarios > question > null", () => {
     // Total of "39.72", and the next cell is the `discount` (which is empty)
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("39.72")
-      .closest(".TableInteractive-cellWrapper")
+      .closest(".test-TableInteractive-cellWrapper")
       .next()
       .find("div")
       .should("be.empty")
@@ -190,7 +191,7 @@ describe("scenarios > question > null", () => {
         "not.exist",
       );
 
-      cy.get(".dot").should("have.length.of.at.least", 40);
+      cartesianChartCircle().should("have.length.of.at.least", 40);
     });
   });
 });

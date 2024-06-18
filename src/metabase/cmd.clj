@@ -182,7 +182,7 @@
                :parse-fn     mbql.u/normalize-token
                :validate     [#{:continue :abort} "Must be 'continue' or 'abort'"]]]}
   [path & options]
-  (log/warn (u/colorize :red (trs "''load'' is deprecated and will be removed in a future release. Please migrate to ''import''.")))
+  (log/warn (u/colorize :red "'load' is deprecated and will be removed in a future release. Please migrate to 'import'."))
   (call-enterprise 'metabase-enterprise.serialization.cmd/v1-load! path (get-parsed-options #'load options)))
 
 (defn ^:command import
@@ -201,7 +201,7 @@
                :validate     [#{:active :all} "Must be 'active' or 'all'"]]
               [nil "--include-entity-id"   "Include entity_id property in all dumped entities. Default: false."]]}
   [path & options]
-  (log/warn (u/colorize :red (trs "''dump'' is deprecated and will be removed in a future release. Please migrate to ''export''.")))
+  (log/warn (u/colorize :red "'dump' is deprecated and will be removed in a future release. Please migrate to 'export'."))
   (call-enterprise 'metabase-enterprise.serialization.cmd/v1-dump! path (get-parsed-options #'dump options)))
 
 (defn ^:command export
@@ -239,8 +239,8 @@
     ((resolve 'metabase.cmd.rotate-encryption-key/rotate-encryption-key!) new-key)
     (log/info "Encryption key rotation OK.")
     (system-exit! 0)
-    (catch Throwable _e
-      (log/error "ERROR ROTATING KEY.")
+    (catch Throwable e
+      (log/error e "ERROR ROTATING KEY.")
       (system-exit! 1))))
 
 ;;; ------------------------------------------------ Validate Commands ----------------------------------------------

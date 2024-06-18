@@ -8,18 +8,18 @@ redirect_from:
 
 For those people who don't (or can't) use Docker in their infrastructure, there's still a need to easily setup and deploy Metabase in production. On Debian-based systems, this means registering Metabase as a service that can be started/stopped/uninstalled.
 
-**Note:** This is just a *bare-bones recipe* to get you started. Anyone can take it from here to do what they need to do on their systems, and should follow best practices for setting up and securing the rest of their server.
+**Note:** This is just a _bare-bones recipe_ to get you started. Anyone can take it from here to do what they need to do on their systems, and should follow best practices for setting up and securing the rest of their server.
 
-#### Assumptions
+## Assumptions
 
 The core assumption in this guide:
 
-* You will run Metabase using the `metabase.jar` file
-* You already have `nginx` and `postgres` (or another supported database) running on your server
-* You will use environment variables to configure your Metabase instance
-* You have `sudo` access on your server
+- You will run Metabase using the `metabase.jar` file
+- You already have `nginx` and `postgres` (or another supported database) running on your server
+- You will use environment variables to configure your Metabase instance
+- You have `sudo` access on your server
 
-### Create an unprivileged user to run Metabase and give him acces to app and logs
+## Create an unprivileged user to run Metabase and give the user access to app and logs
 
 For security reasons we want to have Metabase run as an unprivileged user. We will call the user simply `metabase`. Further we will create the files we will need later for logging and configuration of Metabase, and apply the correct security settings for our unprivileged user.
 
@@ -32,11 +32,12 @@ sudo chown syslog:adm /var/log/metabase.log
 sudo touch /etc/default/metabase
 sudo chmod 640 /etc/default/metabase
 ```
-### Create a Metabase Service
+
+## Create a Metabase Service
 
 Every service needs a script that tells `systemd` how to manage it, and what capabilities it supports. Services are typically registered at `/etc/systemd/system/<servicename>`. So, a Metabase service should live at `/etc/systemd/system/metabase.service`.
 
-#### The Metabase service file
+### The Metabase service file
 
 Create the `/etc/systemd/system/metabase.service` service file and open it in your editor:
 
@@ -70,7 +71,7 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
-### Create syslog conf
+## Create syslog conf
 
 Next we need to create a syslog conf to make sure systemd can handle the logs properly.
 
@@ -88,11 +89,11 @@ Restart the syslog service to load the new config.
 sudo systemctl restart rsyslog.service
 ```
 
-### Environment Variables for Metabase
+## Environment variables for Metabase
 
-Environment variables provide a good way to customize and configure your Metabase instance on your server. On Debian systems, services typically expect to have accompanying configs inside `etc/default/<service-name>`.
+[Environment variables](../configuring-metabase/environment-variables.md) provide a good way to customize and configure your Metabase instance on your server. On Debian systems, services typically expect to have accompanying configs inside `etc/default/<service-name>`.
 
-#### The Metabase config file
+### The Metabase config file
 
 Open your `/etc/default/metabase` environment config file in your editor:
 
@@ -116,15 +117,16 @@ MB_DB_HOST=<localhost>
 MB_EMOJI_IN_LOGS=<true|false>
 # any other env vars you want available to Metabase
 ```
-### Final Steps
+
+## Final steps
 
 The best part of setting up Metabase as a service on a Debian-based system is to be confident it will start up at every system boot. We only have a few more quick steps to finish registering our service and having Metabase up and running.
 
-#### Ensure your database is ready
+### Ensure your database is ready
 
 If you're running `postgres` or some other database, you need to ensure you've already followed the instructions for your database system to create a database for Metabase, as well as a user that can access that database. These values should match what you've set in your Metabase config for the `MB_DB_TYPE`, `MB_DB_DBNAME`, `MB_DB_USER`, and `MB_DB_PASS` environment variables. If you don't have your database properly configured, Metabase won't be able to start.
 
-#### Ensure `nginx` is setup to proxy requests to Metabase
+### Ensure `nginx` is setup to proxy requests to Metabase
 
 Getting into too much detail about configuring `nginx` is well outside the scope of this guide, but here's a quick `nginx.conf` file that will get you up and running.
 
@@ -142,7 +144,8 @@ server {
   }
 }
 ```
-#### Register your Metabase service
+
+### Register your Metabase service
 
 Now, it's time to register our Metabase service with `systemd` so it will start up at system boot. We'll also ensure our log file is created and owned by the unprivileged user our service runs the `metabase.jar` as.
 
@@ -150,15 +153,15 @@ Now, it's time to register our Metabase service with `systemd` so it will start 
 sudo systemctl daemon-reload
 sudo systemctl start metabase.service
 sudo systemctl status metabase.service
-````
+```
 
 Once we are ok here, enable the service to startup during boot.
 
 ```
 sudo systemctl enable metabase.service
-````
+```
 
-#### That's it!
+## Start, stop, or restart Metabase
 
 Now, whenever you need to start, stop, or restart Metabase, all you need to do is:
 

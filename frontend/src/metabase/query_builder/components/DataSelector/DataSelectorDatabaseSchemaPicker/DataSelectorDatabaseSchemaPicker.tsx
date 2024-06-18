@@ -1,7 +1,9 @@
+import cx from "classnames";
 import type * as React from "react";
 import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";
+import CS from "metabase/css/core/index.css";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
@@ -35,6 +37,7 @@ type Section = {
   icon?: IconName;
   loading?: boolean;
   active: boolean;
+  type?: string;
 };
 
 type Sections = Section[];
@@ -64,7 +67,7 @@ const DataSelectorDatabaseSchemaPicker = ({
             name: schema.displayName() ?? "",
           }))
         : [],
-    className: database.is_saved_questions ? "bg-light" : null,
+    className: database.is_saved_questions ? CS.bgLight : null,
     icon: database.is_saved_questions ? "collection" : "database",
     loading:
       selectedDatabase?.id === database.id &&
@@ -95,12 +98,15 @@ const DataSelectorDatabaseSchemaPicker = ({
   const showSpinner = ({ active }: { active?: boolean }) => active === false;
 
   const renderSectionIcon = ({ icon }: { icon?: IconName }) =>
-    icon && <Icon className="Icon text-default" name={icon} size={18} />;
+    icon && (
+      <Icon className={cx("Icon", CS.textDefault)} name={icon} size={18} />
+    );
 
   if (hasBackButton) {
     sections.unshift({
       name: <RawDataBackButton />,
       active: true,
+      type: "back",
     });
   }
 
@@ -118,7 +124,7 @@ const DataSelectorDatabaseSchemaPicker = ({
     <AccordionList
       id="DatabaseSchemaPicker"
       key="databaseSchemaPicker"
-      className="text-brand"
+      className={CS.textBrand}
       hasInitialFocus={hasInitialFocus}
       sections={sections}
       onChange={({ schema }: any) => onChangeSchema(schema)}

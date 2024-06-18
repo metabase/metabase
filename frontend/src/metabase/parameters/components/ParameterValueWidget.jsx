@@ -12,6 +12,7 @@ import { DateSingleWidget } from "metabase/components/DateSingleWidget";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { TextWidget } from "metabase/components/TextWidget";
 import { Sortable } from "metabase/core/components/Sortable";
+import CS from "metabase/css/core/index.css";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import { WidgetStatusIcon } from "metabase/parameters/components/WidgetStatusIcon";
 import { NumberInputWidget } from "metabase/parameters/components/widgets/NumberInputWidget";
@@ -30,6 +31,7 @@ import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source"
 import {
   isDateParameter,
   isNumberParameter,
+  isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   areParameterValuesIdentical,
@@ -39,6 +41,7 @@ import {
 import S from "./ParameterValueWidget.module.css";
 import { ParameterValueWidgetTrigger } from "./ParameterValueWidgetTrigger";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
+import { TemporalUnitWidget } from "./widgets/TemporalUnitWidget";
 
 class ParameterValueWidget extends Component {
   static propTypes = {
@@ -134,7 +137,12 @@ class ParameterValueWidget extends Component {
     }
 
     if (!hasNoPopover(this.props.parameter)) {
-      return <WidgetStatusIcon name="chevrondown" />;
+      return (
+        <WidgetStatusIcon
+          name="chevrondown"
+          size={this.props.mimicMantine ? 16 : undefined}
+        />
+      );
     }
   }
 
@@ -195,7 +203,7 @@ class ParameterValueWidget extends Component {
           {showTypeIcon && (
             <Icon
               name={parameterTypeIcon}
-              className="flex-align-left mr1 flex-no-shrink"
+              className={cx(CS.mr1, CS.flexNoShrink)}
               size={16}
             />
           )}
@@ -231,11 +239,11 @@ class ParameterValueWidget extends Component {
             {showTypeIcon && (
               <Icon
                 name={parameterTypeIcon}
-                className="flex-align-left mr1 flex-no-shrink"
+                className={cx(CS.mr1, CS.flexNoShrink)}
                 size={16}
               />
             )}
-            <div className="mr1 text-nowrap">
+            <div className={cx(CS.mr1, CS.textNoWrap)}>
               <FormattedParameterValue
                 parameter={parameter}
                 value={value}
@@ -314,6 +322,17 @@ function Widget({
     );
   }
 
+  if (isTemporalUnitParameter(parameter)) {
+    return (
+      <TemporalUnitWidget
+        parameter={parameter}
+        value={value}
+        setValue={setValue}
+        onClose={onPopoverClose}
+      />
+    );
+  }
+
   if (isTextWidget(parameter)) {
     return (
       <TextWidget
@@ -330,6 +349,7 @@ function Widget({
 
   if (isNumberParameter(parameter)) {
     const arity = getNumberParameterArity(parameter);
+
     return (
       <NumberInputWidget
         value={normalizedValue}

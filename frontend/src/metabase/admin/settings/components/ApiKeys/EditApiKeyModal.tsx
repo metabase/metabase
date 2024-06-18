@@ -15,7 +15,7 @@ import {
 } from "metabase/forms";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
-import type { ApiKey } from "metabase-types/api";
+import type { ApiKey, UpdateApiKeyRequest } from "metabase-types/api";
 
 import { SecretKeyModal } from "./SecretKeyModal";
 import { API_KEY_VALIDATION_SCHEMA } from "./utils";
@@ -100,7 +100,7 @@ export const EditApiKeyModal = ({
   const [updateApiKey] = useUpdateApiKeyMutation();
 
   const handleSubmit = useCallback(
-    async vals => {
+    async (vals: UpdateApiKeyRequest) => {
       await updateApiKey({
         id: vals.id,
         group_id: vals.group_id,

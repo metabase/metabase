@@ -16,7 +16,7 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn ^:private hydrated-native-query-snippet :- [:maybe (mi/InstanceOf NativeQuerySnippet)]
+(mu/defn ^:private hydrated-native-query-snippet :- [:maybe (ms/InstanceOf NativeQuerySnippet)]
   [id :- ms/PositiveInt]
   (-> (api/read-check (t2/select-one NativeQuerySnippet :id id))
       (t2/hydrate :creator)))
@@ -24,9 +24,9 @@
 (api/defendpoint GET "/"
   "Fetch all snippets"
   [archived]
-  {archived [:maybe ms/BooleanString]}
+  {archived [:maybe ms/BooleanValue]}
   (let [snippets (t2/select NativeQuerySnippet
-                            :archived (Boolean/parseBoolean archived)
+                            :archived archived
                             {:order-by [[:%lower.name :asc]]})]
     (t2/hydrate (filter mi/can-read? snippets) :creator)))
 

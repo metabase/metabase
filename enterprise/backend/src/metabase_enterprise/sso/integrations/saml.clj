@@ -143,7 +143,7 @@
   (let [redirect (get-in req [:params :redirect])
         redirect-url (if (nil? redirect)
                        (do
-                         (log/warn (trs "Warning: expected `redirect` param, but none is present"))
+                         (log/warn "Warning: expected `redirect` param, but none is present")
                          (public-settings/site-url))
                        (if (has-host? redirect)
                          redirect
@@ -173,7 +173,7 @@
       (saml/validate response idp-cert (sp-cert-keystore-details) {:acs-url (acs-url)
                                                                    :issuer  (sso-settings/saml-identity-provider-issuer)})
       (catch Throwable e
-        (log/error e (trs "SAML response validation failed"))
+        (log/error e "SAML response validation failed")
         (throw (ex-info (tru "Unable to log in: SAML response validation failed")
                         {:status-code 401}
                         e))))))

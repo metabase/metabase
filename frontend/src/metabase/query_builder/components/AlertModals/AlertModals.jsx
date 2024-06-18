@@ -17,7 +17,7 @@ import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import User from "metabase/entities/users";
+import Users from "metabase/entities/users";
 import { alertIsValid } from "metabase/lib/alert";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseCookies from "metabase/lib/cookies";
@@ -155,7 +155,7 @@ class CreateAlertModalContentInner extends Component {
     return (
       <ModalContent onClose={onCancel}>
         <div
-          className="PulseEdit ml-auto mr-auto mb4"
+          className={cx(CS.mlAuto, CS.mrAuto, CS.mb4)}
           style={{ maxWidth: "550px" }}
         >
           <AlertModalTitle text={t`Let's set up your alert`} />
@@ -165,7 +165,7 @@ class CreateAlertModalContentInner extends Component {
             onAlertChange={this.onAlertChange}
           />
           <AlertModalFooter>
-            <Button onClick={onCancel} className="mr2">{t`Cancel`}</Button>
+            <Button onClick={onCancel} className={CS.mr2}>{t`Cancel`}</Button>
             <ButtonWithStatus
               titleForState={{ default: t`Done` }}
               disabled={!isValid}
@@ -196,17 +196,23 @@ export class AlertEducationalScreen extends Component {
     const { onProceed } = this.props;
 
     return (
-      <div className="pt2 pb4 ml-auto mr-auto text-centered">
-        <div className="pt4">
-          <h1 className="mb1 text-dark">{t`The wide world of alerts`}</h1>
-          <h3 className="mb4 text-normal text-dark">{t`There are a few different kinds of alerts you can get`}</h3>
+      <div
+        className={cx(CS.pt2, CS.pb4, CS.mlAuto, CS.mrAuto, CS.textCentered)}
+      >
+        <div className={CS.pt4}>
+          <h1
+            className={cx(CS.mb1, CS.textDark)}
+          >{t`The wide world of alerts`}</h1>
+          <h3
+            className={cx(CS.mb4, CS.textNormal, CS.textDark)}
+          >{t`There are a few different kinds of alerts you can get`}</h3>
         </div>
         {
           // @mazameli: needed to do some negative margin spacing to match the designs
         }
-        <div className="text-normal pt3">
+        <div className={cx(CS.textNormal, CS.pt3)}>
           <div
-            className="relative flex align-center pr4"
+            className={cx(CS.relative, CS.flex, CS.alignCenter, CS.pr4)}
             style={{ marginLeft: -80 }}
           >
             <img
@@ -217,14 +223,20 @@ export class AlertEducationalScreen extends Component {
               "
             />
             <p
-              className="ml2 text-left"
+              className={cx(CS.ml2, CS.textLeft)}
               style={textStyle}
             >{jt`When a raw data question ${(
               <strong>{t`returns any results`}</strong>
             )}`}</p>
           </div>
           <div
-            className="relative flex align-center flex-reverse pl4"
+            className={cx(
+              CS.relative,
+              CS.flex,
+              CS.alignCenter,
+              CS.flexReverse,
+              CS.pl4,
+            )}
             style={{ marginTop: -50, marginRight: -80 }}
           >
             <img
@@ -235,14 +247,14 @@ export class AlertEducationalScreen extends Component {
               "
             />
             <p
-              className="mr2 text-right"
+              className={cx(CS.mr2, CS.textRight)}
               style={textStyle}
             >{jt`When a line or bar ${(
               <strong>{t`crosses a goal line`}</strong>
             )}`}</p>
           </div>
           <div
-            className="relative flex align-center"
+            className={cx(CS.relative, CS.flex, CS.alignCenter)}
             style={{ marginTop: -60, marginLeft: -55 }}
           >
             <img
@@ -253,7 +265,7 @@ export class AlertEducationalScreen extends Component {
               "
             />
             <p
-              className="ml2 text-left"
+              className={cx(CS.ml2, CS.textLeft)}
               style={textStyle}
             >{jt`When a progress bar ${(
               <strong>{t`reaches its goal`}</strong>
@@ -262,7 +274,7 @@ export class AlertEducationalScreen extends Component {
         </div>
         <Button
           primary
-          className="mt4"
+          className={CS.mt4}
           onClick={onProceed}
         >{t`Set up an alert`}</Button>
       </div>
@@ -314,7 +326,7 @@ class UpdateAlertModalContentInner extends Component {
     return (
       <ModalContent onClose={onCancel} data-testid="alert-edit">
         <div
-          className="PulseEdit ml-auto mr-auto mb4"
+          className={cx(CS.mlAuto, CS.mrAuto, CS.mb4)}
           style={{ maxWidth: "550px" }}
         >
           <AlertModalTitle text={title} />
@@ -331,7 +343,7 @@ class UpdateAlertModalContentInner extends Component {
           )}
 
           <AlertModalFooter>
-            <Button onClick={onCancel} className="mr2">{t`Cancel`}</Button>
+            <Button onClick={onCancel} className={CS.mr2}>{t`Cancel`}</Button>
             <ButtonWithStatus
               titleForState={{ default: t`Save changes` }}
               disabled={!isValid}
@@ -398,10 +410,12 @@ export class DeleteAlertSection extends Component {
           className={cx(CS.textError, CS.absolute, CS.top, CS.bgWhite, CS.px1)}
           style={{ marginTop: "-12px" }}
         >{jt`Danger Zone`}</h3>
-        <div className="ml1">
-          <h4 className="text-bold mb1">{jt`Delete this alert`}</h4>
-          <div className="flex">
-            <p className="h4 pr2">{jt`Stop delivery and delete this alert. There's no undo, so be careful.`}</p>
+        <div className={CS.ml1}>
+          <h4 className={cx(CS.textBold, CS.mb1)}>{jt`Delete this alert`}</h4>
+          <div className={CS.flex}>
+            <p
+              className={cx(CS.h4, CS.pr2)}
+            >{jt`Stop delivery and delete this alert. There's no undo, so be careful.`}</p>
             <ModalWithTrigger
               ref={ref => (this.deleteModal = ref)}
               as={Button}
@@ -409,7 +423,7 @@ export class DeleteAlertSection extends Component {
                 ButtonsS.ButtonDanger,
                 CS.flexAlignRight,
                 CS.flexNoShrink,
-                "align-self-end",
+                CS.alignSelfEnd,
               )}
               triggerElement={t`Delete this alert`}
             >
@@ -429,16 +443,16 @@ export class DeleteAlertSection extends Component {
 }
 
 const AlertModalTitle = ({ text }) => (
-  <div className="ml-auto mr-auto my4 pb2 text-centered">
+  <div className={cx(CS.mlAuto, CS.mrAuto, CS.my4, CS.pb2, CS.textCentered)}>
     <img
-      className="mb3"
+      className={CS.mb3}
       src="app/assets/img/alerts/alert-bell-confetti-illustration.png"
       srcSet="
         app/assets/img/alerts/alert-bell-confetti-illustration.png    1x,
         app/assets/img/alerts/alert-bell-confetti-illustration@2x.png 2x
       "
     />
-    <h1 className="text-dark">{text}</h1>
+    <h1 className={CS.textDark}>{text}</h1>
   </div>
 );
 
@@ -539,8 +553,8 @@ export const AlertSettingToggle = ({
   falseText,
   setting,
 }) => (
-  <div className="mb4 pb2">
-    <h3 className="text-dark mb1">{title}</h3>
+  <div className={cx(CS.mb4, CS.pb2)}>
+    <h3 className={cx(CS.textDark, CS.mb1)}>{title}</h3>
     <Radio
       value={alert[setting]}
       onChange={value => onAlertChange({ ...alert, [setting]: value })}
@@ -555,18 +569,18 @@ export const AlertSettingToggle = ({
 export function AlertEditSchedule({ alertType, schedule, onScheduleChange }) {
   return (
     <div>
-      <h3 className="mt4 mb3 text-dark">
-        How often should we check for results?
+      <h3 className={cx(CS.mt4, CS.mb3, CS.textDark)}>
+        {t`How often should we check for results?`}
       </h3>
 
-      <div className="bordered rounded mb2">
+      <div className={cx(CS.bordered, CS.rounded, CS.mb2)}>
         {alertType === ALERT_TYPE_ROWS && <RawDataAlertTip />}
-        <div className="p3 bg-light">
+        <div className={cx(CS.p3, CS.bgLight)}>
           <SchedulePicker
             schedule={schedule}
             scheduleOptions={["hourly", "daily", "weekly"]}
             onScheduleChange={onScheduleChange}
-            textBeforeInterval="Check"
+            textBeforeInterval={t`Check`}
           />
         </div>
       </div>
@@ -596,9 +610,11 @@ class AlertEditChannelsInner extends Component {
   render() {
     const { alert, user, users, formInput } = this.props;
     return (
-      <div className="mt4 pt2">
-        <h3 className="text-dark mb3">{jt`Where do you want to send these alerts?`}</h3>
-        <div className="mb2">
+      <div className={cx(CS.mt4, CS.pt2)}>
+        <h3
+          className={cx(CS.textDark, CS.mb3)}
+        >{jt`Where do you want to send these alerts?`}</h3>
+        <div className={CS.mb2}>
           <PulseEditChannels
             pulse={alert}
             pulseId={alert.id}
@@ -620,7 +636,7 @@ class AlertEditChannelsInner extends Component {
 }
 
 export const AlertEditChannels = _.compose(
-  User.loadList(),
+  Users.loadList(),
   connect(
     (state, props) => ({
       user: getUser(state),
@@ -663,7 +679,8 @@ function RawDataAlertTipInner(props) {
           CS.p2,
           CS.mr2,
           CS.textMedium,
-          "circle bg-light",
+          CS.circle,
+          CS.bgLight,
         )}
       >
         <Icon name="lightbulb" size="20" />

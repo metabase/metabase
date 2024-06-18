@@ -32,7 +32,9 @@ describe("scenarios > models query editor", () => {
       cy.visit(`/model/${ORDERS_QUESTION_ID}`);
       cy.wait("@dataset");
 
-      cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "37.65")
+        .and("contain", "109.22");
 
       openQuestionActions();
 
@@ -45,12 +47,12 @@ describe("scenarios > models query editor", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Row limit").click();
-      cy.findByPlaceholderText("Enter a limit").type("2");
+      cy.findByPlaceholderText("Enter a limit").type("2").blur();
 
       cy.findByTestId("run-button").click();
       cy.wait("@dataset");
 
-      cy.get(".cellData")
+      cy.get("[data-testid=cell-data]")
         .should("contain", "37.65")
         .and("not.contain", "109.22");
 
@@ -62,7 +64,7 @@ describe("scenarios > models query editor", () => {
         .and("not.include", "/query");
       cy.location("hash").should("eq", "");
 
-      cy.get(".cellData")
+      cy.get("[data-testid=cell-data]")
         .should("contain", "37.65")
         .and("not.contain", "109.22");
     });
@@ -71,7 +73,9 @@ describe("scenarios > models query editor", () => {
       cy.visit(`/model/${ORDERS_QUESTION_ID}`);
       cy.wait("@dataset");
 
-      cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "37.65")
+        .and("contain", "109.22");
 
       openQuestionActions();
 
@@ -81,12 +85,12 @@ describe("scenarios > models query editor", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Row limit").click();
-      cy.findByPlaceholderText("Enter a limit").type("2");
+      cy.findByPlaceholderText("Enter a limit").type("2").blur();
 
       cy.findByTestId("run-button").click();
       cy.wait("@dataset");
 
-      cy.get(".cellData")
+      cy.get("[data-testid=cell-data]")
         .should("contain", "37.65")
         .and("not.contain", "109.22");
 
@@ -99,7 +103,9 @@ describe("scenarios > models query editor", () => {
         .and("not.include", "/query");
       cy.location("hash").should("eq", "");
 
-      cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "37.65")
+        .and("contain", "109.22");
     });
 
     it("locks display to table", () => {
@@ -113,7 +119,8 @@ describe("scenarios > models query editor", () => {
       cy.wait("@dataset");
 
       // FE chooses the scalar visualization to display count of rows for regular questions
-      cy.get(".TableInteractive");
+      // TODO (styles): migrate
+      cy.get(".test-TableInteractive");
       cy.findByTestId("scalar-value").should("not.exist");
     });
   });
@@ -131,7 +138,9 @@ describe("scenarios > models query editor", () => {
         { visitQuestion: true },
       );
 
-      cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "37.65")
+        .and("contain", "109.22");
 
       openQuestionActions();
 
@@ -146,14 +155,14 @@ describe("scenarios > models query editor", () => {
 
       runNativeQuery();
 
-      cy.get(".cellData")
+      cy.get("[data-testid=cell-data]")
         .should("contain", "37.65")
         .and("not.contain", "109.22");
 
       cy.button("Save changes").click();
       cy.wait("@updateCard");
 
-      cy.get(".cellData")
+      cy.get("[data-testid=cell-data]")
         .should("contain", "37.65")
         .and("not.contain", "109.22");
     });
@@ -170,7 +179,9 @@ describe("scenarios > models query editor", () => {
         { visitQuestion: true },
       );
 
-      cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "37.65")
+        .and("contain", "109.22");
 
       openQuestionActions();
 
@@ -185,7 +196,7 @@ describe("scenarios > models query editor", () => {
 
       runNativeQuery();
 
-      cy.get(".cellData")
+      cy.get("[data-testid=cell-data]")
         .should("contain", "37.65")
         .and("not.contain", "109.22");
 
@@ -193,7 +204,9 @@ describe("scenarios > models query editor", () => {
       modal().button("Discard changes").click();
       cy.wait("@cardQuery");
 
-      cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "37.65")
+        .and("contain", "109.22");
     });
 
     it("handles failing queries", () => {
@@ -227,14 +240,14 @@ describe("scenarios > models query editor", () => {
       cy.get(".ace_content").type("{backspace}".repeat(" FROM".length));
       runNativeQuery();
 
-      cy.get(".cellData").contains(1);
+      cy.get("[data-testid=cell-data]").contains(1);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Syntax error in SQL/).should("not.exist");
 
       cy.button("Save changes").click();
       cy.wait("@updateCard");
 
-      cy.get(".cellData").contains(1);
+      cy.get("[data-testid=cell-data]").contains(1);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Syntax error in SQL/).should("not.exist");
     });

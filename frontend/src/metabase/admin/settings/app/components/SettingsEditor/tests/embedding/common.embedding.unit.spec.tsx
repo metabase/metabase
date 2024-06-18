@@ -1,10 +1,9 @@
-import { screen } from "__support__/ui";
+import { act, screen } from "__support__/ui";
 
 import {
   goToStaticEmbeddingSettings,
   setupEmbedding,
   getQuickStartLink,
-  goToInteractiveEmbeddingSettings,
   staticEmbeddingSettingsUrl,
   embeddingSettingsUrl,
   interactiveEmbeddingSettingsUrl,
@@ -18,11 +17,11 @@ describe("[OSS] embedding settings", () => {
           settingValues: { "enable-embedding": false },
         });
 
-        expect(() => {
-          goToStaticEmbeddingSettings();
-        }).toThrow();
+        expect(screen.getByRole("button", { name: "Manage" })).toBeDisabled();
 
-        history.push(staticEmbeddingSettingsUrl);
+        act(() => {
+          history.push(staticEmbeddingSettingsUrl);
+        });
 
         expect(history.getCurrentLocation().pathname).toEqual(
           embeddingSettingsUrl,
@@ -51,7 +50,9 @@ describe("[OSS] embedding settings", () => {
           settingValues: { "enable-embedding": false },
         });
 
-        history.push(interactiveEmbeddingSettingsUrl);
+        act(() => {
+          history.push(interactiveEmbeddingSettingsUrl);
+        });
 
         expect(history.getCurrentLocation().pathname).toEqual(
           embeddingSettingsUrl,
@@ -105,7 +106,7 @@ describe("[OSS] embedding settings", () => {
         settingValues: { "enable-embedding": true },
       });
 
-      goToStaticEmbeddingSettings();
+      await goToStaticEmbeddingSettings();
 
       const location = history.getCurrentLocation();
       expect(location.pathname).toEqual(staticEmbeddingSettingsUrl);
@@ -116,9 +117,16 @@ describe("[OSS] embedding settings", () => {
         settingValues: { "enable-embedding": true },
       });
 
-      expect(() => goToInteractiveEmbeddingSettings()).toThrow();
+      expect(
+        screen.queryByRole("button", { name: "Configure" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Learn More" }),
+      ).toBeInTheDocument();
 
-      history.push(interactiveEmbeddingSettingsUrl);
+      act(() => {
+        history.push(interactiveEmbeddingSettingsUrl);
+      });
 
       expect(history.getCurrentLocation().pathname).toEqual(
         embeddingSettingsUrl,

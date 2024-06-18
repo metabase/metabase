@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const EmptyStateRoot = styled.div`
   display: flex;
   flex-direction: column;
@@ -9,7 +7,7 @@ export const EmptyStateRoot = styled.div`
 `;
 
 export const EmptyStateTitle = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1.5rem;
   font-weight: bold;
   line-height: 2rem;
@@ -18,11 +16,11 @@ export const EmptyStateTitle = styled.div`
 `;
 
 export const EmptyStateIconForeground = styled.path`
-  fill: ${color("bg-light")};
-  stroke: ${color("brand")};
+  fill: var(--mb-color-bg-light);
+  stroke: var(--mb-color-brand);
 `;
 
 export const EmptyStateIconBackground = styled.path`
-  fill: ${color("brand-light")};
-  stroke: ${color("brand")};
+  fill: var(--mb-color-brand-light);
+  stroke: var(--mb-color-brand);
 `;

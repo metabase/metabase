@@ -1,0 +1,218 @@
+[
+  {
+    "card": {
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-02-15T20:10:23.289274Z",
+      "dataset": false,
+      "parameters": [],
+      "metabase_version": "v0.48.1-SNAPSHOT (c375960)",
+      "collection": null,
+      "visualization_settings": {
+        "graph.dimensions": ["DATE"],
+        "graph.x_axis.title_text": "date with gaps",
+        "graph.y_axis.title_text": "waterfall value",
+        "graph.show_values": true,
+        "graph.metrics": ["10"]
+      },
+      "collection_preview": true,
+      "entity_id": "4fDtCOoGI3hgWqykf-fch",
+      "display": "waterfall",
+      "parameter_mappings": [],
+      "dataset_query": {
+        "database": 1,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "select '2024-01-01' as DATE, 10\nunion all select '2025-01-01' as DATE, 50\nunion all select '2026-01-01' as DATE, -100\nunion all select '2027-01-01' as DATE, 10\nunion all select '2034-01-01' as DATE, -10\n-- union all select '2034-02-01' as DATE, 10"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-02-16T00:27:48.028292Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 32.57142857142857,
+      "dashboard_count": 0,
+      "last_query_start": "2024-02-16T00:25:27.54693Z",
+      "query_type": "native",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 1,
+      "can_write": true,
+      "result_metadata": [
+        {
+          "display_name": "DATE",
+          "field_ref": [
+            "field",
+            "DATE",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "DATE",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 10
+              }
+            }
+          }
+        },
+        {
+          "display_name": "10",
+          "field_ref": [
+            "field",
+            "10",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "10",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 10,
+                "q1": 10,
+                "q3": 10,
+                "max": 10,
+                "sd": 0,
+                "avg": 10
+              }
+            }
+          }
+        }
+      ],
+      "table_id": null,
+      "collection_position": null,
+      "archived": false
+    },
+    "data": {
+      "rows": [
+        ["2024-01-01", 10],
+        ["2025-01-01", 50],
+        ["2026-01-01", -100],
+        ["2027-01-01", 10],
+        ["2034-01-01", -10]
+      ],
+      "cols": [
+        {
+          "display_name": "DATE",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "DATE",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "DATE",
+          "base_type": "type/Text",
+          "effective_type": "type/Text"
+        },
+        {
+          "display_name": "10",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "10",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "10",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "query": "select '2024-01-01' as DATE, 10\nunion all select '2025-01-01' as DATE, 50\nunion all select '2026-01-01' as DATE, -100\nunion all select '2027-01-01' as DATE, 10\nunion all select '2034-01-01' as DATE, -10\n-- union all select '2034-02-01' as DATE, 10",
+        "params": null
+      },
+      "results_timezone": "America/Montevideo",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "DATE",
+            "field_ref": [
+              "field",
+              "DATE",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "name": "DATE",
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 10
+                }
+              }
+            }
+          },
+          {
+            "display_name": "10",
+            "field_ref": [
+              "field",
+              "10",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "10",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": -100,
+                  "q1": -32.5,
+                  "q3": 26.754446796632408,
+                  "max": 50,
+                  "sd": 55.85696017507576,
+                  "avg": -8
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

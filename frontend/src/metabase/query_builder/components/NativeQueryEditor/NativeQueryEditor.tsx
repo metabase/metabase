@@ -112,7 +112,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   hasEditingSidebar?: boolean;
   sidebarFeatures?: SidebarFeatures;
   resizable?: boolean;
-  resizableBoxProps?: Partial<ResizableBoxProps>;
+  resizableBoxProps?: Partial<Omit<ResizableBoxProps, "axis">>;
 
   editorContext?: "question";
 
@@ -817,13 +817,15 @@ export class NativeQueryEditor extends Component<
                 enableParameterRequiredBehavior
               />
             )}
-            {query.hasWritePermission() && this.props.setIsNativeEditorOpen && (
-              <VisibilityToggler
-                isOpen={isNativeEditorOpen}
-                readOnly={!!readOnly}
-                toggleEditor={this.toggleEditor}
-              />
-            )}
+            {query.hasWritePermission() &&
+              !query.question().isArchived() &&
+              this.props.setIsNativeEditorOpen && (
+                <VisibilityToggler
+                  isOpen={isNativeEditorOpen}
+                  readOnly={!!readOnly}
+                  toggleEditor={this.toggleEditor}
+                />
+              )}
           </Flex>
         )}
         {isPromptInputVisible && (
@@ -833,7 +835,6 @@ export class NativeQueryEditor extends Component<
             onClose={this.togglePromptVisibility}
           />
         )}
-        {/* @ts-expect-error — error in resizable box types  */}
         <StyledResizableBox
           ref={this.resizeBox}
           isOpen={isNativeEditorOpen}

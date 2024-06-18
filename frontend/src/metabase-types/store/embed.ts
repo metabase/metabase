@@ -13,4 +13,5 @@ export interface EmbedOptions {
 
 export interface EmbedState {
   options: EmbedOptions;
+  isEmbeddingSdk?: boolean;
 }

@@ -1,9 +1,12 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
 import ListSearchField from "metabase/components/ListSearchField";
+import PopoverS from "metabase/components/Popover/Popover.module.css";
 import CheckBox from "metabase/core/components/CheckBox";
+import CS from "metabase/css/core/index.css";
 import { capitalize } from "metabase/lib/formatting";
 import { createMultiwordSearchRegex } from "metabase/lib/string";
 
@@ -89,7 +92,7 @@ export default class SelectPicker extends Component {
     return (
       <div data-testid="select-picker">
         {validOptions.length <= 10 && !regex ? null : (
-          <div className="px1 pt1">
+          <div className={cx(CS.px1, CS.pt1)}>
             <ListSearchField
               fullWidth
               autoFocus
@@ -101,7 +104,7 @@ export default class SelectPicker extends Component {
           </div>
         )}
         <div
-          className="px1 pt1 PopoverBody--marginBottom"
+          className={cx(CS.px1, CS.pt1, PopoverS.PopoverBodyMarginBottom)}
           style={{ maxHeight: "400px", overflowY: "scroll" }}
         >
           {placeholder ? <h5>{placeholder}</h5> : null}
@@ -110,7 +113,12 @@ export default class SelectPicker extends Component {
               {validOptions.map((option, index) => (
                 <li key={index}>
                   <label
-                    className="flex align-center cursor-pointer p1"
+                    className={cx(
+                      CS.flex,
+                      CS.alignCenter,
+                      CS.cursorPointer,
+                      CS.p1,
+                    )}
                     onClick={() =>
                       this.selectValue(option.key, !checked.has(option.key))
                     }
@@ -119,17 +127,17 @@ export default class SelectPicker extends Component {
                       checked={checked.has(option.key)}
                       checkedColor="accent2"
                     />
-                    <h4 className="ml1">{this.nameForOption(option)}</h4>
+                    <h4 className={CS.ml1}>{this.nameForOption(option)}</h4>
                   </label>
                 </li>
               ))}
             </ul>
           ) : (
-            <div className="flex flex-wrap py1">
+            <div className={cx(CS.flex, CS.flexWrap, CS.py1)}>
               {validOptions.map(option => (
                 <div
                   key={option.key}
-                  className="half"
+                  className={CS.half}
                   style={{ padding: "0.15em" }}
                 >
                   <SelectPickerButton

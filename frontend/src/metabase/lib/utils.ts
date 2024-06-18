@@ -3,39 +3,8 @@ import _ from "underscore";
 
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 
-const LAYOUT_PROPS = [
-  "m",
-  "ml",
-  "mr",
-  "mt",
-  "mb",
-  "mx",
-  "my",
-  "p",
-  "pl",
-  "pr",
-  "pt",
-  "pb",
-  "px",
-  "py",
-  "bg",
-  "color",
-  "hover",
-  "bordered",
-];
-
 const EMAIL_REGEX =
   /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-
-export function stripLayoutProps(props: unknown) {
-  return _.omit(props, LAYOUT_PROPS);
-}
-
-function s4() {
-  return Math.floor((1 + Math.random()) * 0x10000)
-    .toString(16)
-    .substring(1);
-}
 
 export function isEmpty(str: string | null) {
   if (str != null) {
@@ -64,30 +33,6 @@ export function numberToWord(num: number) {
   } else {
     return "" + num;
   }
-}
-
-export function uuid() {
-  return (
-    s4() +
-    s4() +
-    "-" +
-    s4() +
-    "-" +
-    s4() +
-    "-" +
-    s4() +
-    "-" +
-    s4() +
-    s4() +
-    s4()
-  );
-}
-
-export function isUUID(uuid: unknown) {
-  return (
-    typeof uuid === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(uuid)
-  );
 }
 
 export function isJWT(string: unknown) {
@@ -209,3 +154,16 @@ export function compareVersions(
 }
 
 export const isEEBuild = () => PLUGIN_IS_EE_BUILD.isEEBuild();
+
+export const safeJsonParse = (value: string | null | undefined) => {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch (e) {
+    console.error("Unable to parse JSON: ", value, e);
+    return null;
+  }
+};

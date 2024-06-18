@@ -29,13 +29,13 @@ Paid plans include more ways to authenticate people and manage groups.
 Paid plans include more ways to manage permissions, including data sandboxing, which brings row and column-level permissions to Metabase.
 
 - [Data sandboxes](../permissions/data-sandboxes.md)
-- [Block permissions](../permissions/data.md#block-access)
+- [Blocked view data permissions](../permissions/data.md#blocked-view-data-permission)
 - [SQL snippet folder permissions](../permissions/snippets.md)
 - [Application permissions](../permissions/application.md)
-- [Download permissions](../permissions/data.md#download-results)
-- [Connection impersonation](../permissions/data.md#impersonation-access)
-- [Database management permissions](../permissions/data.md#manage-database)
-- [Table metadata management permissions](../permissions/data.md#manage-table-metadata)
+- [Download permissions](../permissions/data.md#download-results-permissions)
+- [Connection impersonation](../permissions/data.md#impersonated-view-data-permission)
+- [Database management permissions](../permissions/data.md#manage-database-permissions)
+- [Table metadata management permissions](../permissions/data.md#manage-table-metadata-permissions)
 
 ## People and group management
 
@@ -79,8 +79,13 @@ Tools for keeping your Metabase organized, so people can find your most importan
 
 All Metabase editions include global caching controls. Paid plans includes additional caching options that let you control caching for individual questions.
 
-- [Caching controls for individual questions](../configuring-metabase/caching.md#caching-per-question)
-- [Caching control per database](../configuring-metabase/caching.md#caching-per-database)
+- [Caching questions](../configuring-metabase/caching.md#question-caching-policy)
+- [Caching dashboards](../configuring-metabase/caching.md#dashboard-caching-policy)
+- [Caching databases](../configuring-metabase/caching.md#database-caching-policy)
+
+## Model persistence for individual models
+
+- [Toggle persistence for individual models](../data-modeling/model-persistence.md#turn-on-model-persistence-for-individual-models)
 
 ## Usage analytics
 
@@ -93,6 +98,7 @@ See how people are using your Metabase.
 See which queries are failing to help keep your Metabase tidy.
 
 - [Tracking query errors](../usage-and-performance-tools/tools.md)
+- [Deleting uploaded tables](../databases/uploads.md#deleting-tables-created-by-uploads)
 
 ## Serialization
 

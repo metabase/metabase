@@ -23,10 +23,12 @@ frontend_sources: &frontend_sources
   - "**/tsconfig*.json"
   - "package.json"
   - "babel.config.json"
-  - ".eslintrc"
+  - ".eslintrc.js"
   - "postcss.config.js"
   - "webpack.config.js"
+  - "webpack.embedding-sdk.config.js"
   - "webpack.static-viz.config.js"
+  - ".nvmrc"
 
 frontend_specs: &frontend_specs
   - *shared_specs
@@ -40,6 +42,11 @@ frontend_all: &frontend_all
   - *frontend_ci
   - *frontend_sources
   - *frontend_specs
+
+frontend_loki_ci: &frontend_loki_ci
+  - ".github/workflows/loki.yml"
+  - ".loki/**"
+  - ".storybook/**"
 
 backend_ci: &backend_ci
   - ".github/actions/prepare-frontend/**"

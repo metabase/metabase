@@ -14,7 +14,6 @@
    [metabase.public-settings :as public-settings]
    [metabase.server.routes.index :as index]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [ring.util.response :as response]))
 
@@ -42,8 +41,8 @@
        (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (public-settings/site-url) token export-format)))
   (GET "*" [] index/embed))
 
-(defroutes ^{:doc "Top-level ring routes for Metabase."} routes
-  (or (some-> (resolve 'ee.sso.routes/routes) var-get)
+(defroutes ^{:doc "Top-level ring routes for Metabase.", :arglists '([request] [request respond raise])} routes
+  (or (some-> (resolve 'metabase-enterprise.sso.api.routes/routes) var-get)
       (fn [_ respond _]
         (respond nil)))
   ;; ^/$ -> index.html
@@ -57,7 +56,7 @@
                 {:status 200, :body {:status "ok"}}
                 {:status 503 :body {:status "Unable to get app-db connection"}})
               (catch Exception e
-                (log/warn e (trs "Error in api/health database check"))
+                (log/warn e "Error in api/health database check")
                 {:status 503 :body {:status "Error getting app-db connection"}}))
          {:status 503, :body {:status "initializing", :progress (init-status/progress)}}))
 

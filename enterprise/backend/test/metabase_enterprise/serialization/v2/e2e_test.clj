@@ -100,7 +100,7 @@
 (defn- clean-entity
  "Removes any comparison-confounding fields, like `:created_at`."
  [entity]
- (dissoc entity :created_at :result_metadata))
+ (dissoc entity :created_at :result_metadata :metadata_sync_schedule :cache_field_values_schedule))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest e2e-storage-ingestion-test
@@ -185,10 +185,6 @@
                                                ;; 20 with just :field_id
                                               (many-random-fks 20 {:refs {:human_readable_field_id ::rs/omit}}
                                                                {:field_id [:field 1000]})))
-               :metric                  (many-random-fks 30 {:spec-gen {:definition {:aggregation  [[:count]]
-                                                                                     :source-table 9}}}
-                                                         {:table_id   [:t 100]
-                                                          :creator_id [:u 10]})
                :segment                 (many-random-fks 30 {:spec-gen {:definition {:filter [:!= [:field 60 nil] 50],
                                                                                      :source-table 4}}}
                                                          {:table_id   [:t 100]
@@ -222,7 +218,7 @@
                :pulse-channel-recipient (many-random-fks 40 {} {:pulse_channel_id [:pulse-channel 30]
                                                                 :user_id          [:u 100]})}))
 
-          (is (= 100 (count (t2/select-fn-set :email 'User))))
+          (is (= 101 (count (t2/select-fn-set :email 'User)))) ; +1 for the internal user
 
           (testing "extraction"
             (reset! extraction (serdes/with-cache (into [] (extract/extract {}))))
@@ -230,7 +226,8 @@
                                          (update m (-> entity :serdes/meta last :model)
                                                  (fnil conj []) entity))
                                        {} @extraction))
-            (is (= 110 (-> @entities (get "Collection") count))))
+            ;; +1 for the Trash collection
+            (is (= 111 (-> @entities (get "Collection") count))))
 
           (testing "storage"
             (storage/store! (seq @extraction) dump-dir)
@@ -239,7 +236,8 @@
               (is (= 30 (count (dir->file-set (io/file dump-dir "actions"))))))
 
             (testing "for Collections"
-              (is (= 110 (count (for [f (file-set (io/file dump-dir))
+              ;; +1 for the Trash collection
+              (is (= 111 (count (for [f (file-set (io/file dump-dir))
                                       :when (and (= (first f) "collections")
                                                  (let [[a b] (take-last 2 f)]
                                                    (= b (str a ".yaml"))))]
@@ -283,13 +281,6 @@
                              collections
                              (map (comp count dir->file-set #(io/file % "timelines")))
                              (reduce +)))))
-
-            (testing "for metrics"
-              (is (= 30 (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
-                                        table (dir->dir-set (io/file dump-dir "databases" db "tables"))
-                                        :let [metrics-dir (io/file dump-dir "databases" db "tables" table "metrics")]
-                                        :when (.exists metrics-dir)]
-                                    (count (dir->file-set metrics-dir)))))))
 
             (testing "for segments"
               (is (= 30 (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
@@ -388,13 +379,6 @@
                               (serdes/extract-one "Dimension" {})
                               clean-entity)))))
 
-              (testing "for metrics"
-                (doseq [{:keys [entity_id] :as metric} (get @entities "Metric")]
-                  (is (= (clean-entity metric)
-                         (->> (t2/select-one 'Metric :entity_id entity_id)
-                              (serdes/extract-one "Metric" {})
-                              clean-entity)))))
-
               (testing "for segments"
                 (doseq [{:keys [entity_id] :as segment} (get @entities "Segment")]
                   (is (= (clean-entity segment)
@@ -478,15 +462,17 @@
                            :values_source_type   "card"}]
                          (:parameters (first (by-model extraction "Dashboard")))))
 
-                  (is (= [{:id                   "abc",
-                           :name                 "CATEGORY",
-                           :type                 :category,
-                           :values_source_config {:card_id     (:entity_id card1s),
-                                                  :value_field [:field
-                                                                ["my-db" nil "CUSTOMERS" "NAME"]
-                                                                nil]},
-                           :values_source_type   "card"}]
-                         (:parameters (first (by-model extraction "Card")))))
+                  ;; card1s has no parameters, card2s does.
+                  (is (= #{[]
+                           [{:id                   "abc",
+                             :name                 "CATEGORY",
+                             :type                 :category,
+                             :values_source_config {:card_id     (:entity_id card1s),
+                                                    :value_field [:field
+                                                                  ["my-db" nil "CUSTOMERS" "NAME"]
+                                                                  nil]},
+                             :values_source_type   "card"}]}
+                         (set (map :parameters (by-model extraction "Card")))))
 
                   (storage/store! (seq extraction) dump-dir)))
 
@@ -856,3 +842,27 @@
                            (get-in viz [:column_settings
                                         (format "[\"ref\",[\"field\",%s,null]]" %people.name)
                                         :pivot_table.column_sort_order])))))))))))))
+
+(deftest extra-files-test
+  (testing "Adding some extra files does not break deserialization"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (mt/with-empty-h2-app-db
+        (let [coll (ts/create! Collection :name "coll")
+              _    (ts/create! Card :name "card" :collection_id (:id coll))]
+          (storage/store! (extract/extract {:no-settings   true
+                                            :no-data-model true}) dump-dir)
+
+          (spit (io/file dump-dir "collections" ".hidden.yaml") "serdes/meta: [{do-not: read}]")
+          (spit (io/file dump-dir "collections" "unreadable.yaml") "\0")
+
+          (testing "No exceptions when loading despite unreadable files"
+            (let [logs (mt/with-log-messages-for-level ['metabase-enterprise :error]
+                         (let [files (->> (#'ingest/ingest-all (io/file dump-dir))
+                                          (map (comp second second))
+                                          (map #(.getName %))
+                                          set)]
+                           (testing "Hidden YAML wasn't read even though it's not throwing errors"
+                             (is (not (contains? files ".hidden.yaml"))))))]
+              (testing ".yaml files not containing valid yaml are just logged and do not break ingestion process"
+                (is (=? [[:error Throwable "Error reading file unreadable.yaml"]]
+                        logs))))))))))

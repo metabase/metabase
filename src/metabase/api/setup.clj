@@ -8,24 +8,21 @@
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.email :as email]
+   [metabase.embed.settings :as embed.settings]
    [metabase.events :as events]
+   [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
-   [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.database :refer [Database]]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.pulse :refer [Pulse]]
    [metabase.models.session :refer [Session]]
    [metabase.models.setting.cache :as setting.cache]
-   [metabase.models.table :refer [Table]]
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.session :as mw.session]
    [metabase.setup :as setup]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -76,7 +73,7 @@
 (defn- setup-maybe-create-and-invite-user! [{:keys [email] :as user}, invitor]
   (when email
     (if-not (email/email-configured?)
-      (log/error (trs "Could not invite user because email is not configured."))
+      (log/error "Could not invite user because email is not configured.")
       (u/prog1 (user/create-and-invite-user! user invitor true)
         (user/set-permissions-groups! <> [(perms-group/all-users) (perms-group/admin)])
         (events/publish-event! :event/user-invited {:object (assoc <> :invite_method "email")})
@@ -149,9 +146,14 @@
   [:map {:closed true}
    [:db-type [:enum :h2 :mysql :postgres]]
    [:hosted? :boolean]
+   [:embedding [:map
+                [:interested? :boolean]
+                [:done? :boolean]
+                [:app-origin :boolean]]]
    [:configured [:map
                  [:email :boolean]
-                 [:slack :boolean]]]
+                 [:slack :boolean]
+                 [:sso :boolean]]]
    [:counts [:map
              [:user :int]
              [:card :int]
@@ -162,26 +164,40 @@
              [:dashboard :boolean]
              [:pulse :boolean]
              [:hidden-table :boolean]
-             [:collection :boolean]]]])
+             [:collection :boolean]
+             [:embedded-resource :boolean]]]])
 
 (mu/defn ^:private state-for-checklist :- ChecklistState
   []
   {:db-type    (mdb/db-type)
    :hosted?    (premium-features/is-hosted?)
+   :embedding  {:interested? (not (= (embed.settings/embedding-homepage) :hidden))
+                :done?       (= (embed.settings/embedding-homepage) :dismissed-done)
+                :app-origin  (boolean (embed.settings/embedding-app-origin))}
    :configured {:email (email/email-configured?)
-                :slack (slack/slack-configured?)}
-   :counts     {:user  (t2/count User)
-                :card  (t2/count Card)
-                :table (t2/count Table)}
-   :exists     {:non-sample-db (t2/exists? Database, :is_sample false)
-                :dashboard     (t2/exists? Dashboard)
-                :pulse         (t2/exists? Pulse)
-                :hidden-table  (t2/exists? Table, :visibility_type [:not= nil])
-                :collection    (t2/exists? Collection)
-                :model         (t2/exists? Card :type :model)}})
+                :slack (slack/slack-configured?)
+                :sso   (google/google-auth-enabled)}
+   :counts     {:user  (t2/count :model/User {:where (mi/exclude-internal-content-hsql :model/User)})
+                :card  (t2/count :model/Card {:where (mi/exclude-internal-content-hsql :model/Card)})
+                :table (val (ffirst (t2/query {:select [:%count.*]
+                                               :from   [[(t2/table-name :model/Table) :t]]
+                                               :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
+                                               :where  (mi/exclude-internal-content-hsql :model/Database :table-alias :d)})))}
+   :exists     {:non-sample-db     (t2/exists? :model/Database {:where (mi/exclude-internal-content-hsql :model/Database)})
+                :dashboard         (t2/exists? :model/Dashboard {:where (mi/exclude-internal-content-hsql :model/Dashboard)})
+                :pulse             (t2/exists? :model/Pulse)
+                :hidden-table      (t2/exists? :model/Table {:where [:and
+                                                                     [:not= :visibility_type nil]
+                                                                     (mi/exclude-internal-content-hsql :model/Table)]})
+                :collection        (t2/exists? :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
+                :model             (t2/exists? :model/Card {:where [:and
+                                                                    [:= :type "model"]
+                                                                    (mi/exclude-internal-content-hsql :model/Card)]})
+                :embedded-resource (or (t2/exists? :model/Card :enable_embedding true)
+                                       (t2/exists? :model/Dashboard :enable_embedding true))}})
 
 (defn- get-connected-tasks
-  [{:keys [configured counts exists] :as _info}]
+  [{:keys [configured counts exists embedding] :as _info}]
   [{:title       (tru "Add a database")
     :group       (tru "Get connected")
     :description (tru "Connect to your data so your whole team can start to explore.")
@@ -200,6 +216,14 @@
     :link        "/admin/settings/slack"
     :completed   (configured :slack)
     :triggered   :always}
+   {:title       (tru "Setup embedding")
+    :group       (tru "Get connected")
+    :description (tru "Get customizable, flexible, and scalable customer-facing analytics in no time")
+    :link        "/admin/settings/embedding-in-other-applications"
+    :completed   (or (embedding :done?)
+                     (and (configured :sso) (embedding :app-origin))
+                     (exists :embedded-resource))
+    :triggered   (embedding :interested?)}
    {:title       (tru "Invite team members")
     :group       (tru "Get connected")
     :description (tru "Share answers and data with the rest of your team.")

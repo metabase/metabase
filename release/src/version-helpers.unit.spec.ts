@@ -6,6 +6,7 @@ import {
   isRCVersion,
   getVersionType,
   getReleaseBranch,
+  getVersionFromReleaseBranch,
   isLatestVersion,
   getBuildRequirements,
   getNextVersions,
@@ -193,6 +194,29 @@ describe("version-helpers", () => {
     });
   });
 
+  describe("getVersionFromReleaseBranch", () => {
+    it("should return the version from a valid release branch", () => {
+      const cases: [string, string][] = [
+        ["/refs/heads/release-x.75.x", "v0.75.0"],
+        ["release-x.7.x", "v0.7.0"],
+        ["release-x.99.x", "v0.99.0"],
+        ["abcrelease-x.12.x", "v0.12.0"],
+        ["refs/heads/release-x.22.x", "v0.22.0"],
+      ];
+
+      cases.forEach(([input, expected]) => {
+        expect(getVersionFromReleaseBranch(input)).toEqual(expected);
+      });
+    });
+
+    it("should throw an error for invalid release branches", () => {
+      const cases = ["foo", "release-x.75", "release-x.75.0", "release-x.75.x-test", "refs/heads/release-x"];
+      cases.forEach(input => {
+        expect(() => getVersionFromReleaseBranch(input)).toThrow();
+      });
+    });
+  });
+
   describe("isLatestVersion", () => {
     it(`should return true for latest releases`, () => {
       const cases: [string, string[]][] = [
@@ -358,6 +382,7 @@ describe("version-helpers", () => {
       const testCases: [string, string[]][] = [
         ["v0.75.1", ["v0.75.2"]],
         ["v0.75.1.0", ["v0.75.2"]], // disregards extra .0
+        ["v0.75.10", ["v0.75.11"]], // handles multi-digit minor
         ["v0.79.99", ["v0.79.100"]],
         ["v0.79.99.0", ["v0.79.100"]],
       ];

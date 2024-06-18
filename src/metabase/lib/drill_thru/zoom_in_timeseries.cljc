@@ -37,13 +37,12 @@
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
-   [metabase.lib.schema.temporal-bucketing
-    :as lib.schema.temporal-bucketing]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
@@ -71,7 +70,7 @@
            (assoc dimension :column-ref breakout))))
 
 (mu/defn ^:private next-breakout-unit :- [:maybe ::lib.schema.temporal-bucketing/unit.date-time.truncate]
-  [column :- lib.metadata/ColumnMetadata]
+  [column :- ::lib.schema.metadata/column]
   (when-let [current-unit (lib.temporal-bucket/raw-temporal-bucket column)]
     (when (contains? (set valid-current-units) current-unit)
       (unit->next-unit current-unit))))

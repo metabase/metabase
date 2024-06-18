@@ -77,7 +77,7 @@ describe("FilterPopover", () => {
       it("should have an operator selector", () => {
         setup({ filter: NUMERIC_FILTER });
         expect(screen.getByText("Equal to")).toBeInTheDocument();
-        expect(screen.getByText("1,234")).toBeInTheDocument();
+        expect(screen.getByText("1234")).toBeInTheDocument();
       });
     });
     describe("filter options", () => {
@@ -98,16 +98,16 @@ describe("FilterPopover", () => {
       it.skip("should let the user toggle an option", async () => {
         setup({ filter: RELATIVE_DAY_FILTER });
         const ellipsis = screen.getByLabelText("ellipsis icon");
-        userEvent.click(ellipsis);
+        await userEvent.click(ellipsis);
         const includeToday = await screen.findByText("Include today");
-        userEvent.click(includeToday);
+        await userEvent.click(includeToday);
       });
 
       // eslint-disable-next-line jest/no-disabled-tests
       it.skip("should let the user toggle a date filter type", async () => {
         setup({ filter: RELATIVE_DAY_FILTER });
         const back = screen.getByLabelText("chevronleft icon");
-        userEvent.click(back);
+        await userEvent.click(back);
         expect(
           await screen.findByTestId("date-picker-shortcuts"),
         ).toBeInTheDocument();
@@ -116,8 +116,8 @@ describe("FilterPopover", () => {
       // eslint-disable-next-line jest/no-disabled-tests
       it.skip("should let the user toggle a text filter type", async () => {
         setup({ filter: STRING_CONTAINS_FILTER });
-        userEvent.click(await screen.findByText("Contains"));
-        userEvent.click(await screen.findByText("Is"));
+        await userEvent.click(await screen.findByText("Contains"));
+        await userEvent.click(await screen.findByText("Is"));
 
         expect(
           await screen.findByTestId("date-picker-shortcuts"),

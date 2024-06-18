@@ -6,7 +6,7 @@ export type NavigateToNewCardFromDashboardOpts = {
   nextCard: Card;
   previousCard: Card;
   dashcard: DashboardCard;
-  objectId?: unknown;
+  objectId?: number | string;
 };
 
 export type DashCardOnChangeCardAndRunHandler = (

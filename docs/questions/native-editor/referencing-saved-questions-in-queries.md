@@ -6,7 +6,7 @@ redirect_from:
 
 ## Referencing models and saved questions
 
-With SQL databases, we can use a [model][model] or an existing question as the basis for a new query, or as a common table expression [CTE][CTE].
+With SQL databases, we can use a [model][model] or an existing question as the basis for a new query, or as a common table expression [CTE][cte].
 
 For example, let's say we have a lot of data spread across a number of tables, but people are most interested in a subset of that data. We can perform a complicated query once to return those results, and save that question as a model, which people can refer to in their queries just like they would with any other table.
 
@@ -37,14 +37,21 @@ FROM gizmo_orders
 When this query is run, the `{% raw %}{{#5-gizmo-orders-in-2019}}{% endraw %}` tag will be substituted with the SQL query of the referenced question, surrounded by parentheses. So it'll look like this under the hood:
 
 ```
-WITH gizmo_orders AS (SELECT *
-FROM   orders AS o
-       INNER JOIN products AS p
-               ON o.product_id = p.id
-WHERE  p.category = 'Gizmo'
-       AND o.created_at BETWEEN '2019-01-01' AND '2019-12-31')
-SELECT count(*)
-FROM gizmo_orders
+WITH
+  gizmo_orders AS (
+    SELECT
+      *
+    FROM
+      orders AS o
+      INNER JOIN products AS p ON o.product_id = p.id
+    WHERE
+      p.category = 'Gizmo'
+      AND o.created_at BETWEEN '2019-01-01' AND '2019-12-31'
+  )
+SELECT
+  count(*)
+FROM
+  gizmo_orders
 ```
 
 ## Limitations and tradeoffs
@@ -60,7 +67,6 @@ FROM gizmo_orders
 - [SQL Snippets vs Saved Questions vs. Views](https://www.metabase.com/learn/building-analytics/sql-templates/organizing-sql.html)
 - [SQL troubleshooting guide](../../troubleshooting-guide/sql.md).
 - [Segments and Metrics](../../data-modeling/segments-and-metrics.md)
-
 
 [cte]: https://www.metabase.com/learn/sql-questions/sql-cte
 [model]: ../../data-modeling/models.md

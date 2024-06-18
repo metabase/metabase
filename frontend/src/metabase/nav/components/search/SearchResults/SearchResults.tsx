@@ -23,9 +23,9 @@ import { SearchContextTypes } from "metabase/search/constants";
 import type { SearchFilters } from "metabase/search/types";
 import { Loader, Text, Stack } from "metabase/ui";
 import type {
-  SearchResults as SearchResultsType,
+  SearchResponse as SearchResultsType,
   CollectionItem,
-  SearchModelType,
+  SearchModel,
 } from "metabase-types/api";
 
 export type SearchResultsFooter =
@@ -43,7 +43,7 @@ export type SearchResultsProps = {
   forceEntitySelect?: boolean;
   searchText?: string;
   searchFilters?: SearchFilters;
-  models?: SearchModelType[];
+  models?: SearchModel[];
   footerComponent?: SearchResultsFooter;
   onFooterSelect?: () => void;
   isSearchBar?: boolean;
@@ -85,8 +85,8 @@ export const SearchResults = ({
   const query: {
     q?: string;
     limit: number;
-    models?: SearchModelType[];
-    context?: string;
+    models?: SearchModel[];
+    context?: "search-bar" | "search-app";
   } & SearchFilters = {
     q: debouncedSearchText,
     limit: DEFAULT_SEARCH_LIMIT,
@@ -166,6 +166,8 @@ export const SearchResults = ({
                 showDescription={true}
                 isSelected={cursorIndex === index}
                 onClick={onClick}
+                index={index}
+                context="search-bar"
               />
             </li>
           );

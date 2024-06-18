@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
@@ -19,16 +18,18 @@ export const ScalarRoot = styled.div`
 `;
 
 interface ScalarValueWrapperProps {
-  fontSize: string;
+  fontSize?: string;
+  lineHeight?: string;
 }
 
 export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
   display: inline;
   font-size: ${props => props.fontSize};
+  line-height: ${props => props.lineHeight};
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -53,7 +54,7 @@ export const ScalarTitleContent = styled.h3`
   font-size: 14px;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -71,9 +72,9 @@ export const ScalarDescriptionPlaceholder = styled.div`
 
 export const ScalarDescriptionIcon = styled(Icon)`
   cursor: pointer;
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

@@ -80,7 +80,12 @@
   "Expand parameters in the `outer-query`, and if the query is using a native source query, expand params in that as
   well."
   [outer-query]
-  (-> outer-query move-top-level-params-to-inner-query expand-all))
+  (let [pivot-original-query (get-in outer-query [:info :pivot/original-query])]
+    (cond-> outer-query
+      pivot-original-query (m/dissoc-in [:info :pivot/original-query])
+      true                 move-top-level-params-to-inner-query
+      true                 expand-all
+      pivot-original-query (assoc-in [:info :pivot/original-query] pivot-original-query))))
 
 (mu/defn ^:private substitute-parameters* :- :map
   "If any parameters were supplied then substitute them into the query."
@@ -92,12 +97,11 @@
 
 (defn- assoc-db-in-snippet-tag
   [db template-tags]
-  (->> template-tags
-       (m/map-vals
-        (fn [v]
-          (cond-> v
-            (= (:type v) :snippet) (assoc :database db))))
-       (into {})))
+  (update-vals
+   template-tags
+   (fn [v]
+     (cond-> v
+       (= (:type v) :snippet) (assoc :database db)))))
 
 (defn- hoist-database-for-snippet-tags
   "Assocs the `:database` ID from `query` in all snippet template tags."
@@ -110,7 +114,8 @@
   `:template-tags` and removes those keys, splicing appropriate conditions into the queries they affect.
 
   A SQL query with a param like `{{param}}` will have that part of the query replaced with an appropriate snippet as
-  well as any prepared statement args needed. MBQL queries will have additional filter clauses added."
+  well as any prepared statement args needed. MBQL queries will have additional filter clauses added. (Or in a special
+  case, the temporal bucketing on a breakout altered by a `:temporal-unit` parameter.)"
   [query]
   (-> query
       hoist-database-for-snippet-tags

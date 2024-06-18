@@ -177,7 +177,7 @@ const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
 DatabaseSelector.propTypes = DatabaseSelectorPropTypes;
 
 const SingleDatabaseName = ({ database }) => (
-  <div className="p2 text-bold text-grey" data-testid="selected-database">
+  <div className={cx(CS.p2, CS.textBold)} data-testid="selected-database">
     {database.name}
   </div>
 );
@@ -215,7 +215,7 @@ const Placeholder = ({ query, editorContext }) => {
 
   const language = getNativeQueryLanguage(query.engine());
   return (
-    <div className="ml2 p2 text-medium">
+    <div className={cx(CS.ml2, CS.p2, CS.textMedium)}>
       {t`This question is written in ${language}.`}
     </div>
   );

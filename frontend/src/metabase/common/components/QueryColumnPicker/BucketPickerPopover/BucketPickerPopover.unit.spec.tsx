@@ -33,7 +33,7 @@ function setup({ column }: { column: Lib.ColumnMetadata }) {
 
 async function setupBinningPicker({ column }: { column: Lib.ColumnMetadata }) {
   setup({ column });
-  userEvent.click(screen.getByLabelText("Binning strategy"));
+  await userEvent.click(screen.getByLabelText("Binning strategy"));
   await screen.findByText("Don't bin");
 }
 
@@ -43,7 +43,7 @@ async function setupTemporalBucketPicker({
   column: Lib.ColumnMetadata;
 }) {
   setup({ column });
-  userEvent.click(screen.getByLabelText("Temporal bucket"));
+  await userEvent.click(screen.getByLabelText("Temporal bucket"));
   await screen.findByText("Year");
 }
 
@@ -62,7 +62,7 @@ describe("BucketPickerPopover", () => {
     expect(screen.queryByText("Day of month")).not.toBeInTheDocument();
     expect(screen.queryByText("Month of year")).not.toBeInTheDocument();
 
-    userEvent.click(screen.getByRole("button", { name: "More…" }));
+    await userEvent.click(screen.getByRole("button", { name: "More…" }));
 
     expect(screen.getAllByRole("menuitem")).toHaveLength(
       [...buckets, "Don't bin"].length,
@@ -94,13 +94,13 @@ describe("BucketPickerPopover", () => {
   it("should collapse after popover is closed", async () => {
     await setupTemporalBucketPicker({ column: dateColumn });
 
-    userEvent.click(screen.getByRole("button", { name: "More…" }));
+    await userEvent.click(screen.getByRole("button", { name: "More…" }));
     // Clicking outside the popover should close it
-    userEvent.click(screen.getByTestId("container"));
+    await userEvent.click(screen.getByTestId("container"));
 
-    await waitFor(() => expect(screen.getByText("Month")).not.toBeVisible());
+    await waitFor(() => expect(screen.queryByText("Month")).not.toBeVisible());
 
-    userEvent.click(screen.getByLabelText("Temporal bucket"));
+    await userEvent.click(screen.getByLabelText("Temporal bucket"));
     await screen.findByText("Month");
 
     expect(screen.getAllByRole("menuitem")).toHaveLength(
@@ -115,11 +115,11 @@ describe("BucketPickerPopover", () => {
     await setupTemporalBucketPicker({ column });
 
     // Clicking outside the popover should close it
-    userEvent.click(screen.getByTestId("container"));
+    await userEvent.click(screen.getByTestId("container"));
 
     await waitFor(() => expect(screen.getByText("Month")).not.toBeVisible());
 
-    userEvent.click(screen.getByLabelText("Temporal bucket"));
+    await userEvent.click(screen.getByLabelText("Temporal bucket"));
     await screen.findByText("Month");
 
     expect(screen.getAllByRole("menuitem")).toHaveLength(

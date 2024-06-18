@@ -5,13 +5,17 @@ import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
+import { createMockModelResult } from "metabase/browse/test-utils";
+import type { ModelResult } from "metabase/browse/types";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as Urls from "metabase/lib/urls";
 import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
@@ -39,6 +43,7 @@ type SetupOpts = {
   hasOwnDatabase?: boolean;
   openQuestionCard?: Card;
   openDashboard?: Dashboard;
+  models?: ModelResult[];
 };
 
 const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -72,6 +77,7 @@ async function setup({
   hasOwnDatabase = true,
   openDashboard,
   openQuestionCard,
+  models = [],
 }: SetupOpts = {}) {
   const databases = [];
   const collections = [TEST_COLLECTION];
@@ -98,6 +104,7 @@ async function setup({
 
   setupCollectionsEndpoints({ collections });
   setupDatabasesEndpoints(databases);
+  setupSearchEndpoints(models);
   fetchMock.get("path:/api/bookmark", []);
 
   if (openQuestionCard) {
@@ -188,31 +195,68 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
-  describe("browse data link", () => {
+  describe("browse databases link", () => {
     it("should render", async () => {
       await setup();
-      const link = screen.getByRole("link", { name: /Browse data/i });
+      const listItem = screen.getByRole("listitem", {
+        name: /Browse databases/i,
+      });
+      const link = within(listItem).getByRole("link");
       expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute("href", "/browse");
+      expect(link).toHaveAttribute("href", "/browse/databases");
     });
 
     it("should not render when a user has no data access", async () => {
       await setup({ hasDataAccess: false });
       expect(
-        screen.queryByRole("link", { name: /Browse data/i }),
+        screen.queryByRole("listitem", { name: /Browse databases/i }),
       ).not.toBeInTheDocument();
     });
 
     it("should be highlighted if selected", async () => {
-      await setup({ pathname: "/browse" });
-      const link = screen.getByRole("listitem", { name: /Browse data/i });
-      expect(link).toHaveAttribute("aria-selected", "true");
+      await setup({ pathname: "/browse/databases" });
+      const listItem = screen.getByRole("listitem", {
+        name: /Browse databases/i,
+      });
+      expect(listItem).toHaveAttribute("aria-selected", "true");
     });
 
     it("should be highlighted if child route selected", async () => {
       await setup({ pathname: "/browse/databases/1" });
-      const link = screen.getByRole("listitem", { name: /Browse data/i });
-      expect(link).toHaveAttribute("aria-selected", "true");
+      const listItem = screen.getByRole("listitem", {
+        name: /Browse databases/i,
+      });
+      expect(listItem).toHaveAttribute("aria-selected", "true");
+    });
+  });
+
+  describe("browse models link", () => {
+    it("should render when there are models", async () => {
+      await setup({ models: [createMockModelResult()] });
+      const listItem = screen.getByRole("listitem", {
+        name: /Browse models/i,
+      });
+      const link = within(listItem).getByRole("link");
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute("href", "/browse/models");
+    });
+
+    it("should not render when there are no models", async () => {
+      await setup({ models: [] });
+      expect(
+        screen.queryByRole("listitem", { name: /Browse models/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should be highlighted if selected", async () => {
+      await setup({
+        models: [createMockModelResult()],
+        pathname: "/browse/models",
+      });
+      const listItem = screen.getByRole("listitem", {
+        name: /Browse models/i,
+      });
+      expect(listItem).toHaveAttribute("aria-selected", "true");
     });
   });
 

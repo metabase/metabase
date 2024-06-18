@@ -6,15 +6,20 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.common.parameters :as params]
    [metabase.driver.snowflake :as driver.snowflake]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Table]]
    [metabase.models.database :refer [Database]]
@@ -30,6 +35,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
+   [ring.util.codec :as codec]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -60,7 +66,7 @@
     (is (= [100]
            (mt/first-row
             (mt/run-mbql-query venues
-                               {:aggregation [[:count]]}))))))
+              {:aggregation [[:count]]}))))))
 
 (deftest ^:parallel quote-name-test
   (is (nil? (#'driver.snowflake/quote-name nil)))
@@ -97,10 +103,10 @@
         false "v3_sample-dataset"))
     (testing "Subname is replaced if hostname is provided (#22133)"
       (are [use-hostname alternative-host expected-subname] (=? expected-subname
-                               (:subname (let [details (-> details
-                                                           (assoc :host alternative-host)
-                                                           (assoc :use-hostname use-hostname))]
-                                 (sql-jdbc.conn/connection-details->spec :snowflake details))))
+                                                                (:subname (let [details (-> details
+                                                                                            (assoc :host alternative-host)
+                                                                                            (assoc :use-hostname use-hostname))]
+                                                                            (sql-jdbc.conn/connection-details->spec :snowflake details))))
         true nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
         true "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
         true "  " "//ls10467.us-east-2.aws.snowflakecomputing.com/"
@@ -265,28 +271,76 @@
                    (map (partial into {})
                         (t2/select [Table :name] :db_id (u/the-id database)))))))))))
 
+(def dynamic-db
+  (mt/dataset-definition "dynamic-db"
+    ["metabase_users"
+     [{:field-name "name" :base-type :type/Text}]
+     [["mb_qnkhuat"]]]))
+
+(defn- do-with-dynamic-table
+  [thunk]
+  (mt/dataset (mt/dataset-definition "dynamic-db"
+                ["metabase_users"
+                 [{:field-name "name" :base-type :type/Text}]
+                 [["mb_qnkhuat"]]])
+    (let [details (:details (mt/db))]
+      (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+                     [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
+                              SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"
+                              (:db details) (:db details) (:db details))])
+      (thunk))))
+
+(defmacro with-dynamic-table
+  "Create a db with 2 tables: metabase_users and metabase_fan, in which metabase_fan is a dynamic table."
+  [& body]
+  `(do-with-dynamic-table (fn [] ~@body)))
+
 (deftest sync-dynamic-tables-test
   (testing "Should be able to sync dynamic tables"
     (mt/test-driver :snowflake
-      (mt/dataset (mt/dataset-definition "dynamic-table"
-                    ["metabase_users"
-                     [{:field-name "name" :base-type :type/Text}]
-                     [["mb_qnkhuat"]]])
-        (let [db-id   (:id (mt/db))
-              details (:details (mt/db))
-              spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
-          (jdbc/execute! spec [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
-                                       SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"
-                                       (:db details) (:db details) (:db details))])
-          (sync/sync-database! (t2/select-one :model/Database db-id))
-          (testing "both base tables and dynamic tables should be synced"
-            (is (= #{"metabase_fan" "metabase_users"}
-                   (t2/select-fn-set :name :model/Table :db_id db-id)))
-            (testing "the fields for dynamic tables are synced correctly"
-              (is (= #{{:name "name" :base_type :type/Text}
-                       {:name "id" :base_type :type/Number}}
-                     (set (t2/select [:model/Field :name :base_type]
-                                     :table_id (t2/select-one-pk :model/Table :name "metabase_fan" :db_id db-id))))))))))))
+      (with-dynamic-table
+        (sync/sync-database! (t2/select-one :model/Database (mt/id)))
+        (testing "both base tables and dynamic tables should be synced"
+          (is (= #{"metabase_fan" "metabase_users"}
+                 (t2/select-fn-set :name :model/Table :db_id (mt/id))))
+          (testing "the fields for dynamic tables are synced correctly"
+            (is (= #{{:name "name" :base_type :type/Text}
+                     {:name "id" :base_type :type/Number}}
+                   (set (t2/select [:model/Field :name :base_type]
+                                   :table_id (t2/select-one-pk :model/Table :name "metabase_fan" :db_id (mt/id))))))))))))
+
+(deftest dynamic-table-helpers-test
+  (testing "test to make sure various methods called on dynamic tables work"
+    (mt/test-driver :snowflake
+      (with-dynamic-table
+        (sql-jdbc.execute/do-with-connection-with-options
+         :snowflake
+         (mt/db)
+         nil
+         (fn [conn]
+           (let [dynamic-table (t2/select-one :model/Table :name "metabase_fan" :db_id (mt/id))
+                 normal-table  (t2/select-one :model/Table :name "metabase_users" :db_id (mt/id))
+                 db-name       (-> (mt/db) :details :db)]
+             (testing "dynamic-table?"
+               (testing "returns true for dynamic table"
+                 (is (true? (#'driver.snowflake/dynamic-table? conn db-name (:schema dynamic-table) (:name dynamic-table)))))
+
+               (testing "returns false for normal table"
+                 (is (false? (#'driver.snowflake/dynamic-table? conn db-name (:schema normal-table) (:name normal-table)))))
+
+               (testing "returns false if db-name is invalid, make sure we don't throw an exception"
+                 (is (false? (#'driver.snowflake/dynamic-table? conn (mt/random-name) (:schema normal-table) (:name normal-table))))))
+
+             (testing "sql-jdbc.describe-table/get-table-pks"
+               (testing "returns empty array for dynamic table"
+                 (is (= [] (sql-jdbc.describe-table/get-table-pks :snowflake conn db-name dynamic-table))))
+
+               (testing "also works if db-name is nil"
+                 (is (= [] (sql-jdbc.describe-table/get-table-pks :snowflake conn nil dynamic-table)))))
+
+             (testing "driver/describe-table-fks returns empty set for dynamic table"
+               #_{:clj-kondo/ignore [:deprecated-var]}
+               (is (= #{} (driver/describe-table-fks :snowflake (mt/db) dynamic-table)))))))))))
 
 (deftest ^:parallel describe-table-test
   (mt/test-driver :snowflake
@@ -321,7 +375,7 @@
 
 (defn- format-env-key ^String [env-key]
   (let [[_ header body footer]
-        (re-find #"(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
+        (re-find #"(?s)(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
     (str header (str/replace body #"\s+|\\n" "\n") footer)))
 
 (deftest can-connect-test
@@ -357,13 +411,39 @@
                                   (merge {:db pk-db :user pk-user} to-merge))]
                   (is (can-connect? details)))))))))))
 
+(deftest can-connect-pk-no-options-test
+  (mt/test-driver
+   :snowflake
+   (testing "Can connect with base64 encoded `:private-key-value` and no `:private-key-options` set (#41852)"
+     (let [pk-key (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
+           pk-user (tx/db-test-env-var :snowflake :pk-user)
+           pk-db "SNOWFLAKE_SAMPLE_DATA"
+           details (-> (:details (mt/db))
+                       (dissoc :password)
+                       (assoc :dbname pk-db
+                              :private-key-value (u/encode-base64 pk-key)
+                              :user pk-user))]
+       (testing "Can connect with base64 encoded `:private-key-value` and no `:private-key-options` set (#41852)"
+         (is (driver/can-connect? :snowflake details)))
+       ;; Following is required when private key and role are used together. See
+       ;; the [[metabase.driver.snowflake/maybe-add-role-to-spec-url]] for the details.
+       (testing "Role is added to connection url, if url is present (#43600)"
+         (let [details-with-role (assoc details :role "SOME_ROLE")
+               conn-str (:connection-uri (sql-jdbc.conn/connection-details->spec :snowflake details-with-role))
+               parsed-params (driver.snowflake/connection-str->parameters conn-str)]
+           (is (= "SOME_ROLE" (get parsed-params "ROLE")))))))))
+
+(deftest ^:parallel replacement-snippet-date-param-test
+  (mt/test-driver :snowflake
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (is (= {:replacement-snippet     "'2014-08-02'::date"
+              :prepared-statement-args nil}
+             (sql.params.substitution/->replacement-snippet-info :snowflake (params/->Date "2014-08-02")))))))
+
 (deftest report-timezone-test
   (mt/test-driver :snowflake
-    (testing "Make sure temporal parameters are set and returned correctly when report-timezone is set (#11036)"
-      (letfn [(run-query []
-                (mt/rows
-                 (qp/process-query
-                  {:database   (mt/id)
+    (testing "Make sure temporal parameters are set and returned correctly when report-timezone is set (#11036, #39769)"
+      (let [query {:database   (mt/id)
                    :type       :native
                    :native     {:query         (str "SELECT {{filter_date}}")
                                 :template-tags {:filter_date {:name         "filter_date"
@@ -371,19 +451,22 @@
                                                               :type         "date"}}}
                    :parameters [{:type   "date/single"
                                  :target ["variable" ["template-tag" "filter_date"]]
-                                 :value  "2014-08-02"}]})))]
-        (testing "baseline"
-          (is (= [["2014-08-02T00:00:00Z"]]
-                 (run-query))))
-        (testing "with report-timezone"
-          (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
-            (is (= [["2014-08-02T00:00:00-07:00"]]
-                   (run-query)))))))
-    (testing "Make sure temporal values are returned correctly when report-timezone is set (#11036)"
-      (letfn [(run-query []
-                (mt/rows
-                 (qp/process-query
-                  {:database   (mt/id)
+                                 :value  "2014-08-02"}]}]
+        (mt/with-native-query-testing-context query
+          (letfn [(run-query []
+                    (mt/rows (qp/process-query query)))]
+            (testing "baseline"
+              (is (= [["2014-08-02T00:00:00Z"]]
+                     (run-query))))
+            (testing "with report-timezone"
+              (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+                (is (= [["2014-08-02T00:00:00-07:00"]]
+                       (run-query)))))))))))
+
+(deftest report-timezone-test-2
+  (mt/test-driver :snowflake
+    (testing "Make sure temporal values are returned correctly when report-timezone is set (#11036, #39769)"
+      (let [query {:database   (mt/id)
                    :type       :native
                    :native     {:query         (str "SELECT {{filter_date}}, \"last_login\" "
                                                     (format "FROM \"%stest-data\".\"PUBLIC\".\"users\" "
@@ -395,16 +478,67 @@
                                                               :type         "date"}}}
                    :parameters [{:type   "date/single"
                                  :target ["variable" ["template-tag" "filter_date"]]
-                                 :value  "2014-08-02"}]})))]
-        (testing "baseline (no report-timezone set)"
-          (is (= [["2014-08-02T00:00:00Z" "2014-08-02T12:30:00Z"]
-                  ["2014-08-02T00:00:00Z" "2014-08-02T09:30:00Z"]]
-                 (run-query))))
-        (testing "with report timezone set"
-          (is (= [["2014-08-02T00:00:00-07:00" "2014-08-02T12:30:00-07:00"]
-                  ["2014-08-02T00:00:00-07:00" "2014-08-02T09:30:00-07:00"]]
-                 (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
-                   (run-query)))))))))
+                                 :value  "2014-08-02"}]}]
+        (mt/with-native-query-testing-context query
+          (letfn [(run-query []
+                    (mt/rows (qp/process-query query)))]
+            (testing "baseline (no report-timezone set)"
+              (is (= [["2014-08-02T00:00:00Z" "2014-08-02T12:30:00Z"]
+                      ["2014-08-02T00:00:00Z" "2014-08-02T09:30:00Z"]]
+                     (run-query))))
+            (testing "with report timezone set"
+              (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+                (is (= [["2014-08-02T00:00:00-07:00" "2014-08-02T12:30:00-07:00"]
+                        ["2014-08-02T00:00:00-07:00" "2014-08-02T09:30:00-07:00"]]
+                       (run-query)))))))))))
+
+(defn- test-temporal-instance
+  "Test that `java.time` instance `t` is set correctly (as a parameter) and returned correctly."
+  [t expected]
+  (mt/test-driver :snowflake
+    (testing "(#11036, #39769)"
+      (let [[sql & params] (sql.qp/format-honeysql :snowflake {:select [[(sql.qp/->honeysql :snowflake t) :t]]})
+            query {:database (mt/id)
+                   :type     :native
+                   :native   {:query  sql
+                              :params (vec params)}}]
+        (mt/with-native-query-testing-context query
+          (testing (format "\nt = ^%s %s" (.getName (class t)) (pr-str t))
+            (is (= [expected]
+                   (mt/first-row (qp/process-query query))))))))))
+
+(deftest ^:parallel local-date-time-parameter-test
+  (test-temporal-instance
+   #t "2024-04-25T14:44:00"
+   "2024-04-25T14:44:00Z"))
+
+(deftest local-date-time-parameter-report-timezone-test
+  (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+    (test-temporal-instance
+     #t "2024-04-25T14:44:00"
+     "2024-04-25T14:44:00-07:00")))
+
+(deftest ^:parallel offset-date-time-parameter-test
+  (test-temporal-instance
+   #t "2024-04-25T14:44:00-07:00"
+   "2024-04-25T21:44:00Z"))
+
+(deftest offset-date-time-parameter-report-timezone-test
+  (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+    (test-temporal-instance
+     #t "2024-04-25T14:44:00-07:00"
+     "2024-04-25T14:44:00-07:00")))
+
+(deftest ^:parallel zoned-date-time-parameter-test
+  (test-temporal-instance
+   #t "2024-04-25T14:44:00-07:00[US/Pacific]"
+   "2024-04-25T21:44:00Z"))
+
+(deftest zoned-date-time-parameter-report-timezone-test
+  (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+    (test-temporal-instance
+     #t "2024-04-25T14:44:00-07:00[US/Pacific]"
+     "2024-04-25T14:44:00-07:00")))
 
 (deftest week-start-test
   (mt/test-driver :snowflake
@@ -521,3 +655,34 @@
                     ["2023-11-01T00:00:00+11:00" 1]]
                    (mt/with-temporary-setting-values [report-timezone "Australia/Sydney"]
                      (mt/rows (qp/process-query query)))))))))))
+
+(deftest ^:parallel connection-str->parameters-test
+  (testing "Returns nil for invalid connection string"
+    (are [conn-str] (= nil (driver.snowflake/connection-str->parameters conn-str))
+      nil "" "asdf" "snowflake:jdbc://x"))
+  (testing "Returns `\"ACCOUNT\"` for valid strings of no parameters"
+    (are [conn-str] (= {"ACCOUNT" "x"} (driver.snowflake/connection-str->parameters conn-str))
+      "jdbc:snowflake://x.snowflakecomputing.com"
+      "jdbc:snowflake://x.snowflakecomputing.com/"
+      "jdbc:snowflake://x.snowflakecomputing.com/?"))
+  (testing "Returns decoded parameters"
+    (let [role "!@#$%^&*()"]
+      (is (= {"ACCOUNT" "x"
+              "ROLE" role}
+             (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
+                                                               "?role=" (codec/url-encode role)))))))
+  (testing "Returns multiple url parameters"
+    (let [role "!@#$%^&*()"]
+      (is (= {"ACCOUNT" "x"
+              "ROLE" role
+              "FOO" "bar"}
+             (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
+                                                               "?role=" (codec/url-encode role)
+                                                               "&foo=bar"))))))
+  (testing (str "Returns nothing for role suffixed keys "
+                "(https://github.com/metabase/metabase/pull/43602#discussion_r1628043704)")
+    (let [role "!@#$%^&*()"
+          params (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
+                                                                   "?asdfrole=" (codec/url-encode role)))]
+      (is (not (contains? params "ROLE")))
+      (is (contains? params "ASDFROLE")))))

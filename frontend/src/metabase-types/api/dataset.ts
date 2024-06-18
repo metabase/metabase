@@ -3,14 +3,10 @@ import type { LocalFieldReference } from "metabase-types/api";
 import type { Card } from "./card";
 import type { DatabaseId } from "./database";
 import type { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
+import type { Insight } from "./insight";
 import type { ParameterOptions } from "./parameters";
 import type { DownloadPermission } from "./permissions";
-import type {
-  DatasetQuery,
-  DatetimeUnit,
-  DimensionReference,
-  RelativeDatetimeUnit,
-} from "./query";
+import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import type { TableId } from "./table";
 
 export type RowValue = string | number | null | boolean;
@@ -54,15 +50,10 @@ export interface ResultsMetadata {
   columns: DatasetColumn[];
 }
 
-export type Insight = {
-  col: string;
-  unit: RelativeDatetimeUnit;
-};
-
 export interface DatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
-  insights?: Insight[];
+  insights?: Insight[] | null;
   results_metadata: ResultsMetadata;
   rows_truncated: number;
   requested_timezone?: string;
@@ -126,7 +117,7 @@ export interface NativeQueryForm {
 
 export type SingleSeries = {
   card: Card;
-} & Dataset;
+} & Pick<Dataset, "data" | "error">;
 
 export type RawSeries = SingleSeries[];
 export type TransformedSeries = RawSeries & { _raw: Series };
@@ -162,3 +153,20 @@ export interface TemplateTag {
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;
+
+export type TemporalUnit =
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "quarter"
+  | "month"
+  | "year"
+  | "minute-of-hour"
+  | "hour-of-day"
+  | "day-of-week"
+  | "day-of-month"
+  | "day-of-year"
+  | "week-of-year"
+  | "month-of-year"
+  | "quarter-of-year";

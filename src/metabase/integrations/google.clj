@@ -6,16 +6,16 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.integrations.google.interface :as google.i]
-   [metabase.models.interface :as mi]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.setting.multi-setting
     :refer [define-multi-setting-impl]]
    [metabase.models.user :as user :refer [User]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 ;; Load EE implementation if available
@@ -124,7 +124,7 @@
                                         :last_name  last-name}))
   (assoc user :first_name first-name :last_name last-name))
 
-(mu/defn ^:private google-auth-fetch-or-create-user! :- (mi/InstanceOf User)
+(mu/defn ^:private google-auth-fetch-or-create-user! :- (ms/InstanceOf User)
   [first-name last-name email]
   (let [existing-user (t2/select-one [User :id :email :last_login :first_name :last_name] :%lower.email (u/lower-case-en email))]
     (if existing-user
@@ -138,5 +138,5 @@
   [{{:keys [token]} :body, :as _request}]
   (let [token-info-response                    (http/post (format google-auth-token-info-url token))
         {:keys [given_name family_name email]} (google-auth-token-info token-info-response)]
-    (log/info (trs "Successfully authenticated Google Sign-In token for: {0} {1}" given_name family_name))
+    (log/infof "Successfully authenticated Google Sign-In token for: %s %s" given_name family_name)
     (api/check-500 (google-auth-fetch-or-create-user! given_name family_name email))))

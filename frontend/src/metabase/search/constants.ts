@@ -1,4 +1,4 @@
-import type { EnabledSearchModelType } from "metabase-types/api";
+import type { EnabledSearchModel } from "metabase-types/api";
 
 export const SearchFilterKeys = {
   Type: "type",
@@ -8,12 +8,14 @@ export const SearchFilterKeys = {
   LastEditedBy: "last_edited_by",
   LastEditedAt: "last_edited_at",
   NativeQuery: "search_native_query",
+  SearchTrashedItems: "archived",
 } as const;
 
-export const enabledSearchTypes: EnabledSearchModelType[] = [
+export const enabledSearchTypes: EnabledSearchModel[] = [
   "dashboard",
   "card",
   "dataset",
+  "metric",
   "collection",
   "database",
   "table",
@@ -24,4 +26,4 @@ export const enabledSearchTypes: EnabledSearchModelType[] = [
 export const SearchContextTypes = {
   SEARCH_BAR: "search-bar",
   SEARCH_APP: "search-app",
-};
+} as const;

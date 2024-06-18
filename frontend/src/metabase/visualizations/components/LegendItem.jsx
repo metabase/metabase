@@ -10,6 +10,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Icon } from "metabase/ui";
 
+import LegendS from "./Legend.module.css";
 import { IconContainer } from "./LegendItem.styled";
 
 const propTypes = {
@@ -50,9 +51,11 @@ export default class LegendItem extends Component {
 
     return (
       <span
+        data-testid="legend-item"
         className={cx(
           className,
-          "LegendItem",
+          LegendS.LegendItem,
+          { [LegendS.LegendItemMuted]: isMuted },
           CS.noDecoration,
           DashboardS.fullscreenNormalText,
           DashboardS.fullscreenNightText,
@@ -67,7 +70,6 @@ export default class LegendItem extends Component {
         style={{
           overflowX: "hidden",
           flex: "0 1 auto",
-          opacity: isMuted ? 0.4 : 1,
         }}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
@@ -81,7 +83,7 @@ export default class LegendItem extends Component {
         {showDot && (
           <Tooltip tooltip={title} isEnabled={showTooltip && showDotTooltip}>
             <div
-              className={cx("flex-no-shrink", "inline-block circular")}
+              className={cx(CS.flexNoShrink, CS.inlineBlock, CS.circular)}
               style={{
                 width: 13,
                 height: 13,
@@ -93,10 +95,18 @@ export default class LegendItem extends Component {
           </Tooltip>
         )}
         {showTitle && (
-          <div className="flex align-center overflow-hidden">
+          <div className={cx(CS.flex, CS.alignCenter, CS.overflowHidden)}>
             <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
             {description && (
-              <div className="hover-child ml1 flex align-center text-medium">
+              <div
+                className={cx(
+                  CS.hoverChild,
+                  CS.ml1,
+                  CS.flex,
+                  CS.alignCenter,
+                  CS.textMedium,
+                )}
+              >
                 <Tooltip tooltip={description} maxWidth="22em">
                   <Icon className={infoClassName} name="info" />
                 </Tooltip>

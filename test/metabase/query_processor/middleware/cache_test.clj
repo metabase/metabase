@@ -92,8 +92,7 @@
   (mt/with-open-channels [save-chan  (a/chan 10)
                           purge-chan (a/chan 10)]
     (mt/with-temporary-setting-values [enable-query-caching  true
-                                       query-caching-max-ttl 60
-                                       query-caching-min-ttl 0]
+                                       query-caching-max-ttl 60]
       (binding [cache/*backend* (test-backend save-chan purge-chan)
                 *save-chan*     save-chan
                 *purge-chan*    purge-chan]
@@ -114,11 +113,13 @@
 
 (def ^:private ^:dynamic ^Long *query-execution-delay-ms* 10)
 
+(def ^:private ^:dynamic *query-caching-min-ttl* 1)
+
 (defn ^:private ttl-strategy []
   {:type             :ttl
    :multiplier       60
    :avg-execution-ms 1000
-   :min-duration-ms  (public-settings/query-caching-min-ttl)})
+   :min-duration-ms  *query-caching-min-ttl*})
 
 (defn- test-query [query-kvs]
   (merge {:cache-strategy (ttl-strategy), :lib/type :mbql/query, :stages [{:abc :def}]} query-kvs))
@@ -158,15 +159,13 @@
   (boolean (#'cache/is-cacheable? (merge {:cache-strategy (ttl-strategy), :query :abc} query-kvs))))
 
 (deftest is-cacheable-test
-  (testing "something is-cacheable? if it includes a `:cache-strategy` and the caching setting is enabled"
+  (testing "something is-cacheable? if it includes `:cache-strategy`"
     (with-mock-cache []
-      (doseq [enable-caching? [true false]
-              cache-strategy  [(ttl-strategy) nil]
-              :let            [expected (boolean (and enable-caching? cache-strategy))]]
-        (mt/with-temporary-setting-values [enable-query-caching enable-caching?]
-          (testing (format "cache strategy = %s" (pr-str cache-strategy))
-            (is (= expected
-                   (boolean (#'cache/is-cacheable? {:cache-strategy cache-strategy}))))))))))
+      (doseq [cache-strategy  [(ttl-strategy) nil]
+              :let            [expected (boolean cache-strategy)]]
+        (testing (format "cache strategy = %s" (pr-str cache-strategy))
+          (is (= expected
+                 (boolean (#'cache/is-cacheable? {:cache-strategy cache-strategy})))))))))
 
 (deftest empty-cache-test
   (testing "if there's nothing in the cache, cached results should *not* be returned"
@@ -198,11 +197,10 @@
     (with-mock-cache [save-chan]
       (run-query)
       (mt/wait-for-result save-chan)
-      (mt/with-temporary-setting-values [enable-query-caching false]
-        (is (= false
-               (cacheable?)))
-        (is (= :not-cached
-               (run-query)))))))
+      (is (= false
+             (cacheable? {:cache-strategy nil})))
+      (is (= :not-cached
+             (run-query {:cache-strategy nil}))))))
 
 (deftest max-kb-test
   (testing "check that `query-caching-max-kb` is respected and queries aren't cached if they're past the threshold"
@@ -251,7 +249,7 @@
 (deftest min-ttl-test
   (testing "if the cache takes less than the min TTL to execute, it shouldn't be cached"
     (with-mock-cache [save-chan]
-      (mt/with-temporary-setting-values [query-caching-min-ttl 60]
+      (binding [*query-caching-min-ttl* 1000]
         (run-query)
         (is (= :metabase.test.util.async/timed-out
                (mt/wait-for-result save-chan)))
@@ -260,12 +258,11 @@
 
   (testing "...but if it takes *longer* than the min TTL, it should be cached"
     (with-mock-cache [save-chan]
-      (mt/with-temporary-setting-values [query-caching-min-ttl 0.1]
-        (binding [*query-execution-delay-ms* 120]
-          (run-query)
-          (mt/wait-for-result save-chan)
-          (is (= :cached
-                 (run-query))))))))
+      (binding [*query-caching-min-ttl* 0.1]
+        (run-query)
+        (mt/wait-for-result save-chan)
+        (is (= :cached
+               (run-query)))))))
 
 (deftest invalid-cache-entry-test
   (testing "We should handle invalid cache entries gracefully"
@@ -329,19 +326,18 @@
                        (dissoc cached-result :cache/details))
                     "Cached result should be in the same format as the uncached result, except for added keys"))))))))
   (testing "Cached results don't impact average execution time"
-    (let [save-query-execution-count          (atom 0)
+    (let [save-execution-metadata-count       (atom 0)
           update-avg-execution-count          (atom 0)
           called-promise                      (promise)
-          save-query-execution-original       (var-get #'process-userland-query/save-query-execution!*)
+          save-execution-metadata-original    (var-get #'process-userland-query/save-execution-metadata!*)
           save-query-update-avg-time-original query/save-query-and-update-average-execution-time!]
-      (with-redefs [process-userland-query/save-query-execution!*       (fn [& args]
-                                                                          (swap! save-query-execution-count inc)
-                                                                          (apply save-query-execution-original args)
-                                                                          (deliver called-promise true))
+      (with-redefs [process-userland-query/save-execution-metadata!*     (fn [& args]
+                                                                           (swap! save-execution-metadata-count inc)
+                                                                           (apply save-execution-metadata-original args)
+                                                                           (deliver called-promise true))
                     query/save-query-and-update-average-execution-time! (fn [& args]
                                                                           (swap! update-avg-execution-count inc)
-                                                                          (apply save-query-update-avg-time-original args))
-                    public-settings/query-caching-min-ttl               (constantly 0)]
+                                                                          (apply save-query-update-avg-time-original args))]
         (let [query  (assoc (mt/mbql-query venues {:order-by [[:asc $id]] :limit 42})
                             :cache-strategy (assoc (ttl-strategy) :multiplier 5000))
               q-hash (qp.util/query-hash query)]
@@ -350,14 +346,14 @@
             (is (not (:cached (qp/process-query (qp/userland-query query)))))
             (a/alts!! [save-chan (a/timeout 200)]) ;; wait-for-result closes the channel
             (u/deref-with-timeout called-promise 500)
-            (is (= 1 @save-query-execution-count))
+            (is (= 1 @save-execution-metadata-count))
             (is (= 1 @update-avg-execution-count))
             (let [avg-execution-time (query/average-execution-time-ms q-hash)]
               (is (number? avg-execution-time))
               ;; rerun query getting cached results
               (is (:cached (qp/process-query (qp/userland-query query))))
               (mt/wait-for-result save-chan)
-              (is (= 2 @save-query-execution-count)
+              (is (= 2 @save-execution-metadata-count)
                   "Saving execution times of a cache lookup")
               (is (= 1 @update-avg-execution-count)
                   "Cached query execution should not update average query duration")

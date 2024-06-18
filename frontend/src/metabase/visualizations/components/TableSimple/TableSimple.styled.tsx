@@ -42,14 +42,14 @@ export const Table = styled.table`
   ${standardTableStyleReset}
 
   tr {
-    border-bottom: 1px solid ${alpha(color("border"), 0.3)};
+    border-bottom: 1px solid ${() => alpha(color("border"), 0.3)};
   }
 
   th,
   td {
     height: 2.1875rem;
     padding: 0 0.75rem;
-    border-bottom: 1px solid ${alpha(color("border"), 0.3)};
+    border-bottom: 1px solid ${() => alpha(color("border"), 0.3)};
   }
 
   th:first-of-type,
@@ -75,7 +75,8 @@ export const TableHeaderCellContent = styled.button<{
   justify-content: flex-start;
   width: 100%;
   flex-direction: ${props => (props.isRightAligned ? "row-reverse" : "row")};
-  color: ${props => (props.isSorted ? color("brand") : color("text-medium"))};
+  color: ${props =>
+    props.isSorted ? "var(--mb-color-brand)" : "var(--mb-color-text-medium)"};
   font-weight: 700;
   cursor: pointer;
 
@@ -84,7 +85,7 @@ export const TableHeaderCellContent = styled.button<{
   }
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -110,7 +111,7 @@ export const PaginationButton = styled.button<{
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 
   ${props =>

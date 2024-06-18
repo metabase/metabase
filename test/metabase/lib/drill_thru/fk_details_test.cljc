@@ -16,9 +16,10 @@
   (testing "FK details is available for cell clicks on non-NULL FKs"
     (canned/canned-test
       :drill-thru/fk-details
-      (fn [_test-case context {:keys [click column-type]}]
+      (fn [test-case context {:keys [click column-type]}]
         (and (= click :cell)
              (= column-type :fk)
+             (not (:native? test-case))
              (not= (:value context) :null))))))
 
 (deftest ^:parallel returns-fk-details-test-1

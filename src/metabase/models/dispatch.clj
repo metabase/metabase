@@ -15,16 +15,3 @@
   "True if `x` is a Toucan instance, but not a Toucan model."
   [x]
   (t2/instance? x))
-
-(defn InstanceOf
-  "Helper for creating a Malli schema to check whether something is an instance of `model`. Use this instead of of using
-  the `<Model>Instance` or calling [[type]] or [[class]] on a model yourself, since that won't work once we switch to
-  Toucan 2.
-
-    (mu/defn my-fn :- (mi/InstanceOf User)
-      []
-      ...)"
-  [model]
-  [:fn
-   {:error/message (format "instance of a %s" (name model))}
-   (partial instance-of? model)])

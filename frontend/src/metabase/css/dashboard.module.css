@@ -6,51 +6,33 @@
 
 /* Night mode */
 .Dashboard.DashboardNight {
-  background-color: var(--color-bg-black);
+  background-color: var(--mb-color-bg-black);
 }
 
 .Dashboard.DashboardNight .Card {
-  color: var(--color-text-white);
+  color: var(--mb-color-text-white);
 }
 
 .Dashboard.DashboardFullscreen .fullscreenNormalText {
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
   transition: color 1s linear;
 }
 
 .Dashboard.DashboardNight.DashboardFullscreen .fullscreenNightText {
-  color: color-mod(var(--color-text-white) alpha(-14%));
+  color: var(--mb-color-text-white-alpha-85);
   transition: color 1s linear;
 }
 
 .Dashboard.DashboardNight .DashCard .Card svg text {
-  fill: color-mod(var(--color-text-white) alpha(-14%)) !important;
+  fill: var(--mb-color-text-white-alpha-85) !important;
   stroke: none !important;
 }
 
 .Dashboard.DashboardNight
-  :global(.enable-dots-onhover .dc-tooltip circle.dot:hover),
-.Dashboard.DashboardNight :global(.enable-dots .dc-tooltip circle.dot) {
+  .enableDotsOnHover
+  :global(.dc-tooltip circle.dot:hover),
+.Dashboard.DashboardNight .enableDots :global(.dc-tooltip circle.dot) {
   fill: currentColor;
-}
-
-.Dashboard.DashboardNight :global(.bg-light) {
-  background-color: var(--color-bg-black);
-}
-
-.Dashboard.DashboardNight :global(.bg-medium) {
-  background-color: #596269;
-}
-
-.Dashboard.DashboardNight :global(.text-dark) {
-  color: var(--color-bg-light);
-}
-
-.Dashboard.DashboardNight :global(.border-top),
-.Dashboard.DashboardNight :global(.border-left),
-.Dashboard.DashboardNight :global(.border-bottom),
-.Dashboard.DashboardNight :global(.border-right) {
-  border-color: var(--color-bg-dark);
 }
 
 /* Night mode transition */
@@ -59,67 +41,68 @@
   transition: background-color 1s linear, border 1s linear;
 }
 
-:global(.Dash--editing) {
+.DashEditing {
   margin-top: 1.5em;
 }
 
-:global(.Dash--editing) .DashCard .Card {
+.DashEditing .DashCard .Card {
   transition: border 0.3s, background-color 0.3s;
 }
 
-:global(.Dash--editing .Card-title:first-of-type) {
+.DashEditing .CardTitle:first-of-type {
   margin-top: 0.5rem;
 }
 
-:global(.Dash--editing .Card-title) {
+.DashEditing .CardTitle {
   pointer-events: none;
 }
 
-:global(.Dash--editing .PinMap) {
+.DashEditing .PinMap {
   /* allow map to pan. need to stopPropagation in PinMap to prevent weird dragging interaction */
   pointer-events: all;
 }
 
-:global(.PinMapUpdateButton--disabled) {
+.PinMapUpdateButtonDisabled {
   pointer-events: none;
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
-:global(.Dash--editing) .DashCard:global(.react-draggable-dragging) .Card {
-  box-shadow: 3px 3px 8px var(--color-shadow);
+/* .react-draggable*, .react-resizable* are 3rd party library classes */
+.DashEditing .DashCard:global(.react-draggable-dragging) .Card {
+  box-shadow: 3px 3px 8px var(--mb-color-shadow);
 }
 
-:global(.BrandColorResizeHandle .react-resizable-handle::after) {
-  border-color: var(--color-brand) !important;
+.BrandColorResizeHandle :global(.react-resizable-handle::after) {
+  border-color: var(--mb-color-brand) !important;
 }
 
-:global(.Dash--editing) .DashCard:global(.react-draggable-dragging),
-:global(.Dash--editing) .DashCard:global(.react-resizable-resizing) {
+.DashEditing .DashCard:global(.react-draggable-dragging),
+.DashEditing .DashCard:global(.react-resizable-resizing) {
   z-index: 3;
 }
 
-:global(.Dash--editing) .DashCard:global(.react-draggable-dragging) .Card,
-:global(.Dash--editing) .DashCard:global(.react-resizable-resizing) .Card {
-  background-color: var(--color-bg-medium) !important;
-  border: 1px solid var(--color-brand);
+.DashEditing .DashCard:global(.react-draggable-dragging) .Card,
+.DashEditing .DashCard:global(.react-resizable-resizing) .Card {
+  background-color: var(--mb-color-bg-medium) !important;
+  border: 1px solid var(--mb-color-brand);
 }
 
-:global(.Dash--editing) .DashCard :global(.Visualization-slow-spinner) {
+.DashEditing .DashCard .VisualizationSlowSpinner {
   position: absolute;
   right: -2px;
   top: -2px;
 }
 
-:global(.Dash--editing) .DashCard:hover :global(.Visualization-slow-spinner) {
+.DashEditing .DashCard:hover .VisualizationSlowSpinner {
   opacity: 0;
   transition: opacity 0.15s linear;
 }
 
-:global(.Dash--editing) .DashCard {
+.DashEditing .DashCard {
   cursor: move;
 }
 
-:global(.Dash--editing) .DashCard :global(.react-resizable-handle) {
+.DashEditing .DashCard :global(.react-resizable-handle) {
   position: absolute;
   width: 40px;
   height: 40px;
@@ -132,46 +115,48 @@
   background: none; /* hide default RGL's resize handle */
 }
 
-:global(.Dash--editing) .DashCard :global(.react-resizable-handle::after) {
+.DashEditing .DashCard :global(.react-resizable-handle::after) {
   content: "";
   position: absolute;
   width: 8px;
   height: 8px;
   bottom: 6px;
   right: 6px;
-  border-bottom: 2px solid var(--color-border);
-  border-right: 2px solid var(--color-border);
+  border-bottom: 2px solid var(--mb-color-border);
+  border-right: 2px solid var(--mb-color-border);
   border-bottom-right-radius: 2px;
   transition: opacity 0.2s;
   opacity: 0.01;
 }
 
-:global(.Dash--editing)
-  .DashCard
-  :global(.react-resizable-handle:hover::after) {
-  border-color: var(--color-border);
+.DashEditing .DashCard :global(.react-resizable-handle:hover::after) {
+  border-color: var(--mb-color-border);
 }
 
-:global(.Dash--editing)
-  .DashCard:hover
-  :global(.react-resizable-handle::after) {
+.DashEditing .DashCard:hover :global(.react-resizable-handle::after) {
   opacity: 1;
 }
 
-:global(.Dash--editing)
+.DashEditing
   .DashCard:global(.react-draggable-dragging .react-resizable-handle::after),
-:global(.Dash--editing)
+.DashEditing
   .DashCard:global(.react-resizable-resizing .react-resizable-handle::after) {
   opacity: 0.01;
 }
 
-:global(.Dash--editing .react-grid-placeholder) {
+/* .react-grid-placeholder is a global class from `react-grid-layout` */
+.DashEditing :global(.react-grid-placeholder) {
   z-index: 0;
-  background-color: var(--color-bg-light) !important;
+  background-color: var(--mb-color-bg-light) !important;
   transition: all 0.15s linear;
 }
 
-:global(.Modal.AddSeriesModal) {
+/* Used in frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.styled.tsx */
+/* stylelint-disable-next-line block-no-empty */
+.DashDragging {
+}
+
+.Modal.AddSeriesModal {
   height: 80%;
   max-height: 600px;
   width: 80%;
@@ -189,7 +174,7 @@
   :global(.dc-chart .axis .tick text),
   :global(.dc-chart .x-axis-label),
   :global(.dc-chart .y-axis-label) {
-    fill: var(--color-text-dark);
+    fill: var(--mb-color-text-dark);
   }
 }
 
@@ -205,16 +190,15 @@
 
 /* when in night mode code snippets should have a more readable background-color */
 .DashboardNight pre code {
-  background-color: color-mod(var(--color-bg-white) alpha(-86%));
+  background-color: var(--mb-color-bg-white-alpha-15);
 }
 
 .DashboardNight :global(.text-card-markdown code) {
-  background-color: color-mod(var(--color-bg-white) alpha(-86%));
+  background-color: var(--mb-color-bg-white-alpha-15);
 }
 
 .Dashboard :global(text.value-label),
-.Dashboard :global(text.value-label-white),
-.Dashboard :global(.LineAreaBarChart .dc-chart .axis text) {
+.Dashboard :global(text.value-label-white) {
   font-size: 12px;
 }
 

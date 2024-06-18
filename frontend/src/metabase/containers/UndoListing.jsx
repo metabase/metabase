@@ -83,7 +83,7 @@ function UndoToast({ undo, onUndo, onDismiss }) {
         >
           <CardContent>
             <CardContentSide maw="75ch">
-              {undo.icon && <CardIcon name={undo.icon} color="white" />}
+              {undo.icon && <CardIcon name={undo.icon} color="text-white" />}
               <Ellipsified showTooltip={false}>
                 {renderMessage(undo)}
               </Ellipsified>
@@ -95,7 +95,11 @@ function UndoToast({ undo, onUndo, onDismiss }) {
                 </UndoButton>
               )}
               {undo.canDismiss && (
-                <DismissIcon name="close" onClick={onDismiss} />
+                <DismissIcon
+                  color={undo.dismissIconColor || "inherit"}
+                  name="close"
+                  onClick={onDismiss}
+                />
               )}
             </ControlsCardContent>
           </CardContent>

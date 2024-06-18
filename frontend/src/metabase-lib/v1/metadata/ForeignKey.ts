@@ -10,6 +10,9 @@ interface ForeignKey
   metadata?: Metadata;
 }
 
+/**
+ * @deprecated use RTK Query endpoints and plain api objects from metabase-types/api
+ */
 class ForeignKey {
   private readonly _plainObject: NormalizedForeignKey;
 

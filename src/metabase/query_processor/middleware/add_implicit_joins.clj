@@ -7,6 +7,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
@@ -48,14 +49,14 @@
   `joined-field` and `:joins` clauses."
   [fk-field-ids]
   (when (seq fk-field-ids)
-    (let [fk-fields        (qp.store/bulk-metadata :metadata/column fk-field-ids)
+    (let [fk-fields        (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column fk-field-ids)
           target-field-ids (into #{} (keep :fk-target-field-id) fk-fields)
           target-fields    (when (seq target-field-ids)
-                             (qp.store/bulk-metadata :metadata/column fk-field-ids))
+                             (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column fk-field-ids))
           target-table-ids (into #{} (keep :table-id) target-fields)]
       ;; this is for cache-warming purposes.
       (when (seq target-table-ids)
-        (qp.store/bulk-metadata :metadata/table target-table-ids))
+        (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/table target-table-ids))
       (for [{fk-name :name, fk-field-id :id, pk-id :fk-target-field-id} fk-fields
             :when                                                       pk-id]
         (let [{source-table :table-id} (lib.metadata.protocols/field (qp.store/metadata-provider) pk-id)
@@ -290,7 +291,7 @@
   [query]
   (if (lib.util.match/match-one (:query query) [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))])
     (do
-      (when-not (driver/database-supports? driver/*driver* :foreign-keys (lib.metadata/database (qp.store/metadata-provider)))
+      (when-not (driver.u/supports? driver/*driver* :foreign-keys (lib.metadata/database (qp.store/metadata-provider)))
         (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
                         {:driver driver/*driver*
                          :type   qp.error-type/unsupported-feature})))

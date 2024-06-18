@@ -266,6 +266,30 @@ describe("parameters/utils/parameter-values", () => {
       );
     });
 
+    describe("last used param value", () => {
+      it("should use query parameter over last used param value", () => {
+        expect(
+          getParameterValueFromQueryParams(
+            parameter2,
+            {
+              [parameter2.slug]: "parameter 2 value",
+            },
+            { [parameter2.id]: "last used value" },
+          ),
+        ).toEqual(["parameter 2 value"]);
+      });
+
+      it("should use last used param value when query parameter is empty", () => {
+        expect(
+          getParameterValueFromQueryParams(
+            parameter2,
+            {},
+            { [parameter2.id]: "last used value" },
+          ),
+        ).toEqual("last used value");
+      });
+    });
+
     describe("for number filter type", () => {
       const numberParameter = {
         id: 111,

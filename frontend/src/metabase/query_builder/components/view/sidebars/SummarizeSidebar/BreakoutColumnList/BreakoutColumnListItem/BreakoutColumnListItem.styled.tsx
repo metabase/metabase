@@ -1,36 +1,39 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
-import { QueryColumnInfoIcon as BaseQueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import Button from "metabase/core/components/Button";
-import { color, alpha } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+import { alpha } from "metabase/lib/colors";
 
 export const Content = styled.div`
   display: flex;
   flex: auto;
   align-items: center;
   border-radius: 6px;
+
+  ${BucketPickerPopover.TriggerButton} {
+    height: 100%;
+  }
 `;
 
 export const TitleContainer = styled.div`
   display: flex;
   align-items: center;
   margin-left: 0.5rem;
-  padding: 0;
+  padding: 0.5rem 0;
   flex-grow: 1;
 `;
 
 export const RemoveButton = styled(Button)`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   background-color: transparent;
 
   opacity: 0.6;
   transition: all 100ms;
 
   &:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     background-color: transparent;
     opacity: 1;
   }
@@ -45,7 +48,7 @@ RemoveButton.defaultProps = {
 export const AddButton = styled(Button)`
   width: 34px;
   margin-left: 0.5rem;
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   transition: none;
 `;
 
@@ -55,8 +58,8 @@ AddButton.defaultProps = {
   borderless: true,
 };
 
-export const ColumnTypeIcon = styled(Icon)`
-  color: ${color("text-medium")};
+export const ColumnTypeIcon = styled(QueryColumnInfoIcon)`
+  color: var(--mb-color-text-medium);
 `;
 
 export const Title = styled.div`
@@ -66,27 +69,20 @@ export const Title = styled.div`
   font-weight: 700;
 `;
 
-export const QueryColumnInfoIcon = styled(BaseQueryColumnInfoIcon)`
-  margin-left: auto;
-`;
-
-const selectedStyle = css`
+const getSelectedStyle = (theme: Theme) => css`
   ${Content},
-  ${ColumnTypeIcon},
-  ${QueryColumnInfoIcon} {
-    background-color: ${color("summarize")};
-    color: ${color("white")};
+  ${ColumnTypeIcon} {
+    background-color: var(--mb-color-summarize);
+    color: var(--mb-color-text-white);
   }
 
   ${BucketPickerPopover.TriggerButton} {
     opacity: 1;
-    color: ${alpha("white", 0.65)};
-    padding-left: 0;
-    border-left: 0;
+    color: ${alpha(theme.fn.themeColor("text-white"), 0.65)};
   }
 
   ${BucketPickerPopover.TriggerButton}:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     opacity: 1;
   }
 `;
@@ -94,34 +90,32 @@ const selectedStyle = css`
 const unselectedStyle = css`
   ${BucketPickerPopover.TriggerButton} {
     opacity: 0;
-    color: ${color("text-light")};
-    padding-left: 0;
-    border-left: 0;
+    color: var(--mb-color-text-light);
   }
 
-  ${QueryColumnInfoIcon} {
-    color: ${color("text-light")};
+  ${ColumnTypeIcon} {
+    color: var(--mb-color-text-light);
   }
 
   &:hover {
     ${Content},
     ${ColumnTypeIcon},
     ${AddButton} {
-      color: ${color("summarize")};
-      background-color: ${color("bg-light")};
+      color: var(--mb-color-summarize);
+      background-color: var(--mb-color-bg-light);
     }
 
     ${AddButton}:hover {
-      background-color: ${color("bg-medium")};
+      background-color: var(--mb-color-bg-medium);
     }
 
     ${BucketPickerPopover.TriggerButton} {
       opacity: 1;
-      color: ${color("text-light")};
+      color: var(--mb-color-text-light);
     }
 
     ${BucketPickerPopover.TriggerButton}:hover {
-      color: ${color("text-medium")};
+      color: var(--mb-color-text-medium);
     }
   }
 `;
@@ -134,5 +128,6 @@ export const Root = styled.li<{ isSelected: boolean }>`
   min-height: 34px;
   position: relative;
 
-  ${props => (props.isSelected ? selectedStyle : unselectedStyle)}
+  ${props =>
+    props.isSelected ? getSelectedStyle(props.theme) : unselectedStyle}
 `;

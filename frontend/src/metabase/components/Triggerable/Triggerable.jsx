@@ -4,6 +4,7 @@ import cx from "classnames";
 import { createRef, cloneElement, Children, Component } from "react";
 
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { isObscured } from "metabase/lib/dom";
 
 const Trigger = styled.a``;
@@ -98,6 +99,7 @@ const Triggerable = ComposedComponent =>
         }, 250);
       }
     }
+
     _stopCheckObscured() {
       if (this._offscreenTimer != null) {
         clearInterval(this._offscreenTimer);
@@ -153,9 +155,9 @@ const Triggerable = ComposedComponent =>
               triggerClasses,
               isOpen && triggerClassesOpen,
               !isOpen && triggerClassesClose,
-              "no-decoration",
+              CS.noDecoration,
               {
-                "cursor-default": this.props.disabled,
+                [CS.cursorDefault]: this.props.disabled,
               },
             )}
             aria-disabled={this.props.disabled}

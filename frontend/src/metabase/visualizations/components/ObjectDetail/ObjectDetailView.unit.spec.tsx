@@ -8,12 +8,7 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { testDataset } from "__support__/testDataset";
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-  within,
-} from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { checkNotNull } from "metabase/lib/types";
 import type { WritebackAction } from "metabase-types/api";
@@ -464,14 +459,11 @@ describe("ObjectDetailView", () => {
 
     const action = await findActionInActionMenu(implicitUpdateAction);
     expect(action).toBeInTheDocument();
-    action?.click();
+    await userEvent.click(action!);
 
     expect(
       screen.queryByText("Choose a record to update"),
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
-
-    await waitForLoaderToBeRemoved();
 
     const modal = await screen.findByTestId("action-execute-modal");
     expect(modal).toBeInTheDocument();
@@ -503,7 +495,7 @@ describe("ObjectDetailView", () => {
 
 async function findActionInActionMenu({ name }: Pick<WritebackAction, "name">) {
   const actionsMenu = await screen.findByTestId("actions-menu");
-  userEvent.click(actionsMenu);
+  await userEvent.click(actionsMenu);
   const popover = await screen.findByRole("dialog");
   const action = within(popover).queryByText(name);
   return action;

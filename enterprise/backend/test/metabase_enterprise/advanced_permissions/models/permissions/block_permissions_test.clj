@@ -25,17 +25,18 @@
 ;;;; Graph-related stuff
 
 (defn- test-db-perms [group-id]
-  (get-in (data-perms.graph/api-graph) [:groups group-id (mt/id) :data]))
+  (get-in (data-perms.graph/api-graph) [:groups group-id (mt/id) :view-data]))
 
 (defn- api-test-db-perms [group-id]
-  (into {}
-        (map (fn [[k v]]
-               [k (cond-> v (string? v) keyword)]))
-        (get-in (mt/user-http-request :crowberto :get 200 "permissions/graph")
-                [:groups group-id (mt/id) :data])))
+  (not-empty
+   (into {}
+         (map (fn [[k v]]
+                [k (cond-> v (string? v) keyword)]))
+         (get-in (mt/user-http-request :crowberto :get 200 "permissions/graph")
+                 [:groups group-id (mt/id) :view-data]))))
 
 (deftest graph-test
-  (testing "block permissions should come back from"
+  (testing "block permissions are ellided from the graph"
     (doseq [[message perms] {"the graph function"
                              test-db-perms
 
@@ -43,31 +44,31 @@
                              api-test-db-perms}]
       (testing (str message "\n"))
       (mt/with-temp [PermissionsGroup {group-id :id} {}]
-        (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :block)
-        (is (= {:schemas :block}
-               (perms group-id)))))))
+        (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
+        (is (nil? (perms group-id)))))))
 
 (defn- grant-block-perms! [group-id]
-  (data-perms.graph/update-data-perms-graph! [group-id (mt/id) :data] {:schemas :block}))
+  (data-perms.graph/update-data-perms-graph! [group-id (mt/id) :view-data] :blocked))
 
 (defn- api-grant-block-perms! [group-id]
   (let [current-graph (data-perms.graph/api-graph)
-        new-graph     (assoc-in current-graph [:groups group-id (mt/id) :data] {:schemas :block})
+        new-graph     (assoc-in current-graph [:groups group-id (mt/id) :view-data] :blocked)
         result        (mt/with-premium-features #{:advanced-permissions}
                         (mt/user-http-request :crowberto :put 200 "permissions/graph" new-graph))]
-    (is (= "block"
-           (get-in result [:groups group-id (mt/id) :data :schemas])))))
+    (is (nil? (get-in result [:groups group-id (mt/id) :view-data])))))
 
 (deftest api-throws-error-if-premium-feature-not-enabled
   (testing "PUT /api/permissions/graph"
     (testing (str "fails when a group has a block permission set, and the instance doesn't have the "
                   ":advanced-permissions premium feature enabled")
       (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
+        ;; Revoke native perms so that we can set block perms
+        (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder)
         (let [current-graph (data-perms.graph/api-graph)
-              new-graph     (assoc-in current-graph [:groups group-id (mt/id) :data] {:schemas :block})
+              new-graph     (assoc-in current-graph [:groups group-id (mt/id) :view-data] :blocked)
               result        (mt/with-premium-features #{} ; disable premium features
                               (mt/user-http-request :crowberto :put 402 "permissions/graph" new-graph))]
-          (is (= "The block permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
+          (is (= "The blocked permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
                  result)))))))
 
 (deftest update-graph-test
@@ -81,50 +82,46 @@
                                   api-grant-block-perms!}]
       (testing (str description "\n")
         (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
-          (testing "Group should have no perms upon creation"
-            (is (= nil
+          (testing "Group should have unrestricted view-data perms upon creation"
+            (is (= :unrestricted
                    (test-db-perms group-id))))
+          ;; Revoke native perms so that we can set block perms
+          (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder)
           (testing "group has no existing permissions"
-            (mt/with-model-cleanup [Permissions]
-              (mt/with-restored-data-perms-for-group! group-id
-                (grant! group-id)
-                (is (= {:schemas :block}
-                       (test-db-perms group-id))))))
+            (mt/with-restored-data-perms-for-group! group-id
+              (grant! group-id)
+              (is (nil? (test-db-perms group-id)))))
           (testing "group has existing data permissions... :block should remove them"
-            (mt/with-model-cleanup [Permissions]
-              (mt/with-restored-data-perms-for-group! group-id
-                (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :unrestricted)
-                (grant! group-id)
-                (is (= {:schemas :block}
-                       (test-db-perms group-id)))
-                (is (= #{:block}
-                       (t2/select-fn-set :perm_value
-                                         :model/DataPermissions
-                                         {:where [:and
-                                                  [:= :db_id (mt/id)]
-                                                  [:= :group_id group-id]
-                                                  [:= :perm_type (u/qualified-name :perms/data-access)]]})))))))))))
+            (mt/with-restored-data-perms-for-group! group-id
+              (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
+              (grant! group-id)
+              (is (nil? (test-db-perms group-id)))
+              (is (= #{:blocked}
+                     (t2/select-fn-set :perm_value
+                                       :model/DataPermissions
+                                       {:where [:and
+                                                [:= :db_id (mt/id)]
+                                                [:= :group_id group-id]
+                                                [:= :perm_type (u/qualified-name :perms/view-data)]]}))))))))))
 
 (deftest update-graph-delete-sandboxes-test
-  (testing "When setting `:block` permissions any GTAP rows for that Group/Database should get deleted."
+  (testing "When setting `:blocked` permissions any GTAP rows for that Group/Database should get deleted."
     (mt/with-premium-features #{:sandboxes :advanced-permissions}
       (mt/with-model-cleanup [Permissions]
         (mt/with-temp [PermissionsGroup       {group-id :id} {}
                        GroupTableAccessPolicy _ {:table_id (mt/id :venues)
                                                  :group_id group-id}]
           (grant-block-perms! group-id)
-          (is (= {:schemas :block}
-                 (test-db-perms group-id)))
+          (is (nil? (test-db-perms group-id)))
           (is (not (t2/exists? GroupTableAccessPolicy :group_id group-id))))))))
 
 (deftest update-graph-data-perms-should-delete-block-perms-test
  (testing "granting data permissions for a table should delete existing block permissions"
    (mt/with-temp [PermissionsGroup {group-id :id} {}]
-     (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :block)
-     (is (= {:schemas :block}
-            (test-db-perms group-id)))
-     (data-perms/set-table-permission! group-id (mt/id :venues) :perms/data-access :unrestricted)
-     (is (= {:schemas {"PUBLIC" {(mt/id :venues) :all}}}
+     (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
+     (is (nil? (test-db-perms group-id)))
+     (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+     (is (= {"PUBLIC" :unrestricted}
             (test-db-perms group-id))))))
 
 (deftest update-graph-disallow-native-query-perms-test
@@ -133,26 +130,24 @@
       (testing "via the fn"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             ;; TODO -- this error message is totally garbage, fix this
              #"Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."
-             ;; #"DB permissions with a valid combination of values for :native and :schemas"
-             (data-perms.graph/update-data-perms-graph! [group-id (mt/id) :data]
-                                                        {:schemas :block, :native :write}))))
+             (data-perms.graph/update-data-perms-graph! [group-id (mt/id)] {:view-data :blocked
+                                                                            :create-queries :query-builder-and-native}))))
       (testing "via the API"
         (let [current-graph (data-perms.graph/api-graph)
               new-graph     (assoc-in current-graph
-                                      [:groups group-id (mt/id) :data]
-                                      {:schemas :block, :native :write})]
-          (is (=? {:message  #".*Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas.*"}
+                                      [:groups group-id (mt/id)]
+                                      {:view-data :blocked :create-queries :query-builder-and-native})]
+          (is (=? {:message #".*Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas.*"}
                   (mt/with-premium-features #{:advanced-permissions}
                     (mt/user-http-request :crowberto :put 500 "permissions/graph" new-graph)))))))))
 
 (deftest delete-database-delete-block-perms-test
   (testing "If a Database gets DELETED, any block permissions for it should get deleted too."
     (mt/with-temp [Database    {db-id :id} {}]
-      (data-perms/set-database-permission! (u/the-id (perms-group/all-users)) db-id :perms/data-access :block)
+      (data-perms/set-database-permission! (u/the-id (perms-group/all-users)) db-id :perms/view-data :blocked)
       (letfn [(perms-exist? []
-                (t2/exists? :model/DataPermissions :db_id db-id :perm_value :block))]
+                (t2/exists? :model/DataPermissions :db_id db-id :perm_value :blocked))]
         (is (perms-exist?))
         (t2/delete! Database :id db-id)
         (is (not (perms-exist?)))))))
@@ -174,8 +169,10 @@
                      Permissions                _ {:group_id group-id :object (perms/collection-read-path collection-id)}]
         (mt/with-premium-features #{:advanced-permissions}
           (mt/with-no-data-perms-for-all-users!
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
-            (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :no-self-service)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+            (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
             (letfn [(run-ad-hoc-query []
                       (mt/with-current-user user-id
                         (qp/process-query query)))
@@ -194,40 +191,27 @@
                 (is (run-saved-question))
                 (is (= true (check-block-perms))))
               ;; 'grant' the block permissions.
-              (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :block)
-              (testing "if EE token does not have the `:advanced-permissions` feature: should not do check"
-                (mt/with-premium-features #{}
-                  (is (nil? (check-block-perms)))))
-              (testing "disallow running the query"
-                (is (thrown-with-msg?
-                     clojure.lang.ExceptionInfo
-                     #"Blocked: you are not allowed to run queries against Database \d+"
-                     (check-block-perms)))
-                (is (thrown-with-msg?
-                     clojure.lang.ExceptionInfo
-                     #"Blocked: you are not allowed to run queries against Database \d+"
-                     (run-saved-question))))
-              (testing "\nAllow running if current User has data permissions from another group."
-                (mt/with-temp [PermissionsGroup           {group-2-id :id} {}
-                               PermissionsGroupMembership _ {:group_id group-2-id :user_id user-id}]
-                  (doseq [[message perms-fn!] {"with full DB perms"
-                                               #(data-perms/set-database-permission! group-2-id (mt/id) :perms/data-access :unrestricted)
-                                               "with perms for the Table in question"
-                                               #(data-perms/set-table-permission! group-2-id (mt/id :venues) :perms/data-access :unrestricted)}]
-                    (perms-fn!)
-                    (testing (format "Should be able to run the query %s" message)
-
-                      (doseq [[message thunk] {"ad-hoc queries"  run-ad-hoc-query
-                                               "Saved Questions" run-saved-question}]
-                        (testing message
-                          (is (=? {:status :completed}
-                                  (thunk)))))))
-                  (testing "\nSandboxed permissions"
-                    (mt/with-premium-features #{:advanced-permissions :sandboxes}
-                      (mt/with-temp [GroupTableAccessPolicy _ {:table_id (mt/id :venues) :group_id group-id}]
-                        (testing "Should be able to run the query"
-                          (doseq [[message thunk] {"ad-hoc queries"  run-ad-hoc-query
-                                                   "Saved Questions" run-saved-question}]
-                            (testing message
-                              (is (=? {:status :completed}
-                                      (thunk))))))))))))))))))
+              (testing "the highest permission level from any group wins (block doesn't override other groups anymore)"
+                (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
+                (testing "if EE token does not have the `:advanced-permissions` feature: should not do check"
+                  (mt/with-premium-features #{}
+                    (is (nil? (check-block-perms)))))
+                (testing "should still not be able to run ad-hoc query"
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"You do not have permissions to run this query"
+                       (run-ad-hoc-query))))
+                (testing "should STILL be able to run query as saved Question"
+                  (is (run-saved-question))
+                  (is (= true (check-block-perms)))))
+              (testing "once blocked in all groups, now access is truly blocked"
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+                (testing "disallow running the query"
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"Blocked: you are not allowed to run queries against Database \d+"
+                       (check-block-perms)))
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"Blocked: you are not allowed to run queries against Database \d+"
+                       (run-saved-question))))))))))))

@@ -4,6 +4,7 @@ import { ngettext, msgid, t } from "ttag";
 import _ from "underscore";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import CS from "metabase/css/core/index.css";
 import Database from "metabase/entities/databases";
 import { formatNumber } from "metabase/lib/formatting";
 import { setLimit } from "metabase/query_builder/actions";
@@ -110,7 +111,7 @@ function QuestionRowCount({
     >
       {({ onClose }: { onClose: () => void }) => (
         <LimitPopover
-          className="p2"
+          className={CS.p2}
           limit={limit}
           onChangeLimit={handleLimitChange}
           onClose={onClose}

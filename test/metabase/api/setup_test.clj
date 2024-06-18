@@ -7,6 +7,8 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.setup :as api.setup]
    [metabase.config :as config]
+   [metabase.core :as mbc]
+   [metabase.db :as mdb]
    [metabase.driver.h2 :as h2]
    [metabase.events :as events]
    [metabase.http-client :as client]
@@ -180,8 +182,8 @@
 
 (s/def ::setup!-args
   (s/cat :expected-status (s/? integer?)
-            :f               any?
-            :args            (s/* any?)))
+         :f               any?
+         :args            (s/* any?)))
 
 (defn- setup!
   {:arglists '([expected-status? f & args])}
@@ -346,17 +348,28 @@
 (def ^:private default-checklist-state
   {:db-type    :h2
    :hosted?    false
+   :embedding  {:interested? false
+                :done?       false
+                :app-origin  false}
    :configured {:email true
-                :slack false}
+                :slack false
+                :sso   false}
    :counts     {:user  5
                 :card  5
                 :table 5}
-   :exists     {:non-sample-db true
-                :dashboard     true
-                :pulse         true
-                :hidden-table  false
-                :collection    true
-                :model         true}})
+   :exists     {:non-sample-db     true
+                :dashboard         true
+                :pulse             true
+                :hidden-table      false
+                :collection        true
+                :model             true
+                :embedded-resource false}})
+
+
+(defn get-embedding-step
+  [checklist]
+  (let [[{:keys [tasks]}] checklist]
+    (first (filter #(= (get % :title) "Setup embedding") tasks))))
 
 (deftest admin-checklist-test
   (testing "GET /api/setup/admin_checklist"
@@ -374,6 +387,10 @@
                                :completed    false
                                :triggered    true
                                :is_next_step true}
+                              {:completed false,
+                               :is_next_step false,
+                               :title "Setup embedding",
+                               :triggered false}
                               {:title        "Invite team members"
                                :completed    true
                                :triggered    true
@@ -411,10 +428,62 @@
           (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
             (is (= ["Get connected" "Curate your data"]
                    (map :name checklist)))))))
+    (testing "setup-embedding"
+      (testing "should be done when a dashboard as been published"
+        (with-redefs [api.setup/state-for-checklist
+                      (constantly
+                       (update default-checklist-state
+                               :exists #(merge %  {:embedded-resource true})))]
+          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+            (is (partial= {:completed true} (get-embedding-step checklist))))))
+      (testing "should be done when sso and embed-app-origin has been configured"
+        (with-redefs [api.setup/state-for-checklist
+                      (constantly
+                       (-> default-checklist-state
+                           (assoc-in [:configured :sso] true)
+                           (assoc-in [:embedding :app-origin] true)))]
+          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+            (is (partial= {:completed true}
+                          (get-embedding-step checklist))))))
+      (testing "should be done when dismissed-done"
+        (with-redefs [api.setup/state-for-checklist
+                      (constantly
+                       (-> default-checklist-state
+                           (assoc-in [:embedding :done?] true)))]
+          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+            (is (partial= {:completed true} (get-embedding-step checklist)))))))
 
     (testing "require superusers"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "setup/admin_checklist"))))))
+
+(deftest internal-content-setup-test
+  (testing "Internally created state like Metabase Analytics shouldn't affect the checklist"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? true)
+      (mbc/ensure-audit-db-installed!)
+      (testing "Sense check: internal content exists"
+        (is (true? (t2/exists? :model/User)))
+        (is (true? (t2/exists? :model/Database)))
+        (is (true? (t2/exists? :model/Table)))
+        (is (true? (t2/exists? :model/Field)))
+        (is (true? (t2/exists? :model/Collection)))
+        (is (true? (t2/exists? :model/Dashboard)))
+        (is (true? (t2/exists? :model/Card))))
+      (testing "All state should be empty"
+        (is (=? {:db-type    :h2
+                 :configured {:email false
+                              :slack false}
+                 :counts     {:user  0
+                              :card  0
+                              :table 0}
+                 :exists     {:non-sample-db false
+                              :dashboard     false
+                              :pulse         false
+                              :hidden-table  false
+                              :collection    false
+                              :model         false}}
+                (#'api.setup/state-for-checklist)))))))
 
 (deftest annotate-test
   (testing "identifies next step"

@@ -2,10 +2,13 @@
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:require
    [clojure.string :as str]
-   [metabase.lib.metadata :as lib.metadata]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.driver :as driver]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+   [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
@@ -71,7 +74,8 @@
   [database]
   ;; ignore encrypted details that we cannot decrypt, because that breaks schema
   ;; validation
-  (let [database (instance->metadata database :metadata/database)]
+  (let [database (instance->metadata database :metadata/database)
+        database (assoc database :lib/methods {:escape-alias (partial driver/escape-alias (:engine database))})]
     (cond-> database
       (not (map? (:details database))) (dissoc :details))))
 
@@ -263,37 +267,7 @@
 ;;; Metric
 ;;;
 
-(derive :metadata/metric :model/LegacyMetric)
-
-(methodical/defmethod t2.model/resolve-model :metadata/metric
-  [model]
-  (classloader/require 'metabase.models.metric)
-  model)
-
-(methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/metric
-                                             #_resolved-query clojure.lang.IPersistentMap
-                                             #_k              :default]
-  [model honeysql k v]
-  (let [k (if (not (qualified-key? k))
-            (keyword "metric" (name k))
-            k)]
-    (next-method model honeysql k v)))
-
-(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
-                                         #_model          :metadata/metric
-                                         #_resolved-query clojure.lang.IPersistentMap]
-  [query-type model parsed-args honeysql]
-  (merge
-   (next-method query-type model parsed-args honeysql)
-   {:select    [:metric/id
-                :metric/table_id
-                :metric/name
-                :metric/description
-                :metric/archived
-                :metric/definition]
-    :from      [[(t2/table-name :model/LegacyMetric) :metric]]
-    :left-join [[(t2/table-name :model/Table) :table]
-                [:= :metric/table_id :table/id]]}))
+(derive :metadata/metric :model/Card)
 
 (t2/define-after-select :metadata/metric
   [metric]
@@ -344,70 +318,89 @@
 ;;; MetadataProvider
 ;;;
 
-(p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
-  lib.metadata.protocols/MetadataProvider
-  (database [_this]
-    (when-not database-id
-      (throw (ex-info (format "Cannot use %s with %s with a nil Database ID"
-                              `lib.metadata.protocols/database
-                              `UncachedApplicationDatabaseMetadataProvider)
-                      {})))
-    (t2/select-one :metadata/database database-id))
+(defn- database [database-id]
+  (when-not database-id
+    (throw (ex-info (format "Cannot use %s with %s with a nil Database ID"
+                            `lib.metadata.protocols/database
+                            `UncachedApplicationDatabaseMetadataProvider)
+                    {})))
+  (t2/select-one :metadata/database database-id))
 
-  (table   [_this table-id]   (t2/select-one :metadata/table   :id table-id   :db_id       database-id))
-  (field   [_this field-id]   (t2/select-one :metadata/column  :id field-id   :table/db_id database-id))
-  (card    [_this card-id]    (t2/select-one :metadata/card    :id card-id    :database_id database-id))
-  (metric  [_this metric-id]  (t2/select-one :metadata/metric  :id metric-id  :table/db_id database-id))
-  (segment [_this segment-id] (t2/select-one :metadata/segment :id segment-id :table/db_id database-id))
+(defn- metadatas [database-id metadata-type ids]
+  (let [database-id-key (case metadata-type
+                          :metadata/table :db_id
+                          :metadata/card  :database_id
+                          :table/db_id)]
+    (when (seq ids)
+      (t2/select metadata-type
+                 database-id-key database-id
+                 :id             [:in (set ids)]))))
 
-  (tables [_this]
-    (t2/select :metadata/table
-               :db_id           database-id
-               :active          true
-               :visibility_type [:not-in #{"hidden" "technical" "cruft"}]))
+(defn- tables [database-id]
+  (t2/select :metadata/table
+             :db_id           database-id
+             :active          true
+             :visibility_type [:not-in #{"hidden" "technical" "cruft"}]))
 
-  (fields [_this table-id]
+(defn- metadatas-for-table [metadata-type table-id]
+  (case metadata-type
+    :metadata/column
     (t2/select :metadata/column
                :table_id        table-id
                :active          true
-               :visibility_type [:not-in #{"sensitive" "retired"}]))
+               :visibility_type [:not-in #{"sensitive" "retired"}])
 
-  (metrics [_this table-id]
-    (t2/select :metadata/metric :table_id table-id, :archived false))
 
-  (segments [_this table-id]
-    (t2/select :metadata/segment :table_id table-id, :archived false))
+    :metadata/metric
+    (t2/select :metadata/metric :table_id table-id, :type :metric, :archived false)
 
+    :metadata/segment
+    (t2/select :metadata/segment :table_id table-id, :archived false)))
+
+(defn- metadatas-for-tables [metadata-type table-ids]
+  (when (seq table-ids)
+    (case metadata-type
+      :metadata/column
+      (t2/select :metadata/column
+                 :table_id        [:in table-ids]
+                 :active          true
+                 :visibility_type [:not-in #{"sensitive" "retired"}])
+
+      :metadata/metric
+      (t2/select :metadata/metric :table_id [:in table-ids] :type :metric, :archived false)
+
+      :metadata/segment
+      (t2/select :metadata/segment :table_id [:in table-ids] :archived false))))
+
+(p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
+  lib.metadata.protocols/MetadataProvider
+  (database [_this]
+    (database database-id))
+  (metadatas [_this metadata-type ids]
+    (metadatas database-id metadata-type ids))
+  (tables [_this]
+    (tables database-id))
+  (metadatas-for-table [_this metadata-type table-id]
+    (metadatas-for-table metadata-type table-id))
+  (metadatas-for-tables [_this metadata-type table-ids]
+    (metadatas-for-tables metadata-type table-ids))
   (setting [_this setting-name]
     (setting/get setting-name))
 
-  lib.metadata.protocols/BulkMetadataProvider
-  (bulk-metadata [_this metadata-type ids]
-    (let [database-id-key (case metadata-type
-                            :metadata/table :db_id
-                            :metadata/card  :database_id
-                            :table/db_id)]
-      (when (seq ids)
-        (t2/select metadata-type
-                   database-id-key database-id
-                   :id             [:in (set ids)]))))
-
   pretty/PrettyPrintable
   (pretty [_this]
-    (list `->UncachedApplicationDatabaseMetadataProvider database-id))
+          (list `->UncachedApplicationDatabaseMetadataProvider database-id))
 
   Object
   (equals [_this another]
-    (and (instance? UncachedApplicationDatabaseMetadataProvider another)
-         (= database-id (.database-id ^UncachedApplicationDatabaseMetadataProvider another)))))
+          (and (instance? UncachedApplicationDatabaseMetadataProvider another)
+               (= database-id (.database-id ^UncachedApplicationDatabaseMetadataProvider another)))))
 
-(mu/defn application-database-metadata-provider :- lib.metadata/MetadataProvider
+(mu/defn application-database-metadata-provider :- ::lib.schema.metadata/metadata-provider
   "An implementation of [[metabase.lib.metadata.protocols/MetadataProvider]] for the application database.
 
-  The application database metadata provider implements both of the optional
-  protocols, [[metabase.lib.metadata.protocols/CachedMetadataProvider]]
-  and [[metabase.lib.metadata.protocols/BulkMetadataProvider]]. All operations are cached; so you can use the bulk
-  operations to pre-warm the cache if you need to."
+  All operations are cached; so you can use the bulk operations to pre-warm the cache if you need to."
   [database-id :- ::lib.schema.id/database]
-  (lib.metadata.cached-provider/cached-metadata-provider
-   (->UncachedApplicationDatabaseMetadataProvider database-id)))
+  (-> (->UncachedApplicationDatabaseMetadataProvider database-id)
+      lib.metadata.cached-provider/cached-metadata-provider
+      lib.metadata.invocation-tracker/invocation-tracker-provider))

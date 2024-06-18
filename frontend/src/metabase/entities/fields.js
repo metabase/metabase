@@ -2,13 +2,12 @@ import { assocIn, updateIn } from "icepick";
 import { normalize } from "normalizr";
 import { t } from "ttag";
 
-import { UPDATE_TABLE_FIELD_ORDER } from "metabase/entities/tables";
+import { fieldApi } from "metabase/api";
 import {
-  field_visibility_types,
-  field_semantic_types,
-  has_field_values_options,
-} from "metabase/lib/core";
-import { createEntity, notify } from "metabase/lib/entities";
+  createEntity,
+  entityCompatibleQuery,
+  notify,
+} from "metabase/lib/entities";
 import {
   compose,
   withAction,
@@ -27,7 +26,6 @@ import {
 import { MetabaseApi } from "metabase/services";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { getFieldValues } from "metabase-lib/v1/queries/utils/field";
-import { TYPE } from "metabase-lib/v1/types/constants";
 
 // ADDITIONAL OBJECT ACTIONS
 
@@ -45,10 +43,24 @@ export const ADD_REMAPPINGS = "metabase/entities/fields/ADD_REMAPPINGS";
 export const ADD_PARAM_VALUES = "metabase/entities/fields/ADD_PARAM_VALUES";
 export const ADD_FIELDS = "metabase/entities/fields/ADD_FIELDS";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Fields = createEntity({
   name: "fields",
   path: "/api/field",
   schema: FieldSchema,
+
+  api: {
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(entityQuery, dispatch, fieldApi.endpoints.getField),
+    update: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        fieldApi.endpoints.updateField,
+      ),
+  },
 
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).field(entityId),
@@ -82,7 +94,7 @@ const Fields = createEntity({
         },
       ),
       withNormalize(FieldSchema),
-    )(field => async () => {
+    )(field => async dispatch => {
       const { field_id, ...data } = await MetabaseApi.field_values({
         fieldId: field.id,
       });
@@ -123,27 +135,35 @@ const Fields = createEntity({
             requestStatePath: ["entities", "fields", id, "dimension"],
             existingStatePath: ["entities", "fields", id],
             putData: () =>
-              MetabaseApi.field_values_update({
-                fieldId: id,
-                values: fieldValuePairs,
-              }),
+              entityCompatibleQuery(
+                {
+                  id,
+                  values: fieldValuePairs,
+                },
+                dispatch,
+                fieldApi.endpoints.updateFieldValues,
+              ),
           }),
     ),
     updateFieldDimension: createThunkAction(
       UPDATE_FIELD_DIMENSION,
       ({ id }, dimension) =>
-        () => {
-          return MetabaseApi.field_dimension_update({
-            fieldId: id,
-            ...dimension,
-          });
-        },
+        dispatch =>
+          entityCompatibleQuery(
+            { id, ...dimension },
+            dispatch,
+            fieldApi.endpoints.createFieldDimension,
+          ),
     ),
     deleteFieldDimension: createThunkAction(
       DELETE_FIELD_DIMENSION,
       ({ id }) =>
-        async () => {
-          await MetabaseApi.field_dimension_delete({ fieldId: id });
+        async dispatch => {
+          await entityCompatibleQuery(
+            id,
+            dispatch,
+            fieldApi.endpoints.deleteFieldDimension,
+          );
           return { id };
         },
     ),
@@ -181,7 +201,11 @@ const Fields = createEntity({
         updateIn(state, [fieldId, "remappings"], (existing = []) =>
           Array.from(new Map(existing.concat(remappings))),
         ),
-      [UPDATE_TABLE_FIELD_ORDER]: (state, { payload: { fieldOrder } }) => {
+      // cannot use `UPDATE_TABLE_FIELD_ORDER` because of the dependency cycle
+      ["metabase/entities/UPDATE_TABLE_FIELD_ORDER"]: (
+        state,
+        { payload: { fieldOrder } },
+      ) => {
         fieldOrder.forEach((fieldId, index) => {
           state = assocIn(state, [fieldId, "position"], index);
         });
@@ -195,38 +219,6 @@ const Fields = createEntity({
     },
     {},
   ),
-
-  form: {
-    fields: (values = {}) =>
-      [
-        { name: "display_name" },
-        { name: "description" },
-        {
-          name: "visibility_type",
-          type: "select",
-          options: field_visibility_types.map(type => ({
-            name: type.name,
-            value: type.id,
-          })),
-        },
-        {
-          name: "semantic_type",
-          type: "select",
-          options: field_semantic_types.map(type => ({
-            name: type.name,
-            value: type.id,
-          })),
-        },
-        values.semantic_type === TYPE.FK && {
-          name: "fk_target_field_id",
-        },
-        {
-          name: "has_field_values",
-          type: "select",
-          options: has_field_values_options,
-        },
-      ].filter(f => f),
-  },
 });
 
 export default Fields;

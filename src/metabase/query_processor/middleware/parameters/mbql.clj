@@ -9,7 +9,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.params :as params]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.malli :as mu]))
 
@@ -74,7 +73,7 @@
     ;; single value, date range. Generate appropriate MBQL clause based on date string
     (params.dates/date-type? param-type)
     (params.dates/date-string->filter
-     (parse-param-value-for-type query param-type param-value (params/unwrap-field-or-expression-clause field))
+     (parse-param-value-for-type query param-type param-value (mbql.u/unwrap-field-or-expression-clause field))
      field)
 
     ;; TODO - We can't tell the difference between a dashboard parameter (convert to an MBQL filter) and a native
@@ -86,8 +85,18 @@
     ;; single-value, non-date param. Generate MBQL [= [field <field> nil] <value>] clause
     :else
     [:=
-     (params/wrap-field-id-if-needed field)
-     (parse-param-value-for-type query param-type param-value (params/unwrap-field-or-expression-clause field))]))
+     (mbql.u/wrap-field-id-if-needed field)
+     (parse-param-value-for-type query param-type param-value (mbql.u/unwrap-field-or-expression-clause field))]))
+
+(defn- update-breakout-unit
+  [query
+   {[_dimension [_field target-field-id {:keys [temporal-unit]}]] :target
+    :keys [value] :as _param}]
+  (let [new-unit (keyword value)]
+    (lib.util.match/replace-in
+      query [:query :breakout]
+      [:field (_ :guard #(= target-field-id %)) (opts :guard #(= temporal-unit (:temporal-unit %)))]
+      [:field target-field-id (assoc opts :temporal-unit new-unit)])))
 
 (defn expand
   "Expand parameters for MBQL queries in `query` (replacing Dashboard or Card-supplied params with the appropriate
@@ -101,6 +110,10 @@
       (or (not target)
           (not param-value))
       (recur query rest)
+
+      (= (:type param) :temporal-unit)
+      (let [query (update-breakout-unit query (assoc param :value param-value))]
+        (recur query rest))
 
       :else
       (let [filter-clause (build-filter-clause query (assoc param :value param-value))

@@ -16,6 +16,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models.action :as action]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
@@ -24,7 +25,7 @@
     :as string-extracts-test]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync :as sync]
-   [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -95,13 +96,15 @@
                                       [["CAST("
                                         "  1 + CEIL("
                                         "    ("
-                                        "      DAYOFYEAR(weeks.d) - ("
-                                        "        8 - CASE"
-                                        "          WHEN ((DAYOFWEEK(MAKEDATE(YEAR(weeks.d), 1)) + 5) % 7) = 0 THEN 7"
-                                        "          ELSE (DAYOFWEEK(MAKEDATE(YEAR(weeks.d), 1)) + 5) % 7"
-                                        "        END"
-                                        "      )"
-                                        "    ) / 7.0"
+                                        "      ("
+                                        "        DAYOFYEAR(weeks.d) - ("
+                                        "          8 - COALESCE("
+                                        "            NULLIF((DAYOFWEEK(MAKEDATE(YEAR(weeks.d), 1)) + 5) % 7, 0),"
+                                        "            7"
+                                        "          )"
+                                        "        )"
+                                        "      ) / 7.0"
+                                        "    )"
                                         "  ) AS signed"
                                         ")"]]}]
       (mt/with-temporary-setting-values [start-of-week start-of-week]
@@ -171,7 +174,7 @@
                  (metadata-queries/table-rows-sample table fields (constantly conj)))))
         (testing "We can fingerprint this table"
           (is (= 1
-                 (:updated-fingerprints (#'fingerprint/fingerprint-table! table fields)))))))))
+                 (:updated-fingerprints (#'sync.fingerprint/fingerprint-table! table fields)))))))))
 
 (deftest db-default-timezone-test
   (mt/test-driver :mysql
@@ -231,15 +234,20 @@
           (is (= ["2018-04-18T00:00:00+08:00"]
                  (run-query-with-report-timezone "Asia/Hong_Kong"))))
 
+        ;; [August, 2018]
         ;; This tests a similar scenario, but one in which the JVM timezone is in Hong Kong, but the report timezone
         ;; is in Los Angeles. The Joda Time date parsing functions for the most part default to UTC. Our tests all run
         ;; with a UTC JVM timezone. This test catches a bug where we are incorrectly assuming a date is in UTC when
         ;; the JVM timezone is different.
         ;;
         ;; The original bug can be found here: https://github.com/metabase/metabase/issues/8262. The MySQL driver code
-        ;; was parsing the date using JodateTime's date parser, which is in UTC. The MySQL driver code was assuming
+        ;; was parsing the date using Joda Time's date parser, which is in UTC. The MySQL driver code was assuming
         ;; that date was in the system timezone rather than UTC which caused an incorrect conversion and with the
-        ;; trucation, let to it being off by a day
+        ;; trucation, let to it being off by a day.
+        ;;
+        ;; [April, 2024]
+        ;; We no longer use Joda Time at all (this logic has been pulled out to qp.timezone, and uses java-time), but
+        ;; are keeping the test in place since it's still a legitimate case.
         (testing "date formatting when system-timezone != report-timezone"
           (is (= ["2018-04-18T00:00:00-07:00"]
                  (run-query-with-report-timezone "America/Los_Angeles"))))))))
@@ -353,6 +361,47 @@
                                :base_type :type/Text}]}]
                    (->> (t2/hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
                         (map table-fingerprint))))))))))
+
+(defn- create-enums-table! [db]
+  (let [spec (sql-jdbc.conn/connection-details->spec :mysql (:details db))]
+    (doseq [sql ["CREATE TABLE birds (name VARCHAR(50) PRIMARY KEY, bird_type ENUM('toucan', 'pigeon', 'turkey'));"
+                 "INSERT INTO birds (name, bird_type) VALUES ('Rasta', 'toucan');"]]
+      (jdbc/execute! spec sql))))
+
+(deftest enums-test
+  (mt/test-driver :mysql
+    (testing "ENUM columns are synced with the correct base and semantic types"
+      (mt/with-empty-db
+        (create-enums-table! (mt/db))
+        (sync/sync-database! (mt/db))
+        (is (=? {:base_type     :type/MySQLEnum
+                 :semantic_type :type/Category}
+                (t2/select-one :model/Field :name "bird_type")))))))
+
+(deftest enums-actions-test
+  (mt/test-driver :mysql
+    (testing "actions with enums"
+      (mt/with-empty-db
+        (create-enums-table! (mt/db))
+        (sync/sync-database! (mt/db))
+        (mt/with-actions-enabled
+          (mt/with-actions [model {:type          :model
+                                   :dataset_query (mt/mbql-query birds)}
+                            {action-id :action-id} {:type :implicit
+                                                    :kind "row/create"}]
+            (testing "Enum fields are a valid implicit parameter target"
+              (let [columns        (->> model :result_metadata (map :name) set)
+                    action-targets (->> (action/select-action :id action-id)
+                                        :parameters
+                                        (map :id)
+                                        set)]
+                (is (= columns action-targets))))
+            (testing "Can create new records with an enum value"
+              (is (= {:created-row {:name "Lucky", :bird_type "pigeon"}}
+                     (mt/user-http-request :crowberto
+                                           :post 200
+                                           (format "action/%s/execute" action-id)
+                                           {:parameters {"name" "Lucky", "bird_type" "pigeon"}}))))))))))
 
 (deftest group-on-time-column-test
   (mt/test-driver :mysql

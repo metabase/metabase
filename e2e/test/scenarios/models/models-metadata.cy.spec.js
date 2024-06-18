@@ -99,27 +99,33 @@ describe("scenarios > models metadata", () => {
         .and("not.contain", "Pre-tax");
     });
 
-    it("clears custom metadata when a model is turned back into a question", () => {
-      openQuestionActions();
-      popover().findByTextEnsureVisible("Edit metadata").click();
+    it(
+      "clears custom metadata when a model is turned back into a question",
+      { tags: "@flaky" },
+      () => {
+        openQuestionActions();
+        popover().findByTextEnsureVisible("Edit metadata").click();
 
-      openColumnOptions("Subtotal");
-      renameColumn("Subtotal", "Pre-tax");
-      setColumnType("No special type", "Cost");
-      saveMetadataChanges();
+        openColumnOptions("Subtotal");
+        renameColumn("Subtotal", "Pre-tax");
+        setColumnType("No special type", "Cost");
+        saveMetadataChanges();
 
-      cy.findAllByTestId("header-cell")
-        .should("contain", "Pre-tax ($)")
-        .and("not.contain", "Subtotal");
+        cy.findAllByTestId("header-cell")
+          .should("contain", "Pre-tax ($)")
+          .and("not.contain", "Subtotal");
 
-      openQuestionActions();
-      popover().findByTextEnsureVisible("Turn back to saved question").click();
-      cy.wait("@cardQuery");
+        openQuestionActions();
+        popover()
+          .findByTextEnsureVisible("Turn back to saved question")
+          .click();
+        cy.wait("@cardQuery");
 
-      cy.findAllByTestId("header-cell")
-        .should("contain", "Subtotal")
-        .and("not.contain", "Pre-tax ($)");
-    });
+        cy.findAllByTestId("header-cell")
+          .should("contain", "Subtotal")
+          .and("not.contain", "Pre-tax ($)");
+      },
+    );
   });
 
   it("should edit native model metadata", () => {
@@ -334,11 +340,12 @@ describe("scenarios > models metadata", () => {
           cy.findByText("68883"); // zip
           cy.findAllByText("Hudson Borer");
           cy.icon("close").click();
-          cy.wait("@dataset");
         });
 
         cy.go("back"); // navigate away from drilled table
         cy.wait("@dataset");
+
+        cy.findByText("Native Model"); // we are back on the original model
 
         // Drill to Reviews table
         // FK column has a FK semantic type, no mapping to real DB columns
@@ -385,7 +392,7 @@ describe("scenarios > models metadata", () => {
       });
     });
 
-    it("should allow drills on FK columns from dashboards", () => {
+    it("should allow drills on FK columns from dashboards (metabase#42130)", () => {
       cy.get("@modelId").then(modelId => {
         cy.createDashboard().then(response => {
           const dashboardId = response.body.id;
@@ -448,10 +455,10 @@ describe("scenarios > models metadata", () => {
 });
 
 function drillFK({ id }) {
-  cy.get(".Table-FK").contains(id).first().click();
+  cy.get(".test-Table-FK").contains(id).first().click();
   popover().findByTextEnsureVisible("View details").click();
 }
 
 function drillDashboardFK({ id }) {
-  cy.get(".Table-FK").contains(id).first().click();
+  cy.get(".test-Table-FK").contains(id).first().click();
 }

@@ -1,6 +1,7 @@
 (ns metabase.lib.walk-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
+   [malli.core :as mc]
    [metabase.lib.walk :as lib.walk]))
 
 (deftest ^:parallel walk-test
@@ -95,7 +96,16 @@
                    {:lib/type :mbql.stage/mbql, :new-stage 2, :path path}]
 
                   :else
-                  (assoc stage-or-join :path path)))))))))
+                  (assoc stage-or-join :path path))))
+             (lib.walk/walk-stages
+              query
+              (fn [_query path stage]
+                (if (= (last path) 1)
+                  ;; replace the second stage with multiple new stages
+                  [{:lib/type :mbql.stage/mbql, :new-stage 0, :path path}
+                   {:lib/type :mbql.stage/mbql, :new-stage 1, :path path}
+                   {:lib/type :mbql.stage/mbql, :new-stage 2, :path path}]
+                  (assoc stage :path path)))))))))
 
 (deftest ^:parallel return-multiple-joins-test
   (testing "If walk fn returns multiple stages, splice them in to replace the stage. Subsequent calls should see correct path."
@@ -133,3 +143,21 @@
                     :new-join 1
                     :path     path}]
                   (assoc stage-or-join :path path)))))))))
+
+(deftest ^:parallel path-schema-test
+  (are [path] (mc/validate ::lib.walk/path path)
+    [:stages 0]
+    [:stages 0 :joins 1]
+    [:stages 0 :joins 1 :stages 0]
+    [:stages 0 :joins 1 :stages 0 :joins 2]
+    [:stages 0 :joins 1 :stages 0 :joins 2 :stages 0])
+  (are [path] (not (mc/validate ::lib.walk/path path))
+    []
+    [:stages]
+    [:stages 0 :stages 0]
+    [:stages -1]
+    [:stages 0 :joins]
+    [:stages 0 :joins -1]
+    [:stages 0 :joins 0 :joins 0]
+    [:joins]
+    [:joins 0]))

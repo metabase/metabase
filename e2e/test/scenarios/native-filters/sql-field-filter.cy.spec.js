@@ -5,6 +5,8 @@ import {
   clearFilterWidget,
   filterWidget,
   popover,
+  removeMultiAutocompleteValue,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
@@ -50,18 +52,8 @@ describe("scenarios > filters > sql filters > field filter", () => {
       });
     }
 
-    it("needs a default value to save the query, but allows running it", () => {
+    it("does not need a default value to run and save the query", () => {
       SQLFilter.toggleRequired();
-      SQLFilter.getRunQueryButton().should("not.be.disabled");
-      SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
-
-      SQLFilter.getSaveQueryButton().realHover();
-      cy.get("body").findByText(
-        'The "Filter" variable requires a default value but none was provided.',
-      );
-
-      setDefaultFieldValue(4);
-
       SQLFilter.getRunQueryButton().should("not.be.disabled");
       SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
     });
@@ -79,7 +71,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       SQLFilter.toggleRequired();
       filterWidget().click();
       popover().within(() => {
-        cy.icon("close").click();
+        removeMultiAutocompleteValue(0);
         cy.findByText("Set to default").click();
       });
       filterWidget()
@@ -92,7 +84,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       SQLFilter.toggleRequired();
       filterWidget().click();
       popover().within(() => {
-        cy.get("input").type("10{enter}");
+        multiAutocompleteInput().type("10,");
         cy.findByText("Update filter").click();
       });
       filterWidget().icon("time_history").click();

@@ -48,14 +48,16 @@ function _AddEditEmailSidebar({
       onClose={handleSave}
       onCancel={onCancel}
     >
-      <div className="pt4 px4 flex align-center">
-        <Icon name="mail" className="mr1" size={21} />
+      <div className={cx(CS.pt4, CS.px4, CS.flex, CS.alignCenter)}>
+        <Icon name="mail" className={CS.mr1} size={21} />
         <Heading>{t`Email this dashboard`}</Heading>
       </div>
       <CaveatMessage />
-      <div className="my2 px4 full-height flex flex-column">
+      <div
+        className={cx(CS.my2, CS.px4, CS.fullHeight, CS.flex, CS.flexColumn)}
+      >
         <div>
-          <div className="text-bold mb1">{t`To:`}</div>
+          <div className={cx(CS.textBold, CS.mb1)}>{t`To:`}</div>
           <RecipientPicker
             isNewPulse={pulse.id == null}
             autoFocus={false}
@@ -87,7 +89,7 @@ function _AddEditEmailSidebar({
             onChannelScheduleChange(newSchedule, changedProp)
           }
         />
-        <div className="pt2 pb1">
+        <div className={cx(CS.pt2, CS.pb1)}>
           <SendTestPulse
             channel={channel}
             channelSpecs={formInput.channels}
@@ -117,7 +119,7 @@ function _AddEditEmailSidebar({
             CS.textBold,
             CS.py3,
             CS.flex,
-            "justify-between",
+            CS.justifyBetween,
             CS.alignCenter,
             CS.borderTop,
           )}
@@ -133,16 +135,16 @@ function _AddEditEmailSidebar({
             CS.textBold,
             CS.py2,
             CS.flex,
-            "justify-between",
+            CS.justifyBetween,
             CS.alignCenter,
             CS.borderTop,
           )}
         >
-          <div className="flex align-center">
+          <div className={cx(CS.flex, CS.alignCenter)}>
             <Heading>{t`Attach results`}</Heading>
             <Icon
               name="info"
-              className="text-medium ml1"
+              className={cx(CS.textMedium, CS.ml1)}
               size={12}
               tooltip={t`Attachments can contain up to 2,000 rows of data.`}
             />
@@ -159,7 +161,7 @@ function _AddEditEmailSidebar({
             handleArchive={handleArchive}
           />
         )}
-        <div className="p2 mt-auto text-small text-medium">
+        <div className={cx(CS.p2, CS.mtAuto, CS.textSmall, CS.textMedium)}>
           {t`Charts in subscriptions may look slightly different from charts in dashboards.`}
         </div>
       </div>

@@ -1,16 +1,25 @@
 (ns metabase.models.query-field-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.models :refer [Card]]
+   [metabase.models.query-field :as query-field]
    [metabase.native-query-analyzer :as query-analyzer]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(def ^:private query-field-keys [:card_id :field_id])
+(def ^:private query-field-keys [:card_id :field_id :explicit_reference])
+
+(defn- qf->map [query-field]
+  (select-keys query-field query-field-keys))
 
 (defn- query-fields-for-card
   [card-id]
-  (t2/select-fn-set #(select-keys % query-field-keys) :model/QueryField
+  (t2/select-fn-set qf->map :model/QueryField
                     :card_id card-id))
 
 (defn- do-with-test-setup [f]
@@ -40,7 +49,9 @@
   ([card-id]
    (trigger-parse! card-id "SELECT TAX, TOTAL FROM orders"))
   ([card-id query]
-   (t2/update! :model/Card card-id {:dataset_query (mt/native-query {:query query})})))
+   (if (string? query)
+     (t2/update! :model/Card card-id {:dataset_query (mt/native-query {:query query})})
+     (t2/update! :model/Card card-id {:dataset_query query}))))
 
 ;;;;
 ;;;; Actual tests
@@ -48,10 +59,12 @@
 
 (deftest query-fields-created-by-queries-test
   (with-test-setup
-    (let [total-qf {:card_id  card-id
-                    :field_id total-id}
-          tax-qf   {:card_id  card-id
-                    :field_id tax-id}]
+    (let [total-qf {:card_id          card-id
+                    :field_id         total-id
+                    :explicit_reference true}
+          tax-qf   {:card_id          card-id
+                    :field_id         tax-id
+                    :explicit_reference true}]
 
       (testing "A freshly created card has relevant corresponding QueryFields"
         (is (= #{total-qf}
@@ -62,9 +75,22 @@
         (is (= #{tax-qf total-qf}
                (query-fields-for-card card-id))))
 
-      (testing "Removing columns from the query removes the Queryfields"
+      (testing "Removing columns from the query removes the QueryFields"
         (trigger-parse! card-id "SELECT tax, not_total FROM orders")
         (is (= #{tax-qf}
+               (query-fields-for-card card-id))))
+
+      (testing "Columns referenced via field filters are still found"
+        (trigger-parse! card-id
+                        (mt/native-query {:query "SELECT tax FROM orders WHERE {{adequate_total}}"
+                                          :template-tags {"adequate_total"
+                                                          {:type         :dimension
+                                                           :name         "adequate_total"
+                                                           :display-name "Total is big enough"
+                                                           :dimension    [:field (mt/id :orders :total)
+                                                                          {:base-type :type/Number}]
+                                                           :widget-type  :number/>=}}}))
+        (is (= #{tax-qf total-qf}
                (query-fields-for-card card-id)))))))
 
 (deftest bogus-queries-test
@@ -72,3 +98,66 @@
     (testing "Updating a query with bogus columns does not create QueryFields"
       (trigger-parse! card-id "SELECT DOES, NOT_EXIST FROM orders")
       (is (empty? (t2/select :model/QueryField :card_id card-id))))))
+
+(deftest wildcard-test
+  (with-test-setup
+    (let [total-qf {:card_id          card-id
+                    :field_id         total-id
+                    :explicit_reference false}
+          tax-qf   {:card_id          card-id
+                    :field_id         tax-id
+                    :explicit_reference false}]
+      (testing "simple select *"
+        (trigger-parse! card-id "select * from orders")
+        (let [qfs (query-fields-for-card card-id)]
+          (is (= 9 (count qfs)))
+          (is (not-every? :explicit_reference qfs))
+          (is (set/subset? #{total-qf tax-qf} qfs)))))))
+
+(deftest table-wildcard-test
+  (with-test-setup
+    (let [total-qf {:card_id          card-id
+                    :field_id         total-id
+                    :explicit_reference true}
+          tax-qf   {:card_id          card-id
+                    :field_id         tax-id
+                    :explicit_reference true}]
+      (testing "mix of select table.* and named columns"
+        (trigger-parse! card-id "select p.*, o.tax, o.total from orders o join people p on p.id = o.user_id")
+        (let [qfs (query-fields-for-card card-id)]
+          (is (= (+ 13 #_people 2 #_tax-and-total 1 #_o.user_id)
+                 (count qfs)))
+          ;; 13 total, but id is referenced directly
+          (is (= 12 (t2/count :model/QueryField :card_id card-id :explicit_reference false)))
+          ;; subset since it also includes the PKs/FKs
+          (is (set/subset? #{total-qf tax-qf}
+                           (t2/select-fn-set qf->map :model/QueryField :card_id card-id :explicit_reference true))))))))
+
+(deftest parse-mbql-test
+  (testing "Parsing MBQL query returns correct used fields"
+    (mt/with-temp [Card c1 {:dataset_query (mt/mbql-query venues
+                                             {:aggregation [[:distinct $name]
+                                                            [:distinct $price]]
+                                              :limit       5})}
+                   Card c2 {:dataset_query {:query    {:source-table (str "card__" (:id c1))}
+                                            :database (:id (mt/db))
+                                            :type     :query}}
+                   Card c3 {:dataset_query (mt/mbql-query checkins
+                                             {:joins [{:source-table (str "card__" (:id c2))
+                                                       :alias        "Venues"
+                                                       :condition    [:= $checkins.venue_id $venues.id]}]})}]
+      (mt/$ids
+        (is (= {:explicit #{%venues.name %venues.price}}
+               (#'query-field/query-field-ids (:dataset_query c1))))
+        (is (= {:explicit nil}
+               (#'query-field/query-field-ids (:dataset_query c2))))
+        (is (= {:explicit #{%venues.id %checkins.venue_id}}
+               (#'query-field/query-field-ids (:dataset_query c3)))))))
+  (testing "Parsing pMBQL query returns correct used fields"
+    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          venues            (lib.metadata/table metadata-provider (mt/id :venues))
+          venues-name       (lib.metadata/field metadata-provider (mt/id :venues :name))
+          mlv2-query        (-> (lib/query metadata-provider venues)
+                                (lib/aggregate (lib/distinct venues-name)))]
+      (is (= {:explicit #{(mt/id :venues :name)}}
+               (#'query-field/query-field-ids mlv2-query))))))

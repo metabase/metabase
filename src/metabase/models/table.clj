@@ -1,19 +1,16 @@
 (ns metabase.models.table
   (:require
    [metabase.api.common :as api]
-   [metabase.config :as config]
+   [metabase.audit :as audit]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
-   [metabase.public-settings.premium-features
-    :refer [defenterprise]]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -61,7 +58,7 @@
 (t2/define-before-insert :model/Table
   [table]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
-                  :field_order  (driver/default-field-order (t2/select-one-fn :engine Database :id (:db_id table)))}]
+                  :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))}]
     (merge defaults table)))
 
 (defn- set-new-table-permissions!
@@ -71,12 +68,16 @@
           non-magic-groups (perms-group/non-magic-groups)
           non-admin-groups (conj non-magic-groups all-users-group)]
       ;; Data access permissions
-      (if (= (:db_id table) config/audit-db-id)
-        ;; Tables in audit DB should start out with no-self-service in all groups
-        (data-perms/set-new-table-permissions! non-admin-groups table :perms/data-access :no-self-service)
+      (if (= (:db_id table) audit/audit-db-id)
         (do
-          (data-perms/set-new-table-permissions! [all-users-group] table :perms/data-access :unrestricted)
-          (data-perms/set-new-table-permissions! non-magic-groups table :perms/data-access :no-self-service)))
+         ;; Tables in audit DB should start out with no query access in all groups
+         (data-perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
+         (data-perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no))
+        (do
+          ;; Normal tables start out with unrestricted data access in all groups, but query access only in All Users
+          (data-perms/set-new-table-permissions! (conj non-magic-groups all-users-group) table :perms/view-data :unrestricted)
+          (data-perms/set-new-table-permissions! [all-users-group] table :perms/create-queries :query-builder)
+          (data-perms/set-new-table-permissions! non-magic-groups table :perms/create-queries :no)))
       ;; Download permissions
       (data-perms/set-new-table-permissions! [all-users-group] table :perms/download-results :one-million-rows)
       (data-perms/set-new-table-permissions! non-magic-groups table :perms/download-results :no)
@@ -90,12 +91,18 @@
 
 (defmethod mi/can-read? :model/Table
   ([instance]
-   (data-perms/user-has-permission-for-table?
-    api/*current-user-id*
-    :perms/data-access
-    :unrestricted
-    (:db_id instance)
-    (:id instance)))
+   (and (data-perms/user-has-permission-for-table?
+         api/*current-user-id*
+         :perms/view-data
+         :unrestricted
+         (:db_id instance)
+         (:id instance))
+        (data-perms/user-has-permission-for-table?
+         api/*current-user-id*
+         :perms/create-queries
+         :query-builder
+         (:db_id instance)
+         (:id instance))))
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Table pk))))
 
@@ -128,9 +135,9 @@
   [table]
   (doall
    (map-indexed (fn [new-position field]
-                  (t2/update! Field (u/the-id field) {:position new-position}))
+                  (t2/update! :model/Field (u/the-id field) {:position new-position}))
                 ;; Can't use `select-field` as that returns a set while we need an ordered list
-                (t2/select [Field :id]
+                (t2/select [:model/Field :id]
                            :table_id  (u/the-id table)
                            {:order-by (case (:field_order table)
                                         :custom       [[:custom_position :asc]]
@@ -147,7 +154,7 @@
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
   [table field-ordering]
-  (= (t2/select-pks-set Field
+  (= (t2/select-pks-set :model/Field
        :table_id (u/the-id table)
        :active   true)
      (set field-ordering)))
@@ -159,8 +166,8 @@
   (t2/update! Table (u/the-id table) {:field_order :custom})
   (doall
     (map-indexed (fn [position field-id]
-                   (t2/update! Field field-id {:position        position
-                                               :custom_position position}))
+                   (t2/update! :model/Field field-id {:position        position
+                                                      :custom_position position}))
                  field-order)))
 
 
@@ -213,7 +220,11 @@
   [tables]
   (with-objects :metrics
     (fn [table-ids]
-      (t2/select :model/LegacyMetric :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select :model/Card
+                 :table_id [:in table-ids],
+                 :archived false,
+                 :type :metric,
+                 {:order-by [[:name :asc]]}))
     tables))
 
 (defn with-fields
@@ -221,7 +232,7 @@
   [tables]
   (with-objects :fields
     (fn [table-ids]
-      (t2/select Field
+      (t2/select :model/Field
         :active          true
         :table_id        [:in table-ids]
         :visibility_type [:not= "retired"]
@@ -239,14 +250,14 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (t2/select-one Database :id (:db_id table)))
+  (t2/select-one :model/Database :id (:db_id table)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 (defmethod serdes/dependencies "Table" [table]
   [[{:model "Database" :id (:db_id table)}]])
 
 (defmethod serdes/generate-path "Table" [_ table]
-  (let [db-name (t2/select-one-fn :name 'Database :id (:db_id table))]
+  (let [db-name (t2/select-one-fn :name :model/Database :id (:db_id table))]
     (filterv some? [{:model "Database" :id db-name}
                     (when (:schema table)
                       {:model "Schema" :id (:schema table)})
@@ -261,18 +272,19 @@
         schema-name (when (= 3 (count path))
                       (-> path second :id))
         table-name  (-> path last :id)
-        db-id       (t2/select-one-pk Database :name db-name)]
+        db-id       (t2/select-one-pk :model/Database :name db-name)]
     (t2/select-one Table :name table-name :db_id db-id :schema schema-name)))
 
 (defmethod serdes/extract-one "Table"
   [_model-name _opts {:keys [db_id] :as table}]
   (-> (serdes/extract-one-basics "Table" table)
-      (assoc :db_id (t2/select-one-fn :name 'Database :id db_id))))
+      (dissoc :view_count :estimated_row_count)
+      (assoc :db_id (t2/select-one-fn :name :model/Database :id db_id))))
 
 (defmethod serdes/load-xform "Table"
   [{:keys [db_id] :as table}]
   (-> (serdes/load-xform-basics table)
-      (assoc :db_id (t2/select-one-fn :id 'Database :name db_id))))
+      (assoc :db_id (t2/select-one-fn :id :model/Database :name db_id))))
 
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-table-path-prefix (serdes/path table))

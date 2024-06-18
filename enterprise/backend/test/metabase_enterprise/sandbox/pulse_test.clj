@@ -25,8 +25,8 @@
   (testing "Pulses should get sent with the row-level restrictions of the User that created them."
     (letfn [(send-pulse-created-by-user! [user-kw]
               (met/with-gtaps! {:gtaps      {:venues {:query      (mt/mbql-query venues)
-                                                     :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
-                               :attributes {"cat" 50}}
+                                                      :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
+                                :attributes {"cat" 50}}
                 (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
                   ;; `with-gtaps!` binds the current test user; we don't want that falsely affecting results
                   (mt/with-test-user nil
@@ -168,7 +168,7 @@
 (deftest user-attributes-test
   (testing "Pulses should be sandboxed correctly by User login_attributes"
     (met/with-gtaps! {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
-                     :attributes {"price" "1"}}
+                      :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
           (t2.with-temp/with-temp [Card card {:dataset_query query}]
@@ -188,7 +188,7 @@
 (deftest pulse-preview-test
   (testing "Pulse preview endpoints should be sandboxed"
     (met/with-gtaps! {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
-                     :attributes {"price" "1"}}
+                      :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
           (t2.with-temp/with-temp [Card card {:dataset_query query}]
@@ -217,7 +217,7 @@
 (deftest csv-downloads-test
   (testing "CSV/XLSX downloads should be sandboxed"
     (met/with-gtaps! {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
-                     :attributes {"price" "1"}}
+                      :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
           (mt/with-temp [Card                 {card-id :id}  {:dataset_query query}

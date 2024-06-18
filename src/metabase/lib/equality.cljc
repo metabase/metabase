@@ -14,6 +14,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]
    #?@(:clj ([metabase.util.log :as log]))))
@@ -183,6 +184,19 @@
       #?(:cljs (js/console.warn (ambiguous-match-error a-ref columns))
          :clj  (log/warn (ambiguous-match-error a-ref columns)))))
 
+(mu/defn ^:private disambiguate-matches-find-match-with-same-temporal-bucket :- [:maybe ::lib.schema.metadata/column]
+  "If there are multiple matching columns and `a-ref` has a temporal bucket, check if only one column has that same
+  unit."
+  [a-ref   :- ::lib.schema.ref/ref
+   columns :- [:sequential {:min 2} ::lib.schema.metadata/column]]
+  (or (when-let [temporal-bucket (lib.temporal-bucket/raw-temporal-bucket a-ref)]
+        (let [matching-columns (filter (fn [col]
+                                         (= (lib.temporal-bucket/raw-temporal-bucket col) temporal-bucket))
+                                       columns)]
+          (when (= (count matching-columns) 1)
+            (first matching-columns))))
+      (disambiguate-matches-dislike-field-refs-to-expressions a-ref columns)))
+
 (mu/defn ^:private disambiguate-matches-prefer-explicit :- [:maybe ::lib.schema.metadata/column]
   "Prefers table-default or explicitly joined columns over implicitly joinable ones."
   [a-ref   :- ::lib.schema.ref/ref
@@ -190,7 +204,7 @@
   (if-let [no-implicit (not-empty (remove :fk-field-id columns))]
     (if-not (next no-implicit)
       (first no-implicit)
-      (disambiguate-matches-dislike-field-refs-to-expressions a-ref no-implicit))
+      (disambiguate-matches-find-match-with-same-temporal-bucket a-ref no-implicit))
     nil))
 
 (mu/defn ^:private disambiguate-matches-no-alias :- [:maybe ::lib.schema.metadata/column]

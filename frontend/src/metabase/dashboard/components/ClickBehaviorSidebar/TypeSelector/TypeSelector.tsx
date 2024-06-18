@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
@@ -44,13 +45,13 @@ export const BehaviorOption = ({
     >
       <BehaviorOptionIcon
         name={selected ? "check" : icon}
-        color={selected ? color("white") : color("brand")}
+        color={selected ? color("text-white") : color("brand")}
         isSelected={selected}
       />
       <SidebarItem.Content>
         <SidebarItem.Name>{behaviorOptionName}</SidebarItem.Name>
         {hasNextStep && (
-          <span className="ml-auto">
+          <span className={CS.mlAuto}>
             <Icon name="chevronright" size={12} />
           </span>
         )}
@@ -79,9 +80,13 @@ export function TypeSelector({
   }, []);
 
   const handleSelect = useCallback(
-    value => {
+    (value: ClickBehaviorType) => {
       if (value !== clickBehavior.type) {
-        updateSettings(value === "actionMenu" ? undefined : { type: value });
+        updateSettings(
+          value === "actionMenu"
+            ? undefined
+            : ({ type: value } as ClickBehavior),
+        );
       } else if (value !== "actionMenu") {
         moveToNextPage();
       }
@@ -92,7 +97,7 @@ export function TypeSelector({
   return (
     <div>
       {options.map(({ value, icon }) => (
-        <div key={value} className="mb1">
+        <div key={value} className={CS.mb1}>
           <BehaviorOption
             value={value}
             dashcard={dashcard}

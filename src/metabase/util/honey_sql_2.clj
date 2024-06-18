@@ -141,7 +141,7 @@
 
 (sql/register-fn! ::identifier #'format-identifier)
 
-(mu/defn identifier
+(mu/defn identifier :- Identifier
   "Define an identifier of type with `components`. Prefer this to using keywords for identifiers, as those do not
   properly handle identifiers with slashes in them.
 

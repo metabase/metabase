@@ -1,27 +1,25 @@
-:global(.no-decoration),
-.no-decoration,
 .noDecoration {
   text-decoration: none;
 }
 
-:global(.link) {
+.link {
   cursor: pointer;
   text-decoration: none;
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
 }
 
-:global(.link:hover) {
+.link:hover {
   text-decoration: underline;
 }
 
-:global(.link:focus) {
-  outline: 2px solid var(--color-focus);
+.link:focus {
+  outline: 2px solid var(--mb-color-focus);
 }
 
-:global(.link:focus:not(:focus-visible)) {
+.link:focus:not(:focus-visible) {
   outline: none;
 }
 
-:global(.link--wrappable) {
+.linkWrappable {
   word-break: break-all;
 }

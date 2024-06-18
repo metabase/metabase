@@ -17,7 +17,9 @@ import {
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
+import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
+import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
 import { SessionApi } from "metabase/services";
 import { Center, Stack, Text } from "metabase/ui";
 
@@ -178,9 +180,16 @@ function useUnsubscribeRequest({
 }
 
 function UnsubscribeRoot({ children }: { children: JSX.Element }) {
+  const loginPageIllustration = useSelector(getLoginPageIllustration);
   return (
     <LayoutRoot>
-      <LayoutIllustration />
+      {loginPageIllustration && (
+        <LayoutIllustration
+          data-testid="unsubscribe-page-illustration"
+          backgroundImageSrc={loginPageIllustration.src}
+          isDefault={loginPageIllustration.isDefault}
+        />
+      )}
       <LayoutBody>
         <Center mih={"100%"} miw={"100%"}>
           <Stack>

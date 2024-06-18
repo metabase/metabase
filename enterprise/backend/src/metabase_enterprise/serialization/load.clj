@@ -23,7 +23,6 @@
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.models.field-values :refer [FieldValues]]
-   [metabase.models.metric :refer [LegacyMetric]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
@@ -249,7 +248,6 @@
             :when table-id]
       (let [context (assoc context :table table-id)]
         (load! (str path "/fks") context)
-        (load! (str path "/metrics") context)
         (load! (str path "/segments") context)))))
 
 (def ^:private fully-qualified-name->card-id
@@ -279,16 +277,6 @@
 (defmethod load! "fks"
   [path context]
   (load-fields! path context))
-
-(defmethod load! "metrics"
-  [path context]
-  (maybe-upsert-many! context LegacyMetric
-    (for [metric (slurp-dir path)]
-      (-> metric
-          (assoc :table_id   (:table context)
-                 :creator_id (default-user-id))
-          (assoc-in [:definition :source-table] (:table context))
-          (update :definition mbql-fully-qualified-names->ids)))))
 
 (defmethod load! "segments"
   [path context]
@@ -597,14 +585,14 @@
   (try
     (-> (fully-qualified-name->context fully-qualified-name) :card)
     (catch Throwable e
-      (log/warn e (trs "Could not find context for fully qualified card name {0}" fully-qualified-name)))))
+      (log/warnf e "Could not find context for fully qualified card name %s" fully-qualified-name))))
 
 (defn- resolve-snippet
   [fully-qualified-name]
   (try
     (-> (fully-qualified-name->context fully-qualified-name) :snippet)
     (catch Throwable e
-      (log/debug e (trs "Could not find context for fully qualified snippet name {0}" fully-qualified-name)))))
+      (log/debugf e "Could not find context for fully qualified snippet name %s" fully-qualified-name))))
 
 (defn- resolve-native
   [card]

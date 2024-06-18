@@ -2,14 +2,27 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupAdhocQueryMetadataEndpoint,
+  setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  mockScrollBy,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import type { GroupTableAccessPolicy } from "metabase-types/api";
-import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockCardQueryMetadata,
+  createMockCollection,
+} from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   PEOPLE,
@@ -33,6 +46,8 @@ const EDITABLE_ROOT_COLLECTION = createMockCollection({
 const TEST_CARD = createMockCard({
   id: 1,
   name: "sandbox question",
+  can_write: true,
+  collection_id: null,
   dataset_query: {
     type: "query",
     database: SAMPLE_DB_ID,
@@ -49,6 +64,8 @@ const setup = ({
   shouldMockQuestions?: boolean;
   policy?: GroupTableAccessPolicy;
 } = {}) => {
+  mockGetBoundingClientRect();
+  mockScrollBy();
   const database = createSampleDatabase();
 
   setupDatabasesEndpoints([database]);
@@ -56,6 +73,12 @@ const setup = ({
     collections: [EDITABLE_ROOT_COLLECTION],
     rootCollection: EDITABLE_ROOT_COLLECTION,
   });
+
+  setupRecentViewsAndSelectionsEndpoints([]);
+  setupAdhocQueryMetadataEndpoint(
+    createMockCardQueryMetadata({ databases: [database] }),
+  );
+
   fetchMock.post("path:/api/mt/gtap/validate", 204);
   fetchMock.get("path:/api/permissions/group/1", {});
 
@@ -63,7 +86,17 @@ const setup = ({
     fetchMock.get("path:/api/collection/root/items", {
       data: [{ id: TEST_CARD.id, name: TEST_CARD.name, model: "card" }],
     });
+    fetchMock.get("path:/api/collection/1/items", {
+      data: [],
+    });
+    fetchMock.get("path:/api/collection/1", EDITABLE_ROOT_COLLECTION);
     setupCardsEndpoints([TEST_CARD]);
+    setupCardQueryMetadataEndpoint(
+      TEST_CARD,
+      createMockCardQueryMetadata({
+        databases: [database],
+      }),
+    );
   }
 
   const onSave = jest.fn();
@@ -97,13 +130,13 @@ describe("EditSandboxingModal", () => {
 
         expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
-        userEvent.click(screen.getByText("Pick a column"));
-        userEvent.click(await screen.findByText("ID"));
+        await userEvent.click(await screen.findByText("Pick a column"));
+        await userEvent.click(await screen.findByText("ID"));
 
-        userEvent.click(screen.getByText("Pick a user attribute"));
-        userEvent.click(await screen.findByText("foo"));
+        await userEvent.click(screen.getByText("Pick a user attribute"));
+        await userEvent.click(await screen.findByText("foo"));
 
-        userEvent.click(screen.getByText("Save"));
+        await userEvent.click(screen.getByText("Save"));
 
         await waitFor(() =>
           expect(onSave).toHaveBeenCalledWith({
@@ -129,15 +162,19 @@ describe("EditSandboxingModal", () => {
 
         expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByText(
             "Use a saved question to create a custom view for this table",
           ),
         );
 
-        userEvent.click(await screen.findByText("sandbox question"));
+        await userEvent.click(await screen.findByText("Select a question"));
+        await screen.findByTestId("entity-picker-modal");
+        await userEvent.click(
+          await screen.findByRole("button", { name: /sandbox question/i }),
+        );
 
-        userEvent.click(screen.getByText("Save"));
+        await userEvent.click(screen.getByText("Save"));
 
         await waitFor(() => {
           expect(screen.queryByText("Saving...")).not.toBeInTheDocument();
@@ -175,15 +212,19 @@ describe("EditSandboxingModal", () => {
 
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
-      userEvent.click(
+      await userEvent.click(
         screen.getByText(
           "Use a saved question to create a custom view for this table",
         ),
       );
 
-      userEvent.click(await screen.findByText("sandbox question"));
+      await userEvent.click(await screen.findByText("Select a question"));
+      await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(
+        await screen.findByRole("button", { name: /sandbox question/i }),
+      );
 
-      userEvent.click(screen.getByText("Save"));
+      await userEvent.click(screen.getByText("Save"));
 
       await waitFor(() => {
         expect(screen.queryByText("Saving...")).not.toBeInTheDocument();

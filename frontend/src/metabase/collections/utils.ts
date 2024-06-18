@@ -26,14 +26,35 @@ export function isPersonalCollection(
   return collection.is_personal;
 }
 
+export function isRootTrashCollection(
+  collection?: Pick<Collection, "type">,
+): boolean {
+  return collection?.type === "trash";
+}
+
+export function isTrashedCollection(
+  collection: Pick<Collection, "type" | "archived">,
+): boolean {
+  return isRootTrashCollection(collection) || collection.archived;
+}
+
 export function isPublicCollection(
   collection: Pick<Collection, "is_personal">,
 ) {
   return !isPersonalCollection(collection);
 }
 
+export function isEditableCollection(collection: Collection) {
+  return (
+    collection.can_write &&
+    !isRootCollection(collection) &&
+    !isRootPersonalCollection(collection) &&
+    !isTrashedCollection(collection)
+  );
+}
+
 export function isInstanceAnalyticsCollection(
-  collection?: Partial<Collection>,
+  collection?: Pick<Collection, "type">,
 ): boolean {
   return (
     !!collection &&
@@ -125,6 +146,10 @@ export function isItemModel(item: CollectionItem) {
   return item.model === "dataset";
 }
 
+export function isItemMetric(item: CollectionItem) {
+  return item.model === "metric";
+}
+
 export function isItemCollection(item: CollectionItem) {
   return item.model === "collection";
 }
@@ -133,29 +158,39 @@ export function isReadOnlyCollection(collection: CollectionItem) {
   return isItemCollection(collection) && !collection.can_write;
 }
 
-export function canPinItem(item: CollectionItem, collection: Collection) {
-  return collection.can_write && item.setPinned != null;
+export function canPinItem(item: CollectionItem, collection?: Collection) {
+  return collection?.can_write && item.setPinned != null && !item.archived;
 }
 
-export function canPreviewItem(item: CollectionItem, collection: Collection) {
-  return collection.can_write && isItemPinned(item) && isItemQuestion(item);
-}
-
-export function canMoveItem(item: CollectionItem, collection: Collection) {
+export function canPreviewItem(item: CollectionItem, collection?: Collection) {
   return (
-    collection.can_write &&
+    collection?.can_write &&
+    isItemPinned(item) &&
+    (isItemQuestion(item) || isItemMetric(item)) &&
+    !item.archived
+  );
+}
+
+export function canMoveItem(item: CollectionItem, collection?: Collection) {
+  return (
+    collection?.can_write &&
     !isReadOnlyCollection(item) &&
     item.setCollection != null &&
     !(isItemCollection(item) && isRootPersonalCollection(item))
   );
 }
 
-export function canArchiveItem(item: CollectionItem, collection: Collection) {
+export function canArchiveItem(item: CollectionItem, collection?: Collection) {
   return (
-    collection.can_write &&
+    collection?.can_write &&
     !isReadOnlyCollection(item) &&
-    !(isItemCollection(item) && isRootPersonalCollection(item))
+    !(isItemCollection(item) && isRootPersonalCollection(item)) &&
+    !item.archived
   );
+}
+
+export function canCopyItem(item: CollectionItem) {
+  return item.copy && !item.archived;
 }
 
 export function isPreviewShown(item: CollectionItem) {

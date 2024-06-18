@@ -1,6 +1,6 @@
 :root {
-  --title-color: var(--color-text-medium);
-  --muted-color: var(--color-text-light);
+  --title-color: var(--mb-color-text-medium);
+  --muted-color: var(--mb-color-text-light);
 }
 
 .detail {
@@ -15,13 +15,13 @@
 }
 
 .detailTitle {
-  composes: text-bold from "style";
+  composes: textBold from "style";
   display: inline-block;
   color: var(--title-color);
 }
 
 .detailSubtitle {
-  composes: text-dark text-paragraph from "style";
+  composes: textDark textParagraph from "style";
   white-space: pre-wrap;
   font-size: 16px;
   line-height: 24px;
@@ -29,15 +29,15 @@
 }
 
 .detailSubtitleLight {
-  composes: text-light from "style";
+  composes: textLight from "style";
   padding-top: 6px;
 }
 
 .detailTextarea {
-  composes: text-dark input p2 from "style";
+  composes: textDark input p2 from "style";
   resize: none;
   font-size: 16px;
   width: 100%;
   min-height: 100px;
-  border-color: var(--color-text-light);
+  border-color: var(--mb-color-text-light);
 }

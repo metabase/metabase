@@ -43,15 +43,16 @@
 (driver/register! :presto-jdbc, :parent #{:sql-jdbc
                                           ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(doseq [[feature supported?] {:set-timezone                    true
-                              :basic-aggregations              true
-                              :standard-deviation-aggregations true
-                              :expressions                     true
-                              :native-parameters               true
-                              :expression-aggregations         true
+(doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
+                              :expression-aggregations         true
+                              :expressions                     true
                               :foreign-keys                    true
-                              :now                             true}]
+                              :native-parameters               true
+                              :now                             true
+                              :set-timezone                    true
+                              :standard-deviation-aggregations true
+                              :metadata/key-constraints        false}]
   (defmethod driver/database-supports? [:presto-jdbc feature] [_driver _feature _db] supported?))
 
 ;;; Presto API helpers
@@ -564,7 +565,7 @@
   implementation."
   [driver conn catalog schema]
   (let [sql (describe-schema-sql driver catalog schema)]
-    (log/trace (trs "Running statement in describe-schema: {0}" sql))
+    (log/tracef "Running statement in describe-schema: %s" sql)
     (into #{} (comp (filter (fn [{table-name :table}]
                                 (have-select-privilege? driver conn schema table-name)))
                     (map (fn [{table-name :table}]
@@ -577,7 +578,7 @@
   implementation."
   [driver conn catalog]
   (let [sql (describe-catalog-sql driver catalog)]
-    (log/trace (trs "Running statement in all-schemas: {0}" sql))
+    (log/tracef "Running statement in all-schemas: %s" sql)
     (into []
           (map (fn [{:keys [schema]}]
                  (when-not (contains? excluded-schemas schema)
@@ -603,7 +604,7 @@
    nil
    (fn [^Connection conn]
      (let [sql (describe-table-sql driver catalog schema table-name)]
-       (log/trace (trs "Running statement in describe-table: {0}" sql))
+       (log/tracef "Running statement in describe-table: %s" sql)
        {:schema schema
         :name   table-name
         :fields (into
@@ -646,7 +647,7 @@
          (try
            (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
            (catch Throwable e
-             (log/debug e (trs "Error setting prepared statement fetch direction to FETCH_FORWARD"))))
+             (log/debug e "Error setting prepared statement fetch direction to FETCH_FORWARD")))
          (sql-jdbc.execute/set-parameters! driver stmt params)
          stmt
          (catch Throwable e
@@ -663,7 +664,7 @@
     (try
       (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
       (catch Throwable e
-        (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
+        (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
     stmt))
 
 (defn- pooled-conn->presto-conn
@@ -689,7 +690,7 @@
       (try
         (.setReadOnly conn read-only?)
         (catch Throwable e
-          (log/debug e (trs "Error setting connection read-only to {0}" (pr-str read-only?))))))))
+          (log/debugf e "Error setting connection read-only to %s" (pr-str read-only?)))))))
 
 (defmethod sql-jdbc.execute/do-with-connection-with-options :presto-jdbc
   [driver db-or-id-or-spec options f]

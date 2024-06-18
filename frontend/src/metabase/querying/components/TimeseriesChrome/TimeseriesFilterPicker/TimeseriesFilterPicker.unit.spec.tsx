@@ -1,4 +1,4 @@
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
@@ -36,6 +36,10 @@ interface SetupOpts {
   filter?: Lib.FilterClause;
 }
 
+const userEvent = _userEvent.setup({
+  advanceTimers: jest.advanceTimersByTime,
+});
+
 function setup({
   query = createQuery(),
   column = findDateColumn(query),
@@ -70,15 +74,13 @@ describe("TimeseriesFilterPicker", () => {
   it("should allow to add a filter", async () => {
     const { getNextFilterParts } = setup();
 
-    userEvent.click(screen.getByText("All time"));
-    userEvent.click(await screen.findByDisplayValue("All time"));
-    userEvent.click(await screen.findByText("Is empty"));
-    userEvent.click(screen.getByText("Apply"));
+    await userEvent.click(screen.getByText("All time"));
+    await userEvent.click(await screen.findByDisplayValue("All time"));
+    await userEvent.click(await screen.findByText("Current"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(getNextFilterParts()).toMatchObject({
-      operator: "is-null",
-      column: expect.anything(),
-      values: [],
+      value: "current",
     });
   });
 
@@ -86,11 +88,11 @@ describe("TimeseriesFilterPicker", () => {
     const { query, column, filter } = createQueryWithFilter();
     const { getNextFilterParts } = setup({ query, column, filter });
 
-    userEvent.click(screen.getByText("Jan 10, 2020"));
+    await userEvent.click(screen.getByText("Jan 10, 2020"));
     const input = await screen.findByLabelText("Date");
-    userEvent.clear(input);
-    userEvent.type(input, "Feb 20, 2020");
-    userEvent.click(screen.getByText("Apply"));
+    await userEvent.clear(input);
+    await userEvent.type(input, "Feb 20, 2020");
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(getNextFilterParts()).toMatchObject({
       operator: "=",
@@ -103,10 +105,10 @@ describe("TimeseriesFilterPicker", () => {
     const { query, column, filter } = createQueryWithFilter();
     const { getNextFilterParts } = setup({ query, column, filter });
 
-    userEvent.click(screen.getByText("Jan 10, 2020"));
-    userEvent.click(await screen.findByDisplayValue("On"));
-    userEvent.click(await screen.findByText("All time"));
-    userEvent.click(screen.getByText("Apply"));
+    await userEvent.click(screen.getByText("Jan 10, 2020"));
+    await userEvent.click(await screen.findByDisplayValue("On"));
+    await userEvent.click(await screen.findByText("All time"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(getNextFilterParts()).toBeNull();
   });

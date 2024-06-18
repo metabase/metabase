@@ -38,7 +38,7 @@ const getBackgroundArcColor = () => color("bg-medium");
 const getSegmentLabelColor = () => color("text-dark");
 const getCenterLabelColor = () => color("text-dark");
 const getArrowFillColor = () => color("text-medium");
-const getArrowStrokeColor = () => "white";
+const getArrowStrokeColor = () => color("bg-white");
 
 // in ems, but within the scaled 100px SVG element
 const FONT_SIZE_SEGMENT_LABEL = 0.25;
@@ -244,7 +244,7 @@ export default class Gauge extends Component {
     return (
       <div className={cx(className, CS.relative)}>
         <div
-          className={cx(CS.absolute, "overflow-hidden")}
+          className={cx(CS.absolute, CS.overflowHidden)}
           style={{
             width: svgWidth * expandWidthFactor,
             height: svgHeight,
@@ -455,9 +455,9 @@ class HideIfOverlowingSVG extends React.Component {
         elementRect.top >= svgRect.top &&
         elementRect.bottom <= svgRect.bottom
       ) {
-        element.classList.remove("hidden");
+        element.classList.remove(CS.hidden);
       } else {
-        element.classList.add("hidden");
+        element.classList.add(CS.hidden);
       }
     }
   }

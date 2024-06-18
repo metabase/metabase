@@ -5,11 +5,11 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Metabase version (e.g. v0.46.3)'
+        description: "Metabase version (e.g. v0.46.3)"
         type: string
         required: true
       commit:
-        description: 'A full-length commit SHA-1 hash'
+        description: "A full-length commit SHA-1 hash"
         required: true
 
 jobs:
@@ -91,26 +91,26 @@ jobs:
         edition: [oss, ee]
         java-version: [11, 17]
     steps:
-    - name: Prepare JRE (Java Run-time Environment)
-      uses: actions/setup-java@v4
-      with:
-        java-package: jre
-        java-version: ${{ matrix.java-version }}
-        distribution: 'temurin'
-    - run: java -version
-    - uses: actions/download-artifact@v4
-      name: Retrieve uberjar artifact
-      with:
-        name: metabase-${{ matrix.edition }}-uberjar
-    - name: Launch uberjar (and keep it running)
-      run: java -jar ./metabase.jar &
-    - name: Wait for Metabase to start
-      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      - name: Prepare JRE (Java Run-time Environment)
+        uses: actions/setup-java@v4
+        with:
+          java-package: jre
+          java-version: ${{ matrix.java-version }}
+          distribution: "temurin"
+      - run: java -version
+      - uses: actions/download-artifact@v4
+        name: Retrieve uberjar artifact
+        with:
+          name: metabase-${{ matrix.edition }}-uberjar
+      - name: Launch uberjar (and keep it running)
+        run: java -jar ./metabase.jar &
+      - name: Wait for Metabase to start
+        run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
   run-sanity-check:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
-    needs: [release-artifact, check-uberjar-health]
+    needs: [release-artifact]
     strategy:
       matrix:
         edition: [oss, ee]
@@ -119,59 +119,63 @@ jobs:
       DISPLAY: ""
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+      CYPRESS_REPLAYIO_ENABLED: 1
+      # disabled because of out of memory issues
+      # probably related to https://github.com/cypress-io/cypress/issues/27415
+      CYPRESS_NO_COMMAND_LOG: 1
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       TERM: xterm
-    services:
-      maildev:
-        image: maildev/maildev:2.0.5
-        ports:
-          - "1080:1080"
-          - "1025:1025"
-        credentials:
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-artifact.outputs.commit }}
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-    steps:
-    - name: Check out the code
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ needs.release-artifact.outputs.commit }}
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare JDK 11
-      uses: actions/setup-java@v4
-      with:
-        java-version: 11
-        distribution: "temurin"
-    - name: Prepare Cypress environment
-      uses: ./.github/actions/prepare-cypress
-    - name: Run Snowplow micro
-      uses: ./.github/actions/run-snowplow-micro
-    - uses: actions/download-artifact@v4
-      name: Retrieve uberjar artifact for ${{ matrix.edition }}
-      with:
-        name: metabase-${{ matrix.edition }}-uberjar
-    - name: Get the version info
-      run: |
-        jar xf metabase.jar version.properties
-        mv version.properties resources/
-    - name: Run a few important Cypress tests as sanity check
-      run: |
-        mkdir -p ./target/uberjar && cp metabase.jar ./target/uberjar/metabase.jar
-        yarn test-cypress-run --folder onboarding
+          maildev: true
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare JDK 11
+        uses: actions/setup-java@v4
+        with:
+          java-version: 11
+          distribution: "temurin"
+      - name: Prepare Cypress environment
+        uses: ./.github/actions/prepare-cypress
+      - name: Run Snowplow micro
+        uses: ./.github/actions/run-snowplow-micro
+      - uses: actions/download-artifact@v4
+        name: Retrieve uberjar artifact for ${{ matrix.edition }}
+        with:
+          name: metabase-${{ matrix.edition }}-uberjar
+      - name: Get the version info
+        run: |
+          jar xf metabase.jar version.properties
+          mv version.properties resources/
+      - name: Run a few important Cypress tests as sanity check
+        run: |
+          mkdir -p ./target/uberjar && cp metabase.jar ./target/uberjar/metabase.jar
+          yarn test-cypress-run \
+            --env grepTags="@smoke",grepOmitFiltered=true \
+            --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
+            --browser 'replay-chromium'
 
-    - name: Upload Cypress Artifacts upon failure
-      uses: actions/upload-artifact@v4
-      if: failure()
-      with:
-        name: cypress-failed-tests-recording
-        path: |
-          ./cypress
-          ./logs/test.log
-        if-no-files-found: ignore
+      - name: Upload Cypress Artifacts upon failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-failed-tests-recording
+          path: |
+            ./cypress
+            ./logs/test.log
+          if-no-files-found: ignore
 
   containerize:
-    needs: [release-artifact, run-sanity-check]
+    needs: [release-artifact]
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     strategy:
@@ -185,71 +189,71 @@ jobs:
     outputs:
       image_tag: ${{ steps.target.outputs.image_tag }}
     steps:
-    - name: Get the version
-      run: |
-        if [[ "${{ matrix.edition }}" == "ee" ]]; then
-          echo "VERSION=${{ needs.release-artifact.outputs.ee_version }}" >> $GITHUB_ENV
-        else
-          echo "VERSION=${{ needs.release-artifact.outputs.oss_version }}" >> $GITHUB_ENV
-        fi
-    - name: Check out the code
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ needs.release-artifact.outputs.commit }}
-    - uses: actions/download-artifact@v4
-      name: Retrieve uberjar artifact
-      with:
-        name: metabase-${{ matrix.edition }}-uberjar
-    - name: Move the Uberjar to the context dir
-      run: mv metabase.jar bin/docker/.
-    - name: Set up Docker Buildx
-      id: buildx
-      uses: docker/setup-buildx-action@v2
-      with:
-        driver-opts: network=host
-    - name: Build ${{ matrix.edition }} container
-      uses: docker/build-push-action@v3
-      with:
-        context: bin/docker/.
-        platforms: linux/amd64
-        network: host
-        tags: localhost:5000/local-metabase:${{ env.VERSION }}
-        no-cache: true
-        push: true
+      - name: Get the version
+        run: |
+          if [[ "${{ matrix.edition }}" == "ee" ]]; then
+            echo "VERSION=${{ needs.release-artifact.outputs.ee_version }}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${{ needs.release-artifact.outputs.oss_version }}" >> $GITHUB_ENV
+          fi
+      - name: Check out the code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-artifact.outputs.commit }}
+      - uses: actions/download-artifact@v4
+        name: Retrieve uberjar artifact
+        with:
+          name: metabase-${{ matrix.edition }}-uberjar
+      - name: Move the Uberjar to the context dir
+        run: mv metabase.jar bin/docker/.
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          driver-opts: network=host
+      - name: Build ${{ matrix.edition }} container
+        uses: docker/build-push-action@v3
+        with:
+          context: bin/docker/.
+          platforms: linux/amd64
+          network: host
+          tags: localhost:5000/local-metabase:${{ env.VERSION }}
+          no-cache: true
+          push: true
 
-    - name: Launch container
-      run: docker run --rm -dp 3000:3000 localhost:5000/local-metabase:${{ env.VERSION }}
-      timeout-minutes: 5
-    - name: Wait for Metabase to start
-      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-      timeout-minutes: 3
+      - name: Launch container
+        run: docker run --rm -dp 3000:3000 localhost:5000/local-metabase:${{ env.VERSION }}
+        timeout-minutes: 5
+      - name: Wait for Metabase to start
+        run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+        timeout-minutes: 3
 
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
-    - name: Retag and push container image to ${{ vars.DOCKERHUB_OWNER }} staging Docker Hub repo
-      id: target
-      run: |
-        # SHA-1 truncated to 7 digits should be enough
-        SHORT_HASH=${COMMIT:0:7}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
+      - name: Retag and push container image to ${{ vars.DOCKERHUB_OWNER }} staging Docker Hub repo
+        id: target
+        run: |
+          # SHA-1 truncated to 7 digits should be enough
+          SHORT_HASH=${COMMIT:0:7}
 
-        IMAGE_TAG=$VERSION-$SHORT_HASH
-        CONTAINER_IMAGE=${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}:$IMAGE_TAG
+          IMAGE_TAG=$VERSION-$SHORT_HASH
+          CONTAINER_IMAGE=${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}:$IMAGE_TAG
 
-        echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-        echo "Retag local image for staging"
-        docker tag localhost:5000/local-metabase:$VERSION $CONTAINER_IMAGE
+          echo "Retag local image for staging"
+          docker tag localhost:5000/local-metabase:$VERSION $CONTAINER_IMAGE
 
-        echo "Pushing container image $CONTAINER_IMAGE ..."
-        docker push $CONTAINER_IMAGE
+          echo "Pushing container image $CONTAINER_IMAGE ..."
+          docker push $CONTAINER_IMAGE
 
-        echo "Finished!"
-      shell: bash
-      env:
-        COMMIT: ${{ needs.release-artifact.outputs.commit }}
+          echo "Finished!"
+        shell: bash
+        env:
+          COMMIT: ${{ needs.release-artifact.outputs.commit }}
 
   verify-docker-pull:
     runs-on: ubuntu-22.04
@@ -261,22 +265,56 @@ jobs:
     env:
       IMAGE_TAG: ${{ needs.containerize.outputs.image_tag }}
     steps:
-    - name: Login to Docker Hub # authenticated, to avoid being rate-throttled
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
-    - name: Pull the container image
-      run: |
-        CONTAINER_IMAGE=${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}:$IMAGE_TAG
-        echo "Pulling container image $CONTAINER_IMAGE ..."
-        docker pull $CONTAINER_IMAGE
-        echo "Successful!"
-    - name: Launch container
-      run: |
-        CONTAINER_IMAGE=${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}:$IMAGE_TAG
-        docker run --rm -dp 3000:3000 $CONTAINER_IMAGE
-      timeout-minutes: 5
-    - name: Wait for Metabase to start
-      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-      timeout-minutes: 3
+      - name: Login to Docker Hub # authenticated, to avoid being rate-throttled
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
+      - name: Pull the container image
+        run: |
+          CONTAINER_IMAGE=${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}:$IMAGE_TAG
+          echo "Pulling container image $CONTAINER_IMAGE ..."
+          docker pull $CONTAINER_IMAGE
+          echo "Successful!"
+      - name: Launch container
+        run: |
+          CONTAINER_IMAGE=${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}:$IMAGE_TAG
+          docker run --rm -dp 3000:3000 $CONTAINER_IMAGE
+        timeout-minutes: 5
+      - name: Wait for Metabase to start
+        run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+        timeout-minutes: 3
+
+  tests-complete-message:
+    if: always()
+    runs-on: ubuntu-22.04
+    needs: [run-sanity-check, check-uberjar-health, verify-docker-pull]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Send tests complete message
+        uses: actions/github-script@v7
+        env:
+          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendTestsCompleteMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const allJobsSuccessful =
+              '${{ needs.run-sanity-check.result }}' === 'success' &&
+              '${{ needs.check-uberjar-health.result }}' === 'success' &&
+              '${{ needs.verify-docker-pull.result }}' === 'success';
+
+            await sendTestsCompleteMessage({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              version: '${{ inputs.version }}',
+              runId: '${{ github.run_id }}',
+              channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+              testStatus: allJobsSuccessful ? 'success' : 'failure',
+            }).catch(console.error);

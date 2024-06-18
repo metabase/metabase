@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupDatabasesEndpoints,
   setupModelActionsEndpoints,
@@ -17,7 +18,10 @@ import type {
   StructuredDatasetQuery,
   WritebackQueryAction,
 } from "metabase-types/api";
-import { createMockQueryAction } from "metabase-types/api/mocks";
+import {
+  createMockCardQueryMetadata,
+  createMockQueryAction,
+} from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   createStructuredModelCard,
@@ -34,16 +38,20 @@ const TEST_ACTION = createMockQueryAction({ model_id: TEST_MODEL.id });
 async function setup({
   model = TEST_MODEL,
   actions = [TEST_ACTION],
-  databases = [TEST_DATABASE_WITH_ACTIONS],
+  database = TEST_DATABASE_WITH_ACTIONS,
   initialRoute = `/model/${TEST_MODEL.id}/detail/actions/${TEST_ACTION.id}`,
 }: {
   model?: Card<StructuredDatasetQuery>;
   actions?: WritebackQueryAction[];
-  databases?: Database[];
+  database?: Database;
   initialRoute?: string;
 }) {
-  setupDatabasesEndpoints(databases);
+  setupDatabasesEndpoints([database]);
   setupCardsEndpoints([model]);
+  setupCardQueryMetadataEndpoint(
+    model,
+    createMockCardQueryMetadata({ databases: [database] }),
+  );
   setupModelActionsEndpoints(actions, model.id);
 
   renderWithProviders(getModelRoutes(), {
@@ -58,7 +66,7 @@ describe("ModelActionDetails", () => {
   it("should not leave ActionCreatorModal when clicking outside modal", async () => {
     await setup({});
 
-    userEvent.click(document.body);
+    await userEvent.click(document.body);
 
     const mockQueryEditor = await screen.findByTestId(
       "mock-native-query-editor",
@@ -70,7 +78,7 @@ describe("ModelActionDetails", () => {
   it("should leave ActionCreatorModal when clicking 'Cancel'", async () => {
     await setup({});
 
-    (await screen.findByText("Cancel")).click();
+    await userEvent.click(await screen.findByText("Cancel"));
 
     expect(
       screen.queryByTestId("mock-native-query-editor"),

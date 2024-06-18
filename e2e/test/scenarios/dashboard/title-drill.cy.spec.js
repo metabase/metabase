@@ -1,15 +1,18 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
   filterWidget,
   popover,
+  queryBuilderMain,
+  restore,
   visitDashboard,
   addOrUpdateDashboardCard,
   getDashboardCard,
   appBar,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > title drill", () => {
   describe("on a native question without connected dashboard parameters", () => {
@@ -28,7 +31,8 @@ describe("scenarios > dashboard > title drill", () => {
       };
 
       cy.createNativeQuestionAndDashboard({ questionDetails }).then(
-        ({ body: { dashboard_id } }) => {
+        ({ body: { dashboard_id }, questionId }) => {
+          cy.wrap(questionId).as("questionId");
           visitDashboard(dashboard_id);
         },
       );
@@ -36,22 +40,23 @@ describe("scenarios > dashboard > title drill", () => {
 
     describe("as a user with access to underlying data", () => {
       it("should let you click through the title to the query builder (metabase#13042)", () => {
-        // wait for qustion to load
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("foo");
+        cy.get("@questionId").then(questionId => {
+          cy.findByTestId("loading-spinner").should("not.exist");
 
-        // drill through title
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Q1").click();
+          getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
+          cy.get("@title")
+            .should("have.attr", "href")
+            .and("include", `/question/${questionId}`);
+          cy.get("@title").click();
 
-        // check that we're in the QB now
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("This question is written in SQL.");
+          queryBuilderMain().within(() => {
+            cy.findByText("This question is written in SQL.").should("exist");
+            cy.findByText("foo").should("exist");
+            cy.findByText("bar").should("exist");
+          });
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("foo");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("bar");
+          cy.location("pathname").should("eq", `/question/${questionId}-q1`);
+        });
       });
     });
 
@@ -62,22 +67,23 @@ describe("scenarios > dashboard > title drill", () => {
       });
 
       it("should let you click through the title to the query builder (metabase#13042)", () => {
-        // wait for qustion to load
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("foo");
+        cy.get("@questionId").then(questionId => {
+          cy.findByTestId("loading-spinner").should("not.exist");
 
-        // drill through title
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Q1").click();
+          getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
+          cy.get("@title")
+            .should("have.attr", "href")
+            .and("include", `/question/${questionId}`);
+          cy.get("@title").click();
 
-        // check that we're in the QB now
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("This question is written in SQL.");
+          queryBuilderMain().within(() => {
+            cy.findByText("This question is written in SQL.").should("exist");
+            cy.findByText("foo").should("exist");
+            cy.findByText("bar").should("exist");
+          });
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("foo");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("bar");
+          cy.location("pathname").should("eq", `/question/${questionId}-q1`);
+        });
       });
     });
   });
@@ -224,8 +230,10 @@ describe("scenarios > dashboard > title drill", () => {
       cy.signInAsAdmin();
 
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-        ({ body: dashboardCard }) => {
+        ({ body: dashboardCard, questionId }) => {
           const { card_id, dashboard_id } = dashboardCard;
+
+          cy.wrap(questionId).as("questionId");
 
           const mapFiltersToCard = {
             parameter_mappings: [
@@ -259,20 +267,24 @@ describe("scenarios > dashboard > title drill", () => {
         cy.wait("@cardQuery");
 
         // make sure query results are correct
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("42");
+        getDashboardCard().findByText("42");
 
-        // drill through title
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("GUI Question").click();
+        getDashboardCard()
+          .findByRole("link", { name: "GUI Question" })
+          .as("title");
+        cy.get("@title")
+          .should("have.attr", "href")
+          .and("include", "/question#");
+        cy.get("@title").click();
 
         // make sure the query builder filter is present
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Category is Doohickey");
+        cy.findByTestId("qb-filters-panel")
+          .findByText("Category is Doohickey")
+          .should("exist");
 
         // make sure the results match
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("42");
+        queryBuilderMain().findByText("42").should("exist");
+        cy.location("href").should("include", "/question#");
       });
     });
 
@@ -286,21 +298,29 @@ describe("scenarios > dashboard > title drill", () => {
         cy.wait("@cardQuery");
 
         // make sure query results are correct
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("42");
+        getDashboardCard().findByText("42").should("exist");
 
-        // drill through title
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("GUI Question").click();
+        getDashboardCard()
+          .findByRole("link", { name: "GUI Question" })
+          .as("title");
+        cy.get("@title")
+          .should("have.attr", "href")
+          .and("include", "/question?category=Doohickey&id=#");
+        cy.get("@title").click();
 
         // make sure the results match
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("42");
+        queryBuilderMain().findByText("42").should("exist");
+        cy.get("@questionId").then(questionId => {
+          cy.location("href").should(
+            "include",
+            `/question/${questionId}-gui-question?category=Doohickey&id=#`,
+          );
+        });
 
         // update the parameter filter to a new value
         filterWidget().contains("Doohickey").click();
         popover().within(() => {
-          cy.get("input").type("{backspace}Gadget{enter}");
+          multiAutocompleteInput().type("{backspace}Gadget,");
           cy.findByText("Update filter").click();
         });
 
@@ -309,20 +329,18 @@ describe("scenarios > dashboard > title drill", () => {
         cy.wait("@cardQuery");
 
         // make sure the results reflect the new filter
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("53");
+        queryBuilderMain().findByText("53").should("exist");
 
         // make sure the set parameter filter persists after a page refresh
         cy.reload();
         cy.wait("@cardQuery");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("53");
+        queryBuilderMain().findByText("53").should("exist");
 
         // make sure the unset id parameter works
         filterWidget().last().click();
         popover().within(() => {
-          cy.get("input").type("5{enter}");
+          multiAutocompleteInput().type("5");
           cy.findByText("Add filter").click();
         });
 
@@ -330,8 +348,7 @@ describe("scenarios > dashboard > title drill", () => {
         cy.findAllByTestId("run-button").first().click();
         cy.wait("@cardQuery");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("1");
+        queryBuilderMain().findByText("1").should("exist");
       });
     });
   });
@@ -403,7 +420,11 @@ describe("scenarios > dashboard > title drill", () => {
       const productRecordId = 3;
       visitDashboard("@dashboardId", { params: { id: productRecordId } });
 
-      getDashboardCard().findByText(baseNestedQuestionDetails.name).click();
+      getDashboardCard()
+        .findByRole("link", { name: baseNestedQuestionDetails.name })
+        .as("title");
+      cy.get("@title").should("have.attr", "href").and("include", "/question#");
+      cy.get("@title").click();
 
       appBar()
         .contains(`Started from ${baseNestedQuestionDetails.name}`)
@@ -413,6 +434,92 @@ describe("scenarios > dashboard > title drill", () => {
         .should("be.visible");
 
       cy.findByTestId("object-detail").should("not.exist");
+      cy.location("href").should("include", "/question#");
+    });
+  });
+
+  describe("on various charts", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+    });
+
+    it("titles are actual HTML anchors", () => {
+      cy.createDashboardWithQuestions({
+        dashboardName: "Dashboard with aggregated Q2",
+        questions: [
+          {
+            name: "Line chart",
+            display: "line",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+              ],
+              limit: 5,
+            },
+          },
+          {
+            name: "Row chart",
+            display: "row",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+              ],
+              limit: 5,
+            },
+          },
+          {
+            name: "Map chart",
+            display: "map",
+            query: {
+              "source-table": PEOPLE_ID,
+              limit: 5,
+            },
+          },
+          {
+            name: "Funnel chart",
+            display: "funnel",
+            query: {
+              "source-table": PEOPLE_ID,
+              aggregation: [["count"]],
+              breakout: [["field", PEOPLE.SOURCE]],
+              limit: 5,
+            },
+          },
+        ],
+        cards: [
+          { row: 0, col: 0, size_x: 6, size_y: 6 },
+          { row: 0, col: 6, size_x: 6, size_y: 6 },
+          { row: 6, col: 0, size_x: 6, size_y: 6 },
+          { row: 6, col: 6, size_x: 6, size_y: 6 },
+        ],
+      }).then(({ dashboard, questions }) => {
+        visitDashboard(dashboard.id);
+
+        getDashboardCard(0)
+          .findByRole("link", { name: "Line chart" })
+          .should("have.attr", "href")
+          .and("eq", `/question/${questions[0].id}-line-chart`);
+
+        getDashboardCard(1)
+          .findByRole("link", { name: "Row chart" })
+          .should("have.attr", "href")
+          .and("eq", `/question/${questions[1].id}-row-chart`);
+
+        getDashboardCard(2)
+          .findByRole("link", { name: "Map chart" })
+          .should("have.attr", "href")
+          .and("eq", `/question/${questions[2].id}-map-chart`);
+
+        getDashboardCard(3)
+          .findByRole("link", { name: "Funnel chart" })
+          .should("have.attr", "href")
+          .and("eq", `/question/${questions[3].id}-funnel-chart`);
+      });
     });
   });
 });

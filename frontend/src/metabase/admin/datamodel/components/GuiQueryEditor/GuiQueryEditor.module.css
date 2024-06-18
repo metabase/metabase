@@ -23,11 +23,11 @@
 /* create a slightly larger arrow on the right for border purposes */
 .arrowRight::before {
   right: -20px;
-  border-left-color: var(--color-border);
+  border-left-color: var(--mb-color-border);
 }
 
 /* create a smaller inset arrow on the right */
 .arrowRight::after {
   right: -19px;
-  border-left-color: var(--color-white);
+  border-left-color: var(--mb-color-bg-white);
 }

@@ -5,7 +5,7 @@ import TabLink from "metabase/core/components/TabLink";
 import * as Urls from "metabase/lib/urls";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { Collection } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
 import ModelActionDetails from "./ModelActionDetails";
 import ModelDetailHeader from "./ModelDetailHeader";
@@ -18,7 +18,7 @@ import {
 } from "./ModelDetailPage.styled";
 import ModelInfoSidePanel from "./ModelInfoSidePanel";
 import ModelSchemaDetails from "./ModelSchemaDetails";
-import ModelUsageDetails from "./ModelUsageDetails";
+import { ModelUsageDetails } from "./ModelUsageDetails";
 
 interface Props {
   model: Question;
@@ -30,7 +30,7 @@ interface Props {
   supportsNestedQueries: boolean;
   onChangeName: (name?: string) => void;
   onChangeDescription: (description?: string | null) => void;
-  onChangeCollection: (collection: Collection) => void;
+  onChangeCollection: ({ id }: { id: CollectionId }) => void;
 }
 
 function ModelDetailPage({

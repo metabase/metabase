@@ -1,44 +1,88 @@
 import _ from "underscore";
 
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  describeWithSnowplow,
   enterCustomColumnDetails,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
   getNotebookStep,
   openNotebook,
   openOrdersTable,
+  openPeopleTable,
   popover,
+  resetSnowplow,
   restore,
+  tableHeaderClick,
   visitQuestion,
   visualize,
 } from "e2e/support/helpers";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
 const DATE_CASES = [
   {
     option: "Hour of day",
     value: "21",
+    example: "0, 1",
   },
   {
     option: "Day of month",
     value: "11",
+    example: "1, 2",
   },
   {
     option: "Day of week",
     value: "Tuesday",
+    example: "Monday, Tuesday",
   },
   {
     option: "Month of year",
     value: "Feb",
+    example: "Jan, Feb",
   },
   {
     option: "Quarter of year",
     value: "Q1",
+    example: "Q1, Q2",
   },
   {
     option: "Year",
     value: "2,025",
+    example: "2023, 2024",
+  },
+];
+
+const EMAIL_CASES = [
+  {
+    option: "Domain",
+    value: "yahoo",
+    example: "example, online",
+  },
+  {
+    option: "Host",
+    value: "yahoo.com",
+    example: "example.com, online.com",
+  },
+];
+
+const URL_CASES = [
+  {
+    option: "Domain",
+    value: "yahoo",
+    example: "example, online",
+  },
+  {
+    option: "Subdomain",
+    value: "",
+    example: "www, maps",
+  },
+  {
+    option: "Host",
+    value: "yahoo.com",
+    example: "example.com, online.com",
   },
 ];
 
@@ -59,7 +103,7 @@ const DATE_QUESTION = {
   },
 };
 
-describe("extract action", () => {
+describeWithSnowplow("extract action", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -67,13 +111,15 @@ describe("extract action", () => {
 
   describe("date columns", () => {
     describe("should add a date expression for each option", () => {
-      DATE_CASES.forEach(({ option, value }) => {
+      DATE_CASES.forEach(({ option, value, example }) => {
         it(option, () => {
           openOrdersTable({ limit: 1 });
           extractColumnAndCheck({
             column: "Created At",
             option,
             value,
+            example,
+            extraction: "Extract day, month…",
           });
         });
       });
@@ -85,15 +131,7 @@ describe("extract action", () => {
         extractColumnAndCheck({
           column: "Created At",
           option: "Year",
-        });
-        const columnIndex = 7;
-        checkColumnIndex({
-          column: "Created At",
-          columnIndex,
-        });
-        checkColumnIndex({
-          column: "Year",
-          columnIndex: columnIndex + 1,
+          extraction: "Extract day, month…",
         });
       });
 
@@ -102,15 +140,7 @@ describe("extract action", () => {
         extractColumnAndCheck({
           column: "Created At",
           option: "Year",
-        });
-        const columnIndex = 7;
-        checkColumnIndex({
-          column: "Created At",
-          columnIndex,
-        });
-        checkColumnIndex({
-          column: "Year",
-          columnIndex: columnIndex + 1,
+          extraction: "Extract day, month…",
         });
       });
 
@@ -156,15 +186,7 @@ describe("extract action", () => {
         extractColumnAndCheck({
           column: "Created At",
           option: "Year",
-        });
-        const columnIndex = 1;
-        checkColumnIndex({
-          column: "Created At",
-          columnIndex,
-        });
-        checkColumnIndex({
-          column: "Year",
-          columnIndex: columnIndex + 1,
+          extraction: "Extract day, month…",
         });
       });
     });
@@ -175,6 +197,7 @@ describe("extract action", () => {
         column: "Created At: Month",
         option: "Month of year",
         value: "Apr",
+        extraction: "Extract day, month…",
       });
     });
 
@@ -184,6 +207,7 @@ describe("extract action", () => {
         column: "Min of Created At: Default",
         option: "Year",
         value: "2,022",
+        extraction: "Extract day, month…",
       });
     });
 
@@ -193,11 +217,13 @@ describe("extract action", () => {
         column: "Created At",
         option: "Hour of day",
         newColumn: "Hour of day",
+        extraction: "Extract day, month…",
       });
       extractColumnAndCheck({
         column: "Created At",
         option: "Hour of day",
         newColumn: "Hour of day_2",
+        extraction: "Extract day, month…",
       });
     });
 
@@ -207,10 +233,11 @@ describe("extract action", () => {
         column: "Created At",
         option: "Year",
         value: "2,025",
+        extraction: "Extract day, month…",
       });
       openNotebook();
       getNotebookStep("expression").findByText("Year").click();
-      enterCustomColumnDetails({ formula: "+ 2" });
+      enterCustomColumnDetails({ formula: "year([Created At]) + 2" });
       popover().button("Update").click();
       visualize();
       cy.findByRole("gridcell", { name: "2,027" }).should("be.visible");
@@ -225,25 +252,117 @@ describe("extract action", () => {
         column: "Created At",
         option: "Tag der Woche",
         value: "Dienstag",
+        extraction: "Extract day, month…",
+      });
+    });
+  });
+
+  describe("email columns", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+    });
+
+    EMAIL_CASES.forEach(({ option, value, example }) => {
+      it(option, () => {
+        openPeopleTable({ limit: 1 });
+        extractColumnAndCheck({
+          column: "Email",
+          option,
+          value,
+          example,
+          extraction: "Extract domain, host…",
+        });
+      });
+    });
+  });
+
+  describe("url columns", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+
+      // Make the Email column a URL column for these tests, to avoid having to create a new model
+      cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
+        semantic_type: "type/URL",
+      });
+    });
+
+    URL_CASES.forEach(({ option, value, example }) => {
+      it(option, () => {
+        openPeopleTable({ limit: 1 });
+
+        extractColumnAndCheck({
+          column: "Email",
+          option,
+          value,
+          example,
+          extraction: "Extract domain, subdomain…",
+        });
       });
     });
   });
 });
 
-function extractColumnAndCheck({ column, option, newColumn = option, value }) {
+function extractColumnAndCheck({
+  column,
+  option,
+  newColumn = option,
+  extraction,
+  value,
+  example,
+}) {
   const requestAlias = _.uniqueId("dataset");
   cy.intercept("POST", "/api/dataset").as(requestAlias);
-  cy.findByRole("columnheader", { name: column }).click();
-  popover().findByText("Extract day, month…").click();
+  tableHeaderClick(column);
+  // cy.findByRole("columnheader", { name: column }).click();
+  popover().findByText(extraction).click();
+  cy.wait(1);
+
+  if (example) {
+    popover().findByText(option).should("contain", example);
+  }
+
   popover().findByText(option).click();
   cy.wait(`@${requestAlias}`);
 
-  cy.findByRole("columnheader", { name: newColumn }).should("be.visible");
+  cy.findAllByRole("columnheader")
+    .last()
+    .should("have.text", newColumn)
+    .should("be.visible");
+
   if (value) {
     cy.findByRole("gridcell", { name: value }).should("be.visible");
   }
 }
 
-function checkColumnIndex({ column, columnIndex }) {
-  cy.findAllByRole("columnheader").eq(columnIndex).should("have.text", column);
-}
+describeWithSnowplow("extract action", () => {
+  beforeEach(() => {
+    restore();
+    resetSnowplow();
+    cy.signInAsAdmin();
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
+  it("should create a snowplow event for the column extraction action", () => {
+    openOrdersTable({ limit: 1 });
+
+    cy.wait(1);
+
+    extractColumnAndCheck({
+      column: "Created At",
+      option: "Year",
+      value: "2,025",
+      extraction: "Extract day, month…",
+    });
+
+    expectGoodSnowplowEvent({
+      event: "column_extract_via_column_header",
+      custom_expressions_used: ["get-year"],
+      database_id: SAMPLE_DB_ID,
+    });
+  });
+});

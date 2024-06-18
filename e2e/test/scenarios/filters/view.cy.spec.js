@@ -133,7 +133,7 @@ describe("scenarios > question > view", () => {
       });
       cy.findAllByTestId("run-button").last().click();
 
-      cy.get(".TableInteractive-cellWrapper--firstColumn").should(
+      cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
         "have.length",
         2,
       );

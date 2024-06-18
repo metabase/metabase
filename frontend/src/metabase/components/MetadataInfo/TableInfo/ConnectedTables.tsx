@@ -29,7 +29,7 @@ function ConnectedTables({ table, onConnectedTableClick }: Props) {
       <LabelContainer color="text-dark">
         <Label>{t`Connected to these tables`}</Label>
       </LabelContainer>
-      {fkTables.map(fkTable => {
+      {fkTables.slice(0, 8).map(fkTable => {
         return onConnectedTableClick ? (
           <ConnectedTableButton
             key={fkTable.id}

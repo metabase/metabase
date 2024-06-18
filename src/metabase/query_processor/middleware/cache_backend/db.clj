@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.cache-backend.db
   (:require
-   [clojure.math :as math]
    [java-time.api :as t]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
@@ -8,7 +7,6 @@
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.connection :as t2.connection]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
@@ -18,11 +16,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- ms-ago [n]
+  (u.date/add (t/offset-date-time) :millisecond (- n)))
+
 (defn- seconds-ago [n]
-  (let [[unit n] (if-not (integer? n)
-                   [:millisecond (long (* 1000 n))]
-                   [:second n])]
-    (u.date/add (t/offset-date-time) unit (- n))))
+  (ms-ago (long (* 1000 n))))
 
 (def ^:private ^{:arglists '([])} cached-results-query-sql
   ;; this is memoized for a given application DB so we can deliver cached results EXTRA FAST and not have to spend an
@@ -64,14 +62,14 @@
   ^PreparedStatement [strategy query-hash ^Connection conn]
   (if-not (:avg-execution-ms strategy)
     (log/debugf "Caching strategy %s needs :avg-execution-ms to work" (pr-str strategy))
-    (let [max-age-seconds (math/round (/ (* (:multiplier strategy)
-                                            (:avg-execution-ms strategy))
-                                         1000.0))]
-      (prepare-statement conn query-hash (seconds-ago max-age-seconds)))))
+    (let [max-age-ms     (* (:multiplier strategy)
+                        (:avg-execution-ms strategy))
+          invalidated-at (t/max (ms-ago max-age-ms) (:invalidated-at strategy))]
+      (prepare-statement conn query-hash invalidated-at))))
 
 (defenterprise fetch-cache-stmt
   "Returns prepared statement for a given strategy and query hash - on EE. Returns `::oss` on OSS."
-  metabase-enterprise.caching.strategies
+  metabase-enterprise.cache.strategies
   [strategy hash conn]
   (when (= :ttl (:type strategy))
     (fetch-cache-stmt-ttl strategy hash conn)))
@@ -94,7 +92,7 @@
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."
   [max-age-seconds]
   {:pre [(number? max-age-seconds)]}
-  (log/tracef "Purging old cache entries.")
+  (log/trace "Purging old cache entries.")
   (try
     (t2/delete! (t2/table-name QueryCache)
                 :updated_at [:<= (seconds-ago max-age-seconds)])
@@ -116,7 +114,7 @@
                                                :query_hash query-hash
                                                :results    results)))
     (catch Throwable e
-      (log/error e (trs "Error saving query results to cache."))))
+      (log/error e "Error saving query results to cache.")))
   nil)
 
 (defmethod i/cache-backend :db

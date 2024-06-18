@@ -19,8 +19,7 @@ const MIN_LEGEND_WIDTH = 400;
 
 const propTypes = {
   className: PropTypes.string,
-  labels: PropTypes.array.isRequired,
-  colors: PropTypes.array.isRequired,
+  items: PropTypes.array.isRequired,
   hovered: PropTypes.object,
   width: PropTypes.number,
   height: PropTypes.number,
@@ -38,8 +37,7 @@ const propTypes = {
 
 const LegendLayout = ({
   className,
-  labels,
-  colors,
+  items,
   hovered,
   width = 0,
   height = 0,
@@ -54,16 +52,17 @@ const LegendLayout = ({
   isReversed,
   canRemoveSeries,
 }) => {
+  const hasDimensions = width != null && height != null;
   const itemHeight = !isFullscreen ? MIN_ITEM_HEIGHT : MIN_ITEM_HEIGHT_LARGE;
   const maxXItems = Math.floor(width / MIN_ITEM_WIDTH);
   const maxYItems = Math.floor(height / itemHeight);
   const maxYLabels = Math.max(maxYItems - 1, 0);
-  const minYLabels = labels.length > maxYItems ? maxYLabels : labels.length;
+  const minYLabels = items.length > maxYItems ? maxYLabels : items.length;
 
   const isNarrow = width < MIN_LEGEND_WIDTH;
-  const isVertical = maxXItems < labels.length;
+  const isVertical = maxXItems < items.length;
   const isVisible = hasLegend && !(isVertical && isNarrow);
-  const visibleLength = isVertical ? minYLabels : labels.length;
+  const visibleLength = isVertical ? minYLabels : items.length;
 
   return (
     <LegendLayoutRoot className={className} isVertical={isVertical}>
@@ -73,8 +72,7 @@ const LegendLayout = ({
           isQueryBuilder={isQueryBuilder}
         >
           <Legend
-            labels={labels}
-            colors={colors}
+            items={items}
             hovered={hovered}
             visibleLength={visibleLength}
             isVertical={isVertical}
@@ -93,7 +91,7 @@ const LegendLayout = ({
         {isVertical && actionButtons && (
           <LegendActions>{actionButtons}</LegendActions>
         )}
-        <ChartContainer>{children}</ChartContainer>
+        {hasDimensions && <ChartContainer>{children}</ChartContainer>}
       </MainContainer>
     </LegendLayoutRoot>
   );

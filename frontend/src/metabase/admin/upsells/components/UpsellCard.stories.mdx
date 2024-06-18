@@ -1,0 +1,71 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { ReduxProvider } from "__support__/storybook";
+import { _UpsellCard } from "./UpsellCard";
+
+export const args = {
+  title: "Ice Cream",
+  buttonText: "Get Some",
+  buttonLink: "https://www.metabase.com",
+  campaign: "ice-cream",
+  source: "ice-cream-page-footer",
+  illustrationSrc: "https://i.imgur.com/789Q56R.png",
+  children: "You wouldn't believe how great this stuff is.",
+};
+
+export const argTypes = {
+  children: {
+    control: { type: "text" },
+  },
+  buttonText: {
+    control: { type: "text" },
+  },
+  buttonLink: {
+    control: { type: "text" },
+  },
+  illustrationSrc: {
+    control: { type: "text" },
+  },
+  campaign: {
+    control: { type: "text" },
+  },
+  source: {
+    control: { type: "text" },
+  },
+  children: {
+    control: { type: "text" },
+  }
+};
+
+<Meta
+  title="Upsells/Card"
+  component={_UpsellCard}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# Upsell Card
+
+- Use as a small, visible upsell, with or without an image
+
+## Examples
+
+export const DefaultTemplate = (args) => (
+  <ReduxProvider>
+    <Flex justify="center">
+      <_UpsellCard {...args} />
+    </Flex>
+  </ReduxProvider>
+);
+
+export const WithImage = DefaultTemplate.bind({});
+
+export const WithoutImage = DefaultTemplate.bind({});
+WithoutImage.args = { ...args, illustrationSrc: null};
+
+<Canvas>
+  <Story name="With Image">{WithImage}</Story>
+</Canvas>
+
+<Canvas>
+  <Story name="Without Image">{WithoutImage}</Story>
+</Canvas>

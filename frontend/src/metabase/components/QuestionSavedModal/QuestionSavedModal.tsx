@@ -18,7 +18,6 @@ const QuestionSavedModal = ({
       id="QuestionSavedModal"
       title={t`Saved! Add this to a dashboard?`}
       onClose={onClose}
-      className="Modal-content Modal-content--small"
     >
       <div>
         <button

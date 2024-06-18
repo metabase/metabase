@@ -32,12 +32,12 @@
   "Fetch alerts which the current user has created or will receive, or all alerts if the user is an admin.
   The optional `user_id` will return alerts created by the corresponding user, but is ignored for non-admin users."
   [archived user_id]
-  {archived [:maybe ms/BooleanString]
+  {archived [:maybe ms/BooleanValue]
    user_id  [:maybe ms/PositiveInt]}
   (let [user-id (if api/*is-superuser?*
                   user_id
                   api/*current-user-id*)]
-    (as-> (pulse/retrieve-alerts {:archived? (Boolean/parseBoolean archived)
+    (as-> (pulse/retrieve-alerts {:archived? archived
                                   :user-id   user-id}) <>
       (filter mi/can-read? <>)
       (t2/hydrate <> :can_write))))
@@ -53,10 +53,10 @@
   "Fetch all alerts for the given question (`Card`) id"
   [id archived]
   {id       [:maybe ms/PositiveInt]
-   archived [:maybe ms/BooleanString]}
+   archived [:maybe ms/BooleanValue]}
   (-> (if api/*is-superuser?*
-        (pulse/retrieve-alerts-for-cards {:card-ids [id], :archived? (Boolean/parseBoolean archived)})
-        (pulse/retrieve-user-alerts-for-card {:card-id id, :user-id api/*current-user-id*, :archived? (Boolean/parseBoolean archived)}))
+        (pulse/retrieve-alerts-for-cards {:card-ids [id], :archived? archived})
+        (pulse/retrieve-user-alerts-for-card {:card-id id, :user-id api/*current-user-id*, :archived?  archived}))
       (t2/hydrate :can_write)))
 
 (defn- only-alert-keys [request]
@@ -232,7 +232,6 @@
                                      (not (seq (:recipients (email-channel alert-updates))))
                                      (not (slack-channel alert-updates)))
                             {:archived true})))]
-
       ;; Only admins or users has subscription or monitoring perms
       ;; can update recipients or explicitly archive an alert
       (when (and (or api/*is-superuser?*

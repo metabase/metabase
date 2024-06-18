@@ -15,6 +15,7 @@ import type {
 
 type ErrorWithMessage = {
   message: string;
+  friendly?: boolean;
 };
 
 export function expression(
@@ -50,14 +51,14 @@ export function expressionableColumns(
 export function expressionParts(
   query: Query,
   stageIndex: number,
-  clause: ExpressionClause | FilterClause | JoinCondition,
+  clause: AggregationClause | ExpressionClause | FilterClause | JoinCondition,
 ): ExpressionParts {
   return ML.expression_parts(query, stageIndex, clause);
 }
 
 export function expressionClause(
   operator: ExpressionOperatorName,
-  args: (ExpressionArg | ExpressionClause)[],
+  args: (ExpressionArg | AggregationClause | ExpressionClause | FilterClause)[],
   options: ExpressionOptions | null = null,
 ): ExpressionClause {
   return ML.expression_clause(operator, args, options);

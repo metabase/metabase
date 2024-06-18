@@ -1,26 +1,23 @@
-import { loadMetadataForDependentItems } from "metabase/redux/metadata";
-import { getMetadata } from "metabase/selectors/metadata";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
+import Questions from "metabase/entities/questions";
+import Tables from "metabase/entities/tables";
+import type { Card, TableId, UnsavedCard } from "metabase-types/api";
+import { isSavedCard } from "metabase-types/guards";
+import type { Dispatch } from "metabase-types/store";
 
-export interface LoadMetadataOptions {
-  reload?: boolean;
-}
+export const loadMetadataForTable =
+  (tableId: TableId) => async (dispatch: Dispatch) => {
+    try {
+      await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
+    } catch (error) {
+      console.error("Error in loadMetadataForTable", error);
+    }
+  };
 
 export const loadMetadataForCard =
-  (card: Card, options?: LoadMetadataOptions) =>
-  async (dispatch: Dispatch, getState: GetState) => {
-    const question = new Question(card, getMetadata(getState()));
-    const dependencies = Lib.dependentMetadata(question.query());
-    await dispatch(loadMetadataForDependentItems(dependencies, options));
-
-    // metadata for an ad-hoc question based on this question
-    if (question.isSaved() && question.type() !== "question") {
-      const questionWithMetadata = new Question(card, getMetadata(getState()));
-      const adhocQuestion = questionWithMetadata.composeQuestionAdhoc();
-      const adhocDependencies = Lib.dependentMetadata(adhocQuestion.query());
-      await dispatch(loadMetadataForDependentItems(adhocDependencies, options));
+  (card: Card | UnsavedCard) => async (dispatch: Dispatch) => {
+    if (isSavedCard(card)) {
+      return dispatch(Questions.actions.fetchMetadata({ id: card.id }));
+    } else if (card.dataset_query.database != null) {
+      return dispatch(Questions.actions.fetchAdhocMetadata(card.dataset_query));
     }
   };

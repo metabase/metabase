@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.analytics.stats :as stats :refer [anonymous-usage-stats]]
+   [metabase.core :as mbc]
+   [metabase.db :as mdb]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models.card :refer [Card]]
@@ -78,26 +80,29 @@
                                        enable-embedding    false]
       (t2.with-temp/with-temp [:model/Database _ {:is_sample true}]
         (let [stats (anonymous-usage-stats)]
-          (is (partial= {:running_on               :unknown
-                         :check_for_updates                   true
-                         :startup_time_millis                 1234.0
-                         :friendly_names                      false
-                         :email_configured                    false
-                         :slack_configured                    false
-                         :sso_configured                      false
-                         :has_sample_data                     true
-                         :enable_embedding                    false
-                         :embedding_app_origin_set            false
-                         :appearance_site_name                false
-                         :appearance_help_link                :metabase
-                         :appearance_logo                     false
-                         :appareance_favicon                  false
-                         :apperance_loading_message           false
-                         :appearance_metabot_greeting         false
-                         :apparerance_lighthouse_illustration false
-                         :appearance_ui_colors                false
-                         :appearance_chart_colors             false
-                         :appearance_show_mb_links            false}
+          (is (partial= {:running_on                           :unknown
+                         :check_for_updates                    true
+                         :startup_time_millis                  1234.0
+                         :friendly_names                       false
+                         :email_configured                     false
+                         :slack_configured                     false
+                         :sso_configured                       false
+                         :has_sample_data                      true
+                         :enable_embedding                     false
+                         :embedding_app_origin_set             false
+                         :appearance_site_name                 false
+                         :appearance_help_link                 :metabase
+                         :appearance_logo                      false
+                         :appearance_favicon                   false
+                         :appearance_loading_message           false
+                         :appearance_metabot_greeting          false
+                         :appearance_login_page_illustration   "default"
+                         :appearance_landing_page_illustration "default"
+                         :appearance_no_data_illustration      "default"
+                         :appearance_no_object_illustration    "default"
+                         :appearance_ui_colors                 false
+                         :appearance_chart_colors              false
+                         :appearance_show_mb_links             false}
                         stats))
           (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
                       (-> stats :stats :database :dbms_versions))))))))
@@ -117,31 +122,37 @@
                                          application-favicon-url      "http://example.com/favicon.ico"
                                          loading-message              :running-query
                                          show-metabot                 false
-                                         show-lighthouse-illustration false
+                                         login-page-illustration      "default"
+                                         landing-page-illustration    "custom"
+                                         no-data-illustration         "none"
+                                         no-object-illustration       "custom"
                                          application-colors           {:brand "#123456"}
                                          show-metabase-links          false]
         (t2.with-temp/with-temp [:model/Database _ {:is_sample true}]
           (let [stats (anonymous-usage-stats)]
-            (is (partial= {:running_on               :unknown
-                           :check_for_updates                   true
-                           :startup_time_millis                 1234.0
-                           :friendly_names                      false
-                           :email_configured                    false
-                           :slack_configured                    false
-                           :sso_configured                      false
-                           :has_sample_data                     true
-                           :enable_embedding                    true
-                           :embedding_app_origin_set            false
-                           :appearance_site_name                true
-                           :appearance_help_link                :hidden
-                           :appearance_logo                     true
-                           :appareance_favicon                  true
-                           :apperance_loading_message           true
-                           :appearance_metabot_greeting         true
-                           :apparerance_lighthouse_illustration true
-                           :appearance_ui_colors                true
-                           :appearance_chart_colors             false
-                           :appearance_show_mb_links            true}
+            (is (partial= {:running_on                           :unknown
+                           :check_for_updates                    true
+                           :startup_time_millis                  1234.0
+                           :friendly_names                       false
+                           :email_configured                     false
+                           :slack_configured                     false
+                           :sso_configured                       false
+                           :has_sample_data                      true
+                           :enable_embedding                     true
+                           :embedding_app_origin_set             false
+                           :appearance_site_name                 true
+                           :appearance_help_link                 :hidden
+                           :appearance_logo                      true
+                           :appearance_favicon                   true
+                           :appearance_loading_message           true
+                           :appearance_metabot_greeting          true
+                           :appearance_login_page_illustration   "default"
+                           :appearance_landing_page_illustration "custom"
+                           :appearance_no_data_illustration      "none"
+                           :appearance_no_object_illustration    "custom"
+                           :appearance_ui_colors                 true
+                           :appearance_chart_colors              false
+                           :appearance_show_mb_links             true}
                           stats))
             (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
                         (-> stats :stats :database :dbms_versions)))))))))
@@ -200,7 +211,7 @@
                            Pulse        p2 {}
                            Pulse        p3 {}
                            PulseChannel _ {:pulse_id (u/the-id p1), :schedule_type "daily", :channel_type "email"}
-                           PulseChannel _ {:pulse_id (u/the-id p1), :schedule_type "weekly", :channel_type "email"}
+                           PulseChannel _ {:pulse_id (u/the-id p1), :schedule_type "weekly" :schedule_day "sun", :channel_type "email"}
                            PulseChannel _ {:pulse_id (u/the-id p2), :schedule_type "daily", :channel_type "slack"}
                            ;; Pulse 1 gets 2 Cards (1 CSV)
                            PulseCard    _ {:pulse_id (u/the-id p1), :card_id (u/the-id c)}
@@ -275,3 +286,38 @@
                                          ["1-5"  [:int {:min 1}]]
                                          ["6-10" [:int {:min 1}]]]]]
                 (#'stats/alert-metrics)))))
+
+(deftest internal-content-metrics-test
+  (testing "Internal content doesn't contribute to stats"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? true)
+      (mbc/ensure-audit-db-installed!)
+      (testing "sense check: internal content exists"
+        (is (true? (t2/exists? :model/User)))
+        (is (true? (t2/exists? :model/Database)))
+        (is (true? (t2/exists? :model/Table)))
+        (is (true? (t2/exists? :model/Field)))
+        (is (true? (t2/exists? :model/Collection)))
+        (is (true? (t2/exists? :model/Dashboard)))
+        (is (true? (t2/exists? :model/Card))))
+      (testing "All metrics should be empty"
+        (is (= {:users {}}
+               (#'stats/user-metrics)))
+        (is (= {:databases {}, :dbms_versions {}}
+               (#'stats/database-metrics)))
+        (is (= {:tables 0, :num_per_database {}, :num_per_schema {}}
+               (#'stats/table-metrics)))
+        (is (= {:num_per_table {}, :fields 0}
+               (#'stats/field-metrics)))
+        (is (= {:collections 0, :cards_in_collections 0, :cards_not_in_collections 0, :num_cards_per_collection {}}
+               (#'stats/collection-metrics)))
+        (is (= {:questions {}, :public {}, :embedded {}}
+               (#'stats/question-metrics)))
+        (is (= {:dashboards         0
+                :with_params        0
+                :num_dashs_per_user {}
+                :num_cards_per_dash {}
+                :num_dashs_per_card {}
+                :public             {}
+                :embedded           {}}
+               (#'stats/dashboard-metrics)))))))

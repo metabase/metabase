@@ -6,6 +6,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import TableS from "metabase/visualizations/components/TableInteractive/TableInteractive.module.css";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
@@ -151,7 +152,7 @@ export function TableCell({
   const isClickable = !isLink;
 
   const onClick = useCallback(
-    e => {
+    (e: React.MouseEvent) => {
       if (checkIsVisualizationClickable(clicked)) {
         onVisualizationClick?.({
           ...clicked,
@@ -175,8 +176,9 @@ export function TableCell({
         DashboardS.fullscreenNightText,
         EmbedFrameS.fullscreenNightText,
         {
-          "Table-ID": value != null && isID(column),
-          "Table-FK": value != null && isFK(column),
+          [TableS.TableID]: value != null && isID(column),
+          "test-Table-ID": value != null && isID(column),
+          "test-Table-FK": value != null && isFK(column),
           link: isClickable && isID(column),
         },
       ),
@@ -190,7 +192,8 @@ export function TableCell({
       isRightAligned={isColumnRightAligned(column)}
     >
       <CellContent
-        className="cellData"
+        isHighlighted={isID(column)}
+        className={TableS.cellData}
         isClickable={isClickable}
         onClick={isClickable ? onClick : undefined}
         data-testid="cell-data"

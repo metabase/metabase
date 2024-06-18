@@ -43,7 +43,7 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
 }: ChartSettingOrderedItemsProps<T>) {
   const isDragDisabled = items.length < 1;
   const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 0 },
+    activationConstraint: { distance: 15 },
   });
 
   const renderItem = useCallback(

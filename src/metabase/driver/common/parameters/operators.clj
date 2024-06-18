@@ -9,8 +9,8 @@
      :value [3 5]}"
   (:require
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.models.params :as params]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
@@ -18,6 +18,14 @@
 (mu/defn ^:private operator-arity :- [:maybe [:enum :unary :binary :variadic]]
   [param-type]
   (get-in lib.schema.parameter/types [param-type :operator]))
+
+(defn- operator-options-fn
+  [param-type]
+  (get-in lib.schema.parameter/types [param-type :options-fn]
+          ;; Default is to conj on the end if options are provided.
+          (fn [clause options]
+            (cond-> clause
+              options (conj options)))))
 
 (defn operator?
   "Returns whether param-type is an \"operator\" type."
@@ -60,19 +68,12 @@
   `:type qp.error-type/invalid-parameter` if arity is incorrect."
   [{param-type :type [a b :as param-value] :value [_ field :as _target] :target options :options :as _param}]
   (verify-type-and-arity field param-type param-value)
-  (let [field' (params/wrap-field-id-if-needed field)]
+  (let [field'  (mbql.u/wrap-field-id-if-needed field)
+        opts-fn (operator-options-fn param-type)]
     (case (operator-arity param-type)
-      :binary
-      (cond-> [(keyword (name param-type)) field' a b]
-        (boolean options) (conj options))
-
-      :unary
-      (cond-> [(keyword (name param-type)) field' a]
-        (boolean options) (conj options))
-
-      :variadic
-      (cond-> (into [(keyword (name param-type)) field'] param-value)
-        (boolean options) (conj options))
+      :binary   (opts-fn [(keyword (name param-type)) field' a b] options)
+      :unary    (opts-fn [(keyword (name param-type)) field' a] options)
+      :variadic (opts-fn (into [(keyword (name param-type)) field'] param-value) options)
 
       (throw (ex-info (format "Unrecognized operator: %s" param-type)
                       {:param-type param-type

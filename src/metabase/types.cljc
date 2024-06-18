@@ -65,7 +65,6 @@
 (derive :entity/ProductTable :entity/GenericTable)
 (derive :entity/SubscriptionTable :entity/GenericTable)
 (derive :entity/EventTable :entity/GenericTable)
-(derive :entity/GoogleAnalyticsTable :entity/GenericTable)
 
 
 ;;; Numeric Types
@@ -136,7 +135,7 @@
 
 ;; Semantic types deriving from `:type/Category` should be marked as 'category' Fields during sync, i.e. they
 ;; should have their FieldValues cached and synced. See
-;; `metabase.sync.analyze.classifiers.category/field-should-be-category?`
+;; `metabase.analyze.classifiers.category/field-should-be-category?`
 (derive :type/Category :Semantic/*)
 (derive :type/Enum :Semantic/*)
 
@@ -247,11 +246,19 @@
 (derive :type/Boolean :type/*)
 (derive :type/DruidHyperUnique :type/*)
 
+;; `:type/field-values-unsupported` enables driver developers to opt out of field values calculation for specific
+;; fields. For more details see the `driver-changelog.yml`, section `Metabase 0.50.0`.
+(derive :type/field-values-unsupported :type/*)
+
+(derive :type/DruidHyperUnique :type/field-values-unsupported)
+(derive :type/DruidJSON :type/field-values-unsupported)
+
 ;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced
 ;;; filter options like starts with / contains
 
 (derive :type/TextLike :type/*)
 (derive :type/MongoBSONID :type/TextLike)
+(derive :type/MySQLEnum :type/TextLike)
 ;; IP address can be either a data type e.g. Postgres `inet` or a semantic type e.g. a `text` column that has IP
 ;; addresses
 (derive :type/IPAddress :type/TextLike)
@@ -268,6 +275,9 @@
 ;; `:type/JSON` currently means a column that is JSON data, e.g. a Postgres JSON column
 (derive :type/JSON :type/Structured)
 (derive :type/JSON :type/Collection)
+
+;; DruidJSON is specific -- it derives also :type/field-values-unsupported
+(derive :type/DruidJSON :type/JSON)
 
 ;; `:type/XML` -- an actual native XML data column
 (derive :type/XML :type/Structured)

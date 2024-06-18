@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const ChartRoot = styled.div`
   position: relative;
   height: 100%;
@@ -23,11 +21,11 @@ export const ChartGrid = styled(ChartLayer)`
 `;
 
 export const ChartTick = styled.div`
-  border-top: 1px dashed ${color("border")};
+  border-top: 1px dashed var(--mb-color-border);
 `;
 
 export const ChartAxis = styled.div`
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;
 
 export const ChartPlot = styled(ChartLayer)`

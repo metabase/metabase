@@ -1,5 +1,7 @@
+import cx from "classnames";
 import { isValidElement, useMemo } from "react";
 
+import CS from "metabase/css/core/index.css";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import type {
   ComputedVisualizationSettings,
@@ -8,10 +10,16 @@ import type {
   HoveredObject,
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";
+import type { DatasetColumn } from "metabase-types/api";
 
 import { formatValueForTooltip } from "../utils";
 
-import { TooltipTableCell } from "./KeyValuePairChartTooltip.styled";
+import {
+  TableBody,
+  TableCell,
+  TableFooter,
+  TooltipTable,
+} from "./KeyValuePairChartTooltip.styled";
 
 export interface StackedDataTooltipProps {
   hovered: HoveredObject;
@@ -23,10 +31,14 @@ const KeyValuePairChartTooltip = ({
   settings,
 }: StackedDataTooltipProps) => {
   const rows = useMemo(() => getRows(hovered), [hovered]);
+  const { isAlreadyScaled } = hovered;
+  const footerRows = hovered.footerData;
+
+  const showFooter = footerRows && footerRows.length > 0;
 
   return (
-    <table className="py1 px2">
-      <tbody>
+    <TooltipTable>
+      <TableBody hasBottomSpacing={showFooter}>
         {rows.map(({ key, value, col }, index) => (
           <TooltipRow
             key={index}
@@ -34,34 +46,53 @@ const KeyValuePairChartTooltip = ({
             value={value}
             column={col}
             settings={settings}
+            isAlreadyScaled={isAlreadyScaled}
           />
         ))}
-      </tbody>
-    </table>
+      </TableBody>
+      {showFooter && (
+        <TableFooter>
+          {footerRows.map(({ key, value, col }, index) => (
+            <TooltipRow
+              key={index}
+              name={key}
+              value={value}
+              column={col}
+              settings={settings}
+            />
+          ))}
+        </TableFooter>
+      )}
+    </TooltipTable>
   );
 };
 
 export interface TooltipRowProps {
   name?: string;
   value?: any;
-  column?: RemappingHydratedDatasetColumn;
+  column: RemappingHydratedDatasetColumn | DatasetColumn | null;
   settings: ComputedVisualizationSettings;
+  isAlreadyScaled?: boolean;
 }
 
-const TooltipRow = ({ name, value, column, settings }: TooltipRowProps) => (
+const TooltipRow = ({
+  name,
+  value,
+  column,
+  settings,
+  isAlreadyScaled,
+}: TooltipRowProps) => (
   <tr>
     {name ? (
-      <TooltipTableCell className="text-light text-right pr1">
-        {name}:
-      </TooltipTableCell>
+      <TableCell className={cx(CS.textLight, CS.textRight)}>{name}:</TableCell>
     ) : (
-      <TooltipTableCell />
+      <TableCell />
     )}
-    <TooltipTableCell className="text-bold text-left">
+    <TableCell className={cx(CS.textBold, CS.textLeft)}>
       {isValidElement(value)
         ? value
-        : formatValueForTooltip({ value, column, settings })}
-    </TooltipTableCell>
+        : formatValueForTooltip({ value, column, settings, isAlreadyScaled })}
+    </TableCell>
   </tr>
 );
 

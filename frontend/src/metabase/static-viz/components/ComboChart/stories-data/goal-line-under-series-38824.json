@@ -1,0 +1,334 @@
+[
+  {
+    "card": {
+      "model": "card",
+      "fully_parametrized": true,
+      "moderated_status": null,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-02-15T18:11:15.42453Z",
+      "dataset": false,
+      "parameters": [],
+      "metabase_version": "vLOCAL_DEV (06d1ba2ae111e66253209c01c244d6379acfc6dcb1911fa9ab6012cec9ce52e5)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "slug": "combo",
+        "name": "Combo",
+        "personal_owner_id": null,
+        "type": null,
+        "id": 15,
+        "entity_id": "a5GnhB_2YulkofG3djx-L",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2023-12-13T22:25:47.515302Z"
+      },
+      "visualization_settings": {
+        "stackable.stack_type": "stacked",
+        "graph.show_goal": true,
+        "graph.goal_value": 35,
+        "graph.dimensions": ["CATEGORY"],
+        "graph.metrics": ["count", "avg"]
+      },
+      "last-edit-info": {
+        "id": 1,
+        "last_name": "Usmani",
+        "first_name": "Emmad",
+        "email": "emmad@metabase.com",
+        "timestamp": "2024-02-15T18:41:50.139499Z"
+      },
+      "collection_preview": true,
+      "entity_id": "BxGGvMT00Q4N76EU6sIam",
+      "display": "combo",
+      "parameter_mappings": [],
+      "id": 249,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 1,
+          "aggregation": [
+            ["count"],
+            [
+              "avg",
+              [
+                "field",
+                59,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              58,
+              {
+                "base-type": "type/Text"
+              }
+            ]
+          ]
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-02-15T18:41:49.976755Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 838.8333333333334,
+      "type": "question",
+      "dashboard_count": 3,
+      "last_query_start": "2024-02-15T18:41:24.143149Z",
+      "name": "Combo Goal Line - goal line under series #38824",
+      "query_type": "query",
+      "collection_id": 15,
+      "enable_embedding": false,
+      "database_id": null,
+      "can_write": true,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-02-06T22:10:03.807542Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+          "semantic_type": "type/Category",
+          "table_id": 1,
+          "coercion_strategy": null,
+          "name": "CATEGORY",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            58,
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 58,
+          "position": 3,
+          "visibility_type": "normal",
+          "display_name": "Category",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 6.375
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "base_type": "type/Integer",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0
+        },
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "avg",
+          "display_name": "Average of Price",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 1],
+          "aggregation_index": 1
+        }
+      ],
+      "table_id": 1,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["Doohickey", 42, 52.04430453374854],
+        ["Gadget", 53, 56.96577359222534],
+        ["Gizmo", 51, 55.58662658036945],
+        ["Widget", 54, 57.57991087370233]
+      ],
+      "cols": [
+        {
+          "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+          "semantic_type": "type/Category",
+          "table_id": 1,
+          "coercion_strategy": null,
+          "name": "CATEGORY",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            58,
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 58,
+          "position": 3,
+          "visibility_type": "normal",
+          "display_name": "Category",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 6.375
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "avg",
+          "display_name": "Average of Price",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 1],
+          "aggregation_index": 1,
+          "effective_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" AS \"CATEGORY\", COUNT(*) AS \"count\", AVG(\"PUBLIC\".\"PRODUCTS\".\"PRICE\") AS \"avg\" FROM \"PUBLIC\".\"PRODUCTS\" GROUP BY \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" ORDER BY \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" ASC",
+        "params": null
+      },
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+            "semantic_type": "type/Category",
+            "coercion_strategy": null,
+            "name": "CATEGORY",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              58,
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 58,
+            "visibility_type": "normal",
+            "display_name": "Category",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 6.375
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 42,
+                  "q1": 46.5,
+                  "q3": 53.5,
+                  "max": 54,
+                  "sd": 5.477225575051661,
+                  "avg": 50
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Average of Price",
+            "settings": null,
+            "field_ref": ["aggregation", 1],
+            "name": "avg",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 52.04430453374854,
+                  "q1": 53.81546555705899,
+                  "q3": 57.27284223296384,
+                  "max": 57.57991087370233,
+                  "sd": 2.477637215865758,
+                  "avg": 55.54415389501142
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

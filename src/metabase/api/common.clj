@@ -283,7 +283,7 @@
           ;; their API error messages
           route-doc                                           (route-dox method route docstr args
                                                                          (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
-                                                                            body)]
+                                                                         body)]
       ;; Don't i18n this, it's dev-facing only
       (when-not docstr
         (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
@@ -321,7 +321,8 @@
         multipart?      (get (meta method) :multipart false)
         handler-wrapper (if multipart? mp/wrap-multipart-params identity)
         schema          (into [:map] (for [[k v] arg->schema]
-                                       [(keyword k) v]))]
+                                       [(keyword k) v]))
+        quoted-args     (list 'quote args)]
     `(def ~(vary-meta fn-name
                       merge
                       {:doc          route-doc
@@ -329,6 +330,7 @@
                        :method       method-kw
                        :path         route
                        :schema       schema
+                       :args         quoted-args
                        :is-endpoint? true}
                       (meta method))
        ;; The next form is a copy of `compojure/compile-route`, with the sole addition of the call to
@@ -654,3 +656,20 @@
   (if (sequential? xs)
     (map parse-fn xs)
     [(parse-fn xs)]))
+
+
+;;; ---------------------------------------- SET `archived_directly` ---------------------------------
+
+(defn updates-with-archived-directly
+  "Sets `archived_directly` to `true` iff `:archived` is being set to `true`."
+  [current-obj obj-updates]
+  (cond-> obj-updates
+    (column-will-change? :archived current-obj obj-updates)
+    (assoc :archived_directly (boolean (:archived obj-updates)))))
+
+(defn present-in-trash-if-archived-directly
+  "If `:archived_directly` is `true`, set `:collection_id` to the trash collection ID."
+  [item trash-collection-id]
+  (cond-> item
+    (:archived_directly item)
+    (assoc :collection_id trash-collection-id)))

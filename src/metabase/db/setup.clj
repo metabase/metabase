@@ -10,7 +10,7 @@
    [honey.sql :as sql]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
-   [metabase.db.custom-migrations]
+   [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.liquibase :as liquibase]
    [metabase.plugins.classloader :as classloader]
@@ -31,7 +31,7 @@
 
 (comment
   ;; load our custom migrations
-  metabase.db.custom-migrations/keep-me
+  custom-migrations/keep-me
   ;; needed so the `:h2` dialect gets registered with Honey SQL
   metabase.util.honey-sql-2/keep-me)
 
@@ -40,15 +40,15 @@
   short circuit the setup process and make it clear we can't proceed."
   [liquibase data-source]
   (when (seq (liquibase/unrun-migrations data-source))
-    (log/info (str (trs "Database Upgrade Required")
+    (log/info (str "Database Upgrade Required"
                    "\n\n"
-                   (trs "NOTICE: Your database requires updates to work with this version of Metabase.")
+                   "NOTICE: Your database requires updates to work with this version of Metabase."
                    "\n"
-                   (trs "Please execute the following sql commands on your database before proceeding.")
+                   "Please execute the following sql commands on your database before proceeding."
                    "\n\n"
                    (liquibase/migrations-sql liquibase)
                    "\n\n"
-                   (trs "Once your database is updated try running the application again.")
+                   "Once your database is updated try running the application again."
                    "\n"))
     (throw (Exception. (trs "Database requires manual upgrade.")))))
 
@@ -62,15 +62,14 @@
   *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
                         (This shouldn't be necessary now that we run migrations inside a transaction, but is
                         available just in case)."
-  [db-type     :- :keyword
-   data-source :- (ms/InstanceOfClass javax.sql.DataSource)
+  [data-source :- (ms/InstanceOfClass javax.sql.DataSource)
    direction   :- :keyword
    & args]
   ;; TODO: use [[jdbc/with-db-transaction]] instead of manually commit/rollback
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (.setAutoCommit conn false)
     ;; Set up liquibase and let it do its thing
-    (log/info (trs "Setting up Liquibase..."))
+    (log/info "Setting up Liquibase...")
     (liquibase/with-liquibase [liquibase conn]
       (try
         ;; Consolidating the changeset requires the lock, so we may need to release it first.
@@ -80,11 +79,11 @@
        (when-not (= :release-locks direction)
          (liquibase/consolidate-liquibase-changesets! conn liquibase))
 
-       (log/info (trs "Liquibase is ready."))
+       (log/info "Liquibase is ready.")
        (case direction
          :up            (liquibase/migrate-up-if-needed! liquibase data-source)
          :force         (liquibase/force-migrate-up-if-needed! liquibase data-source)
-         :down          (apply liquibase/rollback-major-version db-type conn liquibase args)
+         :down          (apply liquibase/rollback-major-version conn liquibase args)
          :print         (print-migrations-and-quit-if-needed! liquibase data-source)
          :release-locks (liquibase/force-release-locks! liquibase))
        ;; Migrations were successful; commit everything and re-enable auto-commit
@@ -110,7 +109,7 @@
   connecting."
   [db-type     :- :keyword
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
-  (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name db-type))))
+  (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name db-type)))
   (classloader/require 'metabase.driver.sql-jdbc.connection)
   (let [error-msg (trs "Unable to connect to Metabase {0} DB." (name db-type))]
     (try (assert ((requiring-resolve 'metabase.driver.sql-jdbc.connection/can-connect-with-spec?) {:datasource data-source}) error-msg)
@@ -118,17 +117,16 @@
            (throw (ex-info error-msg {} e)))))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (let [metadata (.getMetaData conn)]
-      (log/info (trs "Successfully verified {0} {1} application database connection."
-                     (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata))
-                (u/emoji "✅")))))
+      (log/infof "Successfully verified %s %s application database connection. %s"
+                 (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅")))))
 
 (mu/defn ^:private error-if-downgrade-required!
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
-  (log/info (u/format-color 'cyan (trs "Checking if a database downgrade is required...")))
+  (log/info (u/format-color 'cyan "Checking if a database downgrade is required..."))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (liquibase/with-liquibase [liquibase conn]
       (let [latest-available (liquibase/latest-available-major-version liquibase)
-            latest-applied (liquibase/latest-applied-major-version conn)]
+            latest-applied   (liquibase/latest-applied-major-version conn (.getDatabase liquibase))]
         ;; `latest-applied` will be `nil` for fresh installs
         (when (and latest-applied (< latest-available latest-applied))
           (throw (ex-info
@@ -145,29 +143,42 @@
 
 (mu/defn ^:private run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
-  [db-type       :- :keyword
-   data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
-   auto-migrate? :- [:maybe :boolean]]
-  (log/info (trs "Running Database Migrations..."))
-  (migrate! db-type data-source (if auto-migrate? :up :print))
-  (log/info (trs "Database Migrations Current ... ") (u/emoji "✅")))
+  [data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
+   auto-migrate? :- :boolean]
+  (log/info "Running Database Migrations...")
+  (migrate! data-source (if auto-migrate? :up :print))
+  (log/info "Database Migrations Current ..." (u/emoji "✅")))
 
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
-;;
-;; TODO -- consider whether this should be done automatically the first time someone calls `getConnection`
 (mu/defn setup-db!
   "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing;
   use [[metabase.db/setup-db!]] instead, which can be called more than once without issue and is thread-safe."
-  [db-type       :- :keyword
-   data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
-   auto-migrate? :- [:maybe :boolean]]
+  [db-type                :- :keyword
+   data-source            :- (ms/InstanceOfClass javax.sql.DataSource)
+   auto-migrate?          :- :boolean
+   create-sample-content? :- :boolean]
   (u/profile (trs "Database setup")
     (u/with-us-locale
-      (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
-                config/*disable-setting-cache*  true]
+      (binding [mdb.connection/*application-db*           (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
+                config/*disable-setting-cache*            true
+                custom-migrations/*create-sample-content* create-sample-content?]
          (verify-db-connection db-type data-source)
          (error-if-downgrade-required! data-source)
-         (run-schema-migrations! db-type data-source auto-migrate?))))
+         (run-schema-migrations! data-source auto-migrate?))))
+  :done)
+
+(defn release-migration-locks!
+  "Wait up to `timeout-seconds` for the current process to release all migration locks, otherwise force release them."
+  [data-source timeout-seconds]
+  (let [sleep-ms   100
+        timeout-ms (* 1000 timeout-seconds)]
+    (case (liquibase/wait-for-all-locks sleep-ms timeout-ms)
+      :none nil
+      :done (log/info "Migration lock(s) have been released")
+      :timed-out (do (log/warn "Releasing liquibase locks on shutdown")
+                     ;; There's an infinitesimal chance that we released the lock and another server took it between
+                     ;; the timeout, and the mutations we now make to these lock tables - but we can't detect that.
+                     (liquibase/release-concurrent-locks! data-source))))
   :done)
 
 ;;;; Toucan Setup.

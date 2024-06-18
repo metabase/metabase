@@ -57,7 +57,7 @@ where **Sighting Type** is a custom column with the expression:
 ```
 case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
      [Has Wings] = TRUE  AND [Has Face] = FALSE, "Plane",
-     [Has Wings] = FALSE AND [Has Face] = TRUE,  "Superman"), "Unknown")
+     [Has Wings] = FALSE AND [Has Face] = TRUE,  "Superman", "Unknown")
 ```
 
 You can use the columns holding your "labels" to:

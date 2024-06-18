@@ -12,8 +12,13 @@ import { SelectDropdown } from "../Select/SelectDropdown";
 import { SelectItem } from "../Select/SelectItem";
 
 const SIZES = {
-  xs: rem(16),
-  md: rem(24),
+  xs: rem(30),
+  md: rem(38),
+};
+
+const VALUE_SIZES = {
+  xs: rem(20),
+  md: rem(28),
 };
 
 export const getMultiSelectOverrides =
@@ -34,17 +39,36 @@ export const getMultiSelectOverrides =
         { invalid }: MultiSelectStylesParams,
         { size = "md" },
       ) => ({
-        ...getSelectInputOverrides(theme, size),
+        ...getSelectInputOverrides(theme),
         ...getSelectItemsOverrides(theme, size),
         values: {
+          boxSizing: "border-box",
           minHeight: getSize({ size, sizes: SIZES }),
           marginLeft: 0,
-          gap: theme.spacing.sm,
+          gap: theme.spacing.xs,
+          padding: theme.spacing.xs,
+          alignItems: "center",
+          "[data-with-icon=true] &": {
+            paddingLeft: 0,
+          },
+        },
+        input: {
+          padding: 0,
+          boxSizing: "border-box",
+          "&[data-with-icon]": {
+            paddingLeft: theme.spacing.lg,
+          },
+        },
+        icon: {
+          width: theme.spacing.lg,
         },
         value: {
           margin: 0,
         },
         searchInput: {
+          minHeight: getSize({ size, sizes: VALUE_SIZES }),
+          padding: 0,
+          marginLeft: theme.spacing.sm,
           "&::placeholder": {
             color: invalid
               ? theme.fn.themeColor("error")
@@ -53,19 +77,22 @@ export const getMultiSelectOverrides =
           "&::-webkit-search-cancel-button": {
             display: "none",
           },
+          "[data-with-icon=true] &:first-child": {
+            marginLeft: 0,
+          },
         },
         defaultValue: {
-          height: getSize({ size, sizes: SIZES }),
-          paddingLeft: theme.spacing.sm,
-          paddingRight: theme.spacing.sm,
-          fontWeight: "normal",
-          fontSize: theme.fontSizes.xs,
+          padding: 0,
+          paddingInline: theme.spacing.sm,
+          height: getSize({ size, sizes: VALUE_SIZES }),
+          fontWeight: "bold",
+          fontSize: getSize({ size, sizes: theme.fontSizes }),
           borderRadius: theme.radius.xs,
-          color: theme.fn.themeColor("text-dark"),
+          color: theme.fn.themeColor("brand"),
           backgroundColor: theme.fn.themeColor("bg-medium"),
         },
         defaultValueRemove: {
-          color: theme.fn.themeColor("text-dark"),
+          color: theme.fn.themeColor("brand"),
           width: rem(12),
           height: rem(12),
           minWidth: rem(12),

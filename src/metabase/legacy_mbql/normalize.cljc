@@ -34,6 +34,7 @@
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
@@ -90,10 +91,11 @@
 
 (defn- normalize-ref-opts [opts]
   (let [opts (normalize-tokens opts :ignore-path)]
-   (cond-> opts
-       (:base-type opts)     (update :base-type keyword)
-       (:temporal-unit opts) (update :temporal-unit keyword)
-       (:binning opts)       (update :binning (fn [binning]
+    (cond-> opts
+      (:base-type opts)      (update :base-type keyword)
+      (:effective-type opts) (update :effective-type keyword)
+      (:temporal-unit opts)  (update :temporal-unit keyword)
+      (:binning opts)        (update :binning (fn [binning]
                                                 (cond-> binning
                                                   (:strategy binning) (update :strategy keyword)))))))
 
@@ -101,7 +103,7 @@
   ;; For expression references (`[:expression \"my_expression\"]`) keep the arg as is but make sure it is a string.
   [[_ expression-name opts]]
   (let [expression [:expression (if (keyword? expression-name)
-                                  (mbql.u/qualified-name expression-name)
+                                  (u/qualified-name expression-name)
                                   expression-name)]
         opts (->> opts
                   normalize-ref-opts
@@ -132,7 +134,7 @@
   [[_ field-name field-type]]
   [:field-literal
    (if (keyword? field-name)
-     (mbql.u/qualified-name field-name)
+     (u/qualified-name field-name)
      field-name)
    (keyword field-type)])
 
@@ -204,6 +206,12 @@
   [[_ value info]]
   [:value value info])
 
+(defmethod normalize-mbql-clause-tokens :offset
+  [[_tag opts expr n, :as clause]]
+  {:pre [(= (count clause) 4)]}
+  (let [opts (lib.normalize/normalize :metabase.lib.schema.common/options (or opts {}))]
+    [:offset opts (normalize-tokens expr :ignore-path) n]))
+
 (defmethod normalize-mbql-clause-tokens :default
   ;; MBQL clauses by default are recursively normalized.
   ;; This includes the clause name (e.g. `[\"COUNT\" ...]` becomes `[:count ...]`) and args.
@@ -246,7 +254,7 @@
    normalize the definitions as normal."
   [expressions-clause]
   (into {} (for [[expression-name definition] expressions-clause]
-             [(mbql.u/qualified-name expression-name)
+             [(u/qualified-name expression-name)
               (normalize-tokens definition :ignore-path)])))
 
 (defn- normalize-order-by-tokens
@@ -300,7 +308,7 @@
   (into
    {}
    (map (fn [[tag-name tag-definition]]
-          (let [tag-name (mbql.u/qualified-name tag-name)]
+          (let [tag-name (u/qualified-name tag-name)]
             [tag-name
              (-> (normalize-template-tag-definition tag-definition)
                  (assoc :name tag-name))])))
@@ -308,17 +316,17 @@
 
 (defn normalize-query-parameter
   "Normalize a parameter in the query `:parameters` list."
-  [{:keys [type target id values_source_config], :as param}]
+  [{param-type :type, :keys [target id values_source_config], :as param}]
   (cond-> param
-    id                   (update :id mbql.u/qualified-name)
+    id                   (update :id u/qualified-name)
     ;; some things that get ran thru here, like dashcard param targets, do not have :type
-    type                 (update :type maybe-normalize-token)
+    param-type           (update :type maybe-normalize-token)
     target               (update :target #(normalize-tokens % :ignore-path))
     values_source_config (update-in [:values_source_config :label_field] #(normalize-tokens % :ignore-path))
     values_source_config (update-in [:values_source_config :value_field] #(normalize-tokens % :ignore-path))))
 
 (defn- normalize-source-query [source-query]
-  (let [{native? :native, :as source-query} (m/map-keys maybe-normalize-token source-query)]
+  (let [{native? :native, :as source-query} (update-keys source-query maybe-normalize-token)]
     (if native?
       (-> source-query
           (set/rename-keys {:native :query})
@@ -328,7 +336,7 @@
 
 (defn- normalize-join [join]
   ;; path in call to `normalize-tokens` is [:query] so it will normalize `:source-query` as appropriate
-  (let [{:keys [strategy fields alias], :as join} (normalize-tokens join :query)]
+  (let [{:keys [strategy fields], join-alias :alias, :as join} (normalize-tokens join :query)]
     (cond-> join
       strategy
       (update :strategy maybe-normalize-token)
@@ -336,8 +344,8 @@
       ((some-fn keyword? string?) fields)
       (update :fields maybe-normalize-token)
 
-      alias
-      (update :alias mbql.u/qualified-name))))
+      join-alias
+      (update :alias u/qualified-name))))
 
 (declare canonicalize-mbql-clauses)
 
@@ -357,7 +365,7 @@
 (defn- normalize-native-query
   "For native queries, normalize the top-level keys, and template tags, but nothing else."
   [native-query]
-  (let [native-query (m/map-keys maybe-normalize-token native-query)]
+  (let [native-query (update-keys native-query maybe-normalize-token)]
     (cond-> native-query
       (seq (:template-tags native-query)) (update :template-tags normalize-template-tags))))
 
@@ -381,9 +389,11 @@
    ;; we smuggle metadata for Models and want to preserve their "database" form vs a normalized form so it matches
    ;; the style in annotate.clj
    :info            {:metadata/model-metadata identity
+                     ;; the original query that runs through qp.pivot should be ignored here entirely
+                     :pivot/original-query    (fn [_] nil)
                      ;; don't try to normalize the keys in viz-settings passed in as part of `:info`.
-                     :visualization-settings    identity
-                     :context                   maybe-normalize-token}
+                     :visualization-settings  identity
+                     :context                 maybe-normalize-token}
    :parameters      {::sequence normalize-query-parameter}
    ;; TODO -- when does query ever have a top-level `:context` key??
    :context         #(some-> % maybe-normalize-token)
@@ -572,13 +582,20 @@
   (into [filter-name (canonicalize-implicit-field-id first-arg)]
         (map canonicalize-mbql-clause other-args)))
 
-(doseq [clause-name [:starts-with :ends-with :contains :does-not-contain
-                     := :!= :< :<= :> :>=
+(doseq [clause-name [:= :!= :< :<= :> :>=
                      :is-empty :not-empty :is-null :not-null
                      :between]]
   (defmethod canonicalize-mbql-clause clause-name
     [clause]
     (canonicalize-simple-filter-clause clause)))
+
+;; These clauses have pMBQL-style options in index 1, when they have multiple arguments.
+(doseq [tag [:starts-with :ends-with :contains :does-not-contain]]
+  (defmethod canonicalize-mbql-clause tag
+    [[_tag opts & args :as clause]]
+    (if (> (count args) 2)
+      (into [tag (or opts {})] (map canonicalize-mbql-clause args))
+      (canonicalize-simple-filter-clause clause))))
 
 ;;; aggregations/expression subclauses
 
@@ -659,6 +676,11 @@
          (if (= 0 start) 1 (canonicalize-mbql-clause start))]
         (map canonicalize-mbql-clause more)))
 
+(defmethod canonicalize-mbql-clause :offset
+  [[_tag opts expr n, :as clause]]
+  {:pre [(= (count clause) 4)]}
+  [:offset (or opts {}) (canonicalize-mbql-clause expr) n])
+
 ;;; top-level key canonicalization
 
 (defn- canonicalize-mbql-clauses
@@ -679,7 +701,7 @@
           (try
             (canonicalize-mbql-clause form)
             (catch #?(:clj Throwable :cljs js/Error) e
-              (log/error (i18n/tru "Invalid clause:") form)
+              (log/error "Invalid clause:" form)
               (throw (ex-info (i18n/tru "Invalid MBQL clause: {0}" (ex-message e))
                               {:clause form}
                               e))))]
@@ -886,11 +908,29 @@
     (when (seq m)
       m)))
 
-(defn- remove-empty-clauses-in-sequence [xs path]
+(defn- remove-empty-clauses-in-sequence* [xs path]
   (let [xs (mapv #(remove-empty-clauses % (conj path ::sequence))
                  xs)]
     (when (some some? xs)
       xs)))
+
+(defmulti ^:private remove-empty-clauses-in-mbql-clause
+  {:arglists '([clause path])}
+  (fn [[tag] _path]
+    tag))
+
+(defmethod remove-empty-clauses-in-mbql-clause :default
+  [clause path]
+  (remove-empty-clauses-in-sequence* clause path))
+
+(defmethod remove-empty-clauses-in-mbql-clause :offset
+  [[_tag opts expr n] path]
+  [:offset opts (remove-empty-clauses expr (conj path :offset)) n])
+
+(defn- remove-empty-clauses-in-sequence [x path]
+  (if (mbql-clause? x)
+    (remove-empty-clauses-in-mbql-clause x path)
+    (remove-empty-clauses-in-sequence* x path)))
 
 (defn- remove-empty-clauses-in-join [join]
   (remove-empty-clauses join [:query]))

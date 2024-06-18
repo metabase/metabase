@@ -143,20 +143,31 @@
 
 ;; TODO - more tests!
 (deftest ^:parallel format-test
-  (testing "ZonedDateTime"
-    (testing "should get formatted as the same way as an OffsetDateTime"
-      (is (= "2019-11-01T18:39:00-07:00"
-             (u.date/format (t/zoned-date-time "2019-11-01T18:39:00-07:00[US/Pacific]")))))
-    (testing "make sure it can handle different DST offsets correctly"
-      (is (= "2020-02-13T16:31:00-08:00"
-             (u.date/format (t/zoned-date-time "2020-02-13T16:31:00-08:00[US/Pacific]"))))))
-  (testing "Instant"
-    (is (= "1970-01-01T00:00:00Z"
-           (u.date/format (t/instant "1970-01-01T00:00:00Z")))))
-  (testing "nil"
-    (is (= nil
-           (u.date/format nil))
-        "Passing `nil` should return `nil`")))
+  (are
+    [expected input]
+    (= expected (u.date/format input))
+    "2019-06-05T18:39:00-07:00" (t/zoned-date-time "2019-06-05T18:39:00-07:00[US/Pacific]")
+    "2019-11-05T18:39:00-08:00" (t/zoned-date-time "2019-11-05T18:39:00-08:00[US/Pacific]")
+    "2019-06-05T18:39:00-07:00" (t/offset-date-time "2019-06-05T18:39:00-07:00")
+    "18:39:00-07:00"            (t/offset-time "18:39:00-07:00")
+    "2019-06-05T19:27:00"       (t/local-date-time "2019-06-05T19:27")
+    "2019-06-05"                (t/local-date "2019-06-05")
+    "2019-06-30"                (t/local-date "2019-06-30")
+    "14:30:30"                  (t/local-time "14:30:30")
+    "2019-06-05T00:00:00Z"      (t/instant "2019-06-05T00:00:00Z")
+    nil                         nil))
+
+(deftest ^:parallel format-rfc3339-test
+  (are
+    [expected input]
+    (= expected (u.date/format-rfc3339 input))
+    "2019-06-05T18:39:00.00-07:00" (t/zoned-date-time "2019-06-05T18:39:00-07:00[US/Pacific]")
+    "2019-11-05T18:39:00.00-08:00" (t/zoned-date-time "2019-11-05T18:39:00-08:00[US/Pacific]")
+    "2019-06-05T18:39:00.00-07:00" (t/offset-date-time "2019-06-05T18:39:00-07:00")
+    "2019-06-05T19:27:00.00Z"      (t/local-date-time "2019-06-05T19:27")
+    "2019-06-05T00:00:00.00Z"      (t/local-date "2019-06-05")
+    "2019-06-05T00:00:00.00Z"      (t/instant "2019-06-05T00:00:00Z")
+    nil                            nil))
 
 (deftest ^:parallel format-human-readable-test
   ;; strings are localized slightly differently on different JVMs. For places where there are multiple possible

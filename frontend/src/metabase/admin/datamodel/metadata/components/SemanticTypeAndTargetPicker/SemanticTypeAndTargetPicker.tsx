@@ -103,7 +103,7 @@ const SemanticTypeAndTargetPicker = ({
       className={hasSeparator ? cx(CS.flex, CS.alignCenter) : undefined}
     >
       <Select
-        className={cx(AdminS.TableEditorFieldSemanticType, "mt0", className)}
+        className={cx(AdminS.TableEditorFieldSemanticType, CS.mt0, className)}
         value={field.semantic_type}
         onChange={handleChangeSemanticType}
         options={TYPE_OPTIONS}
@@ -111,6 +111,7 @@ const SemanticTypeAndTargetPicker = ({
         optionSectionFn={getTypeOptionSection}
         placeholder={t`Select a semantic type`}
         searchProp="name"
+        globalSearch
       />
       {showCurrencyTypeSelect && hasSeparator && <FieldSeparator />}
       {showCurrencyTypeSelect && (
@@ -129,9 +130,11 @@ const SemanticTypeAndTargetPicker = ({
         >
           {currency.map(([_, c]: CurrencyOption[]) => (
             <Option name={c.name} value={c.code} key={c.code}>
-              <span className="flex full align-center">
+              <span className={cx(CS.flex, CS.full, CS.alignCenter)}>
                 <span>{c.name}</span>
-                <span className="text-bold text-light ml1">{c.symbol}</span>
+                <span className={cx(CS.textBold, CS.textLight, CS.ml1)}>
+                  {c.symbol}
+                </span>
               </span>
             </Option>
           ))}
@@ -146,7 +149,7 @@ const SemanticTypeAndTargetPicker = ({
           disabled={!hasIdFields}
           className={cx(
             AdminS.TableEditorFieldTarget,
-            "text-wrap",
+            CS.textWrap,
             hasSeparator ? CS.mt0 : CS.mt1,
             className,
           )}

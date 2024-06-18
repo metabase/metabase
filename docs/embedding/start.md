@@ -18,9 +18,9 @@ You'll embed the full Metabase application in your app. Once logged in, people c
 
 ## [Static embedding](./static-embedding.md)
 
-Also known as Signed Embedding, Static embedding offers drill-through with custom destinations, so you can define what happens when people click on a chart, like sending people to another chart or URL–all while securing the underlying data.
+Also known as Signed Embedding, Static embedding is a secure way to embed charts and dashboards. Static embeds are view only; people won't be able to drill-through charts and tables.
 
-## [Parameters for signed embeds](./static-embedding-parameters.md)
+## [Parameters for static embeds](./static-embedding-parameters.md)
 
 You can pass parameters between Metabase and your website via the embedding URL to specify how Metabase items should look and behave inside the iframe on your website.
 

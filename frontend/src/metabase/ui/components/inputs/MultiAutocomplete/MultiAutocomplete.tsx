@@ -1,8 +1,18 @@
 import type { MultiSelectProps, SelectItem } from "@mantine/core";
-import { MultiSelect } from "@mantine/core";
+import { MultiSelect, Tooltip } from "@mantine/core";
 import { useUncontrolled } from "@mantine/hooks";
 import type { ClipboardEvent, FocusEvent } from "react";
 import { useMemo, useState } from "react";
+import { t } from "ttag";
+
+import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
+
+import { parseValues, unique } from "./utils";
+
+export type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
+  shouldCreate?: (query: string, selectedValues: string[]) => boolean;
+};
 
 export function MultiAutocomplete({
   data,
@@ -11,13 +21,13 @@ export function MultiAutocomplete({
   searchValue: controlledSearchValue,
   placeholder,
   autoFocus,
-  shouldCreate,
+  shouldCreate = defaultShouldCreate,
   onChange,
   onSearchChange,
   onFocus,
   onBlur,
   ...props
-}: MultiSelectProps) {
+}: MultiAutocompleteProps) {
   const [selectedValues, setSelectedValues] = useUncontrolled({
     value: controlledValue,
     defaultValue,
@@ -31,7 +41,7 @@ export function MultiAutocomplete({
   });
   const [lastSelectedValues, setLastSelectedValues] = useState(selectedValues);
   const [isFocused, setIsFocused] = useState(false);
-  const visibleValues = isFocused ? lastSelectedValues : selectedValues;
+  const visibleValues = isFocused ? lastSelectedValues : [...selectedValues];
 
   const items = useMemo(
     () => getAvailableSelectItems(data, lastSelectedValues),
@@ -39,8 +49,9 @@ export function MultiAutocomplete({
   );
 
   const handleChange = (newValues: string[]) => {
-    setSelectedValues(newValues);
-    setLastSelectedValues(newValues);
+    const values = unique(newValues);
+    setSelectedValues(values);
+    setLastSelectedValues(values);
   };
 
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
@@ -49,40 +60,111 @@ export function MultiAutocomplete({
     onFocus?.(event);
   };
 
+  function isValid(value: string) {
+    return value !== "" && shouldCreate?.(value, lastSelectedValues);
+  }
+
   const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
     setIsFocused(false);
-    setLastSelectedValues(selectedValues);
+
+    const values = parseValues(searchValue);
+    const validValues = values.filter(isValid);
+
     setSearchValue("");
-    onBlur?.(event);
-  };
 
-  const handleSearchChange = (newSearchValue: string) => {
-    setSearchValue(newSearchValue);
-
-    const isValid = shouldCreate?.(newSearchValue, []);
-    if (isValid) {
-      setSelectedValues([...lastSelectedValues, newSearchValue]);
+    if (validValues.length > 0) {
+      const newValues = unique([...lastSelectedValues, ...validValues]);
+      setSelectedValues(newValues);
+      setLastSelectedValues(newValues);
     } else {
       setSelectedValues(lastSelectedValues);
     }
+
+    onBlur?.(event);
   };
 
   const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
-    const text = event.clipboardData.getData("Text");
-    const values = text.split(/[\n,]/g);
-    if (values.length > 1) {
-      const uniqueValues = [...new Set(values)];
-      const validValues = uniqueValues.filter(value =>
-        shouldCreate?.(value, []),
-      );
+    event.preventDefault();
+
+    const input = event.target as HTMLInputElement;
+    const value = input.value;
+    const before = value.slice(0, input.selectionStart ?? value.length);
+    const after = value.slice(input.selectionEnd ?? value.length);
+
+    const pasted = event.clipboardData.getData("text");
+    const text = `${before}${pasted}${after}`;
+
+    const values = parseValues(text);
+    const validValues = values.filter(isValid);
+
+    if (values.length > 0) {
+      const newValues = unique([...lastSelectedValues, ...validValues]);
+      setSelectedValues(newValues);
+      setLastSelectedValues(newValues);
+      setSearchValue("");
+    } else {
+      setSearchValue(text);
+    }
+  };
+
+  const handleSearchChange = (newSearchValue: string) => {
+    const first = newSearchValue.at(0);
+    const last = newSearchValue.at(-1);
+
+    setSearchValue(newSearchValue);
+
+    if (newSearchValue !== "") {
+      const values = parseValues(newSearchValue);
+      if (values.length >= 1) {
+        const value = values[0];
+        if (isValid(value)) {
+          setSelectedValues(unique([...lastSelectedValues, value]));
+        }
+      }
+    }
+    if (newSearchValue === "") {
+      setSelectedValues(unique([...lastSelectedValues]));
+    }
+
+    const quotes = Array.from(newSearchValue).filter(ch => ch === '"').length;
+
+    if (
+      (last === "," && quotes % 2 === 0) ||
+      last === "\t" ||
+      last === "\n" ||
+      (first === '"' && last === '"')
+    ) {
+      const values = parseValues(newSearchValue);
+      const validValues = values.filter(isValid);
+
+      if (values.length > 0) {
+        setSearchValue("");
+      }
+
       if (validValues.length > 0) {
-        event.preventDefault();
-        const newSelectedValues = [...lastSelectedValues, ...validValues];
-        setSelectedValues(newSelectedValues);
-        setLastSelectedValues(newSelectedValues);
+        const newValues = unique([...lastSelectedValues, ...validValues]);
+        setSelectedValues(newValues);
+        setLastSelectedValues(newValues);
+        setSearchValue("");
       }
     }
   };
+
+  const info = isFocused ? (
+    <Tooltip
+      label={
+        <>
+          {t`Separate values with commas, tabs or newlines.`}
+          <br />
+          {t` Use double quotes for values containing commas.`}
+        </>
+      }
+    >
+      <Icon name="info_filled" fill={color("text-light")} />
+    </Tooltip>
+  ) : (
+    <span />
+  );
 
   return (
     <MultiSelect
@@ -98,33 +180,42 @@ export function MultiAutocomplete({
       onBlur={handleBlur}
       onSearchChange={handleSearchChange}
       onPaste={handlePaste}
+      rightSection={info}
     />
   );
 }
 
 function getSelectItem(item: string | SelectItem): SelectItem {
   if (typeof item === "string") {
-    return { value: item };
-  } else {
-    return item;
+    return { value: item, label: item };
   }
+
+  if (!item.label) {
+    return { value: item.value, label: item.value?.toString() ?? "" };
+  }
+
+  return item;
 }
 
 function getAvailableSelectItems(
   data: ReadonlyArray<string | SelectItem>,
   selectedValues: string[],
 ) {
-  const items = [
-    ...data.map(getSelectItem),
-    ...selectedValues.map(getSelectItem),
-  ];
+  const all = [...data, ...selectedValues].map(getSelectItem);
+  const seen = new Set();
 
-  const mapping = items.reduce((map: Map<string, string>, option) => {
-    if (!map.has(option.value)) {
-      map.set(option.value, option.label ?? option.value);
+  // Deduplicate items based on value
+  return all.filter(function (option) {
+    if (seen.has(option.value)) {
+      return false;
     }
-    return map;
-  }, new Map<string, string>());
+    seen.add(option.value);
+    return true;
+  });
+}
 
-  return [...mapping.entries()].map(([value, label]) => ({ value, label }));
+function defaultShouldCreate(query: string, selectedValues: string[]) {
+  return (
+    query.trim().length > 0 && !selectedValues.some(value => value === query)
+  );
 }

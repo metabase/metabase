@@ -5,7 +5,7 @@ import { ModalHeader } from "metabase/components/ModalContent";
 export const EmbedModalHeader = styled(ModalHeader)`
   padding: 1.5rem 2rem;
 
-  color: ${({ theme }) => theme.fn.themeColor("text-medium")};
+  color: var(--mb-color-text-medium);
 
-  border-bottom: 1px solid ${({ theme }) => theme.fn.themeColor("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 `;

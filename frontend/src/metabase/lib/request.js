@@ -40,7 +40,7 @@ export class RestfulRequest {
   trigger = params => async dispatch => {
     dispatch({ type: this.actions.requestStarted });
     try {
-      const result = await this.endpoint(params);
+      const result = await this.endpoint(params, dispatch);
       dispatch({ type: this.actions.requestSuccessful, payload: { result } });
     } catch (error) {
       dispatch({ type: this.actions.requestFailed, payload: { error } });

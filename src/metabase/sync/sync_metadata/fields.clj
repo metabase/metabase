@@ -39,7 +39,6 @@
   * In general the methods in these namespaces return the number of rows updated; these numbers are summed and used
     for logging purposes by higher-level sync logic."
   (:require
-   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -51,7 +50,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.util :as t2.util]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
@@ -68,20 +68,25 @@
      ;; `sync-instances`
      (sync-metadata/update-metadata! table db-metadata (fields.our-metadata/our-metadata table))))
 
-(mu/defn sync-fields-for-db!
-  "Sync the Fields in the Metabase application database for a specific `table`."
+(mu/defn sync-fields! :- [:map
+                          [:updated-fields ms/IntGreaterThanOrEqualToZero]
+                          [:total-fields   ms/IntGreaterThanOrEqualToZero]]
+  "Sync the Fields in the Metabase application database for all the Tables in a `database`."
   [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
-    (let [schema-names    (sync-util/db->sync-schemas database)
-          fields-metadata (fetch-metadata/fields-metadata database :schema-names schema-names)]
+    (let [driver          (driver.u/database->driver database)
+          schemas?        (driver.u/supports? driver :schemas database)
+          fields-metadata (if schemas?
+                            (fetch-metadata/fields-metadata database :schema-names (sync-util/db->sync-schemas database))
+                            (fetch-metadata/fields-metadata database))]
       (transduce (comp
                   (partition-by (juxt :table-name :table-schema))
                   (map (fn [table-metadata]
                          (let [fst     (first table-metadata)
                                table   (t2/select-one :model/Table
                                                       :db_id (:id database)
-                                                      :%lower.name (:table-name fst)
-                                                      :%lower.schema (:table-schema fst)
+                                                      :%lower.name (t2.util/lower-case-en (:table-name fst))
+                                                      :%lower.schema (some-> fst :table-schema t2.util/lower-case-en)
                                                       {:where sync-util/sync-tables-clause})
                                updated (if table
                                          (try (sync-and-update! table (set table-metadata))
@@ -104,19 +109,6 @@
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
    (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
-     (let [db-metadata (fields.our-metadata/db-metadata database table)]
+     (let [db-metadata  (fetch-metadata/table-fields-metadata database table)]
        {:total-fields   (count db-metadata)
         :updated-fields (sync-and-update! table db-metadata)}))))
-
-(mu/defn sync-fields! :- [:maybe
-                          [:map
-                           [:updated-fields ms/IntGreaterThanOrEqualToZero]
-                           [:total-fields   ms/IntGreaterThanOrEqualToZero]]]
-  "Sync the Fields in the Metabase application database for all the Tables in a `database`."
-  [database :- i/DatabaseInstance]
-  (if (driver/database-supports? (driver.u/database->driver database) :describe-fields database)
-    (sync-fields-for-db! database)
-    (->> (sync-util/db->sync-tables database)
-         (map (partial sync-fields-for-table! database))
-         (remove (partial instance? Throwable))
-         (apply merge-with +))))

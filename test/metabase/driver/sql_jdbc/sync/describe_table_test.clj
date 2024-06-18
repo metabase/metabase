@@ -7,7 +7,6 @@
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
-   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -22,8 +21,17 @@
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(defn- uses-default-describe-table? [driver]
+  (and (identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table driver))
+       (not (driver.u/supports? driver :describe-fields nil))))
+
+(defn- uses-default-describe-fields? [driver]
+  (and (identical? (get-method driver/describe-fields :sql-jdbc) (get-method driver/describe-fields driver))
+       (driver.u/supports? driver :describe-fields nil)))
 
 (defn- sql-jdbc-drivers-using-default-describe-table-or-fields-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`, or `describe-fields`."
@@ -31,76 +39,66 @@
   (set
    (filter
     (fn [driver]
-      (let [uses-default-describe-table? (and (identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table driver))
-                                              (not (driver/database-supports? driver :describe-fields nil)))
-            uses-default-describe-fields? (and (identical? (get-method driver/describe-fields :sql-jdbc) (get-method driver/describe-fields driver))
-                                               (driver/database-supports? driver :describe-fields nil))]
-        (or uses-default-describe-table?
-            uses-default-describe-fields?)))
+      (or (uses-default-describe-table? driver)
+          (uses-default-describe-fields? driver)))
     (descendants driver/hierarchy :sql-jdbc))))
 
 (deftest ^:parallel describe-fields-nested-field-columns-test
   (testing (str "Drivers that support describe-fields should not support the nested field columns feature."
                 "It is possible to support both in the future but this has not been implemented yet.")
-    (is (empty? (filter #(driver/database-supports? % :describe-fields nil)
+    (is (empty? (filter #(driver.u/supports? % :describe-fields nil)
                         (mt/normal-drivers-with-feature :nested-field-columns))))))
 
 (deftest ^:parallel describe-table-test
-  (is (= {:name "VENUES",
-          :fields
-          #{{:name                       "ID"
-             :database-type              "BIGINT"
-             :base-type                  :type/BigInteger
-             :database-position          0
-             :pk?                        true
-             :database-required          false
-             :database-is-auto-increment true :json-unfolding false}
-            {:name                       "NAME"
-             :database-type              "CHARACTER VARYING"
-             :base-type                  :type/Text
-             :database-position          1
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}
-            {:name                       "CATEGORY_ID"
-             :database-type              "INTEGER"
-             :base-type                  :type/Integer
-             :database-position          2
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}
-            {:name                       "LATITUDE"
-             :database-type              "DOUBLE PRECISION"
-             :base-type                  :type/Float
-             :database-position          3
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}
-            {:name                       "LONGITUDE"
-             :database-type              "DOUBLE PRECISION"
-             :base-type                  :type/Float
-             :database-position          4
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}
-            {:name                       "PRICE"
-             :database-type              "INTEGER"
-             :base-type                  :type/Integer
-             :database-position          5
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}}}
-         (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "VENUES"}))))
-
-(defn- describe-fields-for-table [db table]
-  (let [driver (driver.u/database->driver db)]
-    (sort-by :database-position
-             (if (driver/database-supports? driver :describe-fields db)
-               (vec (sql-jdbc.describe-table/describe-fields driver db
-                                                             :schema-names [(:schema table)]
-                                                             :table-names [(:name table)]))
-               (:fields (sql-jdbc.describe-table/describe-table driver db table))))))
-
+  (mt/test-driver :h2
+    (assert (uses-default-describe-table? :h2)
+            "Make sure H2 uses the default `describe-table` implementation")
+    (is (= {:name "VENUES",
+            :fields
+            #{{:name                       "ID"
+               :database-type              "BIGINT"
+               :base-type                  :type/BigInteger
+               :database-position          0
+               :pk?                        true
+               :database-required          false
+               :database-is-auto-increment true
+               :json-unfolding             false}
+              {:name                       "NAME"
+               :database-type              "CHARACTER VARYING"
+               :base-type                  :type/Text
+               :database-position          1
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}
+              {:name                       "CATEGORY_ID"
+               :database-type              "INTEGER"
+               :base-type                  :type/Integer
+               :database-position          2
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}
+              {:name                       "LATITUDE"
+               :database-type              "DOUBLE PRECISION"
+               :base-type                  :type/Float
+               :database-position          3
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}
+              {:name                       "LONGITUDE"
+               :database-type              "DOUBLE PRECISION"
+               :base-type                  :type/Float
+               :database-position          4
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}
+              {:name                       "PRICE"
+               :database-type              "INTEGER"
+               :base-type                  :type/Integer
+               :database-position          5
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}}}
+           (driver/describe-table :h2 (mt/db) {:name "VENUES"})))))
 
 (deftest describe-auto-increment-on-non-pk-field-test
   (testing "a non-pk field with auto-increment should be have metabase_field.database_is_auto_increment=true"
@@ -140,40 +138,19 @@
               :name "employee_counter"}
              (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "employee_counter"}))))))
 
-(deftest ^:parallel describe-table-fks-test
-  (is (= #{{:fk-column-name   "CATEGORY_ID"
-            :dest-table       {:name "CATEGORIES", :schema "PUBLIC"}
-            :dest-column-name "ID"}}
-         (sql-jdbc.describe-table/describe-table-fks :h2 (mt/id) {:name "VENUES"})))
-  (is (= #{{:fk-column-name "USER_ID", :dest-table {:name "USERS", :schema "PUBLIC"}, :dest-column-name "ID"}
-           {:fk-column-name "VENUE_ID", :dest-table {:name "VENUES", :schema "PUBLIC"}, :dest-column-name "ID"}}
-         (sql-jdbc.describe-table/describe-table-fks :h2 (mt/id) {:name "CHECKINS"}))))
-
-(deftest describe-fields-or-table-test
-  (testing "test `describe-fields` or `describe-table` returns some basic metadata"
-    (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
-      (mt/dataset daily-bird-counts
-        (let [table       (t2/select-one :model/Table :id (mt/id :bird-count))
-              format-name #(ddl.i/format-name driver/*driver* %)]
-          (is (=? [{:name              (format-name "id"),
-                    :database-type     string?,
-                    :database-position 0,
-                    :base-type         #(isa? % :type/Number),
-                    :json-unfolding    false}
-                   {:name              (format-name "date"),
-                    :database-type     string?,
-                    :database-position 1,
-                    :base-type         #(isa? % :type/Date),
-                    :json-unfolding    false}
-                   {:name              (format-name "count"),
-                    :database-type     string?,
-                    :database-position 2,
-                    :base-type         #(isa? % :type/Number),
-                    :json-unfolding    false}]
-                  (describe-fields-for-table (mt/db) table))))))))
+(defn- describe-fields-for-table [db table]
+  (let [driver (driver.u/database->driver db)]
+    (sort-by :database-position
+             (if (driver.u/supports? driver :describe-fields db)
+               (vec (driver/describe-fields driver
+                                            db
+                                            :schema-names [(:schema table)]
+                                            :table-names [(:name table)]))
+               (:fields (driver/describe-table driver db table))))))
 
 (deftest database-types-fallback-test
-  (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
+  (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
+                          (tqpt/timeseries-drivers))
     (let [org-result-set-seq jdbc/result-set-seq]
       (with-redefs [jdbc/result-set-seq (fn [& args]
                                           (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
@@ -193,7 +170,8 @@
                     set)))))))
 
 (deftest calculated-semantic-type-test
-  (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
+  (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
+                          (tqpt/timeseries-drivers))
     (with-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_driver _database-type column-name]
                                                                   (when (= (u/lower-case-en column-name) "longitude")
                                                                     :type/Longitude))]
@@ -212,32 +190,31 @@
 
 (deftest ^:parallel row->types-test
   (testing "array rows ignored properly in JSON row->types (#21752)"
-    (let [arr-row   {:bob [:bob :cob :dob 123 "blob"]}
-          obj-row   {:zlob {"blob" 1323}}]
-      (is (= {} (#'sql-jdbc.describe-table/row->types arr-row)))
-      (is (= {[:zlob "blob"] java.lang.Long} (#'sql-jdbc.describe-table/row->types obj-row)))))
-  (testing "JSON row->types handles bigint OK (#21752)"
-    (let [int-row   {:zlob {"blob" 123N}}
-          float-row {:zlob {"blob" 1234.02M}}]
-      (is (= {[:zlob "blob"] clojure.lang.BigInt} (#'sql-jdbc.describe-table/row->types int-row)))
-      (is (= {[:zlob "blob"] java.math.BigDecimal} (#'sql-jdbc.describe-table/row->types float-row))))))
+    (let [arr-row   {:bob (json/encode [:bob :cob :dob 123 "blob"])}
+          obj-row   {:zlob (json/encode {:blob Long/MAX_VALUE})}]
+      (is (= {[:bob] clojure.lang.PersistentVector} (#'sql-jdbc.describe-table/json-map->types arr-row)))
+      (is (= {[:zlob "blob"] java.lang.Long} (#'sql-jdbc.describe-table/json-map->types obj-row)))))
+  (testing "JSON json-map->types handles bigint OK (#22732)"
+    (let [int-row   {:zlob (json/encode {"blob" (inc (bigint Long/MAX_VALUE))})}
+          float-row {:zlob "{\"blob\": 12345678901234567890.12345678901234567890}"}]
+      (is (= {[:zlob "blob"] clojure.lang.BigInt} (#'sql-jdbc.describe-table/json-map->types int-row)))
+      ;; no idea how to force it to use BigDecimal here
+      (is (= {[:zlob "blob"] Double} (#'sql-jdbc.describe-table/json-map->types float-row)))))
+  (testing "JSON unfolding supports naked values"
+    (let [string-row {:naked (json/encode "string")}
+          arr-row    {:naked (json/encode [1 2])}]
+      (is (= {[:naked] String}
+             (#'sql-jdbc.describe-table/json-map->types string-row)))
+      (is (= {[:naked] clojure.lang.PersistentVector}
+             (#'sql-jdbc.describe-table/json-map->types arr-row))))))
 
-(deftest ^:parallel dont-parse-long-json-xform-test
-  (testing "obnoxiously long json should not even get parsed (#22636)"
-    ;; Generating an actually obnoxiously long json took too long,
-    ;; and actually copy-pasting an obnoxiously long string in there looks absolutely terrible,
-    ;; so this rebinding is what you get
-    (let [obnoxiously-long-json "{\"bob\": \"dobbs\"}"
-          json-map              {:somekey obnoxiously-long-json}]
-      (binding [sql-jdbc.describe-table/*nested-field-column-max-row-length* 3]
-        (is (= {}
-               (transduce
-                 #'sql-jdbc.describe-table/describe-json-xform
-                 #'sql-jdbc.describe-table/describe-json-rf [json-map]))))
-      (is (= {[:somekey "bob"] java.lang.String}
-             (transduce
-               #'sql-jdbc.describe-table/describe-json-xform
-               #'sql-jdbc.describe-table/describe-json-rf [json-map]))))))
+(deftest ^:parallel key-limit-test
+  (testing "we don't read too many keys even from long jsons"
+    (let [data (into {} (for [i (range (* 2 @#'sql-jdbc.describe-table/max-nested-field-columns))]
+                          [(str "key" i) i]))]
+      ;; inc the limit since we go 1 over the limit, see comment in `json->types`
+      (is (= (inc @#'sql-jdbc.describe-table/max-nested-field-columns)
+             (count (#'sql-jdbc.describe-table/json-map->types {:k (json/encode data)})))))))
 
 (deftest ^:parallel get-table-pks-test
   ;; FIXME: this should works for all sql drivers
@@ -271,18 +248,13 @@
                  (is (nil? (:visibility-type text-field))))))))))))
 
 (deftest ^:parallel describe-nested-field-columns-test
-  (testing "flattened-row"
-    (let [row       {:bob {:dobbs 123 :cobbs "boop"}}
-          flattened {[:mob :bob :dobbs] 123
-                     [:mob :bob :cobbs] "boop"}]
-      (is (= flattened (#'sql-jdbc.describe-table/flattened-row :mob row)))))
-  (testing "row->types"
-    (let [row   {:bob {:dobbs {:robbs 123} :cobbs [1 2 3]}}
-          types {[:bob :cobbs] clojure.lang.PersistentVector
-                 [:bob :dobbs :robbs] java.lang.Long}]
-      (is (= types (#'sql-jdbc.describe-table/row->types row)))))
-  (testing "JSON row->types handles bigint that comes in and gets interpreted as Java bigint OK (#22732)"
-    (let [int-row   {:zlob {"blob" (java.math.BigInteger. "123124124312134235234235345344324352")}}]
+  (testing "json-map->types"
+    (let [row   {:bob (json/encode {:dobbs {:robbs 123} :cobbs [1 2 3]})}
+          types {[:bob "cobbs"] clojure.lang.PersistentVector
+                 [:bob "dobbs" "robbs"] java.lang.Long}]
+      (is (= types (#'sql-jdbc.describe-table/json-map->types row)))))
+  (testing "JSON json-map->types handles bigint that comes in and gets interpreted as Java bigint OK (#22732)"
+    (let [int-row   {:zlob (json/encode {"blob" (java.math.BigInteger. "123124124312134235234235345344324352")})}]
       (is (= #{{:name              "zlob → blob",
                 :database-type     "decimal",
                 :base-type         :type/BigInteger,
@@ -291,7 +263,7 @@
                 :visibility-type   :normal,
                 :nfc-path          [:zlob "blob"]}}
              (-> int-row
-                 (#'sql-jdbc.describe-table/row->types)
+                 (#'sql-jdbc.describe-table/json-map->types)
                  (#'sql-jdbc.describe-table/field-types->fields)))))))
 
 (deftest ^:parallel nested-field-column-test

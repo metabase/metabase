@@ -13,34 +13,32 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Custom appearance" %}
 
-Appearance settings give you the option to white label Metabase to match your company’s branding.
+Appearance settings give admins the option to whitelabel Metabase to match your company’s branding.
 
 If you're looking for date, time, number, or currency formatting, see [Formatting defaults](../data-modeling/formatting.md).
 
 ## Changing Metabase's appearance
 
-Click on the gear icon at the bottom of the navigation sidebar and select **Admin settings** > **Settings** > **Appearance**. Here’s what you can do:
+Hit cmd/ctrl + k to bring up the command palette and search for "Appearance" and click on Settings -> Appearance.
 
-## De-Metabasing your Metabase for embedding
+You can also click on the **gear** icon at the bottom of the navigation sidebar and click through **Admin settings** > **Settings** > **Appearance**.
 
-When embedding Metabase in your app, in addition to changing colors and fonts, you can show or hide Metabase-branded UI elements and links (like in-app links to Metabase's documentation). If you're embedding Metabase in your app, here are some settings you might want to change:
+Appearance settings are split across different tabs:
 
-- [Application name](#application-name)
+- [Branding](#branding)
+- [Conceal Metabase](#conceal-metabase)
+
+## Branding
+
+In the Branding tab, you can configure your Metabase to match your brand visuals and voice.
+
+- [Color palette](#color-palette)
+- [User interface colors](#user-interface-colors)
+- [Chart colors](#chart-colors)
 - [Logo](#logo)
-- [Favicon](#favicon)
+- [Font](#font)
 - [Loading message](#loading-message)
-- [Help link in the settings menu](#help-link-in-the-settings-menu)
-- [Metabot](#metabot)
-- [Lighthouse illustration](#lighthouse-illustration)
-- [Documentation and reference](#documentation-and-references)
-
-## Application name
-
-You can change every place in the app that says “Metabase” to something like “Acme Analytics,” or whatever you want to call your Metabase app.
-
-## Font
-
-This is the primary font used in charts and throughout the Metabase application (your "instance font"). See [Fonts](./fonts.md).
+- [Favicon](#favicon)
 
 ## Color palette
 
@@ -74,13 +72,9 @@ Custom colors are unavailable for:
 
 You can replace Metabase’s familiar, tasteful, inspired-yet-not-threateningly-avant-garde dotted M logo with your very own logo. For things to work best, the logo you upload should be an SVG file that looks good when it’s around 60px tall. (In other words, ask the nearest designer for help.)
 
-## Favicon
+## Font
 
-The URL or image that you want to use as the favicon. Note that if you use a relative path, that path isn't relative to the Metabase JAR, but to the webserver. So unless you're using a reverse-proxy, the path will be relative to the frontend resources available to the JAR.
-
-## Landing page
-
-The landing page is what people will see whenever they login. You can set the URL to a collection, question, dashboard or whatever, just make sure that everyone has access to that URL.
+This is the primary font used in charts and throughout the Metabase application (your "instance font"). See [Fonts](./fonts.md).
 
 ## Loading message
 
@@ -90,6 +84,31 @@ This message is the text Metabase presents when it's loading a query. Options in
 - "Running query..."
 - "Loading results..."
 
+## Favicon
+
+The URL or image that you want to use as the favicon (the logo visible in browser tabs, address bars, bookmark lists, and other places).
+
+If you use a relative path, that path isn't relative to the Metabase JAR, but to the webserver. So unless you're using a reverse-proxy, the path will be relative to the frontend resources available to the JAR.
+
+## Conceal Metabase
+
+Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs.
+
+- [Application name](#application-name)
+- [Documentation and references](#documentation-and-references)
+- [Help link in the settings menu](#help-link-in-the-settings-menu)
+- [Metabase illustrations](#metabase-illustrations)
+
+## Application name
+
+You can change every place in the app that says “Metabase” to something like “Acme Analytics,” or whatever you want to call your Metabase app.
+
+## Documentation and references
+
+Control the visibility of links to official Metabase documentation and other references to Metabase in your instance.
+
+This setting affects all links in the product experience that point to Metabase.com URLs (with the exception of links and references in the Admin settings).
+
 ## Help link in the settings menu
 
 The Settings menu (the "gear" menu in the upper right of your Metabase) includes a **Help** option that links to a [Metabase help page](https://www.metabase.com/help/) by default. You can change this menu Help item by selecting one of the following options:
@@ -98,21 +117,53 @@ The Settings menu (the "gear" menu in the upper right of your Metabase) includes
 - Hide it (the Settings menu won't display the Help option at all).
 - Go to a custom destination. Enter a URL that the Settings menu's Help option should link to. Valid URLs include http, https, and mailto URLs.
 
-## Metabot
+## Metabase illustrations
 
-![Metabot toggle](./images/metabot.png)
+![Lighthouse illustration](./images/lighthouse-illustration.png)
 
-You can decide whether to display our little friend on the home page.
+Customize each of the illustrations in Metabase.
 
-## Lighthouse illustration
+### Metabot greeting
 
-Show the Metabase lighthouse image on the home and login pages.
+Turn this guy on or off:
 
-## Documentation and references
+![Metabot greeting](./images/metabot-greeting.png)
 
-Control the visibility of links to official Metabase documentation and other references to Metabase in your instance.
+### Login and unsubscribe pages
 
-This setting affects all links in the product experience that point to Metabase.com URLs (with the exception of links and references in the Admin settings).
+![Login page](./images/login-page.png)
+
+What people see when Metabase prompts them to log in.
+
+- Lighthouse
+- No illustration
+- Custom
+
+### Landing page
+
+The landing page is what people will see whenever they login. You can set the URL to a collection, question, dashboard or whatever, just make sure that everyone has access to that URL.
+
+- Lighthouse
+- No illustration
+- Custom
+
+### When calculations return no results
+
+![Sailboat](./images/sailboat.png)
+
+Metabase will display this illustration when questions or dashboard cards contain no results.
+
+- Sailboat
+- No illustration
+- Custom
+
+### When no objects can be found
+
+Metabase will display this illustration when searches don't return any results.
+
+- Sailboat
+- No illustration
+- Custom
 
 ## Further reading
 

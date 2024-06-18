@@ -58,8 +58,11 @@
   (let [excluded-driver-dirs (for [driver (excluded-drivers)]
                                (format "modules/drivers/%s" (name driver)))
         exclude-directory?   (fn [dir]
-                               (some (partial str/includes? (str dir))
-                                     excluded-driver-dirs))
+                               (let [dir (str dir)]
+                                 (some (fn [excluded]
+                                         (or (str/ends-with? dir excluded)
+                                             (str/includes? dir (str excluded "/"))))
+                                       excluded-driver-dirs)))
         directories          (for [^java.io.File file (classpath/system-classpath)
                                    :when              (and (.isDirectory file)
                                                            (not (exclude-directory? file)))]
@@ -79,7 +82,7 @@
    "test_resources"])
 
 (defn- default-options []
-  {:namespace-pattern   #"^metabase.*"
+  {:namespace-pattern   #"^(?:(?:metabase.*)|(?:hooks\..*))" ; anything starting with `metabase*` (including `metabase-enterprise`) or `hooks.*`
    :exclude-directories excluded-directories
    :test-warn-time      3000})
 

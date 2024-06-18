@@ -6,6 +6,7 @@ import {
   TableColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import AccordionList from "metabase/core/components/AccordionList";
+import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
 import { Icon, DelayGroup } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -71,9 +72,11 @@ const DataSelectorFieldPicker = ({
 
   const renderItemIcon = (item: FieldWithName) =>
     item.field && (
-      <Icon
-        name={item.field.dimension().icon() as unknown as IconName}
+      <TableColumnInfoIcon
+        field={item.field}
+        position="top-end"
         size={18}
+        icon={item.field.dimension().icon() as unknown as IconName}
       />
     );
 
@@ -83,7 +86,7 @@ const DataSelectorFieldPicker = ({
         <AccordionList
           id="FieldPicker"
           key="fieldPicker"
-          className="text-brand"
+          className={CS.textBrand}
           hasInitialFocus={hasInitialFocus}
           sections={sections}
           maxHeight={Infinity}
@@ -94,7 +97,6 @@ const DataSelectorFieldPicker = ({
           itemIsClickable={(item: FieldWithName) => item.field}
           renderItemWrapper={renderItemWrapper}
           renderItemIcon={renderItemIcon}
-          renderItemExtra={renderItemExtra}
         />
       </DelayGroup>
     </Container>
@@ -103,10 +105,6 @@ const DataSelectorFieldPicker = ({
 
 function renderItemWrapper(content: ReactNode) {
   return <HoverParent>{content}</HoverParent>;
-}
-
-function renderItemExtra(item: FieldWithName) {
-  return <TableColumnInfoIcon field={item.field} position="top-end" />;
 }
 
 const Header = ({ onBack, selectedTable }: HeaderProps) => (

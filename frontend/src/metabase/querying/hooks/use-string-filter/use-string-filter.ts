@@ -46,17 +46,14 @@ export function useStringFilter({
     filterParts ? filterParts.options : {},
   );
 
-  const { valueCount, hasMultipleValues, hasCaseSensitiveOption } =
-    getOptionByOperator(operator);
+  const { type } = getOptionByOperator(operator);
   const isValid = isValidFilter(operator, column, values, options);
 
   return {
+    type,
     operator,
     availableOptions,
     values,
-    valueCount,
-    hasMultipleValues,
-    hasCaseSensitiveOption,
     options,
     isValid,
     getDefaultValues,

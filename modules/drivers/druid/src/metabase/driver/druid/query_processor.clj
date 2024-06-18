@@ -16,7 +16,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -321,9 +321,9 @@
       mbql.u/simplify-compound-filter
       parse-filter*))
 
-(mu/defn ^:private add-datetime-units* :- mbql.s/DateTimeValue
+(mu/defn ^:private add-datetime-units* :- ::mbql.s/DateTimeValue
   "Return a `relative-datetime` clause with `n` units added to it."
-  [absolute-or-relative-datetime :- mbql.s/DateTimeValue
+  [absolute-or-relative-datetime :- ::mbql.s/DateTimeValue
    n                             :- number?]
   (if (mbql.u/is-clause? :relative-datetime absolute-or-relative-datetime)
     (let [[_ original-n unit] absolute-or-relative-datetime]
@@ -420,9 +420,8 @@
     ;; log a warning about all the intervals we filtered out above
     (doseq [intervals subclause-intervals
             :when     (> (count intervals) 1)]
-      (log/warn (tru "WARNING: Don't know how to combine these intervals into a single interval.")
-                "\n"
-                (tru "Ignoring intervals: {0}" intervals)))
+      (log/warnf "WARNING: Don't know how to combine these intervals into a single interval.\nIgnoring intervals: %s"
+                 intervals))
     (reduce
      (fn [[acc] interval]
        [(combine-intervals acc interval)])
@@ -685,7 +684,9 @@
                         {:aggregations [(ag:doubleMax ag-field (or output-name :max))]}])))
 
 (mu/defn ^:private handle-aggregation
-  [query-type ag-clause :- mbql.s/Aggregation druid-query]
+  [query-type
+   ag-clause :- ::mbql.s/Aggregation
+   druid-query]
   (let [output-name               (annotate/aggregation-name *query* ag-clause)
         [ag-type ag-field & args] (lib.util.match/match-one ag-clause
                                     [:aggregation-options ag & _] #_:clj-kondo/ignore (recur ag)
@@ -1000,10 +1001,10 @@
 (defmethod handle-order-by ::query
   [_ _ druid-query]
   (log/warn
-   (u/format-color 'red
-       (tru "Sorting with Druid is only allowed in queries that have one or more breakout columns. Ignoring :order-by clause.")))
+   (u/format-color
+    'red
+    "Sorting with Druid is only allowed in queries that have one or more breakout columns. Ignoring :order-by clause."))
   druid-query)
-
 
 (defmethod handle-order-by ::topN
   [_ {[ag] :aggregation, [breakout-field] :breakout, [[direction field]] :order-by} druid-query]
@@ -1054,7 +1055,7 @@
   [_ {[[direction field]] :order-by} druid-query]
   (let [can-sort? (if (temporal-field? field)
                     true
-                    (log/warn (trs "grouped timeseries queries can only be sorted by the ''timestamp'' column.")))]
+                    (log/warn "grouped timeseries queries can only be sorted by the 'timestamp' column."))]
     (cond-> druid-query
       can-sort? (assoc-in [:query :descending] (= direction :desc)))))
 
@@ -1062,10 +1063,10 @@
   [_ {[[direction field]] :order-by, fields :fields} druid-query]
   (let [can-sort? (cond
                     (not (some temporal-field? fields))
-                    (log/warn (trs "scan queries can only be sorted if they include the ''timestamp'' column."))
+                    (log/warn "scan queries can only be sorted if they include the 'timestamp' column.")
 
                     (not (temporal-field? field))
-                    (log/warn (trs "scan queries can only be sorted by the ''timestamp'' column."))
+                    (log/warn "scan queries can only be sorted by the 'timestamp' column.")
 
                     :else
                     true)]
@@ -1087,7 +1088,7 @@
     (log/warn
      (u/format-color 'red
          ;; TODO - this is not really true, is it
-         (tru "WARNING: It only makes sense to specify :fields for a query with no aggregation. Ignoring the clause."))))
+         "WARNING: It only makes sense to specify :fields for a query with no aggregation. Ignoring the clause.")))
   druid-query)
 
 (defmethod handle-fields ::scan
@@ -1138,8 +1139,7 @@
   [_ {limit :limit} druid-query]
   (when limit
     (log/warn
-     (u/format-color 'red
-         (tru "WARNING: Druid does not allow limitSpec in time series queries. Ignoring the LIMIT clause."))))
+     (u/format-color 'red "WARNING: Druid does not allow limitSpec in time series queries. Ignoring the LIMIT clause.")))
   druid-query)
 
 (defmethod handle-limit ::topN

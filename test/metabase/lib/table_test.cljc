@@ -34,12 +34,21 @@
     (let [metadata-provider
           (reify
             metadata.protocols/MetadataProvider
-            (database [_this]          (metadata.protocols/database meta/metadata-provider))
-            (table    [_this table-id] (metadata.protocols/table meta/metadata-provider table-id))
-            (field    [_this field-id] (assoc (metadata.protocols/field meta/metadata-provider field-id) :name nil))
-            (tables   [_this]          (metadata.protocols/tables meta/metadata-provider))
-            (fields   [_this table-id] (mapv #(assoc % :name nil)
-                                             (metadata.protocols/fields meta/metadata-provider table-id))))
+            (database [_this]
+              (metadata.protocols/database meta/metadata-provider))
+            (metadatas [_this metadata-type ids]
+              (cond->> (metadata.protocols/metadatas meta/metadata-provider metadata-type ids)
+                (= metadata-type :metadata/column)
+                (mapv (fn [field]
+                        (assoc field :name nil)))))
+            (tables [_this]
+              (metadata.protocols/tables meta/metadata-provider))
+            (metadatas-for-table [_this metadata-type table-id]
+              (when (= metadata-type :metadata/column)
+                (mapv #(assoc % :name nil)
+                      (metadata.protocols/fields meta/metadata-provider table-id))))
+            (setting [_this _setting-key]
+              nil))
           query (lib/query metadata-provider (meta/table-metadata :venues))]
       (mu/disable-enforcement
-        (is (sequential? (lib/visible-columns query)))))))
+       (is (sequential? (lib/visible-columns query)))))))

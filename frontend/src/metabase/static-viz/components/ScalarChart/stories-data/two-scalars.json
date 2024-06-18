@@ -1,0 +1,277 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 5,
+      "result_metadata": [
+        {
+          "display_name": "Sum of Discount",
+          "settings": null,
+          "field_ref": [
+            "aggregation",
+            0
+          ],
+          "name": "sum",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 9954.822827272128,
+                "q1": 9954.822827272128,
+                "q3": 9954.822827272128,
+                "max": 9954.822827272128,
+                "sd": null,
+                "avg": 9954.822827272128
+              }
+            }
+          }
+        }
+      ],
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "name": "scalar 2 - Duplicate",
+      "creator_id": 1,
+      "updated_at": "2024-01-11T00:57:31.44134-03:00",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [
+            [
+              "sum",
+              [
+                "field",
+                33,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ]
+          ]
+        }
+      },
+      "id": 134,
+      "parameter_mappings": [],
+      "display": "scalar",
+      "entity_id": "z3nZn8hwpy1nfJi5Ms0zE",
+      "collection_preview": true,
+      "visualization_settings": {},
+      "metabase_version": "v1.48.1-SNAPSHOT (6934865)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2024-01-11T00:49:23.012145-03:00",
+      "public_uuid": null
+    },
+    "data": {
+      "cols": [
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "sum",
+          "display_name": "Sum of Discount",
+          "source": "aggregation",
+          "field_ref": [
+            "aggregation",
+            0
+          ],
+          "aggregation_index": 0,
+          "effective_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT SUM(\"PUBLIC\".\"ORDERS\".\"DISCOUNT\") AS \"sum\" FROM \"PUBLIC\".\"ORDERS\"",
+        "params": null
+      },
+      "viz-settings": {
+        "metabase.shared.models.visualization-settings/column-settings": {},
+        "metabase.shared.models.visualization-settings/global-column-settings": {}
+      },
+      "results_timezone": "America/Montevideo",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "Sum of Discount",
+            "settings": null,
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 9954.822827272128,
+                  "q1": 9954.822827272128,
+                  "q3": 9954.822827272128,
+                  "max": 9954.822827272128,
+                  "sd": null,
+                  "avg": 9954.822827272128
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null,
+      "rows": [
+        [
+          9954.822827272128
+        ]
+      ]
+    }
+  },
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 5,
+      "result_metadata": [
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": [
+            "aggregation",
+            0
+          ],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 18760,
+                "q1": 18760,
+                "q3": 18760,
+                "max": 18760,
+                "sd": null,
+                "avg": 18760
+              }
+            }
+          }
+        }
+      ],
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "name": "scalar 1 - Duplicate",
+      "creator_id": 1,
+      "updated_at": "2024-01-11T00:57:32.861012-03:00",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [
+            [
+              "count"
+            ]
+          ]
+        }
+      },
+      "id": 135,
+      "parameter_mappings": [],
+      "display": "scalar",
+      "entity_id": "9czG8pyUarZihKjXViKLZ",
+      "collection_preview": true,
+      "visualization_settings": {},
+      "metabase_version": "v1.48.1-SNAPSHOT (6934865)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2024-01-11T00:49:23.012145-03:00",
+      "public_uuid": null
+    },
+    "data": {
+      "cols": [
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": [
+            "aggregation",
+            0
+          ],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT COUNT(*) AS \"count\" FROM \"PUBLIC\".\"ORDERS\"",
+        "params": null
+      },
+      "viz-settings": {
+        "metabase.shared.models.visualization-settings/column-settings": {},
+        "metabase.shared.models.visualization-settings/global-column-settings": {}
+      },
+      "results_timezone": "America/Montevideo",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 18760,
+                  "q1": 18760,
+                  "q3": 18760,
+                  "max": 18760,
+                  "sd": null,
+                  "avg": 18760
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null,
+      "rows": [
+        [
+          18760
+        ]
+      ]
+    }
+  }
+]

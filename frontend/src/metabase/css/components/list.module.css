@@ -1,101 +1,105 @@
-:global(.List-section-header .Icon),
-:global(.List-item .List-item-arrow .Icon) {
-  color: var(--color-text-dark);
+.ListSectionHeader :global(.Icon),
+.ListItem .ListItemArrow :global(.Icon) {
+  color: var(--mb-color-text-dark);
 }
 
-:global(.List-section-header:hover .Icon) {
+.ListSectionHeader:hover :global(.Icon) {
   color: inherit;
 }
 
-:global(.List-item .Icon) {
-  color: var(--color-text-light);
+.ListItem :global(.Icon) {
+  color: var(--mb-color-text-light);
 }
 
-:global(.List-section-header) {
-  color: var(--color-text-dark);
+.ListSectionHeader {
+  color: var(--mb-color-text-dark);
   border: 2px solid transparent;
 
-  /* so that spacing matches .List-item */
+  /* so that spacing matches [data-element-id=list-item] */
 }
 
-:global(.List-section-header--cursor) {
+.ListSectionHeaderCursor {
   border-radius: 8px;
-  outline: 2px solid var(--color-focus);
+  outline: 2px solid var(--mb-color-focus);
   outline-offset: -4px;
 }
 
 /* these crazy rules are needed to get currentColor to propagate to the right elements in the right states */
-:global(.List-section--togglable .List-section-header:hover),
-:global(.List-section--togglable .List-section-header:hover .Icon),
-:global(.List-section--togglable
-    .List-section-header:hover
-    .List-section-title),
-:global(.List-section--expanded .List-section-header),
-:global(.List-section--expanded .List-section-header .List-section-icon .Icon) {
+.ListSectionToggleAble .ListSectionHeader:hover,
+.ListSectionToggleAble .ListSectionHeader:hover :global(.Icon),
+.ListSectionToggleAble .ListSectionHeader:hover .ListSectionTitle,
+.ListSectionExpanded .ListSectionHeader,
+.ListSectionExpanded .ListSectionHeader .ListSectionIcon :global(.Icon) {
   color: currentColor;
 }
 
-:global(.List-section--expanded .List-section-header .List-section-title) {
-  color: var(--color-text-dark);
+.ListSectionExpanded .ListSectionHeader .ListSectionTitle {
+  color: var(--mb-color-text-dark);
 }
 
-:global(.List-section-title) {
+.ListSectionTitle {
   word-wrap: break-word;
 }
 
 /* LIST ITEM */
-:global(.List-item) {
+.ListItem {
   display: flex;
   border-radius: 4px;
   margin-top: 2px;
   margin-bottom: 2px;
 }
 
-:global(.List-item--cursor) {
-  outline: 2px solid var(--color-focus);
+.ListItemCursor {
+  outline: 2px solid var(--mb-color-focus);
 }
 
-:global(.List-item--cursor:not(.List-item--disabled)),
-:global(.List-item:not(.List-item--disabled):hover),
-:global(.List-item--selected:not(.List-item--disabled)) {
+.ListItemCursor:not(.ListItemDisabled),
+.ListItem:not(.ListItemDisabled):hover,
+.ListItemSelected:not(.ListItemDisabled) {
   background-color: currentColor;
 }
 
 /* LIST ITEM TITLE */
-:global(.List-item-title) {
-  color: var(--color-text-dark);
+.ListItemTitle {
+  color: var(--mb-color-text-dark);
 }
 
-:global(.List-item--disabled .List-item-title) {
-  color: var(--color-text-light);
+.ListItemDisabled .ListItemTitle {
+  color: var(--mb-color-text-light);
 }
 
-:global(.List-item--cursor:not(.List-item--disabled) .List-item-title),
-:global(.List-item:not(.List-item--disabled):hover .List-item-title),
-:global(.List-item--selected:not(.List-item--disabled) .List-item-title) {
+.ListItemCursor:not(.ListItemDisabled) .ListItemTitle,
+.ListItem:not(.ListItemDisabled):hover .ListItemTitle,
+.ListItemSelected:not(.ListItemDisabled) .ListItemTitle {
   color: white;
 }
 
 /* LIST ITEM DESCRIPTION */
-:global(.List-item-description) {
+.ListItemDescription {
   margin-top: 0.25em;
   margin-bottom: 0;
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
-:global(.List-item--disabled .List-item-description) {
-  color: var(--color-text-dark);
+.ListItemDisabled .ListItemDescription {
+  color: var(--mb-color-text-dark);
 }
 
-:global(.List-item--cursor:not(.List-item--disabled) .List-item-description),
-:global(.List-item:not(.List-item--disabled):hover .List-item-description),
-:global(.List-item--selected:not(.List-item--disabled) .List-item-description) {
+.ListItemCursor:not(.ListItemDisabled) .ListItemDescription,
+.ListItem:not(.ListItemDisabled):hover .ListItemDescription,
+.ListItemSelected:not(.ListItemDisabled) .ListItemDescription {
   color: rgba(255, 255, 255, 0.5);
 }
 
 /* LIST ITEM ICON */
-:global(.List-item--cursor:not(.List-item--disabled) .Icon),
-:global(.List-item:not(.List-item--disabled):hover .Icon),
-:global(.List-item--selected:not(.List-item--disabled) .Icon) {
+.ListItemCursor:not(.ListItemDisabled) :global(.Icon),
+.ListItem:not(.ListItemDisabled):hover :global(.Icon),
+.ListItemSelected:not(.ListItemDisabled) :global(.Icon) {
   color: white !important;
+}
+
+/* Moved from `query_builder.module.css` to make migration easier */
+.ListItem:not(.ListItemDisabled):hover .FieldListGroupingTrigger,
+.ListItemSelected .FieldListGroupingTrigger {
+  visibility: visible;
 }

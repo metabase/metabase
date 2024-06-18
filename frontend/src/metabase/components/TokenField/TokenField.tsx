@@ -6,6 +6,7 @@ import { findDOMNode } from "react-dom";
 import _ from "underscore";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import FormS from "metabase/css/components/form.module.css";
 import CS from "metabase/css/core/index.css";
 import { isObscured } from "metabase/lib/dom";
 import {
@@ -16,6 +17,8 @@ import {
   KEYCODE_DOWN,
   KEYCODE_BACKSPACE,
   KEY_COMMA,
+  KEY_ENTER,
+  KEY_BACKSPACE,
 } from "metabase/lib/keyboard";
 import { Icon } from "metabase/ui";
 
@@ -48,7 +51,7 @@ export type TokenFieldProps = {
   optionRenderer?: (option: any) => React.ReactNode;
   valueRenderer?: (value: any) => React.ReactNode;
   layoutRenderer?: (args: LayoutRendererArgs) => React.ReactNode;
-  color?: string;
+  color?: "brand";
   style?: React.CSSProperties;
   className?: string;
   valueStyle?: React.CSSProperties;
@@ -309,7 +312,8 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
       // ",". Similarly, if you want to type "<" on the US keyboard layout, you
       // need to look at `key` to distinguish it from ",".
       key === KEY_COMMA ||
-      keyCode === KEYCODE_ENTER
+      keyCode === KEYCODE_ENTER ||
+      key === KEY_ENTER
     ) {
       if (this.addSelectedOption(event)) {
         event.preventDefault();
@@ -337,7 +341,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
           selectedOptionValue: this._value(filteredOptions[index + 1]),
         });
       }
-    } else if (keyCode === KEYCODE_BACKSPACE) {
+    } else if (keyCode === KEYCODE_BACKSPACE || key === KEY_BACKSPACE) {
       // backspace
       const { value } = this.props;
       if (!this.state.inputValue && value.length > 0) {
@@ -598,7 +602,11 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
                 }}
                 onMouseDown={e => e.preventDefault()}
               >
-                <Icon name="close" className="flex align-center" size={12} />
+                <Icon
+                  name="close"
+                  className={cx(CS.flex, CS.alignCenter)}
+                  size={12}
+                />
               </TokenFieldAddon>
             )}
           </TokenFieldItem>
@@ -608,7 +616,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
             <input
               ref={this.inputRef}
               style={{ ...defaultStyleValue, ...valueStyle }}
-              className={cx(CS.noFocus, "full borderless px1")}
+              className={cx(CS.full, FormS.noFocus, CS.borderless, CS.px1)}
               // set size to be small enough that it fits in a parameter.
               size={10}
               placeholder={placeholder}
@@ -628,19 +636,35 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     const optionsList =
       filteredOptions.length === 0 ? null : (
         <ul
-          className={cx(optionsClassName, "overflow-auto pl1 my1 scroll-hide")}
+          className={cx(
+            optionsClassName,
+            CS.overflowAuto,
+            CS.pl1,
+            CS.my1,
+            CS.scrollHide,
+          )}
           style={{ maxHeight: 300, ...optionsStyle }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}
         >
           {filteredOptions.map(option => (
-            <li className="mr1" key={this._key(option)}>
+            <li className={CS.mr1} key={this._key(option)}>
               <div
                 className={cx(
-                  `py1 pl1 pr2 block rounded text-bold text-${color}-hover inline-block full cursor-pointer`,
-                  `bg-light-hover`,
+                  CS.py1,
+                  CS.pl1,
+                  CS.pr2,
+                  CS.block,
+                  CS.rounded,
+                  CS.textBold,
+                  CS.inlineBlock,
+                  CS.full,
+                  CS.cursorPointer,
+                  CS.bgLightHover,
                   {
-                    [`text-${color} bg-light`]:
+                    [cx(CS.bgLight, {
+                      [color]: CS.textBrand,
+                    })]:
                       !this.state.listIsHovered &&
                       this._valueIsEqual(
                         selectedOptionValue,

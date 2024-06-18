@@ -1,8 +1,3 @@
-import html2canvas from "html2canvas";
-import jspdf from "jspdf";
-
-import { color } from "metabase/lib/colors";
-
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
 
 export const saveDashboardPdf = async (
@@ -17,13 +12,14 @@ export const saveDashboardPdf = async (
     return;
   }
 
+  const { default: html2canvas } = await import("html2canvas");
   const image = await html2canvas(node, {
     useCORS: true,
     onclone: (doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       const title = doc.createElement("h2") as HTMLElement;
       title.innerHTML = dashboardName;
-      title.style["borderBottom"] = `1px solid ${color("border")}`;
+      title.style["borderBottom"] = "1px solid var(--mb-color-border)";
       title.style["padding"] = "0 1rem 1rem 1rem";
       node.insertBefore(title, node.firstChild);
     },
@@ -35,6 +31,7 @@ export const saveDashboardPdf = async (
   const pdfWidth = imageWidth;
   const pdfHeight = imageHeight + 80;
 
+  const { default: jspdf } = await import("jspdf");
   const pdf = new jspdf({
     unit: "px",
     hotfixes: ["px_scaling"],

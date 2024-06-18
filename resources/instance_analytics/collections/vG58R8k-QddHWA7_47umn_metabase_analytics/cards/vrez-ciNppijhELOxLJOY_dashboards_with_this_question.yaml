@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-dataset: false
 cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
@@ -96,7 +95,77 @@ dataset_query:
           temporal-unit: default
     source-table: pKdvc0pwu1zDi8NqnyJkt
   type: query
-result_metadata: null
+result_metadata:
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_dashboardcard
+    - created_at
+  - base-type: type/DateTimeWithLocalTZ
+    temporal-unit: default
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_dashboardcard
+  - created_at
+  name: created_at
+  semantic_type: type/CreationTimestamp
+  settings: null
+  unit: default
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Content - Dashboard Qualified → Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - entity_id
+  - base-type: type/Integer
+    join-alias: Content - Dashboard Qualified
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - entity_id
+  name: entity_id
+  semantic_type: type/PK
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Content - Dashboard Qualified → Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - name
+  - base-type: type/Text
+    join-alias: Content - Dashboard Qualified
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - name
+  name: name
+  semantic_type: type/Name
+  settings: null
+  visibility_type: normal
 visualization_settings:
   column_settings:
     ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Card Qualified"}]]'
@@ -155,5 +224,6 @@ serdes/meta:
   label: dashboards_with_this_question
   model: Card
 initially_published_at: null
+last_used_at: null
 metabase_version: vUNKNOWN (13e6090)
 type: question

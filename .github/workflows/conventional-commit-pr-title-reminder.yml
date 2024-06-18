@@ -1,0 +1,57 @@
+name: Conventional commit PR Title Reminder
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - enterprise/frontend/src/embedding-sdk/**
+
+jobs:
+  pr-title-reminder:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Check if the PR title is already following Conventional Commits style
+        uses: actions/github-script@v7
+        id: is-conventional-commit
+        with:
+          result-encoding: string
+          script: | # js
+            const pullRequestTitle = context.payload.pull_request.title
+            const conventionalCommitRegex = /^(?<type>\w+)\((?<scope>\w+)\):/
+            const match = pullRequestTitle.match(conventionalCommitRegex)
+            if (match) {
+              const { type, scope } = match.groups
+              return ['feat', 'fix', 'perf', 'docs', 'style', 'refactor', 'test', 'build', 'ci'].includes(type) && scope === 'sdk'
+            }
+
+      - name: Checkout repository so `gh` CLI works
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Remind PR authors to use conventional commit in the title
+        if: ${{ steps.is-conventional-commit.outputs.result != 'true' }}
+        run: |
+          comment='@${{ github.event.pull_request.user.login }} You have modified embedding SDK code. Please make sure the PR title follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) style.
+
+          Here are all the supported types that will be shown in the changelog:
+          - `feat`
+          - `fix`
+          - `perf`
+
+          These types `docs`, `style`, `refactor`, `test`, `build`, and `ci` are also encouraged for non-changelog related tasks.
+
+          Please also make sure to include `sdk` scope, otherwise, the changelog will not include this task.
+
+          For example, these are valid PR titles:
+          - `feat(sdk): Add interactive dashboard component`
+          - `feat(sdk): Support theming pie chart`
+          - `fix(sdk): Fix static dashboard crash`'
+
+          gh pr comment -b "$comment" --edit-last || gh pr comment -b "$comment"
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -18,7 +18,6 @@ function setup({
   const onChange = jest.fn();
 
   mockSettings({
-    "enable-query-caching": true,
     "query-caching-ttl-ratio": cacheTTLMultiplier,
     "query-caching-min-ttl": minCacheThreshold,
   });
@@ -47,18 +46,18 @@ function setup({
 
 const DEFAULT_MODE_REGEXP = /Use default \([.0-9]+ hours\)/;
 
-function selectMode(nextMode) {
+async function selectMode(nextMode) {
   const currentModeLabel =
     nextMode === "custom" ? DEFAULT_MODE_REGEXP : "Custom";
   const nextModeLabel = nextMode === "default" ? DEFAULT_MODE_REGEXP : "Custom";
 
-  userEvent.click(screen.getByText(currentModeLabel));
-  userEvent.click(screen.getByText(nextModeLabel));
+  await userEvent.click(screen.getByText(currentModeLabel));
+  await userEvent.click(screen.getByText(nextModeLabel));
 }
 
-function fillValue(input, value) {
-  userEvent.clear(input);
-  userEvent.type(input, String(value));
+async function fillValue(input, value) {
+  await userEvent.clear(input);
+  await userEvent.type(input, String(value));
   input.blur();
 }
 
@@ -100,9 +99,9 @@ describe("QuestionCacheTTLField", () => {
     expect(screen.getByLabelText(expectedLabel)).toBeInTheDocument();
   });
 
-  it("calls onChange correctly when filling the input", () => {
+  it("calls onChange correctly when filling the input", async () => {
     const { onChange } = setup();
-    fillValue(screen.getByLabelText("Label"), 48);
+    await fillValue(screen.getByLabelText("Label"), 48);
     expect(onChange).toHaveBeenLastCalledWith(48);
   });
 
@@ -113,25 +112,25 @@ describe("QuestionCacheTTLField", () => {
     expect(screen.queryByLabelText("Custom")).not.toBeChecked();
   });
 
-  it("allows to overwrite default caching with custom value", () => {
+  it("allows to overwrite default caching with custom value", async () => {
     const { onChange } = setup({ databaseCacheTTL: 32 });
 
-    selectMode("custom");
-    fillValue(screen.getByLabelText("Label"), 24);
+    await selectMode("custom");
+    await fillValue(screen.getByLabelText("Label"), 24);
 
     expect(onChange).toHaveBeenLastCalledWith(24);
   });
 
-  it("offers to switch to default caching instead of a custom TTL", () => {
+  it("offers to switch to default caching instead of a custom TTL", async () => {
     setup({ value: 24, databaseCacheTTL: 32 });
 
     expect(screen.queryByLabelText("Use default (32 hours)")).not.toBeChecked();
     expect(screen.queryByLabelText("Custom")).toBeChecked();
   });
 
-  it("allows to switch to default caching instead of a custom TTL", () => {
+  it("allows to switch to default caching instead of a custom TTL", async () => {
     const { onChange } = setup({ value: 24, databaseCacheTTL: 32 });
-    selectMode("default");
+    await selectMode("default");
     expect(onChange).toHaveBeenLastCalledWith(null);
   });
 });

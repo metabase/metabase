@@ -1,0 +1,448 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 144,
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "week",
+          "name": "observationdate",
+          "settings": { "date_style": "MMMM D, YYYY" },
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            1358,
+            { "base-type": "type/Date", "temporal-unit": "week" }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 1358,
+          "visibility_type": "normal",
+          "display_name": "Observation Date",
+          "fingerprint": {
+            "global": { "distinct-count": 69, "nil%": 0 },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 10
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "display_name": "Sum of Deaths",
+          "settings": null,
+          "field_ref": ["aggregation", 0],
+          "name": "sum",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": { "distinct-count": 41, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 5518307,
+                "q1": 8152770,
+                "q3": 18885441.5,
+                "max": 24489613,
+                "sd": 5955926.211152246,
+                "avg": 13833839.463414634
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Sum of Recovered",
+          "settings": null,
+          "field_ref": ["aggregation", 1],
+          "name": "sum_2",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": { "distinct-count": 41, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 100168313,
+                "q1": 206002487.25,
+                "q3": 484645713.25,
+                "max": 737925679,
+                "sd": 177464020.54797432,
+                "avg": 361857031.26829267
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Sum of Confirmed",
+          "settings": null,
+          "field_ref": ["aggregation", 2],
+          "name": "sum_3",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": { "distinct-count": 41, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 157210169,
+                "q1": 306649205,
+                "q3": 855369214.25,
+                "max": 1178836130,
+                "sd": 316135999.38177574,
+                "avg": 611221211.7073171
+              }
+            }
+          }
+        }
+      ],
+      "include_xls": false,
+      "database_id": 2,
+      "enable_embedding": false,
+      "collection_id": 6,
+      "query_type": "query",
+      "name": "Bar Multi Trend Stacked 100% - Covid Sum of Confirmed, Recovered, Deaths",
+      "creator_id": 1,
+      "updated_at": "2023-11-22T19:21:23.725058Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [
+            ["sum", ["field", 1362, { "base-type": "type/Float" }]],
+            ["sum", ["field", 1363, { "base-type": "type/Float" }]],
+            ["sum", ["field", 1360, { "base-type": "type/Float" }]]
+          ],
+          "breakout": [
+            [
+              "field",
+              1358,
+              { "base-type": "type/Date", "temporal-unit": "week" }
+            ]
+          ],
+          "source-table": "card__78",
+          "filter": [
+            "between",
+            [
+              "field",
+              1358,
+              { "base-type": "type/Date", "temporal-unit": "week" }
+            ],
+            "2020-08-16T00:00:00-07:00",
+            "2021-05-23T00:00:00-07:00"
+          ]
+        }
+      },
+      "id": 84,
+      "parameter_mappings": [],
+      "include_csv": false,
+      "display": "bar",
+      "entity_id": "ksLppjaSBEFqXoVVHbUlW",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.show_trendline": true,
+        "stackable.stack_type": "normalized",
+        "series_settings": {
+          "sum_2": { "color": "#A7D07C" },
+          "sum": { "color": "#F7C4C4" },
+          "sum_3": { "color": "#87BCEC" }
+        },
+        "graph.dimensions": ["observationdate"],
+        "graph.metrics": ["sum", "sum_2", "sum_3"]
+      },
+      "metabase_version": "v1.47.1-SNAPSHOT (b37c32d)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-11-22T19:19:48.784785Z",
+      "public_uuid": null
+    },
+    "data": {
+      "results_timezone": "America/Los_Angeles",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "week",
+            "name": "observationdate",
+            "settings": { "date_style": "MMMM D, YYYY" },
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              1358,
+              { "base-type": "type/Date", "temporal-unit": "week" }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 1358,
+            "visibility_type": "normal",
+            "display_name": "Observation Date",
+            "fingerprint": {
+              "global": { "distinct-count": 69, "nil%": 0 },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 10
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Sum of Deaths",
+            "settings": null,
+            "field_ref": ["aggregation", 0],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": { "distinct-count": 41, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 5518307,
+                  "q1": 8152770,
+                  "q3": 18885441.5,
+                  "max": 24489613,
+                  "sd": 5955926.211152246,
+                  "avg": 13833839.463414634
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Sum of Recovered",
+            "settings": null,
+            "field_ref": ["aggregation", 1],
+            "name": "sum_2",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": { "distinct-count": 41, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 100168313,
+                  "q1": 206002487.25,
+                  "q3": 484645713.25,
+                  "max": 737925679,
+                  "sd": 177464020.54797432,
+                  "avg": 361857031.26829267
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Sum of Confirmed",
+            "settings": null,
+            "field_ref": ["aggregation", 2],
+            "name": "sum_3",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": { "distinct-count": 41, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 157210169,
+                  "q1": 306649205,
+                  "q3": 855369214.25,
+                  "max": 1178836130,
+                  "sd": 316135999.38177574,
+                  "avg": 611221211.7073171
+                }
+              }
+            }
+          }
+        ]
+      },
+      "rows": [
+        ["2020-08-16T00:00:00-07:00", 5518307, 100168313, 157210169],
+        ["2020-08-23T00:00:00-07:00", 5780953, 110438253, 169593606],
+        ["2020-08-30T00:00:00-07:00", 6042658, 120976240, 182589295],
+        ["2020-09-06T00:00:00-07:00", 6325954, 131450112, 195632867],
+        ["2020-09-13T00:00:00-07:00", 6585504, 142164573, 209461590],
+        ["2020-09-20T00:00:00-07:00", 6843217, 153951318, 223913447],
+        ["2020-09-27T00:00:00-07:00", 7110440, 165496237, 238295941],
+        ["2020-10-04T00:00:00-07:00", 7394140, 176657051, 253711383],
+        ["2020-10-11T00:00:00-07:00", 7654143, 186988262, 270422117],
+        ["2020-10-18T00:00:00-07:00", 7925901, 197053254, 289576538],
+        ["2020-10-25T00:00:00-07:00", 8228393, 208985565, 312340094],
+        ["2020-11-01T00:00:00-07:00", 8585727, 223565123, 338167584],
+        ["2020-11-08T00:00:00-08:00", 9002375, 237320811, 366159657],
+        ["2020-11-15T00:00:00-08:00", 9462899, 253067599, 395104035],
+        ["2020-11-22T00:00:00-08:00", 9962751, 270943541, 423998168],
+        ["2020-11-29T00:00:00-08:00", 10479438, 290517587, 453124594],
+        ["2020-12-06T00:00:00-08:00", 11017362, 312573556, 486185148],
+        ["2020-12-13T00:00:00-08:00", 11576362, 307111290, 520581358],
+        ["2020-12-20T00:00:00-08:00", 12136384, 310769542, 551313999],
+        ["2020-12-27T00:00:00-08:00", 12664498, 326820482, 579600697],
+        ["2021-01-03T00:00:00-08:00", 13238901, 341647770, 611931173],
+        ["2021-01-10T00:00:00-08:00", 13899680, 357166225, 647224885],
+        ["2021-01-17T00:00:00-08:00", 14578337, 373865381, 678656679],
+        ["2021-01-24T00:00:00-08:00", 15276681, 390346127, 706613970],
+        ["2021-01-31T00:00:00-08:00", 15931771, 405999709, 731093596],
+        ["2021-02-07T00:00:00-08:00", 16525022, 420236022, 751919852],
+        ["2021-02-14T00:00:00-08:00", 17030290, 432940615, 770047452],
+        ["2021-02-21T00:00:00-08:00", 17490730, 444618348, 788392213],
+        ["2021-02-28T00:00:00-08:00", 17931752, 455927005, 807073195],
+        ["2021-03-07T00:00:00-08:00", 18352527, 468097973, 827009348],
+        ["2021-03-14T00:00:00-08:00", 18773481, 481024725, 849039211],
+        ["2021-03-21T00:00:00-07:00", 19221323, 495508678, 874359224],
+        ["2021-03-28T00:00:00-07:00", 19710336, 511753389, 902571588],
+        ["2021-04-04T00:00:00-07:00", 20222555, 529837614, 932653746],
+        ["2021-04-11T00:00:00-07:00", 20812566, 551696441, 968140116],
+        ["2021-04-18T00:00:00-07:00", 21412542, 577925991, 1007155242],
+        ["2021-04-25T00:00:00-07:00", 22056640, 608239694, 1047517861],
+        ["2021-05-02T00:00:00-07:00", 22696759, 641416366, 1086644743],
+        ["2021-05-09T00:00:00-07:00", 23318115, 674763689, 1123016402],
+        ["2021-05-16T00:00:00-07:00", 23920391, 708182132, 1153190767],
+        ["2021-05-23T00:00:00-07:00", 24489613, 737925679, 1178836130]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 144,
+          "coercion_strategy": null,
+          "unit": "week",
+          "name": "observationdate",
+          "settings": { "date_style": "MMMM D, YYYY" },
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            1358,
+            { "base-type": "type/Date", "temporal-unit": "week" }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1358,
+          "position": 2,
+          "visibility_type": "normal",
+          "display_name": "Observation Date",
+          "fingerprint": {
+            "global": { "distinct-count": 69, "nil%": 0 },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 10
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "sum",
+          "display_name": "Sum of Deaths",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/Float"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "sum_2",
+          "display_name": "Sum of Recovered",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 1],
+          "aggregation_index": 1,
+          "effective_type": "type/Float"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "sum_3",
+          "display_name": "Sum of Confirmed",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 2],
+          "aggregation_index": 2,
+          "effective_type": "type/Float"
+        }
+      ],
+      "viz-settings": {
+        "graph.show_trendline": true,
+        "stackable.stack_type": "normalized",
+        "series_settings": {
+          "sum_2": { "color": "#A7D07C" },
+          "sum": { "color": "#F7C4C4" },
+          "sum_3": { "color": "#87BCEC" }
+        },
+        "graph.dimensions": ["observationdate"],
+        "graph.metrics": ["sum", "sum_2", "sum_3"],
+        "metabase.shared.models.visualization-settings/column-settings": {
+          "{:metabase.shared.models.visualization-settings/field-id 1357}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1364}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1360}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1359}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1361}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1363}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1356}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1362}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1358}": {}
+        },
+        "metabase.shared.models.visualization-settings/global-column-settings": {}
+      },
+      "native_form": {
+        "query": "SELECT (DATE_TRUNC('week', (\"source\".\"observationdate\" + INTERVAL '1 day')) + INTERVAL '-1 day') AS \"observationdate\", SUM(\"source\".\"deaths\") AS \"sum\", SUM(\"source\".\"recovered\") AS \"sum_2\", SUM(\"source\".\"confirmed\") AS \"sum_3\" FROM (SELECT \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\".\"id\" AS \"id\", \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\".\"sno\" AS \"sno\", \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\".\"observationdate\" AS \"observationdate\", \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\".\"province_state\" AS \"province_state\", \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\".\"country_region\" AS \"country_region\", \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\".\"last_update\" AS \"last_update\", \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\".\"confirmed\" AS \"confirmed\", \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\".\"deaths\" AS \"deaths\", \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\".\"recovered\" AS \"recovered\" FROM \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\") AS \"source\" WHERE (\"source\".\"observationdate\" >= timestamp with time zone '2020-08-16 00:00:00.000-07:00') AND (\"source\".\"observationdate\" < timestamp with time zone '2021-05-30 00:00:00.000-07:00') GROUP BY (DATE_TRUNC('week', (\"source\".\"observationdate\" + INTERVAL '1 day')) + INTERVAL '-1 day') ORDER BY (DATE_TRUNC('week', (\"source\".\"observationdate\" + INTERVAL '1 day')) + INTERVAL '-1 day') ASC",
+        "params": null
+      },
+      "is_sandboxed": false,
+      "dataset": true,
+      "insights": [
+        {
+          "previous-value": 23920391,
+          "unit": "week",
+          "offset": -1301756417.0639699,
+          "last-change": 0.02379651737298107,
+          "col": "sum",
+          "slope": 70615.58222241786,
+          "last-value": 24489613,
+          "best-fit": ["+", -1301756417.0639699, ["*", 70615.58222241786, "x"]]
+        },
+        {
+          "previous-value": 708182132,
+          "unit": "week",
+          "offset": -38657549078.07342,
+          "last-change": 0.041999855201091126,
+          "col": "sum_2",
+          "slope": 2094404.4444789328,
+          "last-value": 737925679,
+          "best-fit": ["+", -38657549078.07342, ["*", 2094404.4444789328, "x"]]
+        },
+        {
+          "previous-value": 1153190767,
+          "unit": "week",
+          "offset": -69351661533.8085,
+          "last-change": 0.022238612841755434,
+          "col": "sum_3",
+          "slope": 3755325.546476875,
+          "last-value": 1178836130,
+          "best-fit": ["+", -69351661533.8085, ["*", 3755325.546476875, "x"]]
+        }
+      ]
+    }
+  }
+]

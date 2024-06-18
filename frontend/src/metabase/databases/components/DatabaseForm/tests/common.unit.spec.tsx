@@ -10,8 +10,11 @@ describe("DatabaseForm", () => {
 
     const expectedDatabaseName = "My H2 Database";
     const expectedConnectionString = "file:/somewhere";
-    userEvent.type(screen.getByLabelText("Display name"), expectedDatabaseName);
-    userEvent.type(
+    await userEvent.type(
+      screen.getByLabelText("Display name"),
+      expectedDatabaseName,
+    );
+    await userEvent.type(
       screen.getByLabelText("Connection String"),
       expectedConnectionString,
     );
@@ -19,7 +22,7 @@ describe("DatabaseForm", () => {
     const saveButton = screen.getByRole("button", { name: "Save" });
     await waitFor(() => expect(saveButton).toBeEnabled());
 
-    userEvent.click(saveButton);
+    await userEvent.click(saveButton);
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({
         ...EXPECTED_DEFAULT_SCHEMA,
@@ -33,15 +36,12 @@ describe("DatabaseForm", () => {
     });
   });
 
-  it("should not allow to configure cache ttl", () => {
-    setup({ isCachingEnabled: true });
-    userEvent.click(screen.getByText("Show advanced options"));
+  it("should not allow to configure cache ttl", async () => {
+    setup();
+    await userEvent.click(screen.getByText("Show advanced options"));
     expect(
       screen.getByText("Choose when syncs and scans happen"),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText("Default result cache duration"),
-    ).not.toBeInTheDocument();
   });
 });
 

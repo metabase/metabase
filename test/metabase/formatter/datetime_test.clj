@@ -9,7 +9,7 @@
 
 (def ^:private now "2020-07-16T18:04:00Z[UTC]")
 
-(deftest determine-time-format-test
+(deftest ^:parallel determine-time-format-test
   (testing "Capture the behaviors of determine-time-format"
     (testing "When :time-enabled is set to nil no time format is returned"
       (is (nil? (#'datetime/determine-time-format {:time-enabled nil}))))
@@ -35,13 +35,13 @@
         (is (= "July, 2020, 6:04 PM"
                (datetime/format-temporal-str "UTC" now {:unit :minute}))))
       (testing :hour
-        (is (= "July, 2020, 6 PM"
+        (is (= "July 16, 2020, 6 PM"
                (datetime/format-temporal-str "UTC" now {:unit :hour}))))
       (testing :day
         (is (= "Thursday, July 16, 2020"
                (datetime/format-temporal-str "UTC" now {:unit :day}))))
       (testing :week
-        (is (= "Week 29 - 2020"
+        (is (= "July 16, 2020 - July 22, 2020"
                (datetime/format-temporal-str "UTC" now {:unit :week}))))
       (testing :month
         (is (= "July, 2020"
@@ -242,7 +242,7 @@
         (is (= "15:30:45Z"
                (datetime/format-temporal-str "UTC" "15:30:45Z" col nil)))))))
 
-(deftest year-in-dates-near-start-or-end-of-year-is-correct-test
+(deftest ^:parallel year-in-dates-near-start-or-end-of-year-is-correct-test
   (testing "When the date is at the start/end of the year, the year is formatted properly. (#40306)"
     ;; Our datetime formatter relies on the `java-time.api`, for which there are many different, sometimes confusing,
     ;; formatter patterns: https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatterBuilder.html#appendPattern-java.lang.String-

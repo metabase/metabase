@@ -1,14 +1,15 @@
 const YAML = require("json-to-pretty-yaml");
 const TerserPlugin = require("terser-webpack-plugin");
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
-const { IgnorePlugin } = require("webpack");
 
+const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const CLJS_SRC_PATH = __dirname + "/target/cljs_release";
 const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
 const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
+const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? null : ".babel_cache",
@@ -48,6 +49,10 @@ module.exports = env => {
     module: {
       rules: [
         {
+          test: /\.css$/i,
+          use: "null-loader",
+        },
+        {
           test: /\.(tsx?|jsx?)$/,
           exclude: /node_modules|cljs/,
           use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
@@ -70,19 +75,26 @@ module.exports = env => {
             },
           ],
         },
+        {
+          test: /\.svg$/,
+          type: "asset/resource",
+          resourceQuery: { not: [/component|source/] },
+        },
       ],
     },
     resolve: {
       extensions: [".webpack.js", ".web.js", ".js", ".jsx", ".ts", ".tsx"],
       alias: {
+        assets: ASSETS_PATH,
         metabase: SRC_PATH,
         cljs: devMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
         "metabase-lib": LIB_SRC_PATH,
         "metabase-types": TYPES_SRC_PATH,
+        "embedding-sdk": SDK_SRC_PATH,
       },
     },
     optimization: {
-      minimize: !shouldDisableMinimization,
+      minimize: false,
       minimizer: [
         new TerserPlugin({
           minify: TerserPlugin.swcMinify,
@@ -90,10 +102,6 @@ module.exports = env => {
       ],
     },
     plugins: [
-      new IgnorePlugin({
-        resourceRegExp: /\.css$/, // regular expression to ignore all CSS files
-        contextRegExp: /./,
-      }),
       new StatsWriterPlugin({
         stats: {
           modules: true,

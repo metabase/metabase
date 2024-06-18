@@ -1,106 +1,21 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
-import _ from "underscore";
 
-import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
+import { renderWithProviders } from "__support__/ui";
+import type { VisualizationSettings } from "metabase-types/api";
 
-import { PivotTable } from "./PivotTable";
+import {
+  PivotTableTestWrapper,
+  PIVOT_TABLE_MOCK_DATA,
+} from "./pivot-table-test-mocks";
 
-const cols = [
-  {
-    source: "breakout",
-    field_ref: ["field", 123, null],
-    display_name: "field-123",
-    name: "field-123",
-  },
-  {
-    source: "breakout",
-    field_ref: ["field", 456, null],
-    display_name: "field-456",
-    name: "field-456",
-  },
-  {
-    source: "breakout",
-    field_ref: ["field", 789, null],
-    display_name: "field-789",
-    name: "field-789",
-  },
-  {
-    source: "breakout",
-    field_ref: ["expression", "pivot-grouping"],
-    name: "pivot-grouping",
-    display_name: "pivot-grouping",
-  },
-  {
-    source: "aggregation",
-    field_ref: ["aggregation", 1],
-    display_name: "aggregation-1",
-  },
-  {
-    source: "aggregation",
-    field_ref: ["aggregation", 2],
-    display_name: "aggregation-2",
-  },
-] as DatasetColumn[];
-
-const rows = [
-  ["foo1", "bar1", "baz1", 0, 111, 222],
-  ["foo1", "bar1", "baz2", 0, 777, 888],
-  ["foo2", "bar2", "baz2", 0, 333, 444],
-  ["foo3", "bar3", "baz3", 0, 555, 666],
-];
-
-const pivotSettings = {
-  "pivot.show_column_totals": true,
-  "pivot.show_row_totals": true,
-  "pivot_table.collapsed_rows": {
-    rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
-    value: [],
-  },
-  "pivot_table.column_split": {
-    columns: [],
-    rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
-    values: [cols[4].field_ref, cols[5].field_ref],
-  },
-  "table.column_formatting": [],
-  column_settings: {},
-};
-
-const settings = {
-  ...pivotSettings,
-  column: (c: any) => ({
-    ...pivotSettings,
-    column: c,
-    column_title: c.display_name,
-  }),
-} as unknown as VisualizationSettings;
+const { rows, cols, settings } = PIVOT_TABLE_MOCK_DATA;
 
 // 3 isn't a real column, it's a pivot-grouping
 const columnIndexes = [0, 1, 2, 4, 5];
 
 function setup(options?: any) {
-  render(<PivotTableWrapper {...options} />);
-}
-
-function PivotTableWrapper(props?: any) {
-  const [vizSettings, setVizSettings] = useState(
-    props.initialSettings ?? settings,
-  );
-  return (
-    <PivotTable
-      settings={vizSettings}
-      data={{ rows, cols }}
-      width={600}
-      onVisualizationClick={_.noop}
-      onUpdateVisualizationSettings={newSettings =>
-        setVizSettings({ ...vizSettings, ...newSettings })
-      }
-      isNightMode={false}
-      isDashboard={false}
-      {...props}
-    />
-  );
+  renderWithProviders(<PivotTableTestWrapper {...options} />);
 }
 
 describe("Visualizations > PivotTable > PivotTable", () => {
@@ -196,7 +111,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
     });
   });
 
-  it("expanding collapsed columns", () => {
+  it("expanding collapsed columns", async () => {
     const hiddenSettings = {
       ...settings,
       "pivot_table.collapsed_rows": {
@@ -221,7 +136,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
       within(toggleButton).getByRole("img", { name: /add/i }),
     ).toBeInTheDocument();
 
-    userEvent.click(toggleButton);
+    await userEvent.click(toggleButton);
 
     //Ensure that collapsed data is now visible
     columnIndexes.forEach(columnIndex => {

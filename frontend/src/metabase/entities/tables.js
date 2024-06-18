@@ -3,13 +3,16 @@ import { updateIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { databaseApi, tableApi } from "metabase/api";
 import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
-import Metrics from "metabase/entities/metrics"; // eslint-disable-line import/order -- circular dependencies
 import Segments from "metabase/entities/segments";
-import { PUT } from "metabase/lib/api";
 import { color } from "metabase/lib/colors";
-import { createEntity, notify } from "metabase/lib/entities";
+import {
+  createEntity,
+  entityCompatibleQuery,
+  notify,
+} from "metabase/lib/entities";
 import {
   compose,
   createThunkAction,
@@ -23,19 +26,12 @@ import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
-import { MetabaseApi } from "metabase/services";
 import {
   convertSavedQuestionToVirtualTable,
   getQuestionVirtualTableId,
   getCollectionVirtualSchemaId,
   getCollectionVirtualSchemaName,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
-
-const listTablesForDatabase = async (...args) =>
-  // HACK: no /api/database/:dbId/tables endpoint
-  (await MetabaseApi.db_metadata(...args)).tables;
-const updateFieldOrder = PUT("/api/table/:id/fields/order");
-const updateTables = PUT("/api/table");
 
 // OBJECT ACTIONS
 export const TABLES_BULK_UPDATE = "metabase/entities/TABLES_BULK_UPDATE";
@@ -46,6 +42,9 @@ export const FETCH_TABLE_FOREIGN_KEYS =
 export const UPDATE_TABLE_FIELD_ORDER =
   "metabase/entities/UPDATE_TABLE_FIELD_ORDER";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Tables = createEntity({
   name: "tables",
   nameOne: "table",
@@ -53,15 +52,30 @@ const Tables = createEntity({
   schema: TableSchema,
 
   api: {
-    list: async (params, ...args) => {
-      if (params.dbId != null && params.schemaName != null) {
-        return MetabaseApi.db_schema_tables(params, ...args);
-      } else if (params.dbId != null) {
-        return listTablesForDatabase(params, ...args);
+    list: async ({ dbId, schemaName, ...params } = {}, dispatch) => {
+      if (dbId != null && schemaName != null) {
+        return entityCompatibleQuery(
+          { id: dbId, schema: schemaName, ...params },
+          dispatch,
+          databaseApi.endpoints.listDatabaseSchemaTables,
+        );
+      } else if (dbId != null) {
+        const database = await entityCompatibleQuery(
+          { id: dbId, ...params },
+          dispatch,
+          databaseApi.endpoints.getDatabaseMetadata,
+        );
+        return database.tables;
       } else {
-        return MetabaseApi.table_list(params, ...args);
+        return entityCompatibleQuery(
+          params,
+          dispatch,
+          tableApi.endpoints.listTables,
+        );
       }
     },
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(entityQuery, dispatch, tableApi.endpoints.getTable),
   },
 
   actions: {
@@ -69,7 +83,14 @@ const Tables = createEntity({
     bulkUpdate: compose(
       withAction(TABLES_BULK_UPDATE),
       withNormalize([TableSchema]),
-    )(updates => async (dispatch, getState) => updateTables(updates)),
+    )(
+      updates => async dispatch =>
+        entityCompatibleQuery(
+          updates,
+          dispatch,
+          tableApi.endpoints.updateTableList,
+        ),
+    ),
   },
 
   // ACTION CREATORS
@@ -84,20 +105,40 @@ const Tables = createEntity({
     // loads `query_metadata` for a single table
     fetchMetadata: compose(
       withAction(FETCH_METADATA),
+      withNormalize(TableSchema),
+    )(
+      ({ id, ...params }, options = {}) =>
+        dispatch =>
+          entityCompatibleQuery(
+            { id, ...params, ...options.params },
+            dispatch,
+            tableApi.endpoints.getTableQueryMetadata,
+            { forceRefetch: false },
+          ),
+    ),
+
+    // fetches table metadata with the request state & caching managed by the entity framework
+    // data is not properly cached & invalidated this way, prefer fetchMetadata instead
+    // used only to support legacy entity framework loader HoCs
+    fetchMetadataDeprecated: compose(
+      withAction(FETCH_METADATA),
       withCachedDataAndRequestState(
         ({ id }) => [...Tables.getObjectStatePath(id)],
-        ({ id }) => [...Tables.getObjectStatePath(id), "fetchMetadata"],
+        ({ id }) => [
+          ...Tables.getObjectStatePath(id),
+          "fetchMetadataDeprecated",
+        ],
         entityQuery => Tables.getQueryKey(entityQuery),
       ),
       withNormalize(TableSchema),
     )(
       ({ id, ...params }, options = {}) =>
-        (dispatch, getState) =>
-          MetabaseApi.table_query_metadata({
-            tableId: id,
-            ...params,
-            ...options.params,
-          }),
+        dispatch =>
+          entityCompatibleQuery(
+            { id, ...params, ...options.params },
+            dispatch,
+            tableApi.endpoints.getTableQueryMetadata,
+          ),
     ),
 
     // like fetchMetadata but also loads tables linked by foreign key
@@ -129,9 +170,13 @@ const Tables = createEntity({
         entityQuery => Tables.getQueryKey(entityQuery),
       ),
       withNormalize(TableSchema),
-    )(entityObject => async (dispatch, getState) => {
-      const fks = await MetabaseApi.table_fks({ tableId: entityObject.id });
-      return { id: entityObject.id, fks: fks };
+    )(({ id }) => async (dispatch, getState) => {
+      const fks = await entityCompatibleQuery(
+        id,
+        dispatch,
+        tableApi.endpoints.listTableForeignKeys,
+      );
+      return { id, fks: fks };
     }),
 
     setFieldOrder:
@@ -141,13 +186,12 @@ const Tables = createEntity({
           type: UPDATE_TABLE_FIELD_ORDER,
           payload: { id, fieldOrder },
         });
-        updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" });
+        entityCompatibleQuery(
+          { id, field_order: fieldOrder },
+          dispatch,
+          tableApi.endpoints.updateTableFieldsOrder,
+        );
       },
-  },
-
-  // FORMS
-  form: {
-    fields: [{ name: "name" }, { name: "description", type: "text" }],
   },
 
   reducer: (state = {}, { type, payload, error }) => {
@@ -220,17 +264,6 @@ const Tables = createEntity({
       }
     }
 
-    if (type === Metrics.actionTypes.CREATE && !error) {
-      const { table_id: tableId, id: metricId } = payload.metric;
-      const table = state[tableId];
-      if (table) {
-        return {
-          ...state,
-          [tableId]: { ...table, metrics: [metricId, ...table.metrics] },
-        };
-      }
-    }
-
     if (type === Segments.actionTypes.UPDATE && !error) {
       const { table_id: tableId, archived, id: segmentId } = payload.segment;
       const table = state[tableId];
@@ -240,20 +273,6 @@ const Tables = createEntity({
           [tableId]: {
             ...table,
             segments: table.segments.filter(id => id !== segmentId),
-          },
-        };
-      }
-    }
-
-    if (type === Metrics.actionTypes.UPDATE) {
-      const { table_id: tableId, archived, id: metricId } = payload.metric;
-      const table = state[tableId];
-      if (archived && table && table.metrics) {
-        return {
-          ...state,
-          [tableId]: {
-            ...table,
-            metrics: table.metrics.filter(id => id !== metricId),
           },
         };
       }

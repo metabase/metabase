@@ -16,7 +16,7 @@ function getForeground(model: string, disabled: boolean) {
     : color("brand");
 }
 
-const getItemPadding = (variant: string) => {
+const getItemPadding = (variant?: string) => {
   switch (variant) {
     case "list":
       return "1rem";
@@ -28,8 +28,8 @@ const getItemPadding = (variant: string) => {
 };
 
 export const EntityIconWrapper = styled(IconButtonWrapper)<{
-  isPinned: boolean;
-  disabled: boolean;
+  isPinned?: boolean;
+  disabled?: boolean;
 }>`
   background-color: transparent;
   padding: 12px;
@@ -37,13 +37,13 @@ export const EntityIconWrapper = styled(IconButtonWrapper)<{
 
   color: ${props =>
     props.isPinned
-      ? getPinnedForeground(props.disabled)
-      : getForeground("", props.disabled)};
+      ? getPinnedForeground(!!props.disabled)
+      : getForeground("", !!props.disabled)};
 `;
 
 export const EntityItemWrapper = styled.div<{
-  variant: string;
-  disabled: boolean;
+  variant?: string;
+  disabled?: boolean;
 }>`
   display: flex;
   align-items: center;
@@ -60,13 +60,13 @@ export const EntityItemSpinner = styled(LoadingSpinner)`
   display: flex;
   flex-direction: column;
   justify-content: center;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;
 
 export const EntityMenuContainer = styled.div`
   display: flex;
   align-items: center;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const EntityItemActions = styled.div`

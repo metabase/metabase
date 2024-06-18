@@ -1,9 +1,11 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { connect } from "react-redux";
 
 import SidebarLayout from "metabase/components/SidebarLayout";
+import CS from "metabase/css/core/index.css";
 import * as metadataActions from "metabase/redux/metadata";
 import FieldDetail from "metabase/reference/databases/FieldDetail";
 import * as actions from "metabase/reference/reference";
@@ -69,7 +71,7 @@ class FieldDetailContainer extends Component {
 
     return (
       <SidebarLayout
-        className="flex-full relative"
+        className={cx(CS.flexFull, CS.relative)}
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={
           <FieldSidebar database={database} table={table} field={field} />

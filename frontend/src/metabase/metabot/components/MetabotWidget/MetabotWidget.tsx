@@ -118,7 +118,7 @@ const getPromptPlaceholder = (model: Question | undefined) => {
 export default _.compose(
   Search.loadList({
     query: {
-      models: "dataset",
+      models: ["dataset"],
       limit: 1,
     },
     listName: "models",

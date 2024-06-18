@@ -1,8 +1,9 @@
+import { skipToken } from "@reduxjs/toolkit/query/react";
 import type { FocusEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useFieldValuesQuery } from "metabase/common/hooks";
+import { useGetFieldValuesQuery } from "metabase/api";
 import { checkNotNull } from "metabase/lib/types";
 import { Center, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -27,11 +28,11 @@ interface FilterValuePickerProps<T> {
   onChange: (newValues: T[]) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
   onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
+  shouldCreate?: (query: string, values: string[]) => boolean;
 }
 
 interface FilterValuePickerOwnProps extends FilterValuePickerProps<string> {
   placeholder: string;
-  shouldCreate: (query: string) => boolean;
 }
 
 function FilterValuePicker({
@@ -52,10 +53,10 @@ function FilterValuePicker({
     [query, column],
   );
 
-  const { data: fieldData, isLoading } = useFieldValuesQuery({
-    id: fieldInfo.fieldId ?? undefined,
-    enabled: canLoadFieldValues(fieldInfo),
-  });
+  const { data: fieldData, isLoading } = useGetFieldValuesQuery(
+    fieldInfo.fieldId ?? skipToken,
+    { skip: !canLoadFieldValues(fieldInfo) },
+  );
 
   if (isLoading) {
     return (
@@ -114,7 +115,7 @@ export function StringFilterValuePicker({
   values,
   ...props
 }: FilterValuePickerProps<string>) {
-  const shouldCreate = (query: string) => {
+  const shouldCreate = (query: string, values: string[]) => {
     return query.trim().length > 0 && !values.includes(query);
   };
 
@@ -135,9 +136,9 @@ export function NumberFilterValuePicker({
   onChange,
   ...props
 }: FilterValuePickerProps<number>) {
-  const shouldCreate = (query: string) => {
+  const shouldCreate = (query: string, values: string[]) => {
     const number = parseFloat(query);
-    return isFinite(number) && !values.includes(number);
+    return isFinite(number) && !values.includes(query);
   };
 
   return (

@@ -5,7 +5,6 @@ import {
   getColumnGroupIcon,
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
-import { getColumnIcon } from "metabase/common/utils/columns";
 import {
   QueryColumnInfoIcon,
   HoverParent,
@@ -29,6 +28,7 @@ export interface FilterColumnPickerProps {
 
 type Section = {
   key?: string;
+  type: string;
   name: string;
   items: (Lib.ColumnMetadata | Lib.SegmentMetadata)[];
   icon?: IconName;
@@ -36,6 +36,7 @@ type Section = {
 
 const CUSTOM_EXPRESSION_SECTION: Section = {
   key: "custom-expression",
+  type: "action",
   name: t`Custom Expression`,
   items: [],
   icon: "filter",
@@ -117,7 +118,6 @@ export function FilterColumnPicker({
         renderItemName={renderItemName}
         renderItemDescription={omitItemDescription}
         renderItemIcon={renderItemIcon}
-        renderItemExtra={renderItemExtra}
         // disable scrollbars inside the list
         style={{ overflow: "visible" }}
         maxHeight={Infinity}
@@ -125,6 +125,8 @@ export function FilterColumnPicker({
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
         searchProp={["name", "displayName"]}
+        globalSearch
+        withBorders
       />
     </DelayGroup>
   );
@@ -144,26 +146,19 @@ function renderItemIcon(item: ColumnListItem | SegmentListItem) {
   }
 
   if (item.column) {
-    return <Icon name={getColumnIcon(item.column)} size={18} />;
+    const { query, stageIndex, column } = item;
+    return (
+      <QueryColumnInfoIcon
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        position="top-start"
+        size={18}
+      />
+    );
   }
 }
 
 function renderItemWrapper(content: React.ReactNode) {
   return <HoverParent>{content}</HoverParent>;
-}
-
-function renderItemExtra(item: ColumnListItem | SegmentListItem) {
-  if (isSegmentListItem(item)) {
-    return null;
-  }
-
-  const { query, stageIndex, column } = item;
-  return (
-    <QueryColumnInfoIcon
-      query={query}
-      stageIndex={stageIndex}
-      column={column}
-      position="right"
-    />
-  );
 }

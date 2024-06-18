@@ -20,7 +20,7 @@ const SettingText = ({
       CS.rounded,
       CS.h3,
       {
-        [`${CS.borderError} bg-error-input`]: errorMessage,
+        [cx(CS.borderError, CS.bgErrorInput)]: errorMessage,
       },
     )}
     defaultValue={setting.value || ""}

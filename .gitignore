@@ -51,6 +51,7 @@
 /resources/frontend_client/embed.html
 /resources/frontend_client/index.html
 /resources/frontend_client/public.html
+/resources/embedding-sdk
 /resources/i18n/*.edn
 /resources/instance_analytics.zip
 /resources/license-backend-third-party.txt
@@ -95,7 +96,8 @@ modules/drivers/*/.lsp/*
 .clj-kondo/*
 !.clj-kondo/README.md
 !.clj-kondo/config.edn
-!.clj-kondo/hooks/
+!.clj-kondo/src/
+!.clj-kondo/test/
 !.clj-kondo/macros/
 
 # Editor- or environment-specific local files

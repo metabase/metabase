@@ -31,10 +31,10 @@
 (doseq [tag [:and :or]]
   (lib.hierarchy/derive tag ::compound))
 
-(doseq [tag [:= :!=]]
+(doseq [tag [:= :!= :starts-with :ends-with :contains :does-not-contain]]
   (lib.hierarchy/derive tag ::varargs))
 
-(doseq [tag [:< :<= :> :>= :starts-with :ends-with :contains :does-not-contain]]
+(doseq [tag [:< :<= :> :>=]]
   (lib.hierarchy/derive tag ::binary))
 
 (doseq [tag [:is-null :not-null :is-empty :not-empty :not]]
@@ -93,6 +93,9 @@
       [:= _ (a :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (b :guard string?)]
       (i18n/tru "{0} is {1}" (->unbucketed-display-name a) (shared.ut/format-relative-date-range b 0 (:temporal-unit (second a)) nil nil {:include-current true}))
 
+      [:= _ (a :guard (unit-is :day-of-week)) (b :guard (some-fn int? string?))]
+      (i18n/tru "{0} is {1}" (->display-name a) (->temporal-name a b))
+
       [:= _ (a :guard temporal?) (b :guard (some-fn int? string?))]
       (i18n/tru "{0} is on {1}" (->display-name a) (->temporal-name a b))
 
@@ -139,7 +142,43 @@
       (i18n/tru "{0} is {1} selections" (->display-name a) (count args))
 
       [:!= _ a & args]
-      (i18n/tru "{0} is not {1} selections" (->display-name a) (count args)))))
+      (i18n/tru "{0} is not {1} selections" (->display-name a) (count args))
+
+      [:starts-with _ x (y :guard string?)]
+      (i18n/tru "{0} starts with {1}"                 (->display-name x) y)
+
+      [:starts-with _ x y]
+      (i18n/tru "{0} starts with {1}"                 (->display-name x) (->display-name y))
+
+      [:starts-with _ x & args]
+      (i18n/tru "{0} starts with {1} selections"      (->display-name x) (count args))
+
+      [:ends-with _ x (y :guard string?)]
+      (i18n/tru "{0} ends with {1}"                   (->display-name x) y)
+
+      [:ends-with _ x y]
+      (i18n/tru "{0} ends with {1}"                   (->display-name x) (->display-name y))
+
+      [:ends-with _ x & args]
+      (i18n/tru "{0} ends with {1} selections"        (->display-name x) (count args))
+
+      [:contains _ x (y :guard string?)]
+      (i18n/tru "{0} contains {1}"                    (->display-name x) y)
+
+      [:contains _ x y]
+      (i18n/tru "{0} contains {1}"                    (->display-name x) (->display-name y))
+
+      [:contains _ x & args]
+      (i18n/tru "{0} contains {1} selections"         (->display-name x) (count args))
+
+      [:does-not-contain _ x (y :guard string?)]
+      (i18n/tru "{0} does not contain {1}"            (->display-name x) y)
+
+      [:does-not-contain _ x y]
+      (i18n/tru "{0} does not contain {1}"            (->display-name x) (->display-name y))
+
+      [:does-not-contain _ x & args]
+      (i18n/tru "{0} does not contain {1} selections" (->display-name x) (count args)))))
 
 (defmethod lib.metadata.calculation/display-name-method ::binary
   [query stage-number expr style]
@@ -163,47 +202,22 @@
       (i18n/tru "{0} is greater than {1}"             (->display-name x) (->display-name y))
 
       [:>= _ x y]
-      (i18n/tru "{0} is greater than or equal to {1}" (->display-name x) (->display-name y))
-
-      [:starts-with _ x (y :guard string?)]
-      (i18n/tru "{0} starts with {1}"                 (->display-name x) y)
-
-      [:starts-with _ x y]
-      (i18n/tru "{0} starts with {1}"                 (->display-name x) (->display-name y))
-
-      [:ends-with _ x (y :guard string?)]
-      (i18n/tru "{0} ends with {1}"                   (->display-name x) y)
-
-      [:ends-with _ x y]
-      (i18n/tru "{0} ends with {1}"                   (->display-name x) (->display-name y))
-
-      [:contains _ x (y :guard string?)]
-      (i18n/tru "{0} contains {1}"                    (->display-name x) y)
-
-      [:contains _ x y]
-      (i18n/tru "{0} contains {1}"                    (->display-name x) (->display-name y))
-
-      [:does-not-contain _ x (y :guard string?)]
-      (i18n/tru "{0} does not contain {1}"            (->display-name x) y)
-
-      [:does-not-contain _ x y]
-      (i18n/tru "{0} does not contain {1}"            (->display-name x) (->display-name y)))))
+      (i18n/tru "{0} is greater than or equal to {1}" (->display-name x) (->display-name y)))))
 
 (defmethod lib.metadata.calculation/display-name-method :between
   [query stage-number expr style]
   (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
         ->unbucketed-display-name #(-> %
                                        (update 1 dissoc :temporal-unit)
-                                       ->display-name)
-        temporal? #(lib.util/original-isa? % :type/Temporal)]
+                                       ->display-name)]
     (lib.util.match/match-one expr
-      [:between _ (x :guard temporal?) (y :guard string?) (z :guard string?)]
+      [:between _ x (y :guard string?) (z :guard string?)]
       (i18n/tru "{0} is {1}"
                 (->unbucketed-display-name x)
                 (shared.ut/format-diff y z))
 
       [:between _
-       [:+ _ (x :guard temporal?) [:interval _ n unit]]
+       [:+ _ x [:interval _ n unit]]
        [:relative-datetime _ n2 unit2]
        [:relative-datetime _ 0 _]]
       (i18n/tru "{0} is in the {1}, starting {2} ago"
@@ -212,7 +226,7 @@
                 (inflections/pluralize n (name unit)))
 
       [:between _
-       [:+ _ (x :guard temporal?) [:interval _ n unit]]
+       [:+ _ x [:interval _ n unit]]
        [:relative-datetime _ 0 _]
        [:relative-datetime _ n2 unit2]]
       (i18n/tru "{0} is in the {1}, starting {2} from now"

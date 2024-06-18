@@ -1,5 +1,6 @@
 import cx from "classnames";
 
+import CS from "metabase/css/core/index.css";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import type Filter from "metabase-lib/v1/queries/structured/Filter";
 
@@ -43,14 +44,14 @@ export function FilterPopoverHeader({
 
   return showHeader ? (
     <div
-      className={cx(className, "text-medium p1", {
-        "flex align-center": !showOperatorSelectorOnOwnRow,
+      className={cx(className, CS.textMedium, CS.p1, {
+        [cx(CS.flex, CS.alignCenter)]: !showOperatorSelectorOnOwnRow,
       })}
     >
       {showFieldPicker && (
         <SidebarHeader
-          className={cx("text-default py1", {
-            pr2: !showOperatorSelectorOnOwnRow,
+          className={cx(CS.textDefault, CS.py1, {
+            [CS.pr2]: !showOperatorSelectorOnOwnRow,
           })}
           title={field.displayName({ includeTable: true })}
           onBack={onBack}
@@ -58,9 +59,9 @@ export function FilterPopoverHeader({
       )}
       {showOperatorSelector && (
         <OperatorSelector
-          className={cx("flex-no-shrink block", {
-            "ml-auto": !showOperatorSelectorOnOwnRow,
-            my1: showOperatorSelectorOnOwnRow,
+          className={cx(CS.flexNoShrink, CS.block, {
+            [CS.mlAuto]: !showOperatorSelectorOnOwnRow,
+            [CS.my1]: showOperatorSelectorOnOwnRow,
           })}
           operator={operator}
           operators={filter.filterOperators(operator)}

@@ -11,6 +11,7 @@ export const ActionSchema = new schema.Entity("actions");
 export const UserSchema = new schema.Entity("users");
 export const QuestionSchema = new schema.Entity("questions");
 export const ModelIndexSchema = new schema.Entity("modelIndexes");
+export const CacheConfigSchema = new schema.Entity("cacheConfigs");
 export const IndexedEntitySchema = new schema.Entity("indexedEntities");
 export const BookmarkSchema = new schema.Entity("bookmarks");
 export const DashboardSchema = new schema.Entity("dashboards");
@@ -64,7 +65,6 @@ export const FieldSchema = new schema.Entity("fields", undefined, {
 });
 
 export const SegmentSchema = new schema.Entity("segments");
-export const MetricSchema = new schema.Entity("metrics");
 export const PersistedModelSchema = new schema.Entity("persistedModels");
 export const SnippetSchema = new schema.Entity("snippets");
 export const SnippetCollectionSchema = new schema.Entity("snippetCollections");
@@ -86,8 +86,8 @@ TableSchema.define({
   db: DatabaseSchema,
   fields: [FieldSchema],
   fks: [{ origin: FieldSchema, destination: FieldSchema }],
+  metrics: [QuestionSchema],
   segments: [SegmentSchema],
-  metrics: [MetricSchema],
   schema: SchemaSchema,
 });
 
@@ -104,26 +104,24 @@ SegmentSchema.define({
   table: TableSchema,
 });
 
-MetricSchema.define({
-  table: TableSchema,
-});
-
 TimelineSchema.define({
   collection: CollectionSchema,
   events: [TimelineEventSchema],
 });
 
+CacheConfigSchema.define({});
+
 export const ENTITIES_SCHEMA_MAP = {
   actions: ActionSchema,
   questions: QuestionSchema,
   modelIndexes: ModelIndexSchema,
+  cacheConfigs: CacheConfigSchema,
   indexedEntity: IndexedEntitySchema,
   bookmarks: BookmarkSchema,
   dashboards: DashboardSchema,
   pulses: PulseSchema,
   collections: CollectionSchema,
   segments: SegmentSchema,
-  metrics: MetricSchema,
   snippets: SnippetSchema,
   snippetCollections: SnippetCollectionSchema,
 };
@@ -135,12 +133,4 @@ export const ObjectUnionSchema = new schema.Union(
 
 CollectionSchema.define({
   items: [ObjectUnionSchema],
-});
-
-export const RecentItemSchema = new schema.Entity("recentItems", undefined, {
-  idAttribute: ({ model, model_id }) => `${model}:${model_id}`,
-});
-
-export const PopularItemSchema = new schema.Entity("popularItems", undefined, {
-  idAttribute: ({ model, model_id }) => `${model}:${model_id}`,
 });

@@ -11,7 +11,9 @@ import _ from "underscore";
 import Grabber from "metabase/components/Grabber";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import AccordionList from "metabase/core/components/AccordionList";
+import type { DragEndEvent } from "metabase/core/components/Sortable";
 import { SortableList } from "metabase/core/components/Sortable";
+import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
 import { Icon } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -64,7 +66,7 @@ const MetadataTableColumnList = ({
   const isHidden = visibility_type != null;
 
   const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 0 },
+    activationConstraint: { distance: 15 },
   });
 
   const sortedFields = useMemo(
@@ -73,8 +75,8 @@ const MetadataTableColumnList = ({
   );
 
   const handleSortEnd = useCallback(
-    ({ itemIds: fieldOrder }) => {
-      onUpdateFieldOrder(table, fieldOrder);
+    ({ itemIds: fieldOrder }: DragEndEvent) => {
+      onUpdateFieldOrder(table, fieldOrder as number[]);
     },
     [table, onUpdateFieldOrder],
   );
@@ -91,16 +93,16 @@ const MetadataTableColumnList = ({
   );
 
   return (
-    <div id="ColumnsList" className={cx("mt3", { disabled: isHidden })}>
-      <div className="text-uppercase text-medium py1">
-        <div className="relative">
+    <div id="ColumnsList" className={cx(CS.mt3, { disabled: isHidden })}>
+      <div className={cx(CS.textUppercase, CS.textMedium, CS.py1)}>
+        <div className={CS.relative}>
           <div
             style={{ minWidth: 420 }}
-            className="float-left px1"
+            className={cx(CS.floatLeft, CS.px1)}
           >{t`Column`}</div>
-          <div className="flex">
-            <div className="flex-half pl3">{t`Visibility`}</div>
-            <div className="flex-half">
+          <div className={CS.flex}>
+            <div className={cx(CS.flexHalf, CS.pl3)}>{t`Visibility`}</div>
+            <div className={CS.flexHalf}>
               <span>{t`Type`}</span>
             </div>
           </div>
@@ -144,12 +146,12 @@ const TableFieldOrderDropdown = ({
     <TippyPopoverWithTrigger
       triggerContent={
         <span
-          className="text-brand text-bold"
+          className={cx(CS.textBrand, CS.textBold)}
           style={{ textTransform: "none", letterSpacing: 0 }}
           aria-label={t`Sort`}
         >
           <Icon
-            className="ml1"
+            className={CS.ml1}
             name="sort_arrows"
             size={14}
             style={{ transform: "translateY(2px)" }}
@@ -158,7 +160,7 @@ const TableFieldOrderDropdown = ({
       }
       popoverContent={({ closePopover }) => (
         <AccordionList
-          className="text-brand"
+          className={CS.textBrand}
           sections={ORDER_SECTIONS}
           alwaysExpanded
           itemIsSelected={({ value }: TableFieldOrderOption) =>

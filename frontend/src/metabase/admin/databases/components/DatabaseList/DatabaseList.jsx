@@ -6,14 +6,13 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import Modal from "metabase/components/Modal";
-import FormMessage from "metabase/components/form/FormMessage";
 import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import DatabaseSyncModal from "metabase/databases/containers/DatabaseSyncModal";
+import { FormMessage } from "metabase/forms";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { Button, Flex, Modal, Text } from "metabase/ui";
 
 import {
   TableCellContent,
@@ -34,18 +33,12 @@ export default class DatabaseList extends Component {
     });
 
     this.state = {
-      isSyncingModalOpened: (props.created && props.showSyncingModal) || false,
+      isPermissionModalOpened: (props.created && props.createdDbId) || false,
     };
   }
 
-  componentDidMount() {
-    if (this.state.isSyncingModalOpened) {
-      this.props.closeSyncingModal();
-    }
-  }
-
-  onSyncingModalClose = () => {
-    this.setState({ isSyncingModalOpened: false });
+  onPermissionModalClose = () => {
+    this.setState({ isPermissionModalOpened: false });
   };
 
   static propTypes = {
@@ -55,6 +48,7 @@ export default class DatabaseList extends Component {
     deletes: PropTypes.array,
     deletionError: PropTypes.object,
     created: PropTypes.string,
+    createdDbId: PropTypes.string,
     showSyncingModal: PropTypes.bool,
     closeSyncingModal: PropTypes.func,
     isAdmin: PropTypes.bool,
@@ -69,21 +63,22 @@ export default class DatabaseList extends Component {
       engines,
       deletionError,
       isAdmin,
+      createdDbId,
     } = this.props;
-    const { isSyncingModalOpened } = this.state;
+    const { isPermissionModalOpened } = this.state;
 
     const error = deletionError || addSampleDatabaseError;
 
     return (
       <div className={CS.wrapper} data-testid="database-list">
-        <section className={cx(AdminS.PageHeader, CS.px2, "clearfix")}>
+        <section className={cx(AdminS.PageHeader, CS.px2, CS.clearfix)}>
           {isAdmin && (
             <Link
               to="/admin/databases/create"
               className={cx(
                 ButtonsS.Button,
                 ButtonsS.ButtonPrimary,
-                "float-right",
+                CS.floatRight,
               )}
             >{t`Add database`}</Link>
           )}
@@ -120,7 +115,7 @@ export default class DatabaseList extends Component {
                             )}
                             <Link
                               to={"/admin/databases/" + database.id}
-                              className="text-bold link"
+                              className={cx(CS.textBold, CS.link)}
                             >
                               {database.name}
                             </Link>
@@ -146,14 +141,14 @@ export default class DatabaseList extends Component {
             </tbody>
           </table>
           {!hasSampleDatabase && isAdmin ? (
-            <div className="pt4">
+            <div className={CS.pt4}>
               <span
-                className={cx("p2 text-italic", {
+                className={cx(CS.p2, CS.textItalic, {
                   [CS.borderTop]: databases && databases.length > 0,
                 })}
               >
                 {isAddingSampleDatabase ? (
-                  <span className="text-light no-decoration">
+                  <span className={cx(CS.textLight, CS.noDecoration)}>
                     {t`Restoring the sample database...`}
                   </span>
                 ) : (
@@ -167,13 +162,38 @@ export default class DatabaseList extends Component {
             </div>
           ) : null}
         </section>
-        <Modal
-          small
-          isOpen={isSyncingModalOpened}
-          onClose={this.onSyncingModalClose}
+
+        {/* Needed to make this a composed modal to get the padding we wanted.
+            Not sure why the padding prop didn't work */}
+        <Modal.Root
+          opened={isPermissionModalOpened}
+          size={620}
+          withCloseButton={false}
         >
-          <DatabaseSyncModal onClose={this.onSyncingModalClose} />
-        </Modal>
+          <Modal.Overlay />
+          <Modal.Content p="1rem">
+            <Modal.Header>
+              <Modal.Title fz="1.25rem">{t`Your database was added! Want to configure permissions?`}</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Text
+                mb="1.5rem"
+                mt="1rem"
+              >{t`You can change these settings later in the Permissions tab. Do you want to configure it?`}</Text>
+              <Flex justify="end">
+                <Button
+                  mr="0.5rem"
+                  onClick={this.onPermissionModalClose}
+                >{t`Maybe later`}</Button>
+                <Button
+                  component={Link}
+                  variant="filled"
+                  to={`/admin/permissions/data/database/${createdDbId}`}
+                >{t`Configure permissions`}</Button>
+              </Flex>
+            </Modal.Body>
+          </Modal.Content>
+        </Modal.Root>
       </div>
     );
   }

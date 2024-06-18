@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
-import type { Collection, Timeline } from "metabase-types/api";
+import type { Collection, Timeline, TimelineIcon } from "metabase-types/api";
 
 export const getTimelineName = (timeline: Timeline) => {
   return timeline.default && timeline.collection
@@ -36,7 +36,7 @@ export const getDefaultTimelineName = (collection: Collection) => {
   return t`${collection.name} events`;
 };
 
-export const getDefaultTimelineIcon = () => {
+export const getDefaultTimelineIcon = (): TimelineIcon => {
   return "star";
 };
 

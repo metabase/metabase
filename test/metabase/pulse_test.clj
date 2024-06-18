@@ -105,24 +105,25 @@
           :when        f]
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (mt/with-temp [Card          {card-id :id} (merge {:name    pulse.test-util/card-name
-                                                         :display (or display :line)}
-                                                        card)]
-        (with-pulse-for-card [{pulse-id :id}
-                              {:card       card-id
-                               :pulse      pulse
-                               :pulse-card pulse-card
-                               :channel    channel-type}]
-          (letfn [(thunk* []
-                    (f {:card-id card-id, :pulse-id pulse-id}
-                       (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))))
-                  (thunk []
-                    (if fixture
-                      (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
-                      (thunk*)))]
-            (case channel-type
-              :email (pulse.test-util/email-test-setup (thunk))
-              :slack (pulse.test-util/slack-test-setup (thunk)))))))))
+      (testing (when (= :email channel-type) @mt/inbox)
+        (mt/with-temp [Card          {card-id :id} (merge {:name    pulse.test-util/card-name
+                                                           :display (or display :line)}
+                                                          card)]
+          (with-pulse-for-card [{pulse-id :id}
+                                {:card       card-id
+                                 :pulse      pulse
+                                 :pulse-card pulse-card
+                                 :channel    channel-type}]
+            (letfn [(thunk* []
+                      (f {:card-id card-id, :pulse-id pulse-id}
+                         (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))))
+                    (thunk []
+                      (if fixture
+                        (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
+                        (thunk*)))]
+              (case channel-type
+                :email (pulse.test-util/email-test-setup (thunk))
+                :slack (pulse.test-util/slack-test-setup (thunk))))))))))
 
 (defn- tests
   "Convenience for writing multiple tests using `do-test`. `common` is a map of shared properties as passed to `do-test`
@@ -177,7 +178,11 @@
 
 (deftest basic-timeseries-test
   (do-test
-   {:card    (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+   {:card
+    (merge
+     (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+     {:visualization_settings {:graph.dimensions ["DATE"]
+                               :graph.metrics    ["count"]}})
     :pulse   {:skip_if_empty false}
 
     :assert
@@ -264,8 +269,11 @@
                 #"More results have been included" #"ID</th>"))))}}))
 
 (deftest csv-test
-  (tests {:pulse   {:skip_if_empty false}
-          :card    (pulse.test-util/checkins-query-card {:breakout [!day.date]})}
+  (tests {:pulse {:skip_if_empty false}
+          :card  (merge
+                  (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+                  {:visualization_settings {:graph.dimensions ["DATE"]
+                                            :graph.metrics    ["count"]}})}
     "alert with a CSV"
     {:pulse-card {:include_csv true}
 
@@ -310,7 +318,11 @@
 (deftest xls-test-2
   (testing "Basic test, 1 card, 1 recipient, with XLS attachment"
     (do-test
-     {:card       (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+     {:card
+      (merge
+       (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+       {:visualization_settings {:graph.dimensions ["DATE"]
+                                 :graph.metrics    ["count"]}})
       :pulse-card {:include_xls true}
       :assert
       {:email
@@ -369,7 +381,10 @@
   (testing "Pulse should be sent to two recipients"
     (do-test
      {:card
-      (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+      (merge
+       (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+       {:visualization_settings {:graph.dimensions ["DATE"]
+                                 :graph.metrics    ["count"]}})
 
       :fixture
       (fn [{:keys [pulse-id]} thunk]
@@ -394,11 +409,16 @@
   (testing "1 pulse that has 2 cards, should contain two query image attachments (as well as an icon attachment)"
     (do-test
      {:card
-      (assoc (pulse.test-util/checkins-query-card {:breakout [!day.date]}) :name "card 1")
+      (assoc (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+             :visualization_settings {:graph.dimensions ["DATE"]
+                                      :graph.metrics    ["count"]}
+             :name "card 1")
 
       :fixture
       (fn [{:keys [pulse-id]} thunk]
         (mt/with-temp [Card {card-id-2 :id} (assoc (pulse.test-util/checkins-query-card {:breakout [!month.date]})
+                                                   :visualization_settings {:graph.dimensions ["DATE"]
+                                                                            :graph.metrics    ["count"]}
                                                    :name "card 2"
                                                    :display :line)
                        PulseCard _ {:pulse_id pulse-id
@@ -417,8 +437,10 @@
 
 (deftest empty-results-test
   (testing "Pulse where the card has no results"
-    (tests {:card (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
-                                                        :breakout [!day.date]})}
+    (tests {:card (assoc (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
+                                                               :breakout [!day.date]})
+                         :visualization_settings {:graph.dimensions ["DATE"]
+                                                  :graph.metrics    ["count"]})}
       "skip if empty = false"
       {:pulse    {:skip_if_empty false}
        :assert {:email (fn [_ _]
@@ -436,7 +458,10 @@
     (tests {:pulse {:alert_condition "rows", :alert_first_only false}}
       "with data"
       {:card
-       (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+       (merge
+        (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+        {:visualization_settings {:graph.dimensions ["DATE"]
+                                  :graph.metrics    ["count"]}})
 
        :assert
        {:email
@@ -451,13 +476,13 @@
         (fn [{:keys [card-id]} [result]]
           (is (= {:channel-id  "#general",
                   :attachments [{:blocks [{:type "header", :text {:type "plain_text", :text "🔔 Test card", :emoji true}}]}
-                                {:title                  pulse.test-util/card-name
-                                 :rendered-info          {:attachments false
-                                                          :content     true}
-                                 :title_link             (str "https://metabase.com/testmb/question/" card-id)
-                                 :attachment-name        "image.png"
-                                 :channel-id             "FOO"
-                                 :fallback               pulse.test-util/card-name}]}
+                                {:title           pulse.test-util/card-name
+                                 :rendered-info   {:attachments false
+                                                   :content     true}
+                                 :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                                 :attachment-name "image.png"
+                                 :channel-id      "FOO"
+                                 :fallback        pulse.test-util/card-name}]}
                  (pulse.test-util/thunk->boolean result)))
           (is (every? produces-bytes? (rest (:attachments result)))))}}
 
@@ -490,7 +515,12 @@
 
 
       "with data and a CSV + XLS attachment"
-      {:card       (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+      {:card
+       (merge
+        (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+        {:visualization_settings {:graph.dimensions ["DATE"]
+                                  :graph.metrics    ["count"]}})
+
        :pulse-card {:include_csv true, :include_xls true}
 
        :assert
@@ -508,7 +538,10 @@
   (tests {:pulse {:alert_condition "rows", :alert_first_only true}}
     "first run only with data"
     {:card
-     (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+     (merge
+      (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+      {:visualization_settings {:graph.dimensions ["DATE"]
+                                :graph.metrics    ["count"]}})
 
      :assert
      {:email
@@ -547,7 +580,10 @@
        (merge (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-04-01" "2014-06-01"]
                                                     :breakout [!day.date]})
               {:display                :line
-               :visualization_settings {:graph.show_goal true :graph.goal_value 5.9}})
+               :visualization_settings {:graph.show_goal  true
+                                        :graph.goal_value 5.9
+                                        :graph.dimensions ["DATE"]
+                                        :graph.metrics    ["count"]}})
 
        :assert
        {:email
@@ -561,7 +597,10 @@
        (merge (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-02-01" "2014-04-01"]
                                                     :breakout [!day.date]})
               {:display                :area
-               :visualization_settings {:graph.show_goal true :graph.goal_value 5.9}})
+               :visualization_settings {:graph.show_goal  true
+                                        :graph.goal_value 5.9
+                                        :graph.dimensions ["DATE"]
+                                        :graph.metrics    ["count"]}})
 
        :assert
        {:email
@@ -573,7 +612,9 @@
       {:card
        (merge (pulse.test-util/venues-query-card "max")
               {:display                :progress
-               :visualization_settings {:progress.goal 3}})
+               :visualization_settings {:progress.goal    3
+                                        :graph.dimensions ["DATE"]
+                                        :graph.metrics    ["count"]}})
 
        :assert
        {:email
@@ -584,14 +625,17 @@
 
 (deftest below-goal-alert-test
   (testing "Below goal alert"
-    (tests {:card  {:visualization_settings {:graph.show_goal true :graph.goal_value 1.1}}
-            :pulse {:alert_condition  "goal"
+    (tests {:pulse {:alert_condition  "goal"
                     :alert_first_only false
                     :alert_above_goal false}}
       "with data"
       {:card
-       (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-02-12" "2014-02-17"]
-                                             :breakout [!day.date]})
+       (merge (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-02-12" "2014-02-17"]
+                                                    :breakout [!day.date]})
+              {:visualization_settings {:graph.show_goal  true
+                                        :graph.goal_value 1.1
+                                        :graph.dimensions ["DATE"]
+                                        :graph.metrics    ["count"]}})
        :display :line
 
        :assert
@@ -603,8 +647,12 @@
 
       "with no satisfying data"
       {:card
-       (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-02-10" "2014-02-12"]
-                                             :breakout [!day.date]})
+       (merge (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-02-10" "2014-02-12"]
+                                                    :breakout [!day.date]})
+              {:visualization_settings {:graph.show_goal  true
+                                        :graph.goal_value 1.1
+                                        :graph.dimensions ["DATE"]
+                                        :graph.metrics    ["count"]}})
        :display :bar
 
        :assert
@@ -617,7 +665,10 @@
       {:card
        (merge (pulse.test-util/venues-query-card "min")
               {:display                :progress
-               :visualization_settings {:progress.goal 2}})
+               :visualization_settings {:graph.show_goal  true
+                                        :progress.goal    2
+                                        :graph.dimensions ["DATE"]
+                                        :graph.metrics    ["count"]}})
 
        :assert
        {:email
@@ -629,19 +680,19 @@
 (deftest goal-met-test
   (let [alert-above-pulse {:alert_above_goal true}
         alert-below-pulse {:alert_above_goal false}
-        progress-result (fn [val] [{:card {:display :progress
-                                            :visualization_settings {:progress.goal 5}}
-                                     :result {:data {:rows [[val]]}}}])
-        timeseries-result (fn [val] [{:card {:display :bar
-                                             :visualization_settings {:graph.goal_value 5}}
+        progress-result   (fn [val] [{:card   {:display                :progress
+                                               :visualization_settings {:progress.goal    5}}
+                                      :result {:data {:rows [[val]]}}}])
+        timeseries-result (fn [val] [{:card   {:display                :bar
+                                               :visualization_settings {:graph.goal_value 5}}
                                       :result {:data {:cols [{:source :breakout}
-                                                             {:name "avg"
-                                                              :source :aggregation
-                                                              :base_type :type/Integer
+                                                             {:name           "avg"
+                                                              :source         :aggregation
+                                                              :base_type      :type/Integer
                                                               :effective-type :type/Integer
-                                                              :semantic_type :type/Quantity}]
+                                                              :semantic_type  :type/Quantity}]
                                                       :rows [["2021-01-01T00:00:00Z" val]]}}}])
-        goal-met? (fn [pulse [first-result]] (#'metabase.pulse/goal-met? pulse [first-result]))]
+        goal-met?         (fn [pulse [first-result]] (#'metabase.pulse/goal-met? pulse [first-result]))]
     (testing "Progress bar"
       (testing "alert above"
         (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (progress-result 4)))))
@@ -672,8 +723,8 @@
                                                  :display                :line
                                                  :visualization_settings {:graph.show_goal  true
                                                                           :graph.goal_value 5.9
-                                                                          :graph.dimensions ["the_day"]
-                                                                          :graph.metrics    ["total_per_day"]}}]
+                                                                          :graph.dimensions ["THE_DAY"]
+                                                                          :graph.metrics    ["TOTAL_PER_DAY"]}}]
       (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse {:alert_condition  "goal"
                                                                    :alert_first_only false
                                                                    :alert_above_goal true}}]
@@ -685,17 +736,21 @@
 
 (deftest dashboard-description-markdown-test
   (testing "Dashboard description renders markdown"
-    (mt/with-temp [Card                  {card-id :id} {:name "Test card"}
+    (mt/with-temp [Card                  {card-id :id} {:name          "Test card"
+                                                        :dataset_query {:database (mt/id)
+                                                                        :type     :native
+                                                                        :native   {:query "select * from checkins"}}
+                                                        :display       :table}
                    Dashboard             {dashboard-id :id} {:description "# dashboard description"}
                    DashboardCard         {dashboard-card-id :id} {:dashboard_id dashboard-id
-                                                                  :card_id card-id}
-                   Pulse                 {pulse-id :id} {:name "Pulse Name"
+                                                                  :card_id      card-id}
+                   Pulse                 {pulse-id :id} {:name         "Pulse Name"
                                                          :dashboard_id dashboard-id}
-                   PulseCard             _ {:pulse_id pulse-id
-                                            :card_id  card-id
+                   PulseCard             _ {:pulse_id          pulse-id
+                                            :card_id           card-id
                                             :dashboard_card_id dashboard-card-id}
                    PulseChannel          {pc-id :id} {:pulse_id pulse-id}
-                   PulseChannelRecipient _ {:user_id (pulse.test-util/rasta-id)
+                   PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                             :pulse_channel_id pc-id}]
         (pulse.test-util/email-test-setup
          (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
@@ -706,13 +761,17 @@
 
 (deftest nonuser-email-test
   (testing "Both users and Nonusers get an email, with unsubscribe text for nonusers"
-    (mt/with-temp [Card                  {card-id :id} {:name "Test card"}
+    (mt/with-temp [Card                  {card-id :id} {:name          "Test card"
+                                                        :dataset_query {:database (mt/id)
+                                                                        :type     :native
+                                                                        :native   {:query "select * from checkins"}}
+                                                        :display       :table}
                    Pulse                 {pulse-id :id} {:name "Pulse Name"}
                    PulseCard             _ {:pulse_id pulse-id
                                             :card_id  card-id}
                    PulseChannel          {pc-id :id} {:pulse_id pulse-id
-                                                      :details {:emails ["nonuser@metabase.com"]}}
-                   PulseChannelRecipient _ {:user_id (pulse.test-util/rasta-id)
+                                                      :details  {:emails ["nonuser@metabase.com"]}}
+                   PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                             :pulse_channel_id pc-id}]
       (pulse.test-util/email-test-setup
        (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
@@ -854,7 +913,7 @@
              #"You do not have permissions to view Card [\d,]+."
              (send-pulse-created-by-user!* :rasta)))))))
 
-(defn- get-positive-retry-metrics [retry]
+(defn- get-positive-retry-metrics [^io.github.resilience4j.retry.Retry retry]
   (let [metrics (bean (.getMetrics retry))]
     (into {}
           (map (fn [field]

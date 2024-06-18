@@ -24,7 +24,6 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
@@ -338,7 +337,7 @@
 
 (defn- log-and-extract-one
   [model opts instance]
-  (log/info (trs "Extracting {0} {1}" model (:id instance)))
+  (log/infof "Extracting %s %s" model (:id instance))
   (extract-one model opts instance))
 
 (defmethod extract-all :default [model opts]
@@ -351,10 +350,10 @@
   [model {:keys [collection-set]}]
   (if collection-set
     ;; If collection-set is defined, select everything in those collections, or with nil :collection_id.
-    (let [in-colls  (t2/reducible-select model :collection_id [:in collection-set])]
-      (if (contains? collection-set nil)
-        (eduction cat [in-colls (t2/reducible-select model :collection_id nil)])
-        in-colls))
+    (t2/reducible-select model {:where [:or
+                                        [:in :collection_id collection-set]
+                                        (when (contains? collection-set nil)
+                                          [:= :collection_id nil])]})
     ;; If collection-set is nil, just select everything.
     (t2/reducible-select model)))
 

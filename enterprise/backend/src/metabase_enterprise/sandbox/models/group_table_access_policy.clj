@@ -6,7 +6,7 @@
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require
    [medley.core :as m]
-   [metabase.config :as config]
+   [metabase.audit :as audit]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
    [metabase.models.data-permissions :as data-perms]
@@ -80,8 +80,9 @@
 (defn- merge-sandbox-into-graph
   "Merges a single sandboxing policy into the permissions graph. Adjusts permissions at the database or schema level,
   ensuring table-level permissions are set appropriately."
-  [graph group-id table-id db-id schema]
-  (let [db-perm (get-in graph [group-id db-id :data :schemas])
+  [graph group-id table-id db-id schema perm-location sandbox-value]
+  (let [db-path (concat [group-id db-id] perm-location)
+        db-perm (get-in graph db-path)
         schema-perm (get db-perm schema)
         default-table-perm (if (keyword? db-perm)
                              db-perm
@@ -97,24 +98,24 @@
         ;; Remove the overarching database or schema permission so that we can add the granular table-level permissions
         graph (cond
                 (and tables (keyword? db-perm))
-                (m/dissoc-in graph [group-id db-id :data :schemas])
+                (m/dissoc-in graph db-path)
 
                 (and tables (keyword? schema-perm))
-                (m/dissoc-in graph [group-id db-id :data :schemas (or schema "")])
+                (m/dissoc-in graph (concat db-path [(or schema "")]))
 
                 :else
                 graph)
         ;; Apply granular permissions to each table
         granular-graph (if tables
                          (reduce (fn [g {:keys [id schema]}]
-                                   (assoc-in g [group-id db-id :data :schemas (or schema "") id] default-table-perm))
+                                   (assoc-in g (concat db-path [(or schema "") id]) default-table-perm))
                                  graph
                                  tables)
                          graph)]
     ;; Set `:segmented` (aka sandboxed) permissions for the target table
     (assoc-in granular-graph
-              [group-id db-id :data :schemas (or schema "") table-id]
-              {:query :segmented, :read :all})))
+              (concat db-path [(or schema "") table-id])
+              sandbox-value)))
 
 (defenterprise add-sandboxes-to-permissions-graph
   "Augments a provided permissions graph with active sandboxing policies."
@@ -127,10 +128,10 @@
                               :where [:and
                                       (when group-id [:= :s.group_id group-id])
                                       (when db-id [:= :t.db_id db-id])
-                                      (when-not audit? [:not [:= :t.db_id config/audit-db-id]])]})]
+                                      (when-not audit? [:not [:= :t.db_id audit/audit-db-id]])]})]
     ;; Incorporate each sandbox policy into the permissions graph.
     (reduce (fn [acc {:keys [group_id table_id db_id schema]}]
-              (merge-sandbox-into-graph acc group_id table_id db_id schema))
+              (merge-sandbox-into-graph acc group_id table_id db_id schema [:view-data] :sandboxed))
             graph
             sandboxes)))
 
@@ -195,7 +196,9 @@
 (t2/define-before-insert :model/GroupTableAccessPolicy
   [{:keys [table_id group_id], :as gtap}]
   (let [db-id (database/table-id->database-id table_id)]
-    (data-perms/set-database-permission! group_id db-id :perms/native-query-editing :no))
+    ;; Remove native query access to the DB when saving a sandbox
+    (when (= (data-perms/table-permission-for-group group_id :perms/create-queries db-id table_id) :query-builder-and-native)
+      (data-perms/set-database-permission! group_id db-id :perms/create-queries :query-builder)))
   (u/prog1 gtap
     (check-columns-match-table gtap)))
 

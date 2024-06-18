@@ -386,6 +386,55 @@
              (map #(select-keys % [:description :has_multiple_changes])
                   (mt/user-http-request :crowberto :get 200 "revision" :entity "card" :id card-id)))))))
 
+(deftest card-metric-revision-description-test
+  (testing "revision description for card are generated correctly"
+    (t2.with-temp/with-temp
+      [Collection {coll-id :id} {:name "New Collection"}
+       Card       {card-id :id} {:name                   "A metric"
+                                 :display                "table"
+                                 :dataset_query          (mt/mbql-query venues)
+                                 :type :metric
+                                 :visualization_settings {}}]
+      ;; 0. create the card
+      (create-card-revision! card-id true :crowberto)
+
+      ;; 1. rename
+      (t2/update! Card :id card-id {:name "New name"})
+      (create-card-revision! card-id false :crowberto)
+
+      ;; 2. edit query and metadata
+      (t2/update! Card :id card-id {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
+                                    :display       "scalar"})
+      (create-card-revision! card-id false :crowberto)
+
+      ;; 3. add description
+      (t2/update! Card :id card-id {:description "meaningful number"})
+      (create-card-revision! card-id false :crowberto)
+
+
+      ;; 4. change collection
+      (t2/update! Card :id card-id {:collection_id coll-id})
+      (create-card-revision! card-id false :crowberto)
+
+      ;; 5. revert to an earlier revision
+      (let [earlier-revision-id (t2/select-one-pk Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
+        (revision/revert! {:entity Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
+
+      (is (= [{:description          "reverted to an earlier version.",
+               :has_multiple_changes false}
+              {:description          "moved this Card to New Collection.",
+               :has_multiple_changes false}
+              {:description          "added a description."
+               :has_multiple_changes false}
+              {:description          "changed the display from table to scalar and modified the query."
+               :has_multiple_changes true}
+              {:description          "renamed this Card from \"A metric\" to \"New name\"."
+               :has_multiple_changes false}
+              {:description          "created this."
+               :has_multiple_changes false}]
+             (map #(select-keys % [:description :has_multiple_changes])
+                  (mt/user-http-request :crowberto :get 200 "revision" :entity "card" :id card-id)))))))
+
 (deftest revision-descriptions-are-i18ned-test
   (mt/with-mock-i18n-bundles {"fr" {:messages {"created this" "créé ceci"
                                                "added a description" "ajouté une description"

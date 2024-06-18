@@ -83,6 +83,48 @@ describe("AccordionList", () => {
     assertAbsence(["Foo", "Bar", "Baz"]);
   });
 
+  it("should render with the search bar on top if globalSearch is set", () => {
+    render(<AccordionList sections={SECTIONS} globalSearch searchable />);
+    const SEARCH_FIELD = screen.getByPlaceholderText("Find...");
+    const sections = ["Widgets", "Doohickeys"];
+
+    sections.forEach(name => {
+      const SECTION = screen.queryByText(name);
+      expect(SEARCH_FIELD.compareDocumentPosition(SECTION)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+    });
+  });
+
+  it("should render results in all sections when globalSearch is true", () => {
+    render(<AccordionList sections={SECTIONS} globalSearch searchable />);
+    const SEARCH_FIELD = screen.getByPlaceholderText("Find...");
+    fireEvent.change(SEARCH_FIELD, { target: { value: "Ba" } });
+
+    assertPresence(["Bar", "Baz", "Widgets", "Doohickeys"]);
+    assertAbsence(["Foo"]);
+  });
+
+  it("should render section headers with an action", () => {
+    render(
+      <AccordionList
+        sections={[...SECTIONS, { type: "action", name: "Action" }]}
+        searchable
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /Action/ })).toBeInTheDocument();
+  });
+
+  it("should an empty section when no results are found with globalSearch", () => {
+    render(<AccordionList sections={SECTIONS} searchable globalSearch />);
+
+    const SEARCH_FIELD = screen.getByPlaceholderText("Find...");
+    fireEvent.change(SEARCH_FIELD, { target: { value: "Quu" } });
+
+    expect(screen.getByText("Didn't find any results")).toBeInTheDocument();
+  });
+
   describe("with the `renderItemWrapper` prop", () => {
     it("should be able to wrap the list items in components like popovers", async () => {
       const renderItemWrapper = (itemContent, item) => {
@@ -100,7 +142,7 @@ describe("AccordionList", () => {
         />,
       );
 
-      userEvent.hover(screen.getByText("Foo"));
+      await userEvent.hover(screen.getByText("Foo"));
       expect(await screen.findByText("popover")).toBeVisible();
     });
   });

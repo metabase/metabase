@@ -71,21 +71,21 @@ describe("ChartSkeleton", () => {
       expect(screen.queryByLabelText("info icon")).not.toBeInTheDocument();
     });
 
-    it(`should render ${name} visualization with description`, () => {
+    it(`should render ${name} visualization with description`, async () => {
       setup({ name, description: displayDescription, display });
-      userEvent.hover(screen.getByLabelText("info icon"));
+      await userEvent.hover(screen.getByLabelText("info icon"));
       expect(screen.getByText(name)).toBeInTheDocument();
       expect(screen.getByText(displayDescription)).toBeInTheDocument();
     });
 
-    it(`should render ${name} visualization with description and action menu`, () => {
+    it(`should render ${name} visualization with description and action menu`, async () => {
       setup({
         name,
         description: displayDescription,
         actionMenu: MockActionMenu,
         display,
       });
-      userEvent.hover(screen.getByLabelText("info icon"));
+      await userEvent.hover(screen.getByLabelText("info icon"));
       expect(screen.getByText(name)).toBeInTheDocument();
       expect(screen.getByText(displayDescription)).toBeInTheDocument();
       expect(screen.getByText("Action Menu")).toBeInTheDocument();

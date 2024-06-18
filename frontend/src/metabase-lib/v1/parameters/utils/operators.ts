@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   doesOperatorExist,
   getOperatorByTypeAndName,
@@ -8,11 +10,17 @@ import {
   getParameterSubType,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { NUMBER, STRING, PRIMARY_KEY } from "metabase-lib/v1/types/constants";
-import type { Parameter } from "metabase-types/api";
+import type { Parameter, ParameterMappingOptions } from "metabase-types/api";
 
 import { getIsMultiSelect } from "../../../../metabase/parameters/utils/dashboards";
 
 type OperatorType = "date" | "number" | "string";
+export type ParameterSectionId =
+  | "number"
+  | "string"
+  | "date"
+  | "location"
+  | "id";
 
 export function getOperatorDisplayName(
   option: { type: string; name: string; operator: string },
@@ -64,9 +72,9 @@ function getParameterOperatorType(parameterType?: string) {
 
 export function buildTypedOperatorOptions(
   operatorType: OperatorType,
-  sectionId: string,
+  sectionId: ParameterSectionId,
   sectionName: string,
-) {
+): ParameterMappingOptions[] {
   return PARAMETER_OPERATOR_TYPES[operatorType].map(operatorOption => {
     return {
       ...operatorOption,
@@ -80,10 +88,22 @@ export function buildTypedOperatorOptions(
   });
 }
 
+export function buildTemporalUnitOption(): ParameterMappingOptions {
+  return {
+    name: t`Unit of Time`,
+    type: "temporal-unit",
+    sectionId: "temporal-unit",
+  };
+}
+
 export function getNumberParameterArity(parameter: Parameter) {
   switch (parameter.type) {
     case "number/=":
     case "number/!=":
+      if (!getIsMultiSelect(parameter)) {
+        return 1;
+      }
+
       return "n";
     case "number/between":
       return 2;

@@ -13,7 +13,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -24,7 +24,7 @@
 (def ^:private SourceQueryAndMetadata
   [:map
    [:source-query    mbql.s/SourceQuery]
-   [:database        mbql.s/DatabaseID]
+   [:database        ::mbql.s/DatabaseID]
    [:source-metadata [:maybe [:sequential mbql.s/SourceQueryMetadata]]]
    [:source-query/model?   {:optional true} :boolean]
    [:persisted-info/native {:optional true} :string]])
@@ -68,14 +68,12 @@
          persisted?     (qp.persisted/can-substitute? card persisted-info)
          source-query   (source-query card)]
      (when (and persisted? log?)
-       (log/info (trs "Found substitute cached query for card {0} from {1}.{2}"
-                      card-id
-                      (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
-                      (:table-name persisted-info))))
+       (log/infof "Found substitute cached query for card %s from %s.%s"
+                  card-id
+                  (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
+                  (:table-name persisted-info)))
      ;; log the query at this point, it's useful for some purposes
-     (log/debug (trs "Fetched source query from Card {0}:" card-id)
-                "\n"
-                (u/pprint-to-str 'yellow source-query))
+     (log/debugf "Fetched source query from Card %s:\n%s" card-id (u/pprint-to-str 'yellow source-query))
      (cond-> {:source-query    (cond-> source-query
                                  ;; This will be applied, if still appropriate, by the peristence middleware
                                  persisted?

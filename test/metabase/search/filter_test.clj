@@ -1,8 +1,7 @@
 (ns ^:mb/once metabase.search.filter-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.permissions :as perms]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.audit :as audit]
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]
    [metabase.test :as mt]))
@@ -11,6 +10,8 @@
   {:search-string       nil
    :archived?           false
    :models             search.config/all-models
+   :model-ancestors?   false
+   :current-user-id    1
    :current-user-perms #{"/"}})
 
 (deftest ^:parallel ->applicable-models-test
@@ -19,19 +20,18 @@
       (is (= search.config/all-models
              (search.filter/search-context->applicable-models
               default-search-ctx)))
-
       (is (= #{}
              (search.filter/search-context->applicable-models
               (assoc default-search-ctx :models #{}))))
-
       (is (= search.config/all-models
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
-                     {:archived? true}))))))
+                     {:archived? true})))))))
 
+(deftest ^:parallel ->applicable-models-test-2
   (testing "optional filters will return intersection of support models and provided models\n"
     (testing "created by"
-      (is (= #{"dashboard" "dataset" "action" "card"}
+      (is (= #{"dashboard" "dataset" "action" "card" "metric"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-by #{1}}))))
@@ -43,7 +43,7 @@
                       :created-by #{1}})))))
 
     (testing "created at"
-      (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card"}
+      (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-at "past3days"}))))
@@ -55,7 +55,7 @@
                       :created-at "past3days"})))))
 
     (testing "verified"
-      (is (= #{"dataset" "card"}
+      (is (= #{"dataset" "card" "metric"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:verified true}))))
@@ -91,7 +91,7 @@
                      :last-edited-at "past3days"})))))
 
    (testing "search native query"
-     (is (= #{"dataset" "action" "card"}
+     (is (= #{"dataset" "action" "card" "metric"}
             (search.filter/search-context->applicable-models
              (merge default-search-ctx
                     {:search-native-query true})))))))
@@ -134,7 +134,7 @@
     (is (= [:and
             [:= :table.active true]
             [:= :table.visibility_type nil]
-            [:not [:= :table.db_id perms/audit-db-id]]]
+            [:not [:= :table.db_id audit/audit-db-id]]]
            (:where (search.filter/build-filters
                     base-search-query "table"  default-search-ctx))))))
 
@@ -142,7 +142,7 @@
   (is (contains?
          (set (:where (search.filter/build-filters
                        base-search-query "table"  default-search-ctx)))
-         [:not [:= :table.db_id perms/audit-db-id]])))
+         [:not [:= :table.db_id audit/audit-db-id]])))
 
 (deftest ^:parallel build-filter-with-search-string-test
   (testing "with search string"
@@ -278,8 +278,9 @@
            (search.filter/build-filters
             base-search-query "dataset"
             (merge default-search-ctx
-                   {:last-edited-by #{1}})))))
+                   {:last-edited-by #{1}}))))))
 
+(deftest ^:parallel build-last-edited-by-filter-test-2
   (testing "last edited by filter"
     (is (= {:select [:*]
             :from   [:table]
@@ -294,7 +295,7 @@
             (merge default-search-ctx
                    {:last-edited-by #{1 2}}))))))
 
-(deftest build-verified-filter-test
+(deftest ^:parallel build-verified-filter-test
   (testing "verified filter"
     (mt/with-premium-features #{:content-verification}
       (testing "for cards"
@@ -308,8 +309,11 @@
                  :join   [:moderation_review [:= :moderation_review.moderated_item_id :card.id]]})
                (search.filter/build-filters
                 base-search-query "card"
-                (merge default-search-ctx {:verified true})))))
+                (merge default-search-ctx {:verified true}))))))))
 
+(deftest ^:parallel build-verified-filter-test-1b
+  (testing "verified filter"
+    (mt/with-premium-features #{:content-verification}
       (testing "for models"
         (is (= (merge
                 base-search-query
@@ -321,8 +325,10 @@
                  :join   [:moderation_review [:= :moderation_review.moderated_item_id :card.id]]})
                (search.filter/build-filters
                 base-search-query "dataset"
-                (merge default-search-ctx {:verified true}))))))
+                (merge default-search-ctx {:verified true}))))))))
 
+(deftest ^:parallel build-verified-filter-test-2
+  (testing "verified filter"
     (mt/with-premium-features #{}
       (testing "for cards without ee features"
         (is (= (merge
@@ -332,8 +338,11 @@
                           [:inline [:= 0 1]]]})
                (search.filter/build-filters
                 base-search-query "card"
-                (merge default-search-ctx {:verified true})))))
+                (merge default-search-ctx {:verified true}))))))))
 
+(deftest ^:parallel build-verified-filter-test-2b
+  (testing "verified filter"
+    (mt/with-premium-features #{}
       (testing "for models without ee features"
         (is (= (merge
                 base-search-query
@@ -357,17 +366,18 @@
 
 (deftest build-filters-indexed-entity-test
   (testing "users that are not sandboxed or impersonated can search for indexed entity"
-    (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly false)]
+    (with-redefs [search.filter/sandboxed-or-impersonated-user? (constantly false)]
       (is (= [:and
               [:or [:like [:lower :model-index-value.name] "%foo%"]]
               [:inline [:= 1 1]]]
              (:where (search.filter/build-filters
                       base-search-query
                       "indexed-entity"
-                      (merge default-search-ctx {:search-string "foo"})))))))
+                      (merge default-search-ctx {:search-string "foo"}))))))))
 
+(deftest build-filters-indexed-entity-test-2
   (testing "otherwise search result is empty"
-    (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
+    (with-redefs [search.filter/sandboxed-or-impersonated-user? (constantly true)]
       (is (= [:and
               [:or [:= 0 1]]
               [:inline [:= 1 1]]]
@@ -376,7 +386,7 @@
                       "indexed-entity"
                       (merge default-search-ctx {:search-string "foo"}))))))))
 
-(deftest build-filters-search-native-query
+(deftest ^:parallel build-filters-search-native-query
   (doseq [model ["dataset" "card"]]
     (testing model
       (testing "do not search for native query by default"
@@ -386,8 +396,11 @@
                (:where (search.filter/build-filters
                         base-search-query
                         model
-                        (merge default-search-ctx {:search-string "foo"}))))))
+                        (merge default-search-ctx {:search-string "foo"})))))))))
 
+(deftest ^:parallel build-filters-search-native-query-2
+  (doseq [model ["dataset" "card"]]
+    (testing model
       (testing "search in both name, description and dataset_query if is enabled"
         (is (= [:and [:or
                       [:like [:lower :card.name] "%foo%"]
@@ -397,26 +410,29 @@
                (:where (search.filter/build-filters
                         base-search-query
                         model
-                        (merge default-search-ctx {:search-string "foo" :search-native-query true})))))))
-
-    (testing "action"
-      (testing "do not search for native query by default"
-        (is (= [:and
-                [:or [:like [:lower :action.name] "%foo%"] [:like [:lower :action.description] "%foo%"]]
-                [:= :action.archived false]]
-               (:where (search.filter/build-filters
-                        base-search-query
-                        "action"
-                        (merge default-search-ctx {:search-string "foo"}))))))
-
-      (testing "search in both name, description and dataset_query if is enabled"
-        (is (= [:and
-                [:or
-                 [:like [:lower :action.name] "%foo%"]
-                 [:like [:lower :query_action.dataset_query] "%foo%"]
-                 [:like [:lower :action.description] "%foo%"]]
-                [:= :action.archived false]]
-               (:where (search.filter/build-filters
-                        base-search-query
-                        "action"
                         (merge default-search-ctx {:search-string "foo" :search-native-query true})))))))))
+
+(deftest ^:parallel build-filters-search-native-query-3
+  (testing "action"
+    (testing "do not search for native query by default"
+      (is (= [:and
+              [:or [:like [:lower :action.name] "%foo%"] [:like [:lower :action.description] "%foo%"]]
+              [:= :action.archived false]]
+             (:where (search.filter/build-filters
+                      base-search-query
+                      "action"
+                      (merge default-search-ctx {:search-string "foo"}))))))))
+
+(deftest ^:parallel build-filters-search-native-query-4
+  (testing "action"
+    (testing "search in both name, description and dataset_query if is enabled"
+      (is (= [:and
+              [:or
+               [:like [:lower :action.name] "%foo%"]
+               [:like [:lower :query_action.dataset_query] "%foo%"]
+               [:like [:lower :action.description] "%foo%"]]
+              [:= :action.archived false]]
+             (:where (search.filter/build-filters
+                      base-search-query
+                      "action"
+                      (merge default-search-ctx {:search-string "foo" :search-native-query true}))))))))

@@ -9,24 +9,20 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.shared.util.time :as shared.ut]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    #?@(:clj
-       [[metabase.models.dispatch :as models.dispatch]])))
-
-(defn qualified-name
-  "Like `name`, but if `x` is a namespace-qualified keyword, returns that a string including the namespace."
-  [x]
-  (if (and (keyword? x) (namespace x))
-    (str (namespace x) "/" (name x))
-    (name x)))
+       [[metabase.models.dispatch :as models.dispatch]
+        [metabase.util.i18n]])))
 
 (mu/defn normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
   [token :- schema.helpers/KeywordOrString]
   #_{:clj-kondo/ignore [:discouraged-var]}
-  (-> (qualified-name token)
+  (-> (u/qualified-name token)
       str/lower-case
       (str/replace #"_" "-")
       keyword))
@@ -160,11 +156,21 @@
     [:not-null field] [:!= field nil]))
 
 (defn desugar-is-empty-and-not-empty
-  "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively."
+  "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively.
+
+   If `:not-empty` is called on `:metabase.lib.schema.expression/emptyable` type, expand check for empty string. For
+   non-`emptyable` types act as `:is-null`. If field has nil base type it is considered not emptyable expansion wise."
   [m]
   (lib.util.match/replace m
-    [:is-empty field]  [:or  [:=  field nil] [:=  field ""]]
-    [:not-empty field] [:and [:!= field nil] [:!= field ""]]))
+    [:is-empty field]
+    (if (isa? (get-in field [2 :base-type]) :metabase.lib.schema.expression/emptyable)
+      [:or [:= field nil] [:= field ""]]
+      [:= field nil])
+
+    [:not-empty field]
+    (if (isa? (get-in field [2 :base-type]) :metabase.lib.schema.expression/emptyable)
+      [:and [:!= field nil] [:!= field ""]]
+      [:!= field nil])))
 
 (defn- replace-field-or-expression
   "Replace a field or expression inside :time-interval"
@@ -228,17 +234,28 @@
      [:relative-datetime n unit]]))
 
 (defn desugar-does-not-contain
-  "Rewrite `:does-not-contain` filter clauses as simpler `:not` clauses."
+  "Rewrite `:does-not-contain` filter clauses as simpler `[:not [:contains ...]]` clauses.
+
+  Note that [[desugar-multi-argument-comparisons]] will have already desugared any 3+ argument `:does-not-contain` to
+  several `[:and [:does-not-contain ...] [:does-not-contain ...] ...]` clauses, which then get rewritten here into
+  `[:and [:not [:contains ...]] [:not [:contains ...]]]`."
   [m]
   (lib.util.match/replace m
     [:does-not-contain & args]
     [:not (into [:contains] args)]))
 
-(defn desugar-equals-and-not-equals-with-extra-args
-  "`:=` and `!=` clauses with more than 2 args automatically get rewritten as compound filters.
+(defn desugar-multi-argument-comparisons
+  "`:=`, `!=`, `:contains`, `:does-not-contain`, `:starts-with` and `:ends-with` clauses with more than 2 args
+  automatically get rewritten as compound filters.
 
-     [:= field x y]  -> [:or  [:=  field x] [:=  field y]]
-     [:!= field x y] -> [:and [:!= field x] [:!= field y]]"
+     [:= field x y]                -> [:or  [:=  field x] [:=  field y]]
+     [:!= field x y]               -> [:and [:!= field x] [:!= field y]]
+     [:does-not-contain field x y] -> [:and [:does-not-contain field x] [:does-not-contain field y]]
+
+  Note that the optional options map is in different positions for `:contains`, `:does-not-contain`, `:starts-with` and
+  `:ends-with` depending on the number of arguments. 2-argument forms use the legacy style `[:contains field x opts]`.
+  Multi-argument forms use pMBQL style with the options at index 1, **even if there are no options**:
+  `[:contains {} field x y z]`."
   [m]
   (lib.util.match/replace m
     [:= field x y & more]
@@ -247,7 +264,16 @@
 
     [:!= field x y & more]
     (apply vector :and (for [x (concat [x y] more)]
-                         [:!= field x]))))
+                         [:!= field x]))
+
+    [(op :guard #{:contains :does-not-contain :starts-with :ends-with})
+     (opts :guard map?)
+     field x y & more]
+    (let [tail (when (seq opts) [opts])]
+      (apply vector
+           (if (= op :does-not-contain) :and :or)
+           (for [x (concat [x y] more)]
+             (into [op field x] tail))))))
 
 (defn desugar-current-relative-datetime
   "Replace `relative-datetime` clauses like `[:relative-datetime :current]` with `[:relative-datetime 0 <unit>]`.
@@ -294,12 +320,124 @@
     [:/ x y z & more]
     (recur (into [:/ [:/ x y]] (cons z more)))))
 
-(mu/defn desugar-expression :- mbql.s/FieldOrExpressionDef
+(def ^:private host-regex
+  ;; Extracts the "host" from a URL or an email.
+  ;; By host we mean the main domain name and the TLD, eg. metabase.com, amazon.co.jp, bbc.co.uk.
+  ;; For a URL, this is not the RFC3986 "host", which would include any subdomains and the optional `:3000` port number.
+  ;;
+  ;; For an email, this is generally the part after the @, but it will skip any subdomains:
+  ;;   someone@email.mycompany.net -> mycompany.net
+  ;;
+  ;; Referencing the indexes below:
+  ;; 1.  Positive lookbehind:
+  ;;       Just past one of:
+  ;; 2.      @  from an email or URL userinfo@ prefix
+  ;; 3.      // from a URL scheme
+  ;; 4.      .  from a previous subdomain segment
+  ;; 5.      Start of string
+  ;; 6.  Negative lookahead: don't capture www as part of the domain
+  ;; 7.  Main domain segment
+  ;; 8.  Ending in a dot
+  ;; 9.  Optional short final segment (eg. co in .co.uk)
+  ;; 10. Top-level domain
+  ;; 11. Optional :port, /path, ?query or #hash
+  ;; 12. Anchor to the end
+  ;;1   2 3  4  5 6        7          8 9                     10         11           12
+  #"(?<=@|//|\.|^)(?!www\.)[^@\.:/?#]+\.(?:[^@\.:/?#]{1,3}\.)?[^@\.:/?#]+(?=[:/?#].*$|$)")
+
+(def ^:private domain-regex
+  ;; Deliberately no ^ at the start; there might be several subdomains before this spot.
+  ;; By "short tail" below, I mean a pseudo-TLD nested under a proper TLD. For example, mycompany.co.uk.
+  ;; This can accidentally capture a short domain name, eg. "subdomain.aol.com" -> "subdomain", oops.
+  ;; But there's a load of these, not a short list we can include here, so it's either preprocess the (huge) master list
+  ;; from Mozilla or accept that this regex is a bit best-effort.
+  ;; Referencing the indexes below:
+  ;; 1.  Positive lookbehind:
+  ;;       Just past one of:
+  ;; 2.      @  from an email or URL userinfo@ prefix
+  ;; 3.      // from a URL scheme
+  ;; 4.      .  from a previous subdomain segment
+  ;; 5.      Start of string
+  ;; 6.  Negative lookahead: don't capture www as the domain
+  ;; 7.  One domain segment
+  ;; 8.  Positive lookahead:
+  ;;       Either:
+  ;; 9.      Short final segment (eg. .co.uk)
+  ;; 10.     Top-level domain
+  ;; 11.     Optional :port, /path, ?query or #hash
+  ;; 12.     Anchor to end
+  ;;       Or:
+  ;; 13.     Top-level domain
+  ;; 14.     Optional :port, /path, ?query or #hash
+  ;; 15.     Anchor to end
+  ;;1   2 3  4  5 6        7          (8   9                10         11          12|  13         14           15)
+  #"(?<=@|//|\.|^)(?!www\.)[^@\.:/?#]+(?=\.[^@\.:/?#]{1,3}\.[^@\.:/?#]+(?:[:/?#].*)?$|\.[^@\.:/?#]+(?:[:/?#].*)?$)")
+
+(def ^:private subdomain-regex
+  ;; This grabs the first segment that isn't "www", AND excludes the main domain name.
+  ;; See [[domain-regex]] for more details about how those are matched.
+  ;; Referencing the indexes below:
+  ;; 1.  Positive lookbehind:
+  ;;       Just past one of:
+  ;; 2.      @  from an email or URL userinfo@ prefix
+  ;; 3.      // from a URL scheme
+  ;; 4.      .  from a previous subdomain segment
+  ;; 5.      Start of string
+  ;; 6.  Negative lookahead: don't capture www as the domain
+  ;; 7.  Negative lookahead: don't capture the main domain name or part of the TLD
+  ;;       That would look like:
+  ;; 8.      The next segment we *would* capture as the subdomain
+  ;; 9.      Optional short segment, like "co" in .co.uk
+  ;; 10.     Top-level domain
+  ;; 11.     Optionally more URL things: :port or /path or ?query or #fragment
+  ;; 12.     End of string
+  ;; 13. Match the actual subdomain
+  ;; 14. Positive lookahead: the . after the subdomain, which we want to detect but not capture.
+  ;;1   2 3  4  5 6        7  8           9                    10        11           12 13       14
+  #"(?<=@|//|\.|^)(?!www\.)(?![^\.:/?#]+\.(?:[^\.:/?#]{1,3}\.)?[^\.:/?#]+(?:[:/?#].*)?$)[^\.:/?#]+(?=\.)")
+
+(defn- desugar-host-and-domain [expression]
+  (lib.util.match/replace expression
+    [:host column]
+    (recur [:regex-match-first column (str host-regex)])
+    [:domain column]
+    (recur [:regex-match-first column (str domain-regex)])
+    [:subdomain column]
+    (recur [:regex-match-first column (str subdomain-regex)])))
+
+(defn- temporal-case-expression
+  "Creates a `:case` expression with a condition for each value of the given unit."
+  [column unit n]
+  (let [user-locale #?(:clj  (metabase.util.i18n/user-locale)
+                       :cljs nil)]
+    [:case
+     (vec (for [raw-value (range 1 (inc n))]
+            [[:= column raw-value] (shared.ut/format-unit raw-value unit user-locale)]))
+     {:default ""}]))
+
+(defn- desugar-temporal-names
+  "Given an expression like `[:month-name column]`, transforms this into a `:case` expression, which matches the input
+  numbers and transforms them into names.
+
+  Uses the user's locale rather than the site locale, so the results will depend on the runner of the query, not just
+  the query itself. Filtering should be done based on the number, rather than the name."
+  [expression]
+  (lib.util.match/replace expression
+    [:month-name column]
+    (recur (temporal-case-expression column :month-of-year 12))
+    [:quarter-name column]
+    (recur (temporal-case-expression column :quarter-of-year 4))
+    [:day-name column]
+    (recur (temporal-case-expression column :day-of-week 7))))
+
+(mu/defn desugar-expression :- ::mbql.s/FieldOrExpressionDef
   "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers
   to compile."
-  [expression :- mbql.s/FieldOrExpressionDef]
+  [expression :- ::mbql.s/FieldOrExpressionDef]
   (-> expression
-      desugar-divide-with-extra-args))
+      desugar-divide-with-extra-args
+      desugar-host-and-domain
+      desugar-temporal-names))
 
 (defn- maybe-desugar-expression [clause]
   (cond-> clause
@@ -313,7 +451,7 @@
   [filter-clause :- mbql.s/Filter]
   (-> filter-clause
       desugar-current-relative-datetime
-      desugar-equals-and-not-equals-with-extra-args
+      desugar-multi-argument-comparisons
       desugar-does-not-contain
       desugar-time-interval
       desugar-is-null-and-not-null
@@ -335,7 +473,9 @@
 (defmethod negate* :>=  [[_ field value]]  [:<  field value])
 (defmethod negate* :<=  [[_ field value]]  [:>  field value])
 
-(defmethod negate* :between [[_ field min max]] [:or [:< field min] [:> field max]])
+(defmethod negate* :between
+  [[_ field min-value max-value]]
+  [:or [:< field min-value] [:> field max-value]])
 
 (defmethod negate* :contains    [clause] [:not clause])
 (defmethod negate* :starts-with [clause] [:not clause])
@@ -389,11 +529,13 @@
 (mu/defn add-order-by-clause :- mbql.s/MBQLQuery
   "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
   already being used in another order-by clause, this function does nothing."
-  [inner-query                                        :- mbql.s/MBQLQuery
-   [_ [_ id-or-name :as _field], :as order-by-clause] :- mbql.s/OrderBy]
-  (let [existing-fields (set (for [[_ [_ id-or-name]] (:order-by inner-query)]
-                               id-or-name))]
-    (if (existing-fields id-or-name)
+  [inner-query                           :- mbql.s/MBQLQuery
+   [_dir orderable, :as order-by-clause] :- ::mbql.s/OrderBy]
+  (let [existing-orderables (into #{}
+                                  (map (fn [[_dir orderable]]
+                                         orderable))
+                                  (:order-by inner-query))]
+    (if (existing-orderables orderable)
       ;; Field already referenced, nothing to do
       inner-query
       ;; otherwise add new clause at the end
@@ -420,10 +562,10 @@
   ([x _]
    (dispatch-by-clause-name-or-class x)))
 
-(mu/defn expression-with-name :- mbql.s/FieldOrExpressionDef
-  "Return the `Expression` referenced by a given `expression-name`."
+(mu/defn expression-with-name :- ::mbql.s/FieldOrExpressionDef
+  "Return the expression referenced by a given `expression-name`."
   [inner-query expression-name :- [:or :keyword ::lib.schema.common/non-blank-string]]
-  (let [allowed-names [(qualified-name expression-name) (keyword expression-name)]]
+  (let [allowed-names [(u/qualified-name expression-name) (keyword expression-name)]]
     (loop [{:keys [expressions source-query]} inner-query, found #{}]
       (or
        ;; look for either string or keyword version of `expression-name` in `expressions`
@@ -434,13 +576,13 @@
            (recur source-query found)
            ;; failing that throw an Exception with detailed info about what we tried and what the actual expressions
            ;; were
-           (throw (ex-info (i18n/tru "No expression named ''{0}''" (qualified-name expression-name))
+           (throw (ex-info (i18n/tru "No expression named ''{0}''" (u/qualified-name expression-name))
                            {:type            :invalid-query
                             :expression-name expression-name
                             :tried           allowed-names
                             :found           found}))))))))
 
-(mu/defn aggregation-at-index :- mbql.s/Aggregation
+(mu/defn aggregation-at-index :- ::mbql.s/Aggregation
   "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregation 0]).
    This also handles nested queries, which could be potentially ambiguous if multiple levels had aggregations. To
    support nested queries, you'll need to keep tract of how many `:source-query`s deep you've traveled; pass in this
@@ -456,20 +598,6 @@
          (throw (ex-info (i18n/tru "No aggregation at index: {0}" index) {:index index})))
      ;; keep recursing deeper into the query until we get to the same level the aggregation reference was defined at
      (recur {:query (get-in query [:query :source-query])} index (dec nesting-level)))))
-
-(defn ga-id?
-  "Is this ID (presumably of a Metric or Segment) a GA one?"
-  [id]
-  (boolean
-   (when ((some-fn string? keyword?) id)
-     (re-find #"^ga(id)?:" (name id)))))
-
-(defn ga-metric-or-segment?
-  "Is this metric or segment clause not a Metabase Metric or Segment, but rather a GA one? E.g. something like `[:metric
-  ga:users]`. We want to ignore those because they're not the same thing at all as MB Metrics/Segments and don't
-  correspond to objects in our application DB."
-  [[_ id]]
-  (ga-id? id))
 
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 
@@ -542,8 +670,8 @@
   (let [id+original->unique (atom {})   ; map of [id original-alias] -> unique-alias
         original->count     (atom {})]  ; map of original-alias -> count
     (fn generate-name
-      ([alias]
-       (generate-name (gensym) alias))
+      ([an-alias]
+       (generate-name (gensym) an-alias))
 
       ([id original]
        (let [name-key (name-key-fn original)]
@@ -567,6 +695,7 @@
                 (assert (not= candidate original)
                         (str "unique-alias-fn must return a different string than its input. Input: "
                              (pr-str candidate)))
+                (swap! id+original->unique assoc [id name-key] candidate)
                 (recur id candidate))))))))))
 
 (mu/defn uniquify-names :- [:and
@@ -622,9 +751,8 @@
 
   Most often, `aggregation->name-fn` will be something like `annotate/aggregation-name`, but for purposes of keeping
   the `metabase.legacy-mbql` module seperate from the `metabase.query-processor` code we'll let you pass that in yourself."
-  {:style/indent 1}
   [aggregation->name-fn :- fn?
-   aggregations         :- [:sequential mbql.s/Aggregation]]
+   aggregations         :- [:sequential ::mbql.s/Aggregation]]
   (lib.util.match/replace aggregations
     [:aggregation-options _ (_ :guard :name)]
     &match
@@ -638,9 +766,8 @@
 (mu/defn pre-alias-and-uniquify-aggregations :- UniquelyNamedAggregations
   "Wrap every aggregation clause in a `:named` clause with a unique name. Combines `pre-alias-aggregations` with
   `uniquify-named-aggregations`."
-  {:style/indent 1}
   [aggregation->name-fn :- fn?
-   aggregations         :- [:sequential mbql.s/Aggregation]]
+   aggregations         :- [:sequential ::mbql.s/Aggregation]]
   (-> (pre-alias-aggregations aggregation->name-fn aggregations)
       uniquify-named-aggregations))
 
@@ -724,8 +851,7 @@
           (mbql.s/valid-temporal-unit-for-base-type? base-type unit))
     (assoc-field-options clause :temporal-unit unit)
     (do
-      (log/warn (i18n/tru "{0} is not a valid temporal unit for {1}; not adding to clause {2}"
-                          unit base-type (pr-str clause)))
+      (log/warnf "%s is not a valid temporal unit for %s; not adding to clause %s" unit base-type (pr-str clause))
       clause)))
 
 (defn remove-namespaced-options
@@ -762,3 +888,33 @@
           (sequential? form) (recur (onto-stack (map-indexed vector form)) matches)
           :else              (recur stack                                  matches)))
       matches)))
+
+(defn wrap-field-id-if-needed
+  "Wrap a raw Field ID in a `:field` clause if needed."
+  [field-id-or-form]
+  (cond
+    (mbql-clause? field-id-or-form)
+    field-id-or-form
+
+    (integer? field-id-or-form)
+    [:field field-id-or-form nil]
+
+    :else
+    field-id-or-form))
+
+(mu/defn unwrap-field-clause :- [:maybe mbql.s/field]
+  "Unwrap something that contains a `:field` clause, such as a template tag.
+  Also handles unwrapped integers for legacy compatibility.
+
+    (unwrap-field-clause [:field 100 nil]) ; -> [:field 100 nil]"
+  [field-form]
+  (if (integer? field-form)
+    [:field field-form nil]
+    (lib.util.match/match-one field-form :field)))
+
+(mu/defn unwrap-field-or-expression-clause :- mbql.s/Field
+  "Unwrap a `:field` clause or expression clause, such as a template tag. Also handles unwrapped integers for
+  legacy compatibility."
+  [field-or-ref-form]
+  (or (unwrap-field-clause field-or-ref-form)
+      (lib.util.match/match-one field-or-ref-form :expression)))

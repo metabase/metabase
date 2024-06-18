@@ -1,16 +1,19 @@
-import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
+import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import { createDatabase } from "metabase/admin/databases/database";
-import { updateSetting } from "metabase/admin/settings/settings";
+import { getSettings } from "metabase/admin/settings/selectors";
 import {
-  removeShowEmbedHomepageFlag,
-  setShowEmbedHomepageFlag,
-} from "metabase/home/utils";
+  initializeSettings,
+  updateSetting,
+  updateSettings,
+} from "metabase/admin/settings/settings";
 import { loadLocalization } from "metabase/lib/i18n";
+import { createAsyncThunk } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
+import { getSetting } from "metabase/selectors/settings";
 import { SetupApi } from "metabase/services";
-import type { DatabaseData, UsageReason } from "metabase-types/api";
+import type { DatabaseData, Settings, UsageReason } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 
 import {
@@ -26,6 +29,7 @@ import {
   getLocale,
   getNextStep,
   getSetupToken,
+  getUsageReason,
 } from "./selectors";
 import type { SetupStep } from "./types";
 import { getDefaultLocale, getLocales, getUserToken } from "./utils";
@@ -115,6 +119,8 @@ export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
 
     MetabaseSettings.set("setup-token", null);
     dispatch(goToNextStep());
+    //  load the settings after the user is logged, needed later by setEmbeddingHomepageFlags
+    dispatch(initializeSettings());
   },
 );
 
@@ -122,12 +128,6 @@ export const submitUsageReason = createAsyncThunk(
   "metabase/setup/SUBMIT_USAGE_REASON",
   (usageReason: UsageReason, { dispatch }) => {
     trackUsageReasonSelected(usageReason);
-    if (usageReason === "embedding" || usageReason === "both") {
-      setShowEmbedHomepageFlag();
-    } else {
-      // make sure that state is clean in case of more than one setup on the same browser
-      removeShowEmbedHomepageFlag();
-    }
     dispatch(goToNextStep());
   },
 );
@@ -223,6 +223,38 @@ export const SUBMIT_SETUP = "metabase/setup/SUBMIT_SETUP";
 export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
   SUBMIT_SETUP,
   async (_, { dispatch }) => {
+    dispatch(setEmbeddingHomepageFlags());
     dispatch(goToNextStep());
+  },
+);
+
+export const setEmbeddingHomepageFlags = createAsyncThunk(
+  "setup/setEmbeddingHomepageFlags",
+  async (_, { getState, dispatch }) => {
+    const usageReason = getUsageReason(getState());
+    const tokenFeatures = getSetting(getState(), "token-features");
+    const adminSettings = getSettings(getState());
+    const enableEmbeddingSetByEnv = adminSettings.find(
+      (setting: { key: string }) => setting.key === "enable-embedding",
+    )?.is_env_setting;
+
+    const interestedInEmbedding =
+      usageReason === "embedding" || usageReason === "both";
+    const isLicenseActive = tokenFeatures && tokenFeatures["embedding"];
+
+    const settingsToChange: Partial<Settings> = {};
+
+    if (interestedInEmbedding) {
+      settingsToChange["embedding-homepage"] = "visible";
+    }
+
+    if (interestedInEmbedding && !enableEmbeddingSetByEnv) {
+      settingsToChange["enable-embedding"] = true;
+      settingsToChange["setup-embedding-autoenabled"] = true;
+    }
+
+    settingsToChange["setup-license-active-at-setup"] = isLicenseActive;
+
+    dispatch(updateSettings(settingsToChange));
   },
 );

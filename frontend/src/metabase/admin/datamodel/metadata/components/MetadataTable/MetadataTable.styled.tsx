@@ -22,21 +22,21 @@ export const TableDescription = styled.div`
 export const TableNameInput = styled(InputBlurChange)`
   ${Input.Field} {
     font-size: 20px;
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
     border-radius: 8px 8px 0 0;
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
     padding: 0.75rem 1.5rem;
   }
 `;
 
 export const TableDescriptionInput = styled(InputBlurChange)`
   ${Input.Field} {
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
     margin-top: -1px;
     border-radius: 0 0 8px 8px;
     font-weight: 400;
     font-size: 14px;
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
     padding: 0.75rem 1.5rem;
   }
 `;
@@ -53,6 +53,6 @@ export const VisibilityBadge = styled.span<VisibilityBadgeProps>`
   color: ${props => (props.isChecked ? color("brand") : color("text-dark"))};
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

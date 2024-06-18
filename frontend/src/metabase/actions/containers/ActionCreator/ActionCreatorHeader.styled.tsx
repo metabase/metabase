@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 import EditableTextBase from "metabase/core/components/EditableText";
 import Select from "metabase/core/components/Select";
 import SelectButton from "metabase/core/components/SelectButton";
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const Container = styled.div`
@@ -12,27 +11,22 @@ export const Container = styled.div`
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  background-color: ${color("white")};
-  border-bottom: 1px solid ${color("border")};
+  background-color: var(--mb-color-bg-white);
+  border-bottom: 1px solid var(--mb-color-border);
   padding: ${space(2)} ${space(3)};
 `;
 
 export const LeftHeader = styled.div`
   display: flex;
   align-items: center;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   gap: ${space(2)};
 `;
 
 export const EditableText = styled(EditableTextBase)`
   font-weight: bold;
   font-size: 1.3em;
-  color: ${color("text-medium")};
-`;
-
-export const Option = styled.div`
-  color: ${color("text-medium")};
-  ${disabled => disabled && `color: ${color("text-medium")}`};
+  color: var(--mb-color-text-medium);
 `;
 
 export const CompactSelect = styled(Select)`
@@ -40,7 +34,7 @@ export const CompactSelect = styled(Select)`
     border: none;
     border-radius: 6px;
     min-width: 80px;
-    color: ${color("text-medium")};
+    color: var(--mb-color-text-medium);
   }
   ${SelectButton.Content} {
     margin-right: 6px;
@@ -50,7 +44,7 @@ export const CompactSelect = styled(Select)`
   }
   &:hover {
     ${SelectButton.Root} {
-      background-color: ${color("bg-light")};
+      background-color: var(--mb-color-bg-light);
     }
   }
 `;

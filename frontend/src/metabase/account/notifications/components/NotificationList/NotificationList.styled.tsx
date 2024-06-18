@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 
 import { TextButton } from "metabase/components/Button.styled";
 import Label from "metabase/components/type/Label";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const NotificationHeader = styled.div`
@@ -29,7 +28,7 @@ export const NotificationSection = styled.div`
 `;
 
 export const NotificationIcon = styled(Icon)`
-  color: ${color("bg-dark")};
+  color: var(--mb-color-bg-dark);
   width: 3.25rem;
   height: 3.25rem;
   margin-top: 4.875rem;

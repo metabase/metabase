@@ -9,6 +9,7 @@
    [metabase.server.middleware.log :as mw.log]
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.server.middleware.request-id :as mw.request-id]
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.middleware.ssl :as mw.ssl]
@@ -62,6 +63,7 @@
    #'mw.misc/add-content-type                   ; Adds a Content-Type header for any response that doesn't already have one
    #'mw.misc/disable-streaming-buffering        ; Add header to streaming (async) responses so ngnix doesn't buffer keepalive bytes
    #'wrap-gzip                                  ; GZIP response if client can handle it
+   #'mw.request-id/wrap-request-id              ; Add a unique request ID to the request
    #'mw.misc/bind-request                       ; bind `metabase.middleware.misc/*request*` for the duration of the request
    #'mw.ssl/redirect-to-https-middleware])
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP
@@ -74,7 +76,7 @@
    handler
    middleware))
 
-(def app
+(def ^{:arglists '([request] [request respond raise])} app
   "The primary entry point to the Ring HTTP server."
   (apply-middleware routes/routes))
 

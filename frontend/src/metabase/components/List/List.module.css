@@ -1,7 +1,7 @@
 :root {
-  --title-color: var(--color-text-dark);
-  --subtitle-color: var(--color-text-medium);
-  --muted-color: var(--color-text-light);
+  --title-color: var(--mb-color-text-dark);
+  --subtitle-color: var(--mb-color-text-medium);
+  --muted-color: var(--mb-color-text-light);
 }
 
 .list {
@@ -23,12 +23,12 @@
 }
 
 .headerBody {
-  composes: border-bottom from "style";
+  composes: borderBottom from "style";
   flex: 1 0 auto;
   display: flex;
   align-items: center;
   height: 100%;
-  border-color: var(--color-brand);
+  border-color: var(--mb-color-brand);
 }
 
 .headerButton {
@@ -57,7 +57,7 @@
 }
 
 .itemTitle {
-  composes: text-bold from "style";
+  composes: textBold from "style";
   max-width: 100%;
   overflow: hidden;
 }
@@ -72,7 +72,6 @@
   composes: mr2 from "style";
   align-self: flex-start;
   flex-shrink: 0;
-  display: flex;
   flex-direction: row;
   align-items: center;
   display: flex;
@@ -97,7 +96,7 @@
 }
 
 .icon:hover {
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
 }
 
 /* CHART ICON */

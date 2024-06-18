@@ -17,6 +17,10 @@ import {
   setupSearchEndpoints,
   setupTimelinesEndpoints,
   setupPropertiesEndpoints,
+  setupRecentViewsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
+  setupCardQueryMetadataEndpoint,
+  setupAdhocQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -33,6 +37,7 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockCollection,
   createMockColumn,
   createMockDataset,
@@ -56,7 +61,7 @@ import type { RequestState, State } from "metabase-types/store";
 
 import QueryBuilder from "./QueryBuilder";
 
-const TEST_DB = createSampleDatabase();
+export const TEST_DB = createSampleDatabase();
 
 export const TEST_CARD = createMockCard({
   id: 1,
@@ -241,9 +246,15 @@ export const setup = async ({
   setupFieldValuesEndpoints(
     createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),
   );
+  setupRecentViewsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
+
+  const metadata = createMockCardQueryMetadata({ databases: [TEST_DB] });
+  setupAdhocQueryMetadataEndpoint(metadata);
 
   if (isSavedCard(card)) {
     setupCardsEndpoints([card]);
+    setupCardQueryMetadataEndpoint(card, metadata);
     setupCardQueryEndpoints(card, dataset);
     setupAlertsEndpoints(card, []);
     setupModelIndexEndpoints(card.id, []);
@@ -286,6 +297,8 @@ export const setup = async ({
   );
 
   await waitForLoadingRequests(getState);
+  await waitForLoaderToBeRemoved();
+  await waitForLoadingRequests(getState);
 
   return {
     container,
@@ -314,15 +327,12 @@ const getRequests = (state: State): RequestState[] => {
 };
 
 export const startNewNotebookModel = async () => {
-  userEvent.click(screen.getByText("Use the notebook editor"));
+  await userEvent.click(screen.getByText("Use the notebook editor"));
   await waitForLoaderToBeRemoved();
 
-  userEvent.click(screen.getByText("Pick your starting data"));
-  const popover = screen.getByTestId("popover");
-  userEvent.click(within(popover).getByText("Sample Database"));
+  const modal = await screen.findByTestId("entity-picker-modal");
   await waitForLoaderToBeRemoved();
-  userEvent.click(within(popover).getByText("Orders"));
-  userEvent.click(within(screen.getByTestId("popover")).getByText("Orders"));
+  await userEvent.click(await within(modal).findByText("Orders"));
 
   expect(screen.getByRole("button", { name: "Get Answer" })).toBeEnabled();
 };
@@ -334,45 +344,45 @@ export const triggerNativeQueryChange = async () => {
     screen.getByTestId("mock-native-query-editor"),
   ).getByRole("textbox");
 
-  userEvent.click(inputArea);
-  userEvent.type(inputArea, "0");
-  userEvent.tab();
+  await userEvent.click(inputArea);
+  await userEvent.type(inputArea, "0");
+  await userEvent.tab();
 };
 
 export const triggerMetadataChange = async () => {
   await waitFor(() => {
-    expect(screen.getByTitle("Display name")).toBeInTheDocument();
+    expect(screen.getByLabelText("Display name")).toBeInTheDocument();
   });
 
-  const columnDisplayName = screen.getByTitle("Display name");
+  const columnDisplayName = screen.getByLabelText("Display name");
 
-  userEvent.click(columnDisplayName);
-  userEvent.type(columnDisplayName, "X");
-  userEvent.tab();
+  await userEvent.click(columnDisplayName);
+  await userEvent.type(columnDisplayName, "X");
+  await userEvent.tab();
 };
 
 export const triggerVisualizationQueryChange = async () => {
-  userEvent.click(screen.getByText("Filter"));
+  await userEvent.click(screen.getByText("Filter"));
 
   const modal = screen.getByRole("dialog");
   const total = within(modal).getByTestId("filter-column-Total");
   const maxInput = within(total).getByPlaceholderText("Max");
-  userEvent.type(maxInput, "1000");
-  userEvent.tab();
+  await userEvent.type(maxInput, "1000");
+  await userEvent.tab();
 
-  userEvent.click(screen.getByTestId("apply-filters"));
+  await userEvent.click(screen.getByTestId("apply-filters"));
 };
 
 export const triggerNotebookQueryChange = async () => {
-  userEvent.click(screen.getByText("Row limit"));
+  await userEvent.click(await screen.findByText("Row limit"));
 
   const rowLimitInput = await within(
     screen.getByTestId("step-limit-0-0"),
   ).findByPlaceholderText("Enter a limit");
 
-  userEvent.click(rowLimitInput);
-  userEvent.type(rowLimitInput, "1");
-  userEvent.tab();
+  await userEvent.click(rowLimitInput);
+  await userEvent.type(rowLimitInput, "1");
+  await userEvent.tab();
 };
 
 /**
@@ -384,9 +394,9 @@ export const revertNotebookQueryChange = async () => {
     "Enter a limit",
   );
 
-  userEvent.click(limitInput);
-  userEvent.type(limitInput, "{backspace}");
-  userEvent.tab();
+  await userEvent.click(limitInput);
+  await userEvent.type(limitInput, "{backspace}");
+  await userEvent.tab();
 };
 
 export const waitForSaveChangesToBeEnabled = async () => {

@@ -4,13 +4,13 @@
   font-weight: 600;
   min-height: 30px;
   min-width: 150px;
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .parameter.selected {
   font-weight: bold;
-  color: var(--color-brand);
-  border-color: var(--color-brand);
+  color: var(--mb-color-brand);
+  border-color: var(--mb-color-brand);
 }
 
 .parameter input {
@@ -34,38 +34,38 @@
 
 .parameter.noPopover.selected input {
   font-weight: bold;
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
 }
 
 .parameter.noPopover input:focus {
   outline: none;
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
 }
 
 .parameter.noPopover input::-webkit-input-placeholder {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .parameter.noPopover input:-moz-placeholder {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .parameter.noPopover input::-moz-placeholder {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .parameter.noPopover input:-ms-input-placeholder {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .DashboardNight .parameter.noPopover input:focus,
-:global(.Theme--night) .parameter.noPopover input:focus {
-  color: var(--color-text-white);
+.ThemeNight .parameter.noPopover input:focus {
+  color: var(--mb-color-text-white);
 }
 
 .name {
   composes: mr1 from "style";
   font-size: 16px;
   font-weight: bold;
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }

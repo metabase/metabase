@@ -6,6 +6,7 @@ import {
   visitQuestion,
   rightSidebar,
   visitQuestionAdhoc,
+  echartsIcon,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -240,7 +241,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
-      cy.findByLabelText("star icon").should("be.visible");
+      echartsIcon("star").should("be.visible");
     });
 
     it("should not show events for non-timeseries questions", () => {
@@ -270,7 +271,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
-      cy.findByLabelText("star icon").should("not.exist");
+      echartsIcon("star").should("not.exist");
     });
 
     it("should show events for native queries", () => {
@@ -296,7 +297,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
-      cy.findByLabelText("star icon").should("be.visible");
+      echartsIcon("star").should("be.visible");
     });
 
     it("should toggle individual event visibility", () => {
@@ -308,7 +309,7 @@ describe("scenarios > organization > timelines > question", () => {
       });
 
       cy.createTimelineWithEvents({
-        timeline: { name: "Timeline for collection", collection_id: 1 },
+        timeline: { name: "Timeline for collection", collection_id: 2 },
         events: [
           { name: "TC1", timestamp: "2022-05-20T00:00:00Z", icon: "warning" },
         ],
@@ -318,7 +319,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
-      cy.findByLabelText("cloud icon").should("be.visible");
+      echartsIcon("cloud").should("be.visible");
 
       // should hide individual events from chart if hidden in sidebar
       cy.icon("calendar").click();
@@ -326,16 +327,12 @@ describe("scenarios > organization > timelines > question", () => {
       cy.findByText("Releases").click();
       toggleEventVisibility("RC1");
 
-      cy.get(".x.axis").within(() => {
-        cy.findByLabelText("cloud icon").should("not.exist");
-      });
+      echartsIcon("cloud").should("not.exist");
 
       // should show individual events in chart again
       toggleEventVisibility("RC1");
 
-      cy.get(".x.axis").within(() => {
-        cy.findByLabelText("cloud icon").should("be.visible");
-      });
+      echartsIcon("cloud").should("be.visible");
 
       // should show a newly created event
       cy.button("Add an event").click();
@@ -344,16 +341,12 @@ describe("scenarios > organization > timelines > question", () => {
       cy.button("Create").click();
       cy.wait("@createEvent");
 
-      cy.get(".x.axis").within(() => {
-        cy.findByLabelText("star icon").should("be.visible");
-      });
+      echartsIcon("star").should("be.visible");
 
       // should then hide the newly created event
       toggleEventVisibility("RC2");
 
-      cy.get(".x.axis").within(() => {
-        cy.findByLabelText("star icon").should("not.exist");
-      });
+      echartsIcon("star").should("not.exist");
 
       // its timeline, visible but having one hidden event
       // should display its checkbox with a "dash" icon
@@ -369,10 +362,8 @@ describe("scenarios > organization > timelines > question", () => {
         });
 
       // once timeline is visible, all its events should be visible
-      cy.get(".x.axis").within(() => {
-        cy.findByLabelText("star icon").should("be.visible");
-        cy.findByLabelText("cloud icon").should("be.visible");
-      });
+      echartsIcon("star").should("be.visible");
+      echartsIcon("cloud").should("be.visible");
 
       // should initialize events in a hidden timelime
       // with event checkboxes unchecked
@@ -393,17 +384,59 @@ describe("scenarios > organization > timelines > question", () => {
         .closest("[aria-label=Timeline card header]")
         .within(() => cy.findByRole("checkbox").click());
 
-      cy.get(".x.axis").within(() => {
-        cy.findByLabelText("warning icon").should("be.visible");
-      });
+      echartsIcon("warning").should("be.visible");
 
       // events whose timeline was invisible on page load
       // should be hideable once their timelines are visible
       toggleEventVisibility("TC1");
 
-      cy.get(".x.axis").within(() => {
-        cy.findByLabelText("warning icon").should("not.exist");
+      echartsIcon("warning").should("not.exist");
+    });
+
+    it("should color the event icon when hovering", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [
+          { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
+        ],
       });
+
+      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+
+      echartsIcon("star").should("be.visible");
+      echartsIcon("star").realHover();
+      echartsIcon("star", true).should("be.visible");
+    });
+
+    it("should open the sidebar when clicking an event icon", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [
+          { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
+        ],
+      });
+
+      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+
+      echartsIcon("star").should("be.visible");
+      echartsIcon("star").realClick();
+
+      // event should be selected in sidebar
+      timelineEventCard("RC1").should("be.visible");
+      timelineEventCard("RC1").should(
+        "have.css",
+        "border-left",
+        "4px solid rgb(80, 158, 227)",
+      );
+
+      // after clicking the icon again, it should be deselected in sidebar
+      echartsIcon("star", true).click();
+      timelineEventCard("RC1").should("be.visible");
+      timelineEventCard("RC1").should(
+        "have.css",
+        "border-left",
+        "4px solid rgba(0, 0, 0, 0)",
+      );
     });
   });
 
@@ -443,10 +476,12 @@ describe("scenarios > organization > timelines > question", () => {
   });
 });
 
+function timelineEventCard(eventName) {
+  return cy.findByText(eventName).closest("[aria-label=Timeline event card]");
+}
+
 function toggleEventVisibility(eventName) {
-  cy.findByText(eventName)
-    .closest("[aria-label=Timeline event card]")
-    .within(() => {
-      cy.findByRole("checkbox").click();
-    });
+  timelineEventCard(eventName).within(() => {
+    cy.findByRole("checkbox").click();
+  });
 }

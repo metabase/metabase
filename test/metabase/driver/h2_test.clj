@@ -124,18 +124,23 @@
 
 (deftest ^:parallel add-interval-honeysql-form-test
   (testing "Should convert fractional seconds to milliseconds"
-    (is (= [:dateadd
-            (h2x/literal "millisecond")
-            (h2x/with-database-type-info [:cast [:inline 100500.0] [:raw "long"]] "long")
-            (h2x/with-database-type-info [:cast :%now [:raw "datetime"]] "datetime")]
-           (sql.qp/add-interval-honeysql-form :h2 :%now 100.5 :second))))
+    (is (= (h2x/with-database-type-info
+            [:dateadd
+             (h2x/literal "millisecond")
+             [:inline 100500]
+             (h2x/with-database-type-info :%now "timestamp")]
+            "timestamp")
+           (sql.qp/add-interval-honeysql-form :h2 (sql.qp/current-datetime-honeysql-form :h2) 100.5 :second)))))
 
+(deftest ^:parallel add-interval-honeysql-form-test-2
   (testing "Non-fractional seconds should remain seconds, but be cast to longs"
-    (is (= [:dateadd
-            (h2x/literal "second")
-            (h2x/with-database-type-info [:cast [:inline 100.0] [:raw "long"]] "long")
-            (h2x/with-database-type-info [:cast :%now [:raw "datetime"]] "datetime")]
-           (sql.qp/add-interval-honeysql-form :h2 :%now 100.0 :second)))))
+    (is (= (h2x/with-database-type-info
+            [:dateadd
+             (h2x/literal "second")
+             [:inline 100]
+             (h2x/with-database-type-info :%now "timestamp")]
+            "timestamp")
+           (sql.qp/add-interval-honeysql-form :h2 (sql.qp/current-datetime-honeysql-form :h2) 100.0 :second)))))
 
 (deftest ^:parallel clob-test
   (mt/test-driver :h2

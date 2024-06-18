@@ -1,9 +1,10 @@
-(ns metabase.legacy-mbql.util-test
+(ns ^:mb/once metabase.legacy-mbql.util-test
   (:require
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.types]))
+   [metabase.types]
+   #?@(:clj (#_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt]))))
 
 (comment metabase.types/keep-me)
 
@@ -121,28 +122,32 @@
                              [:asc [:field 20 nil]]]}
              (mbql.u/add-order-by-clause {:source-table 1
                                           :order-by     [[:asc [:field 10 nil]]]}
-                                         [:asc [:field 20 nil]]))))
+                                         [:asc [:field 20 nil]])))))
 
+(t/deftest ^:parallel add-order-by-clause-test-2
   (t/testing "duplicate clauses should get ignored"
     (t/is (= {:source-table 1
               :order-by     [[:asc [:field 10 nil]]]}
              (mbql.u/add-order-by-clause {:source-table 1
                                           :order-by     [[:asc [:field 10 nil]]]}
-                                         [:asc [:field 10 nil]]))))
+                                         [:asc [:field 10 nil]])))))
 
+(t/deftest ^:parallel add-order-by-clause-test-3
   (t/testing "as should clauses that reference the same Field"
     (t/is (= {:source-table 1
               :order-by     [[:asc [:field 10 nil]]]}
              (mbql.u/add-order-by-clause {:source-table 1
                                           :order-by     [[:asc [:field 10 nil]]]}
-                                         [:desc [:field 10 nil]])))
+                                         [:desc [:field 10 nil]])))))
 
-    (t/testing "fields with different amounts of wrapping (plain field vs datetime-field)"
-      (t/is (= {:source-table 1
-                :order-by     [[:asc [:field 10 nil]]]}
-               (mbql.u/add-order-by-clause {:source-table 1
-                                            :order-by     [[:asc [:field 10 nil]]]}
-                                           [:asc [:field 10 {:temporal-unit :day}]]))))))
+(t/deftest ^:parallel add-order-by-clause-test-4
+  (t/testing "fields with different temporal-units should still get added (#40995)"
+    (t/is (= {:source-table 1
+              :order-by     [[:asc [:field 10 nil]]
+                             [:asc [:field 10 {:temporal-unit :day}]]]}
+             (mbql.u/add-order-by-clause {:source-table 1
+                                          :order-by     [[:asc [:field 10 nil]]]}
+                                         [:asc [:field 10 {:temporal-unit :day}]])))))
 
 (t/deftest ^:parallel combine-filter-clauses-test
   (t/is (= [:and [:= [:field 1 nil] 100] [:= [:field 2 nil] 200]]
@@ -297,7 +302,7 @@
                [:field 1 {:temporal-unit :week, :binning {:strategy :default}}]
                [:relative-datetime :current]])))))
 
-(t/deftest relative-datetime-current-inside-between-test
+(t/deftest ^:parallel relative-datetime-current-inside-between-test
   (t/testing ":relative-datetime should work inside a :between clause (#19606)\n"
     (let [absolute "2022-03-11T15:48:00-08:00"
           relative [:relative-datetime :current]
@@ -346,22 +351,60 @@
   (t/testing "desugaring :not-null"
     (t/is (= [:!= [:field 1 nil] nil]
              (mbql.u/desugar-filter-clause [:not-null [:field 1 nil]]))))
-  (t/testing "desugaring :is-empty"
-    (t/is (= [:or [:= [:field 1 nil] nil]
-              [:= [:field 1 nil] ""]]
+  (t/testing "desugaring :is-empty of nil base-type"
+    (t/is (= [:= [:field 1 nil] nil]
              (mbql.u/desugar-filter-clause [:is-empty [:field 1 nil]]))))
-  (t/testing "desugaring :not-empty"
-    (t/is (= [:and [:!= [:field 1 nil] nil]
-              [:!= [:field 1 nil] ""]]
-             (mbql.u/desugar-filter-clause [:not-empty [:field 1 nil]])))))
+  (t/testing "desugaring :is-empty of emptyable base-type :type/Text"
+    (t/is (= [:or
+              [:= [:field 1 {:base-type :type/Text}] nil]
+              [:= [:field 1 {:base-type :type/Text}] ""]]
+             (mbql.u/desugar-filter-clause [:is-empty [:field 1 {:base-type :type/Text}]]))))
+  (t/testing "desugaring :is-empty of not emptyable base-type :type/DateTime"
+    (t/is (= [:= [:field 1 {:base-type :type/DateTime}] nil]
+             (mbql.u/desugar-filter-clause [:is-empty [:field 1 {:base-type :type/DateTime}]]))))
+  (t/testing "desugaring :not-empty of nil base-type"
+    (t/is (= [:!= [:field 1 nil] nil]
+             (mbql.u/desugar-filter-clause [:not-empty [:field 1 nil]]))))
+  (t/testing "desugaring :not-empty of emptyable base-type :type/Text"
+    (t/is (= [:and
+              [:!= [:field 1 {:base-type :type/Text}] nil]
+              [:!= [:field 1 {:base-type :type/Text}] ""]]
+             (mbql.u/desugar-filter-clause [:not-empty [:field 1 {:base-type :type/Text}]]))))
+  (t/testing "desugaring :not-empty of not emptyable base-type"
+    (t/is (= [:!= [:field 1 {:base-type :type/DateTime}] nil]
+             (mbql.u/desugar-filter-clause [:not-empty [:field 1 {:base-type :type/DateTime}]])))))
 
 (t/deftest ^:parallel desugar-does-not-contain-test
-  (t/testing "desugaring does-not-contain without options"
-    (t/is (= [:not [:contains [:field 1 nil] "ABC"]]
-             (mbql.u/desugar-filter-clause [:does-not-contain [:field 1 nil] "ABC"]))))
-  (t/testing "desugaring does-not-contain *with* options"
-    (t/is (= [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
-             (mbql.u/desugar-filter-clause [:does-not-contain [:field 1 nil] "ABC" {:case-sensitive false}])))))
+  (t/testing "desugaring does-not-contain"
+    (t/testing "without options"
+      (t/is (= [:not [:contains [:field 1 nil] "ABC"]]
+               (mbql.u/desugar-filter-clause [:does-not-contain [:field 1 nil] "ABC"]))))
+    (t/testing "*with* options"
+      (t/is (= [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
+               (mbql.u/desugar-filter-clause [:does-not-contain [:field 1 nil] "ABC" {:case-sensitive false}]))))
+    (t/testing "desugaring does-not-contain with multiple arguments"
+      (t/testing "without options"
+        (t/is (= [:and
+                  [:not [:contains [:field 1 nil] "ABC"]]
+                  [:not [:contains [:field 1 nil] "XYZ"]]]
+                 (mbql.u/desugar-filter-clause [:does-not-contain {} [:field 1 nil] "ABC" "XYZ"])))
+        (t/is (= [:and
+                  [:not [:contains [:field 1 nil] "ABC"]]
+                  [:not [:contains [:field 1 nil] "XYZ"]]
+                  [:not [:contains [:field 1 nil] "LMN"]]]
+                 (mbql.u/desugar-filter-clause [:does-not-contain {} [:field 1 nil] "ABC" "XYZ" "LMN"]))))
+      (t/testing "*with* options"
+        (t/is (= [:and
+                  [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
+                  [:not [:contains [:field 1 nil] "XYZ" {:case-sensitive false}]]]
+                 (mbql.u/desugar-filter-clause
+                   [:does-not-contain {:case-sensitive false} [:field 1 nil] "ABC" "XYZ"])))
+        (t/is (= [:and
+                  [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
+                  [:not [:contains [:field 1 nil] "XYZ" {:case-sensitive false}]]
+                  [:not [:contains [:field 1 nil] "LMN" {:case-sensitive false}]]]
+                 (mbql.u/desugar-filter-clause
+                   [:does-not-contain {:case-sensitive false} [:field 1 nil] "ABC" "XYZ" "LMN"])))))))
 
 (t/deftest ^:parallel desugar-temporal-extract-test
   (t/testing "desugaring :get-year, :get-month, etc"
@@ -638,29 +681,37 @@
 (t/deftest ^:parallel unique-name-generator-test
   (t/testing "Can we get a simple unique name generator"
     (t/is (= ["count" "sum" "count_2" "count_2_2"]
-             (map (mbql.u/unique-name-generator) ["count" "sum" "count" "count_2"]))))
+             (map (mbql.u/unique-name-generator) ["count" "sum" "count" "count_2"])))))
+
+(t/deftest ^:parallel unique-name-generator-test-2
   (t/testing "Can we get an idempotent unique name generator"
     (t/is (= ["count" "sum" "count" "count_2"]
-             (map (mbql.u/unique-name-generator) [:x :y :x :z] ["count" "sum" "count" "count_2"]))))
+             (map (mbql.u/unique-name-generator) [:x :y :x :z] ["count" "sum" "count" "count_2"])))))
+
+(t/deftest ^:parallel unique-name-generator-test-3
   (t/testing "Can the same object have multiple aliases"
     (t/is (= ["count" "sum" "count" "count_2"]
-             (map (mbql.u/unique-name-generator) [:x :y :x :x] ["count" "sum" "count" "count_2"]))))
+             (map (mbql.u/unique-name-generator) [:x :y :x :x] ["count" "sum" "count" "count_2"])))))
 
-  (t/testing "idempotence (2-arity calls to generated function)"
+(t/deftest ^:parallel unique-name-generator-idempotence-test
+  (t/testing "idempotence (2-arity calls to generated function) (#40994)"
     (let [unique-name (mbql.u/unique-name-generator)]
-      (t/is (= ["A" "B" "A" "A_2"]
+      (t/is (= ["A" "B" "A" "A_2" "A_2"]
                [(unique-name :x "A")
                 (unique-name :x "B")
                 (unique-name :x "A")
-                (unique-name :y "A")]))))
+                (unique-name :y "A")
+                (unique-name :y "A")])))))
 
-  #_{:clj-kondo/ignore [:discouraged-var]}
+(t/deftest ^:parallel unique-name-generator-options-test
   (t/testing "options"
     (t/testing :name-key-fn
-      (let [f (mbql.u/unique-name-generator :name-key-fn str/lower-case)]
+      (let [f (mbql.u/unique-name-generator :name-key-fn #_{:clj-kondo/ignore [:discouraged-var]} str/lower-case)]
         (t/is (= ["x" "X_2" "X_3"]
-                 (map f ["x" "X" "X"])))))
+                 (map f ["x" "X" "X"])))))))
 
+(t/deftest ^:parallel unique-name-generator-options-test-2
+  (t/testing "options"
     (t/testing :unique-alias-fn
       (let [f (mbql.u/unique-name-generator :unique-alias-fn (fn [x y] (str y "~~" x)))]
         (t/is (= ["x" "2~~x"]
@@ -798,7 +849,7 @@
       (t/is (= [:aggregation 0]
                (mbql.u/update-field-options [:aggregation 0 {:b 2}] dissoc :b))))))
 
-(t/deftest remove-namespaced-options-test
+(t/deftest ^:parallel remove-namespaced-options-test
   (t/are [clause expected] (= expected
                               (mbql.u/remove-namespaced-options clause))
     [:field 1 {::namespaced true}]                [:field 1 nil]
@@ -810,7 +861,7 @@
     [:aggregation 0 {::namespaced true}]          [:aggregation 0]
     [:aggregation 0 {::namespaced true, :a 1}]    [:aggregation 0 {:a 1}]))
 
-(t/deftest with-temporal-unit-test
+(t/deftest ^:parallel with-temporal-unit-test
   (t/is (= [:field 1 {:temporal-unit :day}]
            (mbql.u/with-temporal-unit [:field 1 nil] :day)))
   (t/is (= [:field "t" {:base-type :type/Date, :temporal-unit :day}]
@@ -820,8 +871,176 @@
     (t/is (= [:field "t" {:base-type :type/Date}]
              (mbql.u/with-temporal-unit [:field "t" {:base-type :type/Date}] :minute)))))
 
-(t/deftest desugar-time-interval-expression-test
+(t/deftest ^:parallel desugar-time-interval-expression-test
   (t/is (= [:=
             [:expression "Date" {:temporal-unit :quarter}]
             [:relative-datetime 0 :quarter]]
            (mbql.u/desugar-time-interval [:time-interval [:expression "Date"] :current :quarter]))))
+
+(t/deftest ^:parallel host-regex-on-urls-test
+  (t/are [host url] (= host (re-find @#'mbql.u/host-regex url))
+    "cdbaby.com"      "https://cdbaby.com/some.txt"
+    "fema.gov"        "https://fema.gov/some/path/Vatini?search=foo"
+    "geocities.jp"    "https://www.geocities.jp/some/path/Turbitt?search=foo"
+    "jalbum.net"      "https://jalbum.net/some/path/Kirsz?search=foo"
+    "usa.gov"         "https://usa.gov/some/path/Curdell?search=foo"
+    ;; Oops, this one captures a subdomain because it can't tell va.gov is supposed to be that short.
+    "taxes.va.gov"    "http://taxes.va.gov/some/path/Marritt?search=foo"
+    "gmpg.org"        "http://log.stuff.gmpg.org/some/path/Cambden?search=foo"
+    "hatena.ne.jp"    "http://hatena.ne.jp/"
+    "telegraph.co.uk" "//telegraph.co.uk?foo=bar#tail"
+    "bbc.co.uk"       "bbc.co.uk/some/path?search=foo"
+    "bbc.co.uk"       "news.bbc.co.uk:port"))
+
+(t/deftest ^:parallel host-regex-on-emails-test
+  (t/are [host email] (= host (re-find @#'mbql.u/host-regex email))
+    "metabase.com"      "braden@metabase.com"
+    "homeoffice.gov.uk" "mholmes@homeoffice.gov.uk"
+    "someisp.com"       "john.smith@mail.someisp.com"
+    "amazon.co.uk"      "trk@amazon.co.uk"
+    "hatena.ne.jp"      "takashi@hatena.ne.jp"
+    "hatena.ne.jp"      "takashi@mail.hatena.ne.jp"
+    "ne.jp"             "takashi@www.ne.jp"))
+
+(t/deftest ^:parallel domain-regex-on-urls-test
+  (t/are [domain url] (= domain (re-find @#'mbql.u/domain-regex url))
+    "cdbaby"    "https://cdbaby.com/some.txt"
+    "fema"      "https://fema.gov/some/path/Vatini?search=foo"
+    "geocities" "https://www.geocities.jp/some/path/Turbitt?search=foo"
+    "jalbum"    "https://jalbum.net/some/path/Kirsz?search=foo"
+    "usa"       "https://usa.gov/some/path/Curdell?search=foo"
+    "taxes"     "http://taxes.va.gov/some/path/Marritt?search=foo"
+    "gmpg"      "http://log.stuff.gmpg.org/some/path/Cambden?search=foo"
+    "hatena"    "http://hatena.ne.jp/"
+    "telegraph" "//telegraph.co.uk?foo=bar#tail"
+    "bbc"       "bbc.co.uk/some/path?search=foo"))
+
+(t/deftest ^:parallel domain-regex-on-emails-test
+  (t/are [domain email] (= domain (re-find @#'mbql.u/domain-regex email))
+    "metabase"   "braden@metabase.com"
+    "homeoffice" "mholmes@homeoffice.gov.uk"
+    "someisp"    "john.smith@mail.someisp.com"
+    "amazon"     "trk@amazon.co.uk"
+    "hatena"     "takashi@hatena.ne.jp"
+    "ne"         "takashi@www.ne.jp"))
+
+(t/deftest ^:parallel subdomain-regex-on-urls-test
+  (t/are [subdomain url] (= subdomain (re-find @#'mbql.u/subdomain-regex url))
+       ;; Blanks. "www" doesn't count.
+    nil "cdbaby.com"
+    nil "https://fema.gov"
+    nil "http://www.geocities.jp"
+    nil "usa.gov/some/page.cgi.htm"
+    nil "va.gov"
+
+       ;; Basics - taking the first segment that isn't "www", IF it isn't the domain.
+    "sub"        "sub.jalbum.net"
+    "subdomains" "subdomains.go.here.jalbum.net"
+    "log"        "log.stuff.gmpg.org"
+    "log"        "https://log.stuff.gmpg.org"
+    "log"        "log.stuff.gmpg.org/some/path"
+    "log"        "log.stuff.gmpg.org?search=yes"
+
+       ;; Oops, we miss these! This is the reverse of the problem when picking the domain.
+       ;; We can't tell without maintaining a huge list that va and ne are the real domains, and not the trailing
+       ;; fragments like .co.uk - see below.
+    nil "taxes.va.gov" ; True domain is va, subdomain is taxes.
+    nil "hatena.ne.jp" ; True domain is ne, subdomain is hatena.
+
+       ;; Sometimes the second-last part is a short suffix.
+       ;; Mozilla maintains a huge list of these, but since this has to go into a regex and get passed to the database,
+       ;; we use a best-effort matcher that gets the domain right most of the time.
+    nil         "telegraph.co.uk"
+    nil         "https://telegraph.co.uk"
+    nil         "telegraph.co.uk/some/article.php"
+    "local"     "local.news.telegraph.co.uk"
+    nil         "bbc.co.uk#fragment"
+    "video"     "video.bbc.co.uk"
+       ;; "www" is disregarded as a possible subdomain.
+    nil         "www.usa.gov"
+    nil         "www.dot.va.gov"
+    "licensing" "www.licensing.dot.va.gov"))
+
+(t/deftest ^:parallel desugar-host-and-domain-test
+  (t/is (= [:regex-match-first [:field 1 nil] (str @#'mbql.u/host-regex)]
+           (mbql.u/desugar-expression [:host [:field 1 nil]]))
+        "`host` should desugar to a `regex-match-first` clause with the host regex")
+  (t/is (= [:regex-match-first [:field 1 nil] (str @#'mbql.u/domain-regex)]
+           (mbql.u/desugar-expression [:domain [:field 1 nil]]))
+        "`domain` should desugar to a `regex-match-first` clause with the domain regex")
+  (t/is (= [:regex-match-first [:field 1 nil] (str @#'mbql.u/subdomain-regex)]
+           (mbql.u/desugar-expression [:subdomain [:field 1 nil]]))
+        "`subdomain` should desugar to a `regex-match-first` clause with the subdomain regex"))
+
+(t/deftest ^:parallel desugar-month-quarter-day-name-test
+  (t/is (= [:case [[[:= [:field 1 nil] 1]  "Jan"]
+                   [[:= [:field 1 nil] 2]  "Feb"]
+                   [[:= [:field 1 nil] 3]  "Mar"]
+                   [[:= [:field 1 nil] 4]  "Apr"]
+                   [[:= [:field 1 nil] 5]  "May"]
+                   [[:= [:field 1 nil] 6]  "Jun"]
+                   [[:= [:field 1 nil] 7]  "Jul"]
+                   [[:= [:field 1 nil] 8]  "Aug"]
+                   [[:= [:field 1 nil] 9]  "Sep"]
+                   [[:= [:field 1 nil] 10] "Oct"]
+                   [[:= [:field 1 nil] 11] "Nov"]
+                   [[:= [:field 1 nil] 12] "Dec"]]
+            {:default ""}]
+           (mbql.u/desugar-expression [:month-name [:field 1 nil]]))
+        "`month-name` should desugar to a `:case` clause with values for each month")
+  (t/is (= [:case [[[:= [:field 1 nil] 1] "Q1"]
+                   [[:= [:field 1 nil] 2] "Q2"]
+                   [[:= [:field 1 nil] 3] "Q3"]
+                   [[:= [:field 1 nil] 4] "Q4"]]
+            {:default ""}]
+           (mbql.u/desugar-expression [:quarter-name [:field 1 nil]]))
+        "`quarter-name` should desugar to a `:case` clause with values for each quarter")
+  (t/is (= [:case [[[:= [:field 1 nil] 1] "Sunday"]
+                   [[:= [:field 1 nil] 2] "Monday"]
+                   [[:= [:field 1 nil] 3] "Tuesday"]
+                   [[:= [:field 1 nil] 4] "Wednesday"]
+                   [[:= [:field 1 nil] 5] "Thursday"]
+                   [[:= [:field 1 nil] 6] "Friday"]
+                   [[:= [:field 1 nil] 7] "Saturday"]]
+            {:default ""}]
+           (mbql.u/desugar-expression [:day-name [:field 1 nil]]))
+        "`day-name` should desugar to a `:case` clause with values for each weekday"))
+
+#?(:clj
+   (t/deftest ^:synchronized desugar-month-quarter-day-name-i18n-test
+     (mt/with-user-locale "es"
+       ;; JVM versions 17 and older for some languages (including Spanish) use eg. "oct.", while in JVMs 18+ they
+       ;; use "oct". I wish I were joking, but I'm not. These tests were passing on 21 and failing on 17 and 11
+       ;; before I made them flexible about the dot.
+       (t/is (=? [:case [[[:= [:field 1 nil] 1]  #(#{"ene"  "ene."}  %)]
+                         [[:= [:field 1 nil] 2]  #(#{"feb"  "feb."}  %)]
+                         [[:= [:field 1 nil] 3]  #(#{"mar"  "mar."}  %)]
+                         [[:= [:field 1 nil] 4]  #(#{"abr"  "abr."}  %)]
+                         [[:= [:field 1 nil] 5]  #(#{"may"  "may."}  %)]
+                         [[:= [:field 1 nil] 6]  #(#{"jun"  "jun."}  %)]
+                         [[:= [:field 1 nil] 7]  #(#{"jul"  "jul."}  %)]
+                         [[:= [:field 1 nil] 8]  #(#{"ago"  "ago."}  %)]
+                         [[:= [:field 1 nil] 9]  #(#{"sept" "sept."} %)]
+                         [[:= [:field 1 nil] 10] #(#{"oct"  "oct."}  %)]
+                         [[:= [:field 1 nil] 11] #(#{"nov"  "nov."}  %)]
+                         [[:= [:field 1 nil] 12] #(#{"dic"  "dic."}  %)]]
+                  {:default ""}]
+                 (mbql.u/desugar-expression [:month-name [:field 1 nil]]))
+             "`month-name` should desugar to a `:case` clause with values for each month")
+       (t/is (= [:case [[[:= [:field 1 nil] 1] "Q1"]
+                        [[:= [:field 1 nil] 2] "Q2"]
+                        [[:= [:field 1 nil] 3] "Q3"]
+                        [[:= [:field 1 nil] 4] "Q4"]]
+                 {:default ""}]
+                (mbql.u/desugar-expression [:quarter-name [:field 1 nil]]))
+             "`quarter-name` should desugar to a `:case` clause with values for each quarter")
+       (t/is (= [:case [[[:= [:field 1 nil] 1] "domingo"]
+                        [[:= [:field 1 nil] 2] "lunes"]
+                        [[:= [:field 1 nil] 3] "martes"]
+                        [[:= [:field 1 nil] 4] "miércoles"]
+                        [[:= [:field 1 nil] 5] "jueves"]
+                        [[:= [:field 1 nil] 6] "viernes"]
+                        [[:= [:field 1 nil] 7] "sábado"]]
+                 {:default ""}]
+                (mbql.u/desugar-expression [:day-name [:field 1 nil]]))
+             "`day-name` should desugar to a `:case` clause with values for each weekday"))))

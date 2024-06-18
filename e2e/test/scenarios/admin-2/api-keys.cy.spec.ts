@@ -124,8 +124,7 @@ describe("scenarios > admin > settings > API keys", () => {
     cy.wait("@deleteKey");
     cy.wait("@getKeys");
 
-    cy.findByTestId("api-keys-table").should("not.contain", "Test API Key One");
-    cy.findByTestId("api-keys-table").findByText("No API keys here yet");
+    cy.findByTestId("empty-table-warning").findByText("No API keys here yet");
   });
 
   it("should allow editing an API key", () => {

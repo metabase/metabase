@@ -19,6 +19,9 @@ export interface CollectionTableProps {
 
 export const CollectionTable = styled.div<CollectionTableProps>`
   margin-top: ${props => (props.hasPinnedItems ? "2rem" : "")};
+
+  container-name: ItemsTableContainer;
+  container-type: inline-size;
 `;
 
 export const CollectionEmptyContent = styled.div`

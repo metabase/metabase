@@ -90,7 +90,7 @@
   [^Path source ^Path dest]
   (when (or (not (exists? dest))
             (not= (last-modified-timestamp source) (last-modified-timestamp dest)))
-    (log/info (trs "Extract file {0} -> {1}" source dest))
+    (log/infof "Extract file %s -> %s" source dest)
     (Files/copy source dest (u/varargs CopyOption [StandardCopyOption/REPLACE_EXISTING
                                                    StandardCopyOption/COPY_ATTRIBUTES]))))
 
@@ -103,7 +103,7 @@
     (try
       (copy-file! source target)
       (catch Throwable e
-        (log/error e (trs "Failed to copy file"))))))
+        (log/error e "Failed to copy file")))))
 
 
 ;;; ------------------------------------------ Opening filesystems for URLs ------------------------------------------

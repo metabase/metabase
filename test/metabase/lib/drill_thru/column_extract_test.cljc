@@ -1,8 +1,7 @@
 (ns metabase.lib.drill-thru.column-extract-test
   "See also [[metabase.query-processor-test.drill-thru-e2e-test/quick-filter-on-bucketed-date-test]]"
   (:require
-   [clojure.test :refer [are deftest testing]]
-   [medley.core :as m]
+   [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
@@ -10,31 +9,30 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.util :as u]
-   #?@(:clj  ([metabase.test :as mt])
-       :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (def ^:private time-extraction-units
-  [{:key :hour-of-day, :display-name "Hour of day"}])
+  [{:tag :hour-of-day, :display-name "Hour of day"}])
 
 (def ^:private date-extraction-units
-  [{:key :day-of-month,    :display-name "Day of month"}
-   {:key :day-of-week,     :display-name "Day of week"}
-   {:key :month-of-year,   :display-name "Month of year"}
-   {:key :quarter-of-year, :display-name "Quarter of year"}
-   {:key :year,            :display-name "Year"}])
+  [{:tag :day-of-month,    :display-name "Day of month"}
+   {:tag :day-of-week,     :display-name "Day of week"}
+   {:tag :month-of-year,   :display-name "Month of year"}
+   {:tag :quarter-of-year, :display-name "Quarter of year"}
+   {:tag :year,            :display-name "Year"}])
 
 (def ^:private datetime-extraction-units
   (concat time-extraction-units date-extraction-units))
 
 (deftest ^:parallel column-extract-availability-test
-  (testing "column-extract is available for column clicks on temporal and URL columns"
+  (testing "column-extract is available for column clicks on temporal, URL and Email columns"
     (canned/canned-test
       :drill-thru/column-extract
-      (fn [_test-case {:keys [column] :as _context} {:keys [click column-type]}]
+      (fn [test-case {:keys [column] :as _context} {:keys [click column-type]}]
         (and (= click :header)
+             (not (:native? test-case))
              (or (= column-type :datetime)
                  (#{:type/URL :type/Email} (:semantic-type column))))))))
 
@@ -46,16 +44,6 @@
     :column-name "CREATED_AT"
     :expected    {:type        :drill-thru/column-extract
                   :extractions datetime-extraction-units}}))
-
-(defn- case-extraction
-  "Returns `=?` friendly value for a `:case`-based extraction, eg. `:day-of-week`.
-
-  `(case-extraction :get-month \"Month of year\" (meta/id :orders :created-at) [\"Jan\" \"Feb\" ... \"Dec\"])`"
-  [extraction expression-name field-id labels]
-  [:case {:lib/expression-name expression-name}
-   (vec (for [[index label] (m/indexed labels)]
-          [[:= {} [extraction {} [:field {} field-id]] (inc index)] label]))
-   ""])
 
 (deftest ^:parallel apply-column-extract-test-1a-month-of-year
   (testing "column-extract on a regular field without aggregations adds a column in this stage"
@@ -71,9 +59,8 @@
                        :stage-number -1}
       :drill-args     ["month-of-year"]
       :expected-query {:stages [{:expressions
-                                 [(case-extraction :get-month "Month of year" (meta/id :orders :created-at)
-                                                   ["Jan" "Feb" "Mar" "Apr" "May" "Jun"
-                                                    "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"])]}]}})))
+                                 [[:month-name {:lib/expression-name "Month of year"}
+                                   [:get-month {} [:field {} (meta/id :orders :created-at)]]]]}]}})))
 
 (deftest ^:parallel apply-column-extract-test-1b-day-of-week
   (testing "column-extract on a regular field without aggregations adds a column in this stage"
@@ -89,9 +76,8 @@
                        :stage-number -1}
       :drill-args     ["day-of-week"]
       :expected-query {:stages [{:expressions
-                                 [(case-extraction :get-day-of-week "Day of week" (meta/id :orders :created-at)
-                                                   ["Sunday" "Monday" "Tuesday" "Wednesday" "Thursday"
-                                                    "Friday" "Saturday"])]}]}})))
+                                 [[:day-name {:lib/expression-name "Day of week"}
+                                   [:get-day-of-week {} [:field {} (meta/id :orders :created-at)]]]]}]}})))
 
 (deftest ^:parallel apply-column-extract-test-1c-quarter
   (testing "column-extract on a regular field without aggregations adds a column in this stage"
@@ -107,8 +93,8 @@
                        :stage-number -1}
       :drill-args     ["quarter-of-year"]
       :expected-query {:stages [{:expressions
-                                 [(case-extraction :get-quarter "Quarter of year" (meta/id :orders :created-at)
-                                                   ["Q1" "Q2" "Q3" "Q4"])]}]}})))
+                                 [[:quarter-name {:lib/expression-name "Quarter of year"}
+                                   [:get-quarter {} [:field {} (meta/id :orders :created-at)]]]]}]}})))
 
 (deftest ^:parallel apply-column-extract-test-1d-year
   (testing "column-extract on a regular field without aggregations adds a column in this stage"
@@ -201,28 +187,6 @@
                                    {:expressions [[:get-day {:lib/expression-name "Day of month"}
                                                    [:field {} "max"]]]}]}}))))
 
-#?(:clj
-   ;; TODO: This should be possible to run in CLJS if we have a library for setting the locale in JS.
-   ;; Metabase FE has this in frontend/src/metabase/lib/i18n.js but that's loaded after the CLJS.
-   (deftest ^:synchronized apply-column-extract-test-4-i18n-labels
-     (testing "column-extract with custom labels get i18n'd"
-       (mt/with-locale "es"
-         (lib.drill-thru.tu/test-drill-application
-           {:click-type     :header
-            :query-type     :unaggregated
-            :column-name    "CREATED_AT"
-            :drill-type     :drill-thru/column-extract
-            :expected       {:type         :drill-thru/column-extract
-                             :extractions  datetime-extraction-units
-                             ;; Query unchanged
-                             :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
-                             :stage-number -1}
-            :drill-args     ["day-of-week"]
-            :expected-query {:stages [{:expressions
-                                       [(case-extraction :get-day-of-week "Day of week" (meta/id :orders :created-at)
-                                                         ["domingo" "lunes" "martes" "miércoles" "jueves"
-                                                          "viernes" "sábado"])]}]}})))))
-
 (deftest ^:parallel column-extract-relevant-units-test-1-time
   (let [ship-time (assoc (meta/field-metadata :orders :created-at)
                          :id             9999001
@@ -265,35 +229,31 @@
        :expected     {:type        :drill-thru/column-extract
                       :extractions date-extraction-units}})))
 
-(def ^:private url->host-regex
-  #?(:clj  @#'lib.drill-thru.column-extract/url->host-regex
-     :cljs lib.drill-thru.column-extract/url->host-regex))
+(def ^:private homepage
+  (assoc (meta/field-metadata :people :email)
+         :id             9999001
+         :name           "HOMEPAGE"
+         :display-name   "Homepage URL"
+         :base-type      :type/Text
+         :effective-type :type/Text
+         :semantic-type  :type/URL))
 
-(def ^:private host->domain-regex
-  #?(:clj  @#'lib.drill-thru.column-extract/host->domain-regex
-     :cljs lib.drill-thru.column-extract/host->domain-regex))
-
-(def ^:private host->subdomain-regex
-  #?(:clj  @#'lib.drill-thru.column-extract/host->subdomain-regex
-     :cljs lib.drill-thru.column-extract/host->subdomain-regex))
-
-(def ^:private email->domain-regex
-  #?(:clj  @#'lib.drill-thru.column-extract/email->domain-regex
-     :cljs lib.drill-thru.column-extract/email->domain-regex))
+(defn- homepage-provider
+  ([] (homepage-provider meta/metadata-provider))
+  ([base-provider]
+   (lib/composed-metadata-provider
+     (lib.tu/mock-metadata-provider {:fields [homepage]})
+     base-provider)))
 
 (deftest ^:parallel column-extract-url->domain-test
   ;; There's no URL columns in the same dataset, but let's pretend there's one called People.HOMEPAGE.
-  (let [homepage (assoc (meta/field-metadata :people :email)
-                        :id             9999001
-                        :name           "HOMEPAGE"
-                        :display-name   "Homepage URL"
-                        :base-type      :type/Text
-                        :effective-type :type/Text
-                        :semantic-type  :type/URL)
-        mp       (lib/composed-metadata-provider
-                   (lib.tu/mock-metadata-provider {:fields [homepage]})
-                   meta/metadata-provider)
-        query    (lib/query mp (lib.metadata/table mp (meta/id :people)))]
+  (let [mp       (homepage-provider)
+        query    (lib/query mp (lib.metadata/table mp (meta/id :people)))
+        expected {:type         :drill-thru/column-extract
+                  :display-name "Extract domain, subdomain…"
+                  :extractions  [{:tag :domain,    :display-name "Domain"}
+                                 {:tag :subdomain, :display-name "Subdomain"}
+                                 {:tag :host,      :display-name "Host"}]}]
     (testing "Extracting Domain"
       (lib.drill-thru.tu/test-drill-application
         {:drill-type     :drill-thru/column-extract
@@ -301,16 +261,10 @@
          :query-type     :unaggregated
          :column-name    "HOMEPAGE"
          :custom-query   query
-         :expected       {:type         :drill-thru/column-extract
-                          :display-name "Extract domain, subdomain…"
-                          :extractions  [{:key :domain,    :display-name "Domain"}
-                                         {:key :subdomain, :display-name "Subdomain"}]}
+         :expected       expected
          :drill-args     ["domain"]
-         :expected-query {:stages [{:expressions [[:regex-match-first {:lib/expression-name "Domain"}
-                                                   [:regex-match-first {}
-                                                    [:field {} 9999001]
-                                                    (u/regex->str url->host-regex)]
-                                                   (u/regex->str host->domain-regex)]]}]}}))
+         :expected-query {:stages [{:expressions [[:domain {:lib/expression-name "Domain"}
+                                                   [:field {} 9999001]]]}]}}))
     (testing "Extracting Subdomain"
       (lib.drill-thru.tu/test-drill-application
         {:drill-type     :drill-thru/column-extract
@@ -318,95 +272,82 @@
          :query-type     :unaggregated
          :column-name    "HOMEPAGE"
          :custom-query   query
+         :expected       expected
+         :drill-args     ["subdomain"]
+         :expected-query {:stages [{:expressions [[:subdomain {:lib/expression-name "Subdomain"}
+                                                   [:field {} 9999001]]]}]}}))
+    (testing "Extracting Host"
+      (lib.drill-thru.tu/test-drill-application
+        {:drill-type     :drill-thru/column-extract
+         :click-type     :header
+         :query-type     :unaggregated
+         :column-name    "HOMEPAGE"
+         :custom-query   query
+         :expected       expected
+         :drill-args     ["host"]
+         :expected-query {:stages [{:expressions [[:host {:lib/expression-name "Host"}
+                                                   [:field {} 9999001]]]}]}}))))
+
+(deftest ^:parallel column-extract-url-requires-regex-test
+  (let [query-regex    (lib/query (homepage-provider) (meta/table-metadata :people))
+        no-regex       (homepage-provider (meta/updated-metadata-provider update :features disj :regex))
+        query-no-regex (lib/query no-regex (meta/table-metadata :people))]
+    (testing "when the database supports :regex URL extraction is available"
+      (lib.drill-thru.tu/test-drill-application
+        {:drill-type     :drill-thru/column-extract
+         :click-type     :header
+         :query-type     :unaggregated
+         :column-name    "HOMEPAGE"
+         :custom-query   query-regex
          :expected       {:type         :drill-thru/column-extract
                           :display-name "Extract domain, subdomain…"
-                          :extractions  [{:key :domain,    :display-name "Domain"}
-                                         {:key :subdomain, :display-name "Subdomain"}]}
+                          :extractions  [{:tag :domain,    :display-name "Domain"}
+                                         {:tag :subdomain, :display-name "Subdomain"}
+                                         {:tag :host,      :display-name "Host"}]}
          :drill-args     ["subdomain"]
-         :expected-query {:stages [{:expressions [[:regex-match-first {:lib/expression-name "Subdomain"}
-                                                   [:regex-match-first {}
-                                                    [:field {} 9999001]
-                                                    (u/regex->str url->host-regex)]
-                                                   (u/regex->str host->subdomain-regex)]]}]}}))))
+         :expected-query {:stages [{:expressions [[:subdomain {:lib/expression-name "Subdomain"}
+                                                   [:field {} 9999001]]]}]}}))
+    (testing "when the database does not support :regex URL extraction is not available"
+      (lib.drill-thru.tu/test-drill-not-returned
+        {:drill-type     :drill-thru/column-extract
+         :click-type     :header
+         :query-type     :unaggregated
+         :column-name    "HOMEPAGE"
+         :custom-query   query-no-regex}))))
 
-(deftest ^:parallel url->host-regex-test
-  (are [host url] (= host (second (re-find url->host-regex url)))
-       "cdbaby.com"         "https://cdbaby.com/some.txt"
-       "fema.gov"           "https://fema.gov/some/path/Vatini?search=foo"
-       "www.geocities.jp"   "https://www.geocities.jp/some/path/Turbitt?search=foo"
-       "jalbum.net"         "https://jalbum.net/some/path/Kirsz?search=foo"
-       "usa.gov"            "https://usa.gov/some/path/Curdell?search=foo"
-       "taxes.va.gov"       "http://taxes.va.gov/some/path/Marritt?search=foo"
-       "log.stuff.gmpg.org" "http://log.stuff.gmpg.org/some/path/Cambden?search=foo"
-       "hatena.ne.jp"       "http://hatena.ne.jp/"
-       "telegraph.co.uk"    "//telegraph.co.uk?foo=bar#tail"
-       "bbc.co.uk"          "bbc.co.uk/some/path?search=foo"))
+(deftest ^:parallel column-extract-email-requires-regex-test
+  (let [query-regex    (lib/query meta/metadata-provider (meta/table-metadata :people))
+        no-regex       (meta/updated-metadata-provider update :features disj :regex)
+        query-no-regex (lib/query no-regex (meta/table-metadata :people))]
+    (testing "when the database supports :regex email extraction is available"
+      (lib.drill-thru.tu/test-drill-application
+        {:drill-type     :drill-thru/column-extract
+         :click-type     :header
+         :query-type     :unaggregated
+         :column-name    "EMAIL"
+         :custom-query   query-regex
+         :expected       {:type         :drill-thru/column-extract
+                          :display-name "Extract domain, host…"
+                          :extractions  [{:tag :domain, :display-name "Domain"}
+                                         {:tag :host,   :display-name "Host"}]}
+         :drill-args     ["domain"]
+         :expected-query {:stages [{:expressions [[:domain {:lib/expression-name "Domain"}
+                                                   [:field {} (meta/id :people :email)]]]}]}}))
+    (testing "when the database does not support :regex email extraction is not available"
+      (lib.drill-thru.tu/test-drill-not-returned
+        {:drill-type     :drill-thru/column-extract
+         :click-type     :header
+         :query-type     :unaggregated
+         :column-name    "EMAIL"
+         :custom-query   query-no-regex}))))
 
-(deftest ^:parallel host->domain-regex-test
-  (are [domain host] (= domain (second (re-find host->domain-regex host)))
-       ;; Easy cases: second-last part is the domain.
-       "cdbaby"    "cdbaby.com"
-       "fema"      "fema.gov"
-       "geocities" "www.geocities.jp"
-       "jalbum"    "sub.jalbum.net"
-       "jalbum"    "subdomains.go.here.jalbum.net"
-       "gmpg"      "log.stuff.gmpg.org"
-
-       ;; The second-last part is the domain even if it's short, sometimes.
-       "usa"       "usa.gov"
-       "va"        "va.gov"
-
-       ;; Oops, we picked a subdomain! But see below.
-       "taxes"     "taxes.va.gov" ; True domain is va
-       "hatena"    "hatena.ne.jp" ; True domain is ne
-
-       ;; Sometimes the second-last part is a short suffix.
-       ;; Mozilla maintains a huge list of these, but since this has to go into a regex and get passed to the database,
-       ;; we use a best-effort matcher that gets the domain right most of the time.
-       "telegraph" "telegraph.co.uk"
-       "bbc"       "bbc.co.uk"
-       "dot"       "dot.va.gov"
-
-       ;; "www" is disregarded as a possible subdomain.
-       "usa"       "www.usa.gov"
-       "va"        "www.va.gov"
-       "dot"       "www.dot.va.gov"))
-
-(deftest ^:parallel host->subdomain-regex-test
-  (are [subdomain host] (= subdomain (second (re-find host->subdomain-regex host)))
-       ;; Blanks. "www" doesn't count.
-       nil "cdbaby.com"
-       nil "fema.gov"
-       nil "www.geocities.jp"
-       nil "usa.gov"
-       nil "va.gov"
-
-       ;; Basics - taking the first segment that isn't "www", IF it isn't the domain.
-       "sub"        "sub.jalbum.net"
-       "subdomains" "subdomains.go.here.jalbum.net"
-       "log"        "log.stuff.gmpg.org"
-
-       ;; Oops, we missed those. This is the reverse of the problem when picking the domain.
-       nil "taxes.va.gov" ; True domain is va, subdomain is taxes.
-       nil "hatena.ne.jp" ; True domain is ne, subdomain is hatena.
-
-       ;; Sometimes the second-last part is a short suffix.
-       ;; Mozilla maintains a huge list of these, but since this has to go into a regex and get passed to the database,
-       ;; we use a best-effort matcher that gets the domain right most of the time.
-       nil         "telegraph.co.uk"
-       "local"     "local.news.telegraph.co.uk"
-       nil         "bbc.co.uk"
-       "video"     "video.bbc.co.uk"
-       ;; "www" is disregarded as a possible subdomain, so these are also incorrect.
-       nil         "www.usa.gov"
-       nil         "www.dot.va.gov"
-       "licensing" "www.licensing.dot.va.gov"))
-
-(deftest ^:parallel email->domain-regex-test
-  (are [domain email] (= domain (re-find email->domain-regex email))
-       "metabase"   "braden@metabase.com"
-       "homeoffice" "mholmes@homeoffice.gov.uk"
-       "someisp"    "john.smith@mail.someisp.com"
-       "amazon"     "trk@amazon.co.uk"
-       "hatena"     "takashi@hatena.ne.jp"
-       "ne"         "takashi@www.ne.jp"))
+(deftest ^:parallel extractions-for-drill-test
+  (let [drill (lib.drill-thru.tu/test-returns-drill
+                {:click-type     :header
+                 :query-type     :unaggregated
+                 :column-name    "CREATED_AT"
+                 :drill-type     :drill-thru/column-extract
+                 :expected       {:type         :drill-thru/column-extract
+                                  :extractions  datetime-extraction-units}})]
+    (is (=? datetime-extraction-units
+            (lib.drill-thru.column-extract/extractions-for-drill drill)))))

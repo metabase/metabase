@@ -153,33 +153,33 @@ describe("SettingsJWTForm", () => {
       "jwt-group-sync": true,
     };
 
-    userEvent.click(screen.getByLabelText(/User Provisioning/));
-    userEvent.type(
+    await userEvent.click(screen.getByLabelText(/User Provisioning/));
+    await userEvent.type(
       await screen.findByRole("textbox", { name: /JWT Identity Provider URI/ }),
       ATTRS["jwt-identity-provider-uri"],
     );
-    userEvent.type(
+    await userEvent.type(
       await screen.findByRole("textbox", {
         name: /String used by the JWT signing key/,
       }),
       ATTRS["jwt-shared-secret"],
     );
-    userEvent.type(
+    await userEvent.type(
       await screen.findByRole("textbox", { name: /Email attribute/ }),
       ATTRS["jwt-attribute-email"],
     );
-    userEvent.type(
+    await userEvent.type(
       await screen.findByRole("textbox", { name: /First name attribute/ }),
       ATTRS["jwt-attribute-firstname"],
     );
-    userEvent.type(
+    await userEvent.type(
       await screen.findByRole("textbox", { name: /Last name attribute/ }),
       ATTRS["jwt-attribute-lastname"],
     );
     const groupSchema = await screen.findByTestId("jwt-group-schema");
-    userEvent.click(within(groupSchema).getByRole("checkbox")); // checkbox for "jwt-group-sync"
+    await userEvent.click(within(groupSchema).getByRole("checkbox")); // checkbox for "jwt-group-sync"
 
-    userEvent.click(await screen.findByRole("button", { name: /Save/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Save/ }));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(ATTRS);

@@ -73,6 +73,7 @@ function DataPermissionsPage({
       dbId: params.databaseId,
       include_hidden: true,
       remove_inactive: true,
+      skip_fields: true,
     },
     enabled: params.databaseId !== undefined,
   });

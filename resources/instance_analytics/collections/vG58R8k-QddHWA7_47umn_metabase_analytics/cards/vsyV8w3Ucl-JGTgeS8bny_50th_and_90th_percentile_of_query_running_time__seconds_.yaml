@@ -1,0 +1,114 @@
+name: 50th and 90th percentile of query running time (seconds)
+description: The median and percentile 90 query execution time from all Metabase questions (in seconds)
+entity_id: vsyV8w3Ucl-JGTgeS8bny
+created_at: '2024-05-15T20:30:36.193249Z'
+creator_id: internal@metabase.com
+display: line
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_query_log
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    aggregation:
+    - - aggregation-options
+      - - percentile
+        - - field
+          - running_time_seconds
+          - base-type: type/Float
+        - 0.9
+      - name: Percentile 90
+        display-name: Percentile 90
+    - - aggregation-options
+      - - percentile
+        - - field
+          - running_time_seconds
+          - base-type: type/Float
+        - 0.5
+      - name: Percentile 50
+        display-name: Percentile 50
+    breakout:
+    - - field
+      - started_at
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: week
+    filter:
+    - and
+    - - time-interval
+      - - field
+        - started_at
+        - base-type: type/DateTimeWithLocalTZ
+      - -52
+      - week
+    - - not-null
+      - - field
+        - cache_hit
+        - base-type: type/Boolean
+    source-table: QOtZaiTLf2FDD4AT6Oinb
+  type: query
+result_metadata:
+- base_type: type/DateTime
+  display_name: Started At
+  effective_type: type/DateTime
+  field_ref:
+  - field
+  - started_at
+  - base-type: type/DateTimeWithLocalTZ
+    temporal-unit: week
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - started_at
+  name: started_at
+  semantic_type: type/CreationTimestamp
+  unit: week
+  visibility_type: normal
+- base_type: type/Float
+  display_name: Percentile 90
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 0
+  name: Percentile 90
+  semantic_type: type/Share
+- base_type: type/Float
+  display_name: Percentile 50
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 1
+  name: Percentile 50
+  semantic_type: type/Share
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - started_at
+  graph.metrics:
+  - Percentile 90
+  - Percentile 50
+  graph.show_values: true
+  graph.x_axis.labels_enabled: false
+  graph.y_axis.title_text: Running time (seconds)
+serdes/meta:
+- id: vsyV8w3Ucl-JGTgeS8bny
+  label: 50th_and_90th_percentile_of_query_running_time__seconds_
+  model: Card
+initially_published_at: null
+last_used_at: '2024-05-16T14:50:18.789389Z'
+metabase_version: vUNKNOWN (9aa572c)
+type: question

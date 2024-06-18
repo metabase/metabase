@@ -1,9 +1,10 @@
 .sidebar {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: py2 from "style";
   width: 30%;
   max-width: 500px;
-  background-color: var(--color-bg-light);
-  color: var(--color-text-medium);
+  background-color: var(--mb-color-bg-light);
+  color: var(--mb-color-text-medium);
 }
 
 .sidebar a {
@@ -11,15 +12,11 @@
 }
 
 .item {
-  composes: py1 mb1 from "style";
+  composes: py1 mb1 rounded pl2 from "style";
   align-items: center;
   display: flex;
-}
-
-.item {
-  composes: rounded pl2 from "style";
   font-size: 1em;
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
 .item .icon {
@@ -27,13 +24,13 @@
 }
 
 .item:hover {
-  background-color: var(--color-bg-medium);
-  color: var(--color-brand);
+  background-color: var(--mb-color-bg-medium);
+  color: var(--mb-color-brand);
 }
 
 .item.selected,
 .item.selected .icon {
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
 }
 
 .item.selected {
@@ -41,8 +38,8 @@
 }
 
 .name {
-  composes: ml2 text-bold from "style";
-  color: var(--color-text-medium);
+  composes: ml2 textBold from "style";
+  color: var(--mb-color-text-medium);
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow-x: hidden;
@@ -50,7 +47,7 @@
 
 .item:hover .name,
 .item.selected .name {
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
 }
 
 .icon {

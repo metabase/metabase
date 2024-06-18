@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { color } from "metabase/lib/colors";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
@@ -25,7 +24,7 @@ export const QueryErrorHeader = styled.div`
 
 export const QueryErrorTitle = styled.div`
   flex: 1 1 auto;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: bold;
@@ -33,7 +32,7 @@ export const QueryErrorTitle = styled.div`
 
 export const QueryErrorIcon = styled(Icon)`
   flex: 0 0 auto;
-  color: ${color("error")};
+  color: var(--mb-color-error);
   width: 1rem;
   height: 1rem;
   margin-right: 0.75rem;
@@ -46,14 +45,14 @@ export const QueryErrorMessage = styled.div`
   font-family: ${monospaceFontFamily};
   font-size: 0.75rem;
   line-height: 1.125rem;
-  border: 1px solid ${color("brand")};
+  border: 1px solid var(--mb-color-brand);
   border-radius: 0.5rem;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
   overflow-wrap: break-word;
 `;
 
 export const QueryErrorLink = styled(ExternalLink)`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   margin: 1rem 0;
   font-size: 0.75rem;
   line-height: 1rem;

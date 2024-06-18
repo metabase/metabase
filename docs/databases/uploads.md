@@ -4,18 +4,24 @@ title: Uploading data
 
 # Uploading data
 
-Once you've [enabled uploads](#enabling-uploads), you can [upload files](../exploration-and-organization/collections.md#uploading-data) in CSV format to a collection in Metabase.
+Once you've [enabled uploads](#setting-up-uploads), you can [upload files](../exploration-and-organization/uploads.md) in CSV format to a collection in Metabase.
 
 ![Upload CSV data to a collection in Metabase](./images/upload-to-collection.png)
 
 Uploading CSV data is best suited for ad hoc analysis of spreadsheet data. If you have a lot of data, or will need to update or add to that data regularly, we recommend setting up a way to load that data into a database directly, then connecting Metabase to that database.
 
+## Managing upload settings
+
+To manage upload settings, admins can hit cmd/ctrl + K and search for "Settings - Uploads", or click on the **gear** icon in the upper right and click through **Admin settings** > **Settings** > **Uploads**.
+
 ## Databases that support uploads
 
 - [PostgreSQL](../databases/connections/postgresql.md)
 - [MySQL](../databases/connections/mysql.md)
+- [Redshift](../databases/connections/redshift.md)
+- [Clickhouse](../developers-guide/partner-and-community-drivers.md#partner-drivers)
 
-## Enabling uploads
+## Setting up uploads
 
 There are a few things admins need to do to support CSV uploads:
 
@@ -53,7 +59,7 @@ Admins can optionally specify a string of text to add in front of the table that
 
 ## Add people to a group with unrestricted data access to the upload schema
 
-In order to upload CSVs, a person must be in a group with Unrestricted access to the schema you've selected to store your uploaded data. Native query editing isn't required for uploading. See [groups](../people-and-groups/managing.md) and [data permissions](../permissions/data.md).
+In order to upload CSVs, a person must be in a group with **View data** access of "Can view" and **Create queries** of Query builder access or higher to the schema you've selected to store your uploaded data. See [groups](../people-and-groups/managing.md) and [data permissions](../permissions/data.md).
 
 ## Primary key auto-generation
 
@@ -71,7 +77,7 @@ CSV files cannot exceed 50 MB in size.
 
 > While Metabase limits uploads to 50 MB, the server you use to run your Metabase may impose a lower limit. For example, the default client upload limit for [NGINX is 1 MB](https://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size). So you may need to change your server settings to allow uploads up to 50 MB. People on Metabase Cloud don't have to worry about this.
 
-If you have a file larger than 50 MB, the workaround here is to split the data into multiple and [append those files to an existing model](../exploration-and-organization/collections.md#appending-to-a-model-created-by-an-upload).
+If you have a file larger than 50 MB, the workaround here is to split the data into multiple and [append those files to an existing model](../exploration-and-organization/uploads.md#appending-to-a-model-created-by-an-upload)
 
 ## Date formats
 
@@ -126,15 +132,23 @@ Offsets:
 
 ## Deleting models and tables created by uploads
 
-### Models
+### Deleting models created by uploads
+
+{% include plans-blockquote.html feature="Deleting uploaded tables" %}
 
 You can archive a model by clicking on the three dots in the upper right and selecting **Archive**.
 
 For deleting models completely, see [Deleting items permanently](../exploration-and-organization/history.md#deleting-items-permanently).
 
-### Tables
+### Deleting tables created by uploads
 
-You'll need to drop that table in the database itself (not in Metabase). For how to delete tables, see your database's documentation.
+{% include plans-blockquote.html feature="Deleting uploaded tables" %}
+
+To delete tables created by uploads, go to **Admin settings** > **Settings** > **Uploads**.
+
+Under **Manage uploads**, Metabase will list the tables underlying the models.
+
+When you delete the table, Metabase will give you the option to **Also send all models and questions based on this table to the trash**.
 
 ## Note on uploading data to a MySQL database
 

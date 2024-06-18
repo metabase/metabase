@@ -22,7 +22,9 @@ export type QuestionUrlBuilderParams = {
 };
 
 export function question(
-  card: Card | null,
+  card: Partial<
+    Pick<Card, "id" | "name" | "type" | "card_id" | "model">
+  > | null,
   {
     mode = "view",
     hash = "",
@@ -104,11 +106,10 @@ export function newQuestion({
     creationType,
     query: objectId ? { objectId } : undefined,
   });
-
   const type = question.type();
 
   if (mode) {
-    return url.replace(/^\/(question|model)/, `/${type}\/${mode}`);
+    return url.replace(/^\/(question|model|metric)/, `/${type}\/${mode}`);
   }
 
   return url;
