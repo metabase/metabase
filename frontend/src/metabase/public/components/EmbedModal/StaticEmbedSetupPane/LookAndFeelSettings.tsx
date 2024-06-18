@@ -206,6 +206,14 @@ export const LookAndFeelSettings = ({
   );
 };
 
+function getBorderTitle(resourceType: EmbedResourceType) {
+  return match(resourceType)
+    .returnType<string>()
+    .with("dashboard", () => t`Dashboard border`)
+    .with("question", () => t`Question border`)
+    .exhaustive();
+}
+
 function getTitleLabel(resourceType: EmbedResourceType) {
   if (resourceType === "dashboard") {
     return t`Dashboard title`;
@@ -216,12 +224,4 @@ function getTitleLabel(resourceType: EmbedResourceType) {
   }
 
   return null;
-}
-
-function getBorderTitle(resourceType: EmbedResourceType) {
-  return match(resourceType)
-    .returnType<string>()
-    .with("dashboard", () => t`Dashboard border`)
-    .with("question", () => t`Question border`)
-    .exhaustive();
 }
