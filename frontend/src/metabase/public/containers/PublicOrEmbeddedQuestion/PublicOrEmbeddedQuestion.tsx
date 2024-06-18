@@ -9,7 +9,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
-import { PLUGIN_DOWNLOADS_ENABLED } from "metabase/plugins";
+import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
@@ -57,7 +57,7 @@ export const PublicOrEmbeddedQuestion = ({
     {},
   );
 
-  const downloadsEnabled = PLUGIN_DOWNLOADS_ENABLED.areDownloadsEnabled();
+  const downloadsEnabled = PLUGIN_RESOURCE_DOWNLOADS.areDownloadsEnabled();
 
   useMount(async () => {
     if (uuid) {

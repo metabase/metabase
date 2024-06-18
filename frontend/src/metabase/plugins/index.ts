@@ -481,6 +481,6 @@ export const PLUGIN_IS_EE_BUILD = {
   isEEBuild: () => false,
 };
 
-export const PLUGIN_DOWNLOADS_ENABLED = {
+export const PLUGIN_RESOURCE_DOWNLOADS = {
   areDownloadsEnabled: () => true,
 };

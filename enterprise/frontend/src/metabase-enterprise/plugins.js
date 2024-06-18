@@ -34,4 +34,4 @@ import "./application_permissions";
 import "./group_managers";
 import "./llm_autodescription";
 import "./upload_management";
-import "./downloads";
+import "./resource_downloads";
