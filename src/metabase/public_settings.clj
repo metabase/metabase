@@ -923,5 +923,5 @@ See [fonts](../configuring-metabase/fonts.md).")
   (deferred-tru "SQL Parsing is disabled")
   :visibility :internal
   :export?    false
-  :default    true
+  :default    false
   :type       :boolean)
