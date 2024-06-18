@@ -5,6 +5,7 @@
 files:
   # migrations related files
   'resources/**':
+    - qnkhuat
     - team:core-backend-components
 
 options:
