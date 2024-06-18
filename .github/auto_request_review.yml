@@ -10,10 +10,12 @@ reviewers:
 
 files:
   # migrations related files
-  'resources/migrations/**':
-    - migration-owners
+  #'resources/migrations/**':
+  #  - migration-owners
+      #- team:core-backend-components
   'src/metabase/db/custom_migrations.clj':
-    - migration-owners
+    - team:core-backend-components
+      #- migration-owners
 
 options:
   ignore_draft: true
