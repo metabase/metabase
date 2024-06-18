@@ -90,9 +90,9 @@ const mapStateToProps = (
   metadata: getMetadata(state),
   question: getQuestionByCard(state, props),
   mappingOptions: getDashcardParameterMappingOptions(state, props),
-  // @ts-expect-error rework redux/undo to ts
   isRecentlyAutoConnected: getIsRecentlyAutoConnectedDashcard(
     state,
+    // @ts-expect-error rework redux/undo to ts
     props.dashcard.id,
   ),
 });
