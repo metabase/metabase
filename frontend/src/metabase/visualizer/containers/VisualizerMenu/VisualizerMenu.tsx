@@ -35,7 +35,7 @@ export function VisualizerMenu({
         </div>
       ) : (
         <>
-          <Tabs>
+          <Tabs defaultValue="metrics">
             <Tabs.List>
               <Tabs.Tab value="metrics">Metrics</Tabs.Tab>
               <Tabs.Tab value="models">Models</Tabs.Tab>
