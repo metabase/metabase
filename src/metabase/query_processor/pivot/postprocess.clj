@@ -7,8 +7,6 @@
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
-   [clojure.string :as str]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -160,7 +158,7 @@
       :else
       export-style-row)))
 
-(defn- pivot-grouping-key
+(defn pivot-grouping-key
   "Get the index into the raw pivot rows for the 'pivot-grouping' column."
   [column-titles]
   ;; a vector is kinda sorta a map of indices->values, so
@@ -168,7 +166,7 @@
   (get (set/map-invert (vec column-titles)) "pivot-grouping"))
 
 (mu/defn ^:private pivot-measures
-  "Get the indices into the raw pivot rows corresponding to the pivot table's measure."
+  "Get the indices into the raw pivot rows corresponding to the pivot table's measure(s)."
   [{:keys [pivot-rows pivot-cols column-titles]} :- ::pivot-spec]
   (-> (set/difference
        ;; every possible idx is just the range over the count of cols
@@ -179,7 +177,8 @@
       sort
       vec))
 
-(mu/defn ^:private add-pivot-measures :- ::pivot-spec
+(mu/defn add-pivot-measures :- ::pivot-spec
+  "Given a pivot-spec map without the `:pivot-measures` key, determine what key(s) the measures will be and assoc that value into `:pivot-measures`."
   [pivot-spec :- ::pivot-spec]
   (assoc pivot-spec :pivot-measures (pivot-measures pivot-spec)))
 
@@ -217,26 +216,3 @@
     (vec (concat
           (header-builder rows pivot-spec)
           (row-builder rows pivot-spec)))))
-
-(defn- col->aggregation-function-key
-  [{:keys [name source]}]
-  (when (= :aggregation source)
-    (let [name (u/lower-case-en name)]
-      (cond
-        (str/starts-with? name "sum")    :sum
-        (str/starts-with? name "avg")    :avg
-        (str/starts-with? name "min")    :min
-        (str/starts-with? name "max")    :max
-        (str/starts-with? name "count")  :count
-        (str/starts-with? name "stddev") :stddev))))
-
-(defn pivot-opts->pivot-spec
-  "Utility that adds :pivot-grouping-key to the pivot-opts map internal to the xlsx streaming response writer."
-  [pivot-opts cols]
-  (let [titles  (mapv :display_name cols)
-        agg-fns (mapv col->aggregation-function-key cols)]
-    (-> pivot-opts
-        (assoc :column-titles titles)
-        add-pivot-measures
-        (assoc :aggregation-functions agg-fns)
-        (assoc :pivot-grouping-key (pivot-grouping-key titles)))))

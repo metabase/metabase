@@ -495,53 +495,64 @@
 
 ;; Possible Functions: https://poi.apache.org/apidocs/dev/org/apache/poi/ss/usermodel/DataConsolidateFunction.html
 ;; I'm only including the keys that seem to work for our Pivot Tables as of 2024-06-06
-(def ^:private agg-fn-k->pivot-agg-fn-enum
-  {:sum    DataConsolidateFunction/SUM
-   :avg    DataConsolidateFunction/AVERAGE
-   :min    DataConsolidateFunction/MIN
-   :max    DataConsolidateFunction/MAX
-   :count  DataConsolidateFunction/COUNT
-   :stddev DataConsolidateFunction/STD_DEV})
+(defn- col->aggregation-fn
+  [{agg-name :name source :source}]
+  (when (= :aggregation source)
+    (let [agg-name (u/lower-case-en agg-name)]
+      (cond
+        (str/starts-with? agg-name "sum")    DataConsolidateFunction/SUM
+        (str/starts-with? agg-name "avg")    DataConsolidateFunction/AVERAGE
+        (str/starts-with? agg-name "min")    DataConsolidateFunction/MIN
+        (str/starts-with? agg-name "max")    DataConsolidateFunction/MAX
+        (str/starts-with? agg-name "count")  DataConsolidateFunction/COUNT
+        (str/starts-with? agg-name "stddev") DataConsolidateFunction/STD_DEV))))
+
+(defn pivot-opts->pivot-spec
+  "Utility that adds :pivot-grouping-key to the pivot-opts map internal to the xlsx streaming response writer."
+  [pivot-opts cols]
+  (let [titles  (mapv :display_name cols)
+        agg-fns (mapv col->aggregation-fn cols)]
+    (-> pivot-opts
+        (assoc :column-titles titles)
+        qp.pivot.postprocess/add-pivot-measures
+        (assoc :aggregation-functions agg-fns)
+        (assoc :pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key titles)))))
 
 (defn- native-pivot
   [rows
    {:keys [pivot-grouping-key] :as pivot-spec}
    {:keys [ordered-cols col-settings viz-settings]}]
-  (let [idx-shift                       (fn [indices]
-                                          (map (fn [idx]
-                                                 (if (> idx pivot-grouping-key)
-                                                   (dec idx)
-                                                   idx)) indices))
-        ordered-cols                    (vec (m/remove-nth pivot-grouping-key ordered-cols))
-        {:keys [pivot-rows
-                pivot-cols
-                pivot-measures
-                aggregation-functions]} (-> pivot-spec
-                                            (update :pivot-rows idx-shift)
-                                            (update :pivot-cols idx-shift)
-                                            (update :pivot-measures idx-shift)
-                                            (update :aggregation-functions #(vec (m/remove-nth pivot-grouping-key %))))
-        wb                              (spreadsheet/create-workbook
-                                         "pivot" [[]]
-                                         "data" [])
-        data-format                     (. ^XSSFWorkbook wb createDataFormat)
-        cell-styles                     (compute-column-cell-styles wb data-format viz-settings ordered-cols)
-        typed-cell-styles               (compute-typed-cell-styles wb data-format)
-        data-sheet                      (spreadsheet/select-sheet "data" wb)
-        pivot-sheet                     (spreadsheet/select-sheet "pivot" wb)
-        area-ref                        (cell-range->area-ref (cell-range rows))
-        _                               (doseq [row rows]
-                                          (add-row! data-sheet row ordered-cols col-settings cell-styles typed-cell-styles))
-        ^XSSFPivotTable pivot-table     (.createPivotTable ^XSSFSheet pivot-sheet
-                                                           ^AreaReference area-ref
-                                                           (CellReference. "A1")
-                                                           ^XSSFSheet data-sheet)]
+  (let [idx-shift                   (fn [indices]
+                                      (map (fn [idx]
+                                             (if (> idx pivot-grouping-key)
+                                               (dec idx)
+                                               idx)) indices))
+        ordered-cols                (vec (m/remove-nth pivot-grouping-key ordered-cols))
+        pivot-rows                  (idx-shift (:pivot-rows pivot-spec))
+        pivot-cols                  (idx-shift (:pivot-cols pivot-spec))
+        pivot-measures              (idx-shift (:pivot-measures pivot-spec))
+        aggregation-functions       (vec (m/remove-nth pivot-grouping-key (:aggregation-functions pivot-spec)))
+        wb                          (spreadsheet/create-workbook
+                                     "pivot" [[]]
+                                     "data" [])
+        data-format                 (. ^XSSFWorkbook wb createDataFormat)
+        cell-styles                 (compute-column-cell-styles wb data-format viz-settings ordered-cols)
+        typed-cell-styles           (compute-typed-cell-styles wb data-format)
+        data-sheet                  (spreadsheet/select-sheet "data" wb)
+        pivot-sheet                 (spreadsheet/select-sheet "pivot" wb)
+        area-ref                    (cell-range->area-ref (cell-range rows))
+        _                           (doseq [row rows]
+                                      (add-row! data-sheet row ordered-cols col-settings cell-styles typed-cell-styles))
+        ^XSSFPivotTable pivot-table (.createPivotTable ^XSSFSheet pivot-sheet
+                                                       ^AreaReference area-ref
+                                                       (CellReference. "A1")
+                                                       ^XSSFSheet data-sheet)]
     (doseq [idx pivot-rows]
       (.addRowLabel pivot-table idx))
     (doseq [idx pivot-cols]
       (.addColLabel pivot-table idx))
     (doseq [idx pivot-measures]
-      (.addColumnLabel pivot-table (agg-fn-k->pivot-agg-fn-enum (get aggregation-functions idx DataConsolidateFunction/COUNT)) idx))
+      (.addColumnLabel pivot-table (get aggregation-functions idx DataConsolidateFunction/COUNT) idx))
     wb))
 
 (defmethod qp.si/streaming-results-writer :xlsx
@@ -558,7 +569,9 @@
       (begin! [_ {{:keys [ordered-cols format-rows? pivot-export-options]} :data}
                {col-settings ::mb.viz/column-settings :as viz-settings}]
         (let [opts      (when pivot-export-options
-                          (qp.pivot.postprocess/pivot-opts->pivot-spec pivot-export-options ordered-cols))
+                          (pivot-opts->pivot-spec (merge {:pivot-cols []
+                                                          :pivot-rows []}
+                                                         pivot-export-options) ordered-cols))
               ;; col-names are created later when exporting a pivot table, so only create them if there are no pivot options
               col-names (when-not opts (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))]
           (vreset! cell-styles (compute-column-cell-styles workbook data-format viz-settings ordered-cols))
