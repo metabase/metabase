@@ -7,6 +7,17 @@
    [metabase.api.common.openapi :as openapi]
    [metabase.util.malli.schema :as ms]))
 
+;;; inner helpers
+
+(deftest ^:parallel parse-compojure-test
+  (are [res args] (= res (#'openapi/compojure-query-params args))
+    [:id :value] '[id value]
+    [:id :value] '[id :as {{:strs [value]} :query-params}]
+    [:id]        '[id :as {raw-params :params}]
+    [:count]     '[:as {{c :count} :query-params}])
+  (are [res args] (= res (#'openapi/compojure-renames args))
+    {:c :count} '[:as {{c :count} :query-params}]))
+
 ;;; definitions
 
 (api/defendpoint GET "/:id"
@@ -31,11 +42,17 @@
 
 (api/defendpoint POST "/export"
   "docstring"
-  [:as {{:strs [collection settings]}
-        :query-params}]
+  [:as {{:strs [collection settings data-model]} :query-params}]
   {collection [:maybe (ms/QueryVectorOf ms/PositiveInt)]
-   settings   [:maybe ms/BooleanValue]}
+   settings   [:maybe ms/BooleanValue]
+   data-model ms/MaybeBooleanValue}
   {:collections collection :settings settings})
+
+(api/defendpoint GET "/rename"
+  "this one renames query parameter trying to trick us"
+  [:as {{c :count} :query-params}]
+  {c ms/PositiveInt}
+  {:count c})
 
 (api/define-routes)
 
@@ -51,6 +68,7 @@
 
 (deftest ^:parallel collect-routes-test
   (is (=? [{:path "/export"}
+           {:path "/rename"}
            {:path "/{id}"}
            {:path "/{id}"}
            {:path "/{id}/upload"}]
@@ -84,7 +102,7 @@
                           :description some?
                           :schema      {:type    "integer"
                                         :minimum 1}}]
-            ;; TODO: no :requestBody since we did not spec anything
+            ;; TODO: no :requestBody since we did not spec anything, would be nice to be able to spec files
             }}
           (#'openapi/defendpoint->path-item nil "/{id}" #'POST_:id_upload)))
   (is (=? {:post
@@ -98,8 +116,17 @@
                          {:in       :query
                           :name     :settings
                           :required false
+                          :schema   {:type "boolean"}}
+                         {:in       :query
+                          :name     :data-model
+                          :required false
                           :schema   {:type "boolean"}}]}}
-          (#'openapi/defendpoint->path-item nil "/export" #'POST_export))))
+          (#'openapi/defendpoint->path-item nil "/export" #'POST_export)))
+  (is (=? {:get {:parameters [{:in       :query
+                               :name     :count
+                               :required false
+                               :schema   {:type "integer" :minimum 1}}]}}
+          (#'openapi/defendpoint->path-item nil "/rename" #'GET_rename))))
 
 (deftest ^:parallel openapi-object-test
   (is (=? {:paths      {"/{id}"        {:get  {}
