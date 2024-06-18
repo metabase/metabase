@@ -219,3 +219,10 @@ MissingCurrencyFormatting44086.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const MissingCurrencyFormatting2 = Template.bind({});
+MissingCurrencyFormatting2.args = {
+  rawSeries: data.missingCurrencyFormatting2 as any,
+  dashcardSettings: {},
+  renderingContext,
+};

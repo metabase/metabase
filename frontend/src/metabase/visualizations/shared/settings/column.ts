@@ -1,11 +1,11 @@
 import { isCurrency, isPercentage } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
+import type { DatasetColumn } from "metabase-types/api";
 
 export function getDefaultNumberStyle(
   column: DatasetColumn,
-  settings: VisualizationSettings,
+  columnSettings: Record<string, string>,
 ) {
-  if (isCurrency(column) && settings["currency"]) {
+  if (isCurrency(column) && columnSettings["currency"]) {
     return "currency";
   }
 
@@ -45,9 +45,9 @@ const CURRENCIES_WITH_SYMBOLS = new Set([
 
 export function getDefaultCurrencyStyle(
   _column: any,
-  settings: VisualizationSettings,
+  columnSettings: Record<string, string>,
 ) {
-  const c = settings["currency"] || "USD";
+  const c = columnSettings["currency"] || "USD";
   return CURRENCIES_WITH_SYMBOLS.has(c) ? "symbol" : "code";
 }
 
