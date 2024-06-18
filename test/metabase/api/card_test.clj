@@ -2381,8 +2381,8 @@
       (let [orig qp.card/process-query-for-card]
         (with-redefs [qp.card/process-query-for-card (fn [card-id export-format & options]
                                                        (apply orig card-id export-format
-                                                              :run (fn [{:keys [constraints]} _]
-                                                                     {:constraints constraints})
+                                                              :make-run (constantly (fn [{:keys [constraints]} _]
+                                                                                      {:constraints constraints}))
                                                               options))]
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
             (is (= {:constraints nil}
