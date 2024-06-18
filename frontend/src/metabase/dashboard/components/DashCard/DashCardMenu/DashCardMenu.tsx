@@ -178,7 +178,7 @@ DashCardMenu.shouldRender = ({
   );
 
   if (isPublicOrEmbedded) {
-    return isPublicOrEmbedded;
+    return true;
   }
   return (
     !isInternalQuery &&
