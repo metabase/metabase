@@ -1,3 +1,4 @@
+import Color from "color";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -104,7 +105,7 @@ export function getPieChartModel(
         tooltipDisplayValue: metricValue,
         normalizedPercentage: metricValue / total, // slice percentage values are normalized to 0-1 scale
         rowIndex: index,
-        color: settings["pie.colors"][String(dimensionValue)],
+        color: Color(settings["pie.colors"][String(dimensionValue)]).hex(),
       };
     })
     .filter(slice => isNonPositive || slice.value >= 0)
