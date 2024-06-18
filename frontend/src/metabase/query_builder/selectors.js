@@ -837,9 +837,14 @@ function getXDomainForTimelines(xDomain, dataInterval) {
   // If we filter timeline events up until Jan 1, 2024, we won't see any events from 2024,
   // so we need to extend xDomain by dataInterval.count * dataInterval.unit to include them
   if (xDomain && isAbsoluteDateTimeUnit(dataInterval?.unit)) {
-    const maxValue = xDomain[1]
+    let maxValue = xDomain[1]
       .clone()
       .add(dataInterval.count, dataInterval.unit);
+
+    if (dataInterval.unit !== "hour" && dataInterval.unit !== "minute") {
+      maxValue = maxValue.subtract(1, "day");
+    }
+
     return [xDomain[0], maxValue];
   }
 
