@@ -2957,15 +2957,15 @@
   resolved "https://registry.yarnpkg.com/@react-oauth/google/-/google-0.11.1.tgz#f937c8d02bd37e3a6be7713b8212e9b9b9b3f914"
   integrity sha512-tywZisXbsdaRBVbEu0VX6dRbOSL2I6DgY97woq5NMOOOz+xtDsm418vqq+Vx10KMtra3kdHMRMf0hXLWrk2RMg==
 
-"@reduxjs/toolkit@^1.9.3":
-  version "1.9.3"
-  resolved "https://registry.yarnpkg.com/@reduxjs/toolkit/-/toolkit-1.9.3.tgz#27e1a33072b5a312e4f7fa19247fec160bbb2df9"
-  integrity sha512-GU2TNBQVofL09VGmuSioNPQIu6Ml0YLf4EJhgj0AvBadRlCGzUWet8372LjvO4fqKZF2vH1xU0htAa7BrK9pZg==
+"@reduxjs/toolkit@^2.2.5":
+  version "2.2.5"
+  resolved "https://registry.yarnpkg.com/@reduxjs/toolkit/-/toolkit-2.2.5.tgz#c0d2d8482ef80722bebe015ff05b06c34bfb6e0d"
+  integrity sha512-aeFA/s5NCG7NoJe/MhmwREJxRkDs0ZaSqt0MxhWUrwCf1UQXpwR87RROJEql0uAkLI6U7snBOYOcKw83ew3FPg==
   dependencies:
-    immer "^9.0.16"
-    redux "^4.2.0"
-    redux-thunk "^2.4.2"
-    reselect "^4.1.7"
+    immer "^10.0.3"
+    redux "^5.0.1"
+    redux-thunk "^3.1.0"
+    reselect "^5.1.0"
 
 "@replayio/cypress@^2.1.0":
   version "2.1.0"
@@ -13281,7 +13281,12 @@ img-diff-js@0.5.2:
     pixelmatch "^5.2.1"
     pngjs "^6.0.0"
 
-immer@^9.0.16, immer@^9.0.17:
+immer@^10.0.3:
+  version "10.1.1"
+  resolved "https://registry.yarnpkg.com/immer/-/immer-10.1.1.tgz#206f344ea372d8ea176891545ee53ccc062db7bc"
+  integrity sha512-s2MPrmjovJcoMaHtx6K11Ra7oD05NT97w1IC5zpMkT6Atjr7H8LjaDd81iIxUYpMKSRRNMJE703M1Fhr/TctHw==
+
+immer@^9.0.17:
   version "9.0.21"
   resolved "https://registry.yarnpkg.com/immer/-/immer-9.0.21.tgz#1e025ea31a40f24fb064f1fef23e931496330176"
   integrity sha512-bc4NBHqOqSfRW7POMkHd51LvClaeMXpm8dx0e8oE2GORbq5aRK7Bxl4FyzVLdGtLmvLKL7BTDBG5ACQm4HWjTA==
@@ -19905,10 +19910,10 @@ redux-promise@^0.5.0:
   dependencies:
     flux-standard-action "^0.6.1"
 
-redux-thunk@^2.4.2:
-  version "2.4.2"
-  resolved "https://registry.yarnpkg.com/redux-thunk/-/redux-thunk-2.4.2.tgz#b9d05d11994b99f7a91ea223e8b04cf0afa5ef3b"
-  integrity sha512-+P3TjtnP0k/FEjcBL5FZpoovtvrTNT/UXd4/sluaSyrURlSlhLSzEdfsTBW7WsKB6yPvgd7q/iZPICFjW4o57Q==
+redux-thunk@^3.1.0:
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/redux-thunk/-/redux-thunk-3.1.0.tgz#94aa6e04977c30e14e892eae84978c1af6058ff3"
+  integrity sha512-NW2r5T6ksUKXCabzhL9z+h206HQw/NJkcLm1GPImRQ8IzfXwRGqjVhKJGauHirT0DAuyy6hjdnMZaRoAcy0Klw==
 
 redux@^3.6.0, redux@^3.7.2:
   version "3.7.2"
@@ -19920,12 +19925,17 @@ redux@^3.6.0, redux@^3.7.2:
     loose-envify "^1.1.0"
     symbol-observable "^1.0.3"
 
-redux@^4.0.0, redux@^4.0.4, redux@^4.2.0:
+redux@^4.0.0, redux@^4.0.4:
   version "4.2.0"
   resolved "https://registry.yarnpkg.com/redux/-/redux-4.2.0.tgz#46f10d6e29b6666df758780437651eeb2b969f13"
   integrity sha512-oSBmcKKIuIR4ME29/AeNUnl5L+hvBq7OaJWzaptTQJAntaPvxIJqfnjbaEiCzzaIz+XmVILfqAM3Ob0aXLPfjA==
   dependencies:
     "@babel/runtime" "^7.9.2"
+
+redux@^5.0.1:
+  version "5.0.1"
+  resolved "https://registry.yarnpkg.com/redux/-/redux-5.0.1.tgz#97fa26881ce5746500125585d5642c77b6e9447b"
+  integrity sha512-M9/ELqF6fy8FwmkpnF0S3YKOqMyoWJ4+CS5Efg2ct3oY9daQvd/Pc71FpGZsVsbl3Cpb+IIcjBDUnnyBdQbq4w==
 
 reg-cli@^0.17.7:
   version "0.17.7"
@@ -20252,11 +20262,6 @@ requires-port@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/requires-port/-/requires-port-1.0.0.tgz#925d2601d39ac485e091cf0da5c6e694dc3dcaff"
   integrity sha512-KigOCHcocU3XODJxsu8i/j8T9tzT4adHiecwORRQ0ZZFcp7ahwXuRU1m+yuO90C5ZUyGeGfocHDI14M3L3yDAQ==
-
-reselect@^4.1.7:
-  version "4.1.7"
-  resolved "https://registry.yarnpkg.com/reselect/-/reselect-4.1.7.tgz#56480d9ff3d3188970ee2b76527bd94a95567a42"
-  integrity sha512-Zu1xbUt3/OPwsXL46hvOOoQrap2azE7ZQbokq61BQfiXvhewsKDwhMeZjTX9sX0nvw1t/U5Audyn1I9P/m9z0A==
 
 reselect@^5.1.0:
   version "5.1.0"
