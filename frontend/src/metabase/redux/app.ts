@@ -1,15 +1,12 @@
-import { push, LOCATION_CHANGE } from "react-router-redux";
+import { createAction } from "@reduxjs/toolkit";
+import { LOCATION_CHANGE, push } from "react-router-redux";
 
 import {
   isSmallScreen,
   openInBlankWindow,
   shouldOpenInBlankWindow,
 } from "metabase/lib/dom";
-import {
-  combineReducers,
-  createAction,
-  handleActions,
-} from "metabase/lib/redux";
+import { combineReducers, handleActions } from "metabase/lib/redux";
 import type { Dispatch } from "metabase-types/store";
 
 interface LocationChangeAction {
