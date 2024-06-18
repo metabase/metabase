@@ -5,7 +5,7 @@ import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/Collection
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
 import { isNotNull } from "metabase/lib/types";
 import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs/CollectionBreadcrumbs";
-import { Box } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import type {
   CollectionEssentials,
   CollectionId,
@@ -74,7 +74,7 @@ export const CollectionBrowserInner = ({
     .filter(isNotNull);
 
   return (
-    <Box className={className} style={style}>
+    <Stack w="100%" h="100%" spacing="sm" className={className} style={style}>
       <CollectionBreadcrumbs
         collectionId={currentCollectionId}
         onClick={onClickBreadcrumbItem}
@@ -88,7 +88,7 @@ export const CollectionBrowserInner = ({
         showActionMenu={false}
         EmptyContentComponent={EmptyContentComponent ?? undefined}
       />
-    </Box>
+    </Stack>
   );
 };
 
