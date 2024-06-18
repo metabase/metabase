@@ -91,4 +91,4 @@ Once your Metabase app is added to the private channel, you'll need to type out 
 - [Dashboard subscriptions](../dashboards/subscriptions.md)
 - [Notification permissions](../permissions/notifications.md)
 - [Setting up email](./email.md)
-- [Auditing Metabase](../usage-and-performance-tools/audit.md)
+- [Usage analytics](../usage-and-performance-tools/usage-analytics.md)

@@ -156,7 +156,6 @@ describe("DateIntervalPicker", () => {
           value: defaultValue,
         });
 
-        await userEvent.click(screen.getByLabelText("Options"));
         await userEvent.click(await screen.findByText("Include today"));
 
         expect(onChange).toHaveBeenCalledWith({
@@ -168,24 +167,13 @@ describe("DateIntervalPicker", () => {
         expect(onSubmit).not.toHaveBeenCalled();
       });
 
-      it("should not allow to add relative offsets by default", async () => {
-        setup({
-          value: defaultValue,
-        });
-
-        await userEvent.click(screen.getByLabelText("Options"));
-        expect(await screen.findByText("Include today")).toBeInTheDocument();
-        expect(screen.queryByText("Starting from…")).not.toBeInTheDocument();
-      });
-
-      it("should allow to a relative offset if enabled", async () => {
+      it("should allow to a relative offset", async () => {
         const { onChange, onSubmit } = setup({
           value: defaultValue,
           canUseRelativeOffsets: true,
         });
 
-        await userEvent.click(screen.getByLabelText("Options"));
-        await userEvent.click(await screen.findByText("Starting from…"));
+        await userEvent.click(await screen.findByLabelText("Starting from…"));
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
