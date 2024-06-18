@@ -31,14 +31,11 @@ export const DelayedLoadingAndErrorWrapper = ({
   error,
   loading,
   delay = 300,
-  blankComponent = null,
   loader,
   children,
   ...props
 }: {
   delay?: number;
-  /** This is shown during the delay if `loading` is true */
-  blankComponent?: ReactNode;
 } & LoadingAndErrorWrapperProps) => {
   // If delay is zero show the wrapper immediately. Otherwise, apply a timeout
   const [showWrapper, setShowWrapper] = useState(delay === 0);
@@ -56,7 +53,9 @@ export const DelayedLoadingAndErrorWrapper = ({
     return <>{children}</>;
   }
   if (!showWrapper) {
-    return <>{blankComponent}</>;
+    // make tests aware that things are loading and we need to wait
+    const blankComponent = <span data-testid="loading-spinner" />;
+    return blankComponent;
   }
   return (
     <Transition
