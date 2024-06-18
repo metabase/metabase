@@ -233,3 +233,10 @@ MissingCurrencyFormatting3.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const MissingColors44087 = Template.bind({});
+MissingColors44087.args = {
+  rawSeries: data.missingColors44087 as any,
+  dashcardSettings: {},
+  renderingContext,
+};

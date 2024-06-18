@@ -11,6 +11,7 @@ import hideLegend from "./hide-legend.json";
 import hideTotal from "./hide-total.json";
 import largeMinimumSlicePercentage from "./large-min-slice-percentage.json";
 import longDimensionName from "./long-dimension-name.json";
+import missingColors44087 from "./missing-colors-44087.json";
 import missingCurrencyFormatting2 from "./missing-currency-formatting-2.json";
 import missingCurrencyFormatting3 from "./missing-currency-formatting-3.json";
 import missingCurrencyFormatting44086 from "./missing-currency-formatting-44086.json";
@@ -58,4 +59,5 @@ export const data = {
   missingCurrencyFormatting44086,
   missingCurrencyFormatting2,
   missingCurrencyFormatting3,
+  missingColors44087,
 };
