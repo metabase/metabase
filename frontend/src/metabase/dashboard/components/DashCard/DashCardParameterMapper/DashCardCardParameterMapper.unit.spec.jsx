@@ -182,7 +182,27 @@ describe("DashCardParameterMapper", () => {
     expect(screen.getByText(/unknown field/i)).toBeInTheDocument();
   });
 
-  it("should render an error state when there is a target but the list of options is empty", () => {
+  it("should render an error state when mapping to a native model and there is no target", () => {
+    const card = createMockCard({
+      type: "model",
+      dataset_query: createMockNativeDatasetQuery({
+        native: {
+          query: "SELECT * FROM ORDERS",
+        },
+      }),
+      display: "table",
+    });
+    setup({
+      card,
+      dashcard: createMockDashboardCard({
+        card,
+      }),
+      mappingOptions: [],
+    });
+    expect(screen.queryByText(/unknown field/i)).not.toBeInTheDocument();
+  });
+
+  it("should render an error state when there is a target for a native model and allow to remove the target", () => {
     const card = createMockCard({
       type: "model",
       dataset_query: createMockNativeDatasetQuery({
