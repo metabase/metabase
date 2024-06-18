@@ -31,7 +31,6 @@ import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPa
 const THEME_OPTIONS = [
   { label: t`Light`, value: "light" },
   { label: t`Dark`, value: "night" },
-  { label: t`Transparent`, value: "transparent" },
 ] as const;
 type ThemeOptions = typeof THEME_OPTIONS[number]["value"];
 
@@ -132,6 +131,20 @@ export const LookAndFeelSettings = ({
           </DisplayOptionSection>
 
           <Switch
+            label={getBackgroundLabel(resourceType)}
+            labelPosition="left"
+            size="sm"
+            variant="stretch"
+            checked={displayOptions.background}
+            onChange={e =>
+              onChangeDisplayOptions({
+                ...displayOptions,
+                background: e.target.checked,
+              })
+            }
+          />
+
+          <Switch
             label={getBorderLabel(resourceType)}
             labelPosition="left"
             size="sm"
@@ -205,6 +218,14 @@ export const LookAndFeelSettings = ({
     </>
   );
 };
+
+function getBackgroundLabel(resourceType: EmbedResourceType) {
+  return match(resourceType)
+    .returnType<string>()
+    .with("dashboard", () => t`Dashboard background`)
+    .with("question", () => t`Question background`)
+    .exhaustive();
+}
 
 function getBorderLabel(resourceType: EmbedResourceType) {
   return match(resourceType)

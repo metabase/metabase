@@ -28,6 +28,7 @@ export type EmbeddingParametersValues = Record<string, string>;
 export type EmbeddingDisplayOptions = {
   font: null | string;
   theme: DisplayTheme;
+  background: boolean;
   bordered: boolean;
   titled: boolean;
   hide_download_button: boolean | null;
