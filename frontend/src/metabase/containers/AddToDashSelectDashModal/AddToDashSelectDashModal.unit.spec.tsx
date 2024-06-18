@@ -375,8 +375,6 @@ describe("AddToDashSelectDashModal", () => {
         ),
       );
 
-      console.log("dashboardCollection", dashboardCollection);
-
       await screen.findByText(/add this model to a dashboard/i);
 
       await assertPath([dashboardCollection]);
