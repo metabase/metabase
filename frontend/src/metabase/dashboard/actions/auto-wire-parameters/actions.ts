@@ -97,6 +97,7 @@ export function showAutoWireToast(
         originalDashcardAttributes,
         columnName: formatMappingOption(mappingOption),
         hasMultipleTabs: tabs.length > 1,
+        parameterId: parameter_id,
       }),
     );
   };

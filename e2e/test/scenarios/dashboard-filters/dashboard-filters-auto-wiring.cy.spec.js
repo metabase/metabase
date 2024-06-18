@@ -44,7 +44,7 @@ const cards = [
     row: 0,
     col: 5,
     size_x: 5,
-    size_y: 4,
+    size_y: 5,
   },
 ];
 
@@ -85,6 +85,21 @@ describe("dashboard filters auto-wiring", () => {
         "contain",
         "The filter was auto-connected to all questions containing “User.Name”.",
       );
+
+      cy.log("verify auto-connect info is shown");
+
+      getDashboardCard(1).within(() => {
+        cy.findByText("Auto-connected").should("be.visible");
+        cy.icon("sparkles").should("be.visible");
+      });
+
+      // do not wait for timeout, but close the toast
+      undoToast().icon("close").click();
+
+      getDashboardCard(1).within(() => {
+        cy.findByText("Auto-connected").should("not.exist");
+        cy.icon("sparkles").should("not.exist");
+      });
     });
 
     it("should not wire parameters to cards that already have a parameter, despite matching fields", () => {

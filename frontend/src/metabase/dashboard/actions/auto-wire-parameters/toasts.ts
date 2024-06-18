@@ -12,6 +12,7 @@ import type {
   DashCardId,
   DashboardParameterMapping,
   Parameter,
+  ParameterId,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
@@ -25,11 +26,13 @@ export const showAutoWireParametersToast =
     originalDashcardAttributes,
     columnName,
     hasMultipleTabs,
+    parameterId,
   }: {
     dashcardAttributes: SetMultipleDashCardAttributesOpts;
     originalDashcardAttributes: SetMultipleDashCardAttributesOpts;
     columnName: string;
     hasMultipleTabs: boolean;
+    parameterId: ParameterId;
   }) =>
   (dispatch: Dispatch) => {
     const message = hasMultipleTabs
@@ -72,8 +75,12 @@ export const showAutoWireParametersToast =
           message: t`The filter was auto-connected to all questions containing “${columnName}”.`,
           actionLabel: t`Undo`,
           showProgress: true,
-          timeout: AUTO_WIRE_TOAST_TIMEOUT,
-          type: "filterAutoConnect",
+          timeout: 12000,
+          type: "filterAutoConnectDone",
+          extraInfo: {
+            dashcardIds: dashcardAttributes.map(({ id }) => id),
+            parameterId,
+          },
           action: revertConnectAll,
         }),
       );
@@ -162,12 +169,13 @@ export const closeAutoWireParameterToast =
     dispatch(dismissUndo(toastId, false));
   };
 
+const autoWireToastTypes = ["filterAutoConnect", "filterAutoConnectDone"];
 export const closeAddCardAutoWireToasts =
   () => (dispatch: Dispatch, getState: GetState) => {
     const undos = getState().undo;
 
     for (const undo of undos) {
-      if (undo.type === "filterAutoConnect") {
+      if (undo.type && autoWireToastTypes.includes(undo.type)) {
         dispatch(dismissUndo(undo.id, false));
       }
     }
