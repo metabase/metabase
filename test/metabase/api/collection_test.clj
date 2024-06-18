@@ -76,6 +76,7 @@
                  :authority_level     nil
                  :is_personal         false
                  :id                  "root"
+                 :can_restore         false
                  :can_delete          false}
                 (assoc (into {:is_personal false} collection) :can_write true :can_delete false)]
                (filter #(#{(:id collection) "root"} (:id %))
@@ -640,6 +641,7 @@
                 [{:collection_id       (:id collection)
                   :can_write           true
                   :can_delete          false
+                  :can_restore         false
                   :id                  card-id
                   :archived            false
                   :location            nil
@@ -667,6 +669,16 @@
               (filter (fn [item]
                         (= (:id item) (:id card))))
               first))))))
+
+(deftest collection-items-returns-collections-with-correct-collection-id-test
+  (testing "GET /api/collection/:id/items?model=collection"
+    (testing "check that the ID and collection_id don't match"
+      (t2.with-temp/with-temp [:model/Collection parent {}
+                               :model/Collection child {:location (collection/children-location parent)}]
+        (is (= {:id (:id child)
+                :collection_id (:id parent)}
+               (select-keys (first (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id parent) "/items?model=collection"))))
+                            [:id :collection_id])))))))
 
 (deftest collection-items-return-database-id-for-datasets-test
   (testing "GET /api/collection/:id/items"
@@ -1204,6 +1216,7 @@
   (merge
    (mt/object-defaults Collection)
    {:slug                "lucky_pigeon_s_personal_collection"
+    :can_restore         false
     :can_delete          false
     :can_write           true
     :name                "Lucky Pigeon's Personal Collection"
@@ -1423,6 +1436,7 @@
       (is (= {:name                "Our analytics"
               :id                  "root"
               :can_write           true
+              :can_restore         false
               :effective_location  nil
               :effective_ancestors []
               :authority_level     nil
@@ -2153,6 +2167,12 @@
        (filter #(= (:id %) item-id))
        first))
 
+(defn- get-item-with-id-in-root [id]
+  (->> (mt/user-http-request :crowberto :get 200 (str "collection/root/items"))
+       :data
+       (filter #(= (:id %) id))
+       first))
+
 (deftest ^:parallel can-restore
   (testing "can_restore is correctly populated for dashboard"
     (testing "when I can actually restore it"
@@ -2203,7 +2223,19 @@
     (testing "when I can actually restore it"
       (t2.with-temp/with-temp [:model/Collection collection {:name "A"}]
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
-        (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id collection)))))))))
+        (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id collection))))))))
+  (testing "can_restore is correctly populated for things in the root collection"
+    (t2.with-temp/with-temp [:model/Collection collection {:name "A"}
+                             :model/Dashboard dashboard {:name "Dashboard"}]
+      (is (contains? (get-item-with-id-in-root (u/the-id dashboard)) :can_restore))
+      (is (contains? (get-item-with-id-in-root (u/the-id collection)) :can_restore))
+      (is (false? (:can_restore (get-item-with-id-in-root (u/the-id dashboard)))))
+      (is (false? (:can_restore (get-item-with-id-in-root (u/the-id collection)))))))
+  (testing "can_restore is correctly populated for things in other collections"
+    (t2.with-temp/with-temp [:model/Collection collection {:name "container"}
+                             :model/Dashboard dashboard {:name "Dashboard" :collection_id (u/the-id collection)}]
+      (is (contains? (get-item-with-id-in-coll (u/the-id collection) (u/the-id dashboard)) :can_restore ))
+      (is (false? (:can_restore (get-item-with-id-in-coll (u/the-id collection) (u/the-id dashboard))))))))
 
 (deftest nothing-can-be-moved-to-the-trash
   (t2.with-temp/with-temp [:model/Dashboard dashboard {}

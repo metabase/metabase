@@ -39,7 +39,7 @@ describe("scenarios > question > relative-datetime", () => {
           date([[-15, unit]]),
           date([[-30, unit]]),
         ]);
-        withStartingFrom("Past", [10, unit], [10, unit]);
+        withStartingFrom("Previous", [10, unit], [10, unit]);
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Showing 2 rows").should("exist");
       }),
@@ -172,7 +172,7 @@ describe("scenarios > question > relative-datetime", () => {
     it("should change the starting from units to match (metabase#22222)", () => {
       openOrdersTable();
 
-      openCreatedAt("Past");
+      openCreatedAt("Previous");
       addStartingFrom();
       setRelativeDatetimeUnit("months");
       popover().within(() => {
@@ -184,7 +184,7 @@ describe("scenarios > question > relative-datetime", () => {
     it("should allow changing values with starting from (metabase#22227)", () => {
       openOrdersTable();
 
-      openCreatedAt("Past");
+      openCreatedAt("Previous");
       addStartingFrom();
       setRelativeDatetimeUnit("months");
       setRelativeDatetimeValue(1);
@@ -267,10 +267,8 @@ const openCreatedAt = tab => {
 };
 
 const addStartingFrom = () => {
-  popover().findByLabelText("Options").click();
   popover()
-    .last()
-    .findByText(/Starting from/)
+    .findByLabelText(/Starting from/)
     .click();
 };
 
@@ -309,7 +307,7 @@ const withStartingFrom = (dir, [num, unit], [startNum, startUnit]) => {
   setRelativeDatetimeUnit(unit);
 
   setStartingFromValue(startNum);
-  setStartingFromUnit(startUnit + (dir === "Past" ? " ago" : " from now"));
+  setStartingFromUnit(startUnit + (dir === "Previous" ? " ago" : " from now"));
 
   cy.intercept("POST", "/api/dataset").as("dataset");
   popover().within(() => cy.findByText("Add filter").click());

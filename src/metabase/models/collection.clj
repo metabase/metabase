@@ -1588,36 +1588,36 @@
             :let [parent-id (coll-id->parent-id (:id coll))
                   archived-directly? (:archived_directly coll)
                   parent-archived? (get parent-id->archived? parent-id false)]]
-        (cond-> coll
-          (:archived coll) (assoc :can_restore (and archived-directly?
-                                                    (not parent-archived?)
-                                                    (perms/set-has-full-permissions-for-set?
+        (assoc coll :can_restore (boolean (and (:archived coll)
+                                               archived-directly?
+                                               (not parent-archived?)
+                                               (perms/set-has-full-permissions-for-set?
                                                      @api/*current-user-permissions-set*
                                                      (perms-for-archiving coll)))))))))
 
 (defmethod hydrate-can-restore :default [_model items]
-  (for [{collection :collection
-         :as item*} (t2/hydrate items :collection)
-        :let [item (dissoc item* :collection)]]
-    (cond-> item
-      (:archived item)
-      (assoc :can_restore (and
-                           ;; the item is directly in the trash (it was archived independently, not as
-                           ;; part of a collection)
-                           (:archived_directly item)
+  (for [[{collection :collection} item] (map vector (t2/hydrate items :collection) items)]
+    (assoc item :can_restore (boolean
+                              (and
+                               ;; the item is archived
+                               (:archived item)
 
-                           ;; EITHER:
-                           (or
-                            ;; the item was archived from the root collection
-                            (nil? (:collection_id item))
-                            ;; or the collection we'll restore to actually exists.
-                            (some? collection))
+                               ;; the item is directly in the trash (it was archived independently, not as
+                               ;; part of a collection)
+                               (:archived_directly item)
 
-                           ;; the collection we'll restore to is not archived
-                           (not (:archived collection))
+                               ;; EITHER:
+                               (or
+                                ;; the item was archived from the root collection
+                                (nil? (:collection_id item))
+                                ;; or the collection we'll restore to actually exists.
+                                (some? collection))
 
-                           ;; we have perms on the collection
-                           (mi/can-write? (or collection root-collection)))))))
+                               ;; the collection we'll restore to is not archived
+                               (not (:archived collection))
+
+                               ;; we have perms on the collection
+                               (mi/can-write? (or collection root-collection)))))))
 
 (mi/define-batched-hydration-method can-restore
   :can_restore
@@ -1635,8 +1635,8 @@
   [items]
   (when (seq items)
     (for [item items]
-      (assoc item :can_delete (and
-                               (not (or (= :model/Collection (t2/model item))
-                                        (collection.root/is-root-collection? item)))
-                               (:archived item)
-                               (mi/can-write? item))))))
+      (assoc item :can_delete (boolean (and
+                                        (not (or (= :model/Collection (t2/model item))
+                                                 (collection.root/is-root-collection? item)))
+                                        (:archived item)
+                                        (mi/can-write? item)))))))

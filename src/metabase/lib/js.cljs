@@ -65,6 +65,7 @@
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
+   [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
@@ -368,6 +369,8 @@
   Recursively converts CLJS maps and sequences into JS objects and arrays."
   [x]
   (cond
+    ;; `(seqable? nil) ; => true`, so we need to check for it before
+    (nil? x)     nil
     ;; Note that map? is only true for CLJS maps, not JS objects.
     (map? x)     (display-info-map->js x)
     (string? x)  x
@@ -1968,7 +1971,7 @@
   #js {"column"     column
        "query"      a-query
        "stageIndex" stage-number
-       "value"      (if (= value :null) nil value)})
+       "value"      (lib.drill-thru.common/drill-value->js value)})
 
 (defn ^:export aggregation-drill-details
   "Returns a JS object with the details needed to render the complex UI for `compare-aggregation` drills.

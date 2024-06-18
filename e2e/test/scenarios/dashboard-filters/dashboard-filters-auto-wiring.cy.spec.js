@@ -23,6 +23,7 @@ import {
   dashboardParametersContainer,
   openQuestionActions,
   entityPickerModal,
+  multiAutocompleteInput,
   findDashCardAction,
   removeDashboardCard,
   sidebar,
@@ -526,7 +527,7 @@ describe("dashboard filters auto-wiring", () => {
       dashboardParametersContainer().findByText("ID").click();
 
       popover().within(() => {
-        cy.findByRole("textbox").type("1{enter}");
+        multiAutocompleteInput().type("1,");
         cy.button("Add filter").click();
       });
 
@@ -576,7 +577,7 @@ describe("dashboard filters auto-wiring", () => {
       dashboardParametersContainer().findByText("ID").click();
 
       popover().within(() => {
-        cy.findByRole("textbox").type("1{enter}");
+        multiAutocompleteInput().type("1,");
         cy.button("Add filter").click();
       });
 

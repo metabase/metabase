@@ -43,14 +43,4 @@ export const OPERATOR_OPTIONS: OperatorOption[] = [
     value: "between",
     operators: ["between"],
   },
-  {
-    label: t`Is empty`,
-    value: "is-null",
-    operators: ["is-null"],
-  },
-  {
-    label: t`Not empty`,
-    value: "not-null",
-    operators: ["not-null"],
-  },
 ];

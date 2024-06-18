@@ -40,6 +40,9 @@ jobs:
       MB_ATHENA_TEST_ACCESS_KEY: ${{ secrets.MB_ATHENA_TEST_ACCESS_KEY }}
       MB_ATHENA_TEST_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_SECRET_KEY }}
       MB_ATHENA_TEST_S3_STAGING_DIR: ${{ secrets.MB_ATHENA_TEST_S3_STAGING_DIR }}
+      # These credentials are used to test the driver when the user does not have the athena:GetTableMetadata permission
+      MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_ACCESS_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_ACCESS_KEY }}
+      MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY }}
     steps:
     - uses: actions/checkout@v4
     - name: Test Athena driver

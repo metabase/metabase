@@ -1,8 +1,9 @@
+import type { RowValue } from "metabase-types/api";
 export type Option = any[];
 
 export interface ListFieldProps {
   onChange: (value: string[]) => void;
-  value: string[];
+  value: RowValue[];
   options: Option;
   optionRenderer: (option: any) => JSX.Element;
   placeholder: string;

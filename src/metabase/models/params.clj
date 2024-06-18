@@ -110,7 +110,7 @@
   just the column identifiers, perhaps for use with something like `select-keys`. Clutch!
 
     (t2/select Field:params-columns-only)"
-  ['Field :id :table_id :display_name :base_type :semantic_type :has_field_values])
+  [:model/Field :id :table_id :display_name :base_type :semantic_type :has_field_values :fk_target_field_id])
 
 (defn- fields->table-id->name-field
   "Given a sequence of `fields,` return a map of Table ID -> to a `:type/Name` Field in that Table, if one exists. In
@@ -164,9 +164,8 @@
   [field-ids :- [:maybe [:set ms/PositiveInt]]]
   (when (seq field-ids)
     (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
-                        (t2/hydrate :has_field_values :name_field [:dimensions :human_readable_field])
+                        (t2/hydrate :has_field_values :name_field [:dimensions :human_readable_field] :target)
                         remove-dimensions-nonpublic-columns))))
-
 
 (defmulti ^:private ^{:hydrate :param_values} param-values
   "Add a `:param_values` map (Field ID -> FieldValues) containing FieldValues for the Fields referenced by the

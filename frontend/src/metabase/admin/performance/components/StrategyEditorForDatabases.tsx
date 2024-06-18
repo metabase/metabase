@@ -10,7 +10,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErr
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { Stack, Flex } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
-import { DurationUnit } from "metabase-types/api";
+import { CacheDurationUnit } from "metabase-types/api";
 
 import { rootId } from "../constants/simple";
 import { useCacheConfigs } from "../hooks/useCacheConfigs";
@@ -70,7 +70,7 @@ const StrategyEditorForDatabases_Base = ({
   const savedStrategy = targetConfig?.strategy;
 
   if (savedStrategy?.type === "duration") {
-    savedStrategy.unit = DurationUnit.Hours;
+    savedStrategy.unit = CacheDurationUnit.Hours;
   }
 
   const {
