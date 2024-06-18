@@ -15,7 +15,11 @@ import {
 export const Root = styled.div<{
   hasScroll: boolean;
   isBordered?: boolean;
+  background: boolean;
 }>`
+  /* Whether the dashboard embed background is transparent */
+  --mb-color-embed-bg-override: ${({ background }) =>
+    !background && "transparent"}
   display: flex;
   flex-direction: column;
   overflow: auto;

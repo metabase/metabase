@@ -14,6 +14,7 @@ export const useEmbedFrameOptions = ({ location }: { location: Location }) => {
   }, [dispatch, location]);
 
   const {
+    background,
     bordered = isWithinIframe(),
     titled = true,
     theme,
@@ -22,6 +23,7 @@ export const useEmbedFrameOptions = ({ location }: { location: Location }) => {
   } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
 
   return {
+    background,
     bordered,
     titled,
     theme,

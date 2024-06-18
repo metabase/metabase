@@ -23,6 +23,7 @@ export const useDashboardUrlParams = ({
   onRefresh: () => Promise<void>;
 }): DashboardDisplayOptionControls => {
   const {
+    background,
     bordered,
     font,
     hasNightModeToggle,
@@ -30,6 +31,7 @@ export const useDashboardUrlParams = ({
     hideParameters,
     isNightMode,
     onNightModeChange,
+    setBackground,
     setBordered,
     setFont,
     setHideDownloadButton,
@@ -66,9 +68,16 @@ export const useDashboardUrlParams = ({
   });
 
   useEffect(() => {
-    const { bordered, titled, font, hide_parameters, hide_download_button } =
-      parseHashOptions(location.hash) as DashboardUrlHashOptions;
+    const {
+      background,
+      bordered,
+      titled,
+      font,
+      hide_parameters,
+      hide_download_button,
+    } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
 
+    setBackground(prevBackground => background ?? prevBackground);
     setBordered(prevBordered => bordered ?? prevBordered);
     setTitled(prevTitled => titled ?? prevTitled);
     if (font) {
@@ -81,39 +90,37 @@ export const useDashboardUrlParams = ({
       prevHideParameters => hide_parameters ?? prevHideParameters,
     );
   }, [
-    bordered,
-    font,
-    hideDownloadButton,
-    hideParameters,
     location.hash,
+    setBackground,
     setBordered,
     setFont,
     setHideDownloadButton,
     setHideParameters,
     setTitled,
-    titled,
   ]);
 
   return {
     isFullscreen,
     onFullscreenChange,
-    hideParameters,
-    setHideParameters,
     hasNightModeToggle,
     onNightModeChange,
-    setTheme,
-    theme,
     isNightMode,
     refreshPeriod,
     setRefreshElapsedHook,
     onRefreshPeriodChange,
+    background,
+    setBackground,
     bordered,
     setBordered,
     titled,
     setTitled,
-    hideDownloadButton,
-    setHideDownloadButton,
+    theme,
+    setTheme,
     font,
     setFont,
+    hideDownloadButton,
+    hideParameters,
+    setHideParameters,
+    setHideDownloadButton,
   };
 };

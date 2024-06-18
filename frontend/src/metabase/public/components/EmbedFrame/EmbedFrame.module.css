@@ -3,24 +3,30 @@ body {
 }
 
 .EmbedFrame {
-  background-color: var(--mb-color-bg-dashboard);
+  background-color: var(
+    --mb-color-embed-bg-override,
+    var(--mb-color-bg-dashboard)
+  );
 }
 
 .EmbedFrameHeader,
 .EmbedFrameFooter {
   color: var(--mb-color-text-dark);
-  background-color: var(--mb-color-bg-dashboard);
+  background-color: var(
+    --mb-color-embed-bg-override,
+    var(--mb-color-bg-dashboard)
+  );
 }
 
 .ThemeNight.EmbedFrame {
-  background-color: var(--mb-color-bg-black);
+  background-color: var(--mb-color-embed-bg-override, var(--mb-color-bg-black));
   border-color: var(--mb-color-bg-dark);
 }
 
 .ThemeNight .EmbedFrameHeader,
 .ThemeNight .EmbedFrameFooter {
   color: var(--mb-color-text-white-alpha-85);
-  background-color: var(--mb-color-bg-black);
+  background-color: var(--mb-color-embed-bg-override, var(--mb-color-bg-black));
   border-color: var(--mb-color-bg-dark);
 }
 

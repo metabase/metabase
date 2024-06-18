@@ -12,6 +12,7 @@ import {
 } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
 import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import {
   ParametersList,
@@ -99,6 +100,7 @@ export const EmbedFrame = ({
   setParameterValue,
   setParameterValueToDefault,
   enableParameterRequiredBehavior,
+  background,
   bordered,
   titled,
   theme,
@@ -159,6 +161,7 @@ export const EmbedFrame = ({
     <Root
       hasScroll={hasFrameScroll}
       isBordered={bordered}
+      background={checkNotNull(background)}
       className={cx(
         EmbedFrameS.EmbedFrame,
         className,

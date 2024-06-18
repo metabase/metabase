@@ -2,6 +2,12 @@ import type { Dispatch, SetStateAction } from "react";
 
 import type { DisplayTheme } from "metabase/public/lib/types";
 
+type EmbedBackground = boolean;
+type EmbedBackgroundControls = {
+  background: EmbedBackground;
+  setBackground: Dispatch<SetStateAction<EmbedBackground>>;
+};
+
 type EmbedTitle = boolean;
 type EmbedTitledControls = {
   titled: EmbedTitle;
@@ -41,6 +47,7 @@ export type EmbedThemeControls = {
 };
 
 export type EmbedDisplayParams = {
+  background: EmbedBackground;
   bordered: EmbedBordered;
   titled: EmbedTitle;
   cardTitled: EmbedTitle;
@@ -51,6 +58,7 @@ export type EmbedDisplayParams = {
 };
 
 export type EmbedDisplayControls = EmbedThemeControls &
+  EmbedBackgroundControls &
   EmbedBorderControls &
   EmbedTitledControls &
   EmbedHideDownloadButtonControls &
