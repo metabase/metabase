@@ -13,14 +13,12 @@ describeWithSnowplow(
   "Upload CSVs button in Sidebar",
   { tags: ["@external", "@actions"] },
   () => {
-    before(() => {
+    beforeEach(() => {
       restore("postgres-12");
       cy.signInAsAdmin();
 
       enableUploads("postgres");
-    });
 
-    beforeEach(() => {
       cy.intercept(
         { method: "GET", url: "/api/session/properties" },
         request => {
