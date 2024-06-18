@@ -25,4 +25,4 @@ jobs:
         if: ${{ steps.checkUserMember.outputs.isTeamMember == 'false' }}
         with:
           labels: |
-            .External
+            External
