@@ -132,7 +132,7 @@ export const LookAndFeelSettings = ({
           </DisplayOptionSection>
 
           <Switch
-            label={getBorderTitle(resourceType)}
+            label={getBorderLabel(resourceType)}
             labelPosition="left"
             size="sm"
             variant="stretch"
@@ -206,7 +206,7 @@ export const LookAndFeelSettings = ({
   );
 };
 
-function getBorderTitle(resourceType: EmbedResourceType) {
+function getBorderLabel(resourceType: EmbedResourceType) {
   return match(resourceType)
     .returnType<string>()
     .with("dashboard", () => t`Dashboard border`)
