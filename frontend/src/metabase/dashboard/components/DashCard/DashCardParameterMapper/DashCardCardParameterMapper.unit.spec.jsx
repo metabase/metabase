@@ -182,6 +182,27 @@ describe("DashCardParameterMapper", () => {
     expect(screen.getByText(/unknown field/i)).toBeInTheDocument();
   });
 
+  it("should render an error state when there is a target but the list of options is empty", () => {
+    const card = createMockCard({
+      type: "model",
+      dataset_query: createMockNativeDatasetQuery({
+        native: {
+          query: "SELECT * FROM ORDERS",
+        },
+      }),
+      display: "table",
+    });
+    setup({
+      card,
+      dashcard: createMockDashboardCard({
+        card,
+      }),
+      mappingOptions: [],
+      target: ["dimension", ["field", 2, null]],
+    });
+    expect(screen.getByText(/unknown field/i)).toBeInTheDocument();
+  });
+
   it("should show header content when card is more than 2 units high", () => {
     const numberCard = createMockCard({
       dataset_query: createMockStructuredDatasetQuery({}),

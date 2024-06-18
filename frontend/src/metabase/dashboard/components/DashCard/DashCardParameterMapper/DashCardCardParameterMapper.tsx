@@ -206,13 +206,6 @@ export function DashCardCardParameterMapper({
           buttonText: null,
           buttonIcon: <KeyIcon name="key" />,
         };
-      } else if (isDisabled && !isVirtual) {
-        return {
-          buttonVariant: "disabled",
-          buttonTooltip: t`This card doesn't have any fields or parameters that can be mapped to this parameter type.`,
-          buttonText: t`No valid fields`,
-          buttonIcon: null,
-        };
       } else if (selectedMappingOption) {
         return {
           buttonVariant: "mapped",
@@ -241,6 +234,13 @@ export function DashCardCardParameterMapper({
               }}
             />
           ),
+        };
+      } else if (isDisabled && !isVirtual) {
+        return {
+          buttonVariant: "disabled",
+          buttonTooltip: t`This card doesn't have any fields or parameters that can be mapped to this parameter type.`,
+          buttonText: t`No valid fields`,
+          buttonIcon: null,
         };
       } else {
         return {
@@ -307,7 +307,11 @@ export function DashCardCardParameterMapper({
             />
           </TextCardDefault>
         )
-      ) : isNative && isDisabled && question && editingParameter ? (
+      ) : isNative &&
+        isDisabled &&
+        question &&
+        target == null &&
+        editingParameter ? (
         <DisabledNativeCardHelpText
           question={question}
           parameter={editingParameter}
