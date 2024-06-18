@@ -24,7 +24,7 @@
   [query]
   (case (lib/normalized-query-type query)
     :native     (try
-                  (query-analyzer/field-ids-for-sql query)
+                  (query-analyzer/field-ids-for-native query)
                   (catch Exception e
                     (log/error e "Error parsing SQL" query)))
     :query      {:explicit (mbql.u/referenced-field-ids query)}
