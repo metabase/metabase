@@ -185,7 +185,7 @@ export const PublicOrEmbeddedQuestion = ({
     />
   );
 
-  const { bordered, hide_download_button, hide_parameters, theme, titled } =
+  const { bordered, titled, theme, hide_download_button, hide_parameters } =
     useEmbedFrameOptions({ location });
 
   return (
@@ -200,10 +200,10 @@ export const PublicOrEmbeddedQuestion = ({
       enableParameterRequiredBehavior
       setParameterValueToDefault={setParameterValueToDefault}
       bordered={bordered}
+      titled={titled}
+      theme={theme}
       hide_download_button={hide_download_button}
       hide_parameters={hide_parameters}
-      theme={theme}
-      titled={titled}
     >
       <LoadingAndErrorWrapper
         className={CS.flexFull}
