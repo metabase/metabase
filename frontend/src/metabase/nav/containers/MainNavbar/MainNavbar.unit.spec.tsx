@@ -147,6 +147,7 @@ async function setup({
   );
 
   await waitForLoaderToBeRemoved();
+  await waitForLoaderToBeRemoved(); // tests will fail without the 2nd call
 }
 
 async function setupCollectionPage({
