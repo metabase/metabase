@@ -12,7 +12,8 @@ export const useEmbedFrameOptions = ({ location }: { location: Location }) => {
     titled = DEFAULT_EMBED_DISPLAY_PARAMS.titled,
     theme = DEFAULT_EMBED_DISPLAY_PARAMS.theme,
     hide_parameters = DEFAULT_EMBED_DISPLAY_PARAMS.hideParameters,
-    hide_download_button = DEFAULT_EMBED_DISPLAY_PARAMS.hideDownloadButton,
+    hide_download_button = null,
+    downloads = DEFAULT_EMBED_DISPLAY_PARAMS.downloads,
   } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
 
   return {
@@ -21,5 +22,6 @@ export const useEmbedFrameOptions = ({ location }: { location: Location }) => {
     theme,
     hide_parameters,
     hide_download_button,
+    downloads,
   };
 };

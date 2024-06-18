@@ -74,6 +74,7 @@ export type EmbedFrameBaseProps = Partial<{
   setParameterValueToDefault: (id: ParameterId) => void;
   children: ReactNode;
   dashboardTabs: ReactNode;
+  downloadsEnabled: boolean;
 }>;
 
 export type EmbedFrameProps = EmbedFrameBaseProps & DashboardUrlHashOptions;
@@ -112,8 +113,6 @@ export const EmbedFrame = ({
   titled,
   theme,
   hide_parameters,
-  hide_download_button,
-  // TODO: merge `downloads` with `hide_download_button` on the higher level component?
   downloads = true,
 }: EmbedFrameProps) => {
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
@@ -149,8 +148,7 @@ export const EmbedFrame = ({
     .filter(Boolean)
     .join(",");
 
-  const showFooter =
-    hasEmbedBranding || (!hide_download_button && actionButtons);
+  const showFooter = hasEmbedBranding || (downloads && actionButtons);
 
   const finalName = titled ? name : null;
 

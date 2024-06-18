@@ -8,7 +8,6 @@ export function getDefaultDisplayOptions(
     theme: "light",
     bordered: true,
     titled: true,
-    hide_download_button: shouldShownDownloadData ? false : null,
-    downloads: null,
+    downloads: shouldShownDownloadData ? true : null,
   };
 }
