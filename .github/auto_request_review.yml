@@ -6,9 +6,11 @@ files:
   # migrations related files
   'resources/migrations/**':
     - qnkhuat
+    - piranha
       #- team:core-backend-components
   'src/metabase/db/custom_migrations.clj':
     - qnkhuat
+    - piranha
       #- team:core-backend-components
 
 options:
