@@ -1,5 +1,10 @@
 import { createMockEntitiesState } from "__support__/store";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import {
+  getIcon,
+  queryIcon,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -16,7 +21,6 @@ import {
   createMockLinkDashboardCard,
   createMockVirtualCard,
   createMockVirtualDashCard,
-  createMockUndo,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
@@ -43,7 +47,7 @@ const setup = options => {
       dashcard={createMockDashboardCard({ card })}
       question={new Question(card, metadata)}
       editingParameter={createMockParameter()}
-      autoConnectedUndos={options.autoConnectedUndos ?? []}
+      isRecentlyAutoConnected={options.isRecentlyAutoConnected ?? false}
       mappingOptions={[]}
       metadata={metadata}
       setParameterMapping={jest.fn()}
@@ -53,7 +57,7 @@ const setup = options => {
   );
 };
 
-describe("DashCardParameterMapper", () => {
+describe("DashCardCardParameterMapper", () => {
   it("should render an unauthorized state for a card with no dataset query", () => {
     const card = createMockCard({
       dataset_query: createMockStructuredDatasetQuery({ query: {} }),
@@ -163,44 +167,67 @@ describe("DashCardParameterMapper", () => {
     expect(screen.getByText("Section.Name")).toBeInTheDocument();
   });
 
-  it("should render 'Auto-connected' message on auto-wire", () => {
-    const card = createMockCard();
-    const dashcard = createMockDashboardCard({ card });
-    const undo = createMockUndo({
-      extraInfo: {
-        dashcardIds: [dashcard.id],
-      },
+  describe("Auto-connected hint", () => {
+    it("should render 'Auto-connected' message on auto-wire", () => {
+      const card = createMockCard();
+      const dashcard = createMockDashboardCard({
+        card,
+        size_y: 4,
+      });
+
+      setup({
+        dashcard,
+        card,
+        mappingOptions: [
+          {
+            target: ["dimension", ["field", 1]],
+            sectionName: "Section",
+            name: "Name",
+          },
+        ],
+        target: ["dimension", ["field", 1]],
+        isRecentlyAutoConnected: true,
+      });
+
+      expect(screen.getByText("Auto-connected")).toBeInTheDocument();
+      expect(getIcon("sparkles")).toBeInTheDocument();
     });
 
-    setup({
-      dashcard,
-      card,
-      mappingOptions: [
-        {
-          target: ["dimension", ["field", 1]],
-          sectionName: "Section",
-          name: "Name",
-        },
-      ],
-      target: ["dimension", ["field", 1]],
-      autoConnectedUndos: [undo],
+    it("should not render 'Auto-connected' message on auto-wire when no dashcards mapped", () => {
+      const card = createMockCard();
+      const dashcard = createMockDashboardCard({ card });
+
+      setup({
+        dashcard,
+        card,
+        isRecentlyAutoConnected: true,
+      });
+
+      expect(screen.queryByText("Auto-connected")).not.toBeInTheDocument();
+      expect(queryIcon("sparkles")).not.toBeInTheDocument();
     });
 
-    expect(screen.getByText("Auto-connected")).toBeInTheDocument();
-  });
+    it("should render only an icon when a dashcard is short", () => {
+      const card = createMockCard();
+      const dashcard = createMockDashboardCard({ card, size_y: 3 });
 
-  it("should not render 'Auto-connected' message on auto-wire when no dashboards mapped", () => {
-    const card = createMockCard();
-    const dashcard = createMockDashboardCard({ card });
-    const undo = createMockUndo();
+      setup({
+        dashcard,
+        card,
+        mappingOptions: [
+          {
+            target: ["dimension", ["field", 1]],
+            sectionName: "Section",
+            name: "Name",
+          },
+        ],
+        target: ["dimension", ["field", 1]],
+        isRecentlyAutoConnected: true,
+      });
 
-    setup({
-      dashcard,
-      card,
-      autoConnectedUndos: [undo],
+      expect(screen.queryByText("Auto-connected")).not.toBeInTheDocument();
+      expect(getIcon("sparkles")).toBeInTheDocument();
     });
-
-    expect(screen.queryByText("Auto-connected")).not.toBeInTheDocument();
   });
 
   it("should render an error state when a field is not present in the list of options", () => {
