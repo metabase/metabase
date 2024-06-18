@@ -2,7 +2,7 @@ import type { Query } from "history";
 import { useState } from "react";
 
 import type { SdkClickActionPluginsConfig } from "embedding-sdk";
-import { InteractiveAdHocQuestion } from "embedding-sdk/components/public/InteractiveDashboard/InteractiveAdHocQuestion";
+import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { useStore } from "metabase/lib/redux";

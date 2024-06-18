@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { InteractiveQuestionResult } from "embedding-sdk/components/public/InteractiveQuestion/InteractiveQuestionResult";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { initializeQBRaw } from "metabase/query_builder/actions";
@@ -81,7 +81,7 @@ export const _InteractiveQuestion = ({
 export const InteractiveQuestion =
   withPublicComponentWrapper(_InteractiveQuestion);
 
-const getQuestionParameters = (questionId: CardId) => {
+export const getQuestionParameters = (questionId: CardId) => {
   return {
     location: {
       query: {}, // TODO: add here wrapped parameterValues

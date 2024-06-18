@@ -3,7 +3,10 @@ import { useUnmount } from "react-use";
 import { t } from "ttag";
 
 import type { SdkClickActionPluginsConfig } from "embedding-sdk";
-import { SdkError } from "embedding-sdk/components/private/PublicComponentWrapper";
+import {
+  SdkError,
+  SdkLoader,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
 import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import { useSdkSelector } from "embedding-sdk/store";
@@ -24,7 +27,7 @@ import {
   getQuestion,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { Box, Flex, Group, Loader, Stack } from "metabase/ui";
+import { Box, Flex, Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 
 const returnNull = () => null;
@@ -67,7 +70,7 @@ export const InteractiveQuestionResult = ({
   });
 
   if (isQuestionLoading || isQueryRunning) {
-    return <Loader data-testid="loading-spinner" />;
+    return <SdkLoader />;
   }
 
   if (!question || !queryResults) {
