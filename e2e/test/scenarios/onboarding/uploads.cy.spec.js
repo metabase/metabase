@@ -10,7 +10,7 @@ import {
 } from "e2e/support/helpers";
 
 describeWithSnowplow(
-  "Upload CSV button in Sidebar",
+  "Upload CSVs button in Sidebar",
   { tags: ["@external", "@actions"] },
   () => {
     before(() => {
@@ -47,9 +47,9 @@ describeWithSnowplow(
       it(`${testFile.valid ? "Can" : "Cannot"} upload ${
         testFile.fileName
       } to "Our analytics" using DWH`, () => {
-        // Upload CSV button
+        // Upload CSVs button
         cy.findByTestId("main-navbar-root").within(() => {
-          cy.findByText("Upload CSV", { timeout: 15000 });
+          cy.findByText("Upload CSVs", { timeout: 15000 });
         });
 
         // Upload file

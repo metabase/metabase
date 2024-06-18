@@ -70,9 +70,9 @@ export function UploadCSV({ collection }: IUploadCSVProps): ReactElement {
         <PaddedSidebarLink
           icon="upload"
           onClick={() => uploadInputRef.current?.click()}
-          aria-label={t`Upload CSV`}
+          aria-label={t`Upload CSVs`}
         >
-          {t`Upload CSV`}
+          {t`Upload CSVs`}
         </PaddedSidebarLink>
         <UploadInput ref={uploadInputRef} onChange={handleFileUpload} />
       </UploadTooltip>
