@@ -1,0 +1,25 @@
+version: 1
+config:
+  users:
+    - first_name: First
+      last_name: Person
+      password: metabot1
+      email: first@example.com
+    - first_name: Normal
+      last_name: Person
+      password: metabot1
+      email: normal@example.com
+    - first_name: Admin
+      last_name: Person
+      password: metabot1
+      is_superuser: true
+      email: admin@example.com
+  databases:
+    - name: test-data (Postgres)
+      engine: postgres
+      details:
+        host: localhost
+        port: 5432
+        user: dbuser
+        password: changeme
+        dbname: test-data
