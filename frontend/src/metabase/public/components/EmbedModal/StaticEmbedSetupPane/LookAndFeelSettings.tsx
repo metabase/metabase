@@ -91,13 +91,12 @@ export const LookAndFeelSettings = ({
                   Font
                 </Text>
               }
-              value={
-                displayOptions.font === null ? "null" : displayOptions.font
-              }
+              value={displayOptions.font}
               data={[
                 {
                   label: t`Use instance font`,
-                  value: "null",
+                  // @ts-expect-error Mantine v6 and v7 both expect value to be a string
+                  value: null,
                 },
                 ...availableFonts?.map(font => ({
                   label: font,
@@ -107,7 +106,7 @@ export const LookAndFeelSettings = ({
               onChange={value => {
                 onChangeDisplayOptions({
                   ...displayOptions,
-                  font: value === "null" ? null : value,
+                  font: value,
                 });
               }}
             />
