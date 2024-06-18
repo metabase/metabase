@@ -16,10 +16,11 @@ import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEm
 import { Box } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
-type StaticDashboardProps = {
+export type StaticDashboardProps = {
   dashboardId: DashboardId;
   initialParameterValues?: Query;
   withTitle?: boolean;
+  withCardTitle?: boolean;
   withDownloads?: boolean;
   hiddenParameters?: string[];
 };
@@ -28,6 +29,7 @@ const _StaticDashboard = ({
   dashboardId,
   initialParameterValues: parameterQueryParams = {},
   withTitle: titled = true,
+  withCardTitle = true,
   withDownloads = true,
   hiddenParameters = [],
 }: StaticDashboardProps) => {
@@ -72,6 +74,7 @@ const _StaticDashboard = ({
         isNightMode={isNightMode}
         onNightModeChange={onNightModeChange}
         titled={options.titled}
+        cardTitled={withCardTitle}
         theme={theme}
         isFullscreen={isFullscreen}
         onFullscreenChange={onFullscreenChange}

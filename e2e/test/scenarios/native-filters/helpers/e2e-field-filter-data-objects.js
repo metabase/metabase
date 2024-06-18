@@ -84,7 +84,7 @@ export const DATE_FILTER_SUBTYPES = {
   },
   "Date Filter": {
     value: {
-      timeBucket: "years",
+      timeBucket: "month",
     },
     representativeResult: "Synergistic Steel Chair",
   },

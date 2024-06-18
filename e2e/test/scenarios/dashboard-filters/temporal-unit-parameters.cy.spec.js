@@ -404,6 +404,49 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
   });
 
   describe("parameter settings", () => {
+    it("should be able to set available temporal units", () => {
+      createDashboardWithCard().then(dashboard => visitDashboard(dashboard.id));
+
+      editDashboard();
+      editParameter(parameterDetails.name);
+      dashboardParameterSidebar().findByText("All").click();
+      popover().within(() => {
+        cy.findByLabelText("Select none").click();
+        cy.findByLabelText("Month").click();
+        cy.findByLabelText("Year").click();
+        cy.findByLabelText("Minute").click();
+      });
+      saveDashboard();
+
+      filterWidget().click();
+      popover().within(() => {
+        cy.findByText("Minute").should("not.exist");
+        cy.findByText("Day").should("not.exist");
+        cy.findByText("Month").should("be.visible");
+        cy.findByText("Year").should("be.visible").click();
+      });
+      getDashboardCard().findByText("Created At: Year").should("be.visible");
+    });
+
+    it("should clear the default value if it is no longer within the allowed unit list", () => {
+      createDashboardWithCard().then(dashboard => visitDashboard(dashboard.id));
+
+      cy.log("set the default value");
+      editDashboard();
+      editParameter(parameterDetails.name);
+      dashboardParameterSidebar().findByText("No default").click();
+      popover().findByText("Year").click();
+
+      cy.log("exclude an unrelated temporal unit");
+      dashboardParameterSidebar().findByText("All").click();
+      popover().findByLabelText("Month").click();
+      dashboardParameterSidebar().findByText("No default").should("not.exist");
+
+      cy.log("exclude the temporal unit used for the default value");
+      popover().findByLabelText("Year").click();
+      dashboardParameterSidebar().findByText("No default").should("be.visible");
+    });
+
     it("should be able to set the default value and make it required", () => {
       createDashboardWithCard().then(dashboard =>
         cy.wrap(dashboard.id).as("dashboardId"),

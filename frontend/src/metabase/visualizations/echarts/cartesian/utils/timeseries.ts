@@ -249,10 +249,32 @@ export function getLargestInterval(intervals: TimeSeriesInterval[]) {
   });
 }
 
+// Tests for offsets like +01:15, -09:45
+const OFFSET_PATTERN = /^([+-])(\d{2}):(\d{2})$/;
+
+const tryParseOffsetMinutes = (maybeOffset: string): number | undefined => {
+  const match = maybeOffset.match(OFFSET_PATTERN);
+
+  if (!match) {
+    return undefined;
+  }
+
+  const [, sign, hours, minutes] = match;
+  const offsetSign = sign === "+" ? 1 : -1;
+  const offsetHours = parseInt(hours, 10);
+  const offsetMinutes = parseInt(minutes, 10);
+  const totalOffsetMinutes = (offsetHours * 60 + offsetMinutes) * offsetSign;
+
+  return totalOffsetMinutes;
+};
+
 // We should always have results_timezone, but just in case we fallback to UTC
 export const DEFAULT_TIMEZONE = "Etc/UTC";
 
-export function getTimezone(series: RawSeries, showWarning?: ShowWarning) {
+export function getTimezoneOrOffset(
+  series: RawSeries,
+  showWarning?: ShowWarning,
+): { timezone?: string; offsetMinutes?: number } {
   // Dashboard multiseries cards might have series with different timezones.
   const timezones = Array.from(
     new Set(series.map(s => s.data.results_timezone)),
@@ -268,5 +290,16 @@ export function getTimezone(series: RawSeries, showWarning?: ShowWarning) {
     );
   }
 
-  return results_timezone || DEFAULT_TIMEZONE;
+  const offsetMinutes =
+    results_timezone != null
+      ? tryParseOffsetMinutes(results_timezone)
+      : undefined;
+
+  const timezone =
+    offsetMinutes == null ? results_timezone || DEFAULT_TIMEZONE : undefined;
+
+  return {
+    timezone,
+    offsetMinutes,
+  };
 }

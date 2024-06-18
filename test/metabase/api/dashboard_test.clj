@@ -402,6 +402,25 @@
                             :dashboard_id       dashboard-id}]
           (is (#'api.dashboard/get-dashboard dashboard-id)))))))
 
+(deftest get-dashboard-param-fields-has-target-test
+  (testing "param-fields for fk has target (#44231)"
+    (mt/with-temp
+      [:model/Card          {orders-card-id :id}   {:database_id   (mt/id)
+                                                    :table_id      (mt/id :orders)
+                                                    :dataset_query (mt/mbql-query orders)}
+       :model/Dashboard     {dash-id :id} {:parameters [{:name "__ID__", :slug "id", :id "a", :type :id}]}
+       :model/DashboardCard _             {:card_id            orders-card-id
+                                           :dashboard_id       dash-id
+                                           :parameter_mappings [{:parameter_id "__ID__"
+                                                                 :card_id      orders-card-id
+                                                                 :target       [:dimension (mt/$ids orders $product_id)]}]}]
+      (is (=? {(mt/id :orders :product_id) {:id                 (mt/id :orders :product_id)
+                                            :semantic_type      :type/FK
+                                            :fk_target_field_id (mt/id :products :id)
+                                            :target             {:id (mt/id :products :id)}}}
+              (:param_fields (mt/as-admin
+                              (#'api.dashboard/get-dashboard dash-id))))))))
+
 (deftest last-used-parameter-value-test
   (mt/dataset test-data
     (mt/with-column-remappings [orders.user_id people.name]
@@ -2960,6 +2979,48 @@
                           (mt/user-http-request :rasta :get 200)
                           (chain-filter-test/take-n-values 3)))))))))))
 
+(deftest chain-filter-result-can-have-mixed-of-remapped-and-non-remapped-values-test
+  (testing (str "getting values of a parameter that maps to 2 id fields: "
+                "one with remapped values, one with raw id shouldn't fail #44231")
+   (mt/with-temp
+     [:model/Card {orders-card-id :id}   {:database_id   (mt/id)
+                                          :table_id      (mt/id :orders)
+                                          :dataset_query (mt/mbql-query orders)}
+      :model/Card {products-card-id :id} {:database_id   (mt/id)
+                                          :table_id      (mt/id :products)
+                                          :dataset_query (mt/mbql-query products)}
+      :model/Dashboard {dash-id :id}     {:parameters    [{:id   "__ID__"
+                                                           :name "ID"
+                                                           :type "id"
+                                                           :slug "id"}]}
+      :model/DashboardCard _             {:card_id            orders-card-id
+                                          :dashboard_id       dash-id
+                                          :parameter_mappings [{:parameter_id "__ID__"
+                                                                :card_id      orders-card-id
+                                                                :target       [:dimension (mt/$ids orders $product_id)]}]}
+      :model/DashboardCard _             {:card_id            products-card-id
+                                          :dashboard_id       dash-id
+                                          :parameter_mappings [{:parameter_id "__ID__"
+                                                                :card_id      products-card-id
+                                                                :target       [:dimension (mt/$ids products $id)]}]}]
+     (mt/with-column-remappings [products.id products.title]
+       (is (=? {:values         [[(mt/malli=? pos-int?) "Aerodynamic Bronze Hat"]
+                                 [(mt/malli=? pos-int?) "Aerodynamic Concrete Bench"]
+                                 [(mt/malli=? pos-int?) "Aerodynamic Concrete Lamp"]]
+                :has_more_values false}
+              (chain-filter-test/take-n-values
+               3
+               (mt/user-http-request :rasta :get 200 (chain-filter-values-url dash-id "__ID__")))))))))
+
+(deftest combined-chained-filter-results-test
+  (testing "dedupes and sort by value, then by label if exists"
+    (is (= [[1] [2 "B"] [3] [4 "A"] [5 "C"] [6 "D"]]
+           (#'api.dashboard/combine-chained-fitler-results
+            [{:values [[1] [2] [4]]}
+             {:values [[4 "A"] [5 "C"] [6 "D"]]}
+             {:values [[1] [2] [3]]}
+             {:values [[4 "A"] [2 "B"] [5 "C"]]}])))))
+
 (deftest block-data-should-not-expose-field-values
   (testing "block data perms should not allow access to field values (private#196)"
     (when config/ee-available?
@@ -3298,8 +3359,8 @@
 
 ;; See the commented-out test below which calls this helper, and the TODO on why it's disabled.
 #_(defn- card-fields-from-table-metadata
-  [card-id]
-  (:fields (mt/user-http-request :rasta :get 200 (format "/table/card__%d/query_metadata" card-id))))
+   [card-id]
+   (:fields (mt/user-http-request :rasta :get 200 (format "/table/card__%d/query_metadata" card-id))))
 
 (deftest parameter-values-from-card-test
   (testing "getting values"
@@ -4489,7 +4550,7 @@
       (t2.with-temp/with-temp [:model/Collection {coll-id :id} {:name "A"}
                                :model/Dashboard {dash-id :id} {:name          "My Dashboard"
                                                                :collection_id coll-id}]
-        (is (nil? (can-restore? dash-id :crowberto)))))))
+        (is (false? (can-restore? dash-id :crowberto)))))))
 
 (deftest dependent-metadata-test
   (mt/with-temp
@@ -4578,3 +4639,13 @@
               (update :fields #(map (fn [x] (select-keys x [:id])) %))
               (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
               (update :tables #(map (fn [x] (select-keys x [:id :name])) %)))))))
+
+(deftest dashboard-query-metadata-no-tables-test
+  (testing "Don't throw an error if users doesn't have access to any tables #44043"
+    (let [original-can-read? mi/can-read?]
+      (mt/with-temp [:model/Dashboard dash {}]
+       (with-redefs [mi/can-read? (fn [& args]
+                                    (if (= :model/Table (apply mi/dispatch-on-model args))
+                                      false
+                                      (apply original-can-read? args)))]
+         (is (map? (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id dash))))))))))

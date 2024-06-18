@@ -14,7 +14,7 @@ To fix problems with your Metabase [application database](../installation-and-op
 
 ## Identifying bottlenecks
 
-1. Optional: use Metabase's [auditing tools](../usage-and-performance-tools/audit.md) to look at your Metabase usage stats.\*
+1. Optional: use Metabase's [Usage analytics](../usage-and-performance-tools/usage-analytics.md) to look at your Metabase usage stats.\*
 2. Go to your database's server logs and check whether:
    - Your tables are growing in size,
    - More people are using Metabase to access your database,

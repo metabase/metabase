@@ -29,6 +29,7 @@ import {
   entityPickerModal,
   filterWidget,
   queryBuilderHeader,
+  removeMultiAutocompleteValue,
 } from "e2e/support/helpers";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import {
@@ -1447,7 +1448,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
         cy.button(DASHBOARD_FILTER_TEXT.name).click();
         popover().within(() => {
-          cy.icon("close").click();
+          removeMultiAutocompleteValue(0);
           cy.findByPlaceholderText("Search by Name").type("Dell Adams");
           cy.button("Update filter").click();
         });

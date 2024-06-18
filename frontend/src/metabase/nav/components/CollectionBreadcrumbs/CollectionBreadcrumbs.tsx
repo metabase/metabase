@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 
 import { useToggle } from "metabase/hooks/use-toggle";
-import CollectionBadge from "metabase/questions/components/CollectionBadge";
+import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
 import type {
   Collection,
   CollectionEssentials,
@@ -11,7 +11,7 @@ import type {
 import {
   ExpandButton,
   PathContainer,
-  PathSeparator,
+  BreadcrumbsPathSeparator,
 } from "./CollectionBreadcrumbs.styled";
 import { getCollectionList } from "./utils";
 
@@ -37,16 +37,17 @@ export const CollectionBreadcrumbs = ({
     collection,
   });
 
+  const separator = <BreadcrumbsPathSeparator>/</BreadcrumbsPathSeparator>;
+
   const content =
     parts.length > 1 && !isExpanded ? (
       <>
         <CollectionBadge
           collectionId={parts[0].id}
-          inactiveColor="text-medium"
           isSingleLine
-          onClick={onClick ? () => onClick(parts[0]) : undefined}
+          onClick={onClick ? () => onClick(collection) : undefined}
         />
-        <PathSeparator>/</PathSeparator>
+        {separator}
         <ExpandButton
           small
           borderless
@@ -54,18 +55,17 @@ export const CollectionBreadcrumbs = ({
           onlyIcon
           onClick={toggle}
         />
-        <PathSeparator>/</PathSeparator>
+        {separator}
       </>
     ) : (
       parts.map(collection => (
         <Fragment key={collection.id}>
           <CollectionBadge
             collectionId={collection.id}
-            inactiveColor="text-medium"
             isSingleLine
             onClick={onClick ? () => onClick(collection) : undefined}
           />
-          <PathSeparator>/</PathSeparator>
+          {separator}
         </Fragment>
       ))
     );
@@ -75,7 +75,6 @@ export const CollectionBreadcrumbs = ({
       {content}
       <CollectionBadge
         collectionId={collection.id}
-        inactiveColor="text-medium"
         isSingleLine
         onClick={onClick ? () => onClick(collection) : undefined}
       />

@@ -69,8 +69,7 @@ describe("RelativeDatePicker", () => {
       canUseRelativeOffsets: true,
     });
 
-    await userEvent.click(screen.getByLabelText("Options"));
-    await userEvent.click(await screen.findByText("Starting from…"));
+    await userEvent.click(await screen.findByLabelText("Starting from…"));
     await userEvent.clear(screen.getByLabelText("Starting from interval"));
     await userEvent.type(screen.getByLabelText("Starting from interval"), "20");
     await userEvent.click(screen.getByLabelText("Next"));
@@ -113,8 +112,7 @@ describe("RelativeDatePicker", () => {
       canUseRelativeOffsets: true,
     });
 
-    await userEvent.click(screen.getByLabelText("Options"));
-    await userEvent.click(await screen.findByText("Starting from…"));
+    await userEvent.click(await screen.findByLabelText("Starting from…"));
     await userEvent.click(screen.getByText("Update filter"));
 
     expect(onChange).toHaveBeenCalledWith({
@@ -149,8 +147,7 @@ describe("RelativeDatePicker", () => {
     });
 
     await userEvent.click(screen.getByText("Next"));
-    await userEvent.click(screen.getByLabelText("Options"));
-    await userEvent.click(await screen.findByText("Starting from…"));
+    await userEvent.click(await screen.findByLabelText("Starting from…"));
     await userEvent.click(screen.getByText("Update filter"));
 
     expect(onChange).toHaveBeenCalledWith({

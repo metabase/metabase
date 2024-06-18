@@ -295,9 +295,7 @@
 
 (def FieldValuesList
   "Schema for a valid list of values for a field, in contexts where the field can have a remapped field."
-  [:or
-   [:sequential RemappedFieldValue]
-   [:sequential NonRemappedFieldValue]])
+  [:sequential [:or RemappedFieldValue NonRemappedFieldValue]])
 
 (def FieldValuesResult
   "Schema for a value result of fetching the values for a field, in contexts where the field can have a remapped field."

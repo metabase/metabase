@@ -2381,8 +2381,8 @@
       (let [orig qp.card/process-query-for-card]
         (with-redefs [qp.card/process-query-for-card (fn [card-id export-format & options]
                                                        (apply orig card-id export-format
-                                                              :run (fn [{:keys [constraints]} _]
-                                                                     {:constraints constraints})
+                                                              :make-run (constantly (fn [{:keys [constraints]} _]
+                                                                                      {:constraints constraints}))
                                                               options))]
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
             (is (= {:constraints nil}
@@ -3676,3 +3676,13 @@
                 (update :fields #(map (fn [x] (select-keys x [:id])) %))
                 (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
                 (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))))
+
+(deftest card-query-metadata-no-tables-test
+  (testing "Don't throw an error if users doesn't have access to any tables #44043"
+    (let [original-can-read? mi/can-read?]
+      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:limit 1})}]
+       (with-redefs [mi/can-read? (fn [& args]
+                                    (if (= :model/Table (apply mi/dispatch-on-model args))
+                                      false
+                                      (apply original-can-read? args)))]
+         (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" (:id card))))))))))

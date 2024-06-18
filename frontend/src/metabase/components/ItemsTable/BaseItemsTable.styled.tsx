@@ -10,6 +10,8 @@ import BaseModelDetailLink from "metabase/models/components/ModelDetailLink";
 import type { TextProps } from "metabase/ui";
 import { Text, FixedSizeIcon } from "metabase/ui";
 
+import { RawMaybeLink } from "../Badge/Badge.styled";
+
 import type { ResponsiveProps } from "./utils";
 import { getContainerQuery } from "./utils";
 
@@ -96,15 +98,17 @@ export const ItemButton = styled(Text)<
 
 export const ItemLink = styled(Link)(itemLinkStyle);
 
+export const MaybeItemLink = styled(RawMaybeLink)(itemLinkStyle);
+
 export const ItemNameCell = styled.td`
   padding: 0 !important;
 
-  ${ItemLink}, ${ItemButton} {
+  ${ItemLink}, ${MaybeItemLink}, ${ItemButton} {
     padding: 1em;
   }
 
   &:hover {
-    ${ItemLink}, ${ItemButton} {
+    ${ItemLink}, ${MaybeItemLink}, ${ItemButton} {
       color: var(--mb-color-brand);
     }
 

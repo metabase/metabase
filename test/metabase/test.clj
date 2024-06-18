@@ -162,7 +162,8 @@
   application-database-metadata-provider]
 
  [mw.session
-  with-current-user]
+  with-current-user
+  as-admin]
 
  [perms.test-util
   with-restored-data-perms!

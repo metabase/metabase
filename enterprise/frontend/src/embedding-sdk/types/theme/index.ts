@@ -1,3 +1,7 @@
+import type { CSSProperties } from "react";
+
+import type { ColorName } from "metabase/lib/colors/types";
+
 import type { MetabaseFontFamily } from "../fonts";
 import type { DeepPartial } from "../utils";
 
@@ -78,7 +82,7 @@ export type MetabaseColor = keyof MetabaseColors;
  * Every non-optional properties here must have a default value defined
  * in DEFAULT_METABASE_COMPONENT_THEME at [default-component-theme.ts]
  */
-export interface MetabaseComponentTheme {
+export type MetabaseComponentTheme = {
   dashboard: {
     backgroundColor: string;
 
@@ -133,7 +137,7 @@ export interface MetabaseComponentTheme {
   scalar?: {
     /** The primary numerical value */
     value?: {
-      fontSize?: string;
+      fontSize?: CSSProperties["fontSize"];
       lineHeight?: string;
     };
   };
@@ -152,7 +156,32 @@ export interface MetabaseComponentTheme {
       };
     };
   };
-}
+
+  collectionBrowser: {
+    breadcrumbs: {
+      expandButton: {
+        backgroundColor: ColorCssVariableOrString;
+        hoverBackgroundColor: ColorCssVariableOrString;
+        textColor: ColorCssVariableOrString;
+        hoverTextColor: ColorCssVariableOrString;
+      };
+    };
+    emptyContent: {
+      icon: {
+        width: CSSProperties["width"];
+        height: CSSProperties["width"];
+      };
+      title: {
+        fontSize: CSSProperties["fontSize"];
+      };
+      subtitle: {
+        fontSize: CSSProperties["fontSize"];
+      };
+    };
+  };
+};
+
+type ColorCssVariableOrString = `var(--mb-color-${ColorName})` | string;
 
 export type ChartColor =
   | string

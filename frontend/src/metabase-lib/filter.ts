@@ -1,7 +1,7 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import * as ML from "cljs/metabase.lib.js";
-import type { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn, TemporalUnit } from "metabase-types/api";
 
 import {
   isBoolean,
@@ -36,7 +36,6 @@ import type {
   BooleanFilterOperatorName,
   BooleanFilterParts,
   Bucket,
-  BucketName,
   ColumnMetadata,
   CoordinateFilterOperatorName,
   CoordinateFilterParts,
@@ -565,11 +564,11 @@ function findTemporalBucket(
   query: Query,
   stageIndex: number,
   column: ColumnMetadata,
-  bucketName: BucketName,
+  temporalUnit: TemporalUnit,
 ): Bucket | undefined {
   return availableTemporalBuckets(query, stageIndex, column).find(bucket => {
     const bucketInfo = displayInfo(query, stageIndex, bucket);
-    return bucketInfo.shortName === bucketName;
+    return bucketInfo.shortName === temporalUnit;
   });
 }
 
@@ -854,9 +853,9 @@ function serializeExcludeDatePart(
 
 function deserializeExcludeDatePart(
   value: ExpressionArg | ExpressionParts,
-  bucketName: BucketName,
+  temporalUnit: TemporalUnit,
 ): number | null {
-  if (bucketName === "hour-of-day") {
+  if (temporalUnit === "hour-of-day") {
     return isNumberLiteral(value) ? value : null;
   }
 
@@ -869,7 +868,7 @@ function deserializeExcludeDatePart(
     return null;
   }
 
-  switch (bucketName) {
+  switch (temporalUnit) {
     case "day-of-week":
       return date.isoWeekday();
     case "month-of-year":

@@ -116,7 +116,7 @@ export function MultiAutocomplete({
     if (newSearchValue !== "") {
       const values = parseValues(newSearchValue);
       if (values.length >= 1) {
-        const value = values[0] ?? newSearchValue;
+        const value = values[0];
         if (isValid(value)) {
           setSelectedValues(unique([...lastSelectedValues, value]));
         }
@@ -191,7 +191,7 @@ function getSelectItem(item: string | SelectItem): SelectItem {
   }
 
   if (!item.label) {
-    return { value: item.value, label: item.value };
+    return { value: item.value, label: item.value?.toString() ?? "" };
   }
 
   return item;
