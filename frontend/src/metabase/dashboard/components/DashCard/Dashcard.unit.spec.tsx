@@ -88,6 +88,7 @@ function setup({
       onUpdateVisualizationSettings={jest.fn()}
       showClickBehaviorSidebar={jest.fn()}
       onChangeLocation={jest.fn()}
+      downloadsEnabled={true}
     />,
     {
       storeInitialState: {

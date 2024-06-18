@@ -40,6 +40,7 @@ import type { DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
+import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
 
 const mapStateToProps = (state: State) => {
   return {
@@ -258,6 +259,8 @@ const PublicOrEmbeddedDashboardInner = ({
     dashboard,
   ]);
 
+  const downloadsEnabled = PLUGIN_RESOURCE_DOWNLOADS.areDownloadsEnabled();
+
   return (
     <PublicOrEmbeddedDashboardView
       dashboard={dashboard}
@@ -284,6 +287,7 @@ const PublicOrEmbeddedDashboardInner = ({
       navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
       slowCards={slowCards}
       cardTitled={cardTitled}
+      downloadsEnabled={downloadsEnabled}
     />
   );
 };
