@@ -15,10 +15,6 @@
 (doto :model/UserParameterValue
   (derive :metabase/model))
 
-;; place the value in a map so that the json-in and json-out properly handle string values.
-;; for example, the value "string" is already valid json, so json-out logs an error, since it
-;; tries to parse "string" as a token (not a JSON string).
-
 (defn- json-out
   "A version of `metabase.models.interface/json-out` that does not log a parse error.
   This is otherwise the same. It returns the string as expected in this case."
@@ -29,7 +25,6 @@
       (catch Throwable _e
         s))
     s))
-
 
 (t2/deftransforms :model/UserParameterValue
   {:value {:in  mi/json-in
