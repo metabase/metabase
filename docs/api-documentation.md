@@ -25,7 +25,7 @@ Create keys to authenticate programmatic requests to your Metabase. See [API key
 
 ## API endpoints
 
-_\* indicates endpoints used for features available on [paid plans](https://www.metabase.com/pricing)._
+_\* indicates endpoints used for features available on [Pro and Enterprise](https://www.metabase.com/pricing)._
 
 - [Action](api/action.md)
 - [Activity](api/activity.md)
