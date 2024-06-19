@@ -540,7 +540,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       getDashboardCard().findByText("Created At: Year").should("be.visible");
     });
 
-    it("should not allow to use temporal unit parameters with 'custom destination -> question' click behavior", () => {
+    it("should not allow to use temporal unit parameter values in click behaviors", () => {
       createNativeQuestion(nativeQuestionWithTextParameterDetails);
       createDashboardWithMappedQuestion().then(dashboard =>
         visitDashboard(dashboard.id),
