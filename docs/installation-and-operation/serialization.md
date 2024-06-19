@@ -469,6 +469,8 @@ There are two endpoints:
 - `POST /api/ee/serialization/export`
 - `POST /api/ee/serialization/import`
 
+> We use `POST`, not `GET`, for the `/export` endpoint. While the export operation is repeatable, it's long and intensive, so we use `POST` to prevent accidental exports.
+
 For now, these endpoints are synchronous. If the serialization process takes too long, the request can time out. In this case, we suggest using the CLI commands.
 
 See [How export works](#how-export-works), [How import works](#how-import-works), and [Serialization best practices](#serialization-best-practices) for general information about serialization.
@@ -612,6 +614,8 @@ curl \
 ```
 
 substituting `YOUR_API_KEY` with your API key and `your-metabase-url` with the URL of your Metabase instance.
+
+> We use `POST`, not `GET`, for the `/export` endpoint.
 
 This command will download the files as a GZIP-compressed Tar file named `metabase_data.tgz`.
 
