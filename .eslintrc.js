@@ -62,7 +62,7 @@ module.exports = {
         warnOnUnassignedImports: false,
       },
     ],
-    "no-console": [2, { allow: ["warn", "error", "errorBuffer"] }],
+    "no-console": [1, { allow: ["warn", "error", "errorBuffer"] }],
     "react/no-is-mounted": 2,
     "react/prefer-es6-class": 2,
     "react/display-name": 1,
