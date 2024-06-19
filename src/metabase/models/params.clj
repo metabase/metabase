@@ -214,15 +214,17 @@
     (set (for [{:keys [card] :as dashcard} dashcards
                param    (:parameter_mappings dashcard)
                :let     [field-clause (param-target->field-clause (:target param) (:card dashcard))]
-               :when    field-clause]
-           (or
-             ;; Get the field id from the field-clause if it contains it. This is the common case
-             ;; for mbql queries.
-             (lib.util.match/match-one field-clause [:field (id :guard integer?) _] id)
-             ;; Attempt to get the field clause from the model metadata corresponding to the field.
-             ;; This is the common case for native queries in which mappings from original columns
-             ;; have been performed using model metadata.
-             (:id (qp.util/field->field-info field-clause (:result_metadata card))))))
+               :when    field-clause
+               :let     [field-id (or
+                                    ;; Get the field id from the field-clause if it contains it. This is the common case
+                                    ;; for mbql queries.
+                                    (lib.util.match/match-one field-clause [:field (id :guard integer?) _] id)
+                                    ;; Attempt to get the field clause from the model metadata corresponding to the field.
+                                    ;; This is the common case for native queries in which mappings from original columns
+                                    ;; have been performed using model metadata.
+                                    (:id (qp.util/field->field-info field-clause (:result_metadata card))))]
+               :when field-id]
+           field-id))
     (cards->card-param-field-ids (map :card dashcards))))
 
 (defn get-linked-field-ids
