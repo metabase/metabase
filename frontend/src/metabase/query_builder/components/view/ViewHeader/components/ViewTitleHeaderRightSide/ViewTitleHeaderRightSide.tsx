@@ -22,7 +22,7 @@ import {
   ToggleNativeQueryPreview,
 } from "metabase/query_builder/components/view/ViewHeader/components";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
-import { Box, Tooltip } from "metabase/ui";
+import { Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
@@ -229,24 +229,22 @@ export function ViewTitleHeaderRightSide({
           disabled={!isSaveDisabled}
           position="left"
         >
-          <Box>
-            <SaveButton
-              data-testid="qb-save-button"
-              px="md"
-              py="sm"
-              variant="subtle"
-              aria-disabled={isSaveDisabled || undefined}
-              data-disabled={isSaveDisabled || undefined}
-              onClick={event => {
-                event.preventDefault();
-                if (!isSaveDisabled) {
-                  onOpenModal("save");
-                }
-              }}
-            >
-              {t`Save`}
-            </SaveButton>
-          </Box>
+          <SaveButton
+            data-testid="qb-save-button"
+            px="md"
+            py="sm"
+            variant="subtle"
+            aria-disabled={isSaveDisabled || undefined}
+            data-disabled={isSaveDisabled || undefined}
+            onClick={event => {
+              event.preventDefault();
+              if (!isSaveDisabled) {
+                onOpenModal("save");
+              }
+            }}
+          >
+            {t`Save`}
+          </SaveButton>
         </Tooltip>
       )}
     </ViewHeaderActionPanel>

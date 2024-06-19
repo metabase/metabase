@@ -63,6 +63,10 @@ export const BackButtonContainer = styled.span`
 export const SaveButton = styled(MantineButton)<ButtonProps>`
   border-radius: 8px;
 
+  &[data-disabled="true"] {
+    pointer-events: all;
+  }
+
   :hover {
     background-color: var(--mb-color-bg-light);
   }
