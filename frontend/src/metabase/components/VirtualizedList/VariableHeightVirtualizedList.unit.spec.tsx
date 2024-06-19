@@ -9,7 +9,7 @@ describe("VariableHeightVirtualizedList", () => {
     mockGetBoundingClientRect();
   });
 
-  afterAll(() => {
+  afterEach(() => {
     jest.restoreAllMocks();
   });
 

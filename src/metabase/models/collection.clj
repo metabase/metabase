@@ -1588,10 +1588,10 @@
             :let [parent-id (coll-id->parent-id (:id coll))
                   archived-directly? (:archived_directly coll)
                   parent-archived? (get parent-id->archived? parent-id false)]]
-        (cond-> coll
-          (:archived coll) (assoc :can_restore (and archived-directly?
-                                                    (not parent-archived?)
-                                                    (perms/set-has-full-permissions-for-set?
+        (assoc coll :can_restore (boolean (and (:archived coll)
+                                               archived-directly?
+                                               (not parent-archived?)
+                                               (perms/set-has-full-permissions-for-set?
                                                      @api/*current-user-permissions-set*
                                                      (perms-for-archiving coll)))))))))
 
@@ -1635,8 +1635,8 @@
   [items]
   (when (seq items)
     (for [item items]
-      (assoc item :can_delete (and
-                               (not (or (= :model/Collection (t2/model item))
-                                        (collection.root/is-root-collection? item)))
-                               (:archived item)
-                               (mi/can-write? item))))))
+      (assoc item :can_delete (boolean (and
+                                        (not (or (= :model/Collection (t2/model item))
+                                                 (collection.root/is-root-collection? item)))
+                                        (:archived item)
+                                        (mi/can-write? item)))))))

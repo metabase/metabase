@@ -694,9 +694,10 @@ export async function entityCompatibleQuery(
 ) {
   const request = entityQuery === EMPTY_ENTITY_QUERY ? undefined : entityQuery;
   const action = dispatch(endpoint.initiate(request, { forceRefetch }));
+
   try {
     return await action.unwrap();
   } finally {
-    action.unsubscribe();
+    action.unsubscribe?.();
   }
 }

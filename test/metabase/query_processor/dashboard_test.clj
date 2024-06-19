@@ -21,8 +21,9 @@
            :dashboard-id dashboard-id
            :card-id      card-id
            :dashcard-id  dashcard-id
-           :run          (fn run [query info]
-                           (qp/process-query (assoc query :info info)))
+           :make-run     (constantly
+                           (fn run [query info]
+                             (qp/process-query (assoc query :info info))))
            options)))
 
 (deftest resolve-parameters-validation-test

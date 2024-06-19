@@ -1,7 +1,7 @@
 import { assocIn } from "icepick";
 import _ from "underscore";
 
-import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_QUESTION_ID,
@@ -9,6 +9,7 @@ import {
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
   ADMIN_PERSONAL_COLLECTION_ID,
+  ALL_USERS_GROUP_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
@@ -25,13 +26,15 @@ import {
   pickEntity,
   entityPickerModal,
   openCollectionMenu,
+  createQuestion,
+  entityPickerModalItem,
 } from "e2e/support/helpers";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
 const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, FEEDBACK_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > collection defaults", () => {
   beforeEach(() => {
@@ -278,6 +281,74 @@ describe("scenarios > collection defaults", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+    });
+
+    it("should handle moving a question when you don't have access to entier collection path (metabase#44316", () => {
+      cy.createCollection({
+        name: "Collection A",
+      }).then(({ body: collectionA }) => {
+        cy.createCollection({
+          name: "Collection B",
+          parent_id: collectionA.id,
+        }).then(({ body: collectionB }) => {
+          cy.createCollection({
+            name: "Collection C",
+            parent_id: collectionB.id,
+          }).then(({ body: collectionC }) => {
+            cy.createCollection({
+              name: "Collection D",
+              parent_id: collectionC.id,
+            }).then(({ body: collectionD }) => {
+              cy.createCollection({
+                name: "Collection E",
+                parent_id: collectionD.id,
+              }).then(({ body: collectionE }) => {
+                cy.updatePermissionsGraph({
+                  [ALL_USERS_GROUP_ID]: {
+                    [SAMPLE_DB_ID]: {
+                      "view-data": "unrestricted",
+                      "create-queries": "query-builder-and-native",
+                    },
+                  },
+                });
+                cy.updateCollectionGraph({
+                  [ALL_USERS_GROUP_ID]: {
+                    root: "none",
+                    [collectionA.id]: "none",
+                    [collectionB.id]: "write",
+                    [collectionC.id]: "none",
+                    [collectionD.id]: "none",
+                    [collectionE.id]: "write",
+                  },
+                });
+                cy.signIn("none");
+                createQuestion(
+                  {
+                    name: "Foo Question",
+                    query: {
+                      "source-table": FEEDBACK_ID,
+                    },
+                    collection_id: collectionE.id,
+                  },
+                  {
+                    visitQuestion: true,
+                  },
+                );
+              });
+            });
+          });
+        });
+      });
+
+      cy.findByTestId("qb-header").icon("ellipsis").click();
+      popover().findByText("Move").click();
+      entityPickerModalItem(1, "Collection B").should("exist");
+      entityPickerModalItem(2, "Collection E").should("exist");
+
+      entityPickerModal().should(
+        "not.contain.text",
+        "You don't have permissions to do that.",
+      );
     });
 
     it("should show list of collection items even if one question has invalid parameters (metabase#25543)", () => {
