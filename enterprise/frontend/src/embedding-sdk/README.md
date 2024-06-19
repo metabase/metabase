@@ -1,4 +1,4 @@
-> **NOTE**: This SDK is actively being developed. We don't recommend using it in production yet!
+> **NOTE**: This SDK is actively being developed. You can expect some changes to the API. The SDK currently only works with a specific version of Metabase.
 
 # Metabase Embedding SDK for React
 

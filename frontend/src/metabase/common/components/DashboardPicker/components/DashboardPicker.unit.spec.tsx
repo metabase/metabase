@@ -60,6 +60,7 @@ const collectionTree: NestedCollectionItem[] = [
         name: "Collection 4",
         model: "collection",
         location: "/",
+        effective_location: "/",
         can_write: true,
         descendants: [
           {
@@ -79,6 +80,7 @@ const collectionTree: NestedCollectionItem[] = [
               },
             ],
             location: "/4/",
+            effective_location: "/4/",
             can_write: true,
             is_personal: false,
           },
@@ -90,6 +92,7 @@ const collectionTree: NestedCollectionItem[] = [
         is_personal: false,
         name: "Collection 2",
         location: "/",
+        effective_location: "/",
         can_write: true,
         descendants: [],
       },
@@ -100,6 +103,7 @@ const collectionTree: NestedCollectionItem[] = [
     id: 1,
     model: "collection",
     location: "/",
+    effective_location: "/",
     is_personal: true,
     can_write: true,
     descendants: [
@@ -107,6 +111,7 @@ const collectionTree: NestedCollectionItem[] = [
         id: 5,
         model: "collection",
         location: "/1/",
+        effective_location: "/1/",
         name: "personal sub_collection",
         is_personal: true,
         can_write: true,

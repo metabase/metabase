@@ -40,7 +40,8 @@
               col-names (when-not opts (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))]
           ;; when pivot options exist, we want to save them to access later when processing the complete set of results for export.
           (when opts
-            (reset! pivot-options opts))
+            (reset! pivot-options (merge {:pivot-rows []
+                                          :pivot-cols []} opts)))
           (vreset! ordered-formatters
                    (if format-rows?
                      (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)

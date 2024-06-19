@@ -39,6 +39,18 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
         hoverBackgroundColor: "var(--mb-color-brand)",
       },
     },
+    emptyContent: {
+      icon: {
+        width: "117",
+        height: "94",
+      },
+      title: {
+        fontSize: "1.5rem",
+      },
+      subtitle: {
+        fontSize: "1rem",
+      },
+    },
   },
   dashboard: {
     backgroundColor: "var(--mb-color-bg-white)",

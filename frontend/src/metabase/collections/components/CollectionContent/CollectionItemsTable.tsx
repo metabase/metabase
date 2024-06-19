@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { useCallback, useEffect, useState } from "react";
+import { type ComponentType, useCallback, useEffect, useState } from "react";
 
 import {
   ALL_MODELS,
@@ -69,7 +69,22 @@ export type CollectionItemsTableProps = {
   toggleItem: (item: CollectionItem) => void;
   onClick: (item: CollectionItem) => void;
   showActionMenu: boolean;
+  EmptyContentComponent?: ComponentType<{
+    collection?: Collection;
+  }>;
 }>;
+
+const DefaultEmptyContentComponent = ({
+  collection,
+}: {
+  collection?: Collection;
+}) => {
+  return (
+    <CollectionEmptyContent>
+      <CollectionEmptyState collection={collection} />
+    </CollectionEmptyContent>
+  );
+};
 
 export const CollectionItemsTable = ({
   collectionId,
@@ -91,6 +106,7 @@ export const CollectionItemsTable = ({
   models = ALL_MODELS,
   onClick,
   showActionMenu = true,
+  EmptyContentComponent = DefaultEmptyContentComponent,
 }: CollectionItemsTableProps) => {
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
 
@@ -168,11 +184,7 @@ export const CollectionItemsTable = ({
           !loading && !hasPinnedItems && unpinnedItems.length === 0;
 
         if (isEmpty && !loadingUnpinnedItems) {
-          return (
-            <CollectionEmptyContent>
-              <CollectionEmptyState collection={collection} />
-            </CollectionEmptyContent>
-          );
+          return <EmptyContentComponent collection={collection} />;
         }
 
         return (
