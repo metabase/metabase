@@ -469,7 +469,7 @@ There are two endpoints:
 - `POST /api/ee/serialization/export`
 - `POST /api/ee/serialization/import`
 
-> We use `POST`, not `GET`, for the `/export` endpoint. While the export operation is repeatable, it's long and intensive, so we use `POST` to prevent accidental exports.
+> We use `POST`, not `GET`, for the `/export` endpoint. The export operation does not modify your Metabase, but it's long and intensive, so we use `POST` to prevent accidental exports.
 
 For now, these endpoints are synchronous. If the serialization process takes too long, the request can time out. In this case, we suggest using the CLI commands.
 
