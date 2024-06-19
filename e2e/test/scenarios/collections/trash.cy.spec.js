@@ -111,23 +111,18 @@ describe("scenarios > collections > trash", () => {
 
   it("should be able to trash & restore dashboards/collections/questions on entity page and from parent collection", () => {
     cy.log("create test resources");
-    createCollection({ name: "Collection A" });
-    createDashboard({ name: "Dashboard A" });
+    cy.log("Bookmark the resources to test metabase#44224");
+    createCollection({ name: "Collection A" }).then(collection => {
+      cy.request("POST", `/api/bookmark/collection/${collection.id}`);
+    });
+    createDashboard({ name: "Dashboard A" }).then(dashboard => {
+      cy.request("POST", `/api/bookmark/dashboard/${dashboard.id}`);
+    });
     createNativeQuestion({
       name: "Question A",
       native: { query: "select 1;" },
-    });
-
-    cy.log("Bookmark the resources to test metabase#44224");
-
-    cy.get("@collectionId").then(collectionId => {
-      cy.get("@dashboardId").then(dashboardId => {
-        cy.get("@questionId").then(questionId => {
-          cy.request("POST", `/api/bookmark/card/${questionId}`);
-          cy.request("POST", `/api/bookmark/collection/${collectionId}`);
-          cy.request("POST", `/api/bookmark/dashboard/${dashboardId}`);
-        });
-      });
+    }).then(question => {
+      cy.request("POST", `/api/bookmark/card/${question.id}`);
     });
 
     visitRootCollection();
@@ -149,12 +144,15 @@ describe("scenarios > collections > trash", () => {
 
     toggleEllipsisMenuFor(/Collection A/);
     popover().findByText("Restore").click();
+    ensureBookmarkVisible(/Collection A/);
 
     toggleEllipsisMenuFor("Dashboard A");
     popover().findByText("Restore").click();
+    ensureBookmarkVisible("Dashboard A");
 
     toggleEllipsisMenuFor("Question A");
     popover().findByText("Restore").click();
+    ensureBookmarkVisible("Question A");
 
     cy.log("should be able to archive entities from their own views");
     visitRootCollection();
@@ -170,6 +168,7 @@ describe("scenarios > collections > trash", () => {
       cy.findByText("Move to trash").click();
     });
     ensureCanRestoreFromPage("Collection A");
+    ensureBookmarkVisible("Collection A");
 
     // dashboard
     collectionTable().within(() => {
@@ -186,6 +185,7 @@ describe("scenarios > collections > trash", () => {
       cy.findByText("Dashboard A").should("not.exist");
     });
     ensureCanRestoreFromPage("Dashboard A");
+    ensureBookmarkVisible("Dashboard A");
 
     // question
     collectionTable().within(() => {
@@ -202,6 +202,7 @@ describe("scenarios > collections > trash", () => {
       cy.findByText("Question A").should("not.exist");
     });
     ensureCanRestoreFromPage("Question A");
+    ensureBookmarkVisible("Question A");
   });
 
   it("should not show restore option if entity is within nested in an archived collection list", () => {
@@ -653,7 +654,6 @@ function createCollection(collectionInfo, archive) {
   return cy
     .createCollection(collectionInfo)
     .then(({ body: collection }) => {
-      cy.wrap(collection.id).as("collectionId");
       return Promise.all([
         collection,
         archive && cy.archiveCollection(collection.id),
@@ -663,26 +663,24 @@ function createCollection(collectionInfo, archive) {
 }
 
 function createQuestion(questionInfo, archive) {
-  return _createQuestion(questionInfo, { wrapId: true }).then(
-    ({ body: question }) =>
-      Promise.all([question, archive && archiveQuestion(question.id)]).then(
-        ([question]) => question,
-      ),
+  return _createQuestion(questionInfo).then(({ body: question }) =>
+    Promise.all([question, archive && archiveQuestion(question.id)]).then(
+      ([question]) => question,
+    ),
   );
 }
 
 function createNativeQuestion(questionInfo, archive) {
-  return _createNativeQuestion(questionInfo, { wrapId: true }).then(
-    ({ body: question }) =>
-      Promise.all([question, archive && archiveQuestion(question.id)]).then(
-        ([question]) => question,
-      ),
+  return _createNativeQuestion(questionInfo).then(({ body: question }) =>
+    Promise.all([question, archive && archiveQuestion(question.id)]).then(
+      ([question]) => question,
+    ),
   );
 }
 
 function createDashboard(dashboardInfo, archive) {
   return cy
-    .createDashboard(dashboardInfo, { wrapId: true })
+    .createDashboard(dashboardInfo)
     .then(({ body: dashboard }) =>
       Promise.all([dashboard, archive && cy.archiveDashboard(dashboard.id)]),
     )
@@ -720,4 +718,10 @@ function selectItem(name) {
   cy.findByText(name)
     .closest("tr")
     .within(() => cy.findByRole("checkbox").click());
+}
+
+function ensureBookmarkVisible(bookmark) {
+  cy.findByRole("tab", { name: /bookmarks/i })
+    .findByText(bookmark)
+    .should("be.visible");
 }
