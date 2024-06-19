@@ -417,10 +417,10 @@
    (let [account (tx/db-test-env-var-or-throw :snowflake :account)
          warehouse (tx/db-test-env-var-or-throw :snowflake :warehouse)
          ;; User with default role PULIC. To access the db custom role has to be used.
-         user (tx/db-test-env-var-or-throw :snowflake :custom-rsa-role-test-user)
-         private-key-value (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-private-key-value)
+         user (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-custom-user)
+         private-key-value (tx/db-test-env-var-or-throw :snowflake :pk-private-key)
          db (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
-         database {:name    "Snowflake RSA test DB"
+         database {:name    "Snowflake RSA test DB custom"
                    :engine  :snowflake
                    ;; Details as collected from `api handler POST / database` are used.
                    :details {:role                nil
@@ -451,8 +451,8 @@
                                                       (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-role)))
                       :details))
         ;; As the request is asynchronous, wait for sync to complete.
-       (Thread/sleep 5000))
-     (let [[db :as dbs] (t2/select :model/Database :name "Snowflake RSA test DB")
+       (Thread/sleep 7000))
+     (let [[db :as dbs] (t2/select :model/Database :name "Snowflake RSA test DB custom")
            [table :as tables] (t2/select :model/Table :db_id (:id db))
            fields (t2/select :model/Field :table_id (:id table))]
        (testing "Created database is correctly synced"
@@ -468,7 +468,8 @@
        ;; Cleanup
        (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
        (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
-       (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))))))
+       (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
+       (u/ignore-exceptions (t2/delete! :model/FieldValues :field_id [:in (map :id fields)]))))))
 
 (deftest ^:synchronized pk-auth-default-role-e2e-test
   (mt/test-driver
@@ -476,10 +477,10 @@
    (let [account (tx/db-test-env-var-or-throw :snowflake :account)
          warehouse (tx/db-test-env-var-or-throw :snowflake :warehouse)
          ;; User with default role PULIC. To access the db custom role has to be used.
-         user (tx/db-test-env-var-or-throw :snowflake :default-rsa-role-test-user)
-         private-key-value (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-private-key-value)
+         user (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-default-user)
+         private-key-value (tx/db-test-env-var-or-throw :snowflake :pk-private-key)
          db (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
-         database {:name    "Snowflake RSA test DB"
+         database {:name    "Snowflake RSA test DB default"
                    :engine  :snowflake
                    ;; Details as collected from `api handler POST / database` are used.
                    :details {:role                nil
@@ -499,8 +500,8 @@
        (is (contains? (mt/user-http-request :crowberto :post 200 "database" database)
                       :details))
         ;; As the request is asynchronous, wait for sync to complete.
-       (Thread/sleep 5000))
-     (let [[db :as dbs] (t2/select :model/Database :name "Snowflake RSA test DB")
+       (Thread/sleep 7000))
+     (let [[db :as dbs] (t2/select :model/Database :name "Snowflake RSA test DB default")
            [table :as tables] (t2/select :model/Table :db_id (:id db))
            fields (t2/select :model/Field :table_id (:id table))]
        (testing "Created database is correctly synced"
@@ -516,7 +517,8 @@
        ;; Cleanup
        (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
        (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
-       (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))))))
+       (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
+       (u/ignore-exceptions (t2/delete! :model/FieldValues :field_id [:in (map :id fields)]))))))
 
 (deftest ^:parallel replacement-snippet-date-param-test
   (mt/test-driver :snowflake
