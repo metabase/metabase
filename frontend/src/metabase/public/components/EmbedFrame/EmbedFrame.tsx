@@ -12,7 +12,6 @@ import {
 } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
 import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import {
   ParametersList,
@@ -208,7 +207,6 @@ export const EmbedFrame = ({
         {hasVisibleParameters && (
           <ParametersWidgetContainer
             embedFrameTheme={theme}
-            background={checkNotNull(background)}
             hasScroll={hasInnerScroll}
             isSticky={isParameterPanelSticky}
             data-testid="dashboard-parameters-widget-container"
