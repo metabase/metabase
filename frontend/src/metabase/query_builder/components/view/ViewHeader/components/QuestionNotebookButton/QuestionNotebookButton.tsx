@@ -29,7 +29,11 @@ export function QuestionNotebookButton({
   ...props
 }: QuestionNotebookButtonProps) {
   return (
-    <Tooltip label={isShowingNotebook ? t`Hide editor` : t`Show editor`}>
+    <Tooltip
+      label={isShowingNotebook ? t`Hide editor` : t`Show editor`}
+      data-placement="top"
+      position="top"
+    >
       <QuestionNotebookActionIcon
         isShowingNotebook={isShowingNotebook}
         color="brand"
