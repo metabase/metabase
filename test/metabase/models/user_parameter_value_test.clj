@@ -15,6 +15,10 @@
                                   :value))
                          ([v] (upv/upsert! user-id param-name v)))]
     (try
+      ;; UserParameterValue stores `:user_id`, `:parameter_id`, and `:value`
+      ;; The value is looked up per user and param-id, and is stored as a string in the app db.
+      ;; When it's selected, we try to parse it as json, since the parameter values can be strings and lists,
+      ;; and perhaps other values like keys. We just test that these different types are succesfully added/selected
       (doseq [[test-str value-in value-out value-update value-update-out] [["string" "A" "A" "B" "B"]
                                                                            ["key" :A "A" :B "B"]
                                                                            ["vectors"
