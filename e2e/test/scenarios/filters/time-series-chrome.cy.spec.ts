@@ -137,4 +137,127 @@ describe("time-series chrome filter widget", () => {
       });
     });
   });
+
+  describe("'Include this' switch", () => {
+    beforeEach(() => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+            filter: [
+              "time-interval",
+              [
+                "field",
+                PRODUCTS.CREATED_AT,
+                {
+                  "base-type": "type/DateTime",
+                },
+              ],
+              30,
+              "year",
+              {
+                "include-current": true,
+              },
+            ],
+          },
+          type: "query",
+        },
+      });
+
+      cy.findByTestId("filter-pill").should(
+        "have.text",
+        "Created At is in the next 30 years",
+      );
+      cy.findByTestId("timeseries-filter-button")
+        .should("have.text", "Next 30 Years")
+        .click();
+    });
+
+    it("should preserve the state of 'Include current' switch when changing direction or the interval", () => {
+      cy.findByTestId("datetime-filter-picker").within(() => {
+        cy.findByLabelText("Include this year").should(
+          "have.attr",
+          "aria-checked",
+          "true",
+        );
+      });
+
+      cy.log("Change the interval");
+      cy.findByTestId("datetime-filter-picker")
+        .findByDisplayValue("years")
+        .click();
+      cy.findByRole("listbox")
+        .findByRole("option", { name: "quarters" })
+        .click();
+
+      cy.findByTestId("datetime-filter-picker").within(() => {
+        cy.findByDisplayValue("quarters").should("be.visible");
+        cy.findByLabelText("Include this quarter").should(
+          "have.attr",
+          "aria-checked",
+          "true",
+        );
+
+        // Toggle off
+        cy.findByText("Include this quarter").click();
+      });
+
+      cy.log("Change the direction");
+      cy.findByTestId("datetime-filter-picker")
+        .findByDisplayValue("Next")
+        .click();
+      cy.findByRole("listbox")
+        .findByRole("option", { name: "Previous" })
+        .click();
+
+      cy.findByTestId("datetime-filter-picker").within(() => {
+        cy.findByDisplayValue("Previous").should("be.visible");
+        cy.findByLabelText("Include this quarter").should(
+          "have.attr",
+          "aria-checked",
+          "false",
+        );
+      });
+    });
+
+    it("should reset the 'Include current' switch state when navigating away from the relative date filter", () => {
+      cy.findByTestId("datetime-filter-picker").within(() => {
+        cy.findByLabelText("Include this year").should(
+          "have.attr",
+          "aria-checked",
+          "true",
+        );
+        cy.findByDisplayValue("Next").click();
+      });
+
+      cy.findByRole("listbox")
+        .findByRole("option", { name: "Current" })
+        .click();
+
+      cy.findByTestId("datetime-filter-picker")
+        .findByLabelText("Include today")
+        .should("not.exist");
+
+      cy.findByTestId("datetime-filter-picker")
+        .findByDisplayValue("Current")
+        .click();
+      cy.findByRole("listbox")
+        .findByRole("option", { name: "Previous" })
+        .click();
+
+      cy.findByTestId("datetime-filter-picker").within(() => {
+        cy.findByDisplayValue("Previous").should("be.visible");
+        cy.findByLabelText("Include this year").should(
+          "have.attr",
+          "aria-checked",
+          "false",
+        );
+      });
+    });
+  });
 });
