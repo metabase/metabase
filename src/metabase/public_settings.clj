@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [environ.core :as env]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.config :as config]
@@ -257,8 +258,11 @@
   (deferred-tru "Allow using a saved question or Model as the source for other queries?")
   :type       :boolean
   :default    true
-  :visibility :authenticated
+  :visibility :internal
   :export?    true
+  :getter     (fn enable-nested-queries-getter []
+                ;; only false if explicitly set `false` by the environment
+                (not= "false" (u/lower-case-en (env/env :mb-enable-nested-queries))))
   :audit      :getter)
 
 (defsetting enable-query-caching
