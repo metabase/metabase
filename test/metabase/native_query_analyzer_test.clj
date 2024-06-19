@@ -33,7 +33,7 @@
 (deftest ^:parallel field-matching-test
   (mt/with-dynamic-redefs [query-analyzer/active? (constantly true)]
     (let [q (fn [sql]
-              (#'query-analyzer/field-ids-for-sql (mt/native-query {:query sql})))]
+              (#'query-analyzer/field-ids-for-native (mt/native-query {:query sql})))]
       (testing "simple query matches"
         (is (= {:direct #{(mt/id :venues :id)} :indirect nil}
                (q "select id from venues"))))

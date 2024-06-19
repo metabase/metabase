@@ -24,7 +24,7 @@
   [query]
   (case (lib/normalized-query-type query)
     :native     (try
-                  (query-analyzer/field-ids-for-sql query)
+                  (query-analyzer/field-ids-for-native query)
                   (catch Exception e
                     (log/error e "Error parsing SQL" query)))
     :query      {:direct (mbql.u/referenced-field-ids query)}
@@ -57,7 +57,7 @@
                                                 {:id-fn      :field_id
                                                  :to-compare #(dissoc % :id :card_id :field_id)})]
             (when (seq to-delete)
-              ;; this delete seems to break transaction (implicit commit or something) on MySQL, and this `diff`
+              ;; this deletion seems to break transaction (implicit commit or something) on MySQL, and this `diff`
               ;; algo drops its frequency by a lot - which should help with transactions affecting each other a
               ;; lot. Parallel tests in `metabase.models.query.permissions-test` were breaking when delete was
               ;; executed unconditionally on every query change.

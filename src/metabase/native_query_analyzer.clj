@@ -15,6 +15,7 @@
    [clojure.string :as str]
    [macaw.core :as macaw]
    [metabase.config :as config]
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.native-query-analyzer.impl :as nqa.impl]
    [metabase.native-query-analyzer.parameter-substitution :as nqa.sub]
@@ -138,24 +139,32 @@
                                                     [:= :f.active true]
                                                     (into [:or] (map table-query tables))]}))))
 
-(defn field-ids-for-sql
+(defn- field-ids-for-sql
   "Returns a `{:direct #{...} :indirect #{...}}` map with field IDs that (may) be referenced in the given card's
   query. Errs on the side of optimism: i.e., it may return fields that are *not* in the query, and is unlikely to fail
   to return fields that are in the query.
 
   Direct references are columns that are named in the query; indirect ones are from wildcards. If a field could be
   both direct and indirect, it will *only* show up in the `:direct` set."
+  [driver query]
+  (let [db-id        (:database query)
+        macaw-opts   (nqa.impl/macaw-options driver)
+        sql-string   (:query (nqa.sub/replace-tags query))
+        parsed-query (macaw/query->components (macaw/parsed-query sql-string) macaw-opts)
+        direct-ids   (direct-field-ids-for-query parsed-query db-id)
+        indirect-ids (set/difference
+                      (indirect-field-ids-for-query parsed-query db-id)
+                      direct-ids)]
+    {:direct   direct-ids
+     :indirect indirect-ids}))
+
+(defn field-ids-for-native
+  "Returns a `{:direct #{...} :indirect #{...}}` map with field IDs that (may) be referenced in the given card's
+  query. Currently only support SQL-based dialects."
   [query]
-  (when (and (active?)
-             (:native query))
-    (let [db-id        (:database query)
-          sql-string   (:query (nqa.sub/replace-tags query))
-          driver       (driver.u/database->driver db-id)
-          macaw-opts   (nqa.impl/macaw-options driver)
-          parsed-query (macaw/query->components (macaw/parsed-query sql-string) macaw-opts)
-          direct-ids   (direct-field-ids-for-query parsed-query db-id)
-          indirect-ids (set/difference
-                        (indirect-field-ids-for-query parsed-query db-id)
-                        direct-ids)]
-      {:direct   direct-ids
-       :indirect indirect-ids})))
+  (when (and (active?) (:native query))
+    (let [driver (driver.u/database->driver (:database query))]
+      ;; TODO this approach is not extensible, we need to move to multimethods.
+      ;; See https://github.com/metabase/metabase/issues/43516 for long term solution.
+      (when (isa? driver/hierarchy driver :sql)
+        (field-ids-for-sql driver query)))))
