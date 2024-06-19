@@ -35,7 +35,7 @@ export const ArchiveBarContent = styled.div`
   // the same as the ProfileLinkContainer
   // in MainNavbar
   height: 48px;
-  padding: 8px 4rem 7px;
+  //padding: 8px 4rem 7px;
 `;
 
 export const ArchiveBarText = styled.div`
