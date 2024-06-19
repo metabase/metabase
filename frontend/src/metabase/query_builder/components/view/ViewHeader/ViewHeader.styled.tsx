@@ -74,7 +74,9 @@ export const SavedQuestionHeaderButtonContainer = styled.div<{
   right: ${props => (props.isModelOrMetric ? "0px" : "0.38rem")};
 `;
 
-export const HeaderButton = styled(Button)<{ active: boolean }>`
+export const HeaderButton = styled(Button)<{
+  active: boolean;
+}>`
   font-size: 0.875rem;
   background-color: ${({ active, color = getDefaultColor() }) =>
     active ? color : "transparent"};
@@ -125,7 +127,9 @@ export const AdHocLeftSideRoot = styled.div`
   }
 `;
 
-export const SavedQuestionLeftSideRoot = styled.div<{ showSubHeader: boolean }>`
+export const SavedQuestionLeftSideRoot = styled.div<{
+  showSubHeader: boolean;
+}>`
   ${SavedQuestionHeaderButtonContainer} {
     transition: all 400ms ease;
     position: relative;
