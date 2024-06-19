@@ -14,8 +14,13 @@
 (doto :model/UserParameterValue
   (derive :metabase/model))
 
+;; place the value in a map so that the json-in and json-out properly handle string values.
+;; for example, the value "string" is already valid json, so json-out logs an error, since it
+;; tries to parse "string" as a token (not a JSON string).
+
 (t2/deftransforms :model/UserParameterValue
-  {:value mi/transform-json})
+  {:value {:in  (comp mi/json-in (fn [obj] {:value obj}))
+           :out (comp :value mi/json-out-with-keywordization)}})
 
 (mu/defn upsert!
   "Upsert or delete parameter value set by the user."
