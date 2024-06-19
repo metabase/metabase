@@ -114,7 +114,7 @@ export const LookAndFeelSettings = ({
             )}.`}</Text>
           )}
 
-          <DisplayOptionSection title={t`Background`}>
+          <DisplayOptionSection title={t`Theme`}>
             <SegmentedControl
               value={displayOptions.theme ?? undefined}
               // `data` type is required to be mutable, but THEME_OPTIONS is const.
