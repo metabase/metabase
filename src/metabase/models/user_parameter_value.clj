@@ -22,10 +22,10 @@
 (defn- json-out
   "A version of `metabase.models.interface/json-out` that does not log a parse error.
   This is otherwise the same. It returns the string as expected in this case."
-  [s keywordize-keys?]
+  [s]
   (if (string? s)
     (try
-      (json/parse-string s keywordize-keys?)
+      (json/parse-string s true)
       (catch Throwable _e
         s))
     s))
