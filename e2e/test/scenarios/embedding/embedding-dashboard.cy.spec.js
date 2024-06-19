@@ -640,13 +640,13 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
         });
 
       // We're getting an input element which is 0x0 in size
-      cy.findByLabelText("Transparent").click({ force: true });
+      cy.findByLabelText("Dark").click({ force: true });
       cy.wait(1000);
       getIframeBody()
         .findByTestId("embed-frame")
         .invoke("attr", "data-embed-theme")
         .then(embedTheme => {
-          expect(embedTheme).to.eq("transparent");
+          expect(embedTheme).to.eq("night");
         });
 
       cy.get("@previewEmbedSpy").should("have.callCount", 1);

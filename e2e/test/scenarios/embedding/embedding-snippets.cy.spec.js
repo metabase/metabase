@@ -78,7 +78,7 @@ features.forEach(feature => {
         ).should("not.exist");
 
         // set transparent background metabase#23477
-        cy.findByText("Transparent").click();
+        cy.findByText("Dashboard background").click();
         cy.get(".ace_content")
           .first()
           .invoke("text")
@@ -87,7 +87,7 @@ features.forEach(feature => {
             getEmbeddingJsCode({
               type: "dashboard",
               id: ORDERS_DASHBOARD_ID,
-              theme: "transparent",
+              background: false,
             }),
           );
       });
@@ -115,20 +115,6 @@ features.forEach(feature => {
 
         cy.findByRole("tab", { name: "Look and Feel" }).click();
 
-        // set transparent background metabase#23477
-        cy.findByText("Transparent").click();
-        cy.get(".ace_content")
-          .first()
-          .invoke("text")
-          .should(
-            "match",
-            getEmbeddingJsCode({
-              type: "question",
-              id: ORDERS_QUESTION_ID,
-              theme: "transparent",
-            }),
-          );
-
         // hide download button for pro/enterprise users metabase#23477
         if (feature === "all") {
           cy.findByText(
@@ -143,7 +129,6 @@ features.forEach(feature => {
               getEmbeddingJsCode({
                 type: "question",
                 id: ORDERS_QUESTION_ID,
-                theme: "transparent",
                 hideDownloadButton: true,
               }),
             );

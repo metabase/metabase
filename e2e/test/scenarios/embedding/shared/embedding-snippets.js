@@ -1,4 +1,11 @@
-export const getEmbeddingJsCode = ({ type, id, hideDownloadButton, theme }) => {
+export const getEmbeddingJsCode = ({
+  type,
+  id,
+  hideDownloadButton,
+  theme,
+  // Match the default value in https://github.com/metabase/metabase/blob/39db790a78d2f4fca4354acee2bd4885bdd398d0/frontend/src/metabase/dashboard/hooks/use-embed-display-options.ts#L10
+  background = true,
+}) => {
   return new RegExp(
     `// you will need to install via 'npm install jsonwebtoken' or in your package.json
 
@@ -14,7 +21,9 @@ var payload = {
 var token = jwt.sign(payload, METABASE_SECRET_KEY);
 
 var iframeUrl = METABASE_SITE_URL + "/embed/${type}/" + token +
-  "#${getThemeParameter(theme)}bordered=true&titled=true${getParameter({
+  "#${getThemeParameter(theme)}${getBackgroundParameter(
+      background,
+    )}bordered=true&titled=true${getParameter({
       hideDownloadButton,
     })}";`
       .split("\n")
@@ -35,6 +44,18 @@ export const IFRAME_CODE = `iframe(
   .split("\n")
   .join("");
 
+function getThemeParameter(theme) {
+  return theme ? `theme=${theme}&` : "";
+}
+
+/**
+ *
+ * @param {boolean} background
+ */
+function getBackgroundParameter(background) {
+  return !background ? "background=false&" : "";
+}
+
 function getParameter({ hideDownloadButton }) {
   let parameter = "";
 
@@ -43,8 +64,4 @@ function getParameter({ hideDownloadButton }) {
   }
 
   return parameter;
-}
-
-function getThemeParameter(theme) {
-  return theme ? `theme=${theme}&` : "";
 }
