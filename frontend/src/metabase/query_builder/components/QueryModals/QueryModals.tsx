@@ -1,5 +1,5 @@
-import { Component } from "react";
-import { connect } from "react-redux";
+import { Component, type ComponentType } from "react";
+import { connect, type ConnectedProps } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -40,7 +40,7 @@ const mapDispatchToProps = {
   setQuestionCollection: Questions.actions.setCollection,
 };
 
-const mapStateToProps = (state: State, props: QueryModalsProps) => ({
+const mapStateToProps = (state: State, props: OwnProps) => ({
   questionWithParameters: getQuestionWithParameters(state) as Question,
   initialCollectionId: Collections.selectors.getInitialCollectionId(
     state,
@@ -48,18 +48,19 @@ const mapStateToProps = (state: State, props: QueryModalsProps) => ({
   ),
 });
 
-interface QueryModalsProps {
+const connector = connect(mapStateToProps, mapDispatchToProps);
+type ReduxProps = ConnectedProps<typeof connector>;
+
+type OwnProps = {
   questionAlerts: Alert[];
   user: User;
   modal: ModalType;
   modalContext: number;
   question: Question;
-  initialCollectionId: number;
   updateQuestion: (question: Question, config?: UpdateQuestionOpts) => void;
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
   setUIControls: (opts: Partial<QueryBuilderUIControls>) => void;
   originalQuestion: Question;
-  questionWithParameters: Question;
   card: Card;
   onCreate: (question: Question) => Promise<void>;
   onSave: (
@@ -69,12 +70,9 @@ interface QueryModalsProps {
   onCloseModal: () => void;
   onOpenModal: (modal: ModalType) => void;
   onChangeLocation: (location: string) => void;
-  setQuestionCollection: (
-    { id }: Pick<Card, "id">,
-    collection: { id: CollectionId },
-    opts: Record<string, unknown>,
-  ) => void;
-}
+};
+
+type QueryModalsProps = ReduxProps & OwnProps;
 
 class QueryModals extends Component<QueryModalsProps> {
   showAlertsAfterQuestionSaved = () => {
@@ -342,4 +340,4 @@ class QueryModals extends Component<QueryModalsProps> {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(QueryModals);
+export default connector(QueryModals) as ComponentType<OwnProps>;
