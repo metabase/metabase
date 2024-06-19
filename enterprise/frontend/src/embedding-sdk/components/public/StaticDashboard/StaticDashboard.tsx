@@ -69,6 +69,7 @@ const _StaticDashboard = ({
         parameterQueryParams={parameterQueryParams}
         hideDownloadButton={options.hideDownloadButton}
         hideParameters={options.hideParameters}
+        background={options.background}
         titled={options.titled}
         cardTitled={withCardTitle}
         theme={theme}
