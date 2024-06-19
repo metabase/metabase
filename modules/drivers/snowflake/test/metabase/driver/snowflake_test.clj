@@ -418,7 +418,7 @@
          warehouse (tx/db-test-env-var-or-throw :snowflake :warehouse)
          ;; User with default role PULIC. To access the db custom role has to be used.
          user (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-custom-user)
-         private-key-value (tx/db-test-env-var-or-throw :snowflake :pk-private-key)
+         private-key-value (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
          db (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
          database {:name    "Snowflake RSA test DB custom"
                    :engine  :snowflake
@@ -478,7 +478,7 @@
          warehouse (tx/db-test-env-var-or-throw :snowflake :warehouse)
          ;; User with default role PULIC. To access the db custom role has to be used.
          user (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-default-user)
-         private-key-value (tx/db-test-env-var-or-throw :snowflake :pk-private-key)
+         private-key-value (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
          db (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
          database {:name    "Snowflake RSA test DB default"
                    :engine  :snowflake
