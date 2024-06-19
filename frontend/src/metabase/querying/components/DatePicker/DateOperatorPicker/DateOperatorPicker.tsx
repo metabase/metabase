@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Group, Stack, Flex, Switch } from "metabase/ui";
+import { Group, Stack, Switch } from "metabase/ui";
 
 import { SimpleRelativeDatePicker } from "../RelativeDatePicker";
 import {
@@ -51,17 +51,15 @@ export function DateOperatorPicker({
     };
 
     return (
-      <Flex>
-        <Switch
-          aria-checked={includeCurrent}
-          checked={includeCurrent}
-          data-testid="include-current-interval-option"
-          label={t`Include ${getIncludeCurrentLabel(value.unit)}`}
-          labelPosition="right"
-          onChange={handleIncludeCurrentSwitch}
-          size="sm"
-        />
-      </Flex>
+      <Switch
+        aria-checked={includeCurrent}
+        checked={includeCurrent}
+        data-testid="include-current-interval-option"
+        label={t`Include ${getIncludeCurrentLabel(value.unit)}`}
+        labelPosition="right"
+        onChange={handleIncludeCurrentSwitch}
+        size="sm"
+      />
     );
   };
 
