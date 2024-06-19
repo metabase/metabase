@@ -20,8 +20,9 @@ import type {
   DatasetEndpointName,
   SegmentEndpointName,
   TableEndpointName,
+  TableEntries,
 } from "./types";
-import { zipEntitySources } from "./utils";
+import { zip } from "./utils";
 
 const getDatabaseTableEntries = (
   state: ApiState,
@@ -85,58 +86,81 @@ const getSegmentTableEntries = (
 
 const getFromListDatabaseSchemaTables = createSelector(
   getApiState,
-  (state): Table[] => {
+  (state): TableEntries[] => {
     return getDatabaseTableEntries(state, "listDatabaseSchemaTables").flatMap(
       entry => {
         const selector = databaseApi.endpoints.listDatabaseSchemaTables.select(
           entry.originalArgs,
         );
-        const { data } = selector(state);
-        return data ?? [];
+        const { data, fulfilledTimeStamp } = selector(state);
+
+        return {
+          entities: data ?? [],
+          fulfilledTimeStamp,
+        };
       },
     );
   },
 );
 
-const getFromListTables = createSelector(getApiState, (state): Table[] => {
-  return getTableEntries(state, "listTables").flatMap(entry => {
-    const selector = tableApi.endpoints.listTables.select(entry.originalArgs);
-    const { data } = selector(state);
-    return data ?? [];
-  });
-});
+const getFromListTables = createSelector(
+  getApiState,
+  (state): TableEntries[] => {
+    return getTableEntries(state, "listTables").flatMap(entry => {
+      const selector = tableApi.endpoints.listTables.select(entry.originalArgs);
+      const { data, fulfilledTimeStamp } = selector(state);
 
-const getFromGetTable = createSelector(getApiState, (state): Table[] => {
+      return {
+        entities: data ?? [],
+        fulfilledTimeStamp,
+      };
+    });
+  },
+);
+
+const getFromGetTable = createSelector(getApiState, (state): TableEntries[] => {
   return getTableEntries(state, "getTable").flatMap(entry => {
     const selector = tableApi.endpoints.getTable.select(entry.originalArgs);
-    const { data } = selector(state);
-    return data ? [data] : [];
+    const { data, fulfilledTimeStamp } = selector(state);
+
+    return {
+      entities: data ? [data] : [],
+      fulfilledTimeStamp,
+    };
   });
 });
 
 const getFromGetTableQueryMetadata = createSelector(
   getApiState,
-  (state): Table[] => {
+  (state): TableEntries[] => {
     return getTableEntries(state, "getTableQueryMetadata").flatMap(entry => {
       const selector = tableApi.endpoints.getTableQueryMetadata.select(
         entry.originalArgs,
       );
-      const { data } = selector(state);
-      return data ?? [];
+      const { data, fulfilledTimeStamp } = selector(state);
+
+      return {
+        entities: data ? [data] : [],
+        fulfilledTimeStamp,
+      };
     });
   },
 );
 
 const getFromGetAdhocQueryMetadata = createSelector(
   getApiState,
-  (state): Table[] => {
+  (state): TableEntries[] => {
     return getDatasetTableEntries(state, "getAdhocQueryMetadata").flatMap(
       entry => {
         const selector = datasetApi.endpoints.getAdhocQueryMetadata.select(
           entry.originalArgs,
         );
-        const { data } = selector(state);
-        return data?.tables ?? [];
+        const { data, fulfilledTimeStamp } = selector(state);
+
+        return {
+          entities: data?.tables ?? [],
+          fulfilledTimeStamp,
+        };
       },
     );
   },
@@ -144,20 +168,24 @@ const getFromGetAdhocQueryMetadata = createSelector(
 
 const getFromGetCardQueryMetadata = createSelector(
   getApiState,
-  (state): Table[] => {
+  (state): TableEntries[] => {
     return getCardTableEntries(state, "getCardQueryMetadata").flatMap(entry => {
       const selector = cardApi.endpoints.getCardQueryMetadata.select(
         entry.originalArgs,
       );
-      const { data } = selector(state);
-      return data?.tables ?? [];
+      const { data, fulfilledTimeStamp } = selector(state);
+
+      return {
+        entities: data?.tables ?? [],
+        fulfilledTimeStamp,
+      };
     });
   },
 );
 
 const getFromGetXrayDashboardQueryMetadata = createSelector(
   getApiState,
-  (state): Table[] => {
+  (state): TableEntries[] => {
     return getAutomagicDashboardTableEntries(
       state,
       "getXrayDashboardQueryMetadata",
@@ -166,49 +194,73 @@ const getFromGetXrayDashboardQueryMetadata = createSelector(
         automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata.select(
           entry.originalArgs,
         );
-      const { data } = selector(state);
-      return data?.tables ?? [];
+      const { data, fulfilledTimeStamp } = selector(state);
+
+      return {
+        entities: data?.tables ?? [],
+        fulfilledTimeStamp,
+      };
     });
   },
 );
 
 const getFromGetDashboardQueryMetadata = createSelector(
   getApiState,
-  (state): Table[] => {
+  (state): TableEntries[] => {
     return getDashboardTableEntries(state, "getDashboardQueryMetadata").flatMap(
       entry => {
         const selector =
           dashboardApi.endpoints.getDashboardQueryMetadata.select(
             entry.originalArgs,
           );
-        const { data } = selector(state);
-        return data?.tables ?? [];
+        const { data, fulfilledTimeStamp } = selector(state);
+
+        return {
+          entities: data?.tables ?? [],
+          fulfilledTimeStamp,
+        };
       },
     );
   },
 );
 
-const getFromListSegments = createSelector(getApiState, (state): Table[] => {
-  return getSegmentTableEntries(state, "listSegments").flatMap(entry => {
-    const selector = segmentApi.endpoints.listSegments.select(
-      entry.originalArgs,
-    );
-    const { data } = selector(state);
-    return data
-      ? data
-          .map(segment => segment.table)
-          .filter((table): table is Table => table != null)
-      : [];
-  });
-});
+const getFromListSegments = createSelector(
+  getApiState,
+  (state): TableEntries[] => {
+    return getSegmentTableEntries(state, "listSegments").flatMap(entry => {
+      const selector = segmentApi.endpoints.listSegments.select(
+        entry.originalArgs,
+      );
+      const { data, fulfilledTimeStamp } = selector(state);
 
-const getFromGetSegment = createSelector(getApiState, (state): Table[] => {
-  return getSegmentTableEntries(state, "getSegment").flatMap(entry => {
-    const selector = segmentApi.endpoints.getSegment.select(entry.originalArgs);
-    const { data } = selector(state);
-    return data?.table ? [data.table] : [];
-  });
-});
+      return {
+        entities: data
+          ? data
+              .map(segment => segment.table)
+              .filter((table): table is Table => table != null)
+          : [],
+        fulfilledTimeStamp,
+      };
+    });
+  },
+);
+
+const getFromGetSegment = createSelector(
+  getApiState,
+  (state): TableEntries[] => {
+    return getSegmentTableEntries(state, "getSegment").flatMap(entry => {
+      const selector = segmentApi.endpoints.getSegment.select(
+        entry.originalArgs,
+      );
+      const { data, fulfilledTimeStamp } = selector(state);
+
+      return {
+        entities: data?.table ? [data.table] : [],
+        fulfilledTimeStamp,
+      };
+    });
+  },
+);
 
 export const getApiTables = createSelector(
   [
@@ -223,5 +275,5 @@ export const getApiTables = createSelector(
     getFromListSegments, // TODO: remove cross-reference once RTK segments are mapped in this directory as well
     getFromGetSegment, // TODO: remove cross-reference once RTK segments are mapped in this directory as well
   ],
-  zipEntitySources,
+  zip,
 );
