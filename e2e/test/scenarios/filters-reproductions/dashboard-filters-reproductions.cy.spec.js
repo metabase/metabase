@@ -2,39 +2,39 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  ADMIN_PERSONAL_COLLECTION_ID,
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
-  ADMIN_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
-  updateDashboardCards,
-  visitDashboard,
-  filterWidget,
+  addOrUpdateDashboardCard,
+  appBar,
+  assertQueryBuilderRowCount,
+  commandPalette,
+  commandPaletteSearch,
+  createNativeQuestion,
+  createQuestion,
+  dashboardParametersContainer,
   editDashboard,
-  setFilter,
+  filterWidget,
+  getDashboardCard,
+  goToTab,
+  multiAutocompleteInput,
+  navigationSidebar,
+  openNavigationSidebar,
+  openQuestionsSidebar,
+  popover,
+  restore,
   saveDashboard,
   selectDashboardFilter,
+  setFilter,
   sidebar,
-  commandPaletteSearch,
-  commandPalette,
-  addOrUpdateDashboardCard,
   undoToast,
-  getDashboardCard,
-  openNavigationSidebar,
-  appBar,
-  dashboardParametersContainer,
-  navigationSidebar,
-  visitPublicDashboard,
-  goToTab,
-  openQuestionsSidebar,
+  updateDashboardCards,
+  visitDashboard,
   visitEmbeddedPage,
-  createQuestion,
-  multiAutocompleteInput,
-  assertQueryBuilderRowCount,
-  createNativeQuestion,
+  visitPublicDashboard,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -42,8 +42,8 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
-  setQuarterAndYear,
   setAdHocFilter,
+  setQuarterAndYear,
 } from "../native-filters/helpers/e2e-date-filter-helpers";
 
 const {
@@ -2586,11 +2586,17 @@ describe("issue 43799", () => {
   });
 });
 
-describe.skip("issue 44288", () => {
+describe("issue 44288", () => {
+  const questionDetails = {
+    name: "SQL question",
+    type: "question",
+    query: { "source-table": PRODUCTS_ID, limit: 10 },
+  };
+
   const modelDetails = {
     name: "SQL model",
     type: "model",
-    native: { query: "SELECT * FROM PRODUCTS" },
+    native: { query: "SELECT * FROM PRODUCTS LIMIT 10" },
   };
 
   const parameterDetails = {
@@ -2609,48 +2615,89 @@ describe.skip("issue 44288", () => {
     },
   };
 
-  function mapFilter() {
+  function getDashcardDetails(dashboard, question, model) {
+    return {
+      dashboard_id: dashboard.id,
+      cards: [
+        {
+          card_id: question.id,
+          parameter_mappings: [
+            {
+              card_id: question.id,
+              parameter_id: parameterDetails.id,
+              target: [
+                "dimension",
+                ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+              ],
+            },
+          ],
+        },
+        {
+          card_id: model.id,
+          parameter_mappings: [
+            {
+              card_id: model.id,
+              parameter_id: parameterDetails.id,
+              target: [
+                "dimension",
+                ["field", "CATEGORY", { "base-type": "type/Text" }],
+              ],
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  function verifyMapping() {
     cy.findByTestId("edit-dashboard-parameters-widget-container")
       .findByText(parameterDetails.name)
       .click();
-    selectDashboardFilter(getDashboardCard(), "CATEGORY");
+    getDashboardCard(0).within(() => {
+      cy.findByText(/Category/i).should("be.visible");
+    });
+    getDashboardCard(1).within(() => {
+      cy.findByText(/Category/i).should("not.exist");
+      cy.findByText(/Models are data sources/).should("be.visible");
+    });
   }
 
   function verifyFilter() {
     filterWidget().click();
     popover().within(() => {
-      cy.findByPlaceholderText("Enter some text").type("Gadget");
+      cy.findByText("Gadget").click();
       cy.button("Add filter").click();
     });
-    getDashboardCard().within(() => {
-      cy.findAllByText("Gadget").should("have.length.above", 1);
+    getDashboardCard(0).within(() => {
+      cy.findAllByText("Gadget").should("have.length.gte", 1);
       cy.findByText("Doohickey").should("not.exist");
-      cy.findByText("Gizmo").should("not.exist");
-      cy.findByText("Widget").should("not.exist");
+    });
+    getDashboardCard(1).within(() => {
+      cy.findAllByText("Gadget").should("have.length.gte", 1);
+      cy.findAllByText("Doohickey").should("have.length.gte", 1);
     });
   }
 
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    createNativeQuestion(modelDetails).then(({ body: card }) => {
-      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
-        updateDashboardCards({
-          dashboard_id: dashboard.id,
-          cards: [{ card_id: card.id }],
+    createQuestion(questionDetails).then(({ body: question }) => {
+      createNativeQuestion(modelDetails).then(({ body: model }) => {
+        cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+          updateDashboardCards(getDashcardDetails(dashboard, question, model));
+          cy.wrap(dashboard.id).as("dashboardId");
         });
-        cy.wrap(dashboard.id).as("dashboardId");
       });
     });
     cy.signOut();
   });
 
-  it("should allow filtering a SQL model in a dashboard (metabase#44288)", () => {
+  it("should ignore parameter mappings to a native model in a dashboard (metabase#44288)", () => {
     cy.log("regular dashboards");
     cy.signInAsNormalUser();
     visitDashboard("@dashboardId");
     editDashboard();
-    mapFilter();
+    verifyMapping();
     saveDashboard();
     verifyFilter();
     cy.signOut();
