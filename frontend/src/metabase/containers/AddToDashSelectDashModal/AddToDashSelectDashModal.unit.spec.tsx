@@ -63,6 +63,7 @@ const COLLECTION = createMockCollection({
   can_write: true,
   is_personal: false,
   location: "/",
+  effective_location: "/",
 });
 
 const SUBCOLLECTION = createMockCollection({
@@ -71,6 +72,7 @@ const SUBCOLLECTION = createMockCollection({
   can_write: true,
   is_personal: false,
   location: `/${COLLECTION.id}/`,
+  effective_location: `/${COLLECTION.id}/`,
 });
 
 const PERSONAL_COLLECTION = createMockCollection({
@@ -80,6 +82,7 @@ const PERSONAL_COLLECTION = createMockCollection({
   can_write: true,
   is_personal: true,
   location: "/",
+  effective_location: "/",
 });
 
 const PERSONAL_SUBCOLLECTION = createMockCollection({
@@ -88,6 +91,7 @@ const PERSONAL_SUBCOLLECTION = createMockCollection({
   can_write: true,
   is_personal: true,
   location: `/${PERSONAL_COLLECTION.id}/`,
+  effective_location: `/${PERSONAL_COLLECTION.id}/`,
 });
 
 const ROOT_COLLECTION = createMockCollection({

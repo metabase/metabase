@@ -120,3 +120,26 @@ export type ParameterQueryObject = {
   target: ParameterTarget;
   value: ParameterValueOrArray;
 };
+
+export type NormalizedParameter = {
+  id: ParameterId;
+  name: string;
+  slug: string;
+  type: string;
+  target?: ParameterTarget;
+  options?: ParameterOptions;
+  values_query_type?: ValuesQueryType;
+  values_source_type?: ValuesSourceType;
+  values_source_config?: ValuesSourceConfig;
+};
+
+export type GetParameterValuesRequest = {
+  parameter: NormalizedParameter;
+  field_ids: number[];
+};
+
+export type SearchParameterValuesRequest = {
+  parameter: Parameter;
+  field_ids: number[];
+  query: string;
+};

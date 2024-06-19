@@ -55,6 +55,7 @@
    [clojure.test]
    [dev.debug-qp :as debug-qp]
    [dev.explain :as dev.explain]
+   [dev.migrate :as dev.migrate]
    [dev.model-tracking :as model-tracking]
    [hashp.core :as hashp]
    [honey.sql :as sql]
@@ -101,6 +102,9 @@
   pprint-sql]
  [dev.explain
   explain-query]
+ [dev.migrate
+  migrate!
+  rollback!]
  [model-tracking
   track!
   untrack!
@@ -257,14 +261,6 @@
       (catch InterruptedException e
         (a/>!! canceled-chan :cancel)
         (throw e)))))
-
-(defn migrate!
-  "Run migrations for the Metabase application database. Possible directions are `:up` (default), `:force`, `:down`, and
-  `:release-locks`. When migrating `:down` pass along a version to migrate to (44+)."
-  ([]
-   (migrate! :up))
-  ([direction & [version]]
-   (mdb/migrate! (mdb/data-source) direction version)))
 
 (methodical/defmethod t2.connection/do-with-connection :model/Database
   "Support running arbitrary queries against data warehouse DBs for easy REPL debugging. Only works for SQL+JDBC drivers
