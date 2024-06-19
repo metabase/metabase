@@ -632,7 +632,7 @@ describe("scenarios > question > custom column", () => {
     popover().within(() => {
       cy.findByText("MiscDate").click();
       cy.findByText("Relative dates…").click();
-      cy.findByText("Past").click();
+      cy.findByText("Previous").click();
       cy.findByDisplayValue("days").click();
     });
     cy.findByRole("listbox").findByText("years").click();
@@ -824,7 +824,7 @@ describe("scenarios > question > custom column > data type", () => {
       cy.findByText("DoB").click();
       cy.findByPlaceholderText("Enter a number").should("not.exist");
       cy.findByText("Relative dates…").click();
-      cy.findByText("Past").click();
+      cy.findByText("Previous").click();
       cy.findByDisplayValue("days").should("be.visible");
     });
   });
@@ -844,7 +844,7 @@ describe("scenarios > question > custom column > data type", () => {
       cy.findByPlaceholderText("Enter a number").should("not.exist");
 
       cy.findByText("Relative dates…").click();
-      cy.findByText("Past").click();
+      cy.findByText("Previous").click();
       cy.findByDisplayValue("days").should("be.visible");
     });
   });
@@ -863,7 +863,7 @@ describe("scenarios > question > custom column > data type", () => {
       cy.findByText("MiscDate").click();
       cy.findByPlaceholderText("Enter a number").should("not.exist");
       cy.findByText("Relative dates…").click();
-      cy.findByText("Past").click();
+      cy.findByText("Previous").click();
       cy.findByDisplayValue("days").should("be.visible");
     });
   });
