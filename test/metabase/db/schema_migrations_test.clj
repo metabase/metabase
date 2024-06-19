@@ -2307,7 +2307,7 @@
                                                                          :col                    i
                                                                          :size_x                 1
                                                                          :size_y                 1}))))
-            _recent-views (t2/insert-returning-pks! :model/RecentViews
+            _recent-views (t2/insert-returning-pks! :model/ViewLog
                                                     [{:user_id user-id
                                                       :model "dashboard"
                                                       :model_id dashboard-id
@@ -2318,7 +2318,7 @@
                  (str (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)))))
         (testing "If the value from `recent_views` is more recent, that'll be used instead"
           (migrate! :down 50)
-          (t2/insert! :model/RecentViews
+          (t2/insert! :model/ViewLog
                       [{:user_id user-id
                         :model "dashboard"
                         :model_id dashboard-id

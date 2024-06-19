@@ -8030,10 +8030,10 @@ databaseChangeLog:
                    SELECT
                      model_id AS dashboard_id,
                      MAX(timestamp) AS latest_view
-                   FROM recent_views
+                   FROM view_log
                    WHERE model = 'dashboard'
                    GROUP BY model_id
-              ) AS recent_views ON recent_views.dashboard_id = report_dashboard.id
+              ) AS view_log ON view_log.dashboard_id = report_dashboard.id
               LEFT JOIN (
                    SELECT
                      report_dashboardcard.dashboard_id AS dashboard_id,
@@ -8044,7 +8044,7 @@ databaseChangeLog:
                    GROUP BY report_dashboardcard.dashboard_id
               ) AS last_card_used ON last_card_used.dashboard_id = report_dashboard.id
               SET last_viewed_at = COALESCE(
-                recent_views.latest_view,
+                view_log.latest_view,
                 last_card_used.last_card_used_at,
                 NOW()
               );
@@ -8055,9 +8055,9 @@ databaseChangeLog:
               SET last_viewed_at = COALESCE(GREATEST(
                 (
                   SELECT MAX(timestamp)
-                  FROM recent_views
-                  WHERE report_dashboard.id = recent_views.model_id
-                    AND recent_views.model = 'dashboard'
+                  FROM view_log
+                  WHERE report_dashboard.id = model_id
+                    AND model = 'dashboard'
                 ),
                 (
                    SELECT
@@ -8071,17 +8071,17 @@ databaseChangeLog:
         - sql:
             dbms: postgresql
             sql: >-
-              WITH dashboard_last_viewed_at AS (
-                  SELECT recent_views.model_id AS dashboard_id,
+              WITH from_view_log AS (
+                  SELECT model_id AS dashboard_id,
                          MAX(timestamp) AS last_viewed_at
-                  FROM recent_views
-                  WHERE recent_views.model = 'dashboard'
-                  GROUP BY recent_views.model_id
+                  FROM view_log
+                  WHERE model = 'dashboard'
+                  GROUP BY model_id
               )
               UPDATE report_dashboard
-              SET last_viewed_at = dashboard_last_viewed_at.last_viewed_at
-              FROM dashboard_last_viewed_at
-              WHERE dashboard_last_viewed_at.dashboard_id = report_dashboard.id;
+              SET last_viewed_at = from_view_log.last_viewed_at
+              FROM from_view_log
+              WHERE from_view_log.dashboard_id = report_dashboard.id;
 
               WITH card_last_viewed_at AS (
                    SELECT
