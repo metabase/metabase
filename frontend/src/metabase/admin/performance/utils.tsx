@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { memoize } from "underscore";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
@@ -22,6 +23,9 @@ import type {
 
 import { defaultMinDurationMs, rootId } from "./constants/simple";
 import type { StrategyLabel } from "./types";
+
+const AM = 0;
+const PM = 1;
 
 const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
   const index = weekdays.findIndex(o => o.value === day);
@@ -154,15 +158,16 @@ const defaultSchedule: ScheduleSettings = {
 };
 export const defaultCron = scheduleSettingsToCron(defaultSchedule);
 
+const isValidAmPm = (amPm: number) => amPm === AM || amPm === PM;
+
 export const hourToTwelveHourFormat = (hour: number) => hour % 12 || 12;
 export const hourTo24HourFormat = (hour: number, amPm: number): number => {
-  if (amPm === 0) {
-    // AM
-    return hour === 12 ? 0 : hour;
-  } else {
-    // PM
-    return hour === 12 ? 12 : hour + 12;
+  if (!isValidAmPm(amPm)) {
+    amPm = AM;
   }
+  const amPmString = amPm === AM ? "AM" : "PM";
+  const convertedString = dayjs(`${hour} ${amPmString}`, "h A").format("HH");
+  return parseInt(convertedString);
 };
 
 type ErrorWithMessage = { data: { message: string } };

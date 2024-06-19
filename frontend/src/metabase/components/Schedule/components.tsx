@@ -70,6 +70,7 @@ export const SelectTime = ({
   const hourIndex = isClock12Hour && hour === 12 ? 0 : hour;
   return (
     <Group spacing={isClock12Hour ? "xs" : "sm"} style={{ rowGap: ".5rem" }}>
+      {/* Select the hour */}
       <AutoWidthSelect
         value={hourIndex.toString()}
         data={getHours()}
@@ -81,6 +82,7 @@ export const SelectTime = ({
           );
         }}
       />
+      {/* Choose between AM and PM */}
       <Group spacing="sm">
         {isClock12Hour && (
           <SegmentedControl
