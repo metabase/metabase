@@ -1,3 +1,4 @@
+import type { UpdateQuestionOpts } from "metabase/query_builder/actions";
 import { FilterPanel, FilterPanelButton } from "metabase/querying";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -33,7 +34,7 @@ export function FilterHeaderToggle({
 interface FilterHeaderProps {
   question: Question;
   expanded: boolean;
-  updateQuestion: (question: Question, opts: { run: boolean }) => void;
+  updateQuestion: (question: Question, config?: UpdateQuestionOpts) => void;
 }
 
 export function FilterHeader({

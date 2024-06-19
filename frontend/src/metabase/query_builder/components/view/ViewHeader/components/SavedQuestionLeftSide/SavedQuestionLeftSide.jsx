@@ -21,7 +21,6 @@ SavedQuestionLeftSide.propTypes = {
   question: PropTypes.object.isRequired,
   isObjectDetail: PropTypes.bool,
   isAdditionalInfoVisible: PropTypes.bool,
-  isShowingQuestionDetailsSidebar: PropTypes.bool,
   onOpenQuestionInfo: PropTypes.func.isRequired,
   onSave: PropTypes.func,
 };

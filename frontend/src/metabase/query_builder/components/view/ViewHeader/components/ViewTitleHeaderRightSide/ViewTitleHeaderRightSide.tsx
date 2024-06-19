@@ -30,7 +30,7 @@ import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 type ViewTitleHeaderRightSideProps = {
   question: Question;
-  result: Dataset;
+  result: Dataset | null;
   queryBuilderMode: QueryBuilderMode;
   isBookmarked: boolean;
   isModelOrMetric: boolean;
