@@ -81,7 +81,7 @@
      query-results)))
 
 (defn open-html
-  "Take a hiccup data structure, render it as html, then open it in the browser."
+  "Take a html string, then open it in the browser."
   [html-str]
   (let [tmp-file (File/createTempFile "card-html" ".html")]
     (with-open [w (io/writer tmp-file)]
