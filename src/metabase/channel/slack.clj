@@ -2,27 +2,15 @@
   (:require
    [clojure.string :as str]
    [metabase.channel.core :as channel]
+   [metabase.channel.shared :as channel.shared]
    ;; TODO: integrations.slack should be migrated to channel.slack
    [metabase.integrations.slack :as slack]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.markdown :as markdown]
    [metabase.pulse.parameters :as pulse-params]
    [metabase.pulse.render :as render]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase.util.urls :as urls]
-   [toucan2.core :as t2]))
-
-(defn- database-id [card]
-  (or (:database_id card)
-      (get-in card [:dataset_query :database])))
-
-(mu/defn defaulted-timezone :- :string
-  "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
-  [card :- (ms/InstanceOf :model/Card)]
-  (or (some->> card database-id (t2/select-one :model/Database :id) qp.timezone/results-timezone-id)
-      (qp.timezone/system-timezone-id)))
+   [metabase.util.urls :as urls]))
 
 (defn- truncate-mrkdwn
   "If a mrkdwn string is greater than Slack's length limit, truncates it to fit the limit and
@@ -53,7 +41,7 @@
           {card-id :id card-name :name :as card} card]
       {:title           (or (-> dashcard :visualization_settings :card.title)
                             card-name)
-       :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card dashcard result)
+       :rendered-info   (render/render-pulse-card :inline (channel.shared/defaulted-timezone card) card dashcard result)
        :title_link      (urls/card-url card-id)
        :attachment-name "image.png"
        :channel-id      channel-id
@@ -115,9 +103,8 @@
                                        :emoji true}}]}
                      (payload->attachment-data payload (slack/files-channel))]]
     (for [channel-id channel-ids]
-      (let [channel-id (str/replace channel-id "#" "")]
-        {:channel-id  channel-id
-         :attachments attachments}))))
+      {:channel-id  channel-id
+       :attachments attachments})))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    Dashboard Subscriptions                                      ;;

@@ -1,7 +1,7 @@
 (ns ^{:added "0.51.0"} metabase.channel.core
   "The Metabase channel system.
 
-  The API is still in developemt and subject to change."
+  The API is still in development and subject to change."
   (:require
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
