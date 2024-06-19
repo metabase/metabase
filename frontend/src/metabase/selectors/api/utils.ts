@@ -1,5 +1,9 @@
 import dayjs from "dayjs";
 
+import { isNullOrUndefined } from "metabase/lib/types";
+
+import type { Entity, EntityEntries } from "./types";
+
 export const zipEntitySources = <
   Entity extends { id: string | number; updated_at: string },
 >(
@@ -28,4 +32,34 @@ export const zipEntities = <
   }
 
   return result;
+};
+
+export const zip = <E extends Entity>(
+  ...entityEntries: EntityEntries<E>[][]
+): Record<string | number, E> => {
+  const sortedEntityEntries = entityEntries.flat().sort((entry1, entry2) => {
+    if (isNullOrUndefined(entry1.fulfilledTimeStamp)) {
+      return 1;
+    }
+
+    if (isNullOrUndefined(entry2.fulfilledTimeStamp)) {
+      return -1;
+    }
+
+    return entry2.fulfilledTimeStamp - entry1.fulfilledTimeStamp;
+  });
+
+  const map: Record<string | number, E> = {};
+
+  for (const entityEntry of sortedEntityEntries) {
+    const { entities } = entityEntry;
+
+    for (const entity of entities) {
+      if (!map[entity.id]) {
+        map[entity.id] = entity;
+      }
+    }
+  }
+
+  return {};
 };

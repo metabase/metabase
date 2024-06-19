@@ -7,7 +7,6 @@ import {
   databaseApi,
   datasetApi,
 } from "metabase/api";
-import type { Database } from "metabase-types/api";
 
 import { getApiState, type ApiState } from "./state";
 import type {
@@ -15,9 +14,10 @@ import type {
   CardEndpointName,
   DashboardEndpointName,
   DatabaseEndpointName,
+  DatabaseEntries,
   DatasetEndpointName,
 } from "./types";
-import { zipEntitySources } from "./utils";
+import { zip } from "./utils";
 
 const getDatabaseEntries = (
   state: ApiState,
@@ -66,50 +66,69 @@ const getDashboardDatabaseEntries = (
 
 const getFromListDatabases = createSelector(
   getApiState,
-  (state): Database[] => {
+  (state): DatabaseEntries[] => {
     return getDatabaseEntries(state, "listDatabases").flatMap(entry => {
       const selector = databaseApi.endpoints.listDatabases.select(
         entry.originalArgs,
       );
-      const { data } = selector(state);
-      return data?.data ?? [];
+      const { data, fulfilledTimeStamp } = selector(state);
+
+      return {
+        entities: data?.data ?? [],
+        fulfilledTimeStamp,
+      };
     });
   },
 );
 
-const getFromGetDatabase = createSelector(getApiState, (state): Database[] => {
-  return getDatabaseEntries(state, "getDatabase").flatMap(entry => {
-    const selector = databaseApi.endpoints.getDatabase.select(
-      entry.originalArgs,
-    );
-    const { data } = selector(state);
-    return data ? [data] : [];
-  });
-});
+const getFromGetDatabase = createSelector(
+  getApiState,
+  (state): DatabaseEntries[] => {
+    return getDatabaseEntries(state, "getDatabase").flatMap(entry => {
+      const selector = databaseApi.endpoints.getDatabase.select(
+        entry.originalArgs,
+      );
+      const { data, fulfilledTimeStamp } = selector(state);
+
+      return {
+        entities: data ? [data] : [],
+        fulfilledTimeStamp,
+      };
+    });
+  },
+);
 
 const getFromGetDatabaseMetadata = createSelector(
   getApiState,
-  (state): Database[] => {
+  (state): DatabaseEntries[] => {
     return getDatabaseEntries(state, "getDatabaseMetadata").flatMap(entry => {
       const selector = databaseApi.endpoints.getDatabaseMetadata.select(
         entry.originalArgs,
       );
-      const { data } = selector(state);
-      return data ? [data] : [];
+      const { data, fulfilledTimeStamp } = selector(state);
+
+      return {
+        entities: data ? [data] : [],
+        fulfilledTimeStamp,
+      };
     });
   },
 );
 
 const getFromGetAdhocQueryMetadata = createSelector(
   getApiState,
-  (state): Database[] => {
+  (state): DatabaseEntries[] => {
     return getDatasetDatabaseEntries(state, "getAdhocQueryMetadata").flatMap(
       entry => {
         const selector = datasetApi.endpoints.getAdhocQueryMetadata.select(
           entry.originalArgs,
         );
-        const { data } = selector(state);
-        return data?.databases ?? [];
+        const { data, fulfilledTimeStamp } = selector(state);
+
+        return {
+          entities: data?.databases ?? [],
+          fulfilledTimeStamp,
+        };
       },
     );
   },
@@ -117,14 +136,18 @@ const getFromGetAdhocQueryMetadata = createSelector(
 
 const getFromGetCardQueryMetadata = createSelector(
   getApiState,
-  (state): Database[] => {
+  (state): DatabaseEntries[] => {
     return getCardDatabaseEntries(state, "getCardQueryMetadata").flatMap(
       entry => {
         const selector = cardApi.endpoints.getCardQueryMetadata.select(
           entry.originalArgs,
         );
-        const { data } = selector(state);
-        return data?.databases ?? [];
+        const { data, fulfilledTimeStamp } = selector(state);
+
+        return {
+          entities: data?.databases ?? [],
+          fulfilledTimeStamp,
+        };
       },
     );
   },
@@ -132,7 +155,7 @@ const getFromGetCardQueryMetadata = createSelector(
 
 const getFromGetXrayDashboardQueryMetadata = createSelector(
   getApiState,
-  (state): Database[] => {
+  (state): DatabaseEntries[] => {
     return getAutomagicDashboardDatabaseEntries(
       state,
       "getXrayDashboardQueryMetadata",
@@ -141,15 +164,19 @@ const getFromGetXrayDashboardQueryMetadata = createSelector(
         automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata.select(
           entry.originalArgs,
         );
-      const { data } = selector(state);
-      return data?.databases ?? [];
+      const { data, fulfilledTimeStamp } = selector(state);
+
+      return {
+        entities: data?.databases ?? [],
+        fulfilledTimeStamp,
+      };
     });
   },
 );
 
 const getFromGetDashboardQueryMetadata = createSelector(
   getApiState,
-  (state): Database[] => {
+  (state): DatabaseEntries[] => {
     return getDashboardDatabaseEntries(
       state,
       "getDashboardQueryMetadata",
@@ -157,8 +184,12 @@ const getFromGetDashboardQueryMetadata = createSelector(
       const selector = dashboardApi.endpoints.getDashboardQueryMetadata.select(
         entry.originalArgs,
       );
-      const { data } = selector(state);
-      return data?.databases ?? [];
+      const { data, fulfilledTimeStamp } = selector(state);
+
+      return {
+        entities: data?.databases ?? [],
+        fulfilledTimeStamp,
+      };
     });
   },
 );
@@ -173,5 +204,5 @@ export const getApiDatabases = createSelector(
     getFromGetDashboardQueryMetadata,
     getFromListDatabases,
   ],
-  zipEntitySources,
+  zip,
 );
