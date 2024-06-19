@@ -31,6 +31,8 @@
    [:column-titles  [:sequential [:string]]]
    [:pivot-rows     [:sequential [:int {:min 0}]]]
    [:pivot-cols     [:sequential [:int {:min 0}]]]
+   [:pivot-grouping-key {:optional true}
+    [:int {:min 0}]]
    [:pivot-measures {:optional true}
     [:sequential [:int {:min 0}]]]])
 
@@ -169,7 +171,7 @@
       :else
       export-style-row)))
 
-(defn- pivot-grouping-key
+(defn pivot-grouping-key
   "Get the index into the raw pivot rows for the 'pivot-grouping' column."
   [column-titles]
   ;; a vector is kinda sorta a map of indices->values, so
@@ -177,7 +179,7 @@
   (get (set/map-invert (vec column-titles)) "pivot-grouping"))
 
 (mu/defn ^:private pivot-measures
-  "Get the indices into the raw pivot rows corresponding to the pivot table's measure."
+  "Get the indices into the raw pivot rows corresponding to the pivot table's measure(s)."
   [{:keys [pivot-rows pivot-cols column-titles]} :- ::pivot-spec]
   (-> (set/difference
        ;; every possible idx is just the range over the count of cols
@@ -188,7 +190,8 @@
       sort
       vec))
 
-(mu/defn ^:private add-pivot-measures :- ::pivot-spec
+(mu/defn add-pivot-measures :- ::pivot-spec
+  "Given a pivot-spec map without the `:pivot-measures` key, determine what key(s) the measures will be and assoc that value into `:pivot-measures`."
   [pivot-spec :- ::pivot-spec]
   (assoc pivot-spec :pivot-measures (pivot-measures pivot-spec)))
 
