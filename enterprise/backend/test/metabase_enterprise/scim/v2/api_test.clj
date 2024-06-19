@@ -8,17 +8,30 @@
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
-(def ^:private scim-api-key
-  (do
-    (#'scim/backfill-required-entity-ids!)
-    (-> (#'scim/refresh-scim-api-key! (mt/user->id :crowberto)) :unmasked_key)))
+(def ^:dynamic *scim-api-key* nil)
 
-(defn- enable-scim
+(defn with-scim-setup-impl!
+  "Implementation of the `with-scim-setup!` macro. Enables SCIM and ensures that a SCIM key has been created and bound
+  to the `*scim-api-key*` dynamic var to use in test requests. Also restores the previous SCIM API key after the test
+  run."
   [thunk]
-  (mt/with-temporary-setting-values [scim-enabled true]
-    (thunk)))
+  (mt/with-additional-premium-features #{:scim}
+    (mt/with-temporary-setting-values [scim-enabled true]
+      (let [current-masked-key (-> (t2/select-one :model/ApiKey :scope :scim)
+                                   (dissoc :masked_key))
+            temp-unmasked-key  (-> (#'scim/refresh-scim-api-key! (mt/user->id :crowberto))
+                                   :unmasked_key)]
+        (try
+          (#'scim/backfill-required-entity-ids!)
+          (binding [*scim-api-key* temp-unmasked-key]
+            (thunk))
+          (finally
+            (t2/delete! :model/ApiKey :scope :scim)
+            (when current-masked-key
+              (t2/insert! :model/ApiKey current-masked-key))))))))
 
-(use-fixtures :once enable-scim)
+(defmacro with-scim-setup! [& body]
+  `(with-scim-setup-impl! (fn [] ~@body)))
 
 (defn- scim-client
   "Wrapper for `metabase.http-client/client` which includes the SCIM key in the Authorization header"
@@ -29,11 +42,11 @@
                   expected-status-code
                   endpoint
                   {:request-options
-                   {:headers {"authorization" (format "Bearer %s" scim-api-key)}}}
+                   {:headers {"authorization" (format "Bearer %s" *scim-api-key*)}}}
                   body)))
 
 (deftest scim-authentication-test
-  (mt/with-premium-features #{:scim}
+  (with-scim-setup!
     (testing "SCIM endpoints require a valid SCIM API key passed in the authorization header"
       (scim-client :get 200 "ee/scim/v2/Users"))
 
@@ -48,10 +61,10 @@
       (mt/user-http-request :crowberto :get 401 "ee/scim/v2/Users"))
 
     (testing "A SCIM API key cannot be passed via the x-api-key header"
-      (client/client :get 401 "ee/scim/v2/Users" {:request-options {:headers {"x-api-key" scim-api-key}}}))))
+      (client/client :get 401 "ee/scim/v2/Users" {:request-options {:headers {"x-api-key" *scim-api-key*}}}))))
 
 (deftest fetch-user-test
-  (mt/with-premium-features #{:scim}
+  (with-scim-setup!
     (testing "A single user can be fetched in the SCIM format by entity ID"
       (let [entity-id (t2/select-one-fn :entity_id :model/User :id (mt/user->id :rasta))]
         (is (= {:schemas  ["urn:ietf:params:scim:schemas:core:2.0:User"]
@@ -67,7 +80,7 @@
       (scim-client :get 404 (format "ee/scim/v2/Users/%s" (random-uuid))))))
 
 (deftest list-users-test
-  (mt/with-premium-features #{:scim}
+  (with-scim-setup!
     (testing "Fetch users with default pagination"
       (let [response (scim-client :get 200 "ee/scim/v2/Users")]
         (is (malli= scim-api/SCIMUserList response))))
@@ -99,7 +112,7 @@
                                     (codec/url-encode "id ne \"newuser@metabase.com\""))))))
 
 (deftest create-user-test
-  (mt/with-premium-features #{:scim}
+  (with-scim-setup!
     (testing "Create a new user successfully"
       ;; Generate random user details via with-temp then delete the user so that we can recreate it with SCIM
       (mt/with-temp [:model/User user {}]
@@ -126,7 +139,7 @@
         (is (= (get response :detail) "Email address is already in use"))))))
 
 (deftest list-groups-test
-  (mt/with-premium-features #{:scim}
+  (with-scim-setup!
     (mt/with-temp [:model/PermissionsGroup _group1 {:name "Group 1"}]
       (testing "Fetch groups with default pagination"
         (let [response (scim-client :get 200 "ee/scim/v2/Groups")]
