@@ -22,7 +22,7 @@ Features planned:
 
 - You have an application using React 17 or higher
 - You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
-- You have a running Metabase instance using a compatible version of the enterprise binary. The v1.50.x are the only supported versions at this time. We do not recommend running this in production.
+- You have a running Metabase instance using a compatible version of the enterprise binary. v1.50.x are the only supported versions at this time. We do not recommend running this in production.
 
 # Getting started
 
