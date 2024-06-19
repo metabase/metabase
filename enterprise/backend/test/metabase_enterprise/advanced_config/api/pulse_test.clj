@@ -38,7 +38,6 @@
               (mt/with-premium-features #{:email-allow-list}
                 (mt/with-temporary-setting-values [subscription-allowed-domains "metabase.com"]
                   (let [{:keys [response recipients]} (send! 200)]
-                    (def inbox @mt/inbox)
                     (is (= {:ok true}
                            response))
                     (is (contains? recipients "test@metabase.com"))))
