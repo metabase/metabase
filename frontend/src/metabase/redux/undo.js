@@ -1,3 +1,4 @@
+import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -22,9 +23,41 @@ export const addUndo = createThunkAction(ADD_UNDO, undo => {
     if (timeout) {
       timeoutId = setTimeout(() => dispatch(dismissUndo(id, false)), timeout);
     }
-    return { ...undo, id, _domId: id, icon, canDismiss, timeoutId };
+    return {
+      ...undo,
+      id,
+      _domId: id,
+      icon,
+      canDismiss,
+      timeoutId,
+      startedAt: Date.now(),
+    };
   };
 });
+
+const PAUSE_UNDO = "metabase/questions/PAUSE_UNDO";
+export const pauseUndo = createAction(PAUSE_UNDO, undo => {
+  clearTimeout(undo.timeoutId);
+
+  return { ...undo, pausedAt: Date.now(), timeoutId: null };
+});
+
+const RESUME_UNDO = "metabase/questions/RESUME_UNDO";
+export const resumeUndo = createThunkAction(RESUME_UNDO, undo => {
+  const restTime = undo.timeout - (undo.pausedAt - undo.startedAt);
+
+  return dispatch => {
+    return {
+      ...undo,
+      timeoutId: setTimeout(
+        () => dispatch(dismissUndo(undo.id, false)),
+        restTime,
+      ),
+      timeout: restTime,
+    };
+  };
+});
+
 /**
  *
  * @param {import("metabase-types/store").State} state
@@ -34,6 +67,31 @@ export const addUndo = createThunkAction(ADD_UNDO, undo => {
 function getUndo(state, undoId) {
   return _.findWhere(state.undo, { id: undoId });
 }
+
+const getAutoConnectedUndos = createSelector([state => state.undo], undos => {
+  return undos.filter(undo => undo.type === "filterAutoConnectDone");
+});
+
+export const getIsRecentlyAutoConnectedDashcard = createSelector(
+  [
+    getAutoConnectedUndos,
+    (_state, props) => props.dashcard.id,
+    (_state, _props, parameterId) => parameterId,
+  ],
+  (undos, dashcardId, parameterId) => {
+    const isRecentlyAutoConnected = undos.some(undo => {
+      const isDashcardAutoConnected =
+        undo.extraInfo?.dashcardIds?.includes(dashcardId);
+      const isSameParameterSelected = undo.extraInfo?.parameterId
+        ? undo.extraInfo.parameterId === parameterId
+        : true;
+
+      return isDashcardAutoConnected && isSameParameterSelected;
+    });
+
+    return isRecentlyAutoConnected;
+  },
+);
 
 export const dismissUndo = createThunkAction(
   DISMISS_UNDO,
@@ -112,7 +170,34 @@ export default function (state = [], { type, payload, error }) {
       clearTimeoutForUndo(undo);
     }
     return [];
+  } else if (type === PAUSE_UNDO) {
+    return state.map(undo => {
+      if (undo.id === payload.id) {
+        return {
+          ...undo,
+          pausedAt: Date.now(),
+          timeoutId: null,
+        };
+      }
+
+      return undo;
+    });
+  } else if (type === RESUME_UNDO) {
+    return state.map(undo => {
+      if (undo.id === payload.id) {
+        return {
+          ...undo,
+          timeoutId: payload.timeoutId,
+          pausedAt: null,
+          startedAt: Date.now(),
+          timeout: payload.timeout,
+        };
+      }
+
+      return undo;
+    });
   }
+
   return state;
 }
 
