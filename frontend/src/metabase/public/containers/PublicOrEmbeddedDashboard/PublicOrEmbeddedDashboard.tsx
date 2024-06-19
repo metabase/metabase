@@ -84,7 +84,7 @@ type OwnProps = {
 
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
-  ) => void; // TODO: should not be part of publicly exposed api
+  ) => void;
 };
 
 type DisplayProps = Pick<
