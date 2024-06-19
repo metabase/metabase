@@ -252,7 +252,7 @@
   This is function instead of a def so that optional-filter-clause can be defined anywhere in the codebase."
   []
   (merge
-   ;; models support search-native-query if there is additional columns to search when the `search-native-query`
+   ;; models support search-native-query if there are additional columns to search when the `search-native-query`
    ;; argument is true
    {:search-native-query (->> (dissoc (methods search.config/searchable-columns) :default)
                               (filter (fn [[model f]]
