@@ -178,7 +178,7 @@
 
      :slack
      (fn [{:keys [card-id]} [pulse-results]]
-      (is (= {:channel-id "general"
+      (is (= {:channel-id "#general"
               :attachments
               [{:blocks [{:type "header", :text {:type "plain_text", :text "🔔 Test card", :emoji true}}]}
                {:title           pulse.test-util/card-name
@@ -219,7 +219,7 @@
       (fn [{:keys [card-id]} [pulse-results]]
         (testing "\"more results in attachment\" text should not be present for Slack Pulses"
           (testing "Pulse results"
-            (is (= {:channel-id "general"
+            (is (= {:channel-id "#general"
                     :attachments
                     [{:blocks
                        [{:type "header", :text {:type "plain_text", :text "🔔 Test card", :emoji true}}]}
@@ -407,7 +407,7 @@
 
         :slack
         (fn [{:keys [card-id]} [result]]
-          (is (= {:channel-id  "general",
+          (is (= {:channel-id  "#general",
                   :attachments [{:blocks [{:type "header", :text {:type "plain_text", :text "🔔 Test card", :emoji true}}]}
                                 {:title           pulse.test-util/card-name
                                  :rendered-info   {:attachments false
@@ -828,7 +828,7 @@
             (is (= 1 (count @mt/inbox))))))))
 
 (def ^:private fake-slack-notification
-  {:channel-id  "test-channel"
+  {:channel-id  "#test-channel"
    :message     "test message body"
    :attachments []})
 
