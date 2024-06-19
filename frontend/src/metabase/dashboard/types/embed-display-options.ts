@@ -32,14 +32,8 @@ export type EmbedFontControls = {
   setFont: (font: EmbedFont) => void;
 };
 
-export type EmbedBordered = boolean;
-export type EmbedBorderControls = {
-  bordered: EmbedBordered;
-  setBordered: (bordered: EmbedBordered) => void;
-};
-
 export type EmbedDisplayParams = {
-  bordered: EmbedBordered;
+  bordered: boolean;
   titled: EmbedTitle;
   cardTitled: EmbedTitle;
   hideDownloadButton: EmbedHideDownloadButton;
@@ -49,7 +43,6 @@ export type EmbedDisplayParams = {
 };
 
 export type EmbedDisplayControls = EmbedThemeControls &
-  EmbedBorderControls &
   EmbedTitledControls &
   EmbedHideDownloadButtonControls &
   EmbedHideParametersControls &

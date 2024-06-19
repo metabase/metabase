@@ -2,7 +2,6 @@ import { useState } from "react";
 
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import { useEmbedTheme } from "metabase/dashboard/hooks/use-embed-theme";
-import { isWithinIframe } from "metabase/lib/dom";
 
 import type { EmbedDisplayControls, EmbedDisplayParams } from "../types";
 
@@ -17,9 +16,6 @@ export const DEFAULT_EMBED_DISPLAY_OPTIONS: EmbedDisplayParams = {
 };
 
 export const useEmbedDisplayOptions = (): EmbedDisplayControls => {
-  const [bordered, setBordered] = useState(
-    isWithinIframe() || DEFAULT_EMBED_DISPLAY_OPTIONS.bordered,
-  );
   const [titled, setTitled] = useState(DEFAULT_EMBED_DISPLAY_OPTIONS.titled);
   const [hideDownloadButton, setHideDownloadButton] = useState(
     DEFAULT_EMBED_DISPLAY_OPTIONS.hideDownloadButton,
@@ -39,8 +35,6 @@ export const useEmbedDisplayOptions = (): EmbedDisplayControls => {
   } = useEmbedTheme();
 
   return {
-    bordered,
-    setBordered,
     titled,
     setTitled,
     hideDownloadButton,

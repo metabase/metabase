@@ -43,7 +43,6 @@ export const DashboardControls = <T extends DashboardControlsProps>(
       isNightMode,
       onNightModeChange,
       refreshPeriod,
-      setBordered,
       setHideDownloadButton,
       setHideParameters,
       onFullscreenChange,
@@ -77,7 +76,6 @@ export const DashboardControls = <T extends DashboardControlsProps>(
         onRefreshPeriodChange={onRefreshPeriodChange}
         bordered={bordered}
         hideDownloadButton={hideDownloadButton}
-        setBordered={setBordered}
         setHideDownloadButton={setHideDownloadButton}
         setHideParameters={setHideParameters}
         setTheme={setTheme}
