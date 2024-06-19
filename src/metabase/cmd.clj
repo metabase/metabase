@@ -159,6 +159,13 @@
   (classloader/require 'metabase.cmd.env-var-dox)
   ((resolve 'metabase.cmd.env-var-dox/generate-dox!)))
 
+(defn ^:command config-template
+  "Generates a yaml file with some configuration file boilerplate. The template includes all the settings and their defaults.
+   Metabase will save the template as `docs/configuring-metabase/config-template.yaml`."
+  []
+  (classloader/require 'metabase.cmd.config-file-gen)
+  ((resolve 'metabase.cmd.config-file-gen/generate-config-file!)))
+
 (defn ^:command driver-methods
   "Print a list of all multimethods available for a driver to implement, optionally with their docstrings."
   ([]
