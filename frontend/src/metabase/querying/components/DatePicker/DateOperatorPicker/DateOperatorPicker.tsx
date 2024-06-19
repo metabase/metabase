@@ -69,11 +69,11 @@ export function DateOperatorPicker({
     <Stack>
       <Group>
         <FlexSelect data={options} value={optionType} onChange={handleChange} />
-        {value && isRelativeValue(value) && (
+        {isRelativeValue(value) && (
           <SimpleRelativeDatePicker value={value} onChange={onChange} />
         )}
       </Group>
-      {value && isRelativeValue(value) && isIntervalValue(value) && (
+      {isRelativeValue(value) && isIntervalValue(value) && (
         <IncludeCurrentSwitch value={value} />
       )}
       {value?.type === "specific" && (
