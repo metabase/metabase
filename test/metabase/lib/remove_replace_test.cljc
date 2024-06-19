@@ -1032,6 +1032,53 @@
       (is (empty? (lib/aggregations result)))
       (is (= (lib/breakouts query) (lib/breakouts result))))))
 
+(deftest ^:parallel removing-last-aggregation-brings-back-all-fields-on-joins
+  (testing "Removing the last aggregation puts :fields :all on join clauses"
+    (let [base   (-> lib.tu/venues-query
+                     (lib/join (lib/join-clause (meta/table-metadata :products)
+                                                [(lib/= (meta/field-metadata :orders :product-id)
+                                                        (meta/field-metadata :products :id))])))
+          query  (lib/aggregate base (lib/count))
+          result (lib/remove-clause query (first (lib/aggregations query)))]
+      (is (= :all (-> base :stages first :joins first :fields)))
+      (is (= :all (-> result :stages first :joins first :fields)))
+      (is (=? (map :name (lib/returned-columns base))
+              (map :name (lib/returned-columns result)))))))
+
+(deftest ^:parallel removing-last-breakout-brings-back-all-fields-on-joins
+  (testing "Removing the last breakout puts :fields :all on join clauses"
+    (let [base   (-> lib.tu/venues-query
+                     (lib/join (lib/join-clause (meta/table-metadata :products)
+                                                [(lib/= (meta/field-metadata :orders :product-id)
+                                                        (meta/field-metadata :products :id))])))
+          query  (-> base
+                     (lib/aggregate (lib/count))
+                     (lib/breakout (meta/field-metadata :products :category)))
+          agg    (first (lib/aggregations query))
+          brk    (first (lib/breakouts query))]
+      (is (= :all (-> base :stages first :joins first :fields)))
+
+      (testing "no change to join"
+        (testing "when removing just the aggregation"
+          (is (= (m/dissoc-in query [:stages 0 :aggregation])
+                 (lib/remove-clause query agg))))
+        (testing "when removing just the breakout"
+          (is (= (m/dissoc-in query [:stages 0 :breakout])
+                 (lib/remove-clause query brk)))))
+      (testing "join gets :fields :all"
+        (testing "removing aggregation and then breakout"
+          (is (= :all
+                 (-> query
+                     (lib/remove-clause agg)
+                     (lib/remove-clause brk)
+                     :stages first :joins first :fields))))
+        (testing "removing breakout and then aggregation"
+          (is (= :all
+                 (-> query
+                     (lib/remove-clause brk)
+                     (lib/remove-clause agg)
+                     :stages first :joins first :fields))))))))
+
 (deftest ^:parallel simple-tweak-expression-test
   (let [table (lib/query meta/metadata-provider (meta/table-metadata :orders))
         base (lib/expression table "Tax Rate" (lib// (meta/field-metadata :orders :tax)
