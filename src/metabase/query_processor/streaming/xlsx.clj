@@ -562,9 +562,7 @@
         data-format       (. workbook createDataFormat)
         cell-styles       (volatile! nil)
         typed-cell-styles (volatile! nil)
-        rows!             (atom [])
-        pivot-options     (atom nil)
-        cell-style-data   (atom nil)]
+        pivot-data!       (atom {:rows []})]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols format-rows? pivot-export-options]} :data}
                {col-settings ::mb.viz/column-settings :as viz-settings}]
@@ -578,10 +576,11 @@
           (vreset! typed-cell-styles (compute-typed-cell-styles workbook data-format))
           ;; when pivot options exist, we want to save them to access later when processing the complete set of results for export.
           (when opts
-            (reset! cell-style-data {:ordered-cols ordered-cols
+            (swap! pivot-data! assoc
+                   :cell-style-data {:ordered-cols ordered-cols
                                      :col-settings col-settings
-                                     :viz-settings viz-settings})
-            (reset! pivot-options opts))
+                                     :viz-settings viz-settings}
+                   :pivot-options opts))
 
           (when col-names
             (doseq [i (range (count ordered-cols))]
@@ -590,13 +589,14 @@
             (spreadsheet/add-row! sheet (common/column-titles ordered-cols col-settings true)))))
 
       (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
-        (let [ordered-row  (if output-order
-                             (let [row-v (into [] row)]
-                               (for [i output-order] (row-v i)))
-                             row)
-              col-settings (::mb.viz/column-settings viz-settings)]
-          (if @pivot-options
-            (let [{:keys [pivot-grouping-key]} @pivot-options
+        (let [ordered-row             (if output-order
+                                        (let [row-v (into [] row)]
+                                          (for [i output-order] (row-v i)))
+                                        row)
+              col-settings            (::mb.viz/column-settings viz-settings)
+              {:keys [pivot-options]} @pivot-data!]
+          (if pivot-options
+            (let [{:keys [pivot-grouping-key]} pivot-options
                   group                        (get row pivot-grouping-key)]
               (when (= 0 group)
                 ;; TODO: right now, the way I'm building up the native pivot,
@@ -607,27 +607,28 @@
                                                 (if (number? value)
                                                   value
                                                   (str value)))))]
-                  (swap! rows! conj modified-row))))
+                  (swap! pivot-data! update :rows conj modified-row))))
             (do
               (add-row! sheet ordered-row ordered-cols col-settings @cell-styles @typed-cell-styles)
               (when (= (inc row-num) *auto-sizing-threshold*)
                 (autosize-columns! sheet))))))
 
       (finish! [_ {:keys [row_count]}]
-        (if @pivot-options
-          (let [header (vec (m/remove-nth (:pivot-grouping-key @pivot-options) (:column-titles @pivot-options)))
-                wb     (native-pivot (concat [header] @rows!) @pivot-options @cell-style-data)]
-            (try
-              (spreadsheet/save-workbook-into-stream! os wb)
-              (finally
-                (.dispose workbook)
-                (.close os))))
-          (do
-            (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
-              ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
-              (autosize-columns! sheet))
-            (try
-              (spreadsheet/save-workbook-into-stream! os workbook)
-              (finally
-                (.dispose workbook)
-                (.close os)))))))))
+        (let [{:keys [pivot-options rows cell-style-data]} @pivot-data!]
+          (if pivot-options
+            (let [header (vec (m/remove-nth (:pivot-grouping-key pivot-options) (:column-titles pivot-options)))
+                  wb     (native-pivot (concat [header] rows) pivot-options cell-style-data)]
+              (try
+                (spreadsheet/save-workbook-into-stream! os wb)
+                (finally
+                  (.dispose workbook)
+                  (.close os))))
+            (do
+              (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
+                ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
+                (autosize-columns! sheet))
+              (try
+                (spreadsheet/save-workbook-into-stream! os workbook)
+                (finally
+                  (.dispose workbook)
+                  (.close os))))))))))
