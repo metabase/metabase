@@ -142,8 +142,24 @@ const nativeQuestionDetails = {
   },
 };
 
-const nativeQuestionWithParameterDetails = {
-  name: "SQL query with a parameter",
+const nativeQuestionWithTextParameterDetails = {
+  name: "SQL query with a text parameter",
+  display: "table",
+  native: {
+    query: "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}}",
+    "template-tags": {
+      category: {
+        id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
+        name: "category",
+        "display-name": "Category",
+        type: "text",
+      },
+    },
+  },
+};
+
+const nativeQuestionWithDateParameterDetails = {
+  name: "SQL query with a date parameter",
   display: "table",
   native: {
     query: "SELECT * FROM ORDERS WHERE {{date}}",
@@ -206,7 +222,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       createQuestion(multiStageQuestionDetails);
       createQuestion(expressionBreakoutQuestionDetails);
       createQuestion(binningBreakoutQuestionDetails);
-      createNativeQuestion(nativeQuestionWithParameterDetails);
+      createNativeQuestion(nativeQuestionWithDateParameterDetails);
       cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         visitDashboard(dashboard.id),
       );
@@ -290,7 +306,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       removeQuestion();
 
       cy.log("native query");
-      addQuestion(nativeQuestionWithParameterDetails.name);
+      addQuestion(nativeQuestionWithDateParameterDetails.name);
       editParameter(parameterDetails.name);
       getDashboardCard()
         .findByText(/Add a variable to this question/)
@@ -419,7 +435,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
   });
 
   describe("click behaviors", () => {
-    it("should work with 'update dashboard filter' click behavior", () => {
+    it("should pass a temporal unit with 'update dashboard filter' click behavior", () => {
       createDashboardWithMappedQuestion({
         extraQuestions: [nativeUnitQuestionDetails],
       }).then(dashboard => visitDashboard(dashboard.id));
@@ -443,7 +459,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       getDashboardCard(0).findByText("Created At: Year").should("be.visible");
     });
 
-    it("should work with 'custom destination -> dashboard' click behavior", () => {
+    it("should pass a temporal unit 'custom destination -> dashboard' click behavior", () => {
       createDashboardWithMappedQuestion({
         dashboardDetails: {
           name: "Target dashboard",
@@ -478,7 +494,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       getDashboardCard().findByText("Created At: Year").should("be.visible");
     });
 
-    it("should work with 'custom destination -> url' click behavior", () => {
+    it("should pass a temporal unit with 'custom destination -> url' click behavior", () => {
       createDashboardWithMappedQuestion({
         dashboardDetails: {
           name: "Target dashboard",
@@ -501,6 +517,11 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByText("Go to a custom destination").click();
         cy.findByText("URL").click();
       });
+      modal().findByText("Values you can reference").click();
+      popover().within(() => {
+        cy.findByText("UNIT").should("be.visible");
+        cy.findByText(parameterDetails.name).should("not.exist");
+      });
       cy.get("@targetDashboardId").then(targetDashboardId => {
         modal().within(() => {
           cy.findByPlaceholderText("e.g. http://acme.com/id/{{user_id}}").type(
@@ -517,6 +538,42 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       dashboardHeader().findByText("Target dashboard").should("be.visible");
       filterWidget().findByText("Year").should("be.visible");
       getDashboardCard().findByText("Created At: Year").should("be.visible");
+    });
+
+    it("should not allow to use temporal unit parameters with 'custom destination -> question' click behavior", () => {
+      createNativeQuestion(nativeQuestionWithTextParameterDetails);
+      createDashboardWithMappedQuestion().then(dashboard =>
+        visitDashboard(dashboard.id),
+      );
+
+      cy.log("setup click behavior only with a temporal unit parameter");
+      editDashboard();
+      getDashboardCard()
+        .findByLabelText("Click behavior")
+        .click({ force: true });
+      sidebar().within(() => {
+        cy.findByText("Count").click();
+        cy.findByText("Go to a custom destination").click();
+        cy.findByText("Saved question").click();
+      });
+      modal().findByText(nativeQuestionWithTextParameterDetails.name).click();
+      sidebar().findByText("No available targets").should("be.visible");
+
+      cy.log("setup click behavior with a text parameter");
+      setFilter("Text or Category");
+      dashboardParametersDoneButton().click();
+      getDashboardCard()
+        .findByLabelText("Click behavior")
+        .click({ force: true });
+      sidebar().within(() => {
+        cy.findByText(/Count goes to/).click();
+        cy.findByText("Go to a custom destination").click();
+        cy.findByText("Category").click();
+      });
+      popover().within(() => {
+        cy.findByText("Text").should("be.visible");
+        cy.findByText(parameterDetails.name).should("not.exist");
+      });
     });
   });
 
