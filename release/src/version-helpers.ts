@@ -80,6 +80,16 @@ export const getReleaseBranch = (versionString: string) => {
   return `release-x.${majorVersion}.x`;
 };
 
+export const getVersionFromReleaseBranch = (branch: string) => {
+  const match = /release-x\.(\d+)\.x$/.exec(branch);
+
+  if (!match) {
+    throw new Error(`Invalid release branch: ${branch}`);
+  }
+  const majorVersion = match[1];
+  return `v0.${majorVersion}.0`;
+}
+
 export const isLatestVersion = (thisVersion: string, allVersions: string[]) => {
   if (isRCVersion(thisVersion)) {
     return false;
