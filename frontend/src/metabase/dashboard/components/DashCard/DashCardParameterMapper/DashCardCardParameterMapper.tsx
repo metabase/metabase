@@ -302,8 +302,11 @@ export function DashCardCardParameterMapper({
             />
           </TextCardDefault>
         )
-      ) : isNative && isDisabled && editingParameter ? (
-        <DisabledNativeCardHelpText parameter={editingParameter} />
+      ) : isNative && isDisabled && question && editingParameter ? (
+        <DisabledNativeCardHelpText
+          question={question}
+          parameter={editingParameter}
+        />
       ) : (
         <>
           {headerContent && (

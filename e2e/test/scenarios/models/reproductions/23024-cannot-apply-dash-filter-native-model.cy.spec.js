@@ -2,7 +2,6 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
   editDashboard,
-  popover,
   restore,
   visitDashboard,
   setModelMetadata,
@@ -49,17 +48,15 @@ describe("issue 23024", () => {
     addModelToDashboardAndVisit();
   });
 
-  it("should be possible to apply the dashboard filter to the native model (metabase#23024)", () => {
+  it("should not be possible to apply the dashboard filter to the native model (metabase#23024)", () => {
     editDashboard();
 
     setFilter("Text or Category", "Is");
 
     getDashboardCard().within(() => {
-      cy.findByText("Column to filter on");
-      cy.findByText("Select…").click();
+      cy.findByText(/Models are data sources/).should("be.visible");
+      cy.findByText("Select…").should("not.exist");
     });
-
-    popover().contains("Category");
   });
 });
 
