@@ -16,9 +16,6 @@ export const DEFAULT_EMBED_DISPLAY_OPTIONS: EmbedDisplayParams = {
 };
 
 export const useEmbedDisplayOptions = () => {
-  const [hideDownloadButton, setHideDownloadButton] = useState(
-    DEFAULT_EMBED_DISPLAY_OPTIONS.hideDownloadButton,
-  );
   const [hideParameters, setHideParameters] = useState(
     DEFAULT_EMBED_DISPLAY_OPTIONS.hideParameters,
   );
@@ -34,8 +31,6 @@ export const useEmbedDisplayOptions = () => {
   } = useEmbedTheme();
 
   return {
-    hideDownloadButton,
-    setHideDownloadButton,
     hideParameters,
     setHideParameters,
     font,

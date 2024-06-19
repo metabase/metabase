@@ -8,7 +8,6 @@ export type EmbedTitledControls = {
 export type EmbedHideDownloadButton = boolean | null;
 export type EmbedHideDownloadButtonControls = {
   hideDownloadButton: EmbedHideDownloadButton;
-  setHideDownloadButton: (hideDownloadButton: EmbedHideDownloadButton) => void;
 };
 
 export type EmbedHideParameters = string | null;
