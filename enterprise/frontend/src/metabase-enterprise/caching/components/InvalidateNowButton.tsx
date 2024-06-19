@@ -36,7 +36,7 @@ const InvalidateNowFormBody = ({ targetName }: { targetName?: string }) => {
     () =>
       askConfirmation({
         title: targetName
-          ? t`Clear all cached results for ${targetName}`
+          ? t`Clear all cached results for ${targetName}?`
           : t`Clear all cached results for this object?`,
         message: "",
         confirmButtonText: t`Clear cache`,
