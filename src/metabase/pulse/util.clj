@@ -42,7 +42,8 @@
                                 (process-query))
                               (process-query))]
           {:card   card
-           :result result}))
+           :result result
+           :type   :card}))
       (catch Throwable e
         (log/warnf e "Error running query for Card %s" card-id)))))
 
