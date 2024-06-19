@@ -165,13 +165,13 @@ const getFromGetDashboardQueryMetadata = createSelector(
 
 export const getApiDatabases = createSelector(
   [
-    getFromListDatabases,
     getFromGetDatabase,
     getFromGetDatabaseMetadata,
     getFromGetAdhocQueryMetadata,
     getFromGetCardQueryMetadata,
     getFromGetXrayDashboardQueryMetadata,
     getFromGetDashboardQueryMetadata,
+    getFromListDatabases,
   ],
   zipEntitySources,
 );
