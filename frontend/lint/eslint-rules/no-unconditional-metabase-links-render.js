@@ -57,7 +57,7 @@ module.exports = {
      */
     function getImportedModuleNode(node, { isDefault, named, source }) {
       if (getImportNodeLocation(node) === source) {
-        const variables = context.getDeclaredVariables(node);
+        const variables = context.sourceCode.getDeclaredVariables(node);
         if (isDefault) {
           return variables.find(
             variable => variable.defs[0].node.type === "ImportDefaultSpecifier",
