@@ -518,6 +518,36 @@ describe("Static Embed Setup phase", () => {
     });
   });
 
+  it("should render Dashboard background option", async () => {
+    await setup({
+      props: { resourceType: "dashboard" },
+      activeTab: "Look and Feel",
+    });
+
+    expect(screen.getByText("Dashboard background")).toBeVisible();
+    expect(
+      within(screen.getByTestId("embed-backend")).getByTestId(
+        "text-editor-mock",
+      ),
+    ).toHaveTextContent("#bordered=true&titled=true");
+    await userEvent.click(screen.getByText("Dashboard background"));
+
+    expect(
+      within(screen.getByTestId("embed-backend")).getByTestId(
+        "text-editor-mock-highlighted-code",
+      ),
+    ).toHaveTextContent("#background=false&bordered=true&titled=true");
+  });
+
+  it("should not render Question background option", async () => {
+    await setup({
+      props: { resourceType: "question" },
+      activeTab: "Look and Feel",
+    });
+
+    expect(screen.queryByText("Question")).not.toBeInTheDocument();
+  });
+
   it("should preserve selected preview mode selection on tabs navigation", async () => {
     await setup({
       props: {},
