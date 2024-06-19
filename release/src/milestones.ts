@@ -88,22 +88,41 @@ async function setMilestone({ github, owner, repo, issueNumber, milestone }: Git
     });
   }
 
-  if (issue.data.milestone.number === milestone.number) {
+  const existingMilestone = issue.data.milestone;
+
+  if (existingMilestone.number === milestone.number) {
     console.log(`Issue ${issueNumber} is already tagged with this ${milestone.title} milestone`);
     return;
   }
 
-  if (issue.data.milestone.number !== milestone.number) {
-    console.log(`Issue ${issueNumber} is already tagged with a different milestone: ${issue.data.milestone.title}`);
+  const existingMilestoneIsNewer = versionSort(existingMilestone.title, milestone.title) > 0;
 
-    return github.rest.issues.createComment({
+  // if existing milestone is newer, change it
+  if (existingMilestoneIsNewer) {
+    console.log(`Changing milestone from ${existingMilestone.title} to ${milestone.title}`);
+
+    await github.rest.issues.update({
       owner,
       repo,
       issue_number: issueNumber,
-      body: `🚀 This should also be released by [v${milestone.title}](${milestone.html_url})`,
+      milestone: milestone.number,
     });
   }
+
+  const commentBody = existingMilestoneIsNewer
+    ? `🚀 This should also be released by [v${existingMilestone.title}](${existingMilestone.html_url})`
+    : `🚀 This should also be released by [v${milestone.title}](${milestone.html_url})`;
+
+  console.log(`Adding comment to issue ${issueNumber} that already has milestone ${existingMilestone.title}`);
+
+  return github.rest.issues.createComment({
+    owner,
+    repo,
+    issue_number: issueNumber,
+    body: commentBody,
+  });
 }
+
 // get the next open milestone (e.g. 0.57.8) for the given major version (e.g 57)
 export function getNextMilestone(
   { openMilestones, majorVersion }:
