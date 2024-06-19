@@ -103,10 +103,15 @@ export function useSyncURLSlug({ location }: { location: Location }) {
       return;
     }
 
-    const tabSelected = selectedTabId !== prevSelectedTabId;
-    const tabRenamed =
-      tabs.find(t => t.id === selectedTabId)?.name !==
-      prevTabs?.find(t => t.id === selectedTabId)?.name;
+    const tabSelected =
+      typeof selectedTabId === "number" &&
+      typeof prevSelectedTabId === "number" &&
+      selectedTabId !== prevSelectedTabId;
+
+    const tab = tabs?.find(t => t.id === selectedTabId);
+    const prevTab = prevTabs?.find(t => t.id === selectedTabId);
+    const tabRenamed = tab && prevTab && tab.name !== prevTab.name;
+
     const penultimateTabDeleted = tabs.length === 1 && prevTabs?.length === 2;
 
     if (tabSelected || tabRenamed || penultimateTabDeleted) {
