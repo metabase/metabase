@@ -4,7 +4,11 @@ import _ from "underscore";
 
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { CacheConfigApi } from "metabase/services";
-import type { Config, CacheableModel, Strategy } from "metabase-types/api";
+import type {
+  Config as CacheConfig,
+  CacheableModel,
+  Strategy,
+} from "metabase-types/api";
 
 import { rootId } from "../constants/simple";
 import {
@@ -15,8 +19,8 @@ import {
 
 export const useSaveStrategy = (
   targetId: number | null,
-  configs: Config[],
-  setConfigs: Dispatch<SetStateAction<Config[]>>,
+  configs: CacheConfig[],
+  setConfigs: Dispatch<SetStateAction<CacheConfig[]>>,
   model: CacheableModel,
 ) => {
   const saveStrategy = useCallback(
