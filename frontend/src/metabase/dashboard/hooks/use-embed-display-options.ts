@@ -1,6 +1,3 @@
-import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
-import { useEmbedTheme } from "metabase/dashboard/hooks/use-embed-theme";
-
 import type { EmbedDisplayParams } from "../types";
 
 export const DEFAULT_EMBED_DISPLAY_OPTIONS: EmbedDisplayParams = {
@@ -11,26 +8,4 @@ export const DEFAULT_EMBED_DISPLAY_OPTIONS: EmbedDisplayParams = {
   hideParameters: null,
   font: null,
   theme: "light",
-};
-
-export const useEmbedDisplayOptions = () => {
-  const { font, setFont } = useEmbedFont();
-
-  const {
-    hasNightModeToggle,
-    isNightMode,
-    onNightModeChange,
-    setTheme,
-    theme,
-  } = useEmbedTheme();
-
-  return {
-    font,
-    setFont,
-    hasNightModeToggle,
-    isNightMode,
-    onNightModeChange,
-    setTheme,
-    theme,
-  };
 };

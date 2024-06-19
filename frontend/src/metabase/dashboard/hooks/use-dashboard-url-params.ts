@@ -4,17 +4,17 @@ import { useEffect } from "react";
 import {
   useDashboardFullscreen,
   useDashboardRefreshPeriod,
+  useEmbedTheme,
 } from "metabase/dashboard/hooks";
-import {
-  DEFAULT_EMBED_DISPLAY_OPTIONS,
-  useEmbedDisplayOptions,
-} from "metabase/dashboard/hooks/use-embed-display-options";
+import { DEFAULT_EMBED_DISPLAY_OPTIONS } from "metabase/dashboard/hooks/use-embed-display-options";
 import { useLocationSync } from "metabase/dashboard/hooks/use-location-sync";
 import type { RefreshPeriod } from "metabase/dashboard/types";
 import type { DashboardUrlHashOptions } from "metabase/dashboard/types/hash-options";
 import { parseHashOptions } from "metabase/lib/browser";
 import { isWithinIframe } from "metabase/lib/dom";
 import type { DisplayTheme } from "metabase/public/lib/types";
+
+import { useEmbedFont } from "./use-embed-font";
 
 export const useDashboardUrlParams = ({
   location,
@@ -23,15 +23,15 @@ export const useDashboardUrlParams = ({
   location: Location;
   onRefresh: () => Promise<void>;
 }) => {
+  const { font, setFont } = useEmbedFont();
+
   const {
-    font,
     hasNightModeToggle,
     isNightMode,
     onNightModeChange,
-    setFont,
     setTheme,
     theme,
-  } = useEmbedDisplayOptions();
+  } = useEmbedTheme();
 
   const { isFullscreen, onFullscreenChange } = useDashboardFullscreen();
   const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =
