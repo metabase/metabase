@@ -439,14 +439,14 @@ describe("Static Embed Setup phase", () => {
           activeTab: "Look and Feel",
         });
 
-        await userEvent.click(screen.getByText("Transparent"));
+        await userEvent.click(screen.getByText("Dark"));
 
         expect(
           screen.getByText("Here’s the code you’ll need to alter:"),
         ).toBeVisible();
 
         expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
-          `"#theme=transparent&bordered=true&titled=true"`,
+          `"#theme=night&bordered=true&titled=true"`,
         );
 
         await userEvent.click(
@@ -456,7 +456,7 @@ describe("Static Embed Setup phase", () => {
         );
 
         expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
-          `"#theme=transparent&bordered=true&titled=false"`,
+          `"#theme=night&bordered=true&titled=false"`,
         );
       });
 
@@ -611,9 +611,9 @@ describe("Static Embed Setup phase", () => {
       screen.getByTestId("text-editor-mock-highlighted-code"),
     ).toHaveTextContent(`params: { "${DATE_PARAMETER_MOCK.slug}": null }`);
 
-    await userEvent.click(screen.getByText("Transparent"));
+    await userEvent.click(screen.getByText("Dark"));
 
-    const appearanceChangedCode = `"#theme=transparent&bordered=true&titled=true"`;
+    const appearanceChangedCode = `"#theme=night&bordered=true&titled=true"`;
 
     expect(
       screen.getByTestId("text-editor-mock-highlighted-code"),
