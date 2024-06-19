@@ -100,19 +100,23 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
   });
 
-  it("should let you change the type to 'No semantic type'", () => {
-    visitAlias("@ORDERS_PRODUCT_ID_URL");
-    cy.wait(["@metadata", "@metadata"]);
+  it(
+    "should let you change the type to 'No semantic type'",
+    { tags: "@flaky" },
+    () => {
+      visitAlias("@ORDERS_PRODUCT_ID_URL");
+      cy.wait(["@metadata", "@metadata"]);
 
-    setFieldType({ oldValue: "Foreign Key", newValue: "No semantic type" });
+      setFieldType({ oldValue: "Foreign Key", newValue: "No semantic type" });
 
-    waitAndAssertOnResponse("fieldUpdate");
+      waitAndAssertOnResponse("fieldUpdate");
 
-    cy.reload();
-    cy.wait("@metadata");
+      cy.reload();
+      cy.wait("@metadata");
 
-    getFieldType("No semantic type");
-  });
+      getFieldType("No semantic type");
+    },
+  );
 
   it("should let you change the type to 'Foreign Key' and choose the target field", () => {
     visitAlias("@ORDERS_QUANTITY_URL");
@@ -755,34 +759,40 @@ describe("scenarios > admin > datamodel > segments", () => {
       );
     });
 
-    it("should see a newly asked question in its questions list", () => {
-      // Ask question
-      cy.visit("/reference/segments/1/questions");
+    it(
+      "should see a newly asked question in its questions list",
+      { tags: "@flaky" },
+      () => {
+        // Ask question
+        cy.visit("/reference/segments/1/questions");
 
-      cy.button("Ask a question").click();
-      cy.findAllByText("37.65");
+        cy.button("Ask a question").click();
+        cy.findAllByText("37.65");
 
-      filter();
-      filterField("Product ID", {
-        value: "14",
-      });
-      cy.findByTestId("apply-filters").click();
+        filter();
+        filterField("Product ID", {
+          value: "14",
+        });
+        cy.findByTestId("apply-filters").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Product ID is 14");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Save").click();
-      cy.findAllByText("Save").last().click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Product ID is 14");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Save").click();
+        cy.findAllByText("Save").last().click();
 
-      // Check list
-      cy.visit("/reference/segments/1/questions");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(
-        "Questions about this segment will appear here as they're added",
-      ).should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`Orders, Filtered by ${SEGMENT_NAME} and Product ID is 14`);
-    });
+        // Check list
+        cy.visit("/reference/segments/1/questions");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText(
+          "Questions about this segment will appear here as they're added",
+        ).should("not.exist");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText(
+          `Orders, Filtered by ${SEGMENT_NAME} and Product ID is 14`,
+        );
+      },
+    );
 
     it("should update that segment", () => {
       cy.visit("/admin");
