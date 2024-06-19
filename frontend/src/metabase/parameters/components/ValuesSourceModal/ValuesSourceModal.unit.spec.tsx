@@ -371,7 +371,7 @@ describe("ValuesSourceModal", () => {
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
 
       expect(onSubmit).toHaveBeenCalledWith("static-list", {
-        values: ["Gadget", "Widget"],
+        values: [["Gadget"], ["Widget"]],
       });
     });
 
@@ -381,7 +381,7 @@ describe("ValuesSourceModal", () => {
           fields: [field1],
           values_source_type: "static-list",
           values_source_config: {
-            values: ["Gadget", "Widget"],
+            values: [["Gadget"], ["Widget"]],
           },
         }),
       });

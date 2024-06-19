@@ -10,7 +10,7 @@ export const getValuesText = (
     delimiter: ", ",
     quote: '"',
     escape: "\\",
-  });
+  }).trim();
 };
 
 export const getStaticValues = (value: string): ParameterValue[] => {
