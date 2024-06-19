@@ -221,7 +221,7 @@ const setupModal = async ({
 };
 
 describe("DashboardPicker", () => {
-  afterAll(() => {
+  afterEach(() => {
     jest.restoreAllMocks();
   });
 
@@ -283,7 +283,7 @@ describe("DashboardPicker", () => {
 });
 
 describe("DashboardPickerModal", () => {
-  afterAll(() => {
+  afterEach(() => {
     jest.restoreAllMocks();
   });
 

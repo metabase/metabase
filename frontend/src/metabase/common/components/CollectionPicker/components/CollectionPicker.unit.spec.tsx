@@ -157,7 +157,7 @@ const setup = ({
 };
 
 describe("CollectionPicker", () => {
-  afterAll(() => {
+  afterEach(() => {
     jest.restoreAllMocks();
   });
 
