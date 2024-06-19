@@ -76,11 +76,11 @@
 (mu/defn ^:private search-string-clause-for-model
   [model                :- SearchableModel
    search-context       :- SearchContext
-   search-native-query? :- [:maybe :boolean]]
+   search-native-query  :- [:maybe true?]]
   (when-let [query (:search-string search-context)]
     (into
      [:or]
-     (for [column           (->> (search.config/searchable-columns model search-native-query?)
+     (for [column           (->> (search.config/searchable-columns model search-native-query)
                                  (map #(search.config/column-with-model-alias model %)))
            wildcarded-token (->> (search.util/normalize query)
                                  search.util/tokenize

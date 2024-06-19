@@ -661,7 +661,7 @@
    [:limit                               {:optional true} [:maybe ms/Int]]
    [:offset                              {:optional true} [:maybe ms/Int]]
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
-   [:search-native-query                 {:optional true} [:maybe boolean?]]
+   [:search-native-query                 {:optional true} [:maybe true?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]])
 
