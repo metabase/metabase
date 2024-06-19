@@ -28,7 +28,7 @@ Aside from running faster, a small and focused dashboard is also easier for peop
 2. Set up [caching](../configuring-metabase/caching.md) for the questions on your popular dashboard.
 3. Run the dashboard during off-hours so that people can load the cached results in seconds instead of executing a fresh query to your database.
 
-\* Available on paid plans.
+\* Available on Pro and Enterprise plans.
 
 **Explanation**
 
