@@ -42,7 +42,7 @@ export type Issue = {
   title: string;
   html_url: string;
   labels: { name: string }[];
-  assignee: { login: string };
+  assignee: null | { login: string };
 };
 
 export type Milestone =  {
