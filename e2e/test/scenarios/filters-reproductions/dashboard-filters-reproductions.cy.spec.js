@@ -2673,19 +2673,7 @@ describe.skip("issue 44288", () => {
   });
 });
 
-describe.skip("issue 44231", () => {
-  const pkModelDetails = {
-    name: "Products",
-    type: "model",
-    query: { "source-table": PRODUCTS_ID },
-  };
-
-  const fkQuestionDetails = {
-    name: "Orders",
-    type: "question",
-    query: { "source-table": ORDERS_ID },
-  };
-
+describe("issue 44231", () => {
   const parameterDetails = {
     id: "92eb69ea",
     name: "ID",
@@ -2702,6 +2690,64 @@ describe.skip("issue 44231", () => {
     },
   };
 
+  function getPkCardDetails(type) {
+    return {
+      name: "Products",
+      type,
+      query: { "source-table": PRODUCTS_ID },
+    };
+  }
+
+  function getFkCardDetails(type) {
+    return {
+      name: "Orders",
+      type: "model",
+      query: { "source-table": ORDERS_ID },
+    };
+  }
+
+  function getDashcardDetails(type, dashboard, pkCard, fkCard) {
+    return {
+      dashboard_id: dashboard.id,
+      cards: [
+        {
+          card_id: pkCard.id,
+          parameter_mappings: [
+            {
+              card_id: pkCard.id,
+              parameter_id: parameterDetails.id,
+              target: [
+                "dimension",
+                [
+                  "field",
+                  type === "model" ? "ID" : PRODUCTS.ID,
+                  { "base-type": "type/BigInteger" },
+                ],
+              ],
+            },
+          ],
+        },
+        {
+          card_id: fkCard.id,
+          parameter_mappings: [
+            {
+              card_id: fkCard.id,
+              parameter_id: parameterDetails.id,
+              target: [
+                "dimension",
+                [
+                  "field",
+                  type === "model" ? "PRODUCT_ID" : ORDERS.PRODUCT_ID,
+                  { "base-type": "type/BigInteger" },
+                ],
+              ],
+            },
+          ],
+        },
+      ],
+    };
+  }
+
   function verifyFilterByRemappedValue() {
     const productId = 144;
     const productName = "Aerodynamic Bronze Hat";
@@ -2717,6 +2763,27 @@ describe.skip("issue 44231", () => {
       .should("have.length.above", 0);
   }
 
+  function verifyFieldMapping(type) {
+    cy.createDashboardWithQuestions({
+      dashboardDetails,
+      questions: [getPkCardDetails(type), getFkCardDetails(type)],
+    }).then(({ dashboard, questions: [pkCard, fkCard] }) => {
+      updateDashboardCards(getDashcardDetails(type, dashboard, pkCard, fkCard));
+
+      visitDashboard(dashboard.id);
+      verifyFilterByRemappedValue();
+
+      visitPublicDashboard(dashboard.id);
+      verifyFilterByRemappedValue();
+
+      visitEmbeddedPage({
+        resource: { dashboard: dashboard.id },
+        params: {},
+      });
+      verifyFilterByRemappedValue();
+    });
+  }
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -2730,63 +2797,14 @@ describe.skip("issue 44231", () => {
     cy.request("PUT", `/api/field/${PRODUCTS.TITLE}`, {
       semantic_type: "type/Name",
     });
-
-    cy.createDashboardWithQuestions({
-      dashboardDetails,
-      questions: [pkModelDetails, fkQuestionDetails],
-    }).then(({ dashboard, questions: [pkCard, fkCard] }) => {
-      updateDashboardCards({
-        dashboard_id: dashboard.id,
-        cards: [
-          {
-            card_id: pkCard.id,
-            parameter_mappings: [
-              {
-                card_id: pkCard.id,
-                parameter_id: parameterDetails.id,
-                target: [
-                  "dimension",
-                  ["field", "ID", { "base-type": "type/BigInteger" }],
-                ],
-              },
-            ],
-          },
-          {
-            card_id: fkCard.id,
-            parameter_mappings: [
-              {
-                card_id: fkCard.id,
-                parameter_id: parameterDetails.id,
-                target: ["dimension", ["field", ORDERS.PRODUCT_ID, null]],
-              },
-            ],
-          },
-        ],
-      });
-      cy.wrap(dashboard.id).as("dashboardId");
-    });
   });
 
-  it("should allow filtering by remapped values in a regular dashboard (metabase#44231)", () => {
-    visitDashboard("@dashboardId");
-    verifyFilterByRemappedValue();
+  it("should allow filtering by remapped values with questions (metabase#44231)", () => {
+    verifyFieldMapping("question");
   });
 
-  it("should allow filtering by remapped values in a public dashboard (metabase#44231)", () => {
-    cy.get("@dashboardId").then(dashboardId =>
-      visitPublicDashboard(dashboardId),
-    );
-    verifyFilterByRemappedValue();
-  });
-
-  it("should allow filtering by remapped values in an embedded dashboard (metabase#44231)", () => {
-    cy.get("@dashboardId").then(dashboardId =>
-      visitEmbeddedPage({
-        resource: { dashboard: dashboardId },
-        params: {},
-      }),
-    );
-    verifyFilterByRemappedValue();
+  it.skip("should allow filtering by remapped values with models (metabase#44231)", () => {
+    verifyFieldMapping("model");
   });
 });
 
