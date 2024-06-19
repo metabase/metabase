@@ -3,7 +3,7 @@ export const getEmbeddingJsCode = ({
   id,
   hideDownloadButton,
   theme,
-  // Match the default value in https://github.com/metabase/metabase/blob/39db790a78d2f4fca4354acee2bd4885bdd398d0/frontend/src/metabase/dashboard/hooks/use-embed-display-options.ts#L10
+  // Match the actual default value (metabase#43838)
   background = true,
 }) => {
   return new RegExp(

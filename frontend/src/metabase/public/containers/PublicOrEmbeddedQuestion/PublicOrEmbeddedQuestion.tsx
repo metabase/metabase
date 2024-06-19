@@ -199,7 +199,7 @@ export const PublicOrEmbeddedQuestion = ({
       setParameterValue={setParameterValue}
       enableParameterRequiredBehavior
       setParameterValueToDefault={setParameterValueToDefault}
-      // Since this isn't configurable, we always set the background to true
+      // We don't support background: false on questions (metabase#43838)
       background
       bordered={bordered}
       titled={titled}

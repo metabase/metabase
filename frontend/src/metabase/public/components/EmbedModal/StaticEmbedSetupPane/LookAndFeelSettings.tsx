@@ -133,6 +133,7 @@ export const LookAndFeelSettings = ({
           {/**
            * We don't offer background options for question embeds because questions are displayed
            * as a single card, and we want to always show a solid card background on dashboards embeds.
+           * (metabase#43838)
            */}
           {resourceType === "dashboard" && (
             <Switch
