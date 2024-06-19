@@ -4,11 +4,13 @@ import {
   clearFilterWidget,
   createNativeQuestion,
   createQuestion,
+  dashboardHeader,
   dashboardParametersDoneButton,
   dashboardParameterSidebar,
   editDashboard,
   filterWidget,
   getDashboardCard,
+  modal,
   popover,
   queryBuilderHeader,
   queryBuilderMain,
@@ -28,7 +30,7 @@ import {
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const dashboardDetails = {
-  name: "Test dashboard",
+  name: "Test Dashboard",
 };
 
 const singleBreakoutQuestionDetails = {
@@ -440,6 +442,82 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       filterWidget().findByText("Year").should("be.visible");
       getDashboardCard(0).findByText("Created At: Year").should("be.visible");
     });
+
+    it("should work with 'custom destination -> dashboard' click behavior", () => {
+      createDashboardWithMappedQuestion({
+        dashboardDetails: {
+          name: "Target dashboard",
+        },
+      });
+      cy.createDashboardWithQuestions({
+        dashboardDetails: {
+          name: "Source dashboard",
+        },
+        questions: [nativeUnitQuestionDetails],
+      }).then(({ dashboard }) => visitDashboard(dashboard.id));
+
+      cy.log("setup click behavior");
+      editDashboard();
+      getDashboardCard()
+        .findByLabelText("Click behavior")
+        .click({ force: true });
+      sidebar().within(() => {
+        cy.findByText("UNIT").click();
+        cy.findByText("Go to a custom destination").click();
+        cy.findByText("Dashboard").click();
+      });
+      modal().findByText("Target dashboard").click();
+      sidebar().findByText(parameterDetails.name).click();
+      popover().findByText("UNIT").click();
+      saveDashboard();
+
+      cy.log("verify click behavior");
+      getDashboardCard().findByText("year").click();
+      dashboardHeader().findByText("Target dashboard").should("be.visible");
+      filterWidget().findByText("Year").should("be.visible");
+      getDashboardCard().findByText("Created At: Year").should("be.visible");
+    });
+
+    it("should work with 'custom destination -> url' click behavior", () => {
+      createDashboardWithMappedQuestion({
+        dashboardDetails: {
+          name: "Target dashboard",
+        },
+      }).then(dashboard => cy.wrap(dashboard.id).as("targetDashboardId"));
+      cy.createDashboardWithQuestions({
+        dashboardDetails: {
+          name: "Source dashboard",
+        },
+        questions: [nativeUnitQuestionDetails],
+      }).then(({ dashboard }) => visitDashboard(dashboard.id));
+
+      cy.log("setup click behavior");
+      editDashboard();
+      getDashboardCard()
+        .findByLabelText("Click behavior")
+        .click({ force: true });
+      sidebar().within(() => {
+        cy.findByText("UNIT").click();
+        cy.findByText("Go to a custom destination").click();
+        cy.findByText("URL").click();
+      });
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        modal().within(() => {
+          cy.findByPlaceholderText("e.g. http://acme.com/id/{{user_id}}").type(
+            `http://localhost:4000/dashboard/${targetDashboardId}?${parameterDetails.slug}={{UNIT}}`,
+            { parseSpecialCharSequences: false },
+          );
+          cy.button("Done").click();
+        });
+      });
+      saveDashboard();
+
+      cy.log("verify click behavior");
+      getDashboardCard().findByText("year").click();
+      dashboardHeader().findByText("Target dashboard").should("be.visible");
+      filterWidget().findByText("Year").should("be.visible");
+      getDashboardCard().findByText("Created At: Year").should("be.visible");
+    });
   });
 
   describe("auto-wiring", () => {
@@ -733,8 +811,8 @@ function editParameter(name) {
 }
 
 function createDashboardWithMappedQuestion({
-  dashboardDetails,
-  extraQuestions,
+  dashboardDetails = {},
+  extraQuestions = [],
 } = {}) {
   return cy
     .createDashboardWithQuestions({
