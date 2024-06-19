@@ -1,5 +1,6 @@
 (ns metabase.models.user-parameter-value
   (:require
+   [cheshire.core :as json]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
@@ -18,9 +19,21 @@
 ;; for example, the value "string" is already valid json, so json-out logs an error, since it
 ;; tries to parse "string" as a token (not a JSON string).
 
+(defn- json-out
+  "A version of `metabase.models.interface/json-out` that does not log a parse error.
+  This is otherwise the same. It returns the string as expected in this case."
+  [s keywordize-keys?]
+  (if (string? s)
+    (try
+      (json/parse-string s keywordize-keys?)
+      (catch Throwable _e
+        s))
+    s))
+
+
 (t2/deftransforms :model/UserParameterValue
-  {:value {:in  (comp mi/json-in (fn [obj] {::wrapper obj}))
-           :out (comp ::wrapper mi/json-out-with-keywordization)}})
+  {:value {:in  mi/json-in
+           :out json-out}})
 
 (mu/defn upsert!
   "Upsert or delete parameter value set by the user."

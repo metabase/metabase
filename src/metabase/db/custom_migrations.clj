@@ -1465,22 +1465,3 @@
     (run! decrypt! ["query-caching-ttl-ratio"
                     "query-caching-min-ttl"
                     "enable-query-caching"])))
-
-(define-migration MigrateUserParameterValuesToWrappedVersion
-  (let [update! (fn [{:keys [id value] :as upv}]
-                  (t2/query-one {:update :user_parameter_value
-                                 :set    {:value value}
-                                 :where  [:= :id id]}))]
-    (run! update! (eduction (keep (fn [{:keys [id value]}]
-                                    (let [;; try to parse the value. If it parses, we can use it directly
-                                          ;; if not, it's a string that was incorrectly stored,
-                                          ;; and we can wrap it in escaped quotes right away
-                                          parsed-value (try
-                                                         (json/parse-string value keyword)
-                                                         (catch Throwable e
-                                                           (format "\"%s\"" value)))]
-                                      {:id    id
-                                       :value (format "{\"metabase.models.user-parameter-value/wrapper\":%s}" parsed-value)})))
-                            (t2/reducible-query {:select [:id :value]
-                                                 :from   [:user_parameter_value]
-                                                 :where  [:not-like :value "%\"metabase.models.user-parameter-value/wrapper\"%"]})))))
