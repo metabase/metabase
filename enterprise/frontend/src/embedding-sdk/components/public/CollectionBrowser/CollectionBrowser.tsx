@@ -1,11 +1,11 @@
-import { type CSSProperties, useState } from "react";
+import { type ComponentType, type CSSProperties, useState } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
 import { isNotNull } from "metabase/lib/types";
 import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs/CollectionBreadcrumbs";
-import { Box } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import type {
   CollectionEssentials,
   CollectionId,
@@ -37,6 +37,7 @@ type CollectionBrowserProps = {
   onClick?: (item: CollectionItem) => void;
   pageSize?: number;
   visibleEntityTypes?: UserFacingEntityName[];
+  EmptyContentComponent?: ComponentType | null;
   className?: string;
   style?: CSSProperties;
 };
@@ -46,6 +47,7 @@ export const CollectionBrowserInner = ({
   onClick,
   pageSize = COLLECTION_PAGE_SIZE,
   visibleEntityTypes = [...USER_FACING_ENTITY_NAMES],
+  EmptyContentComponent = null,
   className,
   style,
 }: CollectionBrowserProps) => {
@@ -72,7 +74,7 @@ export const CollectionBrowserInner = ({
     .filter(isNotNull);
 
   return (
-    <Box className={className} style={style}>
+    <Stack w="100%" h="100%" spacing="sm" className={className} style={style}>
       <CollectionBreadcrumbs
         collectionId={currentCollectionId}
         onClick={onClickBreadcrumbItem}
@@ -84,8 +86,9 @@ export const CollectionBrowserInner = ({
         pageSize={pageSize}
         models={collectionTypes}
         showActionMenu={false}
+        EmptyContentComponent={EmptyContentComponent ?? undefined}
       />
-    </Box>
+    </Stack>
   );
 };
 

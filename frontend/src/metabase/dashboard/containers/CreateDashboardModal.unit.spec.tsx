@@ -100,7 +100,7 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
 }
 
 describe("CreateDashboardModal", () => {
-  afterAll(() => {
+  afterEach(() => {
     jest.restoreAllMocks();
   });
 

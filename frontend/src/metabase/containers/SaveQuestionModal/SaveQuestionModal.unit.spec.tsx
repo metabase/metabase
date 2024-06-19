@@ -738,7 +738,7 @@ describe("SaveQuestionModal", () => {
       });
     });
 
-    afterAll(() => {
+    afterEach(() => {
       jest.restoreAllMocks();
     });
 

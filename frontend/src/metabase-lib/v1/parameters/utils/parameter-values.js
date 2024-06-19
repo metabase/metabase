@@ -77,6 +77,11 @@ export function areParameterValuesIdentical(a, b) {
   );
 }
 
+/**
+ * @import { NormalizedParameter } from "metabase-types/api";
+ *
+ * @returns {NormalizedParameter}
+ */
 export function normalizeParameter(parameter) {
   return {
     id: parameter.id,

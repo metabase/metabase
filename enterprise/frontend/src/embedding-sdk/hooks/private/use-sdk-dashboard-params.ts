@@ -13,7 +13,7 @@ import type { DashboardId } from "metabase-types/api";
 
 export type SdkDashboardDisplayProps = {
   dashboardId: DashboardId;
-  initialParameterValues: Query;
+  initialParameterValues?: Query;
   withTitle?: boolean;
   withCardTitle?: boolean;
   withDownloads?: boolean;
@@ -25,7 +25,7 @@ export const useSdkDashboardParams = ({
   withDownloads,
   withTitle,
   hiddenParameters,
-  initialParameterValues,
+  initialParameterValues = {},
 }: SdkDashboardDisplayProps) => {
   // temporary name until we change `hideDownloadButton` to `downloads`
   const hideDownloadButton = !withDownloads;

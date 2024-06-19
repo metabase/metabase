@@ -7,9 +7,15 @@ import BodyComponent from "metabase/components/BodyComponent";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { capitalize, inflect } from "metabase/lib/formatting";
 import { useSelector, useDispatch } from "metabase/lib/redux";
-import { dismissUndo, performUndo } from "metabase/redux/undo";
-import { Transition } from "metabase/ui";
+import {
+  dismissUndo,
+  pauseUndo,
+  performUndo,
+  resumeUndo,
+} from "metabase/redux/undo";
+import { Progress, Transition } from "metabase/ui";
 
+import CS from "./UndoListing.module.css";
 import {
   CardContent,
   CardContentSide,
@@ -59,18 +65,39 @@ const slideIn = {
   transitionProperty: "transform, opacity",
 };
 
+const TOAST_TRANSITION_DURATION = 300;
+
 function UndoToast({ undo, onUndo, onDismiss }) {
+  const dispatch = useDispatch();
   const [mounted, setMounted] = useState(false);
+  const [paused, setPaused] = useState(false);
 
   useMount(() => {
     setMounted(true);
   });
 
+  const handleMouseEnter = () => {
+    if (!undo.showProgress) {
+      return;
+    }
+    setPaused(true);
+    dispatch(pauseUndo(undo));
+  };
+
+  const handleMouseLeave = () => {
+    if (!undo.showProgress) {
+      return;
+    }
+
+    setPaused(false);
+    dispatch(resumeUndo(undo));
+  };
+
   return (
     <Transition
       mounted={mounted}
       transition={slideIn}
-      duration={300}
+      duration={TOAST_TRANSITION_DURATION}
       timingFunction="ease"
     >
       {styles => (
@@ -79,8 +106,24 @@ function UndoToast({ undo, onUndo, onDismiss }) {
           data-testid="toast-undo"
           color={undo.toastColor}
           role="status"
+          noBorder={undo.showProgress}
           style={styles}
+          className={CS.toast}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
         >
+          {undo.showProgress && (
+            <Progress
+              size="sm"
+              color={paused ? "bg-dark" : "brand"}
+              /* we intentionally break a11y - css animation is smoother */
+              value={100}
+              pos="absolute"
+              top={0}
+              left={0}
+              className={CS.progress}
+            />
+          )}
           <CardContent>
             <CardContentSide maw="75ch">
               {undo.icon && <CardIcon name={undo.icon} color="text-white" />}

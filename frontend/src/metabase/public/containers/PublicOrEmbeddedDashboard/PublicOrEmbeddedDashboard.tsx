@@ -194,7 +194,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
       parameterValues,
       draftParameterValues,
       isFullscreen,
-      isNightMode,
+      isNightMode = false,
       setParameterValueToDefault,
       onFullscreenChange,
       onNightModeChange,

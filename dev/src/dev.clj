@@ -55,6 +55,7 @@
    [clojure.test]
    [dev.debug-qp :as debug-qp]
    [dev.explain :as dev.explain]
+   [dev.migrate :as dev.migrate]
    [dev.model-tracking :as model-tracking]
    [hashp.core :as hashp]
    [honey.sql :as sql]
@@ -68,7 +69,9 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.email :as email]
    [metabase.models.database :refer [Database]]
+   [metabase.models.setting :as setting]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server :as server]
@@ -101,6 +104,9 @@
   pprint-sql]
  [dev.explain
   explain-query]
+ [dev.migrate
+  migrate!
+  rollback!]
  [model-tracking
   track!
   untrack!
@@ -258,14 +264,6 @@
         (a/>!! canceled-chan :cancel)
         (throw e)))))
 
-(defn migrate!
-  "Run migrations for the Metabase application database. Possible directions are `:up` (default), `:force`, `:down`, and
-  `:release-locks`. When migrating `:down` pass along a version to migrate to (44+)."
-  ([]
-   (migrate! :up))
-  ([direction & [version]]
-   (mdb/migrate! (mdb/data-source) direction version)))
-
 (methodical/defmethod t2.connection/do-with-connection :model/Database
   "Support running arbitrary queries against data warehouse DBs for easy REPL debugging. Only works for SQL+JDBC drivers
   right now!
@@ -390,3 +388,25 @@
         (when (failed?)
           (throw (ex-info (format "Test failed after running: `%s`" test)
                           {:test test})))))))
+
+
+(defn setup-email!
+  "Set up email settings for sending emails from Metabase. This is useful for testing email sending in the REPL."
+  [& settings]
+  (let [settings (merge {:host     "localhost"
+                         :port     1025
+                         :user     "metabase"
+                         :pass     "metabase@secret"
+                         :security :none}
+                        settings)]
+    (when (::email/error (email/test-smtp-connection settings))
+      (throw (ex-info "Failed to connect to SMTP server" {:settings settings})))
+    (setting/set-many! (update-keys settings
+                                    {:host        :email-smtp-host,
+                                     :user        :email-smtp-username,
+                                     :pass        :email-smtp-password,
+                                     :port        :email-smtp-port,
+                                     :security    :email-smtp-security,
+                                     :sender-name :email-from-name,
+                                     :sender      :email-from-address,
+                                     :reply-to    :email-reply-to}))))

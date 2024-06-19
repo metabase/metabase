@@ -106,9 +106,9 @@ To remove a subscription from a dashboard, select the subscription you'd like to
 
 ## Viewing existing dashboard subscriptions
 
-{% include plans-blockquote.html feature="Audit logs" %}
+{% include plans-blockquote.html feature="Usage analytics" %}
 
-To view a list of all alerts and dashboard subscriptions that people have set up in your Metabase, click on the **gear** icon in the upper right and select **Admin settings** > **Audit** > **Subscriptions & Alerts**. See [Audit logs](../usage-and-performance-tools/audit.md).
+You can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in **Metabase analytics** collection. See [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
 
 ## Customize filter values for each dashboard subscription
 
@@ -135,4 +135,4 @@ See [Notification permissions](../permissions/notifications.md).
 - [Alerts](../questions/sharing/alerts.md)
 - [Setting up email](../configuring-metabase/email.md)
 - [Setting up Slack](../configuring-metabase/slack.md)
-- [Auditing Metabase](../usage-and-performance-tools/audit.md)
+- [Usage analytics](../usage-and-performance-tools/usage-analytics.md)

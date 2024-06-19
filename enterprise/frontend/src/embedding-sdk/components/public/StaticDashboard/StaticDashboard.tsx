@@ -36,8 +36,7 @@ export const StaticDashboardInner = ({
     hiddenParameters,
   });
 
-  const { hasNightModeToggle, isNightMode, onNightModeChange, theme } =
-    useEmbedTheme();
+  const { theme } = useEmbedTheme();
 
   const { font } = useEmbedFont();
 
@@ -46,11 +45,8 @@ export const StaticDashboardInner = ({
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
         parameterQueryParams={initialParameterValues}
-        hasNightModeToggle={hasNightModeToggle}
         hideDownloadButton={displayOptions.hideDownloadButton}
         hideParameters={displayOptions.hideParameters}
-        isNightMode={isNightMode}
-        onNightModeChange={onNightModeChange}
         titled={displayOptions.titled}
         cardTitled={withCardTitle}
         theme={theme}

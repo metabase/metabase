@@ -49,8 +49,7 @@ const InteractiveDashboardInner = ({
     initialParameterValues,
   });
 
-  const { hasNightModeToggle, isNightMode, onNightModeChange, theme } =
-    useEmbedTheme();
+  const { theme } = useEmbedTheme();
 
   const { font } = useEmbedFont();
 
@@ -102,11 +101,8 @@ const InteractiveDashboardInner = ({
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
         parameterQueryParams={initialParameterValues}
-        hasNightModeToggle={hasNightModeToggle}
         hideDownloadButton={displayOptions.hideDownloadButton}
         hideParameters={displayOptions.hideParameters}
-        isNightMode={isNightMode}
-        onNightModeChange={onNightModeChange}
         titled={displayOptions.titled}
         cardTitled={withCardTitle}
         theme={theme}

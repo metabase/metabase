@@ -2,10 +2,10 @@ import type { MantineThemeOverride } from "@mantine/core";
 
 export const getProgressOverrides = (): MantineThemeOverride["components"] => ({
   Progress: {
-    styles: theme => {
+    styles: (theme, params) => {
       return {
         root: {
-          border: `1px solid ${theme.fn.themeColor("brand")}`,
+          border: `1px solid ${params.color ?? theme.fn.themeColor("brand")}`,
         },
       };
     },
