@@ -12,7 +12,7 @@ function setup(opts: SetupOpts) {
 }
 
 describe("DashCardParameterMapper > DisabledNativeCardHelpText (EE with token)", () => {
-  it("should show a help link when `show-metabase-links: true`", () => {
+  it("should show a parameter help link when `show-metabase-links: true`", () => {
     setup({ showMetabaseLinks: true });
 
     expect(
@@ -23,7 +23,7 @@ describe("DashCardParameterMapper > DisabledNativeCardHelpText (EE with token)",
     expect(screen.getByText("Learn how")).toBeInTheDocument();
   });
 
-  it("should not show a help link when `show-metabase-links: false`", () => {
+  it("should not show a parameter help link when `show-metabase-links: false`", () => {
     setup({ showMetabaseLinks: false });
 
     expect(
@@ -32,5 +32,19 @@ describe("DashCardParameterMapper > DisabledNativeCardHelpText (EE with token)",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Learn how")).not.toBeInTheDocument();
+  });
+
+  it("should show a model help link when `show-metabase-links: true`", () => {
+    setup({ cardType: "model", showMetabaseLinks: true });
+
+    expect(screen.getByText(/Models are data sources/)).toBeInTheDocument();
+    expect(screen.getByText("Learn more")).toBeInTheDocument();
+  });
+
+  it("should not show a model help link when `show-metabase-links: false`", () => {
+    setup({ cardType: "model", showMetabaseLinks: false });
+
+    expect(screen.getByText(/Models are data sources/)).toBeInTheDocument();
+    expect(screen.queryByText("Learn more")).not.toBeInTheDocument();
   });
 });
