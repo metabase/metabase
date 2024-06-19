@@ -558,6 +558,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :public
   :type       :string
   :audit      :getter
+  :default   "https://www.metabase.com/help/premium"
   :feature    :whitelabel
   :setter     (fn [new-value]
                 (let [new-value-string (str new-value)]

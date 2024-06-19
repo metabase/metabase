@@ -105,19 +105,16 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 
 (defsetting saml-attribute-email
   (deferred-tru "SAML attribute for the user''s email address")
-  :default "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
   :feature :sso-saml
   :audit   :getter)
 
 (defsetting saml-attribute-firstname
   (deferred-tru "SAML attribute for the user''s first name")
-  :default "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname"
   :feature :sso-saml
   :audit   :getter)
 
 (defsetting saml-attribute-lastname
   (deferred-tru "SAML attribute for the user''s last name")
-  :default "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname"
   :feature :sso-saml
   :audit   :getter)
 
