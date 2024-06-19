@@ -304,7 +304,7 @@ const setup = async ({
 };
 
 describe("AddToDashSelectDashModal", () => {
-  afterAll(() => {
+  afterEach(() => {
     jest.restoreAllMocks();
   });
 
