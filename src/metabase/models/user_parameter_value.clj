@@ -19,8 +19,8 @@
 ;; tries to parse "string" as a token (not a JSON string).
 
 (t2/deftransforms :model/UserParameterValue
-  {:value {:in  (comp mi/json-in (fn [obj] {:value obj}))
-           :out (comp :value mi/json-out-with-keywordization)}})
+  {:value {:in  (comp mi/json-in (fn [obj] {::wrapper obj}))
+           :out (comp ::wrapper mi/json-out-with-keywordization)}})
 
 (mu/defn upsert!
   "Upsert or delete parameter value set by the user."

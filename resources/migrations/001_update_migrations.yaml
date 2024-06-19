@@ -7977,6 +7977,13 @@ databaseChangeLog:
             tableName: login_history
             indexName: idx_user_id_device_id
 
+  - changeSet:
+      id: v51.2024-06-19T16:08:04
+      author: adam-james
+      comment: Fix value for UserParameterValues
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateUserParameterValuesToWrappedVersion"
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
