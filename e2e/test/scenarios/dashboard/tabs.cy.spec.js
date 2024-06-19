@@ -682,7 +682,7 @@ describe("scenarios > dashboard > tabs", () => {
     ).as("saveCard");
 
     filterWidget().click();
-    popover().findByText("Past 7 days").click();
+    popover().findByText("Previous 7 days").click();
 
     // Loader in the 2nd tab
     getDashboardCard(0).within(() => {

@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Card from "metabase/components/Card";
@@ -23,13 +24,21 @@ export const UndoList = styled.ul`
 export const ToastCard = styled(Card)<{
   translateY: number;
   color?: string;
+  noBorder?: boolean;
 }>`
   padding: 10px ${space(2)};
   margin-top: ${space(1)};
   min-width: 310px;
   max-width: calc(100vw - 2 * ${LIST_H_MARGINS});
+  position: relative;
   transform: ${props => `translateY(${props.translateY}px)`};
-  ${props => (props.color ? `background-color: ${color(props.color)}` : "")}
+  ${props => (props.color ? `background-color: ${color(props.color)}` : "")};
+  ${({ noBorder }) =>
+    noBorder &&
+    css`
+      border: none;
+      overflow-x: hidden;
+    `};
 `;
 
 export const CardContent = styled.div`

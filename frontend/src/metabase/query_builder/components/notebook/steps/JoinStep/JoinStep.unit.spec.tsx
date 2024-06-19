@@ -8,7 +8,13 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import {
@@ -16,9 +22,9 @@ import {
   createMockDatabase,
 } from "metabase-types/api/mocks";
 import {
+  PRODUCTS_ID,
   createSampleDatabase,
   createStructuredModelCard,
-  PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -227,6 +233,8 @@ describe("Notebook Editor > Join Step", () => {
     );
     const modal = await screen.findByTestId("entity-picker-modal");
 
+    await waitForLoaderToBeRemoved();
+
     expect(within(modal).getByText("Products")).toBeInTheDocument();
     expect(within(modal).getByText("People")).toBeInTheDocument();
     expect(within(modal).getByText("Reviews")).toBeInTheDocument();
@@ -239,6 +247,8 @@ describe("Notebook Editor > Join Step", () => {
       within(screen.getByLabelText("Right table")).getByRole("button"),
     );
     const modal = await screen.findByTestId("entity-picker-modal");
+
+    await waitForLoaderToBeRemoved();
 
     expect(
       within(modal).queryByText(ANOTHER_DATABASE.name),

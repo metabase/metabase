@@ -338,9 +338,9 @@
   (let [dashboard-id (:id dashboard)]
    (merge (common-context)
           {:emailType                 "pulse"
-           :title                     (:name pulse)
+           :title                     (:name dashboard)
            :titleUrl                  (pulse-params/dashboard-url dashboard-id (pulse-params/parameters pulse dashboard))
-           :dashboardDescription      (:description dashboard)
+           :dashboardDescription      (markdown/process-markdown (:description dashboard) :html)
            ;; There are legacy pulses that exist without being tied to a dashboard
            :dashboardHasTabs          (when dashboard-id
                                         (boolean (seq (t2/hydrate dashboard :tabs))))
@@ -578,7 +578,7 @@
   "Returns a string that describes the run schedule of an alert (i.e. how often results are checked),
   for inclusion in the email template. Not translated, since emails in general are not currently translated."
   [channel]
-  (case (:schedule_type channel)
+  (case (keyword (:schedule_type channel))
     :hourly
     "Run hourly"
 
@@ -596,10 +596,13 @@
 (defn- alert-context
   "Context that is applicable only to the actual alert template (not alert management templates)"
   [alert channel non-user-email]
-  (let [{card-id :id, card-name :name} (first-card alert)]
+  (let [{card-id :id card-name :name} (first-card alert)]
     {:title                     card-name
      :titleUrl                  (urls/card-url card-id)
      :alertSchedule             (alert-schedule-text channel)
+     :notificationText          (if (nil? non-user-email)
+                                    "Manage your subscriptions"
+                                    "Unsubscribe")
      :notificationManagementUrl (if (nil? non-user-email)
                                   (urls/notification-management-url)
                                   (str (urls/unsubscribe-url)

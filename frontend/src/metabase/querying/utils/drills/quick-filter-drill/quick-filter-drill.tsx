@@ -37,24 +37,37 @@ function getActionOverrides(
   operator: Lib.QuickFilterDrillThruOperator,
   value: unknown,
 ): Partial<ClickAction> {
-  if (Lib.isDate(column) && value != null) {
+  if (Lib.isDate(column)) {
     const action: Partial<ClickAction> = {
       sectionTitle: t`Filter by this date`,
       sectionDirection: "column",
       buttonType: "horizontal",
     };
 
-    switch (operator) {
-      case "=":
-        return { ...action, title: t`On` };
-      case "≠":
-        return { ...action, title: t`Not on` };
-      case ">":
-        return { ...action, title: t`After` };
-      case "<":
-        return { ...action, title: t`Before` };
-      default:
-        return action;
+    if (value !== null) {
+      switch (operator) {
+        case "=":
+          return { ...action, title: t`On` };
+        case "≠":
+          return { ...action, title: t`Not on` };
+        case ">":
+          return { ...action, title: t`After` };
+        case "<":
+          return { ...action, title: t`Before` };
+        default:
+          return action;
+      }
+    }
+
+    if (value === null) {
+      switch (operator) {
+        case "=":
+          return { ...action, title: t`Is empty` };
+        case "≠":
+          return { ...action, title: t`Not empty` };
+        default:
+          return action;
+      }
     }
   }
 

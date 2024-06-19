@@ -12,6 +12,7 @@
    [metabase.email :as email]
    [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.pulse]
+   [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -55,29 +56,29 @@
                                                                   :query    {:source-table (format "card__%s" ~model-card-id)}}}]
        ~@body)))
 
-(defn- run-pulse-and-return-last-data-columns
+(defn- run-pulse-and-return-last-data-columns!
   "Simulate sending the pulse email, get the html body of the response, then return the last columns of each pulse body
   element. In our test cases that's the Tax Rate column."
   [pulse]
-  (mt/with-fake-inbox
-    (with-redefs [email/bcc-enabled? (constantly false)]
-      (mt/with-test-user nil
-        (metabase.pulse/send-pulse! pulse)))
-    (let [html-body  (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])
-          doc        (-> html-body hik/parse hik/as-hickory)
-          data-tables (hik.s/select
-                        (hik.s/class "pulse-body")
-                        doc)]
-      (map
-        (fn [data-table]
-          (->> (hik.s/select
-                 (hik.s/child
-                   (hik.s/tag :tbody)
-                   (hik.s/tag :tr)
-                   hik.s/last-child)
-                 data-table)
-               (map (comp first :content))))
-        data-tables))))
+  (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
+                           (with-redefs [email/bcc-enabled? (constantly false)]
+                             (mt/with-test-user nil
+                               (metabase.pulse/send-pulse! pulse))))
+        html-body  (-> channel-messages :channel/email first :message first :content)
+        doc        (-> html-body hik/parse hik/as-hickory)
+        data-tables (hik.s/select
+                     (hik.s/class "pulse-body")
+                     doc)]
+    (map
+     (fn [data-table]
+       (->> (hik.s/select
+             (hik.s/child
+              (hik.s/tag :tbody)
+              (hik.s/tag :tr)
+              hik.s/last-child)
+             data-table)
+            (map (comp first :content))))
+     data-tables)))
 
 (def ^:private all-pct-2d?
   "Is every element in the sequence percent formatted with 2 significant digits?"
@@ -117,7 +118,7 @@
                                               :user_id          (mt/user->id :rasta)}]
         (let [[base-data-row
                model-data-row
-               question-data-row] (run-pulse-and-return-last-data-columns pulse)]
+               question-data-row] (run-pulse-and-return-last-data-columns! pulse)]
           (testing "The data from the first question is just numbers."
             (is (all-float? base-data-row)))
           (testing "The data from the second question (a model) is percent formatted"
@@ -134,7 +135,8 @@
     (with-metadata-data-cards [base-card-id model-card-id question-card-id]
       (testing "The data from the first question is just numbers."
         (mt/with-temp [Pulse {pulse-id :id
-                              :as      pulse} {:name "Test Pulse"}
+                              :as      pulse} {:name            "Test Pulse"
+                                               :alert_condition "rows"}
                        PulseCard _ {:pulse_id pulse-id
                                     :card_id  base-card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -142,10 +144,11 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (is (all-float? (first (run-pulse-and-return-last-data-columns pulse))))))
+          (is (all-float? (first (run-pulse-and-return-last-data-columns! pulse))))))
       (testing "The data from the second question (a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
-                              :as      pulse} {:name "Test Pulse"}
+                              :as      pulse} {:name "Test Pulse"
+                                               :alert_condition "rows"}
                        PulseCard _ {:pulse_id pulse-id
                                     :card_id  model-card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -153,10 +156,11 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns pulse))))))
+          (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns! pulse))))))
       (testing "The data from the last question (based on a a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
-                              :as      pulse} {:name "Test Pulse"}
+                              :as      pulse} {:name "Test Pulse"
+                                               :alert_condition "rows"}
                        PulseCard _ {:pulse_id pulse-id
                                     :card_id  question-card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -164,7 +168,7 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns pulse)))))))))
+          (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns! pulse)))))))))
 
 (defn- strip-timestamp
   "Remove the timestamp portion of attachment filenames.
@@ -177,25 +181,26 @@
         name-parts (butlast (str/split fname #"_"))]
     (format "%s.%s" (str/join "_" name-parts) ext)))
 
-(defn- run-pulse-and-return-attached-csv-data
+(defn- run-pulse-and-return-attached-csv-data!
   "Simulate sending the pulse email, get the attached text/csv content, and parse into a map of
   attachment name -> column name -> column data"
   [pulse]
-  (mt/with-fake-inbox
-    (with-redefs [email/bcc-enabled? (constantly false)]
-      (mt/with-test-user nil
-        (metabase.pulse/send-pulse! pulse)))
-    (->>
-     (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
-     (keep
-      (fn [{:keys [type content-type file-name content]}]
-        (when (and
-               (= :attachment type)
-               (= "text/csv" content-type))
-          [(strip-timestamp file-name)
-           (let [[h & r] (csv/read-csv (slurp content))]
-             (zipmap h (apply mapv vector r)))])))
-     (into {}))))
+  (with-redefs [email/bcc-enabled? (constantly false)]
+    (->> (mt/with-test-user nil
+           (pulse.test-util/with-captured-channel-send-messages!
+             (metabase.pulse/send-pulse! pulse)))
+         :channel/email
+         first
+         :message
+         (keep
+          (fn [{:keys [type content-type file-name content]}]
+            (when (and
+                   (= :attachment type)
+                   (= "text/csv" content-type))
+              [(strip-timestamp file-name)
+               (let [[h & r] (csv/read-csv (slurp content))]
+                 (zipmap h (apply mapv vector r)))])))
+         (into {}))))
 
 (deftest apply-formatting-in-csv-dashboard-test
   (testing "An exported dashboard should preserve the formatting specified in the column metadata (#36320)"
@@ -224,7 +229,7 @@
                                                           :enabled      true}
                      PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                               :user_id          (mt/user->id :rasta)}]
-        (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
+        (let [parsed-data (run-pulse-and-return-attached-csv-data! pulse)]
           (testing "The base model has no special formatting"
             (is (all-float? (get-in parsed-data ["Base question - no special metadata.csv" "Tax Rate"]))))
           (testing "The model with metadata formats the Tax Rate column with the user-defined semantic type"
@@ -237,7 +242,8 @@
     (with-metadata-data-cards [base-card-id model-card-id question-card-id]
       (testing "The attached data from the first question is just numbers."
         (mt/with-temp [Pulse {pulse-id :id
-                              :as      pulse} {:name "Test Pulse"}
+                              :as      pulse} {:name "Test Pulse"
+                                               :alert_condition "rows"}
                        PulseCard _ {:pulse_id pulse-id
                                     :card_id  base-card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -245,11 +251,12 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
+          (let [parsed-data (run-pulse-and-return-attached-csv-data! pulse)]
             (is (all-float? (get-in parsed-data ["Base question - no special metadata.csv" "Tax Rate"]))))))
       (testing "The attached data from the second question (a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
-                              :as      pulse} {:name "Test Pulse"}
+                              :as      pulse} {:name "Test Pulse"
+                                               :alert_condition "rows"}
                        PulseCard _ {:pulse_id pulse-id
                                     :card_id  model-card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -257,11 +264,12 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
+          (let [parsed-data (run-pulse-and-return-attached-csv-data! pulse)]
             (is (all-pct-2d? (get-in parsed-data ["Model with percent semantic type.csv" "Tax Rate"]))))))
       (testing "The attached data from the last question (based on a a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
-                              :as      pulse} {:name "Test Pulse"}
+                              :as      pulse} {:name "Test Pulse"
+                                               :alert_condition "rows"}
                        PulseCard _ {:pulse_id pulse-id
                                     :card_id  question-card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -269,7 +277,7 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
+          (let [parsed-data (run-pulse-and-return-attached-csv-data! pulse)]
             (is (all-pct-2d? (get-in parsed-data ["Query based on model.csv" "Tax Rate"])))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Consistent Date Formatting ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -367,7 +375,8 @@
                      DashboardCard {metamodel-dash-card-id :id} {:dashboard_id dash-id
                                                                  :card_id      meta-model-card-id}
                      Pulse {pulse-id :id
-                            :as      pulse} {:name "Consistent Time Formatting Pulse"}
+                            :as      pulse} {:name "Consistent Time Formatting Pulse"
+                                             :dashboard_id dash-id}
                      PulseCard _ {:pulse_id          pulse-id
                                   :card_id           native-card-id
                                   :dashboard_card_id base-dash-card-id
@@ -385,7 +394,7 @@
                                                           :enabled      true}
                      PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                               :user_id          (mt/user->id :rasta)}]
-        (let [attached-data     (run-pulse-and-return-attached-csv-data pulse)
+        (let [attached-data     (run-pulse-and-return-attached-csv-data! pulse)
               get-res           #(-> (get attached-data %)
                                      (update-vals first)
                                      (dissoc "X"))
@@ -536,7 +545,8 @@
                        DashboardCard {question-dash-card-id :id} {:dashboard_id dash-id
                                                                   :card_id      question-card-id}
                        Pulse {pulse-id :id
-                              :as      pulse} {:name "Consistent Column Names"}
+                              :as      pulse} {:name "Consistent Column Names"
+                                               :dashboard_id dash-id}
                        PulseCard _ {:pulse_id          pulse-id
                                     :card_id           base-card-id
                                     :dashboard_card_id base-dash-card-id

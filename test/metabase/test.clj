@@ -139,6 +139,7 @@
   regex-email-bodies
   reset-inbox!
   summarize-multipart-email
+  summarize-multipart-single-email
   with-expected-messages
   with-fake-inbox]
 

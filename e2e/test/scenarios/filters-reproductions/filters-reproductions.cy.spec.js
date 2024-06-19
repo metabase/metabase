@@ -269,7 +269,7 @@ describe("issue 20683", { tags: "@external" }, () => {
     popover().within(() => {
       cy.findByText("Created At").click();
       cy.findByText("Relative dates…").click();
-      cy.findByText("Past").click();
+      cy.findByText("Previous").click();
       cy.findByText("Current").click();
       cy.findByText("Quarter").click();
     });

@@ -21,9 +21,9 @@ export type EmbedHideParametersControls = {
 export type EmbedThemeControls = {
   theme: DisplayTheme;
   setTheme: (theme: DisplayTheme) => void;
-  hasNightModeToggle: boolean;
-  onNightModeChange: (isNightMode: boolean) => void;
-  isNightMode: boolean;
+  hasNightModeToggle?: boolean;
+  onNightModeChange?: (isNightMode: boolean) => void;
+  isNightMode?: boolean;
 };
 
 export type EmbedFont = string | null;
