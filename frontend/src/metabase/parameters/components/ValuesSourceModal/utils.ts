@@ -6,11 +6,15 @@ import type { ParameterValue } from "metabase-types/api";
 export const getValuesText = (
   values: (string | ParameterValue)[] = [],
 ): string => {
-  return stringify(values.map(toRow), {
-    delimiter: ", ",
-    quote: '"',
-    escape: "\\",
-  }).trim();
+  return stringify(
+    values.map(toRow).filter(x => x[0] !== null),
+    {
+      delimiter: ", ",
+      quote: '"',
+      quoted_match: /(,|\t|\n)/,
+      escape: "\\",
+    },
+  ).trim();
 };
 
 export const getStaticValues = (value: string): ParameterValue[] => {
