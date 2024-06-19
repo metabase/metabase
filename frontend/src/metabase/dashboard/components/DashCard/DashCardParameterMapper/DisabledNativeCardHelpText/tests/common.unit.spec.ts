@@ -44,7 +44,7 @@ describe("DashCardParameterMapper > DisabledNativeCardHelpText (OSS)", () => {
   );
 
   it.each([{ showMetabaseLinks: false }, { showMetabaseLinks: true }])(
-    "should show a parameter help link when `show-metabase-links`: %s",
+    "should show a parameter help link and ignore the setting `show-metabase-links`: %s",
     ({ showMetabaseLinks }) => {
       setup({ showMetabaseLinks });
       expect(
@@ -54,7 +54,7 @@ describe("DashCardParameterMapper > DisabledNativeCardHelpText (OSS)", () => {
   );
 
   it.each([{ showMetabaseLinks: false }, { showMetabaseLinks: true }])(
-    "should show a model help link when `show-metabase-links`: %s",
+    "should show a model help link and ignore the setting `show-metabase-links`: %s",
     ({ showMetabaseLinks }) => {
       setup({ cardType: "model", showMetabaseLinks });
       expect(

@@ -9,7 +9,7 @@ function setup(opts: SetupOpts) {
 
 describe("DashCardParameterMapper > DisabledNativeCardHelpText (EE without token)", () => {
   it.each([{ showMetabaseLinks: false }, { showMetabaseLinks: true }])(
-    "should show a parameter help link when showMetabaseLinks = %s",
+    "should show a parameter help link and ignore the setting showMetabaseLinks = %s",
     ({ showMetabaseLinks }) => {
       setup({ showMetabaseLinks });
       expect(
@@ -19,7 +19,7 @@ describe("DashCardParameterMapper > DisabledNativeCardHelpText (EE without token
   );
 
   it.each([{ showMetabaseLinks: false }, { showMetabaseLinks: true }])(
-    "should show a model help link when `show-metabase-links`: %s",
+    "should show a model help link and ignore the setting `show-metabase-links`: %s",
     ({ showMetabaseLinks }) => {
       setup({ cardType: "model", showMetabaseLinks });
       expect(
