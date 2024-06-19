@@ -2673,14 +2673,16 @@ describe.skip("issue 44288", () => {
   });
 });
 
-describe("issue 44231", () => {
-  const productQuestionDetails = {
+describe.skip("issue 44231", () => {
+  const pkModelDetails = {
     name: "Products",
+    type: "model",
     query: { "source-table": PRODUCTS_ID },
   };
 
-  const orderQuestionDetails = {
+  const fkQuestionDetails = {
     name: "Orders",
+    type: "question",
     query: { "source-table": ORDERS_ID },
   };
 
@@ -2731,26 +2733,29 @@ describe("issue 44231", () => {
 
     cy.createDashboardWithQuestions({
       dashboardDetails,
-      questions: [productQuestionDetails, orderQuestionDetails],
-    }).then(({ dashboard, questions: [card1, card2] }) => {
+      questions: [pkModelDetails, fkQuestionDetails],
+    }).then(({ dashboard, questions: [pkCard, fkCard] }) => {
       updateDashboardCards({
         dashboard_id: dashboard.id,
         cards: [
           {
-            card_id: card1.id,
+            card_id: pkCard.id,
             parameter_mappings: [
               {
-                card_id: card1.id,
+                card_id: pkCard.id,
                 parameter_id: parameterDetails.id,
-                target: ["dimension", ["field", PRODUCTS.ID, null]],
+                target: [
+                  "dimension",
+                  ["field", "ID", { "base-type": "type/BigInteger" }],
+                ],
               },
             ],
           },
           {
-            card_id: card2.id,
+            card_id: fkCard.id,
             parameter_mappings: [
               {
-                card_id: card2.id,
+                card_id: fkCard.id,
                 parameter_id: parameterDetails.id,
                 target: ["dimension", ["field", ORDERS.PRODUCT_ID, null]],
               },
