@@ -15,7 +15,7 @@ config:
       is_superuser: true
       email: admin@example.com
   databases:
-    - name: test-data (Postgres)
+    - name: test-data-warehouse
       engine: postgres
       details:
         host: localhost
