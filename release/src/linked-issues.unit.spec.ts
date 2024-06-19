@@ -130,4 +130,4 @@ describe("getPRsFromCommitMessage", () => {
     expect(getPRsFromCommitMessage("Backport (#123) (#456)")).toEqual([123, 456]);
     expect(getPRsFromCommitMessage("Backport (#1234) and (#4567)")).toEqual([1234, 4567]);
   });
-})
+});
