@@ -43,7 +43,7 @@ const setup = async ({
   );
 
   await waitFor(() => {
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
   });
 
   return { mockOnChange };

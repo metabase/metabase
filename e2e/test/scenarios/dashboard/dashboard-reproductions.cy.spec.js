@@ -1238,7 +1238,9 @@ describe("issue 39863", () => {
   }
 
   function assertNoLoadingSpinners() {
-    dashboardGrid().findAllByTestId("loading-spinner").should("have.length", 0);
+    dashboardGrid()
+      .findAllByTestId("loading-indicator")
+      .should("have.length", 0);
   }
 
   beforeEach(() => {
