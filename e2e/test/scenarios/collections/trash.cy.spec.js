@@ -118,6 +118,18 @@ describe("scenarios > collections > trash", () => {
       native: { query: "select 1;" },
     });
 
+    cy.log("Bookmark the resources to test metabase#44224");
+
+    cy.get("@collectionId").then(collectionId => {
+      cy.get("@dashboardId").then(dashboardId => {
+        cy.get("@questionId").then(questionId => {
+          cy.request("POST", `/api/bookmark/card/${questionId}`);
+          cy.request("POST", `/api/bookmark/collection/${collectionId}`);
+          cy.request("POST", `/api/bookmark/dashboard/${dashboardId}`);
+        });
+      });
+    });
+
     visitRootCollection();
 
     cy.log("should be able to move to trash from collection view");
@@ -626,6 +638,8 @@ describe("scenarios > collections > trash", () => {
   });
 });
 
+describe("Restoring items", () => {});
+
 function toggleEllipsisMenuFor(item) {
   collectionTable().within(() => {
     cy.findByText(item)
@@ -638,31 +652,37 @@ function toggleEllipsisMenuFor(item) {
 function createCollection(collectionInfo, archive) {
   return cy
     .createCollection(collectionInfo)
-    .then(({ body: collection }) =>
-      Promise.all([collection, archive && cy.archiveCollection(collection.id)]),
-    )
+    .then(({ body: collection }) => {
+      cy.wrap(collection.id).as("collectionId");
+      return Promise.all([
+        collection,
+        archive && cy.archiveCollection(collection.id),
+      ]);
+    })
     .then(([collection]) => collection);
 }
 
 function createQuestion(questionInfo, archive) {
-  return _createQuestion(questionInfo).then(({ body: question }) =>
-    Promise.all([question, archive && archiveQuestion(question.id)]).then(
-      ([question]) => question,
-    ),
+  return _createQuestion(questionInfo, { wrapId: true }).then(
+    ({ body: question }) =>
+      Promise.all([question, archive && archiveQuestion(question.id)]).then(
+        ([question]) => question,
+      ),
   );
 }
 
 function createNativeQuestion(questionInfo, archive) {
-  return _createNativeQuestion(questionInfo).then(({ body: question }) =>
-    Promise.all([question, archive && archiveQuestion(question.id)]).then(
-      ([question]) => question,
-    ),
+  return _createNativeQuestion(questionInfo, { wrapId: true }).then(
+    ({ body: question }) =>
+      Promise.all([question, archive && archiveQuestion(question.id)]).then(
+        ([question]) => question,
+      ),
   );
 }
 
 function createDashboard(dashboardInfo, archive) {
   return cy
-    .createDashboard(dashboardInfo)
+    .createDashboard(dashboardInfo, { wrapId: true })
     .then(({ body: dashboard }) =>
       Promise.all([dashboard, archive && cy.archiveDashboard(dashboard.id)]),
     )
