@@ -2967,13 +2967,13 @@
     redux-thunk "^3.1.0"
     reselect "^5.1.0"
 
-"@replayio/cypress@^2.1.0":
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/@replayio/cypress/-/cypress-2.1.0.tgz#37b3e703306421529efa32e7430eda941891e4b6"
-  integrity sha512-AM/7tP3fR7VKmes5u94dIJ7wwaZPwD9dWHyQodP6EyUcUkyfOb9b5Ov/W1EAc6DG+VcBlycIk5CUgOWJIKAp/w==
+"@replayio/cypress@^3.0.0":
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/@replayio/cypress/-/cypress-3.0.0.tgz#ec56ded45cb23b3bc9f51a11a6f158ce49c07178"
+  integrity sha512-6HJyFzwho9ucBu7oHqR4HZJhwJ/5dT1R5fiY6Tm1nJLsa0MnJCaBUvfdvxxTB/AHrN3HzNbD+vlCVieIvM5VbQ==
   dependencies:
-    "@replayio/replay" "^0.22.4"
-    "@replayio/test-utils" "^2.1.0"
+    "@replayio/replay" "^0.22.7"
+    "@replayio/test-utils" "^3.0.0"
     chalk "^4.1.2"
     debug "^4.3.4"
     semver "^7.5.2"
@@ -2982,18 +2982,18 @@
     uuid "^8.3.2"
     ws "^8.14.2"
 
-"@replayio/replay@^0.22.4":
-  version "0.22.4"
-  resolved "https://registry.yarnpkg.com/@replayio/replay/-/replay-0.22.4.tgz#ee970618e1033f2f24b941a08aa90a8e545c984e"
-  integrity sha512-E4JJicf1akAujdMbPMEOlDzlwRWoCevOzw4bXNVU6gxJSohl8Aqp18dNcWMBAW7zg+PJCYg1TY2hF8S0yJwDCQ==
+"@replayio/replay@^0.22.7":
+  version "0.22.7"
+  resolved "https://registry.yarnpkg.com/@replayio/replay/-/replay-0.22.7.tgz#eaef8ed3e76bb5786b3daed9d3dd9e4182bad848"
+  integrity sha512-iaKs6r77Z1xAPpfgSmGjsvzI8ixB0wvx4G6y2OEz3YaFvEesmzxQqgLV9trtgi93+bQULFfNRk573SvWstkXpA==
   dependencies:
-    "@replayio/sourcemap-upload" "^2.0.3"
+    "@replayio/sourcemap-upload" "^2.0.4"
     "@types/semver" "^7.5.6"
     commander "^12.0.0"
     debug "^4.3.4"
     is-uuid "^1.0.2"
     jsonata "^1.8.6"
-    launchdarkly-node-client-sdk "^3.1.0"
+    launchdarkly-node-client-sdk "^3.2.1"
     node-fetch "^2.6.8"
     p-map "^4.0.0"
     query-registry "^2.6.0"
@@ -3002,10 +3002,10 @@
     text-table "^0.2.0"
     ws "^7.5.0"
 
-"@replayio/sourcemap-upload@^2.0.3":
-  version "2.0.3"
-  resolved "https://registry.yarnpkg.com/@replayio/sourcemap-upload/-/sourcemap-upload-2.0.3.tgz#98a4cc626c51209c04b75277edd48a98b14c62d8"
-  integrity sha512-ZFKW5ZhSosDjWBXpp3n9+DFwOos8QUv2BqQkKOBYFri6ogmLB6ayctbHkL00wGztfGm1BBh0JQ3yJ4pvDplJGw==
+"@replayio/sourcemap-upload@^2.0.4":
+  version "2.0.4"
+  resolved "https://registry.yarnpkg.com/@replayio/sourcemap-upload/-/sourcemap-upload-2.0.4.tgz#23ade4fba0a35342d26e554a5a768bc97c7769cf"
+  integrity sha512-sZWsX1wZQgaWzEQMKjLYhaBPNcs+1b3quBPo7az7p+nRk2UEvl0oaxSGGOH0+qx08aN8DkAOM5jQLa02zqul8w==
   dependencies:
     commander "^7.2.0"
     debug "^4.3.1"
@@ -3014,12 +3014,12 @@
     p-map "^4.0.0"
     string.prototype.matchall "^4.0.5"
 
-"@replayio/test-utils@^2.1.0":
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/@replayio/test-utils/-/test-utils-2.1.0.tgz#eba16e730cc365bebbf61630d481cd5758924cbd"
-  integrity sha512-6XZN+FmxZOd1ODz2jHpDtW7ms85dbKo0ucdgD2Mu5+8bdlq64F0ZqNclQ+/XeL7c5JDV5dG69dkNgj2TvV9ILg==
+"@replayio/test-utils@^3.0.0":
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/@replayio/test-utils/-/test-utils-3.0.0.tgz#48bc826b1062fcca6754b64fc35dc8e068a971f5"
+  integrity sha512-ZDAS7edSF4rC4EYDHGcasVPaxEZZ9bfDKHWvXgq1Ailtx+/CnKqz2f160KA5UeaNfb/Y0wvhL1XEjn/t42glWQ==
   dependencies:
-    "@replayio/replay" "^0.22.4"
+    "@replayio/replay" "^0.22.7"
     debug "^4.3.4"
     node-fetch "^2.6.7"
     sha-1 "^1.0.0"
@@ -15227,10 +15227,10 @@ launch-editor@^2.6.0:
     picocolors "^1.0.0"
     shell-quote "^1.7.3"
 
-launchdarkly-eventsource@2.0.2:
-  version "2.0.2"
-  resolved "https://registry.yarnpkg.com/launchdarkly-eventsource/-/launchdarkly-eventsource-2.0.2.tgz#334d518c5db7cd24cf12cf294722afa4532204dc"
-  integrity sha512-9Aj5KgtbV5E7XGA74Z7Ui2fSwyeNlkGtbPkdTsPOQBzT7/3ZNtOjplg+HWhNMtsM2B9orFebTy3XBGxidyHbQg==
+launchdarkly-eventsource@2.0.3:
+  version "2.0.3"
+  resolved "https://registry.yarnpkg.com/launchdarkly-eventsource/-/launchdarkly-eventsource-2.0.3.tgz#8a7b8da5538153f438f7d452b1c87643d900f984"
+  integrity sha512-VhFjppK7jXlcEKaS7bxdoibB5j01NKyeDR7a8XfssdDGNWCTsbF0/5IExSmPi44eDncPhkoPNxlSZhEZvrbD5w==
 
 launchdarkly-js-sdk-common@5.2.0:
   version "5.2.0"
@@ -15241,12 +15241,12 @@ launchdarkly-js-sdk-common@5.2.0:
     fast-deep-equal "^2.0.1"
     uuid "^8.0.0"
 
-launchdarkly-node-client-sdk@^3.1.0:
-  version "3.2.0"
-  resolved "https://registry.yarnpkg.com/launchdarkly-node-client-sdk/-/launchdarkly-node-client-sdk-3.2.0.tgz#adf896ab9e40437528ae00d1b91062d67b9459f5"
-  integrity sha512-S4WGbf0r1xtU9fAkjGSjRk95N01uSzIE+vWvpio8tMIxKB04nRMMig1pXdtI1OWgz6MRalTDYeCdcIF55TZ9HQ==
+launchdarkly-node-client-sdk@^3.2.1:
+  version "3.2.1"
+  resolved "https://registry.yarnpkg.com/launchdarkly-node-client-sdk/-/launchdarkly-node-client-sdk-3.2.1.tgz#ce08847528456cbcc87eb2a517463f12246d397b"
+  integrity sha512-vIn1kFCWSX83M2hHIQEw+TyEZFqcXn4DTKja2Vdt9NFgs0I2BA70ENA+zgz8OSt+VqvTciZV0l5X90Uyv+3vsQ==
   dependencies:
-    launchdarkly-eventsource "2.0.2"
+    launchdarkly-eventsource "2.0.3"
     launchdarkly-js-sdk-common "5.2.0"
     node-localstorage "^1.3.1"
 
