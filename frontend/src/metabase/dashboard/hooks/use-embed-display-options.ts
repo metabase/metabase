@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import { useEmbedTheme } from "metabase/dashboard/hooks/use-embed-theme";
 
@@ -16,10 +14,6 @@ export const DEFAULT_EMBED_DISPLAY_OPTIONS: EmbedDisplayParams = {
 };
 
 export const useEmbedDisplayOptions = () => {
-  const [hideParameters, setHideParameters] = useState(
-    DEFAULT_EMBED_DISPLAY_OPTIONS.hideParameters,
-  );
-
   const { font, setFont } = useEmbedFont();
 
   const {
@@ -31,8 +25,6 @@ export const useEmbedDisplayOptions = () => {
   } = useEmbedTheme();
 
   return {
-    hideParameters,
-    setHideParameters,
     font,
     setFont,
     hasNightModeToggle,

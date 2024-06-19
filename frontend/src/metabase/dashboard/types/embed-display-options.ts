@@ -13,7 +13,6 @@ export type EmbedHideDownloadButtonControls = {
 export type EmbedHideParameters = string | null;
 export type EmbedHideParametersControls = {
   hideParameters: EmbedHideParameters;
-  setHideParameters: (hideParameters: EmbedHideParameters) => void;
 };
 
 export type EmbedThemeControls = {
