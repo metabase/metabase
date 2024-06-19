@@ -6,7 +6,7 @@
    [metabase.search.filter :as search.filter]
    [metabase.test :as mt]))
 
-(def ^:private default-search-ctx
+(def default-search-ctx
   {:search-string       nil
    :archived?           false
    :models             search.config/all-models
@@ -404,8 +404,10 @@
       (testing "search in both name, description and dataset_query if is enabled"
         (is (= [:and [:or
                       [:like [:lower :card.name] "%foo%"]
-                      [:and [:= :card.query_type "native"] [:like [:lower :card.dataset_query] "%foo%"]]
-                      [:like [:lower :card.description] "%foo%"]]
+                      [:like [:lower :card.description] "%foo%"]
+                      [:and
+                       [:= :card.query_type "native"]
+                       [:like [:lower :card.dataset_query] "%foo%"]]]
                 [:= :card.archived false]]
                (:where (search.filter/build-filters
                         base-search-query
@@ -429,8 +431,8 @@
       (is (= [:and
               [:or
                [:like [:lower :action.name] "%foo%"]
-               [:like [:lower :query_action.dataset_query] "%foo%"]
-               [:like [:lower :action.description] "%foo%"]]
+               [:like [:lower :action.description] "%foo%"]
+               [:like [:lower :query_action.dataset_query] "%foo%"]]
               [:= :action.archived false]]
              (:where (search.filter/build-filters
                       base-search-query
