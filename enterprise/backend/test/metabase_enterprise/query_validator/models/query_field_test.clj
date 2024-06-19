@@ -1,12 +1,12 @@
-(ns metabase.models.query-field-test
+(ns metabase-enterprise.query-validator.models.query-field-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase-enterprise.query-validator.models.query-field :as query-field]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models :refer [Card]]
-   [metabase.models.query-field :as query-field]
    [metabase.native-query-analyzer :as query-analyzer]
    [metabase.test :as mt]
    [toucan2.core :as t2]

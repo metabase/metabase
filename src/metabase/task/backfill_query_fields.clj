@@ -2,7 +2,7 @@
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.models.query-field :as query-field]
+   [metabase.models.card :as card]
    [metabase.task :as task]
    [toucan2.core :as t2]))
 
@@ -15,7 +15,7 @@
                                                          :where     [:and
                                                                      [:not :c.archived]
                                                                      [:= :f.id nil]]}])]
-    (run! query-field/update-query-fields-for-card! cards)))
+    (run! card/update-query-fields-for-card! cards)))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Backfill QueryField for cards created earlier. Runs once per instance."}
