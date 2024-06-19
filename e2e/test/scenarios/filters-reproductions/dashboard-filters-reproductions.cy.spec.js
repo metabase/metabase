@@ -2803,7 +2803,7 @@ describe("issue 44231", () => {
     verifyFieldMapping("question");
   });
 
-  it.skip("should allow filtering by remapped values with models (metabase#44231)", () => {
+  it("should allow filtering by remapped values with models (metabase#44231)", () => {
     verifyFieldMapping("model");
   });
 });
