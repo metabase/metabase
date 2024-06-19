@@ -530,7 +530,7 @@
                             (map #(update % :archived api/bit->boolean))
                             (map #(update % :pk_ref json/parse-string))
                             (map add-can-write)
-                            (map (partial scoring/score-and-result (:search-string search-ctx)))
+                            (map #(scoring/score-and-result % (select-keys search-ctx [:search-string :search-native-query])))
                             (filter #(pos? (:score %))))
         total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                               true                           hydrate-user-metadata
@@ -585,7 +585,7 @@
                                [:limit                               {:optional true} [:maybe ms/Int]]
                                [:offset                              {:optional true} [:maybe ms/Int]]
                                [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
-                               [:search-native-query                 {:optional true} [:maybe boolean?]]
+                               [:search-native-query                 {:optional true} [:maybe true?]]
                                [:model-ancestors?                    {:optional true} [:maybe boolean?]]
                                [:verified                            {:optional true} [:maybe true?]]]] :- SearchContext
   (when (some? verified)

@@ -4,7 +4,11 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.search.config :as search.config]
-   [metabase.search.scoring :as scoring]))
+   [metabase.search.filter-test :as search.filter-test]
+   [metabase.search.impl :as search.impl]
+   [metabase.search.scoring :as scoring]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (defn- result-row
   ([name]
@@ -17,7 +21,7 @@
   [scorer]
   (comp :score
         first
-        (partial #'scoring/text-scores-with [{:weight 1 :scorer scorer}])))
+        (partial #'scoring/text-scores-with nil [{:weight 1 :scorer scorer}])))
 
 (deftest ^:parallel consecutivity-scorer-test
   (let [score (scorer->score #'scoring/consecutivity-scorer)]
@@ -227,6 +231,29 @@
                     (sort-by score)
                     (map :id))))))))
 
+(defn search-results
+  "Returns search results as they are returned from the search query before scoring"
+  [search-ctx]
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [search-ctx (merge search.filter-test/default-search-ctx search-ctx)]
+      (t2/query (#'search.impl/full-search-query search-ctx)))))
+
+(deftest search-native-query-scoring-test
+  (testing "Exclude native query matches in search scoring when the search should exclude native queries"
+    (mt/dataset test-data
+      (mt/with-temp [;; card-1 has a match in the native query, card-2 does not
+                     :model/Card card-1 {:name "matching", :dataset_query (mt/native-query {:query "also matching"})}
+                     :model/Card card-2 {:name "matching", :dataset_query (mt/native-query {:query "doesn't"})}]
+        (let [search-string       "matching"
+              search-native-query false
+              results             (search-results {:search-string search-string}) ; note :search-native-query is not enabled
+              score               (fn [model id]
+                                    (let [result (first (filter #(= [(:model %) (:id %)] [model id]) results))]
+                                      (float (:score (scoring/score-and-result result {:search-string       search-string
+                                                                                       :search-native-query search-native-query})))))
+              [score-1 score-2]   (map #(score "card" %) [(:id card-1) (:id card-2)])]
+          (is (= score-1 score-2)))))))
+
 (deftest ^:parallel combined-test
   (let [search-string     "custom expression examples"
         labeled-results   {:a {:name "custom expression examples" :model "dashboard"}
@@ -244,7 +271,7 @@
                        d])              ; middling text match, no other signal
            (->> labeled-results
                 vals
-                (map (partial scoring/score-and-result search-string))
+                (map #(scoring/score-and-result % {:search-string search-string :search-native-query nil}))
                 (sort-by :score)
                 reverse
                 (map :result)
@@ -259,7 +286,7 @@
     (is (= (map :name [b c a])
            (->> labeled-results
                 vals
-                (map (partial scoring/score-and-result search-string))
+                (map #(scoring/score-and-result % {:search-string search-string :search-native-query nil}))
                 (sort-by :score)
                 reverse
                 (map :result)
@@ -271,7 +298,8 @@
                   (fn [_]
                     [{:weight 100 :score 0 :name "Some score type"}
                      {:weight 100 :score 0 :name "Some other score type"}])]
-      (is (= 0 (:score (scoring/score-and-result "" {:name "racing yo" :model "card"})))))))
+      (is (= 0 (:score (scoring/score-and-result {:name "racing yo" :model "card"}
+                                                 {:search-string "" :search-native-query nil})))))))
 
 (deftest ^:parallel serialize-test
   (testing "It normalizes dataset queries from strings"
