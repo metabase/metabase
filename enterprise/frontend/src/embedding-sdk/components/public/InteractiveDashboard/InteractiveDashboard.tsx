@@ -1,27 +1,25 @@
-import type { Query } from "history";
 import { useState } from "react";
 
 import type { SdkClickActionPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
+import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { useStore } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { DashboardId, QuestionDashboardCard } from "metabase-types/api";
+import type { QuestionDashboardCard } from "metabase-types/api";
 
-import { StaticDashboard } from "../StaticDashboard";
+import {
+  _StaticDashboard,
+  type StaticDashboardProps,
+} from "../StaticDashboard";
 
-export type InteractiveDashboardProps = {
-  dashboardId: DashboardId;
-  initialParameterValues?: Query;
-  withTitle?: boolean;
-  withDownloads?: boolean;
-  hiddenParameters?: string[];
+export type InteractiveDashboardProps = StaticDashboardProps & {
   questionHeight?: number;
   questionPlugins?: SdkClickActionPluginsConfig;
 };
 
-export const InteractiveDashboard = (props: InteractiveDashboardProps) => {
+const _InteractiveDashboard = (props: InteractiveDashboardProps) => {
   const { dashboardId, withTitle, questionHeight, questionPlugins } = props;
 
   const store = useStore();
@@ -69,9 +67,13 @@ export const InteractiveDashboard = (props: InteractiveDashboardProps) => {
   }
 
   return (
-    <StaticDashboard
+    <_StaticDashboard
       {...props}
       navigateToNewCardFromDashboard={handleNavigateToNewCardFromDashboard}
     />
   );
 };
+
+export const InteractiveDashboard = withPublicComponentWrapper(
+  _InteractiveDashboard,
+);

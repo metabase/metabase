@@ -18,7 +18,7 @@ import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEm
 import { Box } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
-export type StaticDashboardProps = {
+type StaticDashboardInnerProps = {
   dashboardId: DashboardId;
   initialParameterValues?: Query;
   withTitle?: boolean;
@@ -28,10 +28,15 @@ export type StaticDashboardProps = {
 
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
-  ) => void; // TODO: should not be part of publicly exposed api
+  ) => void;
 };
 
-const _StaticDashboard = ({
+export type StaticDashboardProps = Omit<
+  StaticDashboardInnerProps,
+  "navigateToNewCardFromDashboard"
+>;
+
+export const _StaticDashboard = ({
   dashboardId,
   initialParameterValues: parameterQueryParams = {},
   withTitle: titled = true,
@@ -39,7 +44,7 @@ const _StaticDashboard = ({
   withDownloads = true,
   hiddenParameters = [],
   navigateToNewCardFromDashboard,
-}: StaticDashboardProps) => {
+}: StaticDashboardInnerProps) => {
   // temporary name until we change `hideDownloadButton` to `downloads`
   const hideDownloadButton = !withDownloads;
 
@@ -96,6 +101,8 @@ const _StaticDashboard = ({
   );
 };
 
-const StaticDashboard = withPublicComponentWrapper(_StaticDashboard);
+const StaticDashboard = withPublicComponentWrapper(
+  _StaticDashboard,
+) as React.FC<StaticDashboardProps>;
 
 export { EmbedDisplayParams, StaticDashboard };
