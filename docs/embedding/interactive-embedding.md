@@ -25,7 +25,7 @@ Check out the [Interactive embedding quick start](https://www.metabase.com/learn
 
 ## Prerequisites for interactive embedding
 
-1. Make sure you have a [license token](../paid-features/activating-the-enterprise-edition.md) for a [paid plan](https://store.metabase.com/checkout/login-details).
+1. Make sure you have a [license token](../paid-features/activating-the-enterprise-edition.md) for a [Pro or Enterprise plan](https://store.metabase.com/checkout/login-details).
 2. Organize people into Metabase [groups](../people-and-groups/start.md).
 3. Set up [permissions](../permissions/introduction.md) for each group.
 4. Set up [SSO](../people-and-groups/start.md#authentication) to automatically apply permissions and show people the right data upon sign-in. In general, **we recommend using [SSO with JWT](../people-and-groups/authenticating-with-jwt.md)**.
