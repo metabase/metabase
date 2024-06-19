@@ -58,14 +58,15 @@ export const useSaveStrategy = (
 
         const newConfig: CacheConfig = {
           ...baseConfig,
-          strategy:
-            validatedStrategy.type === "ttl"
-              ? populateMinDurationSeconds(validatedStrategy)
-              : validatedStrategy,
+          strategy: validatedStrategy,
         };
 
         const translatedConfig = translateConfigToAPI(newConfig);
         await CacheConfigApi.update(translatedConfig);
+
+        if (newConfig.strategy.type === "ttl") {
+          newConfig.strategy = populateMinDurationSeconds(newConfig.strategy);
+        }
 
         setConfigs([...otherConfigs, newConfig]);
       }
