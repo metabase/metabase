@@ -441,6 +441,11 @@
     ;; for a deprecated feature
     (m/update-existing-in p [:values_source_config :card_id] fully-qualified-name->card-id)))
 
+(defn- parse-timestamp [ts]
+  (if (string? ts)
+    (u.date/parse ts)
+    ts))
+
 (defn load-dashboards!
   "Loads `dashboards` (which is a sequence of maps parsed from a YAML dump of dashboards) in a given `context`."
   {:added "0.40.0"}
@@ -449,6 +454,7 @@
                                             (for [dashboard dashboards]
                                               (-> dashboard
                                                   (update :parameters resolve-dashboard-parameters)
+                                                  (update :last_viewed_at parse-timestamp)
                                                   (dissoc :dashboard_cards)
                                                   (assoc :collection_id (:collection context)
                                                          :creator_id    (default-user-id)))))
