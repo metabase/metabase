@@ -9,13 +9,13 @@ Features currently supported:
 - embedding questions - static
 - embedding questions - w/drill-down
 - embedding dashboards - static
+- embedding dashboards - w/drill-down
 - embedding the collection browser
 - theming with CSS variables
 - plugins for custom actions
 
 Features planned:
 
-- embedding dashboards - w/ drill-down
 - subscribing to events
 
 # Prerequisites
@@ -225,7 +225,7 @@ export default function App() {
 }
 ```
 
-### Embedding an interactive question (drill-down)
+### Embedding an interactive question (with drill-down)
 
 ```jsx
 import React from "react";
@@ -258,7 +258,7 @@ After the SDK is configured, you can embed your dashboard using the `StaticDashb
 - **withTitle**: `boolean` – Whether the dashboard should display a title.
 - **withCardTitle**: `boolean` – Whether the dashboard cards should display a title.
 - **withDownloads**: `boolean | null` – Whether to hide the download button.
-- **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
+- **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. [More information here](https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters)
 
 
 ```jsx
@@ -277,6 +277,49 @@ export default function App() {
   return (
     <MetabaseProvider config={config}>
         <StaticDashboard
+          dashboardId={dashboardId}
+          initialParameterValues={initialParameterValues}
+          withTitle={false}
+          withDownloads={false}
+          hiddenParameters={hideParameters}
+        />
+    </MetabaseProvider>
+  );
+}
+```
+
+### Embedding an interactive dashboard (with drill-down)
+
+After the SDK is configured, you can embed your dashboard using the `InteractiveDashboard` component.
+
+
+#### Parameters
+
+- **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
+- **initialParameterValues**: `Record<string, string | string[]>` – Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
+- **withTitle**: `boolean` – Whether the dashboard should display a title.
+- **withCardTitle**: `boolean` – Whether the dashboard cards should display a title.
+- **withDownloads**: `boolean | null` – Whether to hide the download button.
+- **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
+- **questionHeight**: `number | null` – Height of a question component when drilled from the dashboard to a question level.
+- **questionPlugins** `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add drill-down menu. [See this](#implementing-custom-actions) for more details
+
+```jsx
+import React from "react";
+import { MetabaseProvider, InteractiveDashboard } from "@metabase/embedding-sdk-react";
+
+const config = {...}
+
+export default function App() {
+  const dashboardId = 1; // This is the dashboard ID you want to embed
+  const initialParameterValues = {}; // Define your query parameters here
+
+  // choose parameter names that are in your dashboard
+  const hiddenParameters = ["location", "city"]
+
+  return (
+    <MetabaseProvider config={config}>
+        <InteractiveDashboard
           dashboardId={dashboardId}
           initialParameterValues={initialParameterValues}
           withTitle={false}
@@ -453,7 +496,7 @@ const theme = {
         backgroundColor: "#95A5A6",
       },
     },
-    
+
     collectionBrowser: {
        breadcrumbs: {
          expandButton: {

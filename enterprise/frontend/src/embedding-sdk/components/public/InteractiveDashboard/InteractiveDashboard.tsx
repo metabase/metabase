@@ -3,7 +3,10 @@ import { useState } from "react";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { useSdkDashboardParams } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
+import {
+  type SdkDashboardDisplayProps,
+  useSdkDashboardParams,
+} from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import CS from "metabase/css/core/index.css";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
@@ -15,9 +18,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import type { QuestionDashboardCard } from "metabase-types/api";
 
-import type { StaticDashboardProps } from "../StaticDashboard";
-
-export type InteractiveDashboardProps = StaticDashboardProps & {
+export type InteractiveDashboardProps = SdkDashboardDisplayProps & {
   questionHeight?: number;
   questionPlugins?: SdkClickActionPluginsConfig;
 };
