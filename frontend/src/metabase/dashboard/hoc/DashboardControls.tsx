@@ -49,7 +49,6 @@ export const DashboardControls = <T extends DashboardControlsProps>(
       setRefreshElapsedHook,
       onRefreshPeriodChange,
       setTheme,
-      setTitled,
       theme,
       titled,
       font,
@@ -79,7 +78,6 @@ export const DashboardControls = <T extends DashboardControlsProps>(
         setHideDownloadButton={setHideDownloadButton}
         setHideParameters={setHideParameters}
         setTheme={setTheme}
-        setTitled={setTitled}
         theme={theme}
         titled={titled}
         font={font}

@@ -3,7 +3,6 @@ import type { DisplayTheme } from "metabase/public/lib/types";
 export type EmbedTitle = boolean;
 export type EmbedTitledControls = {
   titled: EmbedTitle;
-  setTitled: (titled: EmbedTitle) => void;
 };
 
 export type EmbedHideDownloadButton = boolean | null;

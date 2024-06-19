@@ -34,9 +34,7 @@ export const useDashboardUrlParams = ({
     setHideDownloadButton,
     setHideParameters,
     setTheme,
-    setTitled,
     theme,
-    titled,
   } = useEmbedDisplayOptions();
 
   const { isFullscreen, onFullscreenChange } = useDashboardFullscreen();
@@ -72,11 +70,13 @@ export const useDashboardUrlParams = ({
     hashOptions.bordered ??
     (isWithinIframe() || DEFAULT_EMBED_DISPLAY_OPTIONS.bordered);
 
+  const titled = hashOptions.titled ?? DEFAULT_EMBED_DISPLAY_OPTIONS.titled;
+
   useEffect(() => {
     const hashOptions = parseHashOptions(
       location.hash,
     ) as DashboardUrlHashOptions;
-    setTitled(hashOptions.titled ?? titled);
+
     setFont(hashOptions.font ?? font);
     setHideDownloadButton(
       hashOptions.hide_download_button ?? hideDownloadButton,
@@ -90,8 +90,6 @@ export const useDashboardUrlParams = ({
     setFont,
     setHideDownloadButton,
     setHideParameters,
-    setTitled,
-    titled,
   ]);
 
   return {
@@ -109,7 +107,6 @@ export const useDashboardUrlParams = ({
     onRefreshPeriodChange,
     bordered,
     titled,
-    setTitled,
     hideDownloadButton,
     setHideDownloadButton,
     font,

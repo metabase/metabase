@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import { useEmbedTheme } from "metabase/dashboard/hooks/use-embed-theme";
 
-import type { EmbedDisplayControls, EmbedDisplayParams } from "../types";
+import type { EmbedDisplayParams } from "../types";
 
 export const DEFAULT_EMBED_DISPLAY_OPTIONS: EmbedDisplayParams = {
   bordered: false,
@@ -15,8 +15,7 @@ export const DEFAULT_EMBED_DISPLAY_OPTIONS: EmbedDisplayParams = {
   theme: "light",
 };
 
-export const useEmbedDisplayOptions = (): EmbedDisplayControls => {
-  const [titled, setTitled] = useState(DEFAULT_EMBED_DISPLAY_OPTIONS.titled);
+export const useEmbedDisplayOptions = () => {
   const [hideDownloadButton, setHideDownloadButton] = useState(
     DEFAULT_EMBED_DISPLAY_OPTIONS.hideDownloadButton,
   );
@@ -35,8 +34,6 @@ export const useEmbedDisplayOptions = (): EmbedDisplayControls => {
   } = useEmbedTheme();
 
   return {
-    titled,
-    setTitled,
     hideDownloadButton,
     setHideDownloadButton,
     hideParameters,
