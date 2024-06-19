@@ -111,7 +111,7 @@
   just the column identifiers, perhaps for use with something like `select-keys`. Clutch!
 
     (t2/select Field:params-columns-only)"
-  [:model/Field :id :table_id :display_name :base_type :semantic_type :has_field_values :fk_target_field_id])
+  [:model/Field :id :table_id :display_name :base_type :name :semantic_type :has_field_values :fk_target_field_id])
 
 (defn- fields->table-id->name-field
   "Given a sequence of `fields,` return a map of Table ID -> to a `:type/Name` Field in that Table, if one exists. In
