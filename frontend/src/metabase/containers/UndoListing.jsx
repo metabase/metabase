@@ -93,6 +93,8 @@ function UndoToast({ undo, onUndo, onDismiss }) {
     dispatch(resumeUndo(undo));
   };
 
+  const animationDuration = undo.initialTimeout / 1000;
+
   return (
     <Transition
       mounted={mounted}
@@ -121,7 +123,10 @@ function UndoToast({ undo, onUndo, onDismiss }) {
               pos="absolute"
               top={0}
               left={0}
-              className={CS.progress}
+              w="100%"
+              className={`${CS.progress}  ${
+                animationDuration === 8 ? CS.progress8s : CS.progress12s
+              }`}
             />
           )}
           <CardContent>

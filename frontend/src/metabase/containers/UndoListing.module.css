@@ -12,7 +12,14 @@
   /* it must be in sync with AUTO_WIRE_TOAST_TIMEOUT */
   animation: animated-progress 12s linear;
   transform-origin: left;
-  width: 100%;
+}
+
+.progress8s {
+  animation-duration: 8s;
+}
+
+.progress12s {
+  animation-duration: 8s;
 }
 
 .toast:hover .progress {
