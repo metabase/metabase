@@ -16,6 +16,7 @@ import {
 } from "e2e/support/helpers";
 
 import { runQuery } from "../native-filters/helpers/e2e-sql-filter-helpers";
+
 const { PRODUCTS } = SAMPLE_DATABASE;
 
 describe("issue 12439", () => {
@@ -223,7 +224,6 @@ describe("issue 18148", () => {
   });
 
   it("should not offer to save the question before it is actually possible to save it (metabase#18148)", () => {
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByTestId("qb-save-button").should(
       "have.attr",
       "aria-disabled",

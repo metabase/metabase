@@ -221,11 +221,7 @@ export function ViewTitleHeaderRightSide({
         />
       )}
       {hasSaveButton && (
-        <Tooltip
-          label={disabledSaveTooltip}
-          disabled={!isSaveDisabled}
-          position="left"
-        >
+        <Tooltip label={disabledSaveTooltip} disabled={canSave} position="left">
           <SaveButton
             data-testid="qb-save-button"
             px="md"
