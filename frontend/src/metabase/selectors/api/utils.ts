@@ -50,23 +50,16 @@ export const zip = <E extends Entity>(
     return entry1.fulfilledTimeStamp - entry2.fulfilledTimeStamp;
   });
 
+  const entities = sortedEntityEntries.flatMap(entries => entries.entities);
   const map: Record<string | number, E> = {};
 
-  for (const entityEntry of sortedEntityEntries) {
-    const { entities } = entityEntry;
-
-    for (const entity of entities) {
-      if (!map[entity.id]) {
-        map[entity.id] = entity;
-      } else {
-        // Do what mergeEntities does in entity framework
-        // TODO: improve this comment if this works
-        map[entity.id] = {
-          ...map[entity.id],
-          ...entity,
-        };
-      }
-    }
+  for (const entity of entities) {
+    // Do what mergeEntities does in the entity framework.
+    // Different endpoints may return different sets of attributes for the same entity.
+    map[entity.id] = {
+      ...map[entity.id],
+      ...entity,
+    };
   }
 
   return map;
