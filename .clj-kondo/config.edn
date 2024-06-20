@@ -10,6 +10,7 @@
   :missing-docstring            {:level :warning}
   :missing-else-branch          {:level :warning}
   :namespace-name-mismatch      {:level :warning}
+  :non-arg-vec-return-type-hint {:level :warning}
   :reduce-without-init          {:level :warning}
   :redundant-fn-wrapper         {:level :warning}
   :refer-all                    {:level :warning, :exclude [clojure.test]}
@@ -32,8 +33,9 @@
   ;;
   ;; disabled linters
   ;;
-  :unexpected-recur             {:level :off} ; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
-  :used-underscored-binding     {:level :off} ; false positives: see https://github.com/clj-kondo/clj-kondo/issues/2152
+
+  :unexpected-recur         {:level :off} ; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
+  :used-underscored-binding {:level :off} ; false positives: see https://github.com/clj-kondo/clj-kondo/issues/2152
 
   ;;
   ;; TODO (cam): here are some more linters we should experiment with enabling -- some might be useful.
