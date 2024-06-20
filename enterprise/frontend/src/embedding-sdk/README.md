@@ -18,6 +18,9 @@ Features planned:
 
 - subscribing to events
 
+# Changelog
+[View changelog](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+
 # Prerequisites
 
 - You have an application using React 17 or higher
