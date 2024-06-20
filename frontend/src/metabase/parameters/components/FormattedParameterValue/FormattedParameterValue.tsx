@@ -63,7 +63,7 @@ function FormattedParameterValue({
       <ParameterFieldWidgetValue
         fields={getFields(parameter)}
         value={value}
-        displayValue={valueToString(displayValue)}
+        displayValue={displayValue?.[1]}
       />
     );
   }
