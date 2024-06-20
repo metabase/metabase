@@ -16,10 +16,8 @@ import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
 import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
 import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
-import {
-  MODAL_TYPES,
-  type QBModalTypeKey,
-} from "metabase/query_builder/constants";
+import type { QBModalTypeKey } from "metabase/query_builder/constants";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getQuestionWithParameters } from "metabase/query_builder/selectors";
 import { FilterModal } from "metabase/querying";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";

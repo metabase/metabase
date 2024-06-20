@@ -3,10 +3,8 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import {
-  MODAL_TYPES,
-  type QBModalTypeKey,
-} from "metabase/query_builder/constants";
+import type { QBModalTypeKey } from "metabase/query_builder/constants";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 import TimelinePanel from "metabase/timelines/questions/containers/TimelinePanel";
 import type Question from "metabase-lib/v1/Question";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
