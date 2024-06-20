@@ -75,7 +75,7 @@ If you need to connect to other databases using SSL, instead of creating a new t
 
 You can download a JDBC driver from [Oracle's JDBC driver downloads page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/index.html).
 
-The minimum driver version should be 19c, regardless of which Java version or Oracle Database version you have.
+The minimum Oracle Database version should be 19c, regardless of which Java version or Oracle JDBC driver version you have.
 
 We recommend using the `ojdbc8.jar` JAR.
 

@@ -111,11 +111,18 @@ describe("scenarios > collections > trash", () => {
 
   it("should be able to trash & restore dashboards/collections/questions on entity page and from parent collection", () => {
     cy.log("create test resources");
-    createCollection({ name: "Collection A" });
-    createDashboard({ name: "Dashboard A" });
+    cy.log("Bookmark the resources to test metabase#44224");
+    createCollection({ name: "Collection A" }).then(collection => {
+      cy.request("POST", `/api/bookmark/collection/${collection.id}`);
+    });
+    createDashboard({ name: "Dashboard A" }).then(dashboard => {
+      cy.request("POST", `/api/bookmark/dashboard/${dashboard.id}`);
+    });
     createNativeQuestion({
       name: "Question A",
       native: { query: "select 1;" },
+    }).then(question => {
+      cy.request("POST", `/api/bookmark/card/${question.id}`);
     });
 
     visitRootCollection();
@@ -137,12 +144,15 @@ describe("scenarios > collections > trash", () => {
 
     toggleEllipsisMenuFor(/Collection A/);
     popover().findByText("Restore").click();
+    ensureBookmarkVisible(/Collection A/);
 
     toggleEllipsisMenuFor("Dashboard A");
     popover().findByText("Restore").click();
+    ensureBookmarkVisible("Dashboard A");
 
     toggleEllipsisMenuFor("Question A");
     popover().findByText("Restore").click();
+    ensureBookmarkVisible("Question A");
 
     cy.log("should be able to archive entities from their own views");
     visitRootCollection();
@@ -158,6 +168,7 @@ describe("scenarios > collections > trash", () => {
       cy.findByText("Move to trash").click();
     });
     ensureCanRestoreFromPage("Collection A");
+    ensureBookmarkVisible("Collection A");
 
     // dashboard
     collectionTable().within(() => {
@@ -174,6 +185,7 @@ describe("scenarios > collections > trash", () => {
       cy.findByText("Dashboard A").should("not.exist");
     });
     ensureCanRestoreFromPage("Dashboard A");
+    ensureBookmarkVisible("Dashboard A");
 
     // question
     collectionTable().within(() => {
@@ -190,6 +202,7 @@ describe("scenarios > collections > trash", () => {
       cy.findByText("Question A").should("not.exist");
     });
     ensureCanRestoreFromPage("Question A");
+    ensureBookmarkVisible("Question A");
   });
 
   it("should not show restore option if entity is within nested in an archived collection list", () => {
@@ -626,6 +639,8 @@ describe("scenarios > collections > trash", () => {
   });
 });
 
+describe("Restoring items", () => {});
+
 function toggleEllipsisMenuFor(item) {
   collectionTable().within(() => {
     cy.findByText(item)
@@ -638,9 +653,12 @@ function toggleEllipsisMenuFor(item) {
 function createCollection(collectionInfo, archive) {
   return cy
     .createCollection(collectionInfo)
-    .then(({ body: collection }) =>
-      Promise.all([collection, archive && cy.archiveCollection(collection.id)]),
-    )
+    .then(({ body: collection }) => {
+      return Promise.all([
+        collection,
+        archive && cy.archiveCollection(collection.id),
+      ]);
+    })
     .then(([collection]) => collection);
 }
 
@@ -700,4 +718,10 @@ function selectItem(name) {
   cy.findByText(name)
     .closest("tr")
     .within(() => cy.findByRole("checkbox").click());
+}
+
+function ensureBookmarkVisible(bookmark) {
+  cy.findByRole("tab", { name: /bookmarks/i })
+    .findByText(bookmark)
+    .should("be.visible");
 }
