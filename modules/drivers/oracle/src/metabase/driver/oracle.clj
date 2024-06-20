@@ -31,6 +31,7 @@
    (java.security KeyStore)
    (java.sql Connection DatabaseMetaData ResultSet Types)
    (java.time Instant OffsetDateTime ZonedDateTime)
+   (java.util Calendar TimeZone)
    (oracle.jdbc OracleConnection OracleTypes)
    (oracle.sql TIMESTAMPLTZ TIMESTAMPTZ)))
 
@@ -606,19 +607,19 @@
 ;; Oracle `TIMESTAMPTZ` or `TIMESTAMPLTZ` types can have either a zone offset *or* a zone ID; you could fetch either
 ;; `OffsetDateTime` or `ZonedDateTime` using `.getObject`, but fetching the wrong type will result in an Exception,
 ;; meaning we have try both and wrap the first in a try-catch. As far as I know there's no way to tell whether the
-;; value has a zone offset or ID without first fetching a `TIMESTAMPTZ` object. So to avoid the try-catch we can
-;; fetch the `TIMESTAMPTZ` or `TIMESTAMPLTZ` and use `.timestampValue` instead.
+;; value has a zone offset or ID without first fetching a `TIMESTAMPTZ` or `TIMESTAMPLTZ` object.
 (defmethod sql-jdbc.execute/read-column-thunk [:oracle OracleTypes/TIMESTAMPTZ]
   [_driver ^ResultSet rs _rsmeta ^Integer i]
   (fn []
     (when-let [^TIMESTAMPTZ t (.getObject rs i TIMESTAMPTZ)]
-      (t/offset-date-time (.timestampValue t (rs->conn rs)) (t/zone-offset 0)))))
+      (t/with-offset-same-instant (.offsetDateTimeValue t (rs->conn rs)) (t/zone-offset 0)))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:oracle OracleTypes/TIMESTAMPLTZ]
   [_driver ^ResultSet rs _rsmeta ^Integer i]
   (fn []
     (when-let [^TIMESTAMPLTZ t (.getObject rs i TIMESTAMPLTZ)]
-      (t/offset-date-time (.timestampValue t (rs->conn rs)) (t/zone-offset 0)))))
+      (let [utc-calendar (Calendar/getInstance (TimeZone/getTimeZone "UTC"))]
+        (t/offset-date-time (.timestampValue t (rs->conn rs) utc-calendar) (t/zone-offset 0))))))
 
 (defmethod unprepare/unprepare-value [:oracle OffsetDateTime]
   [_ t]
