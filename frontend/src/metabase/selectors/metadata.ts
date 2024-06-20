@@ -66,17 +66,14 @@ const getIncludeHiddenTables = (_state: State, props?: TableSelectorOpts) =>
 
 const getNormalizedTables = createSelector(
   [getNormalizedTablesUnfiltered, getIncludeHiddenTables],
-  (tables, includeHiddenTables) => {
-    if (includeHiddenTables) {
-      return tables;
-    }
-
-    return Object.fromEntries(
-      Object.entries(tables).filter(
-        ([, table]) => table.visibility_type == null,
-      ),
-    );
-  },
+  (tables, includeHiddenTables) =>
+    includeHiddenTables
+      ? tables
+      : Object.fromEntries(
+          Object.entries(tables).filter(
+            ([, table]) => table.visibility_type == null,
+          ),
+        ),
 );
 
 const getNormalizedFieldsUnfiltered = (state: State) => state.entities.fields;
