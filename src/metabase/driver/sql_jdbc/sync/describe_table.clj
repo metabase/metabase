@@ -608,8 +608,3 @@
           (if (empty? unfold-json-fields)
             #{}
             (describe-json-fields driver jdbc-spec table unfold-json-fields pks)))))))
-
-#_(sql-jdbc.sync.interface/describe-nested-field-columns
-     :postgres
-     (t2/select-one :model/Database 2)
-     (t2/select-one :model/Table :db_id 2))
