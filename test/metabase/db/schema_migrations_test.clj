@@ -2186,143 +2186,152 @@
                      #{b h}} ;; => not archived at all, `archive_operation_id` is nil
                    (set (vals archive-operation-id->collection-ids))))))))))
 
+(defn bit->boolean
+  "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
+  [v]
+  (if (number? v)
+    (not (zero? v))
+    v))
+
 (deftest dashboard-last-viewed-at-test
-  ;; If a dashboard contains any cards, we know that the dashboard can't have been viewed since the most recent usage
-  ;; of any cards that it contains. If it doesn't contain any cards, we fall back to `NOW()`.
-  (testing "`last_viewed_at` is set to the most recent usage of cards in the dashboard"
-    (impl/test-migrations ["v51.2024-06-13T11:22:39" "v51.2024-06-18T12:13:03"] [migrate!]
-      ;; this setup is painful, but:
-      ;; - create a database and user-id as prerequisites
-      ;; - create two cards with different `last_used_at` dates
-      ;; - create a dashboard containing the two cards
-      ;; - run the migration, and
-      ;; - assert that the *later* of the two cards' `last_used_at` becomes the `last_viewed_at` for the dashboard
-      (let [database-id   (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
-                                                                                     :engine     "postgres"
-                                                                                     :created_at :%now
-                                                                                     :updated_at :%now
-                                                                                     :details    "{}"}))
-            user-id       (first (t2/insert-returning-pks! (t2/table-name User) {:first_name  "Cam"
-                                                                                 :last_name   "Era"
-                                                                                 :email       "cam@example.com"
-                                                                                 :password    "123456"
-                                                                                 :date_joined #t "2022-10-20T02:09Z"}))
-            create-card!  (fn [last-used-at]
-                           (t2/insert-returning-pk!
-                            (t2/table-name :model/Card)
-                            {:name                   (str (gensym))
-                             :display                "table"
-                             :dataset_query          "{}"
-                             :visualization_settings "{}"
-                             :creator_id             user-id
-                             :database_id            database-id
-                             :created_at             :%now
-                             :updated_at             :%now
-                             :last_used_at           last-used-at}))
-            card-1        (create-card! #t "2022-11-20T02:09Z")
-            card-2        (create-card! #t "2022-10-20T02:09Z")
-            dashboard-id  (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
-                                                                             :creator_id user-id}))
-            _dashcard-ids (t2/insert-returning-pks! :model/DashboardCard
-                                                     (->> [card-1 card-2]
-                                                          (map-indexed (fn [i card]
-                                                                         {:dashboard_id           dashboard-id
-                                                                          :card_id                card
-                                                                          :visualization_settings {}
-                                                                          :parameter_mappings     {}
-                                                                          :row                    0
-                                                                          :col                    i
-                                                                          :size_x                 1
-                                                                          :size_y                 1}))))]
-        (migrate!)
-        (is (= (str "2022-11-20T02:09Z")
-               (str (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)))))))
-  (testing "set to NOW() when there are no cards"
-    (impl/test-migrations ["v51.2024-06-13T11:22:39" "v51.2024-06-18T12:13:03"] [migrate!]
-      ;; - create a user-id as a prerequisite
-      ;; - create a dashboard containing no cards
-      ;; - run the migration, and
-      ;; - assert that dashboard's `last_viewed_at` is within 5 seconds of `:%now`
-      (let [user-id      (first (t2/insert-returning-pks! (t2/table-name User) {:first_name  "Cam"
-                                                                                :last_name   "Era"
-                                                                                :email       "cam@example.com"
-                                                                                :password    "123456"
-                                                                                :date_joined #t "2022-10-20T02:09Z"}))
-            dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name "A dashboard" :creator_id user-id}))]
-        (migrate!)
-        ;; allow a 5 second difference in case tests are absurdly slow to run.
-        (is
-         (true?
-          (:diff
-           (t2/query-one
-            (case (mdb/db-type)
-              :postgres ["SELECT (NOW() - last_viewed_at) < INTERVAL '5 SECONDS' AS diff FROM report_dashboard WHERE id = ?"
-                         dashboard-id]
-              :mysql ["SELECT DATE_ADD(last_viewed_at, INTERVAL 1 SECOND) < NOW() FROM report_dashboard WHERE id = ?"
-                      dashboard-id]
-              :h2 ["SELECT (DATEDIFF(SECOND, NOW(), last_viewed_at) < 5) AS diff FROM report_dashboard WHERE id = ?"
-                   dashboard-id]))))))))
-  (testing "`last_viewed_at` is set to the most recent available from `recent_views` or `card.last_used_at`"
-    (impl/test-migrations ["v51.2024-06-13T11:22:39" "v51.2024-06-18T12:13:03"] [migrate!]
-      ;; this setup is painful, but:
-      ;; - create a database and user-id as prerequisites
-      ;; - create two cards with different `last_used_at` dates
-      ;; - create a dashboard containing the two cards
-      ;; - run the migration, and
-      ;; - assert that the *later* of the two cards' `last_used_at` becomes the `last_viewed_at` for the dashboard
-      (let [database-id   (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
-                                                                                     :engine     "postgres"
-                                                                                     :created_at :%now
-                                                                                     :updated_at :%now
-                                                                                     :details    "{}"}))
-            user-id       (first (t2/insert-returning-pks! (t2/table-name User) {:first_name  "Cam"
-                                                                                 :last_name   "Era"
-                                                                                 :email       "cam@example.com"
-                                                                                 :password    "123456"
-                                                                                 :date_joined #t "2022-10-20T02:09Z"}))
-            create-card!  (fn [last-used-at]
-                            (t2/insert-returning-pk!
-                             (t2/table-name :model/Card)
-                             {:name                   (str (gensym))
-                              :display                "table"
-                              :dataset_query          "{}"
-                              :visualization_settings "{}"
-                              :creator_id             user-id
-                              :database_id            database-id
-                              :created_at             :%now
-                              :updated_at             :%now
-                              :last_used_at           last-used-at}))
-            card-1        (create-card! #t "2022-11-20T02:09Z")
-            card-2        (create-card! #t "2022-10-20T02:09Z")
-            dashboard-id  (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
-                                                                             :creator_id user-id}))
-            _dashcard-ids (t2/insert-returning-pks! :model/DashboardCard
-                                                    (->> [card-1 card-2]
-                                                         (map-indexed (fn [i card]
-                                                                        {:dashboard_id           dashboard-id
-                                                                         :card_id                card
-                                                                         :visualization_settings {}
-                                                                         :parameter_mappings     {}
-                                                                         :row                    0
-                                                                         :col                    i
-                                                                         :size_x                 1
-                                                                         :size_y                 1}))))
-            _recent-views (t2/insert-returning-pks! :model/ViewLog
-                                                    [{:user_id user-id
-                                                      :model "dashboard"
-                                                      :model_id dashboard-id
-                                                      :timestamp #t "2022-09-10T02:09Z"}])]
-        (migrate!)
-        (testing "The value from `card.last_used_at` is the most recent available, so it is used"
-          (is (= "2022-11-20T02:09Z"
-                 (str (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)))))
-        (testing "If the value from `recent_views` is more recent, that'll be used instead"
-          (migrate! :down 50)
-          (t2/insert! :model/ViewLog
-                      [{:user_id user-id
-                        :model "dashboard"
-                        :model_id dashboard-id
-                        :timestamp #t "2022-12-20T02:09Z"}])
+  (mt/test-drivers [#_:postgres #_:h2 :mysql]
+    ;; If a dashboard contains any cards, we know that the dashboard can't have been viewed since the most recent usage
+    ;; of any cards that it contains. If it doesn't contain any cards, we fall back to `NOW()`.
+    (testing "`last_viewed_at` is set to the most recent usage of cards in the dashboard"
+      (impl/test-migrations ["v51.2024-06-13T11:22:39" "v51.2024-06-18T12:13:03"] [migrate!]
+        ;; this setup is painful, but:
+        ;; - create a database and user-id as prerequisites
+        ;; - create two cards with different `last_used_at` dates
+        ;; - create a dashboard containing the two cards
+        ;; - run the migration, and
+        ;; - assert that the *later* of the two cards' `last_used_at` becomes the `last_viewed_at` for the dashboard
+        (let [database-id   (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                       :engine     "postgres"
+                                                                                       :created_at :%now
+                                                                                       :updated_at :%now
+                                                                                       :details    "{}"}))
+              user-id       (first (t2/insert-returning-pks! (t2/table-name User) {:first_name  "Cam"
+                                                                                   :last_name   "Era"
+                                                                                   :email       "cam@example.com"
+                                                                                   :password    "123456"
+                                                                                   :date_joined #t "2022-10-20T02:09Z"}))
+              create-card!  (fn [last-used-at]
+                              (t2/insert-returning-pk!
+                               (t2/table-name :model/Card)
+                               {:name                   (str (gensym))
+                                :display                "table"
+                                :dataset_query          "{}"
+                                :visualization_settings "{}"
+                                :creator_id             user-id
+                                :database_id            database-id
+                                :created_at             :%now
+                                :updated_at             :%now
+                                :last_used_at           last-used-at}))
+              card-1        (create-card! #t "2022-11-20T02:09Z")
+              card-2        (create-card! #t "2022-10-20T02:09Z")
+              dashboard-id  (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
+                                                                               :creator_id user-id}))
+              _dashcard-ids (t2/insert-returning-pks! :model/DashboardCard
+                                                      (->> [card-1 card-2]
+                                                           (map-indexed (fn [i card]
+                                                                          {:dashboard_id           dashboard-id
+                                                                           :card_id                card
+                                                                           :visualization_settings {}
+                                                                           :parameter_mappings     {}
+                                                                           :row                    0
+                                                                           :col                    i
+                                                                           :size_x                 1
+                                                                           :size_y                 1}))))]
           (migrate!)
-          (is (= "2022-12-20T02:09Z"
-                 (str (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)))))))))
+          (is (= (str "2022-11-20T02:09Z")
+                 (str (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)))))))
+    (testing "set to NOW() when there are no cards"
+      (impl/test-migrations ["v51.2024-06-13T11:22:39" "v51.2024-06-18T12:13:03"] [migrate!]
+        ;; - create a user-id as a prerequisite
+        ;; - create a dashboard containing no cards
+        ;; - run the migration, and
+        ;; - assert that dashboard's `last_viewed_at` is within 5 seconds of `:%now`
+        (let [user-id      (first (t2/insert-returning-pks! (t2/table-name User) {:first_name  "Cam"
+                                                                                  :last_name   "Era"
+                                                                                  :email       "cam@example.com"
+                                                                                  :password    "123456"
+                                                                                  :date_joined #t "2022-10-20T02:09Z"}))
+              dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name "A dashboard" :creator_id user-id}))]
+          (migrate!)
+          ;; allow a 5 second difference in case tests are absurdly slow to run.
+          (is
+           (true?
+            (bit->boolean
+             (:diff
+              (t2/query-one
+               (case (mdb/db-type)
+                 :postgres ["SELECT (NOW() - last_viewed_at) < INTERVAL '5 SECONDS' AS diff FROM report_dashboard WHERE id = ?"
+                            dashboard-id]
+                 :mysql ["SELECT DATE_ADD(last_viewed_at, INTERVAL 1 SECOND) > NOW() AS diff FROM report_dashboard WHERE id = ?"
+                         dashboard-id]
+                 :h2 ["SELECT (DATEDIFF(SECOND, NOW(), last_viewed_at) < 5) AS diff FROM report_dashboard WHERE id = ?"
+                      dashboard-id])))))))))
+    (testing "`last_viewed_at` is set to the most recent available from `recent_views` or `card.last_used_at`"
+      (impl/test-migrations ["v51.2024-06-13T11:22:39" "v51.2024-06-18T12:13:03"] [migrate!]
+        ;; this setup is painful, but:
+        ;; - create a database and user-id as prerequisites
+        ;; - create two cards with different `last_used_at` dates
+        ;; - create a dashboard containing the two cards
+        ;; - run the migration, and
+        ;; - assert that the *later* of the two cards' `last_used_at` becomes the `last_viewed_at` for the dashboard
+        (let [database-id   (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                       :engine     "postgres"
+                                                                                       :created_at :%now
+                                                                                       :updated_at :%now
+                                                                                       :details    "{}"}))
+              user-id       (first (t2/insert-returning-pks! (t2/table-name User) {:first_name  "Cam"
+                                                                                   :last_name   "Era"
+                                                                                   :email       "cam@example.com"
+                                                                                   :password    "123456"
+                                                                                   :date_joined #t "2022-10-20T02:09Z"}))
+              create-card!  (fn [last-used-at]
+                              (t2/insert-returning-pk!
+                               (t2/table-name :model/Card)
+                               {:name                   (str (gensym))
+                                :display                "table"
+                                :dataset_query          "{}"
+                                :visualization_settings "{}"
+                                :creator_id             user-id
+                                :database_id            database-id
+                                :created_at             :%now
+                                :updated_at             :%now
+                                :last_used_at           last-used-at}))
+              card-1        (create-card! #t "2022-11-20T02:09Z")
+              card-2        (create-card! #t "2022-10-20T02:09Z")
+              dashboard-id  (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
+                                                                               :creator_id user-id}))
+              _dashcard-ids (t2/insert-returning-pks! :model/DashboardCard
+                                                      (->> [card-1 card-2]
+                                                           (map-indexed (fn [i card]
+                                                                          {:dashboard_id           dashboard-id
+                                                                           :card_id                card
+                                                                           :visualization_settings {}
+                                                                           :parameter_mappings     {}
+                                                                           :row                    0
+                                                                           :col                    i
+                                                                           :size_x                 1
+                                                                           :size_y                 1}))))
+              _recent-views (t2/insert-returning-pks! :model/ViewLog
+                                                      [{:user_id user-id
+                                                        :model "dashboard"
+                                                        :model_id dashboard-id
+                                                        :timestamp #t "2022-09-10T02:09Z"}])]
+          (migrate!)
+          (testing "The value from `card.last_used_at` is the most recent available, so it is used"
+            (is (= "2022-11-20T02:09Z"
+                   (str (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)))))
+          (testing "If the value from `recent_views` is more recent, that'll be used instead"
+            (migrate! :down 50)
+            (t2/insert! :model/ViewLog
+                        [{:user_id user-id
+                          :model "dashboard"
+                          :model_id dashboard-id
+                          :timestamp #t "2022-12-20T02:09Z"}])
+            (migrate!)
+            (is (= "2022-12-20T02:09Z"
+                   (str (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))))
