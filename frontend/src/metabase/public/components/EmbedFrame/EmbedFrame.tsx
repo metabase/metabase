@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
@@ -41,6 +41,7 @@ import {
   DashboardTabsContainer,
   Footer,
   Header,
+  IntersectionObserverTarget,
   ParametersWidgetContainer,
   Root,
   Separator,
@@ -128,6 +129,7 @@ export const EmbedFrame = ({
     initializeIframeResizer(() => setHasFrameScroll(false));
   });
 
+  const [isFilterSticky, intersectionObserverTargetRef] = useIsFiltersSticky();
   useEffect(() => {
     const handleScroll = () => {
       setHasInnerScroll(document.documentElement.scrollTop > 0);
@@ -154,10 +156,8 @@ export const EmbedFrame = ({
   const hasVisibleParameters = visibleParameters.length > 0;
 
   const hasHeader = Boolean(finalName || dashboardTabs);
-  const isParameterPanelSticky =
-    !!dashboard &&
-    theme !== "transparent" && // https://github.com/metabase/metabase/pull/38766#discussion_r1491549200
-    isParametersWidgetContainersSticky(visibleParameters.length);
+  const canParameterPanelSticky =
+    !!dashboard && isParametersWidgetContainersSticky(visibleParameters.length);
 
   return (
     <Root
@@ -207,11 +207,15 @@ export const EmbedFrame = ({
             <Separator />
           </Header>
         )}
+        <span style={{ position: "relative" }}>
+          <IntersectionObserverTarget ref={intersectionObserverTargetRef} />
+        </span>
         {hasVisibleParameters && (
           <ParametersWidgetContainer
             embedFrameTheme={theme}
             hasScroll={hasInnerScroll}
-            isSticky={isParameterPanelSticky}
+            canSticky={canParameterPanelSticky}
+            isSticky={isFilterSticky}
             data-testid="dashboard-parameters-widget-container"
           >
             <ParametersFixedWidthContainer
@@ -265,4 +269,27 @@ function isParametersWidgetContainersSticky(parameterCount: number) {
   // Sticky header with more than 5 parameters
   // takes too much space on small screens
   return parameterCount <= 5;
+}
+
+function useIsFiltersSticky() {
+  const intersectionObserverTargetRef = useRef<HTMLElement>(null);
+  const [isSticky, setIsSticky] = useState(false);
+
+  useEffect(() => {
+    if (intersectionObserverTargetRef.current) {
+      const settings: IntersectionObserverInit = {
+        threshold: 1,
+      };
+      const observer = new IntersectionObserver(([entry]) => {
+        setIsSticky(entry.intersectionRatio < 1);
+      }, settings);
+      observer.observe(intersectionObserverTargetRef.current);
+
+      return () => {
+        observer.disconnect();
+      };
+    }
+  }, []);
+
+  return [isSticky, intersectionObserverTargetRef] as const;
 }

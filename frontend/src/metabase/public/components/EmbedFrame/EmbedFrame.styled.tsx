@@ -104,11 +104,19 @@ const footerVariantStyles = {
   `,
 };
 
-function getParameterPanelBackgroundColor(theme?: DisplayTheme) {
+function getParameterPanelBackgroundColor(
+  theme: DisplayTheme | undefined,
+  isSticky: boolean,
+) {
   if (theme === "night") {
-    return color("bg-black");
+    return `color-mix(in srgb, var(--mb-color-bg-black), var(--mb-color-embed-bg-color-override, var(--mb-color-bg-black))  ${
+      isSticky ? 15 : 100
+    }%)`;
   }
-  return color("bg-white");
+
+  return `color-mix(in srgb, var(--mb-color-bg-white), var(--mb-color-embed-bg-color-override, var(--mb-color-bg-white))  ${
+    isSticky ? 15 : 100
+  }%)`;
 }
 
 function getParameterPanelBorderColor(theme?: DisplayTheme) {
@@ -124,20 +132,14 @@ function getParameterPanelBorderColor(theme?: DisplayTheme) {
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   embedFrameTheme?: DisplayTheme;
   hasScroll: boolean;
+  canSticky: boolean;
   isSticky: boolean;
 }>`
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
 
   ${props =>
-    props.hasScroll &&
-    css`
-      border-bottom: 1px solid
-        ${getParameterPanelBorderColor(props.embedFrameTheme)};
-    `}
-
-  ${props =>
-    props.isSticky &&
+    props.canSticky &&
     css`
       position: sticky;
       top: 0;
@@ -145,10 +147,14 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
       width: 100%;
       z-index: 3;
 
-      background-color: var(
-        --mb-color-embed-bg-color-override,
-        ${getParameterPanelBackgroundColor(props.embedFrameTheme)}
-      );
+      transition: background-color 0.4s;
+      background-color: ${getParameterPanelBackgroundColor(
+        props.embedFrameTheme,
+        props.isSticky,
+      )};
+      border-bottom: ${props.isSticky &&
+      `1px solid
+        ${getParameterPanelBorderColor(props.embedFrameTheme)}`};
     `}
 `;
 
@@ -168,4 +174,12 @@ export const Footer = styled.footer<{ variant: FooterVariant }>`
   ${breakpointMinLarge} {
     padding: 1.5rem;
   }
+`;
+
+export const IntersectionObserverTarget = styled.span`
+  position: absolute;
+  width: 100%;
+  height: 60px;
+  bottom: 0;
+  transform: translateY(100%);
 `;
