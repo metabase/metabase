@@ -208,6 +208,27 @@
        (t/offset-time t)                ; time-tz
        cnt])]])                         ; num-crows
 
+(tx/defdataset dt-attempted-murders
+  "A dataset for testing datetime values with and without timezones. Similar to attempted-murders, but for databases
+  that don't support the TIME types.
+
+  No Database we support supports all of these different types, so the expectation is that we'll use the closest
+  equivalent for each column."
+  [["attempts"
+    [{:field-name "date",           :base-type :type/Date}
+     {:field-name "datetime",       :base-type :type/DateTime}
+     {:field-name "datetime_ltz",   :base-type :type/DateTimeWithLocalTZ}
+     {:field-name "datetime_tz",    :base-type :type/DateTimeWithZoneOffset}
+     {:field-name "datetime_tz_id", :base-type :type/DateTimeWithZoneID}
+     {:field-name "num_crows",      :base-type :type/Integer}]
+    (for [[cnt t] [[6 #t "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"]]]
+      [(t/local-date t)                 ; date
+       (t/local-date-time t)            ; datetime
+       (t/offset-date-time t)           ; datetime-ltz
+       (t/offset-date-time t)           ; datetime-tz
+       t                                ; datetime-tz-id
+       cnt])]])
+
 (tx/defdataset dots-in-names
   [["objects.stuff"
     [{:field-name "dotted.name", :base-type :type/Text}]
