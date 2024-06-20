@@ -31,7 +31,7 @@ export const useSaveStrategy = (
       const { strategies } = PLUGIN_CACHING;
 
       const isRoot = targetId === rootId;
-      const baseConfig: Pick<Config, "model" | "model_id"> = {
+      const baseConfig: Pick<CacheConfig, "model" | "model_id"> = {
         model: isRoot ? "root" : model,
         model_id: targetId,
       };
