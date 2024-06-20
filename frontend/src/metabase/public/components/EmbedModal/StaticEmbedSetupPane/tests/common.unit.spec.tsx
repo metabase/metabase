@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { setupParameterValuesEndpoints } from "__support__/server-mocks";
 import { getBrokenUpTextMatcher } from "__support__/ui";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
@@ -12,6 +13,13 @@ const DATE_PARAMETER_MOCK = {
   slug: "month_and_year",
   type: "date/month-year",
 };
+
+beforeEach(() => {
+  setupParameterValuesEndpoints({
+    values: [],
+    has_more_values: false,
+  });
+});
 
 describe("Static Embed Setup phase", () => {
   describe.each([
