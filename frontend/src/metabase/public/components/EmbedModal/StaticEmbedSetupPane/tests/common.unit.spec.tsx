@@ -439,14 +439,14 @@ describe("Static Embed Setup phase", () => {
           activeTab: "Look and Feel",
         });
 
-        await userEvent.click(screen.getByText("Transparent"));
+        await userEvent.click(screen.getByText("Dark"));
 
         expect(
           screen.getByText("Here’s the code you’ll need to alter:"),
         ).toBeVisible();
 
         expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
-          `"#theme=transparent&bordered=true&titled=true"`,
+          `"#theme=night&bordered=true&titled=true"`,
         );
 
         await userEvent.click(
@@ -456,7 +456,7 @@ describe("Static Embed Setup phase", () => {
         );
 
         expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
-          `"#theme=transparent&bordered=true&titled=false"`,
+          `"#theme=night&bordered=true&titled=false"`,
         );
       });
 
@@ -516,6 +516,36 @@ describe("Static Embed Setup phase", () => {
         );
       });
     });
+  });
+
+  it("should render Dashboard background option", async () => {
+    await setup({
+      props: { resourceType: "dashboard" },
+      activeTab: "Look and Feel",
+    });
+
+    expect(screen.getByText("Dashboard background")).toBeVisible();
+    expect(
+      within(screen.getByTestId("embed-backend")).getByTestId(
+        "text-editor-mock",
+      ),
+    ).toHaveTextContent("#bordered=true&titled=true");
+    await userEvent.click(screen.getByText("Dashboard background"));
+
+    expect(
+      within(screen.getByTestId("embed-backend")).getByTestId(
+        "text-editor-mock-highlighted-code",
+      ),
+    ).toHaveTextContent("#background=false&bordered=true&titled=true");
+  });
+
+  it("should not render Question background option", async () => {
+    await setup({
+      props: { resourceType: "question" },
+      activeTab: "Look and Feel",
+    });
+
+    expect(screen.queryByText("Question")).not.toBeInTheDocument();
   });
 
   it("should preserve selected preview mode selection on tabs navigation", async () => {
@@ -611,9 +641,9 @@ describe("Static Embed Setup phase", () => {
       screen.getByTestId("text-editor-mock-highlighted-code"),
     ).toHaveTextContent(`params: { "${DATE_PARAMETER_MOCK.slug}": null }`);
 
-    await userEvent.click(screen.getByText("Transparent"));
+    await userEvent.click(screen.getByText("Dark"));
 
-    const appearanceChangedCode = `"#theme=transparent&bordered=true&titled=true"`;
+    const appearanceChangedCode = `"#theme=night&bordered=true&titled=true"`;
 
     expect(
       screen.getByTestId("text-editor-mock-highlighted-code"),

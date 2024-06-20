@@ -197,6 +197,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
       refreshPeriod,
       setRefreshElapsedHook,
       hasNightModeToggle,
+      background,
       bordered,
       titled,
       theme,
@@ -244,6 +245,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
             <DashboardTabs dashboardId={this.props.dashboardId} />
           )
         }
+        background={background}
         bordered={bordered}
         titled={titled}
         theme={theme}

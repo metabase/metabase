@@ -145,9 +145,10 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
       width: 100%;
       z-index: 3;
 
-      background-color: ${getParameterPanelBackgroundColor(
-        props.embedFrameTheme,
-      )};
+      background-color: var(
+        --mb-color-embed-bg-color-override,
+        ${getParameterPanelBackgroundColor(props.embedFrameTheme)}
+      );
     `}
 `;
 

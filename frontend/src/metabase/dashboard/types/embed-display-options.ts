@@ -1,21 +1,41 @@
+import type { Dispatch, SetStateAction } from "react";
+
 import type { DisplayTheme } from "metabase/public/lib/types";
 
-export type EmbedTitle = boolean;
-export type EmbedTitledControls = {
+type EmbedBackground = boolean;
+type EmbedBackgroundControls = {
+  background: EmbedBackground;
+  setBackground: Dispatch<SetStateAction<EmbedBackground>>;
+};
+
+type EmbedTitle = boolean;
+type EmbedTitledControls = {
   titled: EmbedTitle;
-  setTitled: (titled: EmbedTitle) => void;
+  setTitled: Dispatch<SetStateAction<EmbedTitle>>;
 };
 
-export type EmbedHideDownloadButton = boolean | null;
-export type EmbedHideDownloadButtonControls = {
+type EmbedHideDownloadButton = boolean | null;
+type EmbedHideDownloadButtonControls = {
   hideDownloadButton: EmbedHideDownloadButton;
-  setHideDownloadButton: (hideDownloadButton: EmbedHideDownloadButton) => void;
+  setHideDownloadButton: Dispatch<SetStateAction<EmbedHideDownloadButton>>;
 };
 
-export type EmbedHideParameters = string | null;
+type EmbedHideParameters = string | null;
 export type EmbedHideParametersControls = {
   hideParameters: EmbedHideParameters;
-  setHideParameters: (hideParameters: EmbedHideParameters) => void;
+  setHideParameters: Dispatch<SetStateAction<EmbedHideParameters>>;
+};
+
+export type EmbedFont = string | null;
+type EmbedFontControls = {
+  font: EmbedFont;
+  setFont: (font: EmbedFont) => void;
+};
+
+type EmbedBordered = boolean;
+type EmbedBorderControls = {
+  bordered: EmbedBordered;
+  setBordered: Dispatch<SetStateAction<EmbedBordered>>;
 };
 
 export type EmbedThemeControls = {
@@ -26,19 +46,8 @@ export type EmbedThemeControls = {
   isNightMode?: boolean;
 };
 
-export type EmbedFont = string | null;
-export type EmbedFontControls = {
-  font: EmbedFont;
-  setFont: (font: EmbedFont) => void;
-};
-
-export type EmbedBordered = boolean;
-export type EmbedBorderControls = {
-  bordered: EmbedBordered;
-  setBordered: (bordered: EmbedBordered) => void;
-};
-
 export type EmbedDisplayParams = {
+  background: EmbedBackground;
   bordered: EmbedBordered;
   titled: EmbedTitle;
   cardTitled: EmbedTitle;
@@ -49,6 +58,7 @@ export type EmbedDisplayParams = {
 };
 
 export type EmbedDisplayControls = EmbedThemeControls &
+  EmbedBackgroundControls &
   EmbedBorderControls &
   EmbedTitledControls &
   EmbedHideDownloadButtonControls &

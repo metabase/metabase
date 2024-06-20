@@ -6,6 +6,7 @@ export function getDefaultDisplayOptions(
   return {
     font: null,
     theme: "light",
+    background: true,
     bordered: true,
     titled: true,
     hide_download_button: shouldShownDownloadData ? false : null,

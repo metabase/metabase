@@ -322,7 +322,7 @@ export const StaticEmbedSetupPane = ({
                     hidden={activePane !== "preview"}
                     className={CS.flexFull}
                     previewUrl={iframeUrl}
-                    isTransparent={displayOptions.theme === "transparent"}
+                    isTransparent={!displayOptions.background}
                   />
                   {activePane === "code"
                     ? getServerEmbedCodePane(EMBED_MODAL_TABS.Parameters)
@@ -349,7 +349,7 @@ export const StaticEmbedSetupPane = ({
                     hidden={activePane !== "preview"}
                     className={CS.flexFull}
                     previewUrl={iframeUrl}
-                    isTransparent={displayOptions.theme === "transparent"}
+                    isTransparent={!displayOptions.background}
                   />
                   {activePane === "code"
                     ? getServerEmbedCodePane(EMBED_MODAL_TABS.LookAndFeel)

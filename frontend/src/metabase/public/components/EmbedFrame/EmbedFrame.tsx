@@ -99,6 +99,7 @@ export const EmbedFrame = ({
   setParameterValue,
   setParameterValueToDefault,
   enableParameterRequiredBehavior,
+  background,
   bordered,
   titled,
   theme,
@@ -163,6 +164,9 @@ export const EmbedFrame = ({
         EmbedFrameS.EmbedFrame,
         className,
         EMBED_THEME_CLASSES(theme),
+        {
+          [EmbedFrameS.NoBackground]: !background,
+        },
       )}
       data-testid="embed-frame"
       data-embed-theme={theme}

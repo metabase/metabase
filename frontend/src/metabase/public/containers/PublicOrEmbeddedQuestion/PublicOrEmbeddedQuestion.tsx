@@ -185,7 +185,7 @@ export const PublicOrEmbeddedQuestion = ({
     />
   );
 
-  const { bordered, hide_download_button, hide_parameters, theme, titled } =
+  const { bordered, titled, theme, hide_download_button, hide_parameters } =
     useEmbedFrameOptions({ location });
 
   return (
@@ -199,11 +199,13 @@ export const PublicOrEmbeddedQuestion = ({
       setParameterValue={setParameterValue}
       enableParameterRequiredBehavior
       setParameterValueToDefault={setParameterValueToDefault}
+      // We don't support background: false on questions (metabase#43838)
+      background
       bordered={bordered}
+      titled={titled}
+      theme={theme}
       hide_download_button={hide_download_button}
       hide_parameters={hide_parameters}
-      theme={theme}
-      titled={titled}
     >
       <LoadingAndErrorWrapper
         className={CS.flexFull}

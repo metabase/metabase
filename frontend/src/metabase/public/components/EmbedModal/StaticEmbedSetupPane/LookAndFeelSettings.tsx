@@ -31,7 +31,6 @@ import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPa
 const THEME_OPTIONS = [
   { label: t`Light`, value: "light" },
   { label: t`Dark`, value: "night" },
-  { label: t`Transparent`, value: "transparent" },
 ] as const;
 type ThemeOptions = typeof THEME_OPTIONS[number]["value"];
 
@@ -115,7 +114,7 @@ export const LookAndFeelSettings = ({
             )}.`}</Text>
           )}
 
-          <DisplayOptionSection title={t`Background`}>
+          <DisplayOptionSection title={t`Theme`}>
             <SegmentedControl
               value={displayOptions.theme ?? undefined}
               // `data` type is required to be mutable, but THEME_OPTIONS is const.
@@ -131,8 +130,29 @@ export const LookAndFeelSettings = ({
             />
           </DisplayOptionSection>
 
+          {/**
+           * We don't offer background options for question embeds because questions are displayed
+           * as a single card, and we want to always show a solid card background on dashboards embeds.
+           * (metabase#43838)
+           */}
+          {resourceType === "dashboard" && (
+            <Switch
+              label={t`Dashboard background`}
+              labelPosition="left"
+              size="sm"
+              variant="stretch"
+              checked={displayOptions.background}
+              onChange={e =>
+                onChangeDisplayOptions({
+                  ...displayOptions,
+                  background: e.target.checked,
+                })
+              }
+            />
+          )}
+
           <Switch
-            label={getBorderTitle(resourceType)}
+            label={getBorderLabel(resourceType)}
             labelPosition="left"
             size="sm"
             variant="stretch"
@@ -206,6 +226,14 @@ export const LookAndFeelSettings = ({
   );
 };
 
+function getBorderLabel(resourceType: EmbedResourceType) {
+  return match(resourceType)
+    .returnType<string>()
+    .with("dashboard", () => t`Dashboard border`)
+    .with("question", () => t`Question border`)
+    .exhaustive();
+}
+
 function getTitleLabel(resourceType: EmbedResourceType) {
   if (resourceType === "dashboard") {
     return t`Dashboard title`;
@@ -216,12 +244,4 @@ function getTitleLabel(resourceType: EmbedResourceType) {
   }
 
   return null;
-}
-
-function getBorderTitle(resourceType: EmbedResourceType) {
-  return match(resourceType)
-    .returnType<string>()
-    .with("dashboard", () => t`Dashboard border`)
-    .with("question", () => t`Question border`)
-    .exhaustive();
 }

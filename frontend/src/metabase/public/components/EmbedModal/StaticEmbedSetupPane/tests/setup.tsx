@@ -49,27 +49,23 @@ export interface SetupOpts {
   hasEnterprisePlugins?: boolean;
 }
 
-export async function setup(
-  {
-    props: {
-      resourceType = "dashboard",
-      resource = getMockResource(resourceType),
-      resourceParameters = [],
-      onUpdateEmbeddingParams = jest.fn(),
-      onUpdateEnableEmbedding = jest.fn(),
-    },
-    activeTab = "Overview",
-    hasEnterprisePlugins = false,
-    tokenFeatures = createMockTokenFeatures(),
-  }: {
-    props: Partial<StaticEmbedSetupPaneProps>;
-    activeTab?: "Overview" | "Parameters" | "Look and Feel";
-    hasEnterprisePlugins?: boolean;
-    tokenFeatures?: TokenFeatures;
-  } = {
-    props: {},
-  },
-) {
+export async function setup({
+  props: {
+    resourceType = "dashboard",
+    resource = getMockResource(resourceType),
+    resourceParameters = [],
+    onUpdateEmbeddingParams = jest.fn(),
+    onUpdateEnableEmbedding = jest.fn(),
+  } = {},
+  activeTab = "Overview",
+  hasEnterprisePlugins = false,
+  tokenFeatures = createMockTokenFeatures(),
+}: {
+  props?: Partial<StaticEmbedSetupPaneProps>;
+  activeTab?: "Overview" | "Parameters" | "Look and Feel";
+  hasEnterprisePlugins?: boolean;
+  tokenFeatures?: TokenFeatures;
+}) {
   const settings = mockSettings({
     "enable-embedding": true,
     "embedding-secret-key": "my_super_secret_key",

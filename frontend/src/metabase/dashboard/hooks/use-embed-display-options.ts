@@ -7,6 +7,7 @@ import { isWithinIframe } from "metabase/lib/dom";
 import type { EmbedDisplayControls, EmbedDisplayParams } from "../types";
 
 export const DEFAULT_EMBED_DISPLAY_OPTIONS: EmbedDisplayParams = {
+  background: true,
   bordered: false,
   titled: true,
   cardTitled: true,
@@ -17,6 +18,9 @@ export const DEFAULT_EMBED_DISPLAY_OPTIONS: EmbedDisplayParams = {
 };
 
 export const useEmbedDisplayOptions = (): EmbedDisplayControls => {
+  const [background, setBackground] = useState(
+    DEFAULT_EMBED_DISPLAY_OPTIONS.background,
+  );
   const [bordered, setBordered] = useState(
     isWithinIframe() || DEFAULT_EMBED_DISPLAY_OPTIONS.bordered,
   );
@@ -39,6 +43,8 @@ export const useEmbedDisplayOptions = (): EmbedDisplayControls => {
   } = useEmbedTheme();
 
   return {
+    background,
+    setBackground,
     bordered,
     setBordered,
     titled,

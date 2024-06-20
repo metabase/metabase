@@ -11,6 +11,7 @@ function getIframeQuerySource(displayOptions: EmbeddingDisplayOptions) {
       removeDefaultValueParameters(displayOptions, {
         theme: "light",
         hide_download_button: false,
+        background: true,
       }),
     ),
   );
