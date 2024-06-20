@@ -528,7 +528,7 @@
    ;; query (see [[metabase.driver.sql-jdbc.execute/set-best-transaction-level!]]) this should speed up things a bit by
    ;; removing that overhead. See also
    ;; https://dev.mysql.com/doc/connector-j/en/connector-j-connp-props-performance-extensions.html#cj-conn-prop_useLocalSessionState
-   ;; and #44501
+   ;; and #44507
    :useLocalSessionState true})
 
 (defn- maybe-add-program-name-option [jdbc-spec additional-options-map]
