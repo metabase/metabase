@@ -34,10 +34,6 @@
 (defonce ^:private events-initialized?
   (atom nil))
 
-(def ^:dynamic *disable-view-log*
-  "Disable recording view logs"
-  false)
-
 (defn- find-and-load-event-handlers!
   "Look for namespaces that start with `metabase.events.`, and call their `events-init` function if it exists."
   []

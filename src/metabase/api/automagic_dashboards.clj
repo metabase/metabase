@@ -5,7 +5,6 @@
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
    [metabase.api.query-metadata :as api.query-metadata]
-   [metabase.events :as events]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
@@ -168,9 +167,8 @@
   {entity (mu/with-api-error-message
             (into [:enum] entities)
             (deferred-tru "Invalid entity type"))}
-  (binding [events/*disable-view-log* true]
-    (api.query-metadata/dashboard-metadata
-      (get-automagic-dashboard entity entity-id-or-query nil))))
+  (api.query-metadata/dashboard-metadata
+    (get-automagic-dashboard entity entity-id-or-query nil)))
 
 (defn linked-entities
   "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."

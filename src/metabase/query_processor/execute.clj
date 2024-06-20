@@ -42,7 +42,7 @@
   e.g.
 
     (f (f query rff)) -> (f query rff)"
-  [#_#'update-used-cards/update-used-cards!
+  [#_#'update-used-cards/update-used-cards! ;; Disable report_card updates to handle perf issues  (for now) (#44359)
    #'add-native-form-to-result-metadata
    #'add-preprocessed-query-to-result-metadata-for-userland-query
    #'cache/maybe-return-cached-results
