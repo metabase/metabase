@@ -10,7 +10,7 @@ export const ACCENT_COUNT = 8;
 // NOTE: KEEP SYNCRONIZED WITH:
 // frontend/src/metabase/css/core/colors.module.css
 // frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
-// enterprise/frontend/src/embedding-sdk/components/private/SdkContentWrapper.tsx
+// enterprise/frontend/src/embedding-sdk/components/private/PublicComponentStylesWrapper.tsx
 // .storybook/preview-head.html
 export const colors = {
   brand: "#509EE3",

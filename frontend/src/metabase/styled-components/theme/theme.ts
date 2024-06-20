@@ -19,10 +19,10 @@ type MetabaseComponentThemeKey = FlattenObjectKeys<MetabaseComponentTheme>;
   Theming-specific CSS variables.
   These CSS variables are not part of the core design system colors.
 **/
-export const useThemeSpecificSelectors = () => {
+export const useThemeSpecificCssVariables = () => {
   const theme = useMantineTheme();
 
-  //  get value from theme.other, which is typed as MetabaseComponentTheme
+  // Get value from theme.other, which is typed as MetabaseComponentTheme
   const getValue = (key: MetabaseComponentThemeKey) => get(theme.other, key);
 
   return `
@@ -42,6 +42,5 @@ export const useThemeSpecificSelectors = () => {
     --mb-color-bg-collection-browser-expand-button-hover: ${getValue(
       "collectionBrowser.breadcrumbs.expandButton.hoverBackgroundColor",
     )};
-    
   `;
 };

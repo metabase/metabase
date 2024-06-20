@@ -2,7 +2,7 @@
  * NOTE: KEEP SYNCRONIZED WITH:
  * frontend/src/metabase/ui/utils/colors.ts
  * frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
- * enterprise/frontend/src/embedding-sdk/components/private/SdkContentWrapper.tsx
+ * enterprise/frontend/src/embedding-sdk/components/private/PublicComponentStylesWrapper.tsx
  * .storybook/preview-head.html
  */
 :root {
