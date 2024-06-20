@@ -2,26 +2,45 @@ import { createSelector } from "@reduxjs/toolkit";
 
 import { getApiDatabases as getDatabases } from "./database";
 import { getApiTables as getTables } from "./table";
-import { zipEntities } from "./utils";
+import type { DatabaseEntries, TableEntries } from "./types";
+import { zip } from "./utils";
 
-const getDatabasesFromTables = createSelector(getTables, tables => {
-  return Object.values(tables).flatMap(table => (table?.db ? [table.db] : []));
-});
+const getDatabasesFromTables = createSelector(
+  getTables,
+  (entries): DatabaseEntries[] => {
+    return entries.map(entry => {
+      return {
+        entities: entry.entities.flatMap(table =>
+          table?.db ? [table.db] : [],
+        ),
+        fulfilledTimeStamp: entry.fulfilledTimeStamp,
+      };
+    });
+  },
+);
 
-const getTablesFromDatabases = createSelector(getDatabases, databases => {
-  return Object.values(databases).flatMap(database =>
-    database?.tables ? database.tables : [],
-  );
-});
+const getTablesFromDatabases = createSelector(
+  getDatabases,
+  (entries): TableEntries[] => {
+    return entries.map(entry => {
+      return {
+        entities: entry.entities.flatMap(database =>
+          database?.tables ? database.tables : [],
+        ),
+        fulfilledTimeStamp: entry.fulfilledTimeStamp,
+      };
+    });
+  },
+);
 
 const getAllApiDatabases = createSelector(
   [getDatabases, getDatabasesFromTables],
-  zipEntities,
+  zip,
 );
 
 const getAllApiTables = createSelector(
   [getTables, getTablesFromDatabases],
-  zipEntities,
+  zip,
 );
 
 export const getApiEntities = createSelector(

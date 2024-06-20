@@ -17,7 +17,6 @@ import type {
   DatabaseEntries,
   DatasetEndpointName,
 } from "./types";
-import { zip } from "./utils";
 
 const getDatabaseEntries = (
   state: ApiState,
@@ -204,5 +203,5 @@ export const getApiDatabases = createSelector(
     getFromGetDashboardQueryMetadata,
     getFromListDatabases,
   ],
-  zip,
+  (...results) => results.flat(),
 );

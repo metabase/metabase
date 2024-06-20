@@ -22,7 +22,6 @@ import type {
   TableEndpointName,
   TableEntries,
 } from "./types";
-import { zip } from "./utils";
 
 const getDatabaseTableEntries = (
   state: ApiState,
@@ -275,5 +274,5 @@ export const getApiTables = createSelector(
     getFromListSegments, // TODO: remove cross-reference once RTK segments are mapped in this directory as well
     getFromGetSegment, // TODO: remove cross-reference once RTK segments are mapped in this directory as well
   ],
-  zip,
+  (...results) => results.flat(),
 );
