@@ -170,7 +170,8 @@ export function undoReducer(
       return state.concat(undo);
     }
   } else if (type === DISMISS_UNDO) {
-    const dismissedUndo = getUndo(state, payload as unknown as Undo["id"]);
+    const undoId = payload as unknown as Undo["id"];
+    const dismissedUndo = getUndo(state, undoId);
 
     if (dismissedUndo) {
       clearTimeoutForUndo(dismissedUndo);
@@ -179,8 +180,7 @@ export function undoReducer(
       console.warn("DISMISS_UNDO", payload);
       return state;
     }
-
-    return state.filter(undo => undo.id !== (payload as unknown as Undo["id"]));
+    return state.filter(undo => undo.id !== undoId);
   } else if (type === DISMISS_ALL_UNDO) {
     for (const undo of state) {
       clearTimeoutForUndo(undo);

@@ -132,9 +132,17 @@ describe("metabase/redux/undo", () => {
 
     // await act is required to simulate store update on the next tick
     await act(async () => {
-      jest.advanceTimersByTime(timeout);
+      jest.advanceTimersByTime(timeout - 100);
     });
 
+    // verify undo is there
+    expect(store.getState().undo.length).toBe(1);
+
+    await act(async () => {
+      jest.advanceTimersByTime(100);
+    });
+
+    // verify undo is dismissed
     expect(store.getState().undo.length).toBe(0);
   });
 });
