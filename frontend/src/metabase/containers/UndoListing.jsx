@@ -167,7 +167,7 @@ function UndoListingInner() {
           key={undo._domId}
           undo={undo}
           onUndo={() => dispatch(performUndo(undo.id))}
-          onDismiss={() => dispatch(dismissUndo(undo.id))}
+          onDismiss={() => dispatch(dismissUndo({ undoId: undo.id }))}
         />
       ))}
     </UndoList>

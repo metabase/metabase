@@ -1,8 +1,11 @@
 import { createSelector } from "@reduxjs/toolkit";
+import type { Action } from "redux-actions";
 import _ from "underscore";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createAction, createThunkAction } from "metabase/lib/redux";
+import type { State } from "metabase-types/store";
+import type { Undo } from "metabase-types/store/undo";
 
 const ADD_UNDO = "metabase/questions/ADD_UNDO";
 const DISMISS_UNDO = "metabase/questions/DISMISS_UNDO";
@@ -16,12 +19,18 @@ export const addUndo = createThunkAction(ADD_UNDO, undo => {
     const { icon = "check", timeout = 5000, canDismiss = true } = undo;
     const id = undo.id ?? nextUndoId++;
     // if we're overwriting an existing undo, clear its timeout
-    const currentUndo = getUndo(getState(), id);
-    clearTimeoutForUndo(currentUndo);
+    const currentUndo = getUndo(getState().undo, id);
+
+    if (currentUndo) {
+      clearTimeoutForUndo(currentUndo);
+    }
 
     let timeoutId = null;
     if (timeout) {
-      timeoutId = setTimeout(() => dispatch(dismissUndo(id, false)), timeout);
+      timeoutId = setTimeout(
+        () => dispatch(dismissUndo({ undoId: id, track: false })),
+        timeout,
+      );
     }
     return {
       ...undo,
@@ -36,8 +45,10 @@ export const addUndo = createThunkAction(ADD_UNDO, undo => {
 });
 
 const PAUSE_UNDO = "metabase/questions/PAUSE_UNDO";
-export const pauseUndo = createAction(PAUSE_UNDO, undo => {
-  clearTimeout(undo.timeoutId);
+export const pauseUndo = createAction(PAUSE_UNDO, (undo: Undo) => {
+  if (undo.timeoutId) {
+    clearTimeout(undo.timeoutId);
+  }
 
   return { ...undo, pausedAt: Date.now(), timeoutId: null };
 });
@@ -50,7 +61,7 @@ export const resumeUndo = createThunkAction(RESUME_UNDO, undo => {
     return {
       ...undo,
       timeoutId: setTimeout(
-        () => dispatch(dismissUndo(undo.id, false)),
+        () => dispatch(dismissUndo({ undoId: undo.id, track: false })),
         restTime,
       ),
       timeout: restTime,
@@ -58,19 +69,16 @@ export const resumeUndo = createThunkAction(RESUME_UNDO, undo => {
   };
 });
 
-/**
- *
- * @param {import("metabase-types/store").State} state
- * @param {*} undoId
- * @returns
- */
-function getUndo(state, undoId) {
-  return _.findWhere(state.undo, { id: undoId });
+function getUndo(undos: Undo[], undoId: Undo["id"]) {
+  return _.findWhere(undos, { id: undoId });
 }
 
-const getAutoConnectedUndos = createSelector([state => state.undo], undos => {
-  return undos.filter(undo => undo.type === "filterAutoConnectDone");
-});
+const getAutoConnectedUndos = createSelector(
+  [(state: State) => state.undo],
+  undos => {
+    return undos.filter(undo => undo.type === "filterAutoConnectDone");
+  },
+);
 
 export const getIsRecentlyAutoConnectedDashcard = createSelector(
   [
@@ -93,34 +101,38 @@ export const getIsRecentlyAutoConnectedDashcard = createSelector(
   },
 );
 
-export const dismissUndo = createThunkAction(
-  DISMISS_UNDO,
-  (undoId, track = true) => {
-    return () => {
-      if (track) {
-        MetabaseAnalytics.trackStructEvent("Undo", "Dismiss Undo");
-      }
-      return undoId;
-    };
-  },
-);
+export const dismissUndo = createAction<
+  Undo["id"],
+  {
+    undoId: Undo["id"];
+    track?: boolean;
+  }
+>(DISMISS_UNDO, ({ undoId, track = true }) => {
+  if (track) {
+    MetabaseAnalytics.trackStructEvent("Undo", "Dismiss Undo");
+  }
+  return undoId;
+});
 
 export const dismissAllUndo = createAction(DISMISS_ALL_UNDO);
 
 export const performUndo = createThunkAction(PERFORM_UNDO, undoId => {
   return (dispatch, getState) => {
-    const undo = getUndo(getState(), undoId);
-    if (!undo.actionLabel) {
+    const undo = getUndo(getState().undo, undoId);
+    if (!undo?.actionLabel) {
       MetabaseAnalytics.trackStructEvent("Undo", "Perform Undo");
     }
     if (undo) {
-      undo.actions.map(action => dispatch(action));
-      dispatch(dismissUndo(undoId, false));
+      undo.actions?.map(action => dispatch(action));
+      dispatch(dismissUndo({ undoId, track: false }));
     }
   };
 });
 
-export default function (state = [], { type, payload, error }) {
+export function undoReducer(
+  state: Undo[] = [],
+  { type, payload, error }: Action<Undo>,
+) {
   if (type === ADD_UNDO) {
     if (error) {
       console.warn("ADD_UNDO", payload);
@@ -137,7 +149,7 @@ export default function (state = [], { type, payload, error }) {
       count: payload.count || 1,
     };
 
-    const previous = state[state.length - 1];
+    const previous: Undo = state[state.length - 1];
     // if last undo was same verb then merge them
     if (previous && undo.verb != null && undo.verb === previous.verb) {
       return state.slice(0, -1).concat({
@@ -146,11 +158,11 @@ export default function (state = [], { type, payload, error }) {
 
         // merge the verb, count, and subject appropriately
         verb: previous.verb,
-        count: previous.count + undo.count,
+        count: (previous.count ?? 0) + undo.count,
         subject: previous.subject === undo.subject ? undo.subject : "item",
 
         // merge items
-        actions: [...previous.actions, ...(payload.actions ?? [])],
+        actions: [...(previous.actions ?? []), ...(payload.actions ?? [])],
 
         _domId: previous._domId, // use original _domId so we don't get funky animations swapping for the new one
       });
@@ -158,14 +170,17 @@ export default function (state = [], { type, payload, error }) {
       return state.concat(undo);
     }
   } else if (type === DISMISS_UNDO) {
-    const dismissedUndo = getUndo({ undo: state }, payload);
+    const dismissedUndo = getUndo(state, payload as unknown as Undo["id"]);
 
-    clearTimeoutForUndo(dismissedUndo);
+    if (dismissedUndo) {
+      clearTimeoutForUndo(dismissedUndo);
+    }
     if (error) {
       console.warn("DISMISS_UNDO", payload);
       return state;
     }
-    return state.filter(undo => undo.id !== payload);
+
+    return state.filter(undo => undo.id !== (payload as unknown as Undo["id"]));
   } else if (type === DISMISS_ALL_UNDO) {
     for (const undo of state) {
       clearTimeoutForUndo(undo);
@@ -202,7 +217,7 @@ export default function (state = [], { type, payload, error }) {
   return state;
 }
 
-const clearTimeoutForUndo = undo => {
+const clearTimeoutForUndo = (undo: Undo) => {
   if (undo?.timeoutId) {
     clearTimeout(undo.timeoutId);
   }

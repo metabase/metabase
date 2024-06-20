@@ -12,7 +12,7 @@ import entities, { enhanceRequestsReducer } from "metabase/redux/entities";
 import requests from "metabase/redux/requests";
 import { settings } from "metabase/redux/settings";
 import { modal } from "metabase/redux/ui";
-import undo from "metabase/redux/undo";
+import { undoReducer as undo } from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
 import { currentUser } from "metabase/redux/user";
 

@@ -664,7 +664,7 @@ export const closeAutoApplyFiltersToast = createThunkAction(
   () => (dispatch, getState) => {
     const toastId = getAutoApplyFiltersToastId(getState());
     if (toastId) {
-      dispatch(dismissUndo(toastId, false));
+      dispatch(dismissUndo({ undoId: toastId, track: false }));
     }
   },
 );
