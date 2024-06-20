@@ -4,6 +4,7 @@
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   #_
    [metabase.query-processor.middleware.update-used-cards :as update-used-cards]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
@@ -41,7 +42,7 @@
   e.g.
 
     (f (f query rff)) -> (f query rff)"
-  [#'update-used-cards/update-used-cards!
+  [#_#'update-used-cards/update-used-cards!
    #'add-native-form-to-result-metadata
    #'add-preprocessed-query-to-result-metadata-for-userland-query
    #'cache/maybe-return-cached-results

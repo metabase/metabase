@@ -161,7 +161,8 @@
   "Get all of the required query metadata for an ad-hoc query."
   [:as {{:keys [database] :as query} :body}]
   {database ms/PositiveInt}
-  (api.query-metadata/adhoc-query-metadata query))
+  (binding [events/*disable-view-log* true]
+    (api.query-metadata/adhoc-query-metadata query)))
 
 (api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."

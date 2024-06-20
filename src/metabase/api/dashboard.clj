@@ -847,9 +847,10 @@
   "Get all of the required query metadata for the cards on dashboard."
   [id]
   {id ms/PositiveInt}
-  (data-perms/with-relevant-permissions-for-user api/*current-user-id*
-    (let [dashboard (get-dashboard id)]
-      (api.query-metadata/dashboard-metadata dashboard))))
+  (binding [events/*disable-view-log* true]
+    (data-perms/with-relevant-permissions-for-user api/*current-user-id*
+      (let [dashboard (get-dashboard id)]
+        (api.query-metadata/dashboard-metadata dashboard)))))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 

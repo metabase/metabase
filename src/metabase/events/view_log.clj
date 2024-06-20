@@ -45,15 +45,16 @@
 (m/defmethod events/publish-event! ::card-read-event
   "Handle processing for a generic read event notification"
   [topic {:keys [object-id user-id] :as event}]
-  (span/with-span!
-    {:name    "view-log-card-read"
-     :topic   topic
-     :user-id user-id}
-    (try
-      (increment-view-counts! :model/Card object-id)
-      (record-views! (generate-view :model :model/Card event))
-      (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
+  (when-not events/*disable-view-log*
+    (span/with-span!
+      {:name    "view-log-card-read"
+       :topic   topic
+       :user-id user-id}
+      (try
+        (increment-view-counts! :model/Card object-id)
+        (record-views! (generate-view :model :model/Card event))
+        (catch Throwable e
+          (log/warnf e "Failed to process view event. %s" topic))))))
 
 (derive ::collection-read-event :metabase/event)
 (derive :event/collection-read ::collection-read-event)
@@ -61,12 +62,13 @@
 (m/defmethod events/publish-event! ::collection-read-event
   "Handle processing for a generic read event notification"
   [topic event]
-  (try
-    (-> event
-        generate-view
-        record-views!)
-    (catch Throwable e
-      (log/warnf e "Failed to process view event. %s" topic))))
+  (when-not events/*disable-view-log*
+    (try
+      (-> event
+          generate-view
+          record-views!)
+      (catch Throwable e
+        (log/warnf e "Failed to process view event. %s" topic)))))
 
 (derive ::read-permission-failure :metabase/event)
 (derive :event/read-permission-failure ::read-permission-failure)
@@ -90,15 +92,16 @@
 (m/defmethod events/publish-event! ::dashboard-read
   "Handle processing for the dashboard read event. Logs the dashboard view. Card views are logged separately."
   [topic {:keys [object-id user-id] :as event}]
-  (span/with-span!
-    {:name "view-log-dashboard-read"
-     :topic topic
-     :user-id user-id}
-    (try
-      (increment-view-counts! :model/Dashboard object-id)
-      (record-views! (generate-view :model :model/Dashboard event))
-      (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
+  (when-not events/*disable-view-log*
+    (span/with-span!
+      {:name "view-log-dashboard-read"
+       :topic topic
+       :user-id user-id}
+      (try
+        (increment-view-counts! :model/Dashboard object-id)
+        (record-views! (generate-view :model :model/Dashboard event))
+        (catch Throwable e
+          (log/warnf e "Failed to process view event. %s" topic))))))
 
 (derive ::table-read :metabase/event)
 (derive :event/table-read ::table-read)
@@ -107,19 +110,20 @@
   "Handle processing for the table read event. Does a basic permissions check to see if the the user has data perms for
   the table."
   [topic {:keys [object user-id] :as event}]
-  (span/with-span!
-    {:name "view-log-table-read"
-     :topic topic
-     :user-id user-id}
-    (try
-      (increment-view-counts! :model/Table (:id object))
-      (let [table-id    (u/id object)
-            database-id (:db_id object)
-            has-access? (when (= api/*current-user-id* user-id)
-                          (query-perms/can-query-table? database-id table-id))]
-        (-> event
-            (assoc :has-access has-access?)
-            generate-view
-            record-views!))
-      (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
+  (when-not events/*disable-view-log*
+    (span/with-span!
+      {:name "view-log-table-read"
+       :topic topic
+       :user-id user-id}
+      (try
+        (increment-view-counts! :model/Table (:id object))
+        (let [table-id    (u/id object)
+              database-id (:db_id object)
+              has-access? (when (= api/*current-user-id* user-id)
+                            (query-perms/can-query-table? database-id table-id))]
+          (-> event
+              (assoc :has-access has-access?)
+              generate-view
+              record-views!))
+        (catch Throwable e
+          (log/warnf e "Failed to process view event. %s" topic))))))
