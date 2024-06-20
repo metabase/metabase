@@ -394,7 +394,7 @@ const ListSourceModal = ({
             onChangeSourceType={onChangeSourceType}
             onChangeSourceConfig={onChangeSourceConfig}
           />
-          <ModalHelpMessage>{t`Enter one value per line.`}</ModalHelpMessage>
+          <ModalHelpMessage>{t`Enter one value per line. You can optionally give each value a display label after a comma.`}</ModalHelpMessage>
         </ModalSection>
       </ModalPane>
       <ModalMain>
