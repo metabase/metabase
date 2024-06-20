@@ -16,6 +16,7 @@
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -209,10 +210,9 @@
     (let [default-have-slect-privilege?
           #(identical? (get-method sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc)
                        (get-method sql-jdbc.sync.interface/have-select-privilege? %))]
-      (mt/test-drivers (disj (into #{}
-                                   (filter default-have-slect-privilege?)
-                                   (descendants driver/hierarchy :sql-jdbc))
-                             :databricks-jdbc)
+      (mt/test-drivers (into #{}
+                             (filter default-have-slect-privilege?)
+                             (descendants driver/hierarchy :sql-jdbc))
         (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
           (qp.store/with-metadata-provider (mt/id)
             (testing (sql-jdbc.describe-database/simple-select-probe-query driver/*driver* schema table-name)
@@ -223,7 +223,10 @@
                    (mt/db)
                    nil
                    (fn [^java.sql.Connection conn]
-                     (.setAutoCommit conn auto-commit)
+                     (try
+                       (.setAutoCommit conn auto-commit)
+                       (catch Exception _
+                         (log/trace "Failed to set auto commit.")))
                      (is (false? (sql-jdbc.sync.interface/have-select-privilege?
                                   driver/*driver* conn schema (str table-name "_should_not_exist"))))
                      (is (true? (sql-jdbc.sync.interface/have-select-privilege?
