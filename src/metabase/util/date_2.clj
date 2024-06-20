@@ -433,6 +433,7 @@
 
 (defn period-duration
   "Return the Duration between two temporal values `x` and `y`."
+  {:arglists '([s] [period] [duration] [period duration] [start end])}
   (^PeriodDuration [x]
    (when x
      (condp instance? x
