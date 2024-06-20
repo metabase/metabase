@@ -981,12 +981,11 @@
     (testing "Check that we get back 'virtual' tables for Saved Questions"
       (testing "Make sure saved questions are NOT included if the setting is disabled"
         (t2.with-temp/with-temp [Card card (card-with-native-query "Maz Quote Views Per Month")]
-          (mt/with-temporary-setting-values [enable-nested-queries false]
-            ;; run the Card which will populate its result_metadata column
-            (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
-            ;; Now fetch the database list. The 'Saved Questions' DB should NOT be in the list
-            (is (= nil
-                   (fetch-virtual-database)))))))))
+          ;; run the Card which will populate its result_metadata column
+          (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
+          ;; Now fetch the database list. The 'Saved Questions' DB should NOT be in the list
+          (is (= nil
+                 (fetch-virtual-database))))))))
 
 (deftest databases-list-include-saved-questions-tables-test-3
   (testing "GET /api/database?saved=true&include=tables"
