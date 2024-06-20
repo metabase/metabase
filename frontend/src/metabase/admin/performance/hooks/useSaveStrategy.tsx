@@ -4,15 +4,23 @@ import _ from "underscore";
 
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { CacheConfigApi } from "metabase/services";
-import type { Config, CacheableModel, Strategy } from "metabase-types/api";
+import type {
+  Config as CacheConfig,
+  CacheableModel,
+  Strategy,
+} from "metabase-types/api";
 
 import { rootId } from "../constants/simple";
-import { getFieldsForStrategyType, translateConfigToAPI } from "../utils";
+import {
+  getFieldsForStrategyType,
+  populateMinDurationSeconds,
+  translateConfigToAPI,
+} from "../utils";
 
 export const useSaveStrategy = (
   targetId: number | null,
-  configs: Config[],
-  setConfigs: Dispatch<SetStateAction<Config[]>>,
+  configs: CacheConfig[],
+  setConfigs: Dispatch<SetStateAction<CacheConfig[]>>,
   model: CacheableModel,
 ) => {
   const saveStrategy = useCallback(
@@ -23,7 +31,7 @@ export const useSaveStrategy = (
       const { strategies } = PLUGIN_CACHING;
 
       const isRoot = targetId === rootId;
-      const baseConfig: Pick<Config, "model" | "model_id"> = {
+      const baseConfig: Pick<CacheConfig, "model" | "model_id"> = {
         model: isRoot ? "root" : model,
         model_id: targetId,
       };
@@ -48,13 +56,18 @@ export const useSaveStrategy = (
         const validatedStrategy =
           strategies[values.type].validateWith.validateSync(newStrategy);
 
-        const newConfig = {
+        const newConfig: CacheConfig = {
           ...baseConfig,
           strategy: validatedStrategy,
         };
 
         const translatedConfig = translateConfigToAPI(newConfig);
         await CacheConfigApi.update(translatedConfig);
+
+        if (newConfig.strategy.type === "ttl") {
+          newConfig.strategy = populateMinDurationSeconds(newConfig.strategy);
+        }
+
         setConfigs([...otherConfigs, newConfig]);
       }
     },

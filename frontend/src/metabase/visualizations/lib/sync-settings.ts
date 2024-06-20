@@ -27,10 +27,10 @@ export function syncVizSettingsWithSeries(
   const series = _series?.[0];
   const previousSeries = _previousSeries?.[0];
 
-  if (series && !series.error) {
+  if (series?.data && !series.error) {
     newSettings = syncTableColumnSettings(newSettings, series);
 
-    if (previousSeries && !previousSeries.error) {
+    if (previousSeries?.data && !previousSeries.error) {
       newSettings = syncGraphMetricSettings(
         newSettings,
         series,

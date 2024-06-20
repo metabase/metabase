@@ -107,9 +107,9 @@ To toggle appearance settings, add _hash_ parameters to the end of the public li
 | font¹                 | [font name](../../configuring-metabase/fonts.md) |
 | hide_download_button² | true, false                                      |
 
-¹ Available on [paid plans](https://www.metabase.com/pricing).
+¹ Available on [Pro and Enterprise plans](https://www.metabase.com/pricing).
 
-² Available on [paid plans](https://www.metabase.com/pricing) and hides the download button on questions only (not dashboards).
+² Available on [Pro and Enterprise plans](https://www.metabase.com/pricing) and hides the download button on questions only (not dashboards).
 
 For example, to embed a dashboard with multiple appearance parameters:
 

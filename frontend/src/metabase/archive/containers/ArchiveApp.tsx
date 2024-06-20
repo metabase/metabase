@@ -3,15 +3,17 @@ import { t } from "ttag";
 
 import { useSearchListQuery } from "metabase/common/hooks";
 import { ArchivedItem } from "metabase/components/ArchivedItem/ArchivedItem";
-import { BulkActionBar } from "metabase/components/BulkActionBar";
+import {
+  BulkActionBar,
+  BulkActionButton,
+} from "metabase/components/BulkActionBar";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
-import { StackedCheckBox } from "metabase/components/StackedCheckBox";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
 import PageHeading from "metabase/components/type/PageHeading";
+import Bookmarks from "metabase/entities/bookmarks";
 import Search from "metabase/entities/search";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { useDispatch } from "metabase/lib/redux";
-import { Button } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 
 import {
@@ -78,8 +80,9 @@ export function ArchiveApp() {
                 name={Search.objectSelectors.getName(item)}
                 icon={Search.objectSelectors.getIcon(item).name}
                 color={Search.objectSelectors.getColor(item)}
-                onUnarchive={() => {
-                  dispatch(Search.actions.setArchived(item, false));
+                onUnarchive={async () => {
+                  await dispatch(Search.actions.setArchived(item, false));
+                  await dispatch(Bookmarks.actions.invalidateLists());
                 }}
                 onDelete={() => {
                   dispatch(Search.actions.delete(item));
@@ -121,25 +124,26 @@ const BulkActionControls = ({ selected }: { selected: any[] }) => {
   const dispatch = useDispatch();
 
   return (
-    <span>
-      <Button
-        variant="default"
+    <>
+      <BulkActionButton
         size="sm"
-        ml="1rem"
-        onClick={() =>
-          selected.forEach(item =>
-            dispatch(Search.actions.setArchived(item, false)),
-          )
-        }
-      >{t`Unarchive`}</Button>
-      <Button
-        variant="default"
+        ml="0.5rem"
+        onClick={async () => {
+          await Promise.all(
+            selected.map(item =>
+              dispatch(Search.actions.setArchived(item, false)),
+            ),
+          );
+          await dispatch(Bookmarks.actions.invalidateLists());
+        }}
+      >{t`Unarchive`}</BulkActionButton>
+      <BulkActionButton
         ml="0.5rem"
         onClick={() =>
           selected.forEach(item => dispatch(Search.actions.delete(item)))
         }
-      >{t`Delete`}</Button>
-    </span>
+      >{t`Delete`}</BulkActionButton>
+    </>
   );
 };
 
@@ -153,15 +157,13 @@ const SelectionControls = ({
   clear: () => void;
 }) =>
   allSelected ? (
-    <StackedCheckBox
-      ariaLabel="bulk-actions-input"
-      checked={true}
-      onChange={clear}
-    />
+    <BulkActionButton
+      aria-label="bulk-actions-input"
+      onClick={clear}
+    >{t`Clear selection`}</BulkActionButton>
   ) : (
-    <StackedCheckBox
-      ariaLabel="bulk-actions-input"
-      checked={false}
-      onChange={selectAll}
-    />
+    <BulkActionButton
+      aria-label="bulk-actions-input"
+      onClick={selectAll}
+    >{t`Select all`}</BulkActionButton>
   );
