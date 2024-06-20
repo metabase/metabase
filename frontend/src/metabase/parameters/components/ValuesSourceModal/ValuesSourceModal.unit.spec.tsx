@@ -393,6 +393,25 @@ describe("ValuesSourceModal", () => {
 
       expect(screen.getByRole("textbox")).toHaveValue("Gadget\nWidget");
     });
+    it("should render a hint about using models when labels are used", async () => {
+      await setup({
+        parameter: createMockUiParameter({
+          fields: [field1],
+          values_source_type: "static-list",
+          values_source_config: {
+            values: [["Gadget", "Label"], ["Widget"]],
+          },
+        }),
+      });
+
+      await userEvent.click(
+        screen.getByRole("radio", { name: "From connected fields" }),
+      );
+      await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+
+      expect(screen.getByRole("textbox")).toHaveValue("Gadget, Label\nWidget");
+      expect(screen.getByText("do it once in a model")).toBeInTheDocument();
+    });
   });
 });
 

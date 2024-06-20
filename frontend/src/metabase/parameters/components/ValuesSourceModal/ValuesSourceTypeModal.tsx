@@ -1,11 +1,12 @@
 import type { ChangeEvent } from "react";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
-import { t } from "ttag";
+import { t, jt } from "ttag";
 import _ from "underscore";
 
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import type { RadioOption } from "metabase/core/components/Radio";
 import Radio from "metabase/core/components/Radio";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
@@ -14,6 +15,10 @@ import SelectButton from "metabase/core/components/SelectButton";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
+import { color } from "metabase/lib/colors";
+import { useSelector } from "metabase/lib/redux";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { Alert, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -382,6 +387,10 @@ const ListSourceModal = ({
     [onChangeSourceConfig],
   );
 
+  const hasCustomLabels = sourceConfig.values?.some(
+    value => Array.isArray(value) && value.length === 2,
+  );
+
   return (
     <ModalBodyWithPane>
       <ModalPane>
@@ -395,6 +404,8 @@ const ListSourceModal = ({
             onChangeSourceConfig={onChangeSourceConfig}
           />
           <ModalHelpMessage>{t`Enter one value per line. You can optionally give each value a display label after a comma.`}</ModalHelpMessage>
+
+          {hasCustomLabels && <ModelHint />}
         </ModalSection>
       </ModalPane>
       <ModalMain>
@@ -407,6 +418,36 @@ const ListSourceModal = ({
     </ModalBodyWithPane>
   );
 };
+
+function ModelHint() {
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+
+  const href = "https://www.metabase.com/learn/data-modeling/models";
+  const text = t`do it once in a model`;
+  const link = showMetabaseLinks ? (
+    <ExternalLink href={href} style={{ fontWeight: "bold" }}>
+      {text}
+    </ExternalLink>
+  ) : (
+    text
+  );
+
+  return (
+    <Alert
+      icon={<Icon name="info_filled" color={color("text-dark")} />}
+      variant="light"
+      mt="lg"
+      p="md"
+      styles={{
+        root: {
+          backgroundColor: color("bg-light"),
+        },
+      }}
+    >
+      {jt`If you find yourself doing value-label mapping often, you might want to ${link}.`}
+    </Alert>
+  );
+}
 
 const getSourceValues = (values: ParameterValue[] = []) => {
   return values.map(([value]) => String(value));
