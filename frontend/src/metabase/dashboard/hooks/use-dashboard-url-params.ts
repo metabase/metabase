@@ -81,7 +81,7 @@ export const useDashboardUrlParams = ({
     ) as DashboardUrlHashOptions;
 
     setFont(hashOptions.font ?? font);
-  }, [font, hideDownloadButton, hideParameters, location.hash, setFont]);
+  }, [font, location.hash, setFont]);
 
   return {
     isFullscreen,
