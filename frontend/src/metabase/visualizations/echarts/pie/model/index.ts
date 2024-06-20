@@ -104,6 +104,7 @@ export function getPieChartModel(
       const storedColor = settings["pie.colors"][colorKey];
       // sometimes viz settings are malformed and "pie.colors" does not contain
       // a key for the current dimension value
+      // TODO to fix 1610 in dynamic viz, we need to compute all the defaults in a single call
       const storedOrDefaultColor =
         storedColor || getColorsForValues([colorKey])[colorKey];
       // older viz settings can have hsl values that need to be converted since
