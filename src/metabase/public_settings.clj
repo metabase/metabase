@@ -258,6 +258,7 @@
   (deferred-tru "Allow using a saved question or Model as the source for other queries?")
   :type       :boolean
   :default    true
+  :setter     :none
   :visibility :internal
   :export?    true
   :getter     (fn enable-nested-queries-getter []
