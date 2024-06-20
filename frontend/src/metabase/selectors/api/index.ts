@@ -10,9 +10,7 @@ const getDatabasesFromTables = createSelector(
   (entries): DatabaseEntries[] => {
     return entries.map(entry => {
       return {
-        entities: entry.entities.flatMap(table =>
-          table?.db ? [table.db] : [],
-        ),
+        entities: entry.entities.flatMap(table => (table.db ? [table.db] : [])),
         fulfilledTimeStamp: entry.fulfilledTimeStamp,
       };
     });
@@ -24,9 +22,7 @@ const getTablesFromDatabases = createSelector(
   (entries): TableEntries[] => {
     return entries.map(entry => {
       return {
-        entities: entry.entities.flatMap(database =>
-          database?.tables ? database.tables : [],
-        ),
+        entities: entry.entities.flatMap(database => database.tables ?? []),
         fulfilledTimeStamp: entry.fulfilledTimeStamp,
       };
     });
