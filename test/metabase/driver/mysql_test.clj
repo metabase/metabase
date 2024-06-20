@@ -1,4 +1,4 @@
-(ns metabase.driver.mysql-test
+(ns ^:mb/once metabase.driver.mysql-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -255,45 +255,35 @@
 (def ^:private sample-connection-details
   {:db "my_db", :host "localhost", :port "3306", :user "cam", :password "bad-password"})
 
-(def ^:private sample-jdbc-spec
-  {:password             "bad-password"
-   :characterSetResults  "UTF8"
-   :characterEncoding    "UTF8"
-   :classname            "org.mariadb.jdbc.Driver"
-   :subprotocol          "mysql"
-   :zeroDateTimeBehavior "convertToNull"
-   :user                 "cam"
-   :subname              "//localhost:3306/my_db"
-   :connectionAttributes (str "program_name:" config/mb-version-and-process-identifier)
-   :useCompression       true
-   :useUnicode           true})
-
-(deftest connection-spec-test
+(deftest ^:parallel connection-spec-test
   (testing "Do `:ssl` connection details give us the connection spec we'd expect?"
-    (is (= (assoc sample-jdbc-spec :useSSL true :serverSslCert "sslCert")
-           (sql-jdbc.conn/connection-details->spec :mysql (assoc sample-connection-details :ssl      true
-                                                                                           :ssl-cert "sslCert")))))
+    (is (=? {:useSSL true, :serverSslCert "sslCert"}
+            (sql-jdbc.conn/connection-details->spec :mysql (assoc sample-connection-details :ssl      true
+                                                                  :ssl-cert "sslCert"))))))
 
+(deftest ^:parallel connection-spec-test-2
   (testing "what about non-SSL connections?"
-    (is (= (assoc sample-jdbc-spec :useSSL false)
-           (sql-jdbc.conn/connection-details->spec :mysql sample-connection-details))))
+    (is (=? {:useSSL false}
+            (sql-jdbc.conn/connection-details->spec :mysql sample-connection-details)))))
 
+(deftest ^:parallel connection-spec-test-3
   (testing "Connections that are `:ssl false` but with `useSSL` in the additional options should be treated as SSL (see #9629)"
-    (is (= (assoc sample-jdbc-spec :useSSL  true
-                                   :subname "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true")
-           (sql-jdbc.conn/connection-details->spec :mysql
-             (assoc sample-connection-details
-                    :ssl false
-                    :additional-options "useSSL=true&trustServerCertificate=true")))))
+    (is (=? {:useSSL true, :subname "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true"}
+            (sql-jdbc.conn/connection-details->spec :mysql
+                                                    (assoc sample-connection-details
+                                                           :ssl false
+                                                           :additional-options "useSSL=true&trustServerCertificate=true"))))))
+
+(deftest ^:parallel connection-spec-test-4
   (testing "A program_name specified in additional-options is not overwritten by us"
     (let [conn-attrs "connectionAttributes=program_name:my_custom_value"]
-      (is (= (-> sample-jdbc-spec
-                 (assoc :subname (str "//localhost:3306/my_db?" conn-attrs), :useSSL false)
-                 ;; because program_name was in additional-options, we shouldn't use emit :connectionAttributes
-                 (dissoc :connectionAttributes))
-             (sql-jdbc.conn/connection-details->spec
-              :mysql
-              (assoc sample-connection-details :additional-options conn-attrs)))))))
+      (is (=? {:subname (str "//localhost:3306/my_db?" conn-attrs)
+               :useSSL false
+               ;; because program_name was in additional-options, we shouldn't use emit :connectionAttributes
+               :connectionAttributes (symbol "nil #_\"key is not present.\"")}
+              (sql-jdbc.conn/connection-details->spec
+               :mysql
+               (assoc sample-connection-details :additional-options conn-attrs)))))))
 
 (deftest read-timediffs-test
   (mt/test-driver :mysql
