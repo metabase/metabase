@@ -14,6 +14,7 @@ import {
   resumeUndo,
 } from "metabase/redux/undo";
 import { Progress, Transition } from "metabase/ui";
+import type { Undo } from "metabase-types/store/undo";
 
 import CS from "./UndoListing.module.css";
 import {
@@ -28,12 +29,10 @@ import {
   UndoList,
 } from "./UndoListing.styled";
 
-DefaultMessage.propTypes = {
-  undo: PropTypes.object.isRequired,
-};
-
 function DefaultMessage({
   undo: { verb = t`modified`, count = 1, subject = t`item` },
+}: {
+  undo: Undo;
 }) {
   return (
     <DefaultText>
@@ -44,7 +43,7 @@ function DefaultMessage({
   );
 }
 
-function renderMessage(undo) {
+function renderMessage(undo: Undo) {
   const { message } = undo;
   if (!message) {
     return <DefaultMessage undo={undo || {}} />;
@@ -67,7 +66,13 @@ const slideIn = {
 
 const TOAST_TRANSITION_DURATION = 300;
 
-function UndoToast({ undo, onUndo, onDismiss }) {
+interface UndoToastProps {
+  undo: Undo;
+  onUndo: () => void;
+  onDismiss: () => void;
+}
+
+function UndoToast({ undo, onUndo, onDismiss }: UndoToastProps) {
   const dispatch = useDispatch();
   const [mounted, setMounted] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -137,8 +142,8 @@ function UndoToast({ undo, onUndo, onDismiss }) {
               </Ellipsified>
             </CardContentSide>
             <ControlsCardContent>
-              {undo.actions?.length > 0 && (
-                <UndoButton role="button" onClick={onUndo}>
+              {undo.actions && undo.actions.length > 0 && (
+                <UndoButton role="button" onClick={onUndo} to="">
                   {undo.actionLabel ?? t`Undo`}
                 </UndoButton>
               )}

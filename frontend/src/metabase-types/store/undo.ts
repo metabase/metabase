@@ -4,7 +4,7 @@ export interface Undo {
   id: string | number;
   type?: string;
   action?: (() => void) | null;
-  message?: string;
+  message?: string | ((undo: Undo) => string);
   timeout?: number;
   initialTimeout?: number;
   actions?: (() => void)[];
@@ -23,9 +23,8 @@ export interface Undo {
   _domId?: string | number;
   timeoutId: number | null;
   count?: number;
-  verb?: unknown;
+  verb?: string;
   subject?: string;
 }
 
-// TODO: convert redux/undo and UndoListing.jsx to TS and update type
 export type UndoState = Undo[];
