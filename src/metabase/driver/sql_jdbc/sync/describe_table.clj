@@ -396,7 +396,8 @@
   Uses Jackson Streaming API to skip allocating data structures, eschews allocating values when possible.
   Respects *nested-field-column-max-row-length*."
   [v path]
-  (when (json-object? v)
+  (if-not (json-object? v)
+    {}
     (let [p (json-parser v)]
       (loop [path      (or path [])
              field     nil
