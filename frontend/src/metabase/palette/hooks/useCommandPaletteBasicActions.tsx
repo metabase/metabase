@@ -17,6 +17,7 @@ import {
   getHasNativeWrite,
   getHasDatabaseWithActionsEnabled,
 } from "metabase/selectors/data";
+import { takeScreenshot } from "metabase/redux/diagnostic";
 
 export const useCommandPaletteBasicActions = ({
   isLoggedIn,
@@ -164,7 +165,17 @@ export const useCommandPaletteBasicActions = ({
       },
     ];
 
-    return [...actions, ...browseActions];
+    const diagnosticAction: Action = {
+      id: "bug_report",
+      name: "Bug Report",
+      section: "basic",
+      icon: "warning",
+      perform: () => {
+        dispatch(takeScreenshot());
+      },
+    };
+
+    return [...actions, ...browseActions, diagnosticAction];
   }, [
     dispatch,
     hasDataAccess,

@@ -33,6 +33,7 @@ import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import ErrorBoundary from "./ErrorBoundary";
 import { NewModals } from "./new/components/NewModals/NewModals";
 import { Palette } from "./palette/components/Palette";
+import { DebugModal } from "./debug/DebugModal";
 
 const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (status === 403 || data?.error_code === "unauthorized") {
@@ -117,6 +118,7 @@ function App({
               <UndoListing />
               <StatusListing />
               <NewModals />
+              <DebugModal />
             </AppContentContainer>
           </AppContainer>
           <Palette />

@@ -16,6 +16,8 @@ import undo from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
 import { currentUser } from "metabase/redux/user";
 
+import { debugReducer } from "./redux/diagnostic";
+
 export const commonReducers = {
   // global reducers
   app,
@@ -32,4 +34,5 @@ export const commonReducers = {
   modal,
   dashboard,
   parameters: combineReducers(parameters),
+  debug: debugReducer
 };
