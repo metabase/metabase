@@ -8,6 +8,7 @@ import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-va
  * even when rendered under a React portal.
  */
 export const PublicComponentStylesWrapper = styled.div`
+  width: 100%;
   ${({ theme }) => getMetabaseCssVariables(theme)}
 
   :where(svg) {
