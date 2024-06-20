@@ -1,4 +1,4 @@
-import PropTypes from "prop-types";
+import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
@@ -16,16 +16,19 @@ import {
   QuestionDataSource,
 } from "metabase/query_builder/components/view/ViewHeader/components";
 import { HeaderCollectionBadge } from "metabase/query_builder/components/view/ViewHeader/components/HeaderCollectionBadge/HeaderCollectionBadge";
+import type Question from "metabase-lib/v1/Question";
 
-SavedQuestionLeftSide.propTypes = {
-  question: PropTypes.object.isRequired,
-  isObjectDetail: PropTypes.bool,
-  isAdditionalInfoVisible: PropTypes.bool,
-  isShowingQuestionDetailsSidebar: PropTypes.bool,
-  onOpenQuestionInfo: PropTypes.func.isRequired,
-  onSave: PropTypes.func,
-};
-export function SavedQuestionLeftSide(props) {
+interface SavedQuestionLeftSideProps {
+  question: Question;
+  isObjectDetail?: boolean;
+  isAdditionalInfoVisible?: boolean;
+  onOpenQuestionInfo: () => void;
+  onSave: (newQuestion: Question) => any;
+}
+
+export function SavedQuestionLeftSide(
+  props: SavedQuestionLeftSideProps,
+): React.JSX.Element {
   const {
     question,
     isObjectDetail,
@@ -41,7 +44,7 @@ export function SavedQuestionLeftSide(props) {
   const isModelOrMetric = type === "model" || type === "metric";
 
   const onHeaderChange = useCallback(
-    name => {
+    (name: string) => {
       if (name && name !== question.displayName()) {
         onSave(question.setDisplayName(name));
       }
@@ -96,6 +99,7 @@ export function SavedQuestionLeftSide(props) {
             <StyledQuestionDataSource
               question={question}
               isObjectDetail={isObjectDetail}
+              originalQuestion={undefined} // can be removed, needed for typings
               subHead
             />
           )}

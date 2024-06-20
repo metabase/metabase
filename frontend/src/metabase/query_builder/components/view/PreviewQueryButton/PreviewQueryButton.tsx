@@ -2,7 +2,10 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
+import {
+  MODAL_TYPES,
+  type QBModalTypeKey,
+} from "metabase/query_builder/constants";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -10,7 +13,7 @@ import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { PreviewButton, PreviewButtonIcon } from "./PreviewQueryButton.styled";
 
 interface PreviewQueryButtonProps {
-  onOpenModal?: (modalType: string) => void;
+  onOpenModal?: (modalType: QBModalTypeKey) => void;
 }
 
 export const PreviewQueryButton = ({

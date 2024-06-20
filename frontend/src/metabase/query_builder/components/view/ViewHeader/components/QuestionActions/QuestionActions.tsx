@@ -19,7 +19,10 @@ import {
 } from "metabase/plugins";
 import { softReloadCard } from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
+import {
+  MODAL_TYPES,
+  type QBModalTypeKey,
+} from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
@@ -52,7 +55,7 @@ interface Props {
   isBookmarked: boolean;
   isShowingQuestionInfoSidebar: boolean;
   handleBookmark: () => void;
-  onOpenModal: (modalType: string) => void;
+  onOpenModal: (modalType: QBModalTypeKey) => void;
   question: Question;
   setQueryBuilderMode: (
     mode: QueryBuilderMode,
