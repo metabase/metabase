@@ -7,5 +7,5 @@ export const SdkLoader = () => {
 
   const LoaderComponent = CustomLoader || Loader;
 
-  return <LoaderComponent data-testid="loading-spinner" />;
+  return <LoaderComponent data-testid="loading-indicator" />;
 };

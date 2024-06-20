@@ -9,10 +9,8 @@
 }
 
 .progress {
-  /* it must be in sync with AUTO_WIRE_TOAST_TIMEOUT */
-  animation: animated-progress 12s linear;
+  animation: animated-progress linear;
   transform-origin: left;
-  width: 100%;
 }
 
 .toast:hover .progress {

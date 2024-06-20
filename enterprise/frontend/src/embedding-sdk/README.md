@@ -18,19 +18,20 @@ Features planned:
 
 - subscribing to events
 
+# Changelog
+[View changelog](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+
 # Prerequisites
 
 - You have an application using React 17 or higher
 - You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
-- You have a running Metabase instance using a compatible version of the enterprise binary. v1.50.x are the only supported versions at this time. We do not recommend running this in production.
+- You have a running Metabase instance using a compatible version of the enterprise binary. v1.50.x are the only supported versions at this time.
 
 # Getting started
 
 ## Start Metabase
 
-Currently, the SDK only works with specific versions of Metabase.
-
-> Note these are not considered stable. Do not use these in production.
+Currently, the SDK only works with Metabase version 50.
 
 You have the following options:
 
@@ -468,6 +469,9 @@ const theme = {
 
         // Default background color of cells, defaults to `background`
         backgroundColor: "#FFFFFF",
+
+        // Font size of cell values, defaults to ~12.5px
+        fontSize: "12.5px",
       },
 
       idColumn: {
@@ -488,8 +492,20 @@ const theme = {
       },
     },
 
+    // Cartesian chart
+    cartesian: {
+      // Padding around the cartesian charts.
+      // Uses CSS's `padding` property format.
+      padding: "4px 8px",
+    },
+
     // Pivot table
     pivotTable: {
+      cell: {
+        // Font size of cell values, defaults to ~12px
+        fontSize: "12px",
+      },
+
       // Pivot row toggle to expand or collapse row
       rowToggle: {
         textColor: "#FFFFFF",
@@ -500,13 +516,13 @@ const theme = {
     collectionBrowser: {
        breadcrumbs: {
          expandButton: {
-           textColor: "#8118F4";
-           backgroundColor: "#767D7C";
-           hoverTextColor: "#CE8C8C";
-           hoverBackgroundColor: "#69264B";
-         };
-       };
-     };
+           textColor: "#8118F4",
+           backgroundColor: "#767D7C",
+           hoverTextColor: "#CE8C8C",
+           hoverBackgroundColor: "#69264B",
+         },
+       },
+     },
   },
 };
 ```

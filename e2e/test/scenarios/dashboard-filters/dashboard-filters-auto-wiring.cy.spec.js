@@ -660,6 +660,38 @@ describe("dashboard filters auto-wiring", () => {
         .should("have.length", 1)
         .should("contain", "Removed card");
     });
+
+    it("should dismiss toasts on timeout", () => {
+      createDashboardWithCards({ cards }).then(dashboardId => {
+        visitDashboard(dashboardId);
+      });
+
+      editDashboard();
+      setFilter("Text or Category", "Is");
+
+      cy.clock();
+      selectDashboardFilter(getDashboardCard(0), "Name");
+
+      undoToast().should("be.visible");
+
+      // AUTO_WIRE_TOAST_TIMEOUT
+      cy.tick(12000);
+
+      undoToast().should("not.exist");
+
+      removeFilterFromDashCard(0);
+
+      selectDashboardFilter(getDashboardCard(0), "Name");
+
+      cy.clock();
+      undoToast().findByRole("button", { name: "Auto-connect" }).click();
+
+      undoToast().should("be.visible");
+
+      // AUTO_WIRE_UNDO_TOAST_TIMEOUT
+      cy.tick(8000);
+      undoToast().should("not.exist");
+    });
   });
 });
 
