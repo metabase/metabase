@@ -14,9 +14,8 @@ Cypress.Commands.add(
     cy.log(`Create a dashboard: ${name}`);
 
     // For all the possible keys, refer to `src/metabase/api/dashboard.clj`
-    return cy
-      .request("POST", "/api/dashboard", { name, ...dashboardDetails })
-      .then(({ body }) => {
+    cy.request("POST", "/api/dashboard", { name, ...dashboardDetails }).then(
+      ({ body }) => {
         if (wrapId) {
           cy.wrap(body.id).as(idAlias);
         }
@@ -32,9 +31,8 @@ Cypress.Commands.add(
             dashcards,
           });
         }
-
-        return new Promise(resolve => resolve({ body }));
-      });
+      },
+    );
   },
 );
 
