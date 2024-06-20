@@ -204,20 +204,34 @@
 
 (deftest ^:synchronized complex-distinct-aggregation-test
   (mt/test-drivers
-   (mt/normal-drivers)
+   ;; TODO: This test was added in PR #44442 fixing issue  #35425. Enable this test for other drivers _while_ fixing
+   ;;       the issue #14523.
+   #_(mt/normal-drivers) #{:mongo}
    (testing "Aggregation as `Count / Distinct([SOME_FIELD])` returns expected results (#35425)"
-     (is (= [[2 4.0] [3 2.0] [4 1.0] [5 2.3] [6 1.0]]
-            (mt/formatted-rows
-             [int (partial u/round-to-decimals 1)]
-             (mt/run-mbql-query
-              venues
-              {:aggregation [[:aggregation-options [:/ [:count] [:distinct $price]] {:name "A"}]]
-               :breakout [$category_id]
-               :order-by [[:asc $id]]
-               :limit 5})))))
-   ;; WIP
-   (testing "More complicated expression"
-     (= 1 1))))
+     (every?
+      (fn [[_id c d c-div-d more-complex]]
+        (testing "Simple division"
+          (is (= (u/round-to-decimals 2 (double (/ c d)))
+                 (u/round-to-decimals 2 (double c-div-d)))))
+        (testing "More complex expression"
+          (is (= (u/round-to-decimals 2 (double (/
+                                                 (- c (* d 10))
+                                                 (+ d (- c (- d 7))))))
+                 (u/round-to-decimals 2 (double more-complex))))))
+      (mt/rows
+       (mt/run-mbql-query
+        venues
+        {:aggregation [[:aggregation-options [:count] {:name "A"}]
+                       [:aggregation-options [:distinct $price] {:name "B"}]
+                       [:aggregation-options [:/ [:count] [:distinct $price]] {:name "C"}]
+                       [:aggregation-options [:/
+                                              [:- [:count] [:* [:distinct $price] 10]]
+                                              [:+
+                                               [:distinct $price]
+                                               [:- [:count] [:- [:distinct $price] 7]]]] {:name "D"}]]
+         :breakout [$category_id]
+         :order-by [[:asc $id]]
+         :limit 5}))))))
 
 (deftest ^:parallel aggregate-boolean-without-type-test
   (testing "Legacy breakout on boolean field should work correctly (#34286)"
