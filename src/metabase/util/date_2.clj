@@ -431,18 +431,16 @@
                      :exclusive (add t resolution -1)))}
      :=  (range t unit options))))
 
-(defn ^PeriodDuration period-duration
+(defn period-duration
   "Return the Duration between two temporal values `x` and `y`."
-  {:arglists '([s] [period] [duration] [period duration] [start end])}
-  ([x]
+  (^PeriodDuration [x]
    (when x
      (condp instance? x
        PeriodDuration x
        CharSequence   (PeriodDuration/parse x)
        Period         (PeriodDuration/of ^Period x)
        Duration       (PeriodDuration/of ^Duration x))))
-
-  ([x y]
+  (^PeriodDuration [x y]
    (cond
      (and (instance? Period x) (instance? Duration y))
      (PeriodDuration/of x y)

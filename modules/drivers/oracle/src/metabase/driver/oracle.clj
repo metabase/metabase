@@ -599,7 +599,7 @@
   (fn []
     (.getString rs i)))
 
-(defn- ^Connection rs->conn [^ResultSet rs]
+(defn- rs->conn ^Connection [^ResultSet rs]
   (let [^C3P0ProxyConnection proxy-conn (.. rs getStatement getConnection)]
     (.unwrap proxy-conn OracleConnection)))
 

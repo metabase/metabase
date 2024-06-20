@@ -32,7 +32,6 @@
   ;;
   ;; disabled linters
   ;;
-  :non-arg-vec-return-type-hint {:level :off} ; Moving the type hints to the arg lists makes clj-kondo happy, but breaks eastwood (and maybe causes reflection warnings) at the call sites.
   :unexpected-recur             {:level :off} ; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
   :used-underscored-binding     {:level :off} ; false positives: see https://github.com/clj-kondo/clj-kondo/issues/2152
 
