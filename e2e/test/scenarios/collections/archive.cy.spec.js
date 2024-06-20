@@ -2,8 +2,17 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
   READ_ONLY_PERSONAL_COLLECTION_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { archiveQuestion, restore } from "e2e/support/helpers";
+import {
+  archiveQuestion,
+  modal,
+  navigationSidebar,
+  openNavigationSidebar,
+  popover,
+  restore,
+  visitQuestion,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -14,7 +23,7 @@ const getQuestionDetails = collectionId => ({
 });
 
 // being deleted in #42226
-describe.skip("scenarios > collections > archive", () => {
+describe("scenarios > collections > archive", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -218,6 +227,27 @@ describe.skip("scenarios > collections > archive", () => {
       cy.visit(`/question/${questionId}`);
       cy.findByText("This question has been archived");
     });
+  });
+
+  it("should restore bookmarked items without crashing", () => {
+    cy.request("POST", `/api/bookmark/card/${ORDERS_QUESTION_ID}`);
+    visitQuestion(ORDERS_QUESTION_ID);
+
+    cy.findByTestId("qb-header").icon("ellipsis").click();
+    popover().findByText("Archive").click();
+    modal().button("Archive").click();
+
+    openNavigationSidebar();
+    navigationSidebar().icon("ellipsis").click();
+    popover().findByText("View archive").click();
+
+    cy.findByTestId("archive-item-Orders")
+      .findByText("Orders")
+      .realHover()
+      .findByLabelText("unarchive icon")
+      .click();
+
+    navigationSidebar().button("Orders").should("exist");
   });
 });
 

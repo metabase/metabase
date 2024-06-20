@@ -1091,3 +1091,32 @@
                                                            [:card [:map
                                                                    [:id [:= (:id card)]]]]]]]])}}
             (-> dash (t2/hydrate :resolved-params) :resolved-params)))))
+
+(deftest hydrate-resolved-params-model-test
+  (mt/with-temp
+    [:model/Dashboard     dash      {:parameters [{:name "Category Name"
+                                                   :slug "category_name"
+                                                   :id   "_CATEGORY_NAME_"
+                                                   :type "category"}]}
+     :model/Card          card      {:name "Card attached to dashcard"
+                                     :dataset_query {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (mt/id :categories)}}
+                                     :type :model}
+     :model/DashboardCard dashcard {:dashboard_id       (:id dash)
+                                    :card_id            (:id card)
+                                    :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                                          :target       [:dimension (mt/$ids *categories.name)]}]}]
+    (is (=? {"_CATEGORY_NAME_"
+             {:name     "Category Name"
+              :slug     "category_name"
+              :id       "_CATEGORY_NAME_"
+              :type     :category
+              :mappings (mt/malli=? [:set [:map
+                                           [:parameter_id [:= "_CATEGORY_NAME_"]]
+                                           [:target       [:= [:dimension (mt/$ids *categories.name)]]]
+                                           [:dashcard     [:map
+                                                           [:id   [:= (:id dashcard)]]
+                                                           [:card [:map
+                                                                   [:id [:= (:id card)]]]]]]]])}}
+            (-> dash (t2/hydrate :resolved-params) :resolved-params)))))
