@@ -119,6 +119,11 @@ const tableItem: ResultItemType = {
   database_name: "My Database",
 };
 
+const tableItemWithSchema: ResultItemType = {
+  ...tableItem,
+  table_schema: "my_schema",
+};
+
 describe("EntityPicker > ResultItem", () => {
   beforeAll(() => {
     register();
@@ -214,6 +219,19 @@ describe("EntityPicker > ResultItem", () => {
     expect(getIcon("database")).toBeInTheDocument();
     expect(
       screen.getByText(`in ${tableItem.database_name}`),
+    ).toBeInTheDocument();
+  });
+
+  it("should display table schema when available (metabase#44460)", () => {
+    setup({
+      item: tableItemWithSchema,
+    });
+    expect(screen.getByText(tableItem.name)).toBeInTheDocument();
+
+    expect(getIcon("table")).toBeInTheDocument();
+    expect(getIcon("database")).toBeInTheDocument();
+    expect(
+      screen.getByText(`in ${tableItem.database_name} (My Schema)`),
     ).toBeInTheDocument();
   });
 });
