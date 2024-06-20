@@ -6,7 +6,7 @@ import { alpha, color, lighten } from "metabase/lib/colors";
 import { getSitePath } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
-import { useThemeSpecificCssVariables } from "metabase/styled-components/theme/theme";
+import { useThemeSpecificCssVariables } from "metabase/styled-components/theme/css-variables";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
 import { getFont, getFontFiles } from "../../selectors";

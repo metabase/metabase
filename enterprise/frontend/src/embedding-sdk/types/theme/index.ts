@@ -80,7 +80,7 @@ export type MetabaseColor = keyof MetabaseColors;
  * components and visualizations.
  *
  * Every non-optional properties here must have a default value defined
- * in DEFAULT_METABASE_COMPONENT_THEME at [default-component-theme.ts]
+ * in DEFAULT_METABASE_COMPONENT_THEME at [default-component-css-variables.ts]
  */
 export type MetabaseComponentTheme = {
   dashboard: {
