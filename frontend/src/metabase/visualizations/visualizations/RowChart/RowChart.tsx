@@ -216,13 +216,17 @@ const RowChartVisualization = ({
       chartColumns,
     );
 
+    const areMultipleCards = rawMultipleSeries.length > 1;
+    if (areMultipleCards) {
+      openQuestion();
+      return;
+    }
+
     if ("breakout" in chartColumns && visualizationIsClickable(clickData)) {
       onVisualizationClick({
         ...clickData,
         element: event.currentTarget,
       });
-    } else {
-      openQuestion();
     }
   };
 
