@@ -322,17 +322,11 @@ export const useChartEvents = (
         settings,
       };
 
-      if (
-        !areMultipleCards &&
-        hasBreakout &&
-        visualizationIsClickable(clickData)
-      ) {
+      if (hasBreakout && visualizationIsClickable(clickData)) {
         onVisualizationClick({
           ...clickData,
           element: event.currentTarget,
         });
-      } else {
-        onOpenQuestion(seriesModel.cardId);
       }
     },
     [
