@@ -249,7 +249,7 @@
           (let [expected {:datetime_ltz (t/offset-date-time #t "2019-11-01T00:23:18.331-07:00" "UTC")
                           :datetime_tz  (t/offset-date-time #t "2019-11-01T00:23:18.331-07:00" "UTC")}
                   actual   (select-keys (dt-attempts) (keys expected))]
-              (is (= expected actual))))))))
+            (is (= expected actual))))))))
 
 (deftest sql-time-timezone-handling-test
   ;; Actual value : "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"
