@@ -49,10 +49,7 @@ type FieldSelectorOpts = {
 
 export type MetadataSelectorOpts = TableSelectorOpts & FieldSelectorOpts;
 
-const getNormalizedDatabases = createSelector(
-  [getNormalizedApiEntities],
-  entities => entities.databases ?? {},
-);
+const getNormalizedDatabases = (state: State) => state.entities.databases;
 
 const getNormalizedSchemas = (state: State) => state.entities.schemas;
 
