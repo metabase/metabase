@@ -329,7 +329,7 @@ describe(
       cy.wait("@dashboard");
 
       getDashboardCard().within(() => {
-        cy.findByTestId("loading-spinner").should("be.visible");
+        cy.findByTestId("loading-indicator").should("be.visible");
         cy.findByText("Sleep card").click();
         cy.wait("@card");
       });
