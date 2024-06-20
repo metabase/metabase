@@ -13,6 +13,7 @@ export const Container = styled.div<{ isSmall: boolean }>`
   align-items: center;
   width: 100%;
   padding: 0.25rem;
+  position: relative;
 `;
 
 export const TextCardDefault = styled.div`

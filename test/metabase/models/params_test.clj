@@ -28,6 +28,7 @@
             :semantic_type :type/PK
             :name_field    {:id                 (mt/id :venues :name)
                             :table_id           (mt/id :venues)
+                            :name               "NAME"
                             :display_name       "Name"
                             :base_type          :type/Text
                             :semantic_type      :type/Name
@@ -78,6 +79,7 @@
       (is (= {(mt/id :venues :id) {:id                 (mt/id :venues :id)
                                    :table_id           (mt/id :venues)
                                    :display_name       "ID"
+                                   :name               "ID"
                                    :base_type          :type/BigInteger
                                    :semantic_type      :type/PK
                                    :has_field_values   :none
@@ -86,6 +88,7 @@
                                    :name_field         {:id                (mt/id :venues :name)
                                                         :table_id          (mt/id :venues)
                                                         :display_name      "Name"
+                                                        :name              "NAME"
                                                         :base_type         :type/Text
                                                         :semantic_type     :type/Name
                                                         :has_field_values  :list
@@ -101,6 +104,7 @@
       (is (= {(mt/id :venues :id) {:id                 (mt/id :venues :id)
                                    :table_id           (mt/id :venues)
                                    :display_name       "ID"
+                                   :name               "ID"
                                    :base_type          :type/BigInteger
                                    :semantic_type      :type/PK
                                    :has_field_values   :none
@@ -109,6 +113,7 @@
                                    :name_field         {:id                (mt/id :venues :name)
                                                         :table_id          (mt/id :venues)
                                                         :display_name      "Name"
+                                                        :name              "NAME"
                                                         :base_type         :type/Text
                                                         :semantic_type     :type/Name
                                                         :has_field_values  :list

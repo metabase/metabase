@@ -18,7 +18,7 @@ const BaseLoadingSpinner = ({
 }: Props) => (
   <SpinnerRoot
     className={className}
-    data-testid={dataTestId ?? "loading-spinner"}
+    data-testid={dataTestId ?? "loading-indicator"}
   >
     {isReducedMotionPreferred() ? (
       <Icon name="hourglass" size="24" />
