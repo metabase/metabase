@@ -522,7 +522,14 @@
    :characterEncoding    "UTF8"
    :characterSetResults  "UTF8"
    ;; GZIP compress packets sent between Metabase server and MySQL/MariaDB database
-   :useCompression       true})
+   :useCompression       true
+   ;; record transaction isolation level and auto-commit locally, and avoid hitting the DB if we do something like
+   ;; `.setTransactionIsolation()` to something we previously set it to. Since we do this every time we run a
+   ;; query (see [[metabase.driver.sql-jdbc.execute/set-best-transaction-level!]]) this should speed up things a bit by
+   ;; removing that overhead. See also
+   ;; https://dev.mysql.com/doc/connector-j/en/connector-j-connp-props-performance-extensions.html#cj-conn-prop_useLocalSessionState
+   ;; and #44501
+   :useLocalSessionState true})
 
 (defn- maybe-add-program-name-option [jdbc-spec additional-options-map]
   ;; connectionAttributes (if multiple) are separated by commas, so values that contain spaces are OK, so long as they
