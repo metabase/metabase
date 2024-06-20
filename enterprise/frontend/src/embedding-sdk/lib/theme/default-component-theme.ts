@@ -14,7 +14,7 @@ const units = (px: number) => ({
   em: `${px / DEFAULT_SDK_FONT_SIZE}em`,
 });
 
-export const FONT_SIZES = {
+const FONT_SIZES = {
   tableCell: units(12.5),
   pivotTableCell: units(12),
   label: units(12),
