@@ -6,7 +6,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest ^:parallel no-aggregation-test
   (mt/test-drivers (mt/normal-drivers)
@@ -200,6 +201,23 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:distinct $name]
                                 [:distinct $price]]})))))))
+
+(deftest ^:synchronized complex-distinct-aggregation-test
+  (mt/test-drivers
+   (mt/normal-drivers)
+   (testing "Aggregation as `Count / Distinct([SOME_FIELD])` returns expected results (#35425)"
+     (is (= [[2 4.0] [3 2.0] [4 1.0] [5 2.3] [6 1.0]]
+            (mt/formatted-rows
+             [int (partial u/round-to-decimals 1)]
+             (mt/run-mbql-query
+              venues
+              {:aggregation [[:aggregation-options [:/ [:count] [:distinct $price]] {:name "A"}]]
+               :breakout [$category_id]
+               :order-by [[:asc $id]]
+               :limit 5})))))
+   ;; WIP
+   (testing "More complicated expression"
+     (= 1 1))))
 
 (deftest ^:parallel aggregate-boolean-without-type-test
   (testing "Legacy breakout on boolean field should work correctly (#34286)"
