@@ -136,7 +136,7 @@
     "@emotion/babel-plugin": "^11.11.0",
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
     "@pmmmwh/react-refresh-webpack-plugin": "0.5.10",
-    "@replayio/cypress": "^2.1.0",
+    "@replayio/cypress": "^3.0.0",
     "@sinonjs/fake-timers": "^9.1.2",
     "@storybook/addon-a11y": "^6.5.16",
     "@storybook/addon-actions": "6.5.16",
