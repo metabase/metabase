@@ -4,7 +4,7 @@ import { replace } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { omit } from "underscore";
 
-import { DEFAULT_EMBED_DISPLAY_OPTIONS } from "metabase/dashboard/hooks/use-embed-display-options";
+import { DEFAULT_EMBED_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
 import type { DashboardUrlHashOptions } from "metabase/dashboard/types";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch } from "metabase/lib/redux";
