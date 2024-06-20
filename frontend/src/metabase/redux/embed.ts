@@ -1,12 +1,9 @@
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+
 import { parseHashOptions, parseSearchOptions } from "metabase/lib/browser";
-import {
-  combineReducers,
-  createAction,
-  handleActions,
-} from "metabase/lib/redux";
 import type { EmbedOptions } from "metabase-types/store";
 
-export const DEFAULT_EMBED_OPTIONS = {
+export const DEFAULT_EMBED_OPTIONS: EmbedOptions = {
   top_nav: true,
   side_nav: "default",
   search: false,
@@ -18,42 +15,34 @@ export const DEFAULT_EMBED_OPTIONS = {
   action_buttons: true,
 } as const;
 
-export const SET_INITIAL_URL_OPTIONS = "metabase/embed/SET_INITIAL_URL_OPTIONS";
-export const setInitialUrlOptions = createAction(
-  SET_INITIAL_URL_OPTIONS,
-  ({ search, hash }: { search: string; hash: string }) => {
-    return {
-      ...parseSearchOptions(search),
-      ...parseHashOptions(hash),
-    };
+const interactiveEmbedSlice = createSlice({
+  name: "interactiveEmbed",
+  initialState: {
+    options: {} as EmbedOptions,
+    isEmbeddingSdk: false,
   },
-);
-
-export const SET_OPTIONS = "metabase/embed/SET_OPTIONS";
-export const setOptions = createAction(
-  SET_OPTIONS,
-  (options: Partial<EmbedOptions>) => options,
-);
-
-const options = handleActions(
-  {
-    [SET_INITIAL_URL_OPTIONS]: (state, { payload }) => ({
-      ...DEFAULT_EMBED_OPTIONS,
-      ...payload,
-    }),
-
-    [SET_OPTIONS]: (state, { payload }) => ({
-      ...state,
-      ...payload,
-    }),
+  reducers: {
+    setInitialUrlOptions: (
+      state,
+      action: PayloadAction<{ search: string; hash: string }>,
+    ) => {
+      state.options = {
+        ...DEFAULT_EMBED_OPTIONS,
+        ...parseSearchOptions(action.payload.search),
+        ...parseHashOptions(action.payload.hash),
+      };
+    },
+    setOptions: (state, action: PayloadAction<Partial<EmbedOptions>>) => {
+      state.options = {
+        ...state.options,
+        ...action.payload,
+      };
+    },
   },
-  {},
-);
-
-const isEmbeddingSdk = handleActions({}, false);
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default combineReducers({
-  options,
-  isEmbeddingSdk,
 });
+
+export const { setInitialUrlOptions, setOptions } =
+  interactiveEmbedSlice.actions;
+
+// eslint-disable-next-line import/no-default-export
+export default interactiveEmbedSlice.reducer;
