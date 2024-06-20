@@ -19,7 +19,7 @@ export enum DurationUnit {
   Days = "days",
 }
 
-export interface MultiplierStrategy extends StrategyBase {
+export interface AdaptiveStrategy extends StrategyBase {
   type: "ttl";
   multiplier: number;
   min_duration_ms: number;
@@ -48,7 +48,7 @@ export interface ScheduleStrategy extends StrategyBase {
 /** Cache invalidation strategy */
 export type Strategy =
   | DoNotCacheStrategy
-  | MultiplierStrategy
+  | AdaptiveStrategy
   | DurationStrategy
   | InheritStrategy
   | ScheduleStrategy;
