@@ -47,8 +47,11 @@ export const BaseItemsTableBody = ({
   | "showActionMenu"
 >) => {
   const isDndAvailable = useSelector(getIsDndAvailable);
+  const isObservingMove = !!onMove || !onDrop;
+  const isDragable = isDndAvailable && isObservingMove;
 
-  const TableRowComponent = isDndAvailable ? ItemDragSourceTableRow : TableRow;
+  const TableRowComponent = isDragable ? ItemDragSourceTableRow : TableRow;
+
   return (
     <TBody>
       {items.map((item: CollectionItem) => {

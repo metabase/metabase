@@ -13,6 +13,7 @@ import CollectionLanding from "metabase/collections/components/CollectionLanding
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
+import { CleanupCollectionModal } from "metabase/components/CleanupCollectionModal";
 import { Unauthorized } from "metabase/components/ErrorPages";
 import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/containers/Unsubscribe";
@@ -141,6 +142,7 @@ export const getRoutes = store => {
           <Route path="collection/:slug" component={CollectionLanding}>
             <ModalRoute path="move" modal={MoveCollectionModal} noWrap />
             <ModalRoute path="archive" modal={ArchiveCollectionModal} />
+            <ModalRoute path="cleanup" modal={CleanupCollectionModal} />
             <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
             {getCollectionTimelineRoutes()}
           </Route>
