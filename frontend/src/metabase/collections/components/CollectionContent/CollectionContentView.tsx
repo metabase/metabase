@@ -21,6 +21,7 @@ import {
   isTrashedCollection,
 } from "metabase/collections/utils";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
+import Bookmarks from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 import { useListSelect } from "metabase/hooks/use-list-select";
@@ -220,9 +221,10 @@ export const CollectionContentView = ({
                 canWrite={collection.can_write}
                 canRestore={collection.can_restore}
                 canDelete={collection.can_delete}
-                onUnarchive={() => {
+                onUnarchive={async () => {
                   const input = { ...actionId, name: collection.name };
-                  dispatch(Collections.actions.setArchived(input, false));
+                  await dispatch(Collections.actions.setArchived(input, false));
+                  await dispatch(Bookmarks.actions.invalidateLists());
                 }}
                 onMove={({ id }) =>
                   dispatch(Collections.actions.setCollection(actionId, { id }))
