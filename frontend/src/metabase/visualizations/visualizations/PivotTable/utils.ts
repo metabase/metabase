@@ -96,7 +96,7 @@ interface GetLeftHeaderWidthsProps {
   rowIndexes: number[];
   getColumnTitle: (columnIndex: number) => string;
   leftHeaderItems?: HeaderItem[];
-  font?: { fontFamily?: string; fontSize?: string };
+  font: { fontFamily?: string; fontSize?: string };
 }
 
 export function getLeftHeaderWidths({
