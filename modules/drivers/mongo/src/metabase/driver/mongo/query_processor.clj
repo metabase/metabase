@@ -9,7 +9,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
-   [metabase.driver.mongo.operators :refer [$add $addToSet $and $avg $concat $cond
+   [metabase.driver.mongo.operators :refer [$add $addFields $addToSet $and $avg $concat $cond
                                             $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
                                             $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min
                                             $minute $mod $month $multiply $ne $not $or $project $regexMatch $second
@@ -45,9 +45,6 @@
 
 ;; this is just a very limited schema to make sure we're generating valid queries. We should expand it more in the
 ;; future
-
-(def ^:private $addFields
-  :$addFields)
 
 (def ^:private $ProjectStage   [:map-of [:= $project]   [:map-of ::lib.schema.common/non-blank-string :any]])
 (def ^:private $SortStage      [:map-of [:= $sort]      [:map-of ::lib.schema.common/non-blank-string [:enum -1 1]]])

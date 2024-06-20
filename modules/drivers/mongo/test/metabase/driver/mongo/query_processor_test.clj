@@ -273,8 +273,9 @@
       (is (= {:projections ["count" "count_2"]
               :query
               [{"$group" {"_id" nil, "count" {"$addToSet" "$name"}, "count_2" {"$addToSet" "$price"}}}
+               {"$addFields" {"count" {"$size" "$count"} "count_2" {"$size" "$count_2"}}}
                {"$sort" {"_id" 1}}
-               {"$project" {"_id" false, "count" {"$size" "$count"}, "count_2" {"$size" "$count_2"}}}
+               {"$project" {"_id" false, "count" true, "count_2" true}}
                {"$limit" 5}],
               :collection  "venues"
               :mbql?       true}
