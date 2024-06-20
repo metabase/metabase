@@ -1,102 +1,74 @@
-import PropTypes from "prop-types";
-import { useCallback, useEffect } from "react";
+import type React from "react";
+import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { Dataset } from "metabase-types/api";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 import { ViewHeaderContainer } from "./ViewHeader.styled";
 import {
   AdHocQuestionLeftSide,
-  DashboardBackButton,
   QuestionFiltersHeader,
   SavedQuestionLeftSide,
   ViewTitleHeaderRightSide,
+  DashboardBackButton,
 } from "./components";
 
-const viewTitleHeaderPropTypes = {
-  question: PropTypes.object.isRequired,
-  originalQuestion: PropTypes.object,
+interface ViewTitleHeaderProps {
+  question: Question;
+  isObjectDetail: boolean;
+  isAdditionalInfoVisible?: boolean;
+  onOpenQuestionInfo: () => void;
+  onSave: (newQuestion: Question) => any;
 
-  queryBuilderMode: PropTypes.oneOf(["view", "notebook"]),
-  setQueryBuilderMode: PropTypes.func,
+  isNavBarOpen: boolean;
 
-  result: PropTypes.object,
+  originalQuestion?: Question;
+  isNative?: boolean;
+  isSummarized?: boolean;
 
-  isDirty: PropTypes.bool,
-  isRunnable: PropTypes.bool,
-  isRunning: PropTypes.bool,
-  isResultDirty: PropTypes.bool,
-  isNativeEditorOpen: PropTypes.bool,
-  isNavBarOpen: PropTypes.bool,
-  isShowingSummarySidebar: PropTypes.bool,
-  isShowingQuestionDetailsSidebar: PropTypes.bool,
-  isObjectDetail: PropTypes.bool,
-  isAdditionalInfoVisible: PropTypes.bool,
+  result: Dataset;
+  queryBuilderMode: QueryBuilderMode;
+  isBookmarked: boolean;
+  toggleBookmark: () => void;
+  isSaved: boolean;
+  isModelOrMetric: boolean;
+  isRunnable: boolean;
+  isRunning: boolean;
+  isNativeEditorOpen: boolean;
+  isShowingSummarySidebar: boolean;
+  isDirty: boolean;
+  isResultDirty: boolean;
+  isActionListVisible: boolean;
+  runQuestionQuery: (parameters: { ignoreCache: boolean }) => void;
+  cancelQuery: () => void;
+  onOpenModal: (modalType: string) => void;
+  onEditSummary: () => void;
+  onCloseSummary: () => void;
+  setQueryBuilderMode: (
+    mode: QueryBuilderMode,
+    opt: { datasetEditorTab: DatasetEditorTab },
+  ) => void;
+  turnDatasetIntoQuestion: () => void;
+  areFiltersExpanded: boolean;
+  onExpandFilters: () => void;
+  onCollapseFilters: () => void;
+  isShowingQuestionInfoSidebar: boolean;
+  onCloseQuestionInfo: () => void;
+  onModelPersistenceChange: () => void;
 
-  runQuestionQuery: PropTypes.func,
-  cancelQuery: PropTypes.func,
-  updateQuestion: PropTypes.func,
+  updateQuestion: (question: Question, opts: { run: boolean }) => void;
 
-  onOpenModal: PropTypes.func,
-  onEditSummary: PropTypes.func,
-  onCloseSummary: PropTypes.func,
-  onOpenQuestionDetails: PropTypes.func,
+  className?: string;
+  style?: React.CSSProperties;
+}
 
-  className: PropTypes.string,
-  style: PropTypes.object,
-};
-
-// interface ViewTitleHeaderProps {
-//   question: Question;
-//   isObjectDetail: boolean;
-//   isAdditionalInfoVisible?: boolean;
-//   onOpenQuestionInfo: () => void;
-//   onSave: (newQuestion: Question) => any;
-//
-//   isNavBarOpen: boolean;
-//
-//   originalQuestion?: Question;
-//   isNative?: boolean;
-//   isSummarized?: boolean;
-//
-//   result: Dataset;
-//   queryBuilderMode: QueryBuilderMode;
-//   isBookmarked: boolean;
-//   toggleBookmark: () => void;
-//   isSaved: boolean;
-//   isModelOrMetric: boolean;
-//   isRunnable: boolean;
-//   isRunning: boolean;
-//   isNativeEditorOpen: boolean;
-//   isShowingSummarySidebar: boolean;
-//   isDirty: boolean;
-//   isResultDirty: boolean;
-//   isActionListVisible: boolean;
-//   runQuestionQuery: (parameters: { ignoreCache: boolean }) => void;
-//   cancelQuery: () => void;
-//   onOpenModal: (modalType: string) => void;
-//   onEditSummary: () => void;
-//   onCloseSummary: () => void;
-//   setQueryBuilderMode: (
-//     mode: QueryBuilderMode,
-//     opt: { datasetEditorTab: DatasetEditorTab },
-//   ) => void;
-//   turnDatasetIntoQuestion: () => void;
-//   areFiltersExpanded: boolean;
-//   onExpandFilters: () => void;
-//   onCollapseFilters: () => void;
-//   isShowingQuestionInfoSidebar: boolean;
-//   onCloseQuestionInfo: () => void;
-//   onModelPersistenceChange: () => void;
-//
-//   updateQuestion: (question: Question, opts: { run: boolean }) => void;
-//
-//   className?: string;
-//   style?: React.CSSProperties;
-// }
-
-export function ViewTitleHeader(props) {
+export function ViewTitleHeader(
+  props: ViewTitleHeaderProps,
+): React.JSX.Element {
   const {
     question,
     isObjectDetail,
@@ -164,13 +136,6 @@ export function ViewTitleHeader(props) {
     question.type() === "model" || question.type() === "metric";
   const isSummarized = Lib.aggregations(query, -1).length > 0;
 
-  const onQueryChange = useCallback(
-    newQuery => {
-      updateQuestion(newQuery.question(), { run: true });
-    },
-    [updateQuestion],
-  );
-
   return (
     <>
       <ViewHeaderContainer
@@ -193,7 +158,6 @@ export function ViewTitleHeader(props) {
           <AdHocQuestionLeftSide
             question={question}
             isObjectDetail={isObjectDetail}
-            // isAdditionalInfoVisible={isAdditionalInfoVisible}
             isNative={isNative}
             isSummarized={isSummarized}
             onOpenModal={onOpenModal}
@@ -226,12 +190,9 @@ export function ViewTitleHeader(props) {
           isObjectDetail={isObjectDetail}
           isSaved={isSaved}
           isModelOrMetric={isModelOrMetric}
-          // isNative={isNative}
-          // isSummarized={isSummarized}
           areFiltersExpanded={areFiltersExpanded}
           onExpandFilters={expandFilters}
           onCollapseFilters={collapseFilters}
-          // onQueryChange={onQueryChange}
         />
       </ViewHeaderContainer>
 
@@ -245,5 +206,3 @@ export function ViewTitleHeader(props) {
     </>
   );
 }
-
-ViewTitleHeader.propTypes = viewTitleHeaderPropTypes;
