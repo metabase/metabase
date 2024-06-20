@@ -101,18 +101,15 @@ export const getIsRecentlyAutoConnectedDashcard = createSelector(
   },
 );
 
-export const dismissUndo = createAction<
-  Undo["id"],
-  {
-    undoId: Undo["id"];
-    track?: boolean;
-  }
->(DISMISS_UNDO, ({ undoId, track = true }) => {
-  if (track) {
-    MetabaseAnalytics.trackStructEvent("Undo", "Dismiss Undo");
-  }
-  return undoId;
-});
+export const dismissUndo = createAction(
+  DISMISS_UNDO,
+  ({ undoId, track = true }: { undoId: Undo["id"]; track?: boolean }) => {
+    if (track) {
+      MetabaseAnalytics.trackStructEvent("Undo", "Dismiss Undo");
+    }
+    return undoId;
+  },
+);
 
 export const dismissAllUndo = createAction(DISMISS_ALL_UNDO);
 
