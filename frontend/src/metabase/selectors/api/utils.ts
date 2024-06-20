@@ -37,16 +37,17 @@ export const zipEntities = <
 export const zip = <E extends Entity>(
   ...entityEntries: EntityEntries<E>[][]
 ): Record<string | number, E> => {
+  // oldest first, newest last
   const sortedEntityEntries = entityEntries.flat().sort((entry1, entry2) => {
     if (isNullOrUndefined(entry1.fulfilledTimeStamp)) {
-      return 1;
-    }
-
-    if (isNullOrUndefined(entry2.fulfilledTimeStamp)) {
       return -1;
     }
 
-    return entry2.fulfilledTimeStamp - entry1.fulfilledTimeStamp;
+    if (isNullOrUndefined(entry2.fulfilledTimeStamp)) {
+      return 1;
+    }
+
+    return entry1.fulfilledTimeStamp - entry2.fulfilledTimeStamp;
   });
 
   const map: Record<string | number, E> = {};
@@ -57,6 +58,13 @@ export const zip = <E extends Entity>(
     for (const entity of entities) {
       if (!map[entity.id]) {
         map[entity.id] = entity;
+      } else {
+        // Do what mergeEntities does in entity framework
+        // TODO: improve this comment if this works
+        map[entity.id] = {
+          ...map[entity.id],
+          ...entity,
+        };
       }
     }
   }
