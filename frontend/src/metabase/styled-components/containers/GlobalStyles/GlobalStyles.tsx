@@ -6,7 +6,8 @@ import { alpha, color, lighten } from "metabase/lib/colors";
 import { getSitePath } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
-import { useThemeSpecificCssVariables } from "metabase/styled-components/theme/css-variables";
+import { getThemeSpecificCssVariables } from "metabase/styled-components/theme/css-variables";
+import { useMantineTheme } from "metabase/ui";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
 import { getFont, getFontFiles } from "../../selectors";
@@ -15,9 +16,8 @@ export const GlobalStyles = (): JSX.Element => {
   const font = useSelector(getFont);
   const fontFiles = useSelector(getFontFiles);
 
-  const themeSpecificSelectors = useThemeSpecificCssVariables();
-
   const sitePath = getSitePath();
+  const theme = useMantineTheme();
 
   const styles = css`
     :root {
@@ -66,7 +66,7 @@ export const GlobalStyles = (): JSX.Element => {
         transparent
       );
 
-      ${themeSpecificSelectors}
+      ${getThemeSpecificCssVariables(theme)}
     }
 
     ${defaultFontFiles({ baseUrl: sitePath })}

@@ -93,7 +93,7 @@ function getDesignSystemCssVariables(theme: MantineTheme) {
  * Keep in sync with [GlobalStyles.tsx] and [.storybook/preview-head.html].
  * Refer to DEFAULT_METABASE_COMPONENT_THEME for their defaults.
  **/
-function getThemeSpecificCssVariables(theme: MantineTheme) {
+export function getThemeSpecificCssVariables(theme: MantineTheme) {
   // Get value from theme.other, which is typed as MetabaseComponentTheme
   const getValue = (key: MetabaseComponentThemeKey) => get(theme.other, key);
 
