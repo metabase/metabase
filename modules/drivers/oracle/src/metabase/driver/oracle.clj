@@ -32,7 +32,7 @@
    (java.sql Connection DatabaseMetaData ResultSet Types)
    (java.time Instant OffsetDateTime ZonedDateTime)
    (oracle.jdbc OracleConnection OracleTypes)
-   (oracle.sql Datum TIMESTAMPLTZ TIMESTAMPTZ)))
+   (oracle.sql TIMESTAMPLTZ TIMESTAMPTZ)))
 
 (set! *warn-on-reflection* true)
 
@@ -599,29 +599,26 @@
   (fn []
     (.getString rs i)))
 
-(defn- offset-date-time-value
-  "Returns the `OffsetDateTime` value of the `TIMESTAMPTZ` or `TIMESTAMPLTZ` object `timestamp`."
-  [^ResultSet rs ^Datum timestamp]
-  ;; Oracle `TIMESTAMPTZ` or `TIMESTAMPLTZ` types can have either a zone offset *or* a zone ID; you could fetch either
-  ;; `OffsetDateTime` or `ZonedDateTime` using `.getObject`, but fetching the wrong type will result in an Exception,
-  ;; meaning we have try both and wrap the first in a try-catch. As far as I know there's no way to tell whether the
-  ;; value has a zone offset or ID without first fetching a `TIMESTAMPTZ` object. So to avoid the try-catch we can
-  ;; fetch the `TIMESTAMPTZ` or `TIMESTAMPLTZ` and use `.timestampValue` instead.
-  (let [^C3P0ProxyConnection proxy-conn (.. rs getStatement getConnection)
-        conn                            (.unwrap proxy-conn OracleConnection)]
-    (t/offset-date-time (.timestampValue timestamp conn) (t/zone-offset 0))))
+(defn- ^Connection rs->conn [^ResultSet rs]
+  (let [^C3P0ProxyConnection proxy-conn (.. rs getStatement getConnection)]
+    (.unwrap proxy-conn OracleConnection)))
 
+;; Oracle `TIMESTAMPTZ` or `TIMESTAMPLTZ` types can have either a zone offset *or* a zone ID; you could fetch either
+;; `OffsetDateTime` or `ZonedDateTime` using `.getObject`, but fetching the wrong type will result in an Exception,
+;; meaning we have try both and wrap the first in a try-catch. As far as I know there's no way to tell whether the
+;; value has a zone offset or ID without first fetching a `TIMESTAMPTZ` object. So to avoid the try-catch we can
+;; fetch the `TIMESTAMPTZ` or `TIMESTAMPLTZ` and use `.timestampValue` instead.
 (defmethod sql-jdbc.execute/read-column-thunk [:oracle OracleTypes/TIMESTAMPTZ]
   [_driver ^ResultSet rs _rsmeta ^Integer i]
   (fn []
     (when-let [^TIMESTAMPTZ t (.getObject rs i TIMESTAMPTZ)]
-      (offset-date-time-value rs t))))
+      (t/offset-date-time (.timestampValue t (rs->conn rs)) (t/zone-offset 0)))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:oracle OracleTypes/TIMESTAMPLTZ]
   [_driver ^ResultSet rs _rsmeta ^Integer i]
   (fn []
     (when-let [^TIMESTAMPLTZ t (.getObject rs i TIMESTAMPLTZ)]
-      (offset-date-time-value rs t))))
+      (t/offset-date-time (.timestampValue t (rs->conn rs)) (t/zone-offset 0)))))
 
 (defmethod unprepare/unprepare-value [:oracle OffsetDateTime]
   [_ t]

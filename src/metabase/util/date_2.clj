@@ -431,9 +431,6 @@
                      :exclusive (add t resolution -1)))}
      :=  (range t unit options))))
 
-;; Moving the type hints to the arg lists makes clj-kondo happy, but breaks eastwood (and maybe causes reflection
-;; warnings) at the call sites.
-#_{:clj-kondo/ignore [:non-arg-vec-return-type-hint]}
 (defn ^PeriodDuration period-duration
   "Return the Duration between two temporal values `x` and `y`."
   {:arglists '([s] [period] [duration] [period duration] [start end])}
