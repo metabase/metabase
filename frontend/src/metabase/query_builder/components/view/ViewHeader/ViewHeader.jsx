@@ -8,10 +8,10 @@ import * as Lib from "metabase-lib";
 import { ViewHeaderContainer } from "./ViewHeader.styled";
 import {
   AdHocQuestionLeftSide,
-  FilterHeader,
+  DashboardBackButton,
+  QuestionFiltersHeader,
   SavedQuestionLeftSide,
   ViewTitleHeaderRightSide,
-  DashboardBackButton,
 } from "./components";
 
 const viewTitleHeaderPropTypes = {
@@ -47,8 +47,88 @@ const viewTitleHeaderPropTypes = {
   style: PropTypes.object,
 };
 
+// interface ViewTitleHeaderProps {
+//   question: Question;
+//   isObjectDetail: boolean;
+//   isAdditionalInfoVisible?: boolean;
+//   onOpenQuestionInfo: () => void;
+//   onSave: (newQuestion: Question) => any;
+//
+//   isNavBarOpen: boolean;
+//
+//   originalQuestion?: Question;
+//   isNative?: boolean;
+//   isSummarized?: boolean;
+//
+//   result: Dataset;
+//   queryBuilderMode: QueryBuilderMode;
+//   isBookmarked: boolean;
+//   toggleBookmark: () => void;
+//   isSaved: boolean;
+//   isModelOrMetric: boolean;
+//   isRunnable: boolean;
+//   isRunning: boolean;
+//   isNativeEditorOpen: boolean;
+//   isShowingSummarySidebar: boolean;
+//   isDirty: boolean;
+//   isResultDirty: boolean;
+//   isActionListVisible: boolean;
+//   runQuestionQuery: (parameters: { ignoreCache: boolean }) => void;
+//   cancelQuery: () => void;
+//   onOpenModal: (modalType: string) => void;
+//   onEditSummary: () => void;
+//   onCloseSummary: () => void;
+//   setQueryBuilderMode: (
+//     mode: QueryBuilderMode,
+//     opt: { datasetEditorTab: DatasetEditorTab },
+//   ) => void;
+//   turnDatasetIntoQuestion: () => void;
+//   areFiltersExpanded: boolean;
+//   onExpandFilters: () => void;
+//   onCollapseFilters: () => void;
+//   isShowingQuestionInfoSidebar: boolean;
+//   onCloseQuestionInfo: () => void;
+//   onModelPersistenceChange: () => void;
+//
+//   updateQuestion: (question: Question, opts: { run: boolean }) => void;
+//
+//   className?: string;
+//   style?: React.CSSProperties;
+// }
+
 export function ViewTitleHeader(props) {
-  const { question, className, style, isNavBarOpen, updateQuestion } = props;
+  const {
+    question,
+    isObjectDetail,
+    isAdditionalInfoVisible,
+    onOpenQuestionInfo,
+    onSave,
+    onOpenModal,
+    isNavBarOpen,
+    result,
+    queryBuilderMode,
+    updateQuestion,
+    isBookmarked,
+    toggleBookmark,
+    isRunnable,
+    isRunning,
+    isNativeEditorOpen,
+    isShowingSummarySidebar,
+    isDirty,
+    isResultDirty,
+    isActionListVisible,
+    runQuestionQuery,
+    cancelQuery,
+    onEditSummary,
+    onCloseSummary,
+    setQueryBuilderMode,
+    turnDatasetIntoQuestion,
+    isShowingQuestionInfoSidebar,
+    onCloseQuestionInfo,
+    onModelPersistenceChange,
+  } = props;
+
+  const { className, style } = props;
 
   const [
     areFiltersExpanded,
@@ -73,7 +153,7 @@ export function ViewTitleHeader(props) {
     const previousFiltersCount =
       previousQuery && Lib.filters(previousQuery, -1).length;
 
-    if (filtersCount > previousFiltersCount) {
+    if (!!previousFiltersCount && filtersCount > previousFiltersCount) {
       expandFilters();
     }
   }, [previousQuestion, question, expandFilters, previousQuery, query]);
@@ -100,33 +180,66 @@ export function ViewTitleHeader(props) {
         isNavBarOpen={isNavBarOpen}
       >
         <DashboardBackButton />
+
         {isSaved ? (
-          <SavedQuestionLeftSide {...props} />
+          <SavedQuestionLeftSide
+            question={question}
+            isObjectDetail={isObjectDetail}
+            isAdditionalInfoVisible={isAdditionalInfoVisible}
+            onOpenQuestionInfo={onOpenQuestionInfo}
+            onSave={onSave}
+          />
         ) : (
           <AdHocQuestionLeftSide
-            {...props}
+            question={question}
+            isObjectDetail={isObjectDetail}
+            // isAdditionalInfoVisible={isAdditionalInfoVisible}
             isNative={isNative}
             isSummarized={isSummarized}
+            onOpenModal={onOpenModal}
           />
         )}
         <ViewTitleHeaderRightSide
-          {...props}
+          question={question}
+          result={result}
+          queryBuilderMode={queryBuilderMode}
+          isBookmarked={isBookmarked}
+          toggleBookmark={toggleBookmark}
+          isRunnable={isRunnable}
+          isRunning={isRunning}
+          isNativeEditorOpen={isNativeEditorOpen}
+          isShowingSummarySidebar={isShowingSummarySidebar}
+          isDirty={isDirty}
+          isResultDirty={isResultDirty}
+          isActionListVisible={isActionListVisible}
+          runQuestionQuery={runQuestionQuery}
+          cancelQuery={cancelQuery}
+          onOpenModal={onOpenModal}
+          onEditSummary={onEditSummary}
+          onCloseSummary={onCloseSummary}
+          setQueryBuilderMode={setQueryBuilderMode}
+          turnDatasetIntoQuestion={turnDatasetIntoQuestion}
+          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
+          onCloseQuestionInfo={onCloseQuestionInfo}
+          onOpenQuestionInfo={onOpenQuestionInfo}
+          onModelPersistenceChange={onModelPersistenceChange}
+          isObjectDetail={isObjectDetail}
           isSaved={isSaved}
           isModelOrMetric={isModelOrMetric}
-          isNative={isNative}
-          isSummarized={isSummarized}
+          // isNative={isNative}
+          // isSummarized={isSummarized}
           areFiltersExpanded={areFiltersExpanded}
           onExpandFilters={expandFilters}
           onCollapseFilters={collapseFilters}
-          onQueryChange={onQueryChange}
+          // onQueryChange={onQueryChange}
         />
       </ViewHeaderContainer>
-      {FilterHeader.shouldRender(props) && (
-        <FilterHeader
-          {...props}
+
+      {QuestionFiltersHeader.shouldRender(props) && (
+        <QuestionFiltersHeader
           expanded={areFiltersExpanded}
           question={question}
-          onQueryChange={onQueryChange}
+          updateQuestion={updateQuestion}
         />
       )}
     </>
