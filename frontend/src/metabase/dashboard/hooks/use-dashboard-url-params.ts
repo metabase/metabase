@@ -25,6 +25,23 @@ export const useDashboardUrlParams = ({
 }) => {
   const { font, setFont } = useEmbedFont();
 
+  const hashOptions = parseHashOptions(
+    location.hash,
+  ) as DashboardUrlHashOptions;
+
+  const bordered =
+    hashOptions.bordered ??
+    (isWithinIframe() || DEFAULT_EMBED_DISPLAY_OPTIONS.bordered);
+
+  const titled = hashOptions.titled ?? DEFAULT_EMBED_DISPLAY_OPTIONS.titled;
+
+  const hideDownloadButton =
+    hashOptions.hide_download_button ??
+    DEFAULT_EMBED_DISPLAY_OPTIONS.hideDownloadButton;
+
+  const hideParameters =
+    hashOptions.hide_parameters ?? DEFAULT_EMBED_DISPLAY_OPTIONS.hideParameters;
+
   const {
     hasNightModeToggle,
     isNightMode,
@@ -57,23 +74,6 @@ export const useDashboardUrlParams = ({
     onChange: value => setTheme(value ?? "light"),
     location,
   });
-
-  const hashOptions = parseHashOptions(
-    location.hash,
-  ) as DashboardUrlHashOptions;
-
-  const bordered =
-    hashOptions.bordered ??
-    (isWithinIframe() || DEFAULT_EMBED_DISPLAY_OPTIONS.bordered);
-
-  const titled = hashOptions.titled ?? DEFAULT_EMBED_DISPLAY_OPTIONS.titled;
-
-  const hideDownloadButton =
-    hashOptions.hide_download_button ??
-    DEFAULT_EMBED_DISPLAY_OPTIONS.hideDownloadButton;
-
-  const hideParameters =
-    hashOptions.hide_parameters ?? DEFAULT_EMBED_DISPLAY_OPTIONS.hideParameters;
 
   useEffect(() => {
     const hashOptions = parseHashOptions(
