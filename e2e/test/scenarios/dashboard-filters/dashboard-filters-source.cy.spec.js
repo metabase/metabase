@@ -200,9 +200,12 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       editDashboard();
       setFilter("Text or Category", "Is");
       mapFilterToQuestion();
-      setFilterListSource({ values: ["Gadget", "Gizmo", "Widget"] });
+      setFilterListSource({
+        values: [["Gadget"], ["Gizmo", "Gizmo Label"], "Widget"],
+      });
       saveDashboard();
-      filterDashboard();
+      filterDashboard({ isLabeled: true });
+      filterWidget().findByText("Gizmo Label").should("be.visible");
     });
 
     it("should be able to use a static list source when embedded", () => {
@@ -214,7 +217,8 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         visitEmbeddedPage(getDashboardResource(card));
       });
 
-      filterDashboard();
+      filterDashboard({ isLabeled: true });
+      filterWidget().findByText("Gizmo Label").should("be.visible");
     });
 
     it("should be able to use a static list source when public", () => {
@@ -226,7 +230,8 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         visitPublicDashboard(card.dashboard_id);
       });
 
-      filterDashboard();
+      filterDashboard({ isLabeled: true });
+      filterWidget().findByText("Gizmo Label").should("be.visible");
     });
   });
 
@@ -286,11 +291,17 @@ const mapFilterToQuestion = () => {
   popover().within(() => cy.findByText("Category").click());
 };
 
-const filterDashboard = ({ isField = false, isSandboxed = false } = {}) => {
+const filterDashboard = ({
+  isField = false,
+  isSandboxed = false,
+  isLabeled = false,
+} = {}) => {
   cy.findByText("Text").click();
 
   popover().within(() => {
-    cy.findByText("Gizmo").should("be.visible");
+    const Gizmo = isLabeled ? "Gizmo Label" : "Gizmo";
+
+    cy.findByText(Gizmo).should("be.visible");
     cy.findByText("Doohickey").should(isField ? "be.visible" : "not.exist");
     cy.findByText("Gadget").should(isSandboxed ? "not.exist" : "be.visible");
     cy.findByText("Widget").should(isSandboxed ? "not.exist" : "be.visible");
@@ -300,7 +311,7 @@ const filterDashboard = ({ isField = false, isSandboxed = false } = {}) => {
     cy.findByText("Widget").should(isSandboxed ? "not.exist" : "be.visible");
     cy.findByText("Doohickey").should(isField ? "be.visible" : "not.exist");
 
-    cy.findByText("Gizmo").click();
+    cy.findByText(Gizmo).click();
     cy.button("Add filter").click();
   });
 };
@@ -355,7 +366,7 @@ const getListDashboard = () => {
   return getTargetDashboard({
     values_source_type: "static-list",
     values_source_config: {
-      values: ["Gadget", "Gizmo", "Widget"],
+      values: [["Gadget"], ["Gizmo", "Gizmo Label"], "Widget"],
     },
   });
 };
