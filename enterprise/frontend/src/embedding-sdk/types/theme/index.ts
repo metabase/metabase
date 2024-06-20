@@ -126,6 +126,11 @@ export type MetabaseComponentTheme = {
 
   /** Pivot table **/
   pivotTable: {
+    cell: {
+      /** Font size of cell values, defaults to ~12px */
+      fontSize: string;
+    };
+
     /** Button to toggle pivot table rows */
     rowToggle: {
       textColor: string;
@@ -144,6 +149,9 @@ export type MetabaseComponentTheme = {
 
   /** Cartesian charts */
   cartesian: {
+    /** Padding around the chart. */
+    padding?: string;
+
     label: {
       /** Labels used in cartesian charts, such as axis ticks and series. */
       fontSize: string;

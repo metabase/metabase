@@ -41,7 +41,7 @@ const getArrowFillColor = () => color("text-medium");
 const getArrowStrokeColor = () => color("bg-white");
 
 // in ems, but within the scaled 100px SVG element
-const FONT_SIZE_SEGMENT_LABEL = 0.25;
+const FONT_SIZE_SEGMENT_LABEL = 0.285;
 const FONT_SIZE_CENTER_LABEL_MIN = 0.5;
 const FONT_SIZE_CENTER_LABEL_MAX = 0.7;
 
@@ -420,8 +420,8 @@ const GaugeSegmentLabel = ({ position: [x, y], style = {}, children }) => (
     x={x}
     y={y}
     style={{
-      fill: color("text-medium"),
-      fontSize: `${FONT_SIZE_SEGMENT_LABEL}rem`,
+      fill: "var(--mb-color-text-medium)",
+      fontSize: `${FONT_SIZE_SEGMENT_LABEL}em`,
       textAnchor: Math.abs(x) < 5 ? "middle" : x > 0 ? "start" : "end",
       // shift text in the lower half down a bit
       transform:

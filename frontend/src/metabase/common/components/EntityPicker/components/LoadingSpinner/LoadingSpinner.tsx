@@ -8,7 +8,7 @@ export const LoadingSpinner = ({ text }: { text?: string }) => (
     align="center"
     justify="center"
     h="100%"
-    data-testid="loading-spinner"
+    data-testid="loading-indicator"
     gap="md"
   >
     <Loader size="lg" />
@@ -36,7 +36,7 @@ export const DelayedLoadingSpinner = ({
 
   if (!show) {
     // make tests aware that things are loading
-    return <span data-testid="loading-spinner" />;
+    return <span data-testid="loading-indicator" />;
   }
 
   return <LoadingSpinner text={text} />;

@@ -4649,3 +4649,34 @@
                                       false
                                       (apply original-can-read? args)))]
          (is (map? (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id dash))))))))))
+
+(deftest dashboard-field-params-field-names-test
+  (mt/with-temp
+    [:model/Dashboard     dash      {:parameters [{:name "Category Name"
+                                                   :slug "category_name"
+                                                   :id   "_CATEGORY_NAME_"
+                                                   :type "category"}]}
+     :model/Card          card      {:name "Card attached to dashcard"
+                                     :dataset_query {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (mt/id :categories)}}
+                                     :type :model}
+     :model/DashboardCard _         {:dashboard_id       (:id dash)
+                                     :card_id            (:id card)
+                                     :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                                           :target       [:dimension (mt/$ids *categories.name)]}]}]
+    (is (=? {:param_fields {(mt/id :categories :name)
+                            {:semantic_type "type/Name",
+                             :table_id (mt/id :categories)
+                             :name "NAME",
+                             :has_field_values "list",
+                             :fk_target_field_id nil,
+                             :dimensions (),
+                             :id (mt/id :categories :name)
+                             :target nil,
+                             :display_name "Name",
+                             :name_field nil,
+                             :base_type "type/Text"}}}
+            (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id dash)))))
+    (is (=? {:values #(set/subset? #{["African"] ["BBQ"]} (set %1))}
+            (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values" (:id dash) "_CATEGORY_NAME_"))))))

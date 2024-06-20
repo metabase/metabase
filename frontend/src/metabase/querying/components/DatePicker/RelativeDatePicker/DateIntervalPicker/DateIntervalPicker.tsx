@@ -10,10 +10,10 @@ import {
   NumberInput,
   Select,
   Text,
-  Switch,
   Tooltip,
 } from "metabase/ui";
 
+import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";
 import type { DateIntervalValue } from "../types";
 import {
   formatDateRange,
@@ -22,13 +22,7 @@ import {
   getUnitOptions,
 } from "../utils";
 
-import {
-  getIncludeCurrentLabel,
-  getIncludeCurrent,
-  setIncludeCurrent,
-  setUnit,
-  setDefaultOffset,
-} from "./utils";
+import { setUnit, setDefaultOffset } from "./utils";
 
 interface DateIntervalPickerProps {
   value: DateIntervalValue;
@@ -47,7 +41,6 @@ export function DateIntervalPicker({
 }: DateIntervalPickerProps) {
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value);
-  const includeCurrent = getIncludeCurrent(value);
   const dateRangeText = formatDateRange(value);
 
   const handleIntervalChange = (inputValue: number | "") => {
@@ -65,10 +58,6 @@ export function DateIntervalPicker({
 
   const handleStartingFromClick = () => {
     onChange(setDefaultOffset(value));
-  };
-
-  const handleIncludeCurrentSwitch = () => {
-    onChange(setIncludeCurrent(value, !includeCurrent));
   };
 
   const handleSubmit = (event: FormEvent) => {
@@ -105,15 +94,7 @@ export function DateIntervalPicker({
         )}
       </Flex>
       <Flex p="md" pt={0}>
-        <Switch
-          aria-checked={includeCurrent}
-          checked={includeCurrent}
-          data-testid="include-current-interval-option"
-          label={t`Include ${getIncludeCurrentLabel(value.unit)}`}
-          labelPosition="right"
-          onChange={handleIncludeCurrentSwitch}
-          size="sm"
-        />
+        <IncludeCurrentSwitch value={value} onChange={onChange} />
       </Flex>
       <Divider />
       <Group px="md" py="sm" position="apart">
