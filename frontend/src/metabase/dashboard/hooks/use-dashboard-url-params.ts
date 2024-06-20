@@ -1,12 +1,12 @@
 import type { Location } from "history";
 import { useEffect } from "react";
 
+import { DEFAULT_EMBED_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
 import {
   useDashboardFullscreen,
   useDashboardRefreshPeriod,
   useEmbedTheme,
 } from "metabase/dashboard/hooks";
-import { DEFAULT_EMBED_DISPLAY_OPTIONS } from "metabase/dashboard/hooks/use-embed-display-options";
 import { useLocationSync } from "metabase/dashboard/hooks/use-location-sync";
 import type { RefreshPeriod } from "metabase/dashboard/types";
 import type { DashboardUrlHashOptions } from "metabase/dashboard/types/hash-options";
