@@ -10,7 +10,7 @@ import {
   StyledQuestionDataSource,
   ViewHeaderLeftSubHeading,
   ViewHeaderMainLeftContentContainer,
-} from "metabase/query_builder/components/view/ViewHeader/ViewHeader.styled";
+} from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import {
   HeadBreadcrumbs,
   QuestionDataSource,

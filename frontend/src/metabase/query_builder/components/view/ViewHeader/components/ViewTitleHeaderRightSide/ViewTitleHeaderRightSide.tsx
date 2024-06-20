@@ -11,7 +11,7 @@ import {
   ViewHeaderActionPanel,
   ViewHeaderIconButtonContainer,
   ViewRunButtonWithTooltip,
-} from "metabase/query_builder/components/view/ViewHeader/ViewHeader.styled";
+} from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import {
   ExploreResultsLink,
   FilterHeaderButton,

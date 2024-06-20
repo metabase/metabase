@@ -35,7 +35,7 @@ import {
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 import { UploadMode } from "metabase-types/store/upload";
 
-import { ViewHeaderIconButtonContainer } from "../../ViewHeader.styled";
+import { ViewHeaderIconButtonContainer } from "../../ViewTitleHeader.styled";
 
 import {
   QuestionActionsDivider,

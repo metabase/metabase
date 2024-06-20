@@ -9,7 +9,7 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderMode } from "metabase-types/store";
 
-import { HeaderButton } from "../ViewHeader.styled";
+import { HeaderButton } from "../ViewTitleHeader.styled";
 
 interface FilterHeaderButtonProps {
   className?: string;
