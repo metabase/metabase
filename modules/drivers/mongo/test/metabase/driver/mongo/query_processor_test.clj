@@ -285,6 +285,32 @@
                                [:distinct $price]]
                  :limit       5})))))))
 
+(deftest ^:parallel multiple-aggregations-with-distinct-count-expression-test
+  (mt/test-driver
+   :mongo
+   (testing "Should generate correct queries for `:distinct` in expressions ()"
+     (is (= {:projections ["expression" "expression_2"],
+             :query
+             [{"$group"
+               {"_id"                 nil,
+                "expression~count"    {"$addToSet" "$name"},
+                "expression~count1"   {"$addToSet" "$price"},
+                "expression_2~count"  {"$addToSet" "$name"},
+                "expression_2~count1" {"$addToSet" "$price"}}}
+              {"$addFields"
+               {"expression"   {"$add" [{"$size" "$expression~count"} {"$size" "$expression~count1"}]},
+                "expression_2" {"$subtract" [{"$size" "$expression_2~count"} {"$size" "$expression_2~count1"}]}}}
+              {"$sort" {"_id" 1}}
+              {"$project" {"_id" false, "expression" true, "expression_2" true}}
+              {"$limit" 5}],
+             :collection "venues",
+             :mbql? true}
+            (qp.compile/compile
+             (mt/mbql-query venues
+                            {:aggregation [[:+ [:distinct $name] [:distinct $price]]
+                                           [:- [:distinct $name] [:distinct $price]]]
+                             :limit       5})))))))
+
 (defn- extract-projections [projections q]
   (select-keys (get-in q [:query 0 "$project"]) projections))
 
