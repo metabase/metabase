@@ -466,6 +466,9 @@ const theme = {
 
         // Default background color of cells, defaults to `background`
         backgroundColor: "#FFFFFF",
+
+        // Font size of cell values, defaults to ~12.5px
+        fontSize: "12.5px",
       },
 
       idColumn: {
@@ -486,8 +489,20 @@ const theme = {
       },
     },
 
+    // Cartesian chart
+    cartesian: {
+      // Padding around the cartesian charts.
+      // Uses CSS's `padding` property format.
+      padding: "4px 8px",
+    },
+
     // Pivot table
     pivotTable: {
+      cell: {
+        // Font size of cell values, defaults to ~12px
+        fontSize: "12px",
+      },
+
       // Pivot row toggle to expand or collapse row
       rowToggle: {
         textColor: "#FFFFFF",
@@ -498,13 +513,13 @@ const theme = {
     collectionBrowser: {
        breadcrumbs: {
          expandButton: {
-           textColor: "#8118F4";
-           backgroundColor: "#767D7C";
-           hoverTextColor: "#CE8C8C";
-           hoverBackgroundColor: "#69264B";
-         };
-       };
-     };
+           textColor: "#8118F4",
+           backgroundColor: "#767D7C",
+           hoverTextColor: "#CE8C8C",
+           hoverBackgroundColor: "#69264B",
+         },
+       },
+     },
   },
 };
 ```

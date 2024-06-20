@@ -18,6 +18,7 @@ import {
 } from "metabase/lib/data_grid";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { getSetting } from "metabase/selectors/settings";
+import { useMantineTheme } from "metabase/ui";
 import {
   getDefaultSize,
   getMinSize,
@@ -84,6 +85,8 @@ function PivotTable({
 }: PivotTableProps) {
   const [gridElement, setGridElement] = useState<HTMLElement | null>(null);
   const columnWidthSettings = settings["pivot_table.column_widths"];
+
+  const theme = useMantineTheme();
 
   const [
     { leftHeaderWidths, totalLeftHeaderWidths, valueHeaderWidths },
@@ -198,6 +201,8 @@ function PivotTable({
     }
   }
 
+  const { fontSize } = theme.other.pivotTable.cell;
+
   useEffect(() => {
     if (!pivoted?.rowIndexes) {
       setHeaderWidths({
@@ -213,7 +218,7 @@ function PivotTable({
         rowIndexes: pivoted?.rowIndexes,
         getColumnTitle: idx => getColumnTitle(idx),
         leftHeaderItems: pivoted?.leftHeaderItems,
-        fontFamily: fontFamily,
+        font: { fontFamily, fontSize },
       });
 
       setHeaderWidths({ ...newLeftHeaderWidths, valueHeaderWidths });
@@ -230,6 +235,7 @@ function PivotTable({
     valueHeaderWidths,
     pivoted,
     fontFamily,
+    fontSize,
     getColumnTitle,
     columnsChanged,
     setHeaderWidths,
