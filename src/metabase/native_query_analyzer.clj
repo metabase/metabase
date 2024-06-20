@@ -16,7 +16,7 @@
    [macaw.core :as macaw]
    [metabase.config :as config]
    [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
+   [metabase.lib.native :as lib.native]
    [metabase.native-query-analyzer.impl :as nqa.impl]
    [metabase.native-query-analyzer.parameter-substitution :as nqa.sub]
    [metabase.native-query-analyzer.replacement :as nqa.replacement]
@@ -163,7 +163,7 @@
   query. Currently only support SQL-based dialects."
   [query]
   (when (and (active?) (:native query))
-    (let [driver (driver.u/database->driver (:database query))]
+    (let [driver (lib.native/engine query)]
       ;; TODO this approach is not extensible, we need to move to multimethods.
       ;; See https://github.com/metabase/metabase/issues/43516 for long term solution.
       (when (isa? driver/hierarchy driver :sql)
