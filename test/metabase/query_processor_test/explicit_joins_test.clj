@@ -588,7 +588,7 @@
   ;; currently work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still load
   ;; the dataset and run tests using this dataset such as these, which doesn't even use the TIME type.
   (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :nested-queries :left-join)
-                                   (conj timezones-test/broken-drivers :databricks-jdbc))
+                                   timezones-test/broken-drivers)
     (testing "Date filter should behave the same for joined columns"
       (mt/dataset attempted-murders
         (is (= [["2019-11-01T07:23:18Z" "2019-11-01T07:23:18Z"]]
