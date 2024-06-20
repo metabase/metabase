@@ -61,5 +61,5 @@ export const zip = <E extends Entity>(
     }
   }
 
-  return {};
+  return map;
 };
