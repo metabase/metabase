@@ -357,12 +357,19 @@
                      {:name "json_table" :id (mt/id "json_table")}))))
 
         (sync/sync-database! (mt/db))
-        (is (=? #{{:name "id"
-                   :base_type :type/Integer}
-                  {:name "array_col"
-                   :base_type :type/JSON}
-                  {:name "string_col"
-                   :base_type :type/JSON}}
+        (is (=? (if (mysql/mariadb? (mt/db))
+                  #{{:name "id"
+                     :base_type :type/Integer}
+                    {:name "array_col"
+                     :base_type :type/Text}
+                    {:name "string_col"
+                     :base_type :type/Text}}
+                  #{{:name "id"
+                     :base_type :type/Integer}
+                    {:name "array_col"
+                     :base_type :type/JSON}
+                    {:name "string_col"
+                     :base_type :type/JSON}})
                 (t2/select-fn-set #(select-keys % [:name :base_type])
                                   :model/Field :table_id (mt/id "json_table"))))))))
 
