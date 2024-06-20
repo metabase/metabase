@@ -1,18 +1,25 @@
 diff --git a/node_modules/@reduxjs/toolkit/dist/query/rtk-query.modern.mjs b/node_modules/@reduxjs/toolkit/dist/query/rtk-query.modern.mjs
-index ffecb19..47e1652 100644
+index ffecb19..c6fc507 100644
 --- a/node_modules/@reduxjs/toolkit/dist/query/rtk-query.modern.mjs
 +++ b/node_modules/@reduxjs/toolkit/dist/query/rtk-query.modern.mjs
-@@ -1663,8 +1663,12 @@ var buildInvalidationByTagsHandler = ({
+@@ -1663,11 +1663,17 @@ var buildInvalidationByTagsHandler = ({
        } of valuesArray) {
          const querySubState = state.queries[queryCacheKey];
          const subscriptionSubState = internalState.currentSubscriptions[queryCacheKey] ?? {};
 +
          if (querySubState) {
--          if (countObjectKeys(subscriptionSubState) === 0) {
 +          const endpointDefinition = context.endpointDefinitions[querySubState.endpointName];
 +          const keepUnusedDataFor = endpointDefinition?.keepUnusedDataFor ?? state.config.keepUnusedDataFor;
 +
-+          if (countObjectKeys(subscriptionSubState) === 0 && keepUnusedDataFor !== Infinity) {
-             mwApi.dispatch(removeQueryResult({
-               queryCacheKey
-             }));
+           if (countObjectKeys(subscriptionSubState) === 0) {
+-            mwApi.dispatch(removeQueryResult({
+-              queryCacheKey
+-            }));
++            if (keepUnusedDataFor !== Infinity) {
++              mwApi.dispatch(removeQueryResult({
++                queryCacheKey
++              }));
++            }
+           } else if (querySubState.status !== "uninitialized" /* uninitialized */) {
+             mwApi.dispatch(refetchQuery(querySubState, queryCacheKey));
+           }
