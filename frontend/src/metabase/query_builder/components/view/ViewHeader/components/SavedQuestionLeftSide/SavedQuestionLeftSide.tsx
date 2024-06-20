@@ -26,17 +26,13 @@ interface SavedQuestionLeftSideProps {
   onSave: (newQuestion: Question) => any;
 }
 
-export function SavedQuestionLeftSide(
-  props: SavedQuestionLeftSideProps,
-): React.JSX.Element {
-  const {
-    question,
-    isObjectDetail,
-    isAdditionalInfoVisible,
-    onOpenQuestionInfo,
-    onSave,
-  } = props;
-
+export function SavedQuestionLeftSide({
+  question,
+  isObjectDetail,
+  isAdditionalInfoVisible,
+  onOpenQuestionInfo,
+  onSave,
+}: SavedQuestionLeftSideProps): React.JSX.Element {
   const [showSubHeader, setShowSubHeader] = useState(true);
 
   const hasLastEditInfo = question.lastEditInfo() != null;
@@ -53,7 +49,8 @@ export function SavedQuestionLeftSide(
   );
 
   const renderDataSource =
-    QuestionDataSource.shouldRender(props) && type === "question";
+    QuestionDataSource.shouldRender({ question, isObjectDetail }) &&
+    type === "question";
   const renderLastEdit = hasLastEditInfo && isAdditionalInfoVisible;
 
   useEffect(() => {
@@ -95,14 +92,15 @@ export function SavedQuestionLeftSide(
       </ViewHeaderMainLeftContentContainer>
       {isAdditionalInfoVisible && (
         <ViewHeaderLeftSubHeading>
-          {QuestionDataSource.shouldRender(props) && !isModelOrMetric && (
-            <StyledQuestionDataSource
-              question={question}
-              isObjectDetail={isObjectDetail}
-              originalQuestion={undefined} // can be removed, needed for typings
-              subHead
-            />
-          )}
+          {QuestionDataSource.shouldRender({ question, isObjectDetail }) &&
+            !isModelOrMetric && (
+              <StyledQuestionDataSource
+                question={question}
+                isObjectDetail={isObjectDetail}
+                originalQuestion={undefined} // can be removed, needed for typings
+                subHead
+              />
+            )}
           {hasLastEditInfo && isAdditionalInfoVisible && (
             <StyledLastEditInfoLabel
               item={question.card()}

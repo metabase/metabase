@@ -66,42 +66,38 @@ interface ViewTitleHeaderProps {
   style?: React.CSSProperties;
 }
 
-export function ViewTitleHeader(
-  props: ViewTitleHeaderProps,
-): React.JSX.Element {
-  const {
-    question,
-    isObjectDetail,
-    isAdditionalInfoVisible,
-    onOpenQuestionInfo,
-    onSave,
-    onOpenModal,
-    isNavBarOpen,
-    result,
-    queryBuilderMode,
-    updateQuestion,
-    isBookmarked,
-    toggleBookmark,
-    isRunnable,
-    isRunning,
-    isNativeEditorOpen,
-    isShowingSummarySidebar,
-    isDirty,
-    isResultDirty,
-    isActionListVisible,
-    runQuestionQuery,
-    cancelQuery,
-    onEditSummary,
-    onCloseSummary,
-    setQueryBuilderMode,
-    turnDatasetIntoQuestion,
-    isShowingQuestionInfoSidebar,
-    onCloseQuestionInfo,
-    onModelPersistenceChange,
-  } = props;
-
-  const { className, style } = props;
-
+export function ViewTitleHeader({
+  question,
+  isObjectDetail,
+  isAdditionalInfoVisible,
+  onOpenQuestionInfo,
+  onSave,
+  onOpenModal,
+  isNavBarOpen,
+  result,
+  queryBuilderMode,
+  updateQuestion,
+  isBookmarked,
+  toggleBookmark,
+  isRunnable,
+  isRunning,
+  isNativeEditorOpen,
+  isShowingSummarySidebar,
+  isDirty,
+  isResultDirty,
+  isActionListVisible,
+  runQuestionQuery,
+  cancelQuery,
+  onEditSummary,
+  onCloseSummary,
+  setQueryBuilderMode,
+  turnDatasetIntoQuestion,
+  isShowingQuestionInfoSidebar,
+  onCloseQuestionInfo,
+  onModelPersistenceChange,
+  className,
+  style,
+}: ViewTitleHeaderProps): React.JSX.Element {
   const [
     areFiltersExpanded,
     { turnOn: expandFilters, turnOff: collapseFilters },
@@ -196,7 +192,11 @@ export function ViewTitleHeader(
         />
       </ViewHeaderContainer>
 
-      {QuestionFiltersHeader.shouldRender(props) && (
+      {QuestionFiltersHeader.shouldRender({
+        question,
+        queryBuilderMode,
+        isObjectDetail,
+      }) && (
         <QuestionFiltersHeader
           expanded={areFiltersExpanded}
           question={question}
