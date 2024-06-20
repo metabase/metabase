@@ -121,7 +121,12 @@ function UndoToast({ undo, onUndo, onDismiss }) {
               pos="absolute"
               top={0}
               left={0}
+              w="100%"
               className={CS.progress}
+              /* override animation duration based on timeout */
+              style={{
+                animationDuration: `${undo.initialTimeout}ms`,
+              }}
             />
           )}
           <CardContent>

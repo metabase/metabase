@@ -129,6 +129,7 @@ export default function (state = [], { type, payload, error }) {
 
     const undo = {
       ...payload,
+      initialTimeout: payload.timeout,
       // normalize "action" to "actions"
       actions: payload.action ? [payload.action] : payload.actions || [],
       action: null,

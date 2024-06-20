@@ -123,6 +123,20 @@ describe("metabase/redux/undo", () => {
     // undo is dismissed, timeout passed
     expect(store.getState().undo.length).toBe(0);
   });
+
+  it("should hide toast after timeout is passed", async () => {
+    const store = createMockStore();
+    const timeout = 1000;
+
+    store.dispatch(addUndo({ id: MOCK_ID, timeout }));
+
+    // await act is required to simulate store update on the next tick
+    await act(async () => {
+      jest.advanceTimersByTime(timeout);
+    });
+
+    expect(store.getState().undo.length).toBe(0);
+  });
 });
 
 const createMockStore = () => {
