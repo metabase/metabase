@@ -194,6 +194,7 @@
 
 ;; Make sure TIME values are handled consistently (#10366)
 (defn- attempts []
+  ;; Actual value: "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"
   (zipmap
    [:date :time :datetime :time_ltz :time_tz :datetime_ltz :datetime_tz :datetime_tz_id]
    (mt/first-row
@@ -204,6 +205,7 @@
           :middleware {:format-rows? false}})))))
 
 (defn- dt-attempts []
+  ;; Actual value: "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"
   (zipmap
    [:date :datetime :datetime_ltz :datetime_tz :datetime_tz_id]
    (mt/first-row
@@ -241,14 +243,13 @@
      {:datetime_tz_id (t/zoned-date-time "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]")})))
 
 (deftest sql-datetime-timezone-handling-test
-  ;; Actual value : "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql) (conj (set-timezone-drivers) :oracle)) ; Oracle doesn't have a time type
+  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql) (conj (set-timezone-drivers) :oracle)) ; Oracle doesn't have a time type, so it's excluded from this test
     (mt/dataset dt-attempted-murders
       (doseq [timezone ["UTC" "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
         (mt/with-temporary-setting-values [report-timezone timezone]
           (let [expected {:datetime_ltz (t/offset-date-time #t "2019-11-01T00:23:18.331-07:00" "UTC")
                           :datetime_tz  (t/offset-date-time #t "2019-11-01T00:23:18.331-07:00" "UTC")}
-                  actual   (select-keys (dt-attempts) (keys expected))]
+                actual   (select-keys (dt-attempts) (keys expected))]
             (is (= expected actual))))))))
 
 (deftest sql-time-timezone-handling-test

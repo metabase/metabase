@@ -32,7 +32,7 @@
    (java.sql Connection DatabaseMetaData ResultSet Types)
    (java.time Instant OffsetDateTime ZonedDateTime)
    (oracle.jdbc OracleConnection OracleTypes)
-   (oracle.sql TIMESTAMPTZ TIMESTAMPLTZ)))
+   (oracle.sql Datum TIMESTAMPLTZ TIMESTAMPTZ)))
 
 (set! *warn-on-reflection* true)
 
@@ -601,7 +601,7 @@
 
 (defn- offset-date-time-value
   "Returns the `OffsetDateTime` value of the `TIMESTAMPTZ` or `TIMESTAMPLTZ` object `timestamp`."
-  [^ResultSet rs timestamp]
+  [^ResultSet rs ^Datum timestamp]
   ;; Oracle `TIMESTAMPTZ` or `TIMESTAMPLTZ` types can have either a zone offset *or* a zone ID; you could fetch either
   ;; `OffsetDateTime` or `ZonedDateTime` using `.getObject`, but fetching the wrong type will result in an Exception,
   ;; meaning we have try both and wrap the first in a try-catch. As far as I know there's no way to tell whether the
