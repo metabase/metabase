@@ -8025,28 +8025,28 @@ databaseChangeLog:
         - sql:
             dbms: mariadb,mysql
             sql: >-
-              UPDATE report_dashboard
+              UPDATE report_dashboard rd
               LEFT JOIN (
-                   SELECT
-                     model_id AS dashboard_id,
-                     MAX(timestamp) AS latest_view
-                   FROM view_log
-                   WHERE model = 'dashboard'
-                   GROUP BY model_id
-              ) AS view_log ON view_log.dashboard_id = report_dashboard.id
+                  SELECT dashboard_id, MAX(last_used_at) AS max_card_last_used
+                  FROM report_dashboardcard
+                  JOIN report_card ON report_dashboardcard.card_id = report_card.id
+                  GROUP BY dashboard_id
+              ) card_data ON rd.id = card_data.dashboard_id
               LEFT JOIN (
-                   SELECT
-                     report_dashboardcard.dashboard_id AS dashboard_id,
-                     MAX(last_used_at) AS last_card_used_at
-                   FROM report_card
-                   JOIN report_dashboardcard
-                     ON report_dashboardcard.card_id = report_card.id
-                   GROUP BY report_dashboardcard.dashboard_id
-              ) AS last_card_used ON last_card_used.dashboard_id = report_dashboard.id
-              SET last_viewed_at = COALESCE(
-                view_log.latest_view,
-                last_card_used.last_card_used_at,
-                NOW()
+                  SELECT model_id, MAX(timestamp) AS max_view_timestamp
+                  FROM view_log
+                  WHERE model = 'dashboard'
+                  GROUP BY model_id
+              ) view_data ON rd.id = view_data.model_id
+              SET rd.last_viewed_at = COALESCE(
+                  NULLIF(
+                      GREATEST(
+                          COALESCE(card_data.max_card_last_used, '1970-01-01 00:00:00'),
+                          COALESCE(view_data.max_view_timestamp, '1970-01-01 00:00:00')
+                      ),
+                      '1970-01-01 00:00:00'
+                  ),
+                  NOW()
               );
         - sql:
             dbms: h2
