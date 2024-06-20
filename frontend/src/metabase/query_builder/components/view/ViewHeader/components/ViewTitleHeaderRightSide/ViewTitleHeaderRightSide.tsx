@@ -181,13 +181,10 @@ export function ViewTitleHeaderRightSide({
         question,
         isActionListVisible,
       }) && (
-        <ViewHeaderIconButtonContainer>
-          <QuestionNotebookButton
-            question={question}
-            isShowingNotebook={isShowingNotebook}
-            setQueryBuilderMode={setQueryBuilderMode}
-          />
-        </ViewHeaderIconButtonContainer>
+        <QuestionNotebookButton
+          isShowingNotebook={isShowingNotebook}
+          setQueryBuilderMode={setQueryBuilderMode}
+        />
       )}
       {ToggleNativeQueryPreview.shouldRender({
         question,

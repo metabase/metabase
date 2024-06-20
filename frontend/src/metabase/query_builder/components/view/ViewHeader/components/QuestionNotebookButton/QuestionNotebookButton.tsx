@@ -1,16 +1,11 @@
-import type { ButtonHTMLAttributes } from "react";
 import { t } from "ttag";
 
-import { Tooltip, Icon } from "metabase/ui";
+import { Tooltip, Icon, ActionIcon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
-import { QuestionNotebookActionIcon } from "./QuestionNotebookButton.styled";
-
 type QuestionNotebookButtonProps = {
-  className?: string;
-  question: Question;
   isShowingNotebook: boolean;
   setQueryBuilderMode: (
     mode: QueryBuilderMode,
@@ -19,14 +14,11 @@ type QuestionNotebookButtonProps = {
       datasetEditorTab?: DatasetEditorTab;
     },
   ) => void;
-} & ButtonHTMLAttributes<HTMLButtonElement>;
+};
 
 export function QuestionNotebookButton({
-  className,
-  question,
   isShowingNotebook,
   setQueryBuilderMode,
-  ...props
 }: QuestionNotebookButtonProps) {
   return (
     <Tooltip
@@ -34,18 +26,16 @@ export function QuestionNotebookButton({
       data-placement="top"
       position="top"
     >
-      <QuestionNotebookActionIcon
-        isShowingNotebook={isShowingNotebook}
+      <ActionIcon
         color="brand"
         size="2rem"
-        variant={isShowingNotebook ? "filled" : undefined}
+        variant={isShowingNotebook ? "filled" : "viewHeader"}
         onClick={() =>
           setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
         }
-        {...props}
       >
         <Icon size={14} name="notebook" />
-      </QuestionNotebookActionIcon>
+      </ActionIcon>
     </Tooltip>
   );
 }
