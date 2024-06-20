@@ -23,3 +23,6 @@ config:
         user: dbuser
         password: changeme
         dbname: test-data
+      uploads_enabled: true
+      uploads_schema_name: uploads
+      uploads_table_prefix: uploads_
