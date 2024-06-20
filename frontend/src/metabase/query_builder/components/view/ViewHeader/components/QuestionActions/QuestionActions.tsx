@@ -29,6 +29,7 @@ import {
   checkCanBeModel,
   checkDatabaseCanPersistDatasets,
 } from "metabase-lib/v1/metadata/utils/models";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 import { UploadMode } from "metabase-types/store/upload";
 
 import { ViewHeaderIconButtonContainer } from "../../ViewHeader.styled";
@@ -54,8 +55,8 @@ interface Props {
   onOpenModal: (modalType: string) => void;
   question: Question;
   setQueryBuilderMode: (
-    mode: string,
-    opt: { datasetEditorTab: string },
+    mode: QueryBuilderMode,
+    opt: { datasetEditorTab: DatasetEditorTab },
   ) => void;
   turnDatasetIntoQuestion: () => void;
   onInfoClick: () => void;

@@ -7,7 +7,7 @@ import * as Lib from "metabase-lib";
 import { ButtonRoot } from "./QuestionNotebookButton.styled";
 
 export function QuestionNotebookButton({
-  className,
+  className = undefined,
   question,
   isShowingNotebook,
   setQueryBuilderMode,

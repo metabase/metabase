@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
-import Button from "metabase/core/components/Button";
+import LegacyButton from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import { color, alpha } from "metabase/lib/colors";
 import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
@@ -51,7 +51,7 @@ export const AdHocViewHeading = styled(ViewHeading)`
   margin-right: ${space(2)};
 `;
 
-export const BackButton = styled(Button)`
+export const BackButton = styled(LegacyButton)`
   color: var(--mb-color-brand);
   padding: 0.75rem;
 `;
@@ -78,7 +78,7 @@ export const SavedQuestionHeaderButtonContainer = styled.div<{
   right: ${props => (props.isModelOrMetric ? "0px" : "0.38rem")};
 `;
 
-export const HeaderButton = styled(Button)<{ active: boolean }>`
+export const HeaderButton = styled(LegacyButton)<{ active: boolean }>`
   font-size: 0.875rem;
   background-color: ${({ active, color = getDefaultColor() }) =>
     active ? color : "transparent"};
@@ -105,7 +105,6 @@ export const IconHeaderButton = styled(HeaderButton)`
 const getDefaultColor = () => color("brand");
 export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
   color: var(--mb-color-text-light);
-  //margin-left: 4px;
 
   ${breakpointMaxSmall} {
     margin-left: 0;
@@ -191,7 +190,7 @@ export const ViewHeaderActionPanel = styled.div`
 `;
 
 export const ViewHeaderIconButtonContainer = styled.div`
-  ${Button.Root} {
+  ${LegacyButton.Root} {
     padding: 0.25rem 0.5rem;
     height: 2rem;
     width: 2rem;
