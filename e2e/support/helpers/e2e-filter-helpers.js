@@ -42,7 +42,18 @@ export function setFilterListSource({ values }) {
 
   modal().within(() => {
     cy.findByText("Custom list").click();
-    cy.findByRole("textbox").clear().type(values.join("\n"));
+    cy.findByRole("textbox")
+      .clear()
+      .type(
+        values
+          .map(function (value) {
+            if (Array.isArray(value)) {
+              return value.join(", ");
+            }
+            return value;
+          })
+          .join("\n"),
+      );
     cy.button("Done").click();
   });
 }
