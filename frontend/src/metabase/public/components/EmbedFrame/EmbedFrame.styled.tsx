@@ -114,6 +114,12 @@ function getParameterPanelBackgroundColor(
     }%)`;
   }
 
+  if (theme === "transparent") {
+    return `color-mix(in srgb, var(--mb-color-bg-white), transparent  ${
+      isSticky ? 15 : 100
+    }%)`;
+  }
+
   return `color-mix(in srgb, var(--mb-color-bg-white), var(--mb-color-embed-bg-color-override, var(--mb-color-bg-white))  ${
     isSticky ? 15 : 100
   }%)`;
