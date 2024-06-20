@@ -293,7 +293,7 @@
   "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert columns, since this is a
   *Pulse* and they will all be unset."
   [pulse-or-id]
-  (some-> (t2/select-one Pulse :id (u/the-id pulse-or-id), :alert_condition nil)
+  (some-> (t2/select-one Pulse :id (u/the-id pulse-or-id))
           hydrate-notification
           notification->pulse))
 

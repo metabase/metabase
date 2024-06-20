@@ -11,9 +11,15 @@
   - Alert attachments"
   (:require
    [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.test :as mt]))
+   [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.test :as mt])
+  (:import
+   (org.apache.poi.xssf.usermodel XSSFSheet)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private pivot-rows-query
   "SELECT *
@@ -170,3 +176,188 @@
                    "Sum of Price"
                    "Average of Rating"]]
                (take 2 result))))))))
+
+
+(deftest ^:parallel zero-column-pivot-tables-test
+  (testing "Pivot tables with zero columns download correctly."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]
+                                                          [:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                :columns []
+                                                :values  [[:aggregation 0]]}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
+        (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" pivot-card-id))
+                          csv/read-csv)]
+          (is (= [["Created At" "Category" "Sum of Price"]
+                  ["2016-05-01T00:00:00Z" "Doohickey" "144.12"]
+                  ["2016-05-01T00:00:00Z" "Gadget" "81.58"]
+                  ["2016-05-01T00:00:00Z" "Gizmo" "75.09"]
+                  ["2016-05-01T00:00:00Z" "Widget" "90.21"]
+                  ["Totals for 2016-05-01T00:00:00Z" "" "391"]]
+                 (take 6 result))))))))
+
+(deftest ^:parallel zero-row-pivot-tables-test
+  (testing "Pivot tables with zero rows download correctly."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    []
+                                                :columns [[:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                :values  [[:aggregation 0]]}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
+        (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" pivot-card-id))
+                          csv/read-csv)]
+          (is (= [["Category" "Doohickey" "Gadget" "Gizmo" "Widget" "Row totals"]
+                  ["Grand Totals" "2185.89" "3019.2" "2834.88" "3109.31" "11149.28"]]
+                 result)))))))
+
+(deftest ^:parallel zero-column-multiple-meausres-pivot-tables-test
+  (testing "Pivot tables with zero columns and multiple measures download correctly."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]
+                                                          [:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                :columns []
+                                                :values  [[:aggregation 0] [:aggregation 1]]}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
+                                                               [:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
+        (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" pivot-card-id))
+                          csv/read-csv)]
+          (is (= [["Created At" "Category" "Sum of Price" "Sum of Price"]
+                  ["2016-01-01T00:00:00Z" "Doohickey" "632.14" "632.14"]
+                  ["2016-01-01T00:00:00Z" "Gadget" "679.83" "679.83"]
+                  ["2016-01-01T00:00:00Z" "Gizmo" "529.7" "529.7"]
+                  ["2016-01-01T00:00:00Z" "Widget" "987.39" "987.39"]
+                  ["Totals for 2016-01-01T00:00:00Z" "" "2829.06" "2829.06"]
+                  ["2017-01-01T00:00:00Z" "Doohickey" "854.19" "854.19"]
+                  ["2017-01-01T00:00:00Z" "Gadget" "1059.11" "1059.11"]
+                  ["2017-01-01T00:00:00Z" "Gizmo" "1080.18" "1080.18"]
+                  ["2017-01-01T00:00:00Z" "Widget" "1014.68" "1014.68"]
+                  ["Totals for 2017-01-01T00:00:00Z" "" "4008.16" "4008.16"]
+                  ["2018-01-01T00:00:00Z" "Doohickey" "496.43" "496.43"]
+                  ["2018-01-01T00:00:00Z" "Gadget" "844.51" "844.51"]
+                  ["2018-01-01T00:00:00Z" "Gizmo" "997.94" "997.94"]
+                  ["2018-01-01T00:00:00Z" "Widget" "912.2" "912.2"]
+                  ["Totals for 2018-01-01T00:00:00Z" "" "3251.08" "3251.08"]
+                  ["2019-01-01T00:00:00Z" "Doohickey" "203.13" "203.13"]
+                  ["2019-01-01T00:00:00Z" "Gadget" "435.75" "435.75"]
+                  ["2019-01-01T00:00:00Z" "Gizmo" "227.06" "227.06"]
+                  ["2019-01-01T00:00:00Z" "Widget" "195.04" "195.04"]
+                  ["Totals for 2019-01-01T00:00:00Z" "" "1060.98" "1060.98"]
+                  ["Grand Totals" "" "11149.28" "11149.28"]]
+                 result)))))))
+
+(deftest pivot-table-native-pivot-in-xlsx-test
+  (testing "Pivot table xlsx downloads produce a 'native pivot' in the workbook."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime, :temporal-unit :month}]],
+                                                :columns [[:field (mt/id :products :category) {:base-type :type/Text}]],
+                                                :values  [[:aggregation 0]
+                                                          [:aggregation 1]]}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
+                                                               [:avg [:field (mt/id :products :rating) {:base-type :type/Float}]]]
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
+        (let [result (mt/user-http-request :crowberto :post 200 (format "card/%d/query/xlsx?format_rows=false" pivot-card-id))
+              pivot  (with-open [in (io/input-stream result)]
+                       (->> (spreadsheet/load-workbook in)
+                            (spreadsheet/select-sheet "pivot")
+                            ((fn [s] (.getPivotTables ^XSSFSheet s)))))]
+          (is (not (nil? pivot))))))))
+
+(deftest ^:parallel zero-column-native-pivot-tables-test
+  (testing "Pivot tables with zero columns download correctly as xlsx."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]
+                                                          [:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                :columns []
+                                                :values  [[:aggregation 0]]}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
+        (let [result       (mt/user-http-request :crowberto :post 200 (format "card/%d/query/xlsx?format_rows=false" pivot-card-id))
+              [pivot data] (with-open [in (io/input-stream result)]
+                             (let [wb    (spreadsheet/load-workbook in)
+                                   pivot (.getPivotTables ^XSSFSheet (spreadsheet/select-sheet "pivot" wb))
+                                   data  (->> (spreadsheet/select-sheet "data" wb)
+                                              spreadsheet/row-seq
+                                              (mapv (fn [row] (->> (spreadsheet/cell-seq row)
+                                                                   (mapv spreadsheet/read-cell)))))]
+                               [pivot data]))]
+          (is (not (nil? pivot)))
+          (is (= [["Category" "Created At" "Sum of Price"]
+                  ["Doohickey" #inst "2016-05-01T00:00:00.000-00:00" 144.12]
+                  ["Doohickey" #inst "2016-06-01T00:00:00.000-00:00" 82.92]
+                  ["Doohickey" #inst "2016-07-01T00:00:00.000-00:00" 78.22]
+                  ["Doohickey" #inst "2016-08-01T00:00:00.000-00:00" 71.09]
+                  ["Doohickey" #inst "2016-09-01T00:00:00.000-00:00" 45.65]]
+                 (take 6 data))))))))
+
+(deftest ^:parallel zero-row-native-pivot-tables-test
+  (testing "Pivot tables with zero rows download correctly as xlsx."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    []
+                                                :columns [[:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                :values  [[:aggregation 0]]}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
+        (let [result       (mt/user-http-request :crowberto :post 200 (format "card/%d/query/xlsx?format_rows=false" pivot-card-id))
+              [pivot data] (with-open [in (io/input-stream result)]
+                             (let [wb    (spreadsheet/load-workbook in)
+                                   pivot (.getPivotTables ^XSSFSheet (spreadsheet/select-sheet "pivot" wb))
+                                   data  (->> (spreadsheet/select-sheet "data" wb)
+                                              spreadsheet/row-seq
+                                              (mapv (fn [row] (->> (spreadsheet/cell-seq row)
+                                                                   (mapv spreadsheet/read-cell)))))]
+                               [pivot data]))]
+          (is (not (nil? pivot)))
+          (is (= [["Category" "Sum of Price"]
+                  ["Doohickey" 2185.89]
+                  ["Gadget" 3019.2]
+                  ["Gizmo" 2834.88]
+                  ["Widget" 3109.31]]
+                 (take 6 data))))))))

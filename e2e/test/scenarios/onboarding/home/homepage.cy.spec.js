@@ -450,7 +450,7 @@ describe("scenarios > home > custom homepage", () => {
 
       cy.visit("/");
       dashboardGrid()
-        .findAllByTestId("loading-spinner")
+        .findAllByTestId("loading-indicator")
         .should("have.length", 0);
 
       cy.findByTestId("main-logo-link").click().click();

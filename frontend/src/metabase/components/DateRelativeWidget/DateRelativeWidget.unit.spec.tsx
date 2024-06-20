@@ -18,7 +18,7 @@ describe("DateRelativeWidget", () => {
     );
     expect(screen.getByText("Today")).toBeVisible();
     expect(screen.getByText("Today")).toHaveAttribute("aria-selected", "false");
-    expect(screen.getByText("Past 7 days")).toBeVisible();
-    expect(screen.getByText("Past 30 days")).toBeVisible();
+    expect(screen.getByText("Previous 7 days")).toBeVisible();
+    expect(screen.getByText("Previous 30 days")).toBeVisible();
   });
 });

@@ -3,6 +3,8 @@ import { useMemo } from "react";
 import { Group, Stack } from "metabase/ui";
 
 import { SimpleRelativeDatePicker } from "../RelativeDatePicker";
+import { IncludeCurrentSwitch } from "../RelativeDatePicker/IncludeCurrentSwitch";
+import { isIntervalValue, isRelativeValue } from "../RelativeDatePicker/utils";
 import { SimpleSpecificDatePicker } from "../SpecificDatePicker";
 import type { DatePickerOperator, DatePickerValue } from "../types";
 
@@ -39,10 +41,13 @@ export function DateOperatorPicker({
     <Stack>
       <Group>
         <FlexSelect data={options} value={optionType} onChange={handleChange} />
-        {value?.type === "relative" && (
+        {isRelativeValue(value) && (
           <SimpleRelativeDatePicker value={value} onChange={onChange} />
         )}
       </Group>
+      {isRelativeValue(value) && isIntervalValue(value) && (
+        <IncludeCurrentSwitch value={value} onChange={onChange} />
+      )}
       {value?.type === "specific" && (
         <SimpleSpecificDatePicker value={value} onChange={onChange} />
       )}

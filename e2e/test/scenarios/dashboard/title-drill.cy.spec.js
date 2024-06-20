@@ -41,7 +41,7 @@ describe("scenarios > dashboard > title drill", () => {
     describe("as a user with access to underlying data", () => {
       it("should let you click through the title to the query builder (metabase#13042)", () => {
         cy.get("@questionId").then(questionId => {
-          cy.findByTestId("loading-spinner").should("not.exist");
+          cy.findByTestId("loading-indicator").should("not.exist");
 
           getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
           cy.get("@title")
@@ -68,7 +68,7 @@ describe("scenarios > dashboard > title drill", () => {
 
       it("should let you click through the title to the query builder (metabase#13042)", () => {
         cy.get("@questionId").then(questionId => {
-          cy.findByTestId("loading-spinner").should("not.exist");
+          cy.findByTestId("loading-indicator").should("not.exist");
 
           getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
           cy.get("@title")

@@ -221,7 +221,7 @@ const setupModal = async ({
 };
 
 describe("QuestionPicker", () => {
-  afterAll(() => {
+  afterEach(() => {
     jest.restoreAllMocks();
   });
 
@@ -279,7 +279,7 @@ describe("QuestionPicker", () => {
 });
 
 describe("QuestionPickerModal", () => {
-  afterAll(() => {
+  afterEach(() => {
     jest.restoreAllMocks();
   });
 

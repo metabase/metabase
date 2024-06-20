@@ -56,7 +56,7 @@ Click the **info** icon to:
 - Edit the [cache duration](../../configuring-metabase/caching.md#question-caching-policy)\*
 - View [revision history](../../exploration-and-organization/history.md)
 
-\* Available on [paid plans](https://www.metabase.com/pricing/).
+\* Available on [Pro and Enterprise plans](https://www.metabase.com/pricing/).
 
 ## Bookmark a question
 

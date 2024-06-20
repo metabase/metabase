@@ -114,7 +114,7 @@ describe("useEntityListQuery", () => {
   it("should be initially loading", () => {
     setup();
 
-    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
   });
 
   it("should initially load data only once the reload flag in a nested component tree", async () => {
@@ -204,7 +204,7 @@ describe("useEntityListQuery", () => {
     expect(fetchMock.calls("path:/api/database")).toHaveLength(1);
 
     expect(
-      within(screen.getByTestId("test2")).getByTestId("loading-spinner"),
+      within(screen.getByTestId("test2")).getByTestId("loading-indicator"),
     ).toBeInTheDocument();
 
     await delay(100); // trigger fetch request to be resolved
@@ -212,6 +212,6 @@ describe("useEntityListQuery", () => {
     await delay(0); // trigger extra event loop to make sure React state has been updated
 
     expect(fetchMock.calls("path:/api/database")).toHaveLength(1);
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
   });
 });
