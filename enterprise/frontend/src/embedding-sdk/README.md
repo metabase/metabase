@@ -425,6 +425,9 @@ const theme = {
 
         // Default background color of cells, defaults to `background`
         backgroundColor: "#FFFFFF",
+
+        // Font size of cell values, defaults to ~12.5px
+        fontSize: "12.5px",
       },
 
       idColumn: {
@@ -454,6 +457,11 @@ const theme = {
 
     // Pivot table
     pivotTable: {
+      cell: {
+        // Font size of cell values, defaults to ~12px
+        fontSize: "12px",
+      },
+
       // Pivot row toggle to expand or collapse row
       rowToggle: {
         textColor: "#FFFFFF",
