@@ -1,3 +1,4 @@
+import type { IconName } from "metabase/ui";
 import type { DashCardId, DashboardTabId } from "metabase-types/api";
 
 export interface Undo {
@@ -9,7 +10,7 @@ export interface Undo {
   initialTimeout?: number;
   actions?: (() => void)[];
   showProgress?: boolean;
-  icon?: string | null;
+  icon?: IconName | null;
   toastColor?: string;
   actionLabel?: string;
   canDismiss?: boolean;
