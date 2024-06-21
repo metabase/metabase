@@ -554,6 +554,35 @@ describe("Notebook Editor > Join Step", () => {
       const { strategy } = getRecentJoin();
       expect(strategy.shortName).toBe("right-join");
     });
+
+    it("should be able to change the join strategy of an existing join clause after removing the rhs table and selecting join conditions", async () => {
+      const { getRecentJoin } = setup(
+        createMockNotebookStep({ query: getJoinedQuery() }),
+      );
+
+      await userEvent.click(screen.getByLabelText("Change join type"));
+      const strategyPopover = await screen.findByTestId("select-list");
+      await userEvent.click(
+        within(strategyPopover).getByLabelText("Right outer join"),
+      );
+
+      await userEvent.click(
+        within(screen.getByLabelText("Right table")).getByRole("button", {
+          name: /Products/,
+        }),
+      );
+      const lhsTableModal = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(await within(lhsTableModal).findByText("Reviews"));
+
+      const lhsColumnPopover = await screen.findByTestId("lhs-column-picker");
+      await userEvent.click(within(lhsColumnPopover).getByText("ID"));
+
+      const rhsColumnPopover = await screen.findByTestId("rhs-column-picker");
+      await userEvent.click(within(rhsColumnPopover).getByText("ID"));
+
+      const { strategy } = getRecentJoin();
+      expect(strategy.shortName).toBe("right-join");
+    });
   });
 
   describe("join fields", () => {
