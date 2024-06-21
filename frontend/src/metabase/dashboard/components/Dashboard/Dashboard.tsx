@@ -358,10 +358,7 @@ function DashboardInner(props: DashboardProps) {
       setHasScroll(event.target.scrollTop > 0);
     };
 
-    node.addEventListener("scroll", handleScroll, {
-      capture: false,
-      passive: true,
-    });
+    node.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => node.removeEventListener("scroll", handleScroll);
   }, [isInitialized]);
