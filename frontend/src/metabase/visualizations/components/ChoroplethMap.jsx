@@ -64,12 +64,13 @@ const geoJsonCache = new Map();
 function loadGeoJson(geoJsonPath, callback) {
   if (geoJsonCache.has(geoJsonPath)) {
     setTimeout(() => callback(geoJsonCache.get(geoJsonPath)), 0);
-  } else {
-    d3.json(geoJsonPath, json => {
-      geoJsonCache.set(geoJsonPath, json);
-      callback(json);
-    });
+    return;
   }
+
+  d3.json(geoJsonPath).then(json => {
+    geoJsonCache.set(geoJsonPath, json);
+    callback(json);
+  });
 }
 
 export function getLegendTitles(groups, columnSettings) {
