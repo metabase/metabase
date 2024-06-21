@@ -379,8 +379,8 @@
               :display-name "Trial Converted",
               :position 10,
               :fingerprint {:global {:distinct-count 2, :nil% 0.0}}}))))
-  (testing "should return text operators for text-like PKs"
-    (is (= [:= :!= :contains :does-not-contain :is-null :not-null :is-empty :not-empty :starts-with :ends-with]
+  (testing "should return text-like operators for text-like PKs"
+    (is (= [:= :!= :is-null :not-null :is-empty :not-empty :starts-with :ends-with]
            (let [column {:description nil,
                          :lib/type :metadata/column,
                          :base-type :type/MongoBSONID,
