@@ -144,6 +144,9 @@ export const updateDataPermission = createThunkAction(
   }) => {
     return (dispatch, getState) => {
       if (isDatabaseEntityId(entityId)) {
+        // use entity loader in top-level component, see what happens
+        // maybe it will work out of the box
+        // if not, try to invalidate tables list here instead of manual refetchiing
         dispatch(
           Tables.actions.fetchList({
             dbId: entityId.databaseId,
