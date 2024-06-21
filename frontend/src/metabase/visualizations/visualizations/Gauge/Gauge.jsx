@@ -356,7 +356,7 @@ const GaugeArc = ({
   onHoverChange,
   onVisualizationClick,
 }) => {
-  const arc = d3.svg
+  const arc = d3
     .arc()
     .outerRadius(OUTER_RADIUS)
     .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
