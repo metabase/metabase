@@ -3,7 +3,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isActionDashCard } from "metabase/actions/utils";
-import { setParameterMapping } from "metabase/dashboard/actions/parameters";
 import {
   getEditingParameter,
   getDashcardParameterMappingOptions,
@@ -13,7 +12,6 @@ import {
 import { isNativeDashCard, isQuestionDashCard } from "metabase/dashboard/utils";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import { getIsRecentlyAutoConnectedDashcard } from "metabase/redux/undo";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Flex, Icon, Text, Transition } from "metabase/ui";
 import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
@@ -49,7 +47,6 @@ const mapStateToProps = (
   return {
     editingParameter,
     target: getParameterTarget(state, props),
-    metadata: getMetadata(state),
     question: getQuestionByCard(state, props),
     mappingOptions: getDashcardParameterMappingOptions(state, props),
     isRecentlyAutoConnected: getIsRecentlyAutoConnectedDashcard(
@@ -59,10 +56,6 @@ const mapStateToProps = (
       editingParameter?.id,
     ),
   };
-};
-
-const mapDispatchToProps = {
-  setParameterMapping,
 };
 
 interface DashcardCardParameterMapperProps {
@@ -173,7 +166,6 @@ export function DashCardCardParameterMapper({
   );
 }
 
-export const DashCardCardParameterMapperConnected = connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(DashCardCardParameterMapper);
+export const DashCardCardParameterMapperConnected = connect(mapStateToProps)(
+  DashCardCardParameterMapper,
+);
