@@ -45,7 +45,7 @@ If you'd like to share your data with the good people of the internet, you can c
 | Use the [drill-through menu](https://www.metabase.com/learn/questions/drill-through)                     | ✅                                         | ❌                               | ❌                                              |
 | Self-serve via [query builder](https://www.metabase.com/glossary/query_builder)                          | ✅                                         | ❌                               | ❌                                              |
 | View usage of embeds with [usage analytics](../usage-and-performance-tools/usage-analytics.md)           | ✅                                         | ❌                               | ❌                                              |
-| [Actions on dashboards](../dashboards/actions.md)                                                        | ❌                                         | ❌                               | ❌                                              |
+| [Actions on dashboards](../dashboards/actions.md)                                                        | ✅                                         | ❌                               | ❌                                              |
 
 ## Switching from static to interactive embedding
 
