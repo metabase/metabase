@@ -29,7 +29,10 @@ const DASHBOARD_SCHEMA = Yup.object({
     .required(Errors.required)
     .max(100, Errors.maxLength)
     .default(""),
-  description: Yup.string().nullable().max(255, Errors.maxLength).default(null),
+  description: Yup.string()
+    .nullable()
+    .max(1500, Errors.maxLength)
+    .default(null),
   collection_id: Yup.number().nullable().default(null),
   is_shallow_copy: Yup.boolean().default(false),
 });
