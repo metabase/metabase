@@ -65,7 +65,7 @@ export function JoinDraft({
       newTable,
     );
     if (newConditions.length > 0) {
-      const newJoin = Lib.joinClause(newTable, newConditions);
+      const newJoin = Lib.joinClause(newTable, newConditions, strategy);
       onJoinChange(newJoin);
     } else {
       const newColumns = Lib.joinableColumns(query, stageIndex, newTable);
@@ -78,7 +78,7 @@ export function JoinDraft({
   const handleConditionChange = (newCondition: Lib.JoinCondition) => {
     if (rhsTable) {
       const newJoin = Lib.withJoinFields(
-        Lib.joinClause(rhsTable, [newCondition]),
+        Lib.joinClause(rhsTable, [newCondition], strategy),
         getJoinFields(rhsTableColumns, selectedRhsTableColumns),
       );
       onJoinChange(newJoin);

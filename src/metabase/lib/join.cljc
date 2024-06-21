@@ -355,14 +355,19 @@
 
 (mu/defn join-clause :- lib.join.util/PartialJoin
   "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
-  Saved Question? You should be able to join anything, and this should return a sensible MBQL join map."
+  Saved Question? You should be able to join anything, and this should return a sensible MBQL join map. Uses a left join
+  by default."
   ([joinable]
    (-> (join-clause-method joinable)
        (u/assoc-default :fields :all)))
 
   ([joinable conditions]
+   (join-clause joinable conditions :left-join))
+
+  ([joinable conditions strategy]
    (-> (join-clause joinable)
-       (with-join-conditions conditions))))
+       (with-join-conditions conditions)
+       (with-join-strategy strategy))))
 
 (mu/defn with-join-fields :- lib.join.util/PartialJoin
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of

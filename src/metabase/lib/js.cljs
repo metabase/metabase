@@ -1498,12 +1498,12 @@
 
 (defn ^:export join-clause
   "Create a join clause (an `:mbql/join` map) against something `joinable` (Table metadata, a Saved Question, another
-  query, etc.) with 1 or more `conditions`, which should be an array of filter clauses. You can then adjust this join
-  clause with functions like [[with-join-fields]], or add it to a query with [[join]].
+  query, etc.) with 1 or more `conditions`, which should be an array of filter clauses, and a join strategy. You can
+  then adjust this join clause with functions like [[with-join-fields]], or add it to a query with [[join]].
 
   > **Code health:** Healthy"
-  [joinable conditions]
-  (lib.core/join-clause joinable conditions))
+  [joinable conditions strategy]
+  (lib.core/join-clause joinable conditions strategy))
 
 (defn ^:export join
   "Add `a-join`, a join clause as created by [[join-clause]], to the specified stage of `a-query`.
