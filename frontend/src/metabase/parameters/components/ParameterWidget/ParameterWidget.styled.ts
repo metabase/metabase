@@ -6,10 +6,11 @@ import { Icon } from "metabase/ui";
 
 interface ParameterFieldSetProps {
   fieldHasValueOrFocus?: boolean;
+  isHidden?: boolean;
 }
 
 export const ParameterFieldSet = styled(FieldSet)<ParameterFieldSetProps>`
-  display: flex;
+  display: ${props => (props.required ? "flex" : "flex")};
   align-items: center;
   transition: opacity 500ms linear;
   border: 2px solid

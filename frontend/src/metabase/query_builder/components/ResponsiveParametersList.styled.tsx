@@ -13,6 +13,7 @@ export const FilterButton = styled(Button)`
 interface ResponsiveParametersListRootProps {
   isSmallScreen: boolean;
   isShowingMobile: boolean;
+  isNativeEditorOpen: boolean;
 }
 
 export const ResponsiveParametersListRoot = styled.div<ResponsiveParametersListRootProps>`
@@ -27,15 +28,16 @@ export const ResponsiveParametersListRoot = styled.div<ResponsiveParametersListR
 interface ParametersListContainerProps {
   isSmallScreen: boolean;
   isShowingMobile: boolean;
+  isNativeEditorOpen: boolean;
 }
 
 export const ParametersListContainer = styled.div<ParametersListContainerProps>`
   background-color: var(--mb-color-bg-light);
 
-  ${({ isSmallScreen, isShowingMobile }) =>
+  ${({ isSmallScreen, isShowingMobile, isNativeEditorOpen }) =>
     isSmallScreen &&
     css`
-      position: absolute;
+      position: ${isNativeEditorOpen ? "relative" : "absolute"};
       top: 0;
       left: 0;
 

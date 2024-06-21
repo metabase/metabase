@@ -21,6 +21,7 @@ interface ResponsiveParametersListProps {
   setParameterValueToDefault: (parameterId: ParameterId) => void;
   setParameterIndex: (parameterId: string, parameterIndex: number) => void;
   enableParameterRequiredBehavior: boolean;
+  isNativeEditorOpen: boolean;
 }
 
 export const ResponsiveParametersList = ({
@@ -32,10 +33,12 @@ export const ResponsiveParametersList = ({
   enableParameterRequiredBehavior,
 }: ResponsiveParametersListProps) => {
   const [mobileShowParameterList, setShowMobileParameterList] = useState(false);
+  const [nativeEditorOpen, setNativeEditorOpen] = useState(false);
   const isSmallScreen = useIsSmallScreen();
 
   const handleFilterButtonClick = useCallback(() => {
     setShowMobileParameterList(mobileShow => !mobileShow);
+    setNativeEditorOpen(isNativeEditorOpen => !isNativeEditorOpen);
   }, []);
 
   const activeFilters = useMemo(() => {
@@ -46,38 +49,46 @@ export const ResponsiveParametersList = ({
     <ResponsiveParametersListRoot
       isSmallScreen={isSmallScreen}
       isShowingMobile={mobileShowParameterList}
+      isNativeEditorOpen={nativeEditorOpen}
     >
-      {isSmallScreen && (
-        <FilterButton
-          borderless
-          primary
-          icon="filter"
-          onClick={handleFilterButtonClick}
-        >
-          {activeFilters > 0
-            ? ngettext(
-                msgid`${activeFilters} active filter`,
-                `${activeFilters} active filters`,
-                activeFilters,
-              )
-            : `Filters`}
-        </FilterButton>
-      )}
+      <StyledParametersList
+        question={question}
+        parameters={parameters.filter(x => x.required === true)}
+        setParameterValue={setParameterValue}
+        setParameterIndex={setParameterIndex}
+        setParameterValueToDefault={setParameterValueToDefault}
+        enableParameterRequiredBehavior={enableParameterRequiredBehavior}
+        isEditing
+        commitImmediately
+      />
+      <FilterButton
+        borderless
+        primary
+        icon="filter"
+        onClick={handleFilterButtonClick}
+      >
+        {activeFilters > 0
+          ? ngettext(
+              msgid`All Filters (${activeFilters} active)`,
+              `All Filters (${activeFilters} active)`,
+              activeFilters,
+            )
+          : `Filters`}
+      </FilterButton>
       <ParametersListContainer
         isSmallScreen={isSmallScreen}
         isShowingMobile={mobileShowParameterList}
+        isNativeEditorOpen={nativeEditorOpen}
       >
-        {isSmallScreen && (
-          <ParametersListHeader>
-            <h3>Filters</h3>
-            <Button
-              onlyIcon
-              borderless
-              icon="close"
-              onClick={handleFilterButtonClick}
-            />
-          </ParametersListHeader>
-        )}
+        <ParametersListHeader>
+          <h3>Filters</h3>
+          <Button
+            onlyIcon
+            borderless
+            icon="close"
+            onClick={handleFilterButtonClick}
+          />
+        </ParametersListHeader>
         <StyledParametersList
           question={question}
           parameters={parameters}
