@@ -106,7 +106,8 @@ export const EntityObjectLoaderRtkQuery = ({
     return bindActionCreators(entityDef.actions, dispatch);
   }, [entityDef.actions, dispatch]);
 
-  return {
+  const childrenProps = {
+    ...actionCreators,
     entityId,
     entityQuery: memoizedEntityQuery,
     object,
