@@ -165,6 +165,7 @@
                                                                       :details connection-details})))]
       (sync-newly-created-database! driver database-definition connection-details db)
       (set-test-db-permissions! (u/the-id db))
+      (tx/post-sync-hook! driver database-definition db)
       ;; make sure we're returing an up-to-date copy of the DB
       (t2/select-one Database :id (u/the-id db)))
     (catch Throwable e
