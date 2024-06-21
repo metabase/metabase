@@ -6,6 +6,7 @@ import { Button, Stack } from "metabase/ui";
 
 import { DateOperatorPicker } from "../DateOperatorPicker";
 import { SimpleSpecificDatePicker } from "../SpecificDatePicker";
+import { isSpecificValue } from "../SpecificDatePicker/utils";
 import { DATE_PICKER_OPERATORS } from "../constants";
 import type { DatePickerOperator, DatePickerValue } from "../types";
 
@@ -35,8 +36,8 @@ export function SimpleDatePicker({
           availableOperators={availableOperators}
           onChange={setValue}
         />
-        {value?.type === "specific" && (
-          <SimpleSpecificDatePicker value={value} onChange={onChange} />
+        {isSpecificValue(value) && (
+          <SimpleSpecificDatePicker value={value} onChange={setValue} />
         )}
         <Button type="submit" variant="filled">{t`Apply`}</Button>
       </Stack>
