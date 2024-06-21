@@ -5,7 +5,7 @@ import { findDOMNode } from "react-dom";
 import { connect } from "react-redux";
 import { usePrevious, useMount } from "react-use";
 import type { OnScrollParams } from "react-virtualized";
-import { Grid, Collection, ScrollSync } from "react-virtualized";
+import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -299,6 +299,8 @@ function PivotTable({
 
   const topHeaderHeight = topHeaderRows * CELL_HEIGHT;
 
+  const queryBuilderGridHeight = heightProp - topHeaderHeight;
+
   const leftHeaderWidth =
     rowIndexes.length > 0
       ? LEFT_HEADER_LEFT_SPACING + (totalLeftHeaderWidths ?? 0)
@@ -412,85 +414,96 @@ function PivotTable({
             <div className={cx(CS.flex, CS.flexFull)}>
               {/* left header */}
               <div style={{ width: leftHeaderWidth }}>
-                <Collection
-                  ref={leftHeaderRef}
-                  className={CS.scrollHideAll}
-                  cellCount={leftHeaderItems.length}
-                  cellRenderer={({ index, style, key }) => (
-                    <LeftHeaderCell
-                      key={key}
-                      style={style}
-                      item={leftHeaderItems[index]}
-                      rowIndex={rowIndex}
-                      onUpdateVisualizationSettings={
-                        onUpdateVisualizationSettings
+                <AutoSizer disableWidth>
+                  {({ height }) => (
+                    <Collection
+                      ref={leftHeaderRef}
+                      className={CS.scrollHideAll}
+                      cellCount={leftHeaderItems.length}
+                      cellRenderer={({ index, style, key }) => (
+                        <LeftHeaderCell
+                          key={key}
+                          style={style}
+                          item={leftHeaderItems[index]}
+                          rowIndex={rowIndex}
+                          onUpdateVisualizationSettings={
+                            onUpdateVisualizationSettings
+                          }
+                          settings={settings}
+                          isNightMode={isNightMode}
+                          getCellClickHandler={getCellClickHandler}
+                        />
+                      )}
+                      cellSizeAndPositionGetter={({ index }) =>
+                        leftHeaderCellSizeAndPositionGetter(
+                          leftHeaderItems[index],
+                          leftHeaderWidths ?? [0],
+                          rowIndexes,
+                        )
                       }
-                      settings={settings}
-                      isNightMode={isNightMode}
-                      getCellClickHandler={getCellClickHandler}
+                      width={leftHeaderWidth}
+                      height={
+                        (isDashboard ? height : queryBuilderGridHeight) -
+                        scrollBarOffsetSize()
+                      }
+                      scrollTop={scrollTop}
+                      onScroll={({ scrollTop }) =>
+                        onScroll({ scrollTop } as OnScrollParams)
+                      }
                     />
                   )}
-                  cellSizeAndPositionGetter={({ index }) =>
-                    leftHeaderCellSizeAndPositionGetter(
-                      leftHeaderItems[index],
-                      leftHeaderWidths ?? [0],
-                      rowIndexes,
-                    )
-                  }
-                  width={leftHeaderWidth}
-                  height={heightProp - topHeaderHeight - scrollBarOffsetSize()}
-                  scrollTop={scrollTop}
-                  onScroll={({ scrollTop }) =>
-                    onScroll({ scrollTop } as OnScrollParams)
-                  }
-                />
+                </AutoSizer>
               </div>
               {/* pivot table body */}
               <div>
-                <Grid
-                  width={width - leftHeaderWidth}
-                  height={heightProp - topHeaderHeight}
-                  className={CS.textDark}
-                  rowCount={rowCount}
-                  columnCount={columnCount}
-                  rowHeight={CELL_HEIGHT}
-                  columnWidth={({ index }) => {
-                    const subColumnWidths = getCellWidthsForSection(
-                      valueHeaderWidths,
-                      valueIndexes,
-                      index,
-                    );
-                    return sumArray(subColumnWidths);
-                  }}
-                  estimatedColumnSize={DEFAULT_CELL_WIDTH}
-                  cellRenderer={({
-                    rowIndex,
-                    columnIndex,
-                    key,
-                    style,
-                    isScrolling,
-                  }) => (
-                    <BodyCell
-                      key={key}
-                      style={style}
-                      showTooltip={!isScrolling}
-                      rowSection={getRowSection(columnIndex, rowIndex)}
-                      isNightMode={isNightMode}
-                      getCellClickHandler={getCellClickHandler}
-                      cellWidths={getCellWidthsForSection(
-                        valueHeaderWidths,
-                        valueIndexes,
+                <AutoSizer disableWidth>
+                  {({ height }) => (
+                    <Grid
+                      width={width - leftHeaderWidth}
+                      height={isDashboard ? height : queryBuilderGridHeight}
+                      className={CS.textDark}
+                      rowCount={rowCount}
+                      columnCount={columnCount}
+                      rowHeight={CELL_HEIGHT}
+                      columnWidth={({ index }) => {
+                        const subColumnWidths = getCellWidthsForSection(
+                          valueHeaderWidths,
+                          valueIndexes,
+                          index,
+                        );
+                        return sumArray(subColumnWidths);
+                      }}
+                      estimatedColumnSize={DEFAULT_CELL_WIDTH}
+                      cellRenderer={({
+                        rowIndex,
                         columnIndex,
+                        key,
+                        style,
+                        isScrolling,
+                      }) => (
+                        <BodyCell
+                          key={key}
+                          style={style}
+                          showTooltip={!isScrolling}
+                          rowSection={getRowSection(columnIndex, rowIndex)}
+                          isNightMode={isNightMode}
+                          getCellClickHandler={getCellClickHandler}
+                          cellWidths={getCellWidthsForSection(
+                            valueHeaderWidths,
+                            valueIndexes,
+                            columnIndex,
+                          )}
+                        />
                       )}
+                      onScroll={({ scrollLeft, scrollTop }) =>
+                        onScroll({ scrollLeft, scrollTop } as OnScrollParams)
+                      }
+                      ref={bodyRef}
+                      scrollTop={scrollTop}
+                      scrollLeft={scrollLeft}
                     />
                   )}
-                  onScroll={({ scrollLeft, scrollTop }) =>
-                    onScroll({ scrollLeft, scrollTop } as OnScrollParams)
-                  }
-                  ref={bodyRef}
-                  scrollTop={scrollTop}
-                  scrollLeft={scrollLeft}
-                />
+                </AutoSizer>
               </div>
             </div>
           </div>
