@@ -193,12 +193,12 @@ function CollectionContent({
     setSelectedAction("copy");
   };
 
-  const handleCopyToAnotherWorkspace = selectedItems => {
+  const handleCopyToAnotherWorkspace = selectedDashboards => {
     const messageData = {
       pipelines: {
         type: "DashboardTransfer",
         payload: {
-          selectedItems,
+          selectedDashboards,
         },
       },
     };
