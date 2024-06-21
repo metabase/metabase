@@ -461,3 +461,19 @@
   (testing "Oracle should strip double quotes and null characters from identifiers"
     (is (= "ABC_D_E__FG_H"
            (driver/escape-alias :oracle "ABC\"D\"E\"\u0000FG\u0000H")))))
+
+(deftest read-timestamp-with-local-time-zone-test
+  (mt/test-driver :oracle
+    (testing "We should return TIMESTAMP WITH LOCAL TIME ZONE columns correctly"
+      ;; these both come back as `java.sql.type/VARCHAR` for some wacko reason from the JDBC driver, so let's make sure
+      ;; we have code in place to work around that.
+      (let [sql   "SELECT timestamp '2024-06-20 16:05:00 -07:00' AS timestamp_tz FROM dual"
+            query (-> (mt/native-query {:query sql})
+                      (assoc-in [:middleware :format-rows?] false))]
+        ;; value should come back from driver with original zone info, regardless of report timezone since we're not
+        ;; applying format-rows middleware
+        (doseq [report-timezone ["UTC" "US/Pacific"]]
+          (mt/with-temporary-setting-values [report-timezone report-timezone]
+            (mt/with-native-query-testing-context query
+              (is (= [[#t "2024-06-20T16:05-07:00"]]
+                     (mt/rows (qp/process-query query)))))))))))
