@@ -40,7 +40,7 @@ const interactiveEmbedSlice = createSlice({
   reducers: {
     setInitialUrlOptions: (
       state,
-      action: PayloadAction<{ search: string; hash: string }>,
+      action: PayloadAction<{ search: string }>,
     ) => {
       const searchOptions = parseSearchOptions(action.payload.search);
 
