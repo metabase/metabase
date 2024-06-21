@@ -55,11 +55,12 @@ export default class LeafletGridHeatMap extends LeafletMap {
 
       const { latitudeIndex, longitudeIndex } = this._getLatLonIndexes();
 
+      const successColor = d3.rgb(color("success"));
+      const errorColor = d3.rgb(color("error"));
+
       const colorScale = d3
-        .scaleLinear()
-        .domain([min, max])
-        .interpolate(d3.interpolateHcl)
-        .range([d3.rgb(color("success")), d3.rgb(color("error"))]);
+        .scaleLinear([min, max], [successColor, errorColor])
+        .interpolate(d3.interpolateHcl);
 
       const gridSquares = gridLayer.getLayers();
       const totalSquares = Math.max(points.length, gridSquares.length);

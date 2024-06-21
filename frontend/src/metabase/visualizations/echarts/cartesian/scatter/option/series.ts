@@ -30,7 +30,7 @@ function getBubbleDiameterScale(
   );
   // Domain is [0, 1] since the `t` parameteter of the interpolate function below
   // is normalized to 0-1.
-  const areaScale = d3.scaleLinear().domain([0, 1]).range(areaRange);
+  const areaScale = d3.scaleLinear([0, 1], areaRange);
 
   const scale = d3
     .scaleLinear()

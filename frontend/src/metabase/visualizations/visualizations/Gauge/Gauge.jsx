@@ -204,7 +204,6 @@ export default class Gauge extends Component {
     const range = settings["gauge.range"];
     const segments = settings["gauge.segments"].filter(segmentIsValid);
 
-    // TODO: re-check if this is necessary!
     // value to angle in radians, clamped
     const angle = d3
       .scaleLinear()

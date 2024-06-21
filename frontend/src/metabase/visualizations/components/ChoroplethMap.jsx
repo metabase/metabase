@@ -41,11 +41,10 @@ export function getColorplethColorScale(
 
   const darkColor = Color(color).darken(darken).saturate(saturate);
 
-  // TODO: fix!
-  const scale = d3
-    .scaleLinear()
-    .domain([0, 1])
-    .range([lightColor.string(), darkColor.string()]);
+  const scale = d3.scaleLinear(
+    [0, 1],
+    [lightColor.string(), darkColor.string()],
+  );
 
   const colors = d3.range(0, 1.25, 0.25).map(value => scale(value));
 
@@ -345,10 +344,7 @@ class ChoroplethMapInner extends Component {
     const groups = ss.ckmeans(domain, heatMapColors.length);
     const groupBoundaries = groups.slice(1).map(cluster => cluster[0]);
 
-    const colorScale = d3
-      .scaleThreshold()
-      .domain(groupBoundaries)
-      .range(heatMapColors);
+    const colorScale = d3.scaleThreshold(groupBoundaries, heatMapColors);
 
     const columnSettings = settings.column(cols[metricIndex]);
     const legendTitles = getLegendTitles(groups, columnSettings);
