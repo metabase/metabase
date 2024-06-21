@@ -2,16 +2,20 @@ import querystring from "querystring";
 
 import { safeJsonParse } from "metabase/lib/utils";
 
-function parseQueryStringOptions(s) {
-  const options = querystring.parse(s);
+function parseQueryStringOptions(s: string) {
+  const options: Record<string, string | string[] | boolean | undefined> =
+    querystring.parse(s);
   for (const name in options) {
-    if (options[name] === "") {
+    const value = options[name];
+    if (value === "") {
       options[name] = true;
-    } else if (/^(true|false|-?\d+(\.\d+)?)$/.test(options[name])) {
-      options[name] = safeJsonParse(options[name]);
+    } else if (
+      typeof value === "string" &&
+      /^(true|false|-?\d+(\.\d+)?)$/.test(value)
+    ) {
+      options[name] = safeJsonParse(value);
     }
   }
-
   return options;
 }
 
@@ -20,27 +24,16 @@ export function isDesktopSafari() {
   return "safari" in window;
 }
 
-export function parseHashOptions(hash) {
+export function parseHashOptions(hash: string) {
   return parseQueryStringOptions(hash.replace(/^#/, ""));
 }
 
-export function parseSearchOptions(search) {
+export function parseSearchOptions(search: string) {
   return parseQueryStringOptions(search.replace(/^\?/, ""));
 }
 
-export function stringifyHashOptions(options) {
+export function stringifyHashOptions(options: querystring.ParsedUrlQueryInput) {
   return querystring.stringify(options).replace(/=true\b/g, "");
-}
-
-export function updateQueryString(location, optionsUpdater) {
-  const currentOptions = parseHashOptions(location.search.substring(1));
-  const queryString = stringifyHashOptions(optionsUpdater(currentOptions));
-
-  return {
-    pathname: location.pathname,
-    hash: location.hash,
-    search: queryString ? `?${queryString}` : null,
-  };
 }
 
 export function isMac() {
