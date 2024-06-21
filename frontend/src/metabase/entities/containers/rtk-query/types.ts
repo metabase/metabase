@@ -1,3 +1,7 @@
+import type { UseQuery } from "@reduxjs/toolkit/dist/query/react/buildHooks";
+import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
+
+import type { TagType } from "metabase/api/tags";
 import type { Dispatch, State } from "metabase-types/store";
 
 export type Selector<T> = (state: State, entityOptions: EntityOptions) => T;
@@ -8,7 +12,10 @@ export type FetchType = string;
 
 export type EntityId = string | number;
 
-export type EntityIdSelector = (state: State, props: unknown) => EntityId;
+export type EntityIdSelector = (
+  state: State,
+  props: unknown,
+) => EntityId | undefined;
 
 export type EntityQuery = any;
 
@@ -19,7 +26,7 @@ export type EntityType = "database" | "table" | string; // TODO
 export type EntityTypeSelector = (state: State, props: unknown) => EntityType;
 
 export interface EntityOptions {
-  entityId: EntityId;
+  entityId: EntityId | undefined;
   requestType: RequestType;
 }
 
@@ -28,6 +35,17 @@ export interface EntityDefinition {
     [actionName: string]: (...args: unknown[]) => unknown;
   };
   nameOne: string;
+  normalize: (object: unknown) => {
+    object: unknown;
+  };
+  rtk: {
+    useGetQuery: UseQuery<
+      QueryDefinition<unknown, BaseQueryFn, TagType, unknown>
+    >;
+    useGetListQuery: UseQuery<
+      QueryDefinition<unknown, BaseQueryFn, TagType, unknown[]>
+    >;
+  };
   selectors: {
     getFetched: Selector<boolean>;
     getLoading: Selector<boolean>;

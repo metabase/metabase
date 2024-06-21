@@ -2,9 +2,9 @@ import { bindActionCreators } from "@reduxjs/toolkit";
 import { useMemo, type ComponentType, type ReactNode } from "react";
 import _ from "underscore";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
-
+import { skipToken } from "metabase/api";
 import DefaultLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 
 import type {
   EntityDefinition,
@@ -36,21 +36,24 @@ const CONSUMED_PROPS = [
 
 interface ChildrenProps {}
 
+interface LoadingAndErrorWrapperProps {
+  children: ReactNode;
+  loading?: boolean;
+  error?: unknown;
+  noWrapper?: boolean;
+}
+
 export interface Props {
   children: (props: ChildrenProps) => ReactNode;
   dispatchApiErrorEvent?: boolean;
   entityAlias?: string;
-  entityId: EntityId | EntityIdSelector;
+  entityId: EntityId | EntityIdSelector | undefined;
   entityQuery: EntityQuery | EntityQuerySelector;
   entityType: EntityType | EntityTypeSelector;
   fetchType?: FetchType;
   loadingAndErrorWrapper?: boolean;
-  LoadingAndErrorWrapper: ComponentType<{
-    children: ReactNode;
-    loading?: boolean;
-    error?: unknown;
-    noWrapper?: boolean;
-  }>;
+  LoadingAndErrorWrapper: ComponentType<LoadingAndErrorWrapperProps>;
+  properties: unknown; // TODO
   reload?: boolean;
   // reloadInterval?: (state: State, props: unknown) => number;
   requestType?: RequestType;
@@ -60,11 +63,12 @@ export interface Props {
 
 export const EntityObjectLoaderRtkQuery = ({
   children,
-  // dispatchApiErrorEvent = true,
+  dispatchApiErrorEvent = true,
   entityAlias,
   entityId: entityIdProp,
   entityQuery: entityQueryProp,
   entityType: entityTypeProp,
+  fetchType = "fetch",
   loadingAndErrorWrapper = true,
   LoadingAndErrorWrapper = DefaultLoadingAndErrorWrapper,
   // reload = false,
@@ -81,12 +85,14 @@ export const EntityObjectLoaderRtkQuery = ({
       : entityTypeProp,
   );
 
-  const entityDef: EntityDefinition = useMemo(() => {
+  const entityDefinition: EntityDefinition = useMemo(() => {
     // dynamic require due to circular dependencies
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const entitiesDefinitions = require("metabase/entities");
     return entitiesDefinitions[entityType];
   }, [entityType]);
+
+  const { useGetQuery } = entityDefinition.rtk;
 
   const entityId = useSelector(state =>
     typeof entityIdProp === "function"
@@ -100,59 +106,66 @@ export const EntityObjectLoaderRtkQuery = ({
       : entityQueryProp,
   );
 
+  useGetQuery(entityId != null ? { id: entityId, ...entityQuery } : skipToken);
+
   const entityOptions = useMemo(
     () => ({ entityId, requestType }),
     [entityId, requestType],
   );
 
   const object = useSelector(state => {
-    return entityDef.selectors[selectorName](state, entityOptions);
+    return entityDefinition.selectors[selectorName](state, entityOptions);
   });
 
   const fetched = useSelector(state => {
-    return entityDef.selectors.getFetched(state, entityOptions);
+    return entityDefinition.selectors.getFetched(state, entityOptions);
   });
 
   const loading = useSelector(state => {
-    return entityDef.selectors.getLoading(state, entityOptions);
+    return entityDefinition.selectors.getLoading(state, entityOptions);
   });
 
   const error = useSelector(state => {
-    return entityDef.selectors.getError(state, entityOptions);
+    return entityDefinition.selectors.getError(state, entityOptions);
   });
 
   const memoizedEntityQuery = useSelector(() => entityQuery, _.isEqual);
 
   const actionCreators = useMemo(() => {
-    return bindActionCreators(entityDef.actions, dispatch);
-  }, [entityDef.actions, dispatch]);
+    return bindActionCreators(entityDefinition.actions, dispatch);
+  }, [entityDefinition.actions, dispatch]);
+
+  // const normalizedObject = useMemo(() => {
+  //   if (!object) {
+  //     return object;
+  //   }
+
+  //   const normalized = entityDefinition.normalize(object);
+  //   return normalized.object;
+  // }, [entityDefinition, object]);
 
   const wrappedObject = useMemo(() => {
-    if (!wrapped) {
+    if (!wrapped || !object) {
       return object;
     }
 
-    return object && entityDef.wrapEntity(object, dispatch);
-  }, [dispatch, object, entityDef, wrapped]);
+    return entityDefinition.wrapEntity(object, dispatch);
+  }, [dispatch, object, entityDefinition, wrapped]);
 
-  const childrenProps = {
-    ...actionCreators,
-    entityId,
-    entityQuery: memoizedEntityQuery,
-    object,
-    fetched,
-    loading,
-    error,
+  const reload = () => {
+    /* TODO */
   };
 
-  const reload = () => {};
-  const remove = () => {};
+  const remove = () => {
+    /* TODO */
+  };
 
   const renderedChildren = children({
-    ..._.omit(props, ...CONSUMED_PROPS),
+    ...actionCreators,
+    ...props,
     object: wrappedObject,
     // alias the entities name:
-    [entityAlias || entityDef.nameOne]: object,
+    [entityAlias || entityDefinition.nameOne]: wrappedObject,
     reload,
     remove,
   });
@@ -182,11 +195,6 @@ export const entityObjectLoaderRtkQuery =
   (props: any): ReactNode =>
     (
       <EntityObjectLoaderRtkQuery {...props} {...eolProps}>
-        {childProps => (
-          <ComposedComponent
-            {..._.omit(props, ...CONSUMED_PROPS)}
-            {...childProps}
-          />
-        )}
+        {childProps => <ComposedComponent {...childProps} />}
       </EntityObjectLoaderRtkQuery>
     );
