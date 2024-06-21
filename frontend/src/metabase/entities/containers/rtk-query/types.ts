@@ -1,8 +1,10 @@
-import type { State } from "metabase-types/store";
+import type { Dispatch, State } from "metabase-types/store";
 
 export type Selector<T> = (state: State, entityOptions: EntityOptions) => T;
 
 export type RequestType = "fetch" | string;
+
+export type FetchType = string;
 
 export type EntityId = string | number;
 
@@ -25,10 +27,12 @@ export interface EntityDefinition {
   actions: {
     [actionName: string]: (...args: unknown[]) => unknown;
   };
+  nameOne: string;
   selectors: {
     getFetched: Selector<boolean>;
     getLoading: Selector<boolean>;
     getError: Selector<unknown | null>;
     [selectorName: string]: Selector<unknown>;
   };
+  wrapEntity: (object: unknown, dispatch: Dispatch) => unknown;
 }

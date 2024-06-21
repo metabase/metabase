@@ -3,6 +3,7 @@ import EntityLink from "./EntityLink";
 import EntityListLoader, { entityListLoader } from "./EntityListLoader";
 import { EntityName } from "./EntityName";
 import EntityObjectLoader, { entityObjectLoader } from "./EntityObjectLoader";
+import { entityObjectLoaderRtkQuery } from "./rtk-query";
 
 export function addEntityContainers(entity) {
   const ObjectName = entity.nameOne;
@@ -10,6 +11,14 @@ export function addEntityContainers(entity) {
   // Entity.load higher-order component
   entity.load = ({ id, query, ...props } = {}) =>
     entityObjectLoader({
+      entityType: entity.name,
+      entityId: id,
+      entityQuery: query,
+      ...props,
+    });
+
+  entity.load2 = ({ id, query, ...props } = {}) =>
+    entityObjectLoaderRtkQuery({
       entityType: entity.name,
       entityId: id,
       entityQuery: query,

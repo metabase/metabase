@@ -318,13 +318,13 @@ const TableTabSection = ({ tab, onChangeTab }: MetadataTabSectionProps) => {
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
-  Databases.load({
+  Databases.load2({
     id: (_: State, { selectedDatabaseId }: OwnProps) => selectedDatabaseId,
     query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     fetchType: "fetchIdFields",
     requestType: "idFields",
   }),
-  Tables.load({
+  Tables.load2({
     id: (state: State, { selectedTableId }: OwnProps) => selectedTableId,
     query: {
       include_sensitive_fields: true,
