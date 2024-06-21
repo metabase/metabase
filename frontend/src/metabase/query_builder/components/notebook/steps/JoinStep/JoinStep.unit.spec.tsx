@@ -824,6 +824,33 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   describe("temporal bucket sync", () => {
+    it("should allow removing temporal bucketing from a new join condition", async () => {
+      const { getRecentJoin } = setup(createMockNotebookStep());
+
+      const lhsTableModal = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(await within(lhsTableModal).findByText("Reviews"));
+
+      const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
+      await userEvent.click(within(lhsColumnPicker).getByText("by month"));
+      const lhsBucketPicker = await screen.findByTestId("select-list");
+      await userEvent.click(screen.getByText("More…"));
+      await userEvent.click(within(lhsBucketPicker).getByText("Don't bin"));
+
+      const rhsColumnPicker = await screen.findByTestId("rhs-column-picker");
+      await userEvent.click(within(rhsColumnPicker).getByText("by month"));
+      const rhsBucketPicker = await screen.findByTestId("select-list");
+      await userEvent.click(screen.getByText("More…"));
+      await userEvent.click(within(rhsBucketPicker).getByText("Don't bin"));
+
+      const { conditions } = getRecentJoin();
+      const [condition] = conditions;
+
+      expect(condition.lhsColumn.longDisplayName).toBe("Created At");
+      expect(condition.rhsColumn.longDisplayName).toBe(
+        "Reviews - Created At → Created At",
+      );
+    });
+
     it("should allow removing temporal bucketing from an existing join condition", async () => {
       const { getRecentJoin } = setup(
         createMockNotebookStep({ query: getJoinedQuery() }),
