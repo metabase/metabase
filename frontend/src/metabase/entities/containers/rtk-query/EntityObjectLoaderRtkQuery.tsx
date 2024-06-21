@@ -3,37 +3,17 @@ import { useMemo } from "react";
 import _ from "underscore";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import type { State } from "metabase-types/store";
 
-type Selector<T> = (state: State, entityOptions: EntityOptions) => T;
-
-type RequestType = "fetch" | string;
-
-type EntityId = string | number;
-type EntityIdSelector = (state: State, props: unknown) => EntityId;
-
-type EntityQuery = any;
-type EntityQuerySelector = (state: State, props: unknown) => EntityQuery;
-
-type EntityType = "database" | "table" | string; // TODO
-type EntityTypeSelector = (state: State, props: unknown) => EntityType;
-
-interface EntityOptions {
-  entityId: EntityId;
-  requestType: RequestType;
-}
-
-interface EntityDefinition {
-  actions: {
-    [actionName: string]: (...args: unknown[]) => unknown;
-  };
-  selectors: {
-    getFetched: Selector<boolean>;
-    getLoading: Selector<boolean>;
-    getError: Selector<unknown | null>;
-    [selectorName: string]: Selector<unknown>;
-  };
-}
+import type {
+  EntityDefinition,
+  EntityId,
+  EntityIdSelector,
+  EntityQuery,
+  EntityQuerySelector,
+  EntityType,
+  EntityTypeSelector,
+  RequestType,
+} from "./types";
 
 interface Props {
   entityId: EntityId | EntityIdSelector;
