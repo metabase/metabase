@@ -32,8 +32,8 @@ function getBubbleDiameterScale(
   // is normalized to 0-1.
   const areaScale = d3.scaleLinear().domain([0, 1]).range(areaRange);
 
-  const scale = d3.scale
-    .linear()
+  const scale = d3
+    .scaleLinear()
     .domain(bubbleSizeDomain)
     // D3 will take a value from the domain (bubble size column) and normalize it (`t` is between 0,1).
     // Then we plug the normalized value `t` into the `areaScale` to get the corrseponding area for that diameter.

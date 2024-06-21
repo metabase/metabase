@@ -41,8 +41,9 @@ export function getColorplethColorScale(
 
   const darkColor = Color(color).darken(darken).saturate(saturate);
 
-  const scale = d3.scale
-    .linear()
+  // TODO: fix!
+  const scale = d3
+    .scaleLinear()
     .domain([0, 1])
     .range([lightColor.string(), darkColor.string()]);
 
@@ -343,8 +344,8 @@ class ChoroplethMapInner extends Component {
     const groups = ss.ckmeans(domain, heatMapColors.length);
     const groupBoundaries = groups.slice(1).map(cluster => cluster[0]);
 
-    const colorScale = d3.scale
-      .threshold()
+    const colorScale = d3
+      .scaleThreshold()
       .domain(groupBoundaries)
       .range(heatMapColors);
 
