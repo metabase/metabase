@@ -61,3 +61,7 @@ export function getThemeColors(): Record<string, ColorShades> {
     ),
   };
 }
+
+export function getPrimaryColor(theme: MantineTheme, colorName: string) {
+  return theme.fn.themeColor(colorName, theme.fn.primaryShade());
+}

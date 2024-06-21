@@ -1,8 +1,18 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import type {
+  MantineThemeOverride,
+  ActionIconStylesParams,
+} from "@mantine/core";
+
+import { getPrimaryColor } from "../../../utils/colors";
 
 export const getActionIconOverrides =
   (): MantineThemeOverride["components"] => ({
     ActionIcon: {
+      defaultProps: {
+        color: "brand",
+        variant: "transparent",
+        size: "2rem",
+      },
       variants: {
         subtle: theme => ({
           root: {
@@ -13,6 +23,30 @@ export const getActionIconOverrides =
             },
           },
         }),
+        transparent: (theme, { color }: ActionIconStylesParams) => ({
+          root: {
+            color: theme.fn.themeColor("text-dark"),
+            "&:hover": {
+              color: getPrimaryColor(theme, color),
+              backgroundColor: theme.fn.themeColor("bg-medium"),
+            },
+          },
+        }),
+        filled: (theme, { color = "brand" }: ActionIconStylesParams) => {
+          const primaryColor = getPrimaryColor(theme, color);
+
+          return {
+            root: {
+              color: theme.fn.themeColor("white"),
+              backgroundColor: primaryColor,
+              "&:hover": {
+                color: primaryColor,
+                backgroundColor: theme.fn.themeColor("bg-medium"),
+                borderColor: primaryColor,
+              },
+            },
+          };
+        },
       },
     },
   });
