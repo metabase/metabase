@@ -120,7 +120,7 @@ export const performUndo = createThunkAction(PERFORM_UNDO, undoId => {
       MetabaseAnalytics.trackStructEvent("Undo", "Perform Undo");
     }
     if (undo) {
-      undo.actions?.map(action => dispatch(action));
+      undo.actions?.forEach(action => dispatch(action));
       dispatch(dismissUndo({ undoId, track: false }));
     }
   };
