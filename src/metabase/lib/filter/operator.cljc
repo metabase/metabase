@@ -116,6 +116,7 @@
   (condp lib.types.isa/field-type? column
     :metabase.lib.types.constants/string      text-operators
     :metabase.lib.types.constants/string_like text-like-operators
+    ;; default
     numeric-key-operators))
 
 (mu/defn filter-operators :- [:sequential ::lib.schema.filter/operator]
