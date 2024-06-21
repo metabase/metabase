@@ -75,7 +75,8 @@
                       :question_url       (urls/card-url (:id card))
                       :alert_creator_id   (get-in pulse [:creator :id])
                       :alert_creator_name (get-in pulse [:creator :common_name])
-                      :visualization      (render/render-pulse-card-to-base64 (channel.shared/defaulted-timezone card) card nil payload image-width)
+                      :visualization      (let [{:keys [card dashcard result]} payload]
+                                            (render/render-pulse-card-to-base64 (channel.shared/defaulted-timezone card) card dashcard result image-width))
                       :raw_data           (qp-result->raw-data (:result payload))}]
     [(merge (case (channel-http-auth-method)
               :none         {}
@@ -87,8 +88,8 @@
 
 
 (comment
- (channel-http-url! "https://enhe8nkh8q3zi.x.pipedream.net")
- (channel-http-request-method! :get)
+ (channel-http-url! "https://hooks.zapier.com/hooks/catch/4226479/2ov5qsf/")
+ (channel-http-request-method! :post)
  (channel-http-auth-method! :none)
  #_(channel/send! :channel/http {:method :get
                                  :url    "https://enhe8nkh8q3zi.x.pipedream.net"
