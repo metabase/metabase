@@ -19,6 +19,7 @@ import {
 } from "metabase/plugins";
 import { softReloadCard } from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
+import type { ModalType } from "metabase/query_builder/components/QueryModals";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -29,6 +30,7 @@ import {
   checkCanBeModel,
   checkDatabaseCanPersistDatasets,
 } from "metabase-lib/v1/metadata/utils/models";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 import { UploadMode } from "metabase-types/store/upload";
 
 import { ViewHeaderIconButtonContainer } from "../../ViewHeader.styled";
@@ -51,11 +53,14 @@ interface Props {
   isBookmarked: boolean;
   isShowingQuestionInfoSidebar: boolean;
   handleBookmark: () => void;
-  onOpenModal: (modalType: string) => void;
+  onOpenModal: (modalType: ModalType) => void;
   question: Question;
   setQueryBuilderMode: (
-    mode: string,
-    opt: { datasetEditorTab: string },
+    mode: QueryBuilderMode,
+    opts?: {
+      shouldUpdateUrl?: boolean;
+      datasetEditorTab?: DatasetEditorTab;
+    },
   ) => void;
   turnDatasetIntoQuestion: () => void;
   onInfoClick: () => void;
