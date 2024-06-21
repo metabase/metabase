@@ -203,13 +203,13 @@ class ChoroplethMapInner extends Component {
     let projection, projectionFrame;
     // projectionFrame is the lng/lat of the top left and bottom right corners
     if (settings["map.region"] === "us_states") {
-      projection = d3.geo.albersUsa();
+      projection = d3.geoAlbersUsa();
       projectionFrame = [
         [-135.0, 46.6],
         [-69.1, 21.7],
       ];
     } else if (settings["map.region"] === "world_countries") {
-      projection = d3.geo.mercator();
+      projection = d3.geoMercator();
       projectionFrame = [
         [-170, 78],
         [180, -60],

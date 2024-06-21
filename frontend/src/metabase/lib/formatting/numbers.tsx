@@ -45,6 +45,16 @@ const NUMBER_REGEX = /([\+\-])?[^0-9]*([0-9\., ]+)/;
 
 const DEFAULT_NUMBER_SEPARATORS = ".,";
 
+function roundNumber(n: number, maximumFractionDigits?: number) {
+  if (maximumFractionDigits === undefined) {
+    return n;
+  }
+
+  const factor = Math.pow(10, maximumFractionDigits);
+
+  return Math.round(n * factor) / factor;
+}
+
 function getDefaultNumberOptions(options: { decimals?: string | number }) {
   const defaults = { ...DEFAULT_NUMBER_OPTIONS };
 
@@ -141,7 +151,7 @@ export function formatNumber(
       // fall back to old, less capable formatter
       // NOTE: does not handle things like currency, percent
       return FIXED_NUMBER_FORMATTER(
-        d3.round(number, options.maximumFractionDigits),
+        roundNumber(number, options.maximumFractionDigits),
       );
     }
   }
