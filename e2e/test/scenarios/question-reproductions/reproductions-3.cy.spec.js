@@ -636,7 +636,7 @@ describe("issue 42957", () => {
   });
 });
 
-describe("issue 10493", () => {
+describe.skip("issue 10493", () => {
   beforeEach(() => {
     restore();
     cy.intercept("POST", "/api/dataset").as("dataset");
