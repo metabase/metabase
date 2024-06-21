@@ -124,6 +124,7 @@
              qp          qp.card/process-query-for-card-default-qp}}]
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+    (events/publish-event! :event/dashboard-queried {:object-id dashboard-id :user-id api/*current-user-id*})
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
     (api.embed.common/process-query-for-dashcard
       :export-format    export-format
