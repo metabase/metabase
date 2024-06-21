@@ -14,7 +14,7 @@
   []
   ((juxt :id :comments)
    (t2/query-one {:select [:id :comments]
-                  :from   [:databasechangelog]
+                  :from   [(keyword (liquibase/changelog-table-name (mdb/data-source)))]
                   :order-by [[:orderexecuted :desc]]
                   :limit 1})))
 (defn migrate!
@@ -24,8 +24,7 @@
    (migrate! :up))
   ;; do we really use this in dev?
   ([direction & [version]]
-   (mdb/migrate! (mdb/db-type) (mdb/data-source)
-                 direction version)
+   (mdb/migrate! (mdb/data-source) direction version)
    #_{:clj-kondo/ignore [:discouraged-var]}
    (println "Migrated up. Latest migration:" (latest-migration))))
 
