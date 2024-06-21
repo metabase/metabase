@@ -14,10 +14,9 @@ import Questions from "metabase/entities/questions";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
-import type { ModalType } from "metabase/query_builder/components/QueryModals";
 import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
 import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
-import type { QBModalTypeKey } from "metabase/query_builder/constants";
+import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getQuestionWithParameters } from "metabase/query_builder/selectors";
 import { FilterModal } from "metabase/querying";
@@ -52,7 +51,7 @@ const mapStateToProps = (state: State, props: QueryModalsProps) => ({
 interface QueryModalsProps {
   questionAlerts: Alert[];
   user: User;
-  modal: QBModalTypeKey;
+  modal: QueryModalType;
   modalContext: number;
   question: Question;
   initialCollectionId: number;
@@ -68,7 +67,7 @@ interface QueryModalsProps {
     config?: { rerunQuery: boolean },
   ) => Promise<void>;
   onCloseModal: () => void;
-  onOpenModal: (modal: QBModalTypeKey) => void;
+  onOpenModal: (modal: QueryModalType) => void;
   onChangeLocation: (location: string) => void;
   setQuestionCollection: (
     { id }: Pick<Card, "id">,

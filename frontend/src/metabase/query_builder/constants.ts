@@ -19,7 +19,7 @@ export const MODAL_TYPES = {
   PREVIEW_QUERY: "preview-query",
 } as const;
 
-export type QBModalTypeKey = typeof MODAL_TYPES[keyof typeof MODAL_TYPES];
+export type QueryModalType = typeof MODAL_TYPES[keyof typeof MODAL_TYPES];
 
 export const SIDEBAR_SIZES = {
   NORMAL: 355,

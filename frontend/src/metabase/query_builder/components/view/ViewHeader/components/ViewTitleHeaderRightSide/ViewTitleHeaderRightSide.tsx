@@ -6,7 +6,6 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
-import type { ModalType } from "metabase/query_builder/components/QueryModals";
 import {
   SaveButton,
   ViewHeaderActionPanel,
@@ -23,6 +22,7 @@ import {
   ToggleNativeQueryPreview,
 } from "metabase/query_builder/components/view/ViewHeader/components";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
+import type { QueryModalType } from "metabase/query_builder/constants";
 import { Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -49,7 +49,7 @@ interface ViewTitleHeaderRightSideProps {
     ignoreCache?: boolean;
   }) => void;
   cancelQuery: () => void;
-  onOpenModal: (modalType: ModalType) => void;
+  onOpenModal: (modalType: QueryModalType) => void;
   onEditSummary: () => void;
   onCloseSummary: () => void;
   setQueryBuilderMode: (
@@ -71,39 +71,37 @@ interface ViewTitleHeaderRightSideProps {
   isObjectDetail: boolean;
 }
 
-export function ViewTitleHeaderRightSide(
-  {
-    question,
-    result,
-    queryBuilderMode,
-    isBookmarked,
-    isModelOrMetric,
-    isSaved,
-    isRunnable,
-    isRunning,
-    isNativeEditorOpen,
-    isShowingSummarySidebar,
-    isDirty,
-    isResultDirty,
-    isActionListVisible,
-    runQuestionQuery,
-    cancelQuery,
-    onOpenModal,
-    onEditSummary,
-    onCloseSummary,
-    setQueryBuilderMode,
-    turnDatasetIntoQuestion,
-    areFiltersExpanded,
-    onExpandFilters,
-    onCollapseFilters,
-    toggleBookmark,
-    onOpenQuestionInfo,
-    onCloseQuestionInfo,
-    isShowingQuestionInfoSidebar,
-    onModelPersistenceChange,
-    isObjectDetail,
-  }: ViewTitleHeaderRightSideProps,
-): React.JSX.Element {
+export function ViewTitleHeaderRightSide({
+  question,
+  result,
+  queryBuilderMode,
+  isBookmarked,
+  isModelOrMetric,
+  isSaved,
+  isRunnable,
+  isRunning,
+  isNativeEditorOpen,
+  isShowingSummarySidebar,
+  isDirty,
+  isResultDirty,
+  isActionListVisible,
+  runQuestionQuery,
+  cancelQuery,
+  onOpenModal,
+  onEditSummary,
+  onCloseSummary,
+  setQueryBuilderMode,
+  turnDatasetIntoQuestion,
+  areFiltersExpanded,
+  onExpandFilters,
+  onCollapseFilters,
+  toggleBookmark,
+  onOpenQuestionInfo,
+  onCloseQuestionInfo,
+  isShowingQuestionInfoSidebar,
+  onModelPersistenceChange,
+  isObjectDetail,
+}: ViewTitleHeaderRightSideProps): React.JSX.Element {
   const isShowingNotebook = queryBuilderMode === "notebook";
   const { isEditable } = Lib.queryDisplayInfo(question.query());
 

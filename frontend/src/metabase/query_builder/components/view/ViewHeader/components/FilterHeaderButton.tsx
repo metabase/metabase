@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import type { QBModalTypeKey } from "metabase/query_builder/constants";
+import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -11,7 +11,7 @@ import { HeaderButton } from "../ViewTitleHeader.styled";
 
 interface FilterHeaderButtonProps {
   className?: string;
-  onOpenModal: (modalType: QBModalTypeKey) => void;
+  onOpenModal: (modalType: QueryModalType) => void;
 }
 
 export function FilterHeaderButton({

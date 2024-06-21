@@ -1,5 +1,5 @@
 import type { ChangeEvent } from "react";
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
@@ -19,7 +19,7 @@ import {
 } from "metabase/plugins";
 import { softReloadCard } from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
-import type { QBModalTypeKey } from "metabase/query_builder/constants";
+import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -53,7 +53,7 @@ interface Props {
   isBookmarked: boolean;
   isShowingQuestionInfoSidebar: boolean;
   handleBookmark: () => void;
-  onOpenModal: (modalType: QBModalTypeKey) => void;
+  onOpenModal: (modalType: QueryModalType) => void;
   question: Question;
   setQueryBuilderMode: (
     mode: QueryBuilderMode,

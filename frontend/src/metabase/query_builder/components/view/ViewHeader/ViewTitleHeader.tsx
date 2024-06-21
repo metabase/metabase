@@ -43,14 +43,21 @@ interface ViewTitleHeaderProps {
   isDirty: boolean;
   isResultDirty: boolean;
   isActionListVisible: boolean;
-  runQuestionQuery: (parameters: { ignoreCache: boolean }) => void;
+  runQuestionQuery: (opts?: {
+    overrideWithQuestion?: Question;
+    shouldUpdateUrl?: boolean;
+    ignoreCache?: boolean;
+  }) => void;
   cancelQuery: () => void;
   onOpenModal: (modalType: string) => void;
   onEditSummary: () => void;
   onCloseSummary: () => void;
   setQueryBuilderMode: (
     mode: QueryBuilderMode,
-    opt: { datasetEditorTab: DatasetEditorTab },
+    opts?: {
+      shouldUpdateUrl?: boolean;
+      datasetEditorTab?: DatasetEditorTab;
+    },
   ) => void;
   turnDatasetIntoQuestion: () => void;
   areFiltersExpanded: boolean;
