@@ -147,6 +147,10 @@ Note that only admins can delete database connections in your Metabase, so peopl
 
 If you see this modal pop-up, Metabase is telling you that the people in the All Users group (that is, everyone in your Metabase), have a higher level of access to the database, schema, or table that you're setting permissions on. To limit your current group to your preferred permission level, the All Users group must have a less permissive level of access to the data source in question.
 
+## Upload permissions
+
+See [Upload permissions](../databases/uploads.md#add-people-to-a-group-with-data-access-to-the-upload-schema).
+
 ## Further reading
 
 - [Permissions introduction](./introduction.md)
