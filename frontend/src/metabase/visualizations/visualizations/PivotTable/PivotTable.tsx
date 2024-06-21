@@ -58,6 +58,8 @@ import {
   getCellWidthsForSection,
 } from "./utils";
 
+export const PIVOT_TABLE_BODY_LABEL = "pivot-table-body-grid";
+
 const mapStateToProps = (state: State) => ({
   fontFamily: getSetting(state, "application-font"),
 });
@@ -459,6 +461,7 @@ function PivotTable({
                 <AutoSizer disableWidth>
                   {({ height }) => (
                     <Grid
+                      aria-label={PIVOT_TABLE_BODY_LABEL}
                       width={width - leftHeaderWidth}
                       height={isDashboard ? height : queryBuilderGridHeight}
                       className={CS.textDark}
