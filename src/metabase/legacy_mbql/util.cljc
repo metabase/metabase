@@ -125,19 +125,34 @@
   [filter-clause & more-filter-clauses]
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
+(defn- legacy-stage-number
+  ([inner-query] (legacy-stage-number inner-query 0))
+  ([{:keys [source-query]} n]
+   (if-not source-query
+     n
+     (recur source-query (inc n)))))
+
 (mu/defn add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
   "Add a additional filter clause to an *inner* MBQL query, merging with the existing filter clause with `:and` if
   needed."
-  [inner-query :- mbql.s/MBQLQuery
-   new-clause  :- [:maybe mbql.s/Filter]]
-  (if-not new-clause
-    inner-query
-    (update inner-query :filter combine-filter-clauses new-clause)))
+  [inner-query  :- mbql.s/MBQLQuery
+   stage-number :- number?
+   new-clause   :- [:maybe mbql.s/Filter]]
+  (cond
+    (not new-clause) inner-query
+
+    (and (>= stage-number 0)
+         (< stage-number (legacy-stage-number inner-query)))
+    (update inner-query :source-query add-filter-clause-to-inner-query stage-number new-clause)
+
+    :else (update inner-query :filter combine-filter-clauses new-clause)))
 
 (mu/defn add-filter-clause :- mbql.s/Query
   "Add an additional filter clause to an `outer-query`. If `new-clause` is `nil` this is a no-op."
-  [outer-query :- mbql.s/Query new-clause :- [:maybe mbql.s/Filter]]
-  (update outer-query :query add-filter-clause-to-inner-query new-clause))
+  [outer-query  :- mbql.s/Query
+   stage-number :- number?
+   new-clause   :- [:maybe mbql.s/Filter]]
+  (update outer-query :query add-filter-clause-to-inner-query stage-number new-clause))
 
 (defn desugar-inside
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."

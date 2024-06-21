@@ -121,6 +121,9 @@ export function buildColumnTarget(
   column: Lib.ColumnMetadata,
 ): StructuredParameterDimensionTarget {
   const fieldRef = Lib.legacyRef(query, stageIndex, column);
+  if (stageIndex !== -1) {
+    fieldRef[2] = { ...fieldRef[2], "stage-number": stageIndex };
+  }
 
   if (!isConcreteFieldReference(fieldRef)) {
     throw new Error(`Cannot build column target field reference: ${fieldRef}`);
@@ -146,7 +149,7 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
     question.type() !== "question"
       ? question.composeQuestionAdhoc().query()
       : question.query();
-  const stageIndex = -1;
+  const stageIndex = Lib.dashboardFilterStageIndex(query);
   const availableColumns =
     parameter && isTemporalUnitParameter(parameter)
       ? Lib.breakouts(query, stageIndex).map(breakout =>
