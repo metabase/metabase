@@ -2,28 +2,23 @@
  * Shared component for Scalar and SmartScalar to make sure our number presentation stays in sync
  */
 /* eslint-disable react/prop-types */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Markdown from "metabase/core/components/Markdown";
-import Tooltip from "metabase/core/components/Tooltip";
 import { useSelector } from "metabase/lib/redux";
 
+import { ChartDescriptionPopover } from "../ChartDescriptionPopover";
 import {
-  ChartExplanationPopover,
-  defaultExplanation,
-  getMessageHandler,
-  getPopoverHandler,
-} from "../ChartExplanationPopover";
+  ChartExplainerPopover,
+  ChartExplainerType,
+} from "../ChartExplainerPopover";
 
 import {
   ScalarRoot,
   ScalarValueWrapper,
   ScalarTitleContainer,
   ScalarDescriptionContainer,
-  ScalarDescriptionIcon,
   ScalarDescriptionPlaceholder,
   ScalarTitleContent,
 } from "./ScalarValue.styled";
@@ -78,34 +73,6 @@ export const ScalarTitle = ({
   const enableChartExplainer = useSelector(
     state => state.embed.options.enable_chart_explainer,
   );
-  const [explanation, setExplanation] = useState(defaultExplanation);
-  const [isExplanationOpen, setIsExplanationOpen] = useState(false);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const handlePopover = useCallback(
-    getPopoverHandler(
-      explanation,
-      isExplanationOpen,
-      setIsExplanationOpen,
-      title,
-      chartExtras,
-    ),
-    [explanation, isExplanationOpen, setIsExplanationOpen, title, chartExtras],
-  );
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const handleMessage = useCallback(
-    getMessageHandler(setExplanation, chartExtras),
-    [setExplanation, chartExtras],
-  );
-
-  useEffect(() => {
-    window.addEventListener("message", handleMessage);
-
-    return () => {
-      window.removeEventListener("message", handleMessage);
-    };
-  }, [handleMessage]);
 
   return (
     <ScalarTitleContainer data-testid="scalar-title" lines={lines}>
@@ -126,43 +93,23 @@ export const ScalarTitle = ({
       </ScalarTitleContent>
       <ScalarDescriptionContainer data-testid="scalar-description">
         {enableChartExplainer && (
-          <PopoverWithTrigger
-            isOpen={isExplanationOpen}
-            triggerElement={
-              <ScalarDescriptionIcon
-                name="faros"
-                className="hover-child hover-child--smooth"
-                onClick={handlePopover}
+          <>
+            <ChartExplainerPopover
+              type={ChartExplainerType.SUMMARY}
+              title={title}
+              chartExtras={chartExtras}
+            />
+
+            {description && description.length > 0 ? (
+              <ChartDescriptionPopover description={description} />
+            ) : (
+              <ChartExplainerPopover
+                type={ChartExplainerType.DESCRIPTION}
+                title={title}
+                chartExtras={chartExtras}
               />
-            }
-            pinInitialAttachment
-            verticalAttachments={["bottom"]}
-            alignVerticalEdge
-            alignHorizontalEdge={false}
-            targetOffsetX={20}
-            targetOffsetY={30}
-            hasArrow
-          >
-            <ChartExplanationPopover
-              explanation={explanation}
-              handlePopover={handlePopover}
-            />
-          </PopoverWithTrigger>
-        )}
-        {description && description.length > 0 && (
-          <Tooltip
-            tooltip={
-              <Markdown dark disallowHeading unstyleLinks>
-                {description}
-              </Markdown>
-            }
-            maxWidth="22em"
-          >
-            <ScalarDescriptionIcon
-              name="info_filled"
-              className="hover-child hover-child--smooth"
-            />
-          </Tooltip>
+            )}
+          </>
         )}
       </ScalarDescriptionContainer>
     </ScalarTitleContainer>

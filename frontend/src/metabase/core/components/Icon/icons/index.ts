@@ -29,6 +29,8 @@ import arrow_left_component from "./arrow_left.svg?component";
 import arrow_left_source from "./arrow_left.svg?source";
 import arrow_left_to_line_component from "./arrow_left_to_line.svg?component";
 import arrow_left_to_line_source from "./arrow_left_to_line.svg?source";
+import arrow_repeat_component from "./arrow_repeat.svg?component";
+import arrow_repeat_source from "./arrow_repeat.svg?source";
 import arrow_right_component from "./arrow_right.svg?component";
 import arrow_right_source from "./arrow_right.svg?source";
 import arrow_split_component from "./arrow_split.svg?component";
@@ -103,6 +105,8 @@ import dashboard_component from "./dashboard.svg?component";
 import dashboard_source from "./dashboard.svg?source";
 import database_component from "./database.svg?component";
 import database_source from "./database.svg?source";
+import disconnected_plug_component from "./disconnected_plug.svg?component";
+import disconnected_plug_source from "./disconnected_plug.svg?source";
 import document_component from "./document.svg?component";
 import document_source from "./document.svg?source";
 import download_component from "./download.svg?component";
@@ -419,6 +423,10 @@ export const Icons = {
     component: arrow_left_to_line_component,
     source: arrow_left_to_line_source,
   },
+  arrow_repeat: {
+    component: arrow_repeat_component,
+    source: arrow_repeat_source,
+  },
   arrow_right: {
     component: arrow_right_component,
     source: arrow_right_source,
@@ -558,6 +566,10 @@ export const Icons = {
   curve: {
     component: curve_component,
     source: curve_source,
+  },
+  disconnected_plug: {
+    component: disconnected_plug_component,
+    source: disconnected_plug_source,
   },
   document: {
     component: document_component,
