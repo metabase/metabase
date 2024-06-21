@@ -178,7 +178,7 @@ export function getSortedModelFields(
     return columnMetadata;
   }
 
-  // always return metadata columns even if the corresponding viz settings doesn't exist
+  // always return metadata columns even if the corresponding viz settings don't exist
   return columnMetadata
     .map(column => ({
       column,
