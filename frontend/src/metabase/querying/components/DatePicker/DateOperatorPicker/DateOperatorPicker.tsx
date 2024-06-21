@@ -5,7 +5,6 @@ import { Stack, Select } from "metabase/ui";
 import { SimpleRelativeDatePicker } from "../RelativeDatePicker";
 import { IncludeCurrentSwitch } from "../RelativeDatePicker/IncludeCurrentSwitch";
 import { isIntervalValue, isRelativeValue } from "../RelativeDatePicker/utils";
-import { SimpleSpecificDatePicker } from "../SpecificDatePicker";
 import type { DatePickerOperator, DatePickerValue } from "../types";
 
 import { getAvailableOptions, getOptionType, setOptionType } from "./utils";
@@ -51,9 +50,6 @@ export function DateOperatorPicker({
       )}
       {isRelativeValue(value) && isIntervalValue(value) && (
         <IncludeCurrentSwitch value={value} onChange={onChange} />
-      )}
-      {value?.type === "specific" && (
-        <SimpleSpecificDatePicker value={value} onChange={onChange} />
       )}
     </Stack>
   );
