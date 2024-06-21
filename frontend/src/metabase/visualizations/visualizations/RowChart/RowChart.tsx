@@ -102,6 +102,7 @@ const RowChartVisualization = ({
   actionButtons,
   isFullscreen,
   isQueryBuilder,
+  isDashboard,
   onRender,
   onHoverChange,
   showTitle,
@@ -227,6 +228,8 @@ const RowChartVisualization = ({
         ...clickData,
         element: event.currentTarget,
       });
+    } else if (isDashboard) {
+      openQuestion();
     }
   };
 
