@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { Group, Stack, Select } from "metabase/ui";
+import { Stack, Select } from "metabase/ui";
 
 import { SimpleRelativeDatePicker } from "../RelativeDatePicker";
 import { IncludeCurrentSwitch } from "../RelativeDatePicker/IncludeCurrentSwitch";
@@ -38,19 +38,17 @@ export function DateOperatorPicker({
 
   return (
     <Stack>
-      <Group>
-        <Select
-          data={options}
-          value={optionType}
-          onChange={handleChange}
-          style={{
-            flex: 1,
-          }}
-        />
-        {isRelativeValue(value) && (
-          <SimpleRelativeDatePicker value={value} onChange={onChange} />
-        )}
-      </Group>
+      <Select
+        data={options}
+        value={optionType}
+        onChange={handleChange}
+        style={{
+          flex: 1,
+        }}
+      />
+      {isRelativeValue(value) && (
+        <SimpleRelativeDatePicker value={value} onChange={onChange} />
+      )}
       {isRelativeValue(value) && isIntervalValue(value) && (
         <IncludeCurrentSwitch value={value} onChange={onChange} />
       )}
