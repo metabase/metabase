@@ -46,8 +46,9 @@ import { WithPublicDashboardEndpoints } from "metabase/public/containers/PublicO
 import { setErrorPage } from "metabase/redux/app";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { Dashboard, DashboardCard, DashboardId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import type { SelectedTabId, State } from "metabase-types/store";
 
 import { EmbedFrame } from "../../components/EmbedFrame";
 
@@ -160,33 +161,6 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
     }
   }
 
-  getCurrentTabDashcards = () => {
-    const { dashboard, selectedTabId } = this.props;
-    if (!Array.isArray(dashboard?.dashcards)) {
-      return [];
-    }
-    if (!selectedTabId) {
-      return dashboard?.dashcards;
-    }
-    return dashboard?.dashcards.filter(
-      dashcard => dashcard.dashboard_tab_id === selectedTabId,
-    );
-  };
-
-  getHiddenParameterSlugs = () => {
-    const { parameters } = this.props;
-    const currentTabParameterIds =
-      this.getCurrentTabDashcards()?.flatMap(
-        dashcard =>
-          dashcard.parameter_mappings?.map(mapping => mapping.parameter_id) ??
-          [],
-      ) ?? [];
-    const hiddenParameters = parameters.filter(
-      parameter => !currentTabParameterIds.includes(parameter.id),
-    );
-    return hiddenParameters.map(parameter => parameter.slug).join(",");
-  };
-
   render() {
     const {
       dashboard,
@@ -241,7 +215,51 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
         (dc: DashboardCard) => dc.dashboard_tab_id === selectedTabId,
       ).length > 0;
 
-    const hiddenParameterSlugs = this.getHiddenParameterSlugs();
+    const getCurrentTabDashcards = ({
+      dashboard,
+      selectedTabId,
+    }: {
+      dashboard: Dashboard | null;
+      selectedTabId: SelectedTabId;
+    }) => {
+      // const  = this.props;
+      if (!Array.isArray(dashboard?.dashcards)) {
+        return [];
+      }
+      if (!selectedTabId) {
+        return dashboard?.dashcards;
+      }
+      return dashboard?.dashcards.filter(
+        dashcard => dashcard.dashboard_tab_id === selectedTabId,
+      );
+    };
+
+    const getHiddenParameterSlugs = ({
+      parameters,
+      dashboard,
+      selectedTabId,
+    }: {
+      parameters: UiParameter[];
+      dashboard: Dashboard | null;
+      selectedTabId: SelectedTabId;
+    }) => {
+      const currentTabParameterIds =
+        getCurrentTabDashcards({ dashboard, selectedTabId })?.flatMap(
+          dashcard =>
+            dashcard.parameter_mappings?.map(mapping => mapping.parameter_id) ??
+            [],
+        ) ?? [];
+      const hiddenParameters = parameters.filter(
+        parameter => !currentTabParameterIds.includes(parameter.id),
+      );
+      return hiddenParameters.map(parameter => parameter.slug).join(",");
+    };
+
+    const hiddenParameterSlugs = getHiddenParameterSlugs({
+      parameters,
+      dashboard,
+      selectedTabId,
+    });
 
     return (
       <EmbedFrame
