@@ -113,7 +113,7 @@
    (operator-def :!=)])
 
 (defn- key-operators-for [column]
-  (if (lib.types.isa/field-type? :metabase.lib.types.constants/string column)
+  (if (lib.types.isa/string-or-string-like? column)
     text-operators
     numeric-key-operators))
 

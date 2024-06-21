@@ -372,16 +372,39 @@
               :database-type "BOOLEAN",
               :effective-type :type/Boolean,
               :fk-target-field-id nil,
-              :operators [{:lib/type :operator/filter, :short :=, :display-name-variant :default}
-                          {:lib/type :operator/filter, :short :is-null, :display-name-variant :is-empty}
-                          {:lib/type :operator/filter, :short :not-null, :display-name-variant :not-empty}],
               :id 14,
               :parent-id nil,
               :visibility-type :normal,
               :lib/desired-column-alias "TRIAL_CONVERTED",
               :display-name "Trial Converted",
               :position 10,
-              :fingerprint {:global {:distinct-count 2, :nil% 0.0}}})))))
+              :fingerprint {:global {:distinct-count 2, :nil% 0.0}}}))))
+  (testing "should return text operators for text-like PKs"
+    (is (= [:= :!= :contains :does-not-contain :is-null :not-null :is-empty :not-empty :starts-with :ends-with]
+           (let [column {:description nil,
+                         :lib/type :metadata/column,
+                         :base-type :type/MongoBSONID,
+                         :semantic-type :type/PK,
+                         :table-id 7,
+                         :name "ID",
+                         :coercion-strategy nil,
+                         :lib/source :source/table-defaults,
+                         :lib/source-column-alias "ID",
+                         :settings nil,
+                         :lib/source-uuid "ad9a276f-3af8-4e5a-b17e-d8170273ec0a",
+                         :nfc-path nil,
+                         :database-type "STRING",
+                         :effective-type :type/MongoBSONID,
+                         :fk-target-field-id nil,
+                         :id 14,
+                         :parent-id nil,
+                         :visibility-type :normal,
+                         :lib/desired-column-alias "ID",
+                         :display-name "ID",
+                         :position 10}]
+             (into []
+                   (map :short)
+                   (lib.filter.operator/filter-operators column)))))))
 
 (deftest ^:parallel replace-filter-clause-test
   (testing "Make sure we are able to replace a filter clause using the lib functions for manipulating filters."
