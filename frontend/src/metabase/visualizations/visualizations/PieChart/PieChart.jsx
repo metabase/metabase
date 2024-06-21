@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import d3 from "d3";
+import * as d3 from "d3";
 import { createRef, Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";

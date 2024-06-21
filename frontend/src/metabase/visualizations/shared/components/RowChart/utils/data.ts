@@ -1,4 +1,4 @@
-import d3 from "d3";
+import * as d3 from "d3";
 import type { Series as D3Series } from "d3-shape";
 import { stack, stackOffsetDiverging, stackOffsetExpand } from "d3-shape";
 import _ from "underscore";

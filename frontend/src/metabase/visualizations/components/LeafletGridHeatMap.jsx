@@ -1,4 +1,4 @@
-import d3 from "d3";
+import * as d3 from "d3";
 import L from "leaflet";
 import { t } from "ttag";
 
@@ -55,8 +55,8 @@ export default class LeafletGridHeatMap extends LeafletMap {
 
       const { latitudeIndex, longitudeIndex } = this._getLatLonIndexes();
 
-      const colorScale = d3.scale
-        .linear()
+      const colorScale = d3
+        .scaleLinear()
         .domain([min, max])
         .interpolate(d3.interpolateHcl)
         .range([d3.rgb(color("success")), d3.rgb(color("error"))]);

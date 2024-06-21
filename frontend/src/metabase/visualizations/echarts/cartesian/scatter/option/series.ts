@@ -1,4 +1,4 @@
-import d3 from "d3";
+import * as d3 from "d3";
 import type { ScatterSeriesOption } from "echarts/charts";
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -30,7 +30,7 @@ function getBubbleDiameterScale(
   );
   // Domain is [0, 1] since the `t` parameteter of the interpolate function below
   // is normalized to 0-1.
-  const areaScale = d3.scale.linear().domain([0, 1]).range(areaRange);
+  const areaScale = d3.scaleLinear().domain([0, 1]).range(areaRange);
 
   const scale = d3.scale
     .linear()
