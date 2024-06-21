@@ -1203,7 +1203,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       cy.findByTestId("viz-settings-button").click();
       cy.findByLabelText("Show row totals").click();
 
-      cy.button("Save").should("have.attr", "disabled");
+      cy.findByTestId("qb-save-button").should("have.attr", "data-disabled");
     });
   });
 });

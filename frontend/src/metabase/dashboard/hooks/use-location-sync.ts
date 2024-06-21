@@ -15,9 +15,8 @@ const DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS = {
   theme: DEFAULT_EMBED_DISPLAY_OPTIONS.theme,
   fullscreen: false,
   refresh: null,
-};
+} as const;
 
-// need to type the return value as `any` to satisfy useLocationSync for now
 const getDefaultDisplayOption = <
   Value extends typeof DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS[Key],
   Key extends SYNCED_KEY,
@@ -25,8 +24,13 @@ const getDefaultDisplayOption = <
   key: Key,
 ): Value => DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS[key] as Value;
 
-const isEmptyOrDefault = (value: any, key: SYNCED_KEY) =>
-  isNullOrUndefined(value) || value === getDefaultDisplayOption(key);
+const isEmptyOrDefault = <
+  Value extends typeof DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS[Key],
+  Key extends SYNCED_KEY,
+>(
+  value: Value,
+  key: Key,
+) => isNullOrUndefined(value) || value === getDefaultDisplayOption(key);
 
 export const useLocationSync = <
   Value extends typeof DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS[Key],
