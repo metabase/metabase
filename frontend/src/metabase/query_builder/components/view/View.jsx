@@ -373,6 +373,15 @@ class View extends Component {
       onConfirmToast,
       isShowingToaster,
       isHeaderVisible,
+      updateQuestion,
+      reportTimezone,
+      readOnly,
+      isDirty,
+      isRunnable,
+      isResultDirty,
+      hasVisualizeButton,
+      runQuestionQuery,
+      setQueryBuilderMode,
     } = this.props;
 
     // if we don't have a question at all or no databases then we are initializing, so keep it simple
@@ -417,7 +426,16 @@ class View extends Component {
             {!isNative && (
               <NotebookContainer
                 isOpen={isNotebookContainerOpen}
-                {...this.props}
+                updateQuestion={updateQuestion}
+                reportTimezone={reportTimezone}
+                readOnly={readOnly}
+                question={question}
+                isDirty={isDirty}
+                isRunnable={isRunnable}
+                isResultDirty={isResultDirty}
+                hasVisualizeButton={hasVisualizeButton}
+                runQuestionQuery={runQuestionQuery}
+                setQueryBuilderMode={setQueryBuilderMode}
               />
             )}
             <ViewSidebar side="left" isOpen={!!leftSidebar}>
