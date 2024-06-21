@@ -19,7 +19,7 @@ export const addUndo = createThunkAction(ADD_UNDO, undo => {
     const { icon = "check", timeout = 5000, canDismiss = true } = undo;
     const id = undo.id ?? nextUndoId++;
     // if we're overwriting an existing undo, clear its timeout
-    const currentUndo = getUndo(getState().undo, id);
+    const currentUndo = getUndo(getState(), id);
 
     if (currentUndo) {
       clearTimeoutForUndo(currentUndo);
@@ -46,9 +46,7 @@ export const addUndo = createThunkAction(ADD_UNDO, undo => {
 
 const PAUSE_UNDO = "metabase/questions/PAUSE_UNDO";
 export const pauseUndo = createAction(PAUSE_UNDO, (undo: Undo) => {
-  if (undo.timeoutId) {
-    clearTimeout(undo.timeoutId);
-  }
+  clearTimeoutForUndo(undo);
 
   return { ...undo, pausedAt: Date.now(), timeoutId: null };
 });
@@ -69,8 +67,8 @@ export const resumeUndo = createThunkAction(RESUME_UNDO, undo => {
   };
 });
 
-function getUndo(undos: Undo[], undoId: Undo["id"]) {
-  return _.findWhere(undos, { id: undoId });
+function getUndo(state: State, undoId: Undo["id"]) {
+  return _.findWhere(state.undo, { id: undoId });
 }
 
 const getAutoConnectedUndos = createSelector(
@@ -115,7 +113,7 @@ export const dismissAllUndo = createAction(DISMISS_ALL_UNDO);
 
 export const performUndo = createThunkAction(PERFORM_UNDO, undoId => {
   return (dispatch, getState) => {
-    const undo = getUndo(getState().undo, undoId);
+    const undo = getUndo(getState(), undoId);
     if (!undo?.actionLabel) {
       MetabaseAnalytics.trackStructEvent("Undo", "Perform Undo");
     }
@@ -128,9 +126,13 @@ export const performUndo = createThunkAction(PERFORM_UNDO, undoId => {
 
 export function undoReducer(
   state: Undo[] = [],
-  { type, payload, error }: Action<Undo>,
+  { type, payload, error }: Action<Undo | Undo["id"]>,
 ) {
   if (type === ADD_UNDO) {
+    if (isUndoId(payload)) {
+      return state;
+    }
+
     if (error) {
       console.warn("ADD_UNDO", payload);
       return state;
@@ -167,8 +169,12 @@ export function undoReducer(
       return state.concat(undo);
     }
   } else if (type === DISMISS_UNDO) {
-    const undoId = payload as unknown as Undo["id"];
-    const dismissedUndo = getUndo(state, undoId);
+    if (!isUndoId(payload)) {
+      return state;
+    }
+
+    const undoId = payload;
+    const dismissedUndo = state.find(undo => undo.id === undoId);
 
     if (dismissedUndo) {
       clearTimeoutForUndo(dismissedUndo);
@@ -184,6 +190,10 @@ export function undoReducer(
     }
     return [];
   } else if (type === PAUSE_UNDO) {
+    if (isUndoId(payload)) {
+      return state;
+    }
+
     return state.map(undo => {
       if (undo.id === payload.id) {
         return {
@@ -196,6 +206,10 @@ export function undoReducer(
       return undo;
     });
   } else if (type === RESUME_UNDO) {
+    if (isUndoId(payload)) {
+      return state;
+    }
+
     return state.map(undo => {
       if (undo.id === payload.id) {
         return {
@@ -215,7 +229,11 @@ export function undoReducer(
 }
 
 const clearTimeoutForUndo = (undo: Undo) => {
-  if (undo?.timeoutId) {
+  if (undo.timeoutId) {
     clearTimeout(undo.timeoutId);
   }
 };
+
+function isUndoId(payload: unknown): payload is Undo["id"] {
+  return typeof payload !== "object";
+}
