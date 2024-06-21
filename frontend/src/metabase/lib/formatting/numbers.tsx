@@ -4,7 +4,8 @@ import Humanize from "humanize-plus";
 import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
 
 const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
-const FIXED_NUMBER_FORMATTER = d3.format(",.f");
+
+const FIXED_NUMBER_FORMATTER = d3.format(",.0f");
 const PRECISION_NUMBER_FORMATTER = d3.format(".2f");
 
 interface FormatNumberOptionsType {
