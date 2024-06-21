@@ -1,12 +1,8 @@
-import { useState, useMemo, useCallback } from "react";
 import { connect } from "react-redux";
-import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { isActionDashCard } from "metabase/actions/utils";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import CS from "metabase/css/core/index.css";
 import { setParameterMapping } from "metabase/dashboard/actions/parameters";
 import {
   getEditingParameter,
@@ -14,34 +10,22 @@ import {
   getParameterTarget,
   getQuestionByCard,
 } from "metabase/dashboard/selectors";
-import {
-  isNativeDashCard,
-  isVirtualDashCard,
-  getVirtualCardType,
-  showVirtualDashCardInfoText,
-  isQuestionDashCard,
-} from "metabase/dashboard/utils";
+import { isNativeDashCard, isQuestionDashCard } from "metabase/dashboard/utils";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import { getIsRecentlyAutoConnectedDashcard } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Flex, Icon, Text, Transition, Tooltip, Box } from "metabase/ui";
+import { Flex, Icon, Text, Transition } from "metabase/ui";
 import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
 import type Question from "metabase-lib/v1/Question";
-import {
-  isDateParameter,
-  isTemporalUnitParameter,
-} from "metabase-lib/v1/parameters/utils/parameter-type";
+import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { isParameterVariableTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   Card,
-  CardId,
-  DashCardId,
   DashboardCard,
   Parameter,
-  ParameterId,
   ParameterTarget,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -51,12 +35,9 @@ import { getMappingOptionByTarget } from "../utils";
 import {
   Container,
   CardLabel,
-  Header,
-  TextCardDefault,
   Warning,
 } from "./DashCardCardParameterMapper.styled";
-import { DashCardCardParameterMapperButton } from "./DashCardCardParameterMapperButton";
-import { DisabledNativeCardHelpText } from "./DisabledNativeCardHelpText";
+import { DashCardCardParameterMapperContent } from "./DashCardCardParameterMapperContent";
 import { useResetParameterMapping } from "./hooks";
 
 const mapStateToProps = (
@@ -89,12 +70,6 @@ interface DashcardCardParameterMapperProps {
   dashcard: DashboardCard;
   editingParameter: Parameter | null | undefined;
   target: ParameterTarget | null | undefined;
-  setParameterMapping: (
-    parameterId: ParameterId,
-    dashcardId: DashCardId,
-    cardId: CardId,
-    target: ParameterTarget | null,
-  ) => void;
   isMobile: boolean;
   // virtual cards will not have question
   question?: Question;
@@ -107,7 +82,6 @@ export function DashCardCardParameterMapper({
   dashcard,
   editingParameter,
   target,
-  setParameterMapping,
   isMobile,
   question,
   mappingOptions,
@@ -116,11 +90,7 @@ export function DashCardCardParameterMapper({
   const isQuestion = isQuestionDashCard(dashcard);
   const hasSeries = isQuestion && dashcard.series && dashcard.series.length > 0;
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
-  const isVirtual = isVirtualDashCard(dashcard);
-  const virtualCardType = getVirtualCardType(dashcard);
   const isNative = isQuestion && isNativeDashCard(dashcard);
-  const isTemporalUnit =
-    editingParameter != null && isTemporalUnitParameter(editingParameter);
 
   useResetParameterMapping({
     editingParameter,
@@ -128,15 +98,6 @@ export function DashCardCardParameterMapper({
     isDisabled,
     dashcardId: dashcard.id,
   });
-
-  const handleChangeTarget = useCallback(
-    (target: ParameterTarget | null) => {
-      if (editingParameter) {
-        setParameterMapping(editingParameter.id, dashcard.id, card.id, target);
-      }
-    },
-    [card.id, dashcard.id, editingParameter, setParameterMapping],
-  );
 
   const selectedMappingOption = getMappingOptionByTarget(
     mappingOptions,
@@ -151,82 +112,27 @@ export function DashCardCardParameterMapper({
       MOBILE_DEFAULT_CARD_HEIGHT
     : dashcard.size_y;
 
-  const headerContent = useMemo(() => {
-    if (layoutHeight > 2) {
-      if (isTemporalUnit) {
-        return t`Connect to`;
-      }
-      if (!isVirtual && !(isNative && isDisabled)) {
-        return t`Column to filter on`;
-      }
-      return t`Variable to map to`;
-    }
-    return null;
-  }, [layoutHeight, isTemporalUnit, isVirtual, isNative, isDisabled]);
-
-  const mappingInfoText =
-    (virtualCardType &&
-      {
-        heading: t`You can connect widgets to {{variables}} in heading cards.`,
-        text: t`You can connect widgets to {{variables}} in text cards.`,
-        link: t`You cannot connect variables to link cards.`,
-        action: t`Open this card's action settings to connect variables`,
-        placeholder: "",
-      }[virtualCardType]) ??
-    "";
-
   const shouldShowAutoConnectHint =
     isRecentlyAutoConnected && !!selectedMappingOption;
 
   return (
     <Container isSmall={!isMobile && dashcard.size_y < 2}>
       {hasSeries && <CardLabel>{card.name}</CardLabel>}
-      {isVirtual && isDisabled ? (
-        showVirtualDashCardInfoText(dashcard, isMobile) ? (
-          <TextCardDefault>
-            <Icon name="info" size={12} className={CS.pr1} />
-            {mappingInfoText}
-          </TextCardDefault>
-        ) : (
-          <TextCardDefault aria-label={mappingInfoText}>
-            <Icon
-              name="info"
-              size={16}
-              className={CS.textDarkHover}
-              tooltip={mappingInfoText}
-            />
-          </TextCardDefault>
-        )
-      ) : isNative && isDisabled && question && editingParameter ? (
-        <DisabledNativeCardHelpText
-          question={question}
-          parameter={editingParameter}
-        />
-      ) : (
-        <>
-          {headerContent && (
-            <Header>
-              <Ellipsified>{headerContent}</Ellipsified>
-            </Header>
-          )}
-          <Flex align="center" justify="center" gap="xs" pos="relative">
-            <DashCardCardParameterMapperButton
-              handleChangeTarget={handleChangeTarget}
-              isVirtual={isVirtual}
-              isQuestion={isQuestion}
-              isDisabled={isDisabled}
-              selectedMappingOption={selectedMappingOption}
-              question={question}
-              card={card}
-              target={target}
-              mappingOptions={mappingOptions}
-            />
-            {shouldShowAutoConnectHint &&
-              layoutHeight <= 3 &&
-              dashcard.size_x > 4 && <AutoConnectedAnimatedIcon />}
-          </Flex>
-        </>
-      )}
+      <DashCardCardParameterMapperContent
+        isNative={isNative}
+        isDisabled={isDisabled}
+        isMobile={isMobile}
+        dashcard={dashcard}
+        question={question}
+        editingParameter={editingParameter}
+        mappingOptions={mappingOptions}
+        isQuestion={isQuestion}
+        card={card}
+        selectedMappingOption={selectedMappingOption}
+        target={target}
+        shouldShowAutoConnectHint={shouldShowAutoConnectHint}
+        layoutHeight={layoutHeight}
+      />
       <Transition
         mounted={shouldShowAutoConnectHint && layoutHeight > 3}
         transition="fade"
@@ -264,28 +170,6 @@ export function DashCardCardParameterMapper({
         </Warning>
       )}
     </Container>
-  );
-}
-
-function AutoConnectedAnimatedIcon() {
-  const [mounted, setMounted] = useState(false);
-
-  useMount(() => {
-    setMounted(true);
-  });
-
-  return (
-    <Transition transition="fade" mounted={mounted} exitDuration={0}>
-      {styles => {
-        return (
-          <Box component="span" style={styles} pos="absolute" right={-20}>
-            <Tooltip label={t`Auto-connected`}>
-              <Icon name="sparkles" />
-            </Tooltip>
-          </Box>
-        );
-      }}
-    </Transition>
   );
 }
 
