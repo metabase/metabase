@@ -8,7 +8,9 @@ import {
   useListCollectionItemsQuery,
 } from "metabase/api";
 import { CollectionTable } from "metabase/collections/components/CollectionContent/CollectionContent.styled";
+import { ItemsTable } from "metabase/components/ItemsTable";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { PaginationControls } from "metabase/components/PaginationControls";
 import Search from "metabase/entities/search";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { useDispatch } from "metabase/lib/redux";
@@ -16,9 +18,6 @@ import * as Urls from "metabase/lib/urls";
 import { Text, Flex, Modal } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
-
-import { ItemsTable } from "../ItemsTable";
-import { PaginationControls } from "../PaginationControls";
 
 import { CleanupCleanState } from "./CleanupCleanState";
 import { CleanupCollectionBulkActions } from "./CleanupCollectionBulkActions";
@@ -36,24 +35,40 @@ export const CleanupCollectionModal = ({
   params: { slug },
 }: CleanupCollectionModalProps) => {
   const dispatch = useDispatch();
-
   const collectionId = Urls.extractCollectionId(slug);
 
+  // pagination
+  const pagination = usePagination({ initialPage: 0, pageSize: 10 });
+  const { setPage, setTotal, paginationFilters } = pagination;
+
+  // sorting
+  const [sortOptions, setSortOptions] = useState<SortingOptions>({
+    sort_column: "name",
+    sort_direction: SortDirection.Asc,
+  });
+
+  const handleSortingChange = useCallback(
+    (sortingOpts: SortingOptions) => {
+      setSortOptions(sortingOpts);
+      setPage(0);
+    },
+    [setPage],
+  );
+
+  // filters
   const [dateFilter, setDateFilter] = useState<DateFilter>("six-months");
   const handleChangeDateFilter = (dateFilter: DateFilter) => {
     setDateFilter(dateFilter);
     pagination.resetPage();
   };
 
-  const pagination = usePagination({ initialPage: 0, pageSize: 10 });
-  const { setPage, setTotal } = pagination;
-
+  // data
   const collectionQuery = useGetCollectionQuery(
     collectionId ? { id: collectionId } : skipToken,
   );
   const itemsQuery = useListCollectionItemsQuery(
     collectionId
-      ? { id: collectionId, ...pagination.paginationFilters }
+      ? { id: collectionId, ...paginationFilters, ...sortOptions }
       : skipToken,
   );
 
@@ -67,12 +82,15 @@ export const CleanupCollectionModal = ({
     return items.map(item => Search.wrapEntity(item, dispatch));
   }, [itemsData, dispatch]);
 
+  // pagination cont.
   const hasPagination = pagination.pages > 1 && (itemsData?.length ?? 0) > 0;
-
-  useEffect(() => {
-    const total = itemsQuery.data?.total ?? 0;
-    setTotal(total);
-  }, [setTotal, itemsQuery.data?.total]);
+  useEffect(
+    function updatePaginationTotal() {
+      const total = itemsQuery.data?.total ?? 0;
+      setTotal(total);
+    },
+    [setTotal, itemsQuery.data?.total],
+  );
 
   // selection
   const { clear, getIsSelected, selected, selectOnlyTheseItems, toggleItem } =
@@ -81,20 +99,6 @@ export const CleanupCollectionModal = ({
   const hasUnselected = useMemo(() => {
     return items.some(item => !getIsSelected(item));
   }, [getIsSelected, items]);
-
-  // sorting
-  const [itemsSorting, setItemsSorting] = useState<SortingOptions>({
-    sort_column: "name",
-    sort_direction: SortDirection.Asc,
-  });
-
-  const handleUnpinnedItemsSortingChange = useCallback(
-    (sortingOpts: SortingOptions) => {
-      setItemsSorting(sortingOpts);
-      setPage(0);
-    },
-    [setPage],
-  );
 
   return (
     <Modal.Root
@@ -127,8 +131,8 @@ export const CleanupCollectionModal = ({
                   <ItemsTable
                     items={items}
                     collection={collection}
-                    sortingOptions={itemsSorting}
-                    onSortingOptionsChange={handleUnpinnedItemsSortingChange}
+                    sortingOptions={sortOptions}
+                    onSortingOptionsChange={handleSortingChange}
                     selectedItems={selected}
                     hasUnselected={hasUnselected}
                     getIsSelected={getIsSelected}

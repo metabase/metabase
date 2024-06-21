@@ -5,6 +5,7 @@ import {
   isInstanceAnalyticsCustomCollection,
   isRootPersonalCollection,
   isRootCollection,
+  isTrashedCollection,
 } from "metabase/collections/utils";
 import EntityMenu from "metabase/components/EntityMenu";
 import * as Urls from "metabase/lib/urls";
@@ -26,7 +27,7 @@ export const CollectionMenu = ({
 }: CollectionMenuProps): JSX.Element | null => {
   // we don't want any of the items, we just want to know how many there are in the collection
   const query = useListCollectionItemsQuery({ id: collection.id, limit: 0 });
-  const totalItems = query.data?.total ?? 0;
+  const collectionItemCount = query.data?.total ?? 0;
 
   const items = [];
   const url = Urls.collection(collection);
@@ -34,10 +35,17 @@ export const CollectionMenu = ({
   const isPersonal = isRootPersonalCollection(collection);
   const isInstanceAnalyticsCustom =
     isInstanceAnalyticsCustomCollection(collection);
+  const isEmptyCollection = collectionItemCount === 0;
+  const isTrashed = isTrashedCollection(collection);
+
   const canWrite = collection.can_write;
   const canMove =
     !isRoot && !isPersonal && canWrite && !isInstanceAnalyticsCustom;
-  const canCleanUp = totalItems > 0;
+  const canCleanUp =
+    PLUGIN_COLLECTIONS.canCleanUp &&
+    !isEmptyCollection &&
+    !isInstanceAnalyticsCustom &&
+    !isTrashed;
 
   if (isAdmin && !isRoot && canWrite) {
     items.push(
