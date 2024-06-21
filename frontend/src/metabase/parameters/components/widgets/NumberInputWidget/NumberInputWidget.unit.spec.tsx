@@ -187,6 +187,34 @@ describe("NumberInputWidget", () => {
       await userEvent.click(button);
       expect(setValue).toHaveBeenCalledWith(undefined);
     });
+
+    it("should render the correct label if the parameter has custom labels configured", async () => {
+      const values: ParameterValue[] = [["42", "Foo"], ["66", "Bar"], ["55"]];
+      const parameter = createMockParameter({
+        values_source_type: "static-list",
+        values_source_config: { values },
+      });
+
+      const { setValue } = setup({
+        value: [42, 55],
+        arity: "n",
+        parameter,
+        values,
+      });
+
+      const combobox = screen.getByRole("combobox");
+      const input = getInput(combobox);
+      await userEvent.type(input, "Ba", {
+        pointerEventsCheck: 0,
+      });
+
+      await userEvent.click(screen.getByText("Bar"));
+
+      const button = screen.getByRole("button", { name: "Update filter" });
+      await userEvent.click(button);
+
+      expect(setValue).toHaveBeenCalledWith([42, 55, 66]);
+    });
   });
 });
 
