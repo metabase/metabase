@@ -130,6 +130,10 @@ export function isItemCollection(item: CollectionItem) {
   return item.model === "collection";
 }
 
+export function isItemDashboard(item: CollectionItem) {
+  return item.model === "dashboard";
+}
+
 export function isReadOnlyCollection(collection: CollectionItem) {
   return isItemCollection(collection) && !collection.can_write;
 }

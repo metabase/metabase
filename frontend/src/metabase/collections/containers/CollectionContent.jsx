@@ -336,6 +336,9 @@ function CollectionContent({
                           onDrop={clear}
                           onMove={handleMove}
                           onCopy={handleCopy}
+                          onCopyToAnotherWorkspace={
+                            handleCopyToAnotherWorkspace
+                          }
                           onSelectAll={handleSelectAll}
                           onSelectNone={clear}
                         />

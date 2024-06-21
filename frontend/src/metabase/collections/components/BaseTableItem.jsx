@@ -37,6 +37,7 @@ BaseTableItem.propTypes = {
   isPinned: PropTypes.bool,
   linkProps: PropTypes.object,
   onCopy: PropTypes.func,
+  onCopyToAnotherWorkspace: PropTypes.func,
   onMove: PropTypes.func,
   onDrop: PropTypes.func,
   onToggleSelected: PropTypes.func,
@@ -55,6 +56,7 @@ export function BaseTableItem({
   isPinned,
   linkProps = {},
   onCopy,
+  onCopyToAnotherWorkspace,
   onMove,
   onDrop,
   onToggleSelected,
@@ -152,6 +154,7 @@ export function BaseTableItem({
               databases={databases}
               bookmarks={bookmarks}
               onCopy={onCopy}
+              onCopyToAnotherWorkspace={onCopyToAnotherWorkspace}
               onMove={onMove}
               createBookmark={createBookmark}
               deleteBookmark={deleteBookmark}
@@ -174,6 +177,7 @@ export function BaseTableItem({
     linkProps,
     collection,
     onCopy,
+    onCopyToAnotherWorkspace,
     onMove,
   ]);
 
