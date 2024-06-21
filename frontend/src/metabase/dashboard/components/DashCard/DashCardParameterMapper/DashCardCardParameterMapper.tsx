@@ -1,6 +1,6 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { connect } from "react-redux";
-import { useMount, usePrevious } from "react-use";
+import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,6 +9,13 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import DeprecatedTooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
+import { setParameterMapping } from "metabase/dashboard/actions/parameters";
+import {
+  getEditingParameter,
+  getDashcardParameterMappingOptions,
+  getParameterTarget,
+  getQuestionByCard,
+} from "metabase/dashboard/selectors";
 import {
   isNativeDashCard,
   isVirtualDashCard,
@@ -16,7 +23,6 @@ import {
   showVirtualDashCardInfoText,
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
-import { useDispatch } from "metabase/lib/redux";
 import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import { getIsRecentlyAutoConnectedDashcard } from "metabase/redux/undo";
@@ -28,7 +34,6 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type Question from "metabase-lib/v1/Question";
 import {
-  getParameterSubType,
   isDateParameter,
   isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
@@ -44,13 +49,6 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { resetParameterMapping, setParameterMapping } from "../../../actions";
-import {
-  getEditingParameter,
-  getDashcardParameterMappingOptions,
-  getParameterTarget,
-  getQuestionByCard,
-} from "../../../selectors";
 import { getMappingOptionByTarget } from "../utils";
 
 import {
@@ -66,6 +64,7 @@ import {
   Warning,
 } from "./DashCardCardParameterMapper.styled";
 import { DisabledNativeCardHelpText } from "./DisabledNativeCardHelpText";
+import { useResetParameterMapping } from "./hooks";
 
 function formatSelected({
   name,
@@ -136,8 +135,6 @@ export function DashCardCardParameterMapper({
   isRecentlyAutoConnected,
 }: DashcardCardParameterMapperProps) {
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
-  const prevParameter = usePrevious(editingParameter);
-  const dispatch = useDispatch();
 
   const hasSeries =
     isQuestionDashCard(dashcard) &&
@@ -150,31 +147,12 @@ export function DashCardCardParameterMapper({
   const isTemporalUnit =
     editingParameter != null && isTemporalUnitParameter(editingParameter);
 
-  useEffect(() => {
-    if (!prevParameter || !editingParameter) {
-      return;
-    }
-
-    if (
-      isNative &&
-      isDisabled &&
-      prevParameter.type !== editingParameter.type
-    ) {
-      const subType = getParameterSubType(editingParameter);
-      const prevSubType = getParameterSubType(prevParameter);
-
-      if (prevSubType === "=" && subType !== "=") {
-        dispatch(resetParameterMapping(editingParameter.id, dashcard.id));
-      }
-    }
-  }, [
+  useResetParameterMapping({
+    editingParameter,
     isNative,
     isDisabled,
-    prevParameter,
-    editingParameter,
-    dispatch,
-    dashcard.id,
-  ]);
+    dashcardId: dashcard.id,
+  });
 
   const handleChangeTarget = useCallback(
     (target: ParameterTarget | null) => {
