@@ -1,7 +1,8 @@
+import { bindActionCreators } from "@reduxjs/toolkit";
 import { useMemo } from "react";
 import _ from "underscore";
 
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { State } from "metabase-types/store";
 
 type Selector<T> = (state: State, entityOptions: EntityOptions) => T;
@@ -9,12 +10,13 @@ type Selector<T> = (state: State, entityOptions: EntityOptions) => T;
 type RequestType = "fetch" | string;
 
 type EntityId = string | number;
-
 type EntityIdSelector = (state: State, props: unknown) => EntityId;
 
 type EntityQuery = any;
-
 type EntityQuerySelector = (state: State, props: unknown) => EntityQuery;
+
+type EntityType = "database" | "table" | string; // TODO
+type EntityTypeSelector = (state: State, props: unknown) => EntityType;
 
 interface EntityOptions {
   entityId: EntityId;
@@ -22,6 +24,9 @@ interface EntityOptions {
 }
 
 interface EntityDefinition {
+  actions: {
+    [actionName: string]: (...args: unknown[]) => unknown;
+  };
   selectors: {
     getFetched: Selector<boolean>;
     getLoading: Selector<boolean>;
@@ -31,22 +36,37 @@ interface EntityDefinition {
 }
 
 interface Props {
-  entityDef: EntityDefinition;
   entityId: EntityId | EntityIdSelector;
   entityQuery: EntityQuery | EntityQuerySelector;
+  entityType: EntityType | EntityTypeSelector;
   selectorName?: string;
   requestType?: RequestType;
-  reloadInterval?: (state, props) => number;
+  // reloadInterval?: (state: State, props: unknown) => number;
 }
 
 export const EntityObjectLoaderRtkQuery = ({
-  entityDef,
   entityId: entityIdProp,
   entityQuery: entityQueryProp,
+  entityType: entityTypeProp,
   selectorName = "getObject",
   requestType = "fetch",
   ...props
 }: Props) => {
+  const dispatch = useDispatch();
+
+  const entityType = useSelector(state =>
+    typeof entityTypeProp === "function"
+      ? entityTypeProp(state, props)
+      : entityTypeProp,
+  );
+
+  const entityDef: EntityDefinition = useMemo(() => {
+    // dynamic require due to dependency load order issues
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const entitiesDefinitions = require("metabase/entities");
+    return entitiesDefinitions[entityType];
+  }, [entityType]);
+
   const entityId = useSelector(state =>
     typeof entityIdProp === "function"
       ? entityIdProp(state, props)
@@ -81,6 +101,10 @@ export const EntityObjectLoaderRtkQuery = ({
   });
 
   const memoizedEntityQuery = useSelector(() => entityQuery, _.isEqual);
+
+  const actionCreators = useMemo(() => {
+    return bindActionCreators(entityDef.actions, dispatch);
+  }, [entityDef.actions, dispatch]);
 
   return {
     entityId,
