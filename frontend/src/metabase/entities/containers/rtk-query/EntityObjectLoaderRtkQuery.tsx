@@ -163,7 +163,12 @@ export const EntityObjectLoaderRtkQuery = ({
   const renderedChildren = children({
     ...actionCreators,
     ...props,
-    object: wrappedObject,
+    entityId, // TODO: maybe unnecessary
+    entityQuery: memoizedEntityQuery, // TODO: maybe unnecessary
+    object: wrappedObject, // TODO: maybe unnecessary
+    fetched, // TODO: maybe unnecessary
+    loading, // TODO: maybe unnecessary
+    error, // TODO: maybe unnecessary
     // alias the entities name:
     [entityAlias || entityDefinition.nameOne]: wrappedObject,
     reload,
