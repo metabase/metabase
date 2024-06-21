@@ -2,10 +2,10 @@ import styled from "@emotion/styled";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
 import { color, alpha } from "metabase/lib/colors";
 import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
+import { Button as MantineButton, type ButtonProps } from "metabase/ui";
 
 import RunButtonWithTooltip from "../../RunButtonWithTooltip";
 import ViewSection, { ViewSubHeading, ViewHeading } from "../ViewSection";
@@ -60,12 +60,12 @@ export const BackButtonContainer = styled.span`
   margin-right: 0.75rem;
 `;
 
-export const SaveButton = styled(Link)`
-  color: var(--mb-color-brand);
-  font-weight: bold;
-  padding: 0.5rem 1rem;
+export const SaveButton = styled(MantineButton)<ButtonProps>`
   border-radius: 8px;
-  background-color: var(--mb-color-bg-white);
+
+  &[data-disabled="true"] {
+    pointer-events: all;
+  }
 
   :hover {
     background-color: var(--mb-color-bg-light);
@@ -78,7 +78,9 @@ export const SavedQuestionHeaderButtonContainer = styled.div<{
   right: ${props => (props.isModelOrMetric ? "0px" : "0.38rem")};
 `;
 
-export const HeaderButton = styled(Button)<{ active: boolean }>`
+export const HeaderButton = styled(Button)<{
+  active: boolean;
+}>`
   font-size: 0.875rem;
   background-color: ${({ active, color = getDefaultColor() }) =>
     active ? color : "transparent"};
@@ -128,7 +130,9 @@ export const AdHocLeftSideRoot = styled.div`
   }
 `;
 
-export const SavedQuestionLeftSideRoot = styled.div<{ showSubHeader: boolean }>`
+export const SavedQuestionLeftSideRoot = styled.div<{
+  showSubHeader: boolean;
+}>`
   ${SavedQuestionHeaderButtonContainer} {
     transition: all 400ms ease;
     position: relative;

@@ -57,7 +57,10 @@ interface Props {
   question: Question;
   setQueryBuilderMode: (
     mode: QueryBuilderMode,
-    opt: { datasetEditorTab: DatasetEditorTab },
+    opts?: {
+      shouldUpdateUrl?: boolean;
+      datasetEditorTab?: DatasetEditorTab;
+    },
   ) => void;
   turnDatasetIntoQuestion: () => void;
   onInfoClick: () => void;

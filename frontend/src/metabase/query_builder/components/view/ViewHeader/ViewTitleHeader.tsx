@@ -164,7 +164,6 @@ export function ViewTitleHeader({
           result={result}
           queryBuilderMode={queryBuilderMode}
           isBookmarked={isBookmarked}
-          toggleBookmark={toggleBookmark}
           isRunnable={isRunnable}
           isRunning={isRunning}
           isNativeEditorOpen={isNativeEditorOpen}
@@ -179,9 +178,10 @@ export function ViewTitleHeader({
           onCloseSummary={onCloseSummary}
           setQueryBuilderMode={setQueryBuilderMode}
           turnDatasetIntoQuestion={turnDatasetIntoQuestion}
-          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
-          onCloseQuestionInfo={onCloseQuestionInfo}
+          toggleBookmark={toggleBookmark}
           onOpenQuestionInfo={onOpenQuestionInfo}
+          onCloseQuestionInfo={onCloseQuestionInfo}
+          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
           onModelPersistenceChange={onModelPersistenceChange}
           isObjectDetail={isObjectDetail}
           isSaved={isSaved}
