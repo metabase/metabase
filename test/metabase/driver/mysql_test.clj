@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [metabase.actions.error :as actions.error]
-   [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
