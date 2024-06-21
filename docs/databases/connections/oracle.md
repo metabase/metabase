@@ -73,7 +73,7 @@ If you need to connect to other databases using SSL, instead of creating a new t
 
 ## Supported Oracle database and Oracle driver versions
 
-- **Driver version**: the minimum Oracle driver version should be 19c, regardless of which Java version or Oracle JDBC driver version you have.
+- **Driver version**: the minimum Oracle driver version should be 19c, regardless of which Java version or Oracle database version you have.
 - **Database version**: the minimum database version should be version 19c, as Oracle [no longer supports database versions prior to 19](https://endoflife.date/oracle-database).
 
 ## Downloading the Oracle JDBC Driver JAR
