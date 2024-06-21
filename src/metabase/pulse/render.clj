@@ -221,6 +221,13 @@
   ^bytes [timezone-id :- [:maybe :string] pulse-card result width]
   (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card nil result) width))
 
+(mu/defn render-pulse-card-to-base64 :- string?
+  "Render a `pulse-card` as a PNG and return it as a base64 encoded string."
+  ^String [timezone-id pulse-card dashcard result width]
+  (-> (render-pulse-card :inline timezone-id pulse-card dashcard result)
+      (png/render-html-to-png width)
+      image-bundle/render-img-data-uri))
+
 (mu/defn png-from-render-info :- bytes?
   "Create a PNG file (as a byte array) from rendering info."
   ^bytes [rendered-info :- formatter/RenderedPulseCard width]

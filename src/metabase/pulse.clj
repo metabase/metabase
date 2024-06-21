@@ -314,6 +314,10 @@
           :when part]
       part)))
 
+(defn- namespaced-channel-type
+  [channel-type]
+  (keyword "channel" (name channel-type)))
+
 (defn- send-pulse!*
   [{:keys [channels channel-ids] pulse-id :id :as pulse} dashboard]
   (let [parts                  (execute-pulse pulse dashboard)
@@ -331,9 +335,7 @@
                                                      :filters    (:parameters pulse)}})
         (u/prog1 (doseq [channel channels]
                    (try
-                     (let [channel-type (if (= :email (keyword (:channel_type channel)))
-                                          :channel/email
-                                          :channel/slack)
+                     (let [channel-type (namespaced-channel-type (:channel_type channel))
                            messages     (channel/render-notification channel-type
                                                                      (get-notification-info pulse parts channel)
                                                                      (channels-to-channel-recipients channel))]
