@@ -43,6 +43,15 @@ const viewTitleHeaderPropTypes = {
   onCloseSummary: PropTypes.func,
   onOpenQuestionDetails: PropTypes.func,
 
+  isBookmarked: PropTypes.bool,
+  isActionListVisible: PropTypes.bool,
+  turnDatasetIntoQuestion: PropTypes.func,
+  toggleBookmark: PropTypes.func,
+  onOpenQuestionInfo: PropTypes.func,
+  onCloseQuestionInfo: PropTypes.func,
+  isShowingQuestionInfoSidebar: PropTypes.bool,
+  onModelPersistenceChange: PropTypes.func,
+
   className: PropTypes.string,
   style: PropTypes.object,
 };
@@ -110,7 +119,30 @@ export function ViewTitleHeader(props) {
           />
         )}
         <ViewTitleHeaderRightSide
-          {...props}
+          question={question}
+          result={props.result}
+          queryBuilderMode={props.queryBuilderMode}
+          isBookmarked={props.isBookmarked}
+          isRunnable={props.isRunnable}
+          isRunning={props.isRunning}
+          isNativeEditorOpen={props.isNativeEditorOpen}
+          isShowingSummarySidebar={props.isShowingSummarySidebar}
+          isDirty={props.isDirty}
+          isResultDirty={props.isResultDirty}
+          isActionListVisible={props.isActionListVisible}
+          runQuestionQuery={props.runQuestionQuery}
+          cancelQuery={props.cancelQuery}
+          onOpenModal={props.onOpenModal}
+          onEditSummary={props.onEditSummary}
+          onCloseSummary={props.onCloseSummary}
+          setQueryBuilderMode={props.setQueryBuilderMode}
+          turnDatasetIntoQuestion={props.turnDatasetIntoQuestion}
+          toggleBookmark={props.toggleBookmark}
+          onOpenQuestionInfo={props.onOpenQuestionInfo}
+          onCloseQuestionInfo={props.onCloseQuestionInfo}
+          isShowingQuestionInfoSidebar={props.isShowingQuestionInfoSidebar}
+          onModelPersistenceChange={props.onModelPersistenceChange}
+          isObjectDetail={props.isObjectDetail}
           isSaved={isSaved}
           isModelOrMetric={isModelOrMetric}
           isNative={isNative}

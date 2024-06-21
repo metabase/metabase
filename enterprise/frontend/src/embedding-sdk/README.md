@@ -4,6 +4,14 @@
 
 The Metabase Embedding SDK for React offers a way to integrate Metabase into your application more seamlessly and with greater flexibility than using the current interactive embedding offering based on iframes.
 
+<div>
+  <a href="https://www.loom.com/share/b6998692937c4ecaab1af097f2123c6f">
+    <img style="max-width: 300px" src="https://cdn.loom.com/sessions/thumbnails/b6998692937c4ecaab1af097f2123c6f-with-play.gif">
+  </a>
+</div>
+
+[Watch a 5-minute tour of the SDK's features.](https://www.loom.com/share/b6998692937c4ecaab1af097f2123c6f)
+
 Features currently supported:
 
 - embedding questions - static
@@ -17,6 +25,9 @@ Features currently supported:
 Features planned:
 
 - subscribing to events
+
+# Changelog
+[View changelog](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 
 # Prerequisites
 
@@ -466,6 +477,9 @@ const theme = {
 
         // Default background color of cells, defaults to `background`
         backgroundColor: "#FFFFFF",
+
+        // Font size of cell values, defaults to ~12.5px
+        fontSize: "12.5px",
       },
 
       idColumn: {
@@ -486,8 +500,20 @@ const theme = {
       },
     },
 
+    // Cartesian chart
+    cartesian: {
+      // Padding around the cartesian charts.
+      // Uses CSS's `padding` property format.
+      padding: "4px 8px",
+    },
+
     // Pivot table
     pivotTable: {
+      cell: {
+        // Font size of cell values, defaults to ~12px
+        fontSize: "12px",
+      },
+
       // Pivot row toggle to expand or collapse row
       rowToggle: {
         textColor: "#FFFFFF",
@@ -498,13 +524,13 @@ const theme = {
     collectionBrowser: {
        breadcrumbs: {
          expandButton: {
-           textColor: "#8118F4";
-           backgroundColor: "#767D7C";
-           hoverTextColor: "#CE8C8C";
-           hoverBackgroundColor: "#69264B";
-         };
-       };
-     };
+           textColor: "#8118F4",
+           backgroundColor: "#767D7C",
+           hoverTextColor: "#CE8C8C",
+           hoverBackgroundColor: "#69264B",
+         },
+       },
+     },
   },
 };
 ```

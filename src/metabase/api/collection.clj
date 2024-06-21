@@ -267,13 +267,14 @@
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
    ;; when specified, only return results of this type.
    [:models       {:optional true} [:maybe [:set (into [:enum] (map keyword) valid-model-param-values)]]]
-   [:sort-info    {:optional true} [:maybe [:tuple
-                                            (into [:enum {:error/message "sort-columns"}]
-                                                  (map normalize-sort-choice)
-                                                  valid-sort-columns)
-                                            (into [:enum {:error/message "sort-direction"}]
-                                                  (map normalize-sort-choice)
-                                                  valid-sort-directions)]]]])
+   [:sort-info    {:optional true} [:maybe [:map
+                                            [:sort-column (into [:enum {:error/message "sort-columns"}]
+                                                                (map normalize-sort-choice)
+                                                                valid-sort-columns)]
+                                            [:sort-direction (into [:enum {:error/message "sort-direction"}]
+                                                                   (map normalize-sort-choice)
+                                                                   valid-sort-directions)]
+                                            [:official-collections-first? {:optional true} :boolean]]]]])
 
 (defmulti ^:private collection-children-query
   "Query that will fetch the 'children' of a `collection`, for different types of objects. Possible options are listed
@@ -815,19 +816,25 @@
         (for [model [:card :metric :dataset :dashboard :snippet :pulse :collection :timeline]]
           (:select (collection-children-query model {:id 1 :location "/"} nil)))))
 
+(defn- official-collections-first-sort-clause [{:keys [official-collections-first?]}]
+  (when official-collections-first?
+    [[[:case [:= :authority_level "official"] 0 :else 1]] :asc]))
+
+(def ^:private normal-collections-first-sort-clause
+  [[[:case
+     [:= :collection_type nil] 0
+     [:= :collection_type collection/trash-collection-type] 1
+     :else 2]]
+   :asc])
 
 (defn children-sort-clause
   "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
   treatment of nulls in the different app db types."
   [sort-info db-type]
-  ;; always put "Metabase Analytics" last
-  (into [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
-         [[[:case
-            [:= :collection_type nil] 0
-            [:= :collection_type collection/trash-collection-type] 1
-            :else 2]] :asc]]
-        (case sort-info
-          nil                     [[:%lower.name :asc]]
+  (->> (into [(official-collections-first-sort-clause sort-info)
+              normal-collections-first-sort-clause]
+        (case ((juxt :sort-column :sort-direction) sort-info)
+          [nil nil]               [[:%lower.name :asc]]
           [:name :asc]            [[:%lower.name :asc]]
           [:name :desc]           [[:%lower.name :desc]]
           [:last-edited-at :asc]  [(if (= db-type :mysql)
@@ -835,13 +842,12 @@
                                      [:last_edit_timestamp :nulls-last])
                                    [:last_edit_timestamp :asc]
                                    [:%lower.name :asc]]
-          [:last-edited-at :desc] (remove nil?
-                                          [(case db-type
-                                             :mysql    [:%isnull.last_edit_timestamp]
-                                             :postgres [:last_edit_timestamp :desc-nulls-last]
-                                             :h2       nil)
-                                           [:last_edit_timestamp :desc]
-                                           [:%lower.name :asc]])
+          [:last-edited-at :desc] [(case db-type
+                                     :mysql    [:%isnull.last_edit_timestamp]
+                                     :postgres [:last_edit_timestamp :desc-nulls-last]
+                                     :h2       nil)
+                                   [:last_edit_timestamp :desc]
+                                   [:%lower.name :asc]]
           [:last-edited-by :asc]  [(if (= db-type :mysql)
                                      [:%isnull.last_edit_last_name]
                                      [:last_edit_last_name :nulls-last])
@@ -851,20 +857,21 @@
                                      [:last_edit_first_name :nulls-last])
                                    [:last_edit_first_name :asc]
                                    [:%lower.name :asc]]
-          [:last-edited-by :desc] (remove nil?
-                                          [(case db-type
-                                             :mysql    [:%isnull.last_edit_last_name]
-                                             :postgres [:last_edit_last_name :desc-nulls-last]
-                                             :h2       nil)
-                                           [:last_edit_last_name :desc]
-                                           (case db-type
-                                             :mysql    [:%isnull.last_edit_first_name]
-                                             :postgres [:last_edit_last_name :desc-nulls-last]
-                                             :h2       nil)
-                                           [:last_edit_first_name :desc]
-                                           [:%lower.name :asc]])
+          [:last-edited-by :desc] [(case db-type
+                                     :mysql    [:%isnull.last_edit_last_name]
+                                     :postgres [:last_edit_last_name :desc-nulls-last]
+                                     :h2       nil)
+                                   [:last_edit_last_name :desc]
+                                   (case db-type
+                                     :mysql    [:%isnull.last_edit_first_name]
+                                     :postgres [:last_edit_last_name :desc-nulls-last]
+                                     :h2       nil)
+                                   [:last_edit_first_name :desc]
+                                   [:%lower.name :asc]]
           [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
-          [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]])))
+          [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]))
+       (remove nil?)
+       (into [])))
 
 (defn- collection-children*
   [collection models {:keys [sort-info] :as options}]
@@ -976,21 +983,27 @@
   *  `pinned_state` - when `is_pinned`, return pinned objects only.
                    when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything. By default returns everything"
-  [id models archived pinned_state sort_column sort_direction]
-  {id             ms/PositiveInt
-   models         [:maybe Models]
-   archived       [:maybe ms/BooleanValue]
-   pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
-   sort_column    [:maybe (into [:enum] valid-sort-columns)]
-   sort_direction [:maybe (into [:enum] valid-sort-directions)]}
+  [id models archived pinned_state sort_column sort_direction official_collections_first]
+  {id                         ms/PositiveInt
+   models                     [:maybe Models]
+   archived                   [:maybe ms/BooleanValue]
+   pinned_state               [:maybe (into [:enum] valid-pinned-state-values)]
+   sort_column                [:maybe (into [:enum] valid-sort-columns)]
+   sort_direction             [:maybe (into [:enum] valid-sort-directions)]
+   official_collections_first [:maybe ms/MaybeBooleanValue]}
   (let [model-kwds (set (map keyword (u/one-or-many models)))
         collection (api/read-check Collection id)]
     (u/prog1 (collection-children collection
                                   {:models       model-kwds
                                    :archived?    (or archived (:archived collection) (collection/is-trash? collection))
                                    :pinned-state (keyword pinned_state)
-                                   :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
-                                                  (or (some-> sort_direction normalize-sort-choice) :asc)]})
+                                   :sort-info    {:sort-column (or (some-> sort_column normalize-sort-choice) :name)
+                                                  :sort-direction (or (some-> sort_direction normalize-sort-choice) :asc)
+                                                  ;; default to sorting official collections first, except for the trash.
+                                                  :official-collections-first? (if (and (nil? official_collections_first)
+                                                                                        (not (collection/is-trash? collection)))
+                                                                                 true
+                                                                                 (boolean official_collections_first))}})
       (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*}))))
 
 
@@ -1033,13 +1046,14 @@
 
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter."
-  [models archived namespace pinned_state sort_column sort_direction]
-  {models         [:maybe Models]
-   archived       [:maybe ms/BooleanValue]
-   namespace      [:maybe ms/NonBlankString]
-   pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
-   sort_column    [:maybe (into [:enum] valid-sort-columns)]
-   sort_direction [:maybe (into [:enum] valid-sort-directions)]}
+  [models archived namespace pinned_state sort_column sort_direction official_collections_first]
+  {models                     [:maybe Models]
+   archived                   [:maybe ms/BooleanValue]
+   namespace                  [:maybe ms/NonBlankString]
+   pinned_state               [:maybe (into [:enum] valid-pinned-state-values)]
+   sort_column                [:maybe (into [:enum] valid-sort-columns)]
+   sort_direction             [:maybe (into [:enum] valid-sort-directions)]
+   official_collections_first [:maybe ms/MaybeBooleanValue]}
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
@@ -1050,8 +1064,11 @@
      {:archived?      (boolean archived)
       :models         model-kwds
       :pinned-state   (keyword pinned_state)
-      :sort-info      [(or (some-> sort_column normalize-sort-choice) :name)
-                       (or (some-> sort_direction normalize-sort-choice) :asc)]})))
+      :sort-info      {:sort-column (or (some-> sort_column normalize-sort-choice) :name)
+                       :sort-direction (or (some-> sort_direction normalize-sort-choice) :asc)
+                       ;; default to sorting official collections first, but provide the option not to
+                       :official-collections-first? (or (nil? official_collections_first)
+                                                        (boolean official_collections_first))}})))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------

@@ -86,7 +86,6 @@
                                 [:group_id             [:= (u/the-id &group)]]
                                 [:table_id             [:= (u/the-id db-2-table)]]
                                 [:card_id              nil?]
-                                [:permission_id        nil?]
                                 [:attribute_remappings nil?]]]
                               (t2/select GroupTableAccessPolicy
                                          :group_id (u/the-id &group)
@@ -98,7 +97,6 @@
                                 [:group_id             [:= (u/the-id other-group)]]
                                 [:table_id             [:= (mt/id :venues)]]
                                 [:card_id              nil?]
-                                [:permission_id        nil?]
                                 [:attribute_remappings nil?]]]
                               (t2/select GroupTableAccessPolicy :group_id (u/the-id other-group)))))))))))))
 

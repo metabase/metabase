@@ -21,6 +21,7 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
+import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
 import { getMainElement } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
@@ -89,7 +90,7 @@ export type DashboardProps = {
   selectedTabId: SelectedTabId;
   isNavigatingBackToDashboard: boolean;
   addCardOnLoad?: DashCardId;
-  editingOnLoad?: string | string[];
+  editingOnLoad?: string | string[] | boolean;
 
   initialize: (opts?: { clearCache?: boolean }) => void;
   cancelFetchDashboardCardData: () => void;
@@ -436,7 +437,10 @@ function DashboardInner(props: DashboardProps) {
                 canWrite={canWrite}
                 canRestore={canRestore}
                 canDelete={canDelete}
-                onUnarchive={() => dispatch(setArchivedDashboard(false))}
+                onUnarchive={async () => {
+                  await dispatch(setArchivedDashboard(false));
+                  await dispatch(Bookmarks.actions.invalidateLists());
+                }}
                 onMove={({ id }) => dispatch(moveDashboardToCollection({ id }))}
                 onDeletePermanently={() => {
                   const { id } = dashboard;
