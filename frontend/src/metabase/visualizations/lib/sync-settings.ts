@@ -1,9 +1,3 @@
-import { isNotNull } from "metabase/lib/types";
-import {
-  getMaxDimensionsSupported,
-  getMaxMetricsSupported,
-  hasGraphDataSettings,
-} from "metabase/visualizations";
 import {
   findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,
@@ -14,8 +8,6 @@ import type {
   SingleSeries,
   VisualizationSettings,
 } from "metabase-types/api";
-
-import { getSingleSeriesDimensionsAndMetrics } from "./utils";
 
 export function syncVizSettingsWithSeries(
   settings: VisualizationSettings,
@@ -36,69 +28,10 @@ export function syncVizSettingsWithSeries(
         series,
         previousSeries,
       );
-
-      if (hasGraphDataSettings(series.card.display)) {
-        newSettings = ensureMetricsAndDimensions(
-          newSettings,
-          series,
-          previousSeries,
-        );
-      }
     }
   }
 
   return newSettings;
-}
-
-function ensureMetricsAndDimensions(
-  settings: VisualizationSettings,
-  series: SingleSeries,
-  previousSeries: SingleSeries,
-) {
-  const hasExplicitGraphDataSettings =
-    "graph.dimensions" in settings || "graph.metrics" in settings;
-
-  if (hasExplicitGraphDataSettings) {
-    return settings;
-  }
-
-  const nextSettings = { ...settings };
-
-  const availableColumnNames = series.data.cols.map(col => col.name);
-  const maxDimensions = getMaxDimensionsSupported(series.card.display);
-  const maxMetrics = getMaxMetricsSupported(series.card.display);
-
-  const { dimensions: currentDimensions, metrics: currentMetrics } =
-    getSingleSeriesDimensionsAndMetrics(series, maxDimensions, maxMetrics);
-  const { dimensions: previousDimensions, metrics: previousMetrics } =
-    getSingleSeriesDimensionsAndMetrics(
-      previousSeries,
-      maxDimensions,
-      maxMetrics,
-    );
-
-  const dimensions =
-    currentDimensions.filter(isNotNull).length > 0
-      ? currentDimensions
-      : previousDimensions.filter((columnName: string) =>
-          availableColumnNames.includes(columnName),
-        );
-
-  const metrics =
-    currentMetrics.filter(isNotNull).length > 0
-      ? currentMetrics
-      : previousMetrics.filter((columnName: string) =>
-          availableColumnNames.includes(columnName),
-        );
-
-  if (dimensions.length > 0) {
-    nextSettings["graph.dimensions"] = dimensions;
-  }
-  if (metrics.length > 0) {
-    nextSettings["graph.metrics"] = metrics;
-  }
-
-  return nextSettings;
 }
 
 function syncTableColumnSettings(
