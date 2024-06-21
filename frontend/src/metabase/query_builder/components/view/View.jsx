@@ -11,6 +11,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
+import Bookmarks from "metabase/entities/bookmarks";
 import Questions from "metabase/entities/questions";
 import {
   rememberLastUsedDatabase,
@@ -457,7 +458,10 @@ class View extends Component {
 
 const mapDispatchToProps = dispatch => ({
   onSetDatabaseId: id => dispatch(rememberLastUsedDatabase(id)),
-  onUnarchive: question => dispatch(setArchivedQuestion(question, false)),
+  onUnarchive: async question => {
+    await dispatch(setArchivedQuestion(question, false));
+    await dispatch(Bookmarks.actions.invalidateLists());
+  },
   onMove: (question, newCollection) =>
     dispatch(
       Questions.actions.setCollection({ id: question.id() }, newCollection, {

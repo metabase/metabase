@@ -4,16 +4,16 @@ import { useEffect } from "react";
 import {
   useDashboardFullscreen,
   useDashboardRefreshPeriod,
+  useEmbedTheme,
 } from "metabase/dashboard/hooks";
-import { useEmbedDisplayOptions } from "metabase/dashboard/hooks/use-embed-display-options";
 import { useLocationSync } from "metabase/dashboard/hooks/use-location-sync";
-import type {
-  DashboardDisplayOptionControls,
-  RefreshPeriod,
-} from "metabase/dashboard/types";
+import type { RefreshPeriod } from "metabase/dashboard/types";
 import type { DashboardUrlHashOptions } from "metabase/dashboard/types/hash-options";
 import { parseHashOptions } from "metabase/lib/browser";
+import { useEmbedFrameOptions } from "metabase/public/hooks";
 import type { DisplayTheme } from "metabase/public/lib/types";
+
+import { useEmbedFont } from "./use-embed-font";
 
 export const useDashboardUrlParams = ({
   location,
@@ -21,26 +21,24 @@ export const useDashboardUrlParams = ({
 }: {
   location: Location;
   onRefresh: () => Promise<void>;
-}): DashboardDisplayOptionControls => {
+}) => {
+  const { font, setFont } = useEmbedFont();
+
   const {
     background,
     bordered,
-    font,
+    titled,
+    hide_parameters,
+    hide_download_button,
+  } = useEmbedFrameOptions({ location });
+
+  const {
     hasNightModeToggle,
-    hideDownloadButton,
-    hideParameters,
     isNightMode,
     onNightModeChange,
-    setBackground,
-    setBordered,
-    setFont,
-    setHideDownloadButton,
-    setHideParameters,
     setTheme,
-    setTitled,
     theme,
-    titled,
-  } = useEmbedDisplayOptions();
+  } = useEmbedTheme();
 
   const { isFullscreen, onFullscreenChange } = useDashboardFullscreen();
   const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =
@@ -68,36 +66,12 @@ export const useDashboardUrlParams = ({
   });
 
   useEffect(() => {
-    const {
-      background,
-      bordered,
-      titled,
-      font,
-      hide_parameters,
-      hide_download_button,
-    } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
+    const { font } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
 
-    setBackground(prevBackground => background ?? prevBackground);
-    setBordered(prevBordered => bordered ?? prevBordered);
-    setTitled(prevTitled => titled ?? prevTitled);
     if (font) {
       setFont(font);
     }
-    setHideDownloadButton(
-      prevHideDownloadButton => hide_download_button ?? prevHideDownloadButton,
-    );
-    setHideParameters(
-      prevHideParameters => hide_parameters ?? prevHideParameters,
-    );
-  }, [
-    location.hash,
-    setBackground,
-    setBordered,
-    setFont,
-    setHideDownloadButton,
-    setHideParameters,
-    setTitled,
-  ]);
+  }, [location.hash, setFont]);
 
   return {
     isFullscreen,
@@ -109,18 +83,13 @@ export const useDashboardUrlParams = ({
     setRefreshElapsedHook,
     onRefreshPeriodChange,
     background,
-    setBackground,
     bordered,
-    setBordered,
     titled,
-    setTitled,
-    theme,
-    setTheme,
     font,
     setFont,
-    hideDownloadButton,
-    hideParameters,
-    setHideParameters,
-    setHideDownloadButton,
+    theme,
+    setTheme,
+    hideParameters: hide_parameters,
+    hideDownloadButton: hide_download_button,
   };
 };

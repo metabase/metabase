@@ -1,41 +1,29 @@
-import type { Dispatch, SetStateAction } from "react";
-
 import type { DisplayTheme } from "metabase/public/lib/types";
 
 type EmbedBackground = boolean;
 type EmbedBackgroundControls = {
   background: EmbedBackground;
-  setBackground: Dispatch<SetStateAction<EmbedBackground>>;
 };
 
 type EmbedTitle = boolean;
 type EmbedTitledControls = {
   titled: EmbedTitle;
-  setTitled: Dispatch<SetStateAction<EmbedTitle>>;
 };
 
 type EmbedHideDownloadButton = boolean | null;
 type EmbedHideDownloadButtonControls = {
   hideDownloadButton: EmbedHideDownloadButton;
-  setHideDownloadButton: Dispatch<SetStateAction<EmbedHideDownloadButton>>;
 };
 
 type EmbedHideParameters = string | null;
 export type EmbedHideParametersControls = {
   hideParameters: EmbedHideParameters;
-  setHideParameters: Dispatch<SetStateAction<EmbedHideParameters>>;
 };
 
 export type EmbedFont = string | null;
 type EmbedFontControls = {
   font: EmbedFont;
   setFont: (font: EmbedFont) => void;
-};
-
-type EmbedBordered = boolean;
-type EmbedBorderControls = {
-  bordered: EmbedBordered;
-  setBordered: Dispatch<SetStateAction<EmbedBordered>>;
 };
 
 export type EmbedThemeControls = {
@@ -48,7 +36,7 @@ export type EmbedThemeControls = {
 
 export type EmbedDisplayParams = {
   background: EmbedBackground;
-  bordered: EmbedBordered;
+  bordered: boolean;
   titled: EmbedTitle;
   cardTitled: EmbedTitle;
   hideDownloadButton: EmbedHideDownloadButton;
@@ -59,7 +47,6 @@ export type EmbedDisplayParams = {
 
 export type EmbedDisplayControls = EmbedThemeControls &
   EmbedBackgroundControls &
-  EmbedBorderControls &
   EmbedTitledControls &
   EmbedHideDownloadButtonControls &
   EmbedHideParametersControls &
