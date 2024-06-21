@@ -83,14 +83,17 @@ const Tables = createEntity({
     bulkUpdate: compose(
       withAction(TABLES_BULK_UPDATE),
       withNormalize([TableSchema]),
-    )(
-      updates => async dispatch =>
-        entityCompatibleQuery(
-          updates,
-          dispatch,
-          tableApi.endpoints.updateTableList,
-        ),
-    ),
+    )(updates => async dispatch => {
+      const result = await entityCompatibleQuery(
+        updates,
+        dispatch,
+        tableApi.endpoints.updateTableList,
+      );
+
+      dispatch(Tables.actions.invalidateLists());
+
+      return result;
+    }),
   },
 
   // ACTION CREATORS
