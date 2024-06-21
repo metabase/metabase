@@ -191,7 +191,10 @@ function generateSplits(
 
 function axisCost(extents: Extent[], favorUnsplit = true) {
   const axisExtent = d3.extent(extents.flatMap(e => e));
-  const axisRange = axisExtent[1] - axisExtent[0];
+
+  // TODO: handle cases where members of axisExtent is undefined
+  const axisRange = axisExtent[1]! - axisExtent[0]!;
+
   if (favorUnsplit && extents.length === 0) {
     return SPLIT_AXIS_UNSPLIT_COST;
   } else if (axisRange === 0) {

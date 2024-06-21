@@ -45,6 +45,7 @@ const NUMBER_REGEX = /([\+\-])?[^0-9]*([0-9\., ]+)/;
 
 const DEFAULT_NUMBER_SEPARATORS = ".,";
 
+// TODO: unit test this!
 function roundNumber(n: number, maximumFractionDigits?: number) {
   if (maximumFractionDigits === undefined) {
     return n;
@@ -266,7 +267,7 @@ function formatNumberScientific(
   options: FormatNumberOptionsType,
 ) {
   if (options.maximumFractionDigits) {
-    value = d3.round(value, options.maximumFractionDigits);
+    value = roundNumber(value, options.maximumFractionDigits);
   }
   const exp = replaceNumberSeparators(
     value.toExponential(options.minimumFractionDigits),
