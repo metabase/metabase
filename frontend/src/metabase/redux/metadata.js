@@ -52,11 +52,6 @@ export const updateTable = table => {
   return Tables.actions.update(slimTable);
 };
 
-export const fetchTables = (reload = false) => {
-  deprecated("metabase/redux/metadata fetchTables");
-  return Tables.actions.fetchList(null, { reload });
-};
-
 export { FETCH_TABLE_METADATA } from "metabase/entities/tables";
 export const fetchTableMetadata = (id, reload = false) => {
   deprecated("metabase/redux/metadata fetchTableMetadata");
