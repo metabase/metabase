@@ -24,6 +24,7 @@ export interface PinnedQuestionCardProps {
   databases?: Database[];
   bookmarks?: Bookmark[];
   onCopy: (items: CollectionItem[]) => void;
+  onCopyToAnotherWorkspace: (ids: number[]) => void;
   onMove: (items: CollectionItem[]) => void;
   onCreateBookmark?: (id: string, model: string) => void;
   onDeleteBookmark?: (id: string, model: string) => void;
@@ -35,6 +36,7 @@ const PinnedQuestionCard = ({
   databases,
   bookmarks,
   onCopy,
+  onCopyToAnotherWorkspace,
   onMove,
   onCreateBookmark,
   onDeleteBookmark,
@@ -48,6 +50,7 @@ const PinnedQuestionCard = ({
       databases={databases}
       bookmarks={bookmarks}
       onCopy={onCopy}
+      onCopyToAnotherWorkspace={onCopyToAnotherWorkspace}
       onMove={onMove}
       createBookmark={onCreateBookmark}
       deleteBookmark={onDeleteBookmark}

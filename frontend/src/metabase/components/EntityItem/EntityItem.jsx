@@ -94,6 +94,7 @@ function EntityItemMenu({
   onPin,
   onMove,
   onCopy,
+  onCopyToAnotherWorkspace,
   onArchive,
   onToggleBookmark,
   onTogglePreview,
@@ -152,6 +153,12 @@ function EntityItemMenu({
           action: onCopy,
           event: `${analyticsContext};Entity Item;Copy Item;${item.model}`,
         },
+        onCopyToAnotherWorkspace && {
+          title: t`Copy to another workspace`,
+          icon: "share",
+          action: onCopyToAnotherWorkspace,
+          event: `${analyticsContext};Entity Item;Copy Item to Workspace;${item.model}`,
+        },
         onArchive && {
           title: t`Archive`,
           icon: "archive",
@@ -177,6 +184,7 @@ function EntityItemMenu({
       onPin,
       onMove,
       onCopy,
+      onCopyToAnotherWorkspace,
       onArchive,
       onTogglePreview,
       onToggleBookmark,

@@ -29,6 +29,7 @@ type Props = {
   item: CollectionItem;
   collection: Collection;
   onCopy: (items: CollectionItem[]) => void;
+  onCopyToAnotherWorkspace: (ids: number[]) => void;
   onMove: (items: CollectionItem[]) => void;
 };
 
@@ -49,6 +50,7 @@ function PinnedItemCard({
   item,
   collection,
   onCopy,
+  onCopyToAnotherWorkspace,
   onMove,
 }: Props) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
@@ -83,6 +85,7 @@ function PinnedItemCard({
                 item={item}
                 collection={collection}
                 onCopy={onCopy}
+                onCopyToAnotherWorkspace={onCopyToAnotherWorkspace}
                 onMove={onMove}
               />
             </ActionsContainer>

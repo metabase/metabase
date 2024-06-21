@@ -29,6 +29,7 @@ function BulkActions({
   onCloseModal,
   onMove,
   onCopy,
+  onCopyToAnotherWorkspace,
   isNavbarOpen,
 }) {
   const canMove = selected.every(item => canMoveItem(item, collection));
@@ -44,18 +45,6 @@ function BulkActions({
   const isCopyToWorkspaceEnabled = useSelector(
     state => state.embed.options.enable_copy_to_workspace,
   );
-
-  const onCopyToAnotherWorkspace = () => {
-    const messageData = {
-      pipelines: {
-        type: "DashboardTransfer",
-        payload: {
-          selectedDashboards,
-        },
-      },
-    };
-    window.parent.postMessage(messageData, "*");
-  };
 
   return (
     <>
@@ -110,7 +99,9 @@ function BulkActions({
                       disabled={nonDashboardsSelected.length > 0}
                       medium
                       purple
-                      onClick={onCopyToAnotherWorkspace}
+                      onClick={() =>
+                        onCopyToAnotherWorkspace(selectedDashboards)
+                      }
                     >{t`Copy to another workspace`}</CardButton>
                   </Tooltip>
                 </CardSide>

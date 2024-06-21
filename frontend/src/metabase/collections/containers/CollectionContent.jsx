@@ -193,6 +193,18 @@ function CollectionContent({
     setSelectedAction("copy");
   };
 
+  const handleCopyToAnotherWorkspace = selectedItems => {
+    const messageData = {
+      pipelines: {
+        type: "DashboardTransfer",
+        payload: {
+          selectedItems,
+        },
+      },
+    };
+    window.parent.postMessage(messageData, "*");
+  };
+
   const handleCreateBookmark = () => {
     createBookmark(collectionId, "collection");
   };
@@ -265,6 +277,7 @@ function CollectionContent({
                   collection={collection}
                   onMove={handleMove}
                   onCopy={handleCopy}
+                  onCopyToAnotherWorkspace={handleCopyToAnotherWorkspace}
                   onToggleSelected={toggleItem}
                 />
               </ErrorBoundary>
@@ -347,6 +360,9 @@ function CollectionContent({
                           onMove={handleBulkMove}
                           onCloseModal={handleCloseModal}
                           onCopy={clear}
+                          onCopyToAnotherWorkspace={
+                            handleCopyToAnotherWorkspace
+                          }
                           selectedItems={selectedItems}
                           selectedAction={selectedAction}
                           isNavbarOpen={isNavbarOpen}

@@ -11,6 +11,7 @@ import {
   isPreviewEnabled,
 } from "metabase/collections/utils";
 import EventSandbox from "metabase/components/EventSandbox";
+import { useSelector } from "metabase/lib/redux";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { getSetting } from "metabase/selectors/settings";
 import type Database from "metabase-lib/metadata/Database";
@@ -26,6 +27,7 @@ interface OwnProps {
   databases?: Database[];
   bookmarks?: Bookmark[];
   onCopy: (items: CollectionItem[]) => void;
+  onCopyToAnotherWorkspace: (ids: number[]) => void;
   onMove: (items: CollectionItem[]) => void;
   createBookmark?: (id: string, collection: string) => void;
   deleteBookmark?: (id: string, collection: string) => void;
@@ -69,6 +71,7 @@ function ActionMenu({
   isXrayEnabled,
   isMetabotEnabled,
   onCopy,
+  onCopyToAnotherWorkspace,
   onMove,
   createBookmark,
   deleteBookmark,
@@ -81,6 +84,9 @@ function ActionMenu({
   const canArchive = canArchiveItem(item, collection);
   const canUseMetabot =
     database != null && canUseMetabotOnDatabase(database) && isMetabotEnabled;
+  const isCopyToWorkspaceEnabled = useSelector(
+    state => state.embed.options.enable_copy_to_workspace,
+  );
 
   const handlePin = useCallback(() => {
     item.setPinned?.(!isItemPinned(item));
@@ -89,6 +95,10 @@ function ActionMenu({
   const handleCopy = useCallback(() => {
     onCopy([item]);
   }, [item, onCopy]);
+
+  const handleCopyToAnotherWorkspace = useCallback(() => {
+    onCopyToAnotherWorkspace([item.id]);
+  }, [item, onCopyToAnotherWorkspace]);
 
   const handleMove = useCallback(() => {
     onMove([item]);
@@ -120,6 +130,11 @@ function ActionMenu({
         onPin={canPin ? handlePin : null}
         onMove={canMove ? handleMove : null}
         onCopy={item.copy ? handleCopy : null}
+        onCopyToAnotherWorkspace={
+          canMove && isCopyToWorkspaceEnabled
+            ? handleCopyToAnotherWorkspace
+            : null
+        }
         onArchive={canArchive ? handleArchive : null}
         onToggleBookmark={handleToggleBookmark}
         onTogglePreview={canPreview ? handleTogglePreview : null}

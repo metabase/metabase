@@ -25,6 +25,7 @@ type Props = {
   items: CollectionItem[];
   collection: Collection;
   onCopy: (items: CollectionItem[]) => void;
+  onCopyToAnotherWorkspace: (ids: number[]) => void;
   onMove: (items: CollectionItem[]) => void;
 };
 
@@ -36,6 +37,7 @@ function PinnedItemOverview({
   items,
   collection,
   onCopy,
+  onCopyToAnotherWorkspace,
   onMove,
 }: Props) {
   const sortedItems = _.sortBy(items, item => item.collection_position);
@@ -73,6 +75,7 @@ function PinnedItemOverview({
                         databases={databases}
                         bookmarks={bookmarks}
                         onCopy={onCopy}
+                        onCopyToAnotherWorkspace={onCopyToAnotherWorkspace}
                         onMove={onMove}
                         onCreateBookmark={createBookmark}
                         onDeleteBookmark={deleteBookmark}
@@ -115,6 +118,7 @@ function PinnedItemOverview({
                       item={item}
                       collection={collection}
                       onCopy={onCopy}
+                      onCopyToAnotherWorkspace={onCopyToAnotherWorkspace}
                       onMove={onMove}
                     />
                   </div>
@@ -162,6 +166,7 @@ function PinnedItemOverview({
                       item={item}
                       collection={collection}
                       onCopy={onCopy}
+                      onCopyToAnotherWorkspace={onCopyToAnotherWorkspace}
                       onMove={onMove}
                     />
                   </div>
