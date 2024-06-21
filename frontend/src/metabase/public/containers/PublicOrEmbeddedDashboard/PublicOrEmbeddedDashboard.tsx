@@ -209,6 +209,10 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
       hideParameters,
       navigateToNewCardFromDashboard,
       selectedTabId,
+      setParameterValue,
+      slowCards,
+      dashboardId,
+      cardTitled,
     } = this.props;
 
     const buttons = !isWithinIframe()
@@ -237,6 +241,8 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
         (dc: DashboardCard) => dc.dashboard_tab_id === selectedTabId,
       ).length > 0;
 
+    const hiddenParameterSlugs = this.getHiddenParameterSlugs();
+
     return (
       <EmbedFrame
         name={dashboard && dashboard.name}
@@ -245,8 +251,8 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
         parameters={parameters}
         parameterValues={parameterValues}
         draftParameterValues={draftParameterValues}
-        hiddenParameterSlugs={this.getHiddenParameterSlugs()}
-        setParameterValue={this.props.setParameterValue}
+        hiddenParameterSlugs={hiddenParameterSlugs}
+        setParameterValue={setParameterValue}
         setParameterValueToDefault={setParameterValueToDefault}
         enableParameterRequiredBehavior
         actionButtons={
@@ -255,7 +261,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
         dashboardTabs={
           dashboard?.tabs &&
           dashboard.tabs.length > 1 && (
-            <DashboardTabs dashboardId={this.props.dashboardId} />
+            <DashboardTabs dashboardId={dashboardId} />
           )
         }
         bordered={bordered}
@@ -297,13 +303,13 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
                       : PublicMode
                   }
                   selectedTabId={selectedTabId}
-                  slowCards={this.props.slowCards}
+                  slowCards={slowCards}
                   isEditing={false}
                   isEditingParameter={false}
                   isXray={false}
                   isFullscreen={isFullscreen}
                   isNightMode={isNightMode}
-                  withCardTitle={this.props.cardTitled}
+                  withCardTitle={cardTitled}
                   clickBehaviorSidebarDashcard={null}
                   navigateToNewCardFromDashboard={
                     navigateToNewCardFromDashboard
