@@ -1481,6 +1481,39 @@
                              (param-values-url :card field-filter-uuid
                                                (:field-values param-keys) "bar")))))))))))
 
+(deftest dashboard-field-params-field-names-test
+  (mt/with-temporary-setting-values [enable-public-sharing true]
+    (mt/with-temp
+      [:model/Dashboard     dash      {:parameters [{:name "Category Name"
+                                                     :slug "category_name"
+                                                     :id   "_CATEGORY_NAME_"
+                                                     :type "category"}]
+                                       :public_uuid (str (random-uuid))}
+       :model/Card          card      {:name "Card attached to dashcard"
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :query
+                                                       :query    {:source-table (mt/id :categories)}}
+                                       :type :model}
+       :model/DashboardCard _         {:dashboard_id       (:id dash)
+                                       :card_id            (:id card)
+                                       :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                                             :target       [:dimension (mt/$ids *categories.name)]}]}]
+      (is (=? {:param_fields {(mt/id :categories :name)
+                              {:semantic_type "type/Name",
+                               :table_id (mt/id :categories)
+                               :name "NAME",
+                               :has_field_values "list",
+                               :fk_target_field_id nil,
+                               :dimensions (),
+                               :id (mt/id :categories :name)
+                               :target nil,
+                               :display_name "Name",
+                               :name_field nil,
+                               :base_type "type/Text"}}}
+              (client/client :get 200 (format "public/dashboard/%s" (:public_uuid dash)))))
+      (is (=? {:values #(set/subset? #{["African"] ["BBQ"]} (set %1))}
+              (client/client :get 200 (format "public/dashboard/%s/params/%s/values" (:public_uuid dash) "_CATEGORY_NAME_")))))))
+
 (deftest param-values-ignore-current-user-permissions-test
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
     (mt/with-temp-copy-of-db

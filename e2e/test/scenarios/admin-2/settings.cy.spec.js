@@ -1011,7 +1011,7 @@ describe("scenarios > admin > localization", () => {
 
     cy.wait("@dataset");
 
-    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
 
     // verify that the correct row is displayed
     cy.findByTestId("TableInteractive-root").within(() => {

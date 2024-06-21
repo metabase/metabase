@@ -28,7 +28,7 @@ To fix problems with your Metabase [application database](../installation-and-op
    - Stop your script or application, and [clear any queued queries](#clearing-queued-queries).
    - Recommended: add a timeout to your script, schedule the script or application to run during off-hours, or replicate your database (and point your tools there instead).
 
-\* Available on paid plans.
+\* Available on Pro and Enterprise plans.
 
 ## Resetting a database connection
 

@@ -1,9 +1,17 @@
 import { Route } from "react-router";
+import _ from "underscore";
 
 import { setupEmbedDashboardEndpoints } from "__support__/server-mocks/embed";
-import { renderWithProviders, screen } from "__support__/ui";
 import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
+import type { DashboardCard, DashboardTab } from "metabase-types/api";
+import {
+  createMockCard,
   createMockDashboard,
+  createMockDashboardCard,
   createMockDashboardTab,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
@@ -80,6 +88,16 @@ describe("PublicOrEmbeddedDashboard", () => {
     // should not throw runtime error and render dashboard content
     expect(screen.getByText(DASHBOARD_TITLE)).toBeInTheDocument();
   });
+
+  it("should render empty message for dashboard without cards", async () => {
+    await setup({
+      numberOfTabs: 0,
+    });
+
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.getByText("There's nothing here, yet.")).toBeInTheDocument();
+  });
 });
 
 async function setup({
@@ -87,17 +105,32 @@ async function setup({
   queryString,
   numberOfTabs = 1,
 }: { hash?: string; queryString?: string; numberOfTabs?: number } = {}) {
+  const tabs: DashboardTab[] = [];
+  const dashcards: DashboardCard[] = [];
+
+  _.times(numberOfTabs, i => {
+    const tabId = i + 1;
+
+    tabs.push(createMockDashboardTab({ id: tabId, name: `Tab ${tabId}` }));
+    dashcards.push(
+      createMockDashboardCard({
+        id: i + 1,
+        card_id: i + 1,
+        card: createMockCard({ id: i + 1 }),
+        dashboard_tab_id: tabId,
+      }),
+    );
+  });
+
   const dashboard = createMockDashboard({
     id: 1,
     name: DASHBOARD_TITLE,
     parameters: [],
-    dashcards: [],
-    tabs: Array.from({ length: numberOfTabs }, (_, i) =>
-      createMockDashboardTab({ id: i + 1, name: `Tab ${i + 1}` }),
-    ),
+    dashcards,
+    tabs,
   });
 
-  setupEmbedDashboardEndpoints(MOCK_TOKEN, dashboard);
+  setupEmbedDashboardEndpoints(MOCK_TOKEN, dashboard, dashcards);
 
   renderWithProviders(
     <Route
@@ -113,5 +146,7 @@ async function setup({
     },
   );
 
-  expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
+  if (numberOfTabs > 0) {
+    expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
+  }
 }

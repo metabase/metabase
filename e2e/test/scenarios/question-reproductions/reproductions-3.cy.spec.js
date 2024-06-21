@@ -1,5 +1,6 @@
 import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { NO_COLLECTION_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   visualize,
@@ -27,6 +28,8 @@ import {
   createQuestion,
   saveQuestion,
   echartsContainer,
+  newButton,
+  appBar,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -681,6 +684,95 @@ describe("issue 10493", () => {
       cy.findByText("Quantity").should("exist");
       cy.findByText("25").should("exist");
       cy.findByText("75").should("exist");
+    });
+  });
+});
+
+describe("issue 44071", () => {
+  const questionDetails = {
+    name: "Test",
+    query: { "source-table": ORDERS_ID },
+    collection_id: NO_COLLECTION_PERSONAL_COLLECTION_ID,
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signIn("nocollection");
+    createQuestion(questionDetails);
+  });
+
+  it("should be able to save questions based on another questions without collection access (metabase#44071)", () => {
+    cy.visit("/");
+    newButton("Question").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText(/Personal Collection/).click();
+      cy.findByText(questionDetails.name).click();
+    });
+    getNotebookStep("data")
+      .findByText(questionDetails.name)
+      .should("be.visible");
+    saveQuestion();
+    appBar()
+      .findByText(/Personal Collection/)
+      .should("be.visible");
+  });
+});
+
+describe("issue 44415", () => {
+  beforeEach(() => {
+    restore();
+    cy.signIn("admin");
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          filter: [
+            "and",
+            [
+              "not-null",
+              ["field", ORDERS.DISCOUNT, { "base-type": "type/Float" }],
+            ],
+          ],
+        },
+        visualization_settings: {
+          "table.columns": [
+            {
+              name: "ID",
+              fieldRef: ["field", ORDERS.ID, null],
+              enabled: true,
+            },
+            {
+              name: "DISCOUNT",
+              fieldRef: ["field", ORDERS.DISCOUNT, null],
+              enabled: true,
+            },
+          ],
+        },
+      },
+      { wrapId: true },
+    );
+  });
+
+  it("should be able to edit a table question in the notebook editor before running its query (metabase#44415)", () => {
+    cy.get("@questionId").then(questionId =>
+      cy.visit(`/question/${questionId}/notebook`),
+    );
+
+    getNotebookStep("filter")
+      .findAllByTestId("notebook-cell-item")
+      .first()
+      .icon("close")
+      .click();
+
+    getNotebookStep("filter").should("not.exist");
+
+    visualize();
+
+    cy.findByTestId("qb-filters-panel").should("not.exist");
+    cy.get("@questionId").then(questionId => {
+      cy.url().should("not.include", `/question/${questionId}`);
+      cy.url().should("include", "question#");
     });
   });
 });

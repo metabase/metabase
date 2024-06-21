@@ -181,13 +181,10 @@ export function ViewTitleHeaderRightSide({
         question,
         isActionListVisible,
       }) && (
-        <ViewHeaderIconButtonContainer>
-          <QuestionNotebookButton
-            question={question}
-            isShowingNotebook={isShowingNotebook}
-            setQueryBuilderMode={setQueryBuilderMode}
-          />
-        </ViewHeaderIconButtonContainer>
+        <QuestionNotebookButton
+          isShowingNotebook={isShowingNotebook}
+          setQueryBuilderMode={setQueryBuilderMode}
+        />
       )}
       {ToggleNativeQueryPreview.shouldRender({
         question,
@@ -224,11 +221,7 @@ export function ViewTitleHeaderRightSide({
         />
       )}
       {hasSaveButton && (
-        <Tooltip
-          label={disabledSaveTooltip}
-          disabled={!isSaveDisabled}
-          position="left"
-        >
+        <Tooltip label={disabledSaveTooltip} disabled={canSave} position="left">
           <SaveButton
             data-testid="qb-save-button"
             px="md"

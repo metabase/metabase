@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
+import { UploadInput } from "metabase/components/upload";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -294,13 +295,10 @@ export const QuestionActions = ({
       </Tooltip>
       {canAppend && (
         <>
-          <input
-            type="file"
-            accept="text/csv,text/tab-separated-values"
+          <UploadInput
             id="upload-file-input"
             ref={fileInputRef}
             onChange={handleFileUpload}
-            style={{ display: "none" }}
           />
           <Tooltip tooltip={t`Upload data to this model`}>
             <ViewHeaderIconButtonContainer>

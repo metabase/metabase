@@ -86,7 +86,7 @@ People in groups with Curate access to a collection can pin items in the collect
 
 To pin an item, select the **pin icon** next to the item's name.
 
-Note that collections themselves can't be pinned. If you're running on a [paid plan](https://www.metabase.com/pricing), admins can designate [Offical Collections][offical-collections].
+Note that collections themselves can't be pinned. If you're running on a [Pro or Enterprise plan](https://www.metabase.com/pricing), admins can designate [Official Collections][offical-collections].
 
 ## Special collections
 

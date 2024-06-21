@@ -28,7 +28,7 @@ export const RoundedBox = styled.div<{ twoColumns?: boolean }>`
   border: 2px solid var(--mb-color-border);
 `;
 
-export const TabWrapper = styled.div`
+export const TabWrapper = styled.main`
   display: grid;
   grid-template-rows: auto 1fr;
   width: calc(min(65rem, 100vw));

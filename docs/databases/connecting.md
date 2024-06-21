@@ -21,7 +21,7 @@ The connection settings differ database to database. For the list of connection 
 
 ## Connecting to supported databases
 
-The databases listed below have official drivers maintained by the Metabase team. Customers on [paid plans](https://www.metabase.com/pricing) will get official support.
+The databases listed below have official drivers maintained by the Metabase team. Customers on [Pro and Enterprise](https://www.metabase.com/pricing) will get official support.
 
 - [Amazon Athena](./connections/athena.md)
 - [BigQuery](./connections/bigquery.md) (Google Cloud Platform)

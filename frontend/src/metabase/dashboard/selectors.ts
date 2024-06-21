@@ -1,6 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { createCachedSelector } from "re-reselect";
-import { createSelectorCreator, lruMemoize, weakMapMemoize } from "reselect";
+import { createSelectorCreator, lruMemoize } from "reselect";
 import _ from "underscore";
 
 import {
@@ -55,7 +55,6 @@ function isEditParameterSidebar(
 }
 
 const createDeepEqualSelector = createSelectorCreator(lruMemoize, _.isEqual);
-const createWeakSelector = createSelectorCreator(weakMapMemoize);
 
 export const getDashboardBeforeEditing = (state: State) =>
   state.dashboard.editingDashboard;
@@ -191,7 +190,7 @@ export const getDashboardComplete = createSelector(
   },
 );
 
-export const getDashcardHref = createWeakSelector(
+export const getDashcardHref = createSelector(
   [getMetadata, getDashboardComplete, getParameterValues, getDashCardById],
   (metadata, dashboard, parameterValues, dashcard) => {
     if (
