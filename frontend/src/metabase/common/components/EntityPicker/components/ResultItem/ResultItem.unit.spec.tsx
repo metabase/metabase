@@ -124,6 +124,11 @@ const tableItemWithSchema: ResultItemType = {
   table_schema: "my_schema",
 };
 
+const tableItemWithEmptySchema: ResultItemType = {
+  ...tableItem,
+  table_schema: "",
+};
+
 describe("EntityPicker > ResultItem", () => {
   beforeAll(() => {
     register();
@@ -233,5 +238,21 @@ describe("EntityPicker > ResultItem", () => {
     expect(
       screen.getByText(`in ${tableItem.database_name} (My Schema)`),
     ).toBeInTheDocument();
+  });
+
+  it("should not display empty table schema", () => {
+    setup({
+      item: tableItemWithEmptySchema,
+    });
+    expect(screen.getByText(tableItem.name)).toBeInTheDocument();
+
+    expect(getIcon("table")).toBeInTheDocument();
+    expect(getIcon("database")).toBeInTheDocument();
+    expect(
+      screen.getByText(`in ${tableItem.database_name}`),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(`in ${tableItem.database_name} ()`),
+    ).not.toBeInTheDocument();
   });
 });
