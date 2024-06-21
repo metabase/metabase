@@ -1,9 +1,7 @@
 import { useMemo } from "react";
 
-import { Stack, Select } from "metabase/ui";
+import { Select } from "metabase/ui";
 
-import { SimpleRelativeDatePicker } from "../RelativeDatePicker";
-import { isRelativeValue } from "../RelativeDatePicker/utils";
 import type { DatePickerOperator, DatePickerValue } from "../types";
 
 import { getAvailableOptions, getOptionType, setOptionType } from "./utils";
@@ -35,18 +33,13 @@ export function DateOperatorPicker({
   };
 
   return (
-    <Stack>
-      <Select
-        data={options}
-        value={optionType}
-        onChange={handleChange}
-        style={{
-          flex: 1,
-        }}
-      />
-      {isRelativeValue(value) && (
-        <SimpleRelativeDatePicker value={value} onChange={onChange} />
-      )}
-    </Stack>
+    <Select
+      data={options}
+      value={optionType}
+      onChange={handleChange}
+      style={{
+        flex: 1,
+      }}
+    />
   );
 }

@@ -5,6 +5,8 @@ import { t } from "ttag";
 import { Button, Stack } from "metabase/ui";
 
 import { DateOperatorPicker } from "../DateOperatorPicker";
+import { SimpleRelativeDatePicker } from "../RelativeDatePicker";
+import { isRelativeValue } from "../RelativeDatePicker/utils";
 import { SimpleSpecificDatePicker } from "../SpecificDatePicker";
 import { isSpecificValue } from "../SpecificDatePicker/utils";
 import { DATE_PICKER_OPERATORS } from "../constants";
@@ -36,6 +38,9 @@ export function SimpleDatePicker({
           availableOperators={availableOperators}
           onChange={setValue}
         />
+        {isRelativeValue(value) && (
+          <SimpleRelativeDatePicker value={value} onChange={setValue} />
+        )}
         {isSpecificValue(value) && (
           <SimpleSpecificDatePicker value={value} onChange={setValue} />
         )}
