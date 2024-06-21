@@ -5,13 +5,13 @@ import { Button } from "metabase/ui";
 type FilterFooterProps = {
   canRemoveFilters: boolean;
   onClearFilters: () => void;
-  changed: boolean;
+  isChanged: boolean;
   onApplyFilters: () => void;
 };
 
 export const FilterFooter = ({
   canRemoveFilters,
-  changed,
+  isChanged,
   onApplyFilters,
   onClearFilters,
 }: FilterFooterProps) => (
@@ -26,7 +26,7 @@ export const FilterFooter = ({
     </Button>
     <Button
       variant="filled"
-      disabled={!changed}
+      disabled={!isChanged}
       data-testid="apply-filters"
       onClick={onApplyFilters}
     >

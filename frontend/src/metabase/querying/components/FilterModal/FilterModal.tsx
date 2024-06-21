@@ -96,7 +96,7 @@ export function FilterModal({
           <FilterContent.Footer
             canRemoveFilters={canRemoveFilters}
             onClearFilters={handleReset}
-            changed={isChanged}
+            isChanged={isChanged}
             onApplyFilters={handleSubmit}
           />
         </ModalFooter>

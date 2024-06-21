@@ -26,21 +26,18 @@ export const FilterBody = ({
   searching,
   tab,
   version,
-}: FilterBodyProps) => (
-  <>
-    {groupItems.length > 0 ? (
-      <TabContent
-        query={query}
-        groupItems={groupItems}
-        tab={tab}
-        version={version}
-        isSearching={searching}
-        onChange={onChange}
-        onInput={onInput}
-        onTabChange={onTabChange}
-      />
-    ) : (
-      <FilterEmptyState />
-    )}
-  </>
-);
+}: FilterBodyProps) =>
+  groupItems.length > 0 ? (
+    <TabContent
+      query={query}
+      groupItems={groupItems}
+      tab={tab}
+      version={version}
+      isSearching={searching}
+      onChange={onChange}
+      onInput={onInput}
+      onTabChange={onTabChange}
+    />
+  ) : (
+    <FilterEmptyState />
+  );
