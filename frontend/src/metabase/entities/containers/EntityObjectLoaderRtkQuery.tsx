@@ -61,7 +61,7 @@ export const EntityObjectLoaderRtkQuery = ({
   );
 
   const entityDef: EntityDefinition = useMemo(() => {
-    // dynamic require due to dependency load order issues
+    // dynamic require due to circular dependencies
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const entitiesDefinitions = require("metabase/entities");
     return entitiesDefinitions[entityType];
