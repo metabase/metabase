@@ -53,6 +53,7 @@ import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
+import { Playground } from "./Playground";
 import { BrowseDatabases } from "./browse/components/BrowseDatabases";
 import { BrowseModels } from "./browse/components/BrowseModels";
 import BrowseSchemas from "./browse/components/BrowseSchemas";
@@ -70,6 +71,8 @@ export const getRoutes = store => {
   const applicationName = getApplicationName(store.getState());
   return (
     <Route title={applicationName} component={App}>
+      <Route path="/playground" component={Playground} />
+
       {/* SETUP */}
       <Route
         path="/setup"
