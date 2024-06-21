@@ -7,6 +7,7 @@
 
   CSSBox JavaDoc is here: http://cssbox.sourceforge.net/api/index.html"
   (:require
+   [clojure.string :as str]
    [hiccup.core :refer [html]]
    [metabase.formatter :as formatter]
    [metabase.pulse.render.style :as style]
@@ -43,10 +44,16 @@
     (.addStyleSheet nil (CSSNorm/formsStyleSheet) DOMAnalyzer$Origin/AGENT)
     .getStyleSheets))
 
+(def ^:private non-latin-regex (re-pattern "[^A-Za-z0-9!@#$%^&*()_+\\-=\\[\\]{}|;:'\",.<>?/`~ \\t\\n\\r]+"))
+
+(defn- wrap-non-latin
+  ^String [s]
+  (str/replace s non-latin-regex (fn [match] (str "<span style=\"font-family: sans-serif;\">" match "</span>"))))
+
 (defn- render-to-png
   ^java.awt.image.BufferedImage [^String html width]
   (style/register-fonts-if-needed!)
-  (with-open [is         (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
+  (with-open [is         (ByteArrayInputStream. (.getBytes (wrap-non-latin html) StandardCharsets/UTF_8))
               doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]
     (let [dimension       (Dimension. width 1)
           doc             (.parse (DefaultDOMSource. doc-source))
