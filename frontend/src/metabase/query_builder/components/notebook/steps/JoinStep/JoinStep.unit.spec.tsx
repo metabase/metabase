@@ -64,6 +64,14 @@ function getJoinQueryHelpers(query: Lib.Query) {
     Lib.joinConditionRHSColumns(query, 0, table),
   );
 
+  const defaultStrategy = Lib.availableJoinStrategies(query, 0).find(
+    strategy => Lib.displayInfo(query, 0, strategy).default,
+  );
+
+  if (!defaultStrategy) {
+    throw new Error("No default strategy found");
+  }
+
   const defaultOperator = Lib.joinConditionOperators(query, 0).find(
     operator => Lib.displayInfo(query, 0, operator).default,
   );
@@ -72,14 +80,25 @@ function getJoinQueryHelpers(query: Lib.Query) {
     throw new Error("No default operator found");
   }
 
-  return { table, defaultOperator, findLHSColumn, findRHSColumn };
+  return {
+    table,
+    defaultStrategy,
+    defaultOperator,
+    findLHSColumn,
+    findRHSColumn,
+  };
 }
 
 function getJoinedQuery() {
   const query = createQuery({ metadata });
 
-  const { table, defaultOperator, findLHSColumn, findRHSColumn } =
-    getJoinQueryHelpers(query);
+  const {
+    table,
+    defaultStrategy,
+    defaultOperator,
+    findLHSColumn,
+    findRHSColumn,
+  } = getJoinQueryHelpers(query);
 
   const ordersProductId = findLHSColumn("ORDERS", "PRODUCT_ID");
   const productsId = findRHSColumn("PRODUCTS", "ID");
@@ -93,10 +112,8 @@ function getJoinedQuery() {
     productsId,
   );
 
-  const strategy = Lib.availableJoinStrategies(query, stageIndex)[0];
-
   const join = Lib.withJoinFields(
-    Lib.joinClause(table, [condition], strategy),
+    Lib.joinClause(table, [condition], defaultStrategy),
     "all",
   );
 

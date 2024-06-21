@@ -353,22 +353,6 @@
                        (with-join-conditions-add-alias-to-rhses (lib.join.util/current-join-alias a-join)))]
     (u/assoc-dissoc a-join :conditions (not-empty conditions))))
 
-(mu/defn join-clause :- lib.join.util/PartialJoin
-  "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
-  Saved Question? You should be able to join anything, and this should return a sensible MBQL join map. Uses a left join
-  by default."
-  ([joinable]
-   (-> (join-clause-method joinable)
-       (u/assoc-default :fields :all)))
-
-  ([joinable conditions]
-   (join-clause joinable conditions :left-join))
-
-  ([joinable conditions strategy]
-   (-> (join-clause joinable)
-       (with-join-conditions conditions)
-       (with-join-strategy strategy))))
-
 (mu/defn with-join-fields :- lib.join.util/PartialJoin
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of
   references."
@@ -508,23 +492,6 @@
          joined-thing
          suggested-join-conditions)
 
-(mu/defn join :- ::lib.schema/query
-  "Add a join clause to a `query`."
-  ([query a-join]
-   (join query -1 a-join))
-
-  ([query        :- ::lib.schema/query
-    stage-number :- :int
-    a-join       :- [:or lib.join.util/PartialJoin Joinable]]
-   (let [a-join              (join-clause a-join)
-         suggested-conditions (when (empty? (join-conditions a-join))
-                                (suggested-join-conditions query stage-number (joined-thing query a-join)))
-         a-join              (cond-> a-join
-                               (seq suggested-conditions) (with-join-conditions suggested-conditions))
-         a-join              (add-default-alias query stage-number a-join)]
-     (lib.util/update-query-stage query stage-number update :joins (fn [existing-joins]
-                                                                     (conj (vec existing-joins) a-join))))))
-
 (mu/defn joins :- [:maybe ::lib.schema.join/joins]
   "Get all joins in a specific `stage` of a `query`. If `stage` is unspecified, returns joins in the final stage of the
   query."
@@ -587,6 +554,39 @@
            (comp (filter (partial contains? features))
                  (map raw-join-strategy->strategy-option))
            [:left-join :right-join :inner-join :full-join]))))
+
+(mu/defn join-clause :- lib.join.util/PartialJoin
+  "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
+  Saved Question? You should be able to join anything, and this should return a sensible MBQL join map. Uses a left join
+  by default."
+  ([joinable]
+   (-> (join-clause-method joinable)
+       (u/assoc-default :fields :all)))
+
+  ([joinable conditions]
+   (join-clause joinable conditions :left-join))
+
+  ([joinable conditions strategy]
+   (-> (join-clause joinable)
+       (with-join-conditions conditions)
+       (with-join-strategy strategy))))
+
+(mu/defn join :- ::lib.schema/query
+  "Add a join clause to a `query`."
+  ([query a-join]
+   (join query -1 a-join))
+
+  ([query        :- ::lib.schema/query
+     stage-number :- :int
+     a-join       :- [:or lib.join.util/PartialJoin Joinable]]
+   (let [a-join              (join-clause a-join)
+         suggested-conditions (when (empty? (join-conditions a-join))
+                                (suggested-join-conditions query stage-number (joined-thing query a-join)))
+         a-join              (cond-> a-join
+                               (seq suggested-conditions) (with-join-conditions suggested-conditions))
+         a-join              (add-default-alias query stage-number a-join)]
+     (lib.util/update-query-stage query stage-number update :joins (fn [existing-joins]
+                                                                     (conj (vec existing-joins) a-join))))))
 
 (mu/defn joined-thing :- [:maybe Joinable]
   "Return metadata about the origin of `a-join` using `metadata-providerable` as the source of information."
