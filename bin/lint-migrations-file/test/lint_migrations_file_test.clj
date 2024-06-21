@@ -252,6 +252,28 @@
   (testing "change types with automatic rollback support are allowed"
     (is (= :ok (validate! (mock-change-set :id "v49.2024-01-01T10:30:00" :changes [(mock-add-column-changes)]))))))
 
+(deftest require-precondition-test
+  (testing "certain change types require preConditions"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid change set\."
+         (validate! (mock-change-set
+                     :id "v51.2024-01-01T10:30:00"
+                     :changes [(mock-create-table-changes)])))))
+
+  (testing "nil preConditions is allowed"
+    (is (= :ok
+           (validate! (mock-change-set
+                       :id "v51.2024-01-01T10:30:00"
+                       :changes [(mock-create-table-changes)]
+                       :preConditions nil)))))
+
+  (testing "changeSets prior to v51 are exempt"
+    (is (= :ok
+           (validate! (mock-change-set
+                       :id "v50.2024-01-01T10:30:00"
+                       :changes [(mock-create-table-changes)]))))))
+
 (deftest disallow-deletecascade-in-addcolumn-test
   (testing "addColumn with deleteCascade fails"
     (is (thrown-with-msg?

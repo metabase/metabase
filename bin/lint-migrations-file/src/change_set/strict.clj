@@ -140,12 +140,11 @@
   We don't currently assert on the structure of the preCondition to provide flexibility if there are cases where idempotence is not
   desired."
   [{:keys [id changes] :as change-set}]
-  (let [[change-type _] (ffirst changes)]
-    (or
-     (< (major-version id) 51)
-     (if (change-types-requiring-preconditions change-type)
-       (contains? change-set :preConditions)
-       true))))
+  (or
+   (int? id)
+   (< (major-version id) 51)
+   (some change-types-requiring-preconditions (mapcat keys changes))
+   (contains? change-set :preConditions)))
 
 (defn- disallow-delete-cascade-with-add-column
   "Returns false if addColumn changeSet uses deleteCascade. See Metabase issue #14321"
