@@ -9,7 +9,8 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.util :as mongo.util]
-   [metabase.test.data.interface :as tx])
+   [metabase.test.data.interface :as tx]
+   [toucan2.core :as t2])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
    (com.mongodb.client MongoDatabase)))
@@ -134,3 +135,42 @@
    (merge ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type column-metadata)
           (when (= ag-type :cum-count)
             {:base_type :type/Integer}))))
+
+(defn dbdef->fk-field-infos
+  [dbdef db]
+  (let [table-field-fk (loop [[table-def & table-defs] (:table-definitions dbdef)
+                              result []]
+                         (if (nil? table-def)
+                           result
+                           (recur table-defs
+                                  (into result
+                                        (comp (filter (comp some? :fk))
+                                              (map #(vector (:table-name table-def)
+                                                            (:field-name %)
+                                                            (name (:fk %)))))
+                                        (:field-definitions table-def)))))
+        tables (t2/select :model/Table :db_id (:id db))
+        fields (t2/select :model/Field {:where [:in :table_id (map :id tables)]})
+        table-id->table (m/index-by :id tables)
+        table-name->field-name->field (-> (group-by :table_id fields)
+                                          (update-keys (comp :name table-id->table))
+                                          (update-vals (partial m/index-by :name)))
+        table-name->pk-field (-> (group-by :table_id fields)
+                                 (update-keys (comp :name table-id->table))
+                                 (update-vals (partial some #(when (= (:semantic_type %) :type/PK) %))))]
+    (map (fn [[table-name field-name target-table-name]]
+           {:id (get-in table-name->field-name->field [table-name field-name :id])
+            :fk-target-field-id (get-in table-name->pk-field [target-table-name :id])})
+         table-field-fk)))
+
+(defn- add-foreign-keys!
+  "This is necessary for implicit joins tests to work."
+  [dbdef db]
+  (let [fk-field-infos (dbdef->fk-field-infos dbdef db)]
+    (doseq [{:keys [id fk-target-field-id]} fk-field-infos]
+      (t2/update! :model/Field :id id {:semantic_type :type/FK
+                                       :fk_target_field_id fk-target-field-id}))))
+
+(defmethod tx/post-sync-hook! :mongo
+  [_driver dbdef db]
+  (add-foreign-keys! dbdef db))

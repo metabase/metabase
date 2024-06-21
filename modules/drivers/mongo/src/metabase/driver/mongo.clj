@@ -303,6 +303,14 @@
   [_driver _feature _db]
   true)
 
+;; We say Mongo supports foreign keys so that the front end can use implicit
+;; joins. In reality, Mongo doesn't support foreign keys.
+;; Only define an implementation for `:foreign-keys` if none exists already.
+;; In test extensions we define an alternate implementation, and we don't want
+;; to stomp over that if it was loaded already.
+(when-not (get (methods driver/database-supports?) [:mongo :foreign-keys])
+  (defmethod driver/database-supports? [:mongo :foreign-keys] [_driver _feature _db] true))
+
 (defmethod driver/mbql->native :mongo
   [_ query]
   (mongo.qp/mbql->native query))

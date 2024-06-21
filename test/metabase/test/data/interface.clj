@@ -793,3 +793,13 @@
   ;; Following cyclic dependency by that requiring resolve.
   ((requiring-resolve 'metabase.test.data.impl/resolve-dataset-definition)
    'metabase.test.data.dataset-definitions 'test-data))
+
+(defmulti post-sync-hook!
+  "WIP"
+  {:arglists '([driver db-def db])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod post-sync-hook! ::driver/driver
+  [_driver _db-def _db]
+  nil)
