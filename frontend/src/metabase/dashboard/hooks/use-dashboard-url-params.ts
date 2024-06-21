@@ -61,12 +61,11 @@ export const useDashboardUrlParams = ({
   });
 
   useEffect(() => {
-    const hashOptions = parseHashOptions(
-      location.hash,
-    ) as DashboardUrlHashOptions;
-
-    setFont(hashOptions.font ?? font);
-  }, [font, location.hash, setFont]);
+    const { font } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
+    if (font) {
+      setFont(font);
+    }
+  }, [location.hash, setFont]);
 
   return {
     isFullscreen,
