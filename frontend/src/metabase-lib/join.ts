@@ -117,7 +117,7 @@ export function joinConditionUpdateTemporalBucketing(
   query: Query,
   stageIndex: number,
   condition: JoinCondition,
-  bucket: Bucket,
+  bucket: Bucket | null,
 ): JoinCondition {
   return ML.join_condition_update_temporal_bucketing(
     query,

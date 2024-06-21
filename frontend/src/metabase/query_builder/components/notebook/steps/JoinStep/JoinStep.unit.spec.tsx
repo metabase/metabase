@@ -823,6 +823,35 @@ describe("Notebook Editor > Join Step", () => {
     });
   });
 
+  describe("temporal bucket sync", () => {
+    it("should allow removing temporal bucketing from an existing join condition", async () => {
+      const { getRecentJoin } = setup(
+        createMockNotebookStep({ query: getJoinedQuery() }),
+      );
+
+      await userEvent.click(screen.getByLabelText("Left column"));
+
+      const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
+      await userEvent.click(within(lhsColumnPicker).getByText("by month"));
+      const lhsBucketPicker = await screen.findByTestId("select-list");
+      await userEvent.click(screen.getByText("More…"));
+      await userEvent.click(within(lhsBucketPicker).getByText("Don't bin"));
+
+      await userEvent.click(screen.getByLabelText("Right column"));
+      const rhsColumnPicker = await screen.findByTestId("rhs-column-picker");
+      await userEvent.click(within(rhsColumnPicker).getByText("by month"));
+      const rhsBucketPicker = await screen.findByTestId("select-list");
+      await userEvent.click(screen.getByText("More…"));
+      await userEvent.click(within(rhsBucketPicker).getByText("Don't bin"));
+
+      const { conditions } = getRecentJoin();
+      const [condition] = conditions;
+
+      expect(condition.lhsColumn.longDisplayName).toBe("Created At");
+      expect(condition.rhsColumn.longDisplayName).toBe("Products → Created At");
+    });
+  });
+
   describe("read-only", () => {
     it("shouldn't allow changing the join type", () => {
       setup(createMockNotebookStep({ query: getJoinedQuery() }), {
