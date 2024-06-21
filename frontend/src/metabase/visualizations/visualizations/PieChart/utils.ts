@@ -4,7 +4,7 @@ import _ from "underscore";
 import type { StackedTooltipModel } from "metabase/visualizations/types";
 
 export function getMaxLabelDimension(
-  d3Arc: anyd3.Arc<unknown, d3.DefaultArcObject>,
+  d3Arc: d3.Arc<unknown, d3.DefaultArcObject>,
   slice: d3.DefaultArcObject,
 ) {
   const innerRadius = d3Arc.innerRadius()(slice);
