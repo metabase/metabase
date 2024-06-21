@@ -31,16 +31,15 @@ interface DashCardCardParameterMapperContentProps {
   isNative: boolean;
   isDisabled: boolean;
   isMobile: boolean;
+  isQuestion: boolean;
+  shouldShowAutoConnectHint: boolean;
   dashcard: DashboardCard;
   question: Question | undefined;
   editingParameter: Parameter | null | undefined;
   mappingOptions: ParameterMappingOption[];
-
-  isQuestion: boolean;
   card: Card;
   selectedMappingOption: ParameterMappingOption | undefined;
   target: ParameterTarget | null | undefined;
-  shouldShowAutoConnectHint: boolean;
   layoutHeight: number;
 }
 
@@ -67,16 +66,19 @@ export const DashCardCardParameterMapperContent = ({
   const dispatch = useDispatch();
 
   const headerContent = useMemo(() => {
-    if (layoutHeight > 2) {
-      if (isTemporalUnit) {
-        return t`Connect to`;
-      }
-      if (!isVirtual && !(isNative && isDisabled)) {
-        return t`Column to filter on`;
-      }
-      return t`Variable to map to`;
+    if (layoutHeight <= 2) {
+      return null;
     }
-    return null;
+
+    if (isTemporalUnit) {
+      return t`Connect to`;
+    }
+
+    if (!isVirtual && !(isNative && isDisabled)) {
+      return t`Column to filter on`;
+    }
+
+    return t`Variable to map to`;
   }, [layoutHeight, isTemporalUnit, isVirtual, isNative, isDisabled]);
 
   const handleChangeTarget = useCallback(
