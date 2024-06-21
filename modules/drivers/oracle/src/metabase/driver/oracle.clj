@@ -612,7 +612,7 @@
   [_driver ^ResultSet rs _rsmeta ^Integer i]
   (fn []
     (when-let [^TIMESTAMPTZ t (.getObject rs i TIMESTAMPTZ)]
-      (t/with-offset-same-instant (.offsetDateTimeValue t (rs->conn rs)) (t/zone-offset 0)))))
+      (.offsetDateTimeValue t (rs->conn rs)))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:oracle OracleTypes/TIMESTAMPLTZ]
   [_driver ^ResultSet rs _rsmeta ^Integer i]
