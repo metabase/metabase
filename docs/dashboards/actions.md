@@ -4,7 +4,6 @@ title: Actions on dashboards
 
 # Actions on dashboards
 
-
 ![Dashboard with filter, action button, and detail card view](./images/dashboard-filter-action.png)
 
 To put [actions](../actions/start.md) in action, you can combine them with a [model](../data-modeling/models.md) and a [filter](./filters.md) on a dashboard.
@@ -39,9 +38,9 @@ Many types of actions rely on knowing the entity IDs for the model to determine 
 
 1. Click on the pencil icon to edit the dashboard.
 2. Add an action to the dashboard (if you haven't already).
-2. [Add a filter](./filters.md) to a dashboard, wire it up to any cards that you want to, and click **Done** in the bottom of the sidebar.
-3. Hover over the action button and click on the **gear** icon, and select **Change action**.
-4. Click on the field's dropdown to select where the action should get it's value. Here you can select "Ask the user" or have it automatically populated by a dashboard filter. In this case, we'll select our "ID" filter.
+3. [Add a filter](./filters.md) to a dashboard, wire it up to any cards that you want to, and click **Done** in the bottom of the sidebar.
+4. Hover over the action button and click on the **gear** icon, and select **Change action**.
+5. Click on the field's dropdown to select where the action should get it's value. Here you can select "Ask the user" or have it automatically populated by a dashboard filter. In this case, we'll select our "ID" filter.
 
 ![Wiring up an action button to a dashboard filter](./images/id-value.png)
 
@@ -60,4 +59,3 @@ If you want people outside of your Metabase to use an action, you can create a [
 ## Further reading
 
 - [Actions](../actions/start.md)
-
