@@ -5,7 +5,7 @@ import { findDOMNode } from "react-dom";
 import { connect } from "react-redux";
 import { usePrevious, useMount } from "react-use";
 import type { OnScrollParams } from "react-virtualized";
-import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
+import { Grid, Collection, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -66,6 +66,7 @@ interface PivotTableProps {
   data: DatasetData;
   settings: VisualizationSettings;
   width: number;
+  height: number;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   isNightMode: boolean;
   isDashboard: boolean;
@@ -77,6 +78,7 @@ function PivotTable({
   data,
   settings,
   width,
+  height: heightProp,
   onUpdateVisualizationSettings,
   isNightMode,
   isDashboard,
@@ -410,93 +412,85 @@ function PivotTable({
             <div className={cx(CS.flex, CS.flexFull)}>
               {/* left header */}
               <div style={{ width: leftHeaderWidth }}>
-                <AutoSizer disableWidth>
-                  {({ height }) => (
-                    <Collection
-                      ref={leftHeaderRef}
-                      className={CS.scrollHideAll}
-                      cellCount={leftHeaderItems.length}
-                      cellRenderer={({ index, style, key }) => (
-                        <LeftHeaderCell
-                          key={key}
-                          style={style}
-                          item={leftHeaderItems[index]}
-                          rowIndex={rowIndex}
-                          onUpdateVisualizationSettings={
-                            onUpdateVisualizationSettings
-                          }
-                          settings={settings}
-                          isNightMode={isNightMode}
-                          getCellClickHandler={getCellClickHandler}
-                        />
-                      )}
-                      cellSizeAndPositionGetter={({ index }) =>
-                        leftHeaderCellSizeAndPositionGetter(
-                          leftHeaderItems[index],
-                          leftHeaderWidths ?? [0],
-                          rowIndexes,
-                        )
+                <Collection
+                  ref={leftHeaderRef}
+                  className={CS.scrollHideAll}
+                  cellCount={leftHeaderItems.length}
+                  cellRenderer={({ index, style, key }) => (
+                    <LeftHeaderCell
+                      key={key}
+                      style={style}
+                      item={leftHeaderItems[index]}
+                      rowIndex={rowIndex}
+                      onUpdateVisualizationSettings={
+                        onUpdateVisualizationSettings
                       }
-                      width={leftHeaderWidth}
-                      height={height - scrollBarOffsetSize()}
-                      scrollTop={scrollTop}
-                      onScroll={({ scrollTop }) =>
-                        onScroll({ scrollTop } as OnScrollParams)
-                      }
+                      settings={settings}
+                      isNightMode={isNightMode}
+                      getCellClickHandler={getCellClickHandler}
                     />
                   )}
-                </AutoSizer>
+                  cellSizeAndPositionGetter={({ index }) =>
+                    leftHeaderCellSizeAndPositionGetter(
+                      leftHeaderItems[index],
+                      leftHeaderWidths ?? [0],
+                      rowIndexes,
+                    )
+                  }
+                  width={leftHeaderWidth}
+                  height={heightProp - topHeaderHeight - scrollBarOffsetSize()}
+                  scrollTop={scrollTop}
+                  onScroll={({ scrollTop }) =>
+                    onScroll({ scrollTop } as OnScrollParams)
+                  }
+                />
               </div>
               {/* pivot table body */}
               <div>
-                <AutoSizer disableWidth>
-                  {({ height }) => (
-                    <Grid
-                      width={width - leftHeaderWidth}
-                      height={height}
-                      className={CS.textDark}
-                      rowCount={rowCount}
-                      columnCount={columnCount}
-                      rowHeight={CELL_HEIGHT}
-                      columnWidth={({ index }) => {
-                        const subColumnWidths = getCellWidthsForSection(
-                          valueHeaderWidths,
-                          valueIndexes,
-                          index,
-                        );
-                        return sumArray(subColumnWidths);
-                      }}
-                      estimatedColumnSize={DEFAULT_CELL_WIDTH}
-                      cellRenderer={({
-                        rowIndex,
+                <Grid
+                  width={width - leftHeaderWidth}
+                  height={heightProp - topHeaderHeight}
+                  className={CS.textDark}
+                  rowCount={rowCount}
+                  columnCount={columnCount}
+                  rowHeight={CELL_HEIGHT}
+                  columnWidth={({ index }) => {
+                    const subColumnWidths = getCellWidthsForSection(
+                      valueHeaderWidths,
+                      valueIndexes,
+                      index,
+                    );
+                    return sumArray(subColumnWidths);
+                  }}
+                  estimatedColumnSize={DEFAULT_CELL_WIDTH}
+                  cellRenderer={({
+                    rowIndex,
+                    columnIndex,
+                    key,
+                    style,
+                    isScrolling,
+                  }) => (
+                    <BodyCell
+                      key={key}
+                      style={style}
+                      showTooltip={!isScrolling}
+                      rowSection={getRowSection(columnIndex, rowIndex)}
+                      isNightMode={isNightMode}
+                      getCellClickHandler={getCellClickHandler}
+                      cellWidths={getCellWidthsForSection(
+                        valueHeaderWidths,
+                        valueIndexes,
                         columnIndex,
-                        key,
-                        style,
-                        isScrolling,
-                      }) => (
-                        <BodyCell
-                          key={key}
-                          style={style}
-                          showTooltip={!isScrolling}
-                          rowSection={getRowSection(columnIndex, rowIndex)}
-                          isNightMode={isNightMode}
-                          getCellClickHandler={getCellClickHandler}
-                          cellWidths={getCellWidthsForSection(
-                            valueHeaderWidths,
-                            valueIndexes,
-                            columnIndex,
-                          )}
-                        />
                       )}
-                      onScroll={({ scrollLeft, scrollTop }) =>
-                        onScroll({ scrollLeft, scrollTop } as OnScrollParams)
-                      }
-                      ref={bodyRef}
-                      scrollTop={scrollTop}
-                      scrollLeft={scrollLeft}
                     />
                   )}
-                </AutoSizer>
+                  onScroll={({ scrollLeft, scrollTop }) =>
+                    onScroll({ scrollLeft, scrollTop } as OnScrollParams)
+                  }
+                  ref={bodyRef}
+                  scrollTop={scrollTop}
+                  scrollLeft={scrollLeft}
+                />
               </div>
             </div>
           </div>
