@@ -2016,6 +2016,35 @@
         (is (= #{(format "/block/db/%d/" db-id)}
                (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))))))
 
+(deftest sandboxing-rollback-test
+  (testing "Can we rollback to 49 when sandboxing is configured"
+    (impl/test-migrations ["v50.2024-01-10T03:27:29" "v50.2024-06-20T13:21:30"] [migrate!]
+      (let [db-id         (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "DB"
+                                                                                     :engine     "h2"
+                                                                                     :created_at :%now
+                                                                                     :updated_at :%now
+                                                                                     :details    "{}"}))
+            table-id      (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                                  :schema     "SchemaName"
+                                                                                  :name       "Table"
+                                                                                  :created_at :%now
+                                                                                  :updated_at :%now
+                                                                                  :active     true}))
+            permission-id (t2/insert-returning-pk! (t2/table-name :model/Permissions) {:object "/db/fake-permission/"
+                                                                                       :group_id 1})
+            _             (t2/query-one {:insert-into :sandboxes
+                                         :values      [{:group_id             1
+                                                        :table_id             table-id
+                                                        :attribute_remappings "{\"foo\", 1}"
+                                                        :permission_id        permission-id}]})
+            expected        {:group_id             1
+                             :table_id             table-id
+                             :attribute_remappings "{\"foo\", 1}"}]
+        (migrate!)
+        (is (=? expected (t2/select-one :sandboxes :table_id table-id)))
+        (migrate! :down 49)
+        (is (=? expected (t2/select-one :sandboxes :table_id table-id)))))))
+
 (deftest view-count-test
   (testing "report_card.view_count and report_dashboard.view_count should be populated"
     (impl/test-migrations ["v50.2024-04-25T16:29:31" "v50.2024-04-25T16:29:36"] [migrate!]
