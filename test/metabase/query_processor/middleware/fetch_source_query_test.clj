@@ -10,6 +10,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fetch-source-query
     :as fetch-source-query]
@@ -108,15 +109,15 @@
 (deftest resolve-mbql-queries-test-4
   (testing "respects `enable-nested-queries` server setting"
     (qp.store/with-metadata-provider mock-metadata-provider
-      (mt/with-temp-env-var-value! ["MB_ENABLE_NESTED_QUERIES" "true"]
-        (is (some? (resolve-source-cards
-                    (lib.tu.macros/mbql-query nil
-                      {:source-table "card__1"})))))
+      (is (true? (public-settings/enable-nested-queries)))
+      (is (some? (resolve-source-cards
+                  (lib.tu.macros/mbql-query nil
+                                            {:source-table "card__1"}))))
       (mt/with-temp-env-var-value! ["MB_ENABLE_NESTED_QUERIES" "false"]
+        (is (false? (public-settings/enable-nested-queries)))
         (try (resolve-source-cards
-              (lib.tu.macros/mbql-query nil
-                {:source-table "card__1"}))
-             (is false "Nested queries disabled not honored")
+              (lib.tu.macros/mbql-query nil {:source-table "card__1"}))
+             (is false "Nested queries disabled not honored, lib.tu.macros/mbql-query should have thrown an exception.")
              (catch Exception e
                (is (=? {:type :disabled-feature}
                        (ex-data e)))))))))
