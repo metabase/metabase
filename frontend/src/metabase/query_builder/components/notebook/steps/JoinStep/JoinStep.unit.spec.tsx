@@ -164,7 +164,7 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
 
   function getRecentJoin() {
     const query = getNextQuery();
-    const [join] = Lib.joins(query, 0);
+    const [join] = Lib.joins(query, step.stageIndex);
 
     const strategy = Lib.displayInfo(query, 0, Lib.joinStrategy(join));
     const fields = Lib.joinFields(join);
@@ -172,13 +172,13 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
     const conditions = Lib.joinConditions(join).map(condition => {
       const { operator, lhsColumn, rhsColumn } = Lib.joinConditionParts(
         query,
-        0,
+        step.stageIndex,
         condition,
       );
       return {
-        operator: Lib.displayInfo(query, 0, operator),
-        lhsColumn: Lib.displayInfo(query, 0, lhsColumn),
-        rhsColumn: Lib.displayInfo(query, 0, rhsColumn),
+        operator: Lib.displayInfo(query, step.stageIndex, operator),
+        lhsColumn: Lib.displayInfo(query, step.stageIndex, lhsColumn),
+        rhsColumn: Lib.displayInfo(query, step.stageIndex, rhsColumn),
       };
     });
 
@@ -824,59 +824,135 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   describe("temporal bucket sync", () => {
-    it("should allow removing temporal bucketing from a new join condition", async () => {
-      const { getRecentJoin } = setup(createMockNotebookStep());
-
-      const lhsTableModal = await screen.findByTestId("entity-picker-modal");
-      await userEvent.click(await within(lhsTableModal).findByText("Reviews"));
-
-      const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
-      await userEvent.click(within(lhsColumnPicker).getByText("by month"));
-      const lhsBucketPicker = await screen.findByTestId("select-list");
+    async function selectColumnWithBucket(bucketName: string) {
+      await userEvent.click(screen.getByLabelText("Temporal bucket"));
       await userEvent.click(screen.getByText("More…"));
-      await userEvent.click(within(lhsBucketPicker).getByText("Don't bin"));
+      await userEvent.click(screen.getByText(bucketName));
+    }
 
-      const rhsColumnPicker = await screen.findByTestId("rhs-column-picker");
-      await userEvent.click(within(rhsColumnPicker).getByText("by month"));
-      const rhsBucketPicker = await screen.findByTestId("select-list");
-      await userEvent.click(screen.getByText("More…"));
-      await userEvent.click(within(rhsBucketPicker).getByText("Don't bin"));
+    it.each([
+      {
+        lhsBucketName: "Don't bin",
+        rhsBucketName: "Don't bin",
+        expectedColumnName: "Created At",
+      },
+      {
+        lhsBucketName: "Year",
+        rhsBucketName: "Don't bin",
+        expectedColumnName: "Created At: Year",
+      },
+      {
+        lhsBucketName: "Don't bin",
+        rhsBucketName: "Quarter",
+        expectedColumnName: "Created At: Quarter",
+      },
+      {
+        lhsBucketName: "Year",
+        rhsBucketName: "Month",
+        expectedColumnName: "Created At: Year",
+      },
+    ])(
+      "should set the temporal bucket for all columns in a new join condition equal to the first non-empty temporal bucket of the columns",
+      async ({ lhsBucketName, rhsBucketName, expectedColumnName }) => {
+        const { getRecentJoin } = setup(createMockNotebookStep());
 
-      const { conditions } = getRecentJoin();
-      const [condition] = conditions;
+        const picketModal = await screen.findByTestId("entity-picker-modal");
+        await userEvent.click(await within(picketModal).findByText("Reviews"));
+        await selectColumnWithBucket(lhsBucketName);
+        await selectColumnWithBucket(rhsBucketName);
 
-      expect(condition.lhsColumn.longDisplayName).toBe("Created At");
-      expect(condition.rhsColumn.longDisplayName).toBe(
-        "Reviews - Created At → Created At",
-      );
-    });
+        const { conditions } = getRecentJoin();
+        const [condition] = conditions;
+        expect(condition.lhsColumn.displayName).toBe(expectedColumnName);
+        expect(condition.rhsColumn.displayName).toBe(expectedColumnName);
+      },
+    );
 
-    it("should allow removing temporal bucketing from an existing join condition", async () => {
-      const { getRecentJoin } = setup(
-        createMockNotebookStep({ query: getJoinedQuery() }),
-      );
+    it.each([
+      {
+        oldBucketName: "Don't bin",
+        newLhsBucketName: "Don't bin",
+        newRhsBucketName: undefined,
+        expectedColumnName: "Created At",
+      },
+      {
+        oldBucketName: "Don't bin",
+        newLhsBucketName: undefined,
+        newRhsBucketName: "Don't bin",
+        expectedColumnName: "Created At",
+      },
+      {
+        oldBucketName: "Don't bin",
+        newLhsBucketName: "Year",
+        newRhsBucketName: undefined,
+        expectedColumnName: "Created At: Year",
+      },
+      {
+        oldBucketName: "Don't bin",
+        newLhsBucketName: undefined,
+        newRhsBucketName: "Year",
+        expectedColumnName: "Created At: Year",
+      },
+      {
+        oldBucketName: "Month",
+        newLhsBucketName: "Don't bin",
+        newRhsBucketName: undefined,
+        expectedColumnName: "Created At",
+      },
+      {
+        oldBucketName: "Month",
+        newLhsBucketName: undefined,
+        newRhsBucketName: "Don't bin",
+        expectedColumnName: "Created At",
+      },
+      {
+        oldBucketName: "Month",
+        newLhsBucketName: "Year",
+        newRhsBucketName: undefined,
+        expectedColumnName: "Created At: Year",
+      },
+      {
+        oldBucketName: "Year",
+        newLhsBucketName: undefined,
+        newRhsBucketName: "Month",
+        expectedColumnName: "Created At: Month",
+      },
+      {
+        oldBucketName: "Month",
+        newLhsBucketName: "Year",
+        newRhsBucketName: "Quarter",
+        expectedColumnName: "Created At: Quarter",
+      },
+    ])(
+      "should set the temporal bucket for all columns in an existing join condition to the temporal bucket of the last selected column",
+      async ({
+        oldBucketName,
+        newLhsBucketName,
+        newRhsBucketName,
+        expectedColumnName,
+      }) => {
+        const { getRecentJoin } = setup(createMockNotebookStep());
 
-      await userEvent.click(screen.getByLabelText("Left column"));
+        const picketModal = await screen.findByTestId("entity-picker-modal");
+        await userEvent.click(await within(picketModal).findByText("Reviews"));
+        await selectColumnWithBucket(oldBucketName);
+        await selectColumnWithBucket(oldBucketName);
 
-      const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
-      await userEvent.click(within(lhsColumnPicker).getByText("by month"));
-      const lhsBucketPicker = await screen.findByTestId("select-list");
-      await userEvent.click(screen.getByText("More…"));
-      await userEvent.click(within(lhsBucketPicker).getByText("Don't bin"));
+        if (newLhsBucketName) {
+          await userEvent.click(screen.getByLabelText("Left column"));
+          await selectColumnWithBucket(newLhsBucketName);
+        }
+        if (newRhsBucketName) {
+          await userEvent.click(screen.getByLabelText("Right column"));
+          await selectColumnWithBucket(newRhsBucketName);
+        }
 
-      await userEvent.click(screen.getByLabelText("Right column"));
-      const rhsColumnPicker = await screen.findByTestId("rhs-column-picker");
-      await userEvent.click(within(rhsColumnPicker).getByText("by month"));
-      const rhsBucketPicker = await screen.findByTestId("select-list");
-      await userEvent.click(screen.getByText("More…"));
-      await userEvent.click(within(rhsBucketPicker).getByText("Don't bin"));
-
-      const { conditions } = getRecentJoin();
-      const [condition] = conditions;
-
-      expect(condition.lhsColumn.longDisplayName).toBe("Created At");
-      expect(condition.rhsColumn.longDisplayName).toBe("Products → Created At");
-    });
+        const { conditions } = getRecentJoin();
+        const [condition] = conditions;
+        expect(condition.lhsColumn.displayName).toBe(expectedColumnName);
+        expect(condition.rhsColumn.displayName).toBe(expectedColumnName);
+      },
+    );
   });
 
   describe("read-only", () => {
