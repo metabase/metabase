@@ -108,11 +108,11 @@
 (deftest resolve-mbql-queries-test-4
   (testing "respects `enable-nested-queries` server setting"
     (qp.store/with-metadata-provider mock-metadata-provider
-      (mt/with-temporary-setting-values [enable-nested-queries true]
+      (mt/with-temp-env-var-value! ["MB_ENABLE_NESTED_QUERIES" "true"]
         (is (some? (resolve-source-cards
                     (lib.tu.macros/mbql-query nil
                       {:source-table "card__1"})))))
-      (mt/with-temporary-setting-values [enable-nested-queries false]
+      (mt/with-temp-env-var-value! ["MB_ENABLE_NESTED_QUERIES" "false"]
         (try (resolve-source-cards
               (lib.tu.macros/mbql-query nil
                 {:source-table "card__1"}))
