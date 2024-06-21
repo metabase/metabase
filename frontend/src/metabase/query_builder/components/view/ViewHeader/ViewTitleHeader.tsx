@@ -128,7 +128,7 @@ export function ViewTitleHeader({
     const previousFiltersCount =
       previousQuery && Lib.filters(previousQuery, -1).length;
 
-    if (!!previousFiltersCount && filtersCount > previousFiltersCount) {
+    if (previousFiltersCount != null && filtersCount > previousFiltersCount) {
       expandFilters();
     }
   }, [previousQuestion, question, expandFilters, previousQuery, query]);
