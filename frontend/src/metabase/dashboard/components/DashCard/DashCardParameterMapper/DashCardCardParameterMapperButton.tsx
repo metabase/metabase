@@ -68,14 +68,18 @@ export const DashCardCardParameterMapperButton = ({
           buttonText: null,
           buttonIcon: <KeyIcon name="key" />,
         };
-      } else if (isDisabled && !isVirtual) {
+      }
+
+      if (isDisabled && !isVirtual) {
         return {
           buttonVariant: "disabled",
           buttonTooltip: t`This card doesn't have any fields or parameters that can be mapped to this parameter type.`,
           buttonText: t`No valid fields`,
           buttonIcon: null,
         };
-      } else if (selectedMappingOption) {
+      }
+
+      if (selectedMappingOption) {
         return {
           buttonVariant: "mapped",
           buttonTooltip: null,
@@ -91,7 +95,9 @@ export const DashCardCardParameterMapperButton = ({
             />
           ),
         };
-      } else if (target != null) {
+      }
+
+      if (target != null) {
         return {
           buttonVariant: "invalid",
           buttonText: t`Unknown Field`,
@@ -104,14 +110,14 @@ export const DashCardCardParameterMapperButton = ({
             />
           ),
         };
-      } else {
-        return {
-          buttonVariant: "default",
-          buttonTooltip: null,
-          buttonText: t`Select…`,
-          buttonIcon: <ChevrondownIcon name="chevrondown" />,
-        };
       }
+
+      return {
+        buttonVariant: "default",
+        buttonTooltip: null,
+        buttonText: t`Select…`,
+        buttonIcon: <ChevrondownIcon name="chevrondown" />,
+      };
     }, [
       hasPermissionsToMap,
       isDisabled,
