@@ -97,6 +97,18 @@ describe("Logs", () => {
         expect(screen.getByText(errMsg)).toBeInTheDocument();
       });
     });
+
+    it("should stop polling on unmount", async () => {
+      fetchMock.get("path:/api/util/logs", [log]);
+      const { unmount } = render(<Logs />);
+      await waitFor(() => [screen.getByText(new RegExp(log.process_uuid))]);
+
+      unmount();
+      act(() => {
+        jest.advanceTimersByTime(1100); // wait longer than polling period
+      });
+      expect(utilSpy).toHaveBeenCalledTimes(1); // should not have been called
+    });
   });
 
   describe("log processing", () => {
