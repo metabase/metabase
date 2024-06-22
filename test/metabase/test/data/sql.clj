@@ -144,17 +144,18 @@
 
 (defmulti field-base-type->sql-type
   "Return a native SQL type that should be used for fields of `base-type`.
-   Should be implemented if the driver supports creating columns that when synced, they will have `base-type`."
+   Should be implemented for a `base-type` if the driver supports creating columns that when synced, they will have
+   `base-type`."
   {:arglists '([driver base-type])}
   (fn [driver base-type] [(tx/dispatch-on-driver-with-test-extensions driver) base-type])
   :hierarchy #'driver/hierarchy)
 
-(defn- base-type->sql-type*
-  "Like `field-base-type->sql-type`, but returns nil if there is no sql type for the base type, and uses the global
-   hierarchy to fall back to an ancestor base type if there is no exact match."
+(defn- base-type->sql-type
+  "Like [[field-base-type->sql-type]], but uses the type hierarchy to fall back to an ancestor base type if there is
+   no exact match for the base-type."
   [driver base-type]
   (or
-   (u/ignore-exceptions (field-base-type->sql-type driver base-type))
+   (field-base-type->sql-type driver base-type)
    (some
     (fn [ancestor-type]
       (when-not (= ancestor-type :type/*)
@@ -163,16 +164,6 @@
                      driver base-type ancestor-type)
           sql-type)))
     (ancestors base-type))))
-
-(defn base-type->sql-type
-  "Returns a native SQL type that should be used for fields of `base-type`. Throws an exception if there is no sql
-   type for the base type."
-  [driver base-type]
-  (or (base-type->sql-type* driver base-type)
-      (throw
-       (Exception.
-        (format "No test data type mapping for driver %s for base type %s; add an impl for field-base-type->sql-type."
-                driver base-type)))))
 
 (defmethod tx/supports-base-type? :sql/test-extensions
   [driver base-type]
