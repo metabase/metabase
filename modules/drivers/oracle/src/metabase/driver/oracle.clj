@@ -70,7 +70,10 @@
    [#"LONG"        :type/Text]
    ;; Media types -- http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i121058
    [#"^ORD"        :type/*]
+   [#"INTEGER"     :type/Integer]
+   [#"NUMBER\((\*|\d+),\s*0\)" :type/BigInteger]
    [#"NUMBER"      :type/Decimal]
+   [#"DECIMAL"     :type/Decimal]
    [#"REAL"        :type/Float]
    [#"REF"         :type/*]
    [#"ROWID"       :type/*]

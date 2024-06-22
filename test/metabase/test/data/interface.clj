@@ -402,6 +402,20 @@
 
 (defmethod sorts-nil-first? ::test-extensions [_ _] true)
 
+(defmulti supports-base-type-in-definition?
+  "Whether this driver supports creating a field in a field definition with `base-type`. Note this does not guarantee
+   the field will have the `base-type` when synced."
+  {:arglists '([driver base-type])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti supports-base-type-exactly?
+  "Whether this driver supports columns in the test database that when synced, they will have `base-type`."
+  {:arglists '([driver base-type])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+;; TODO: replace this with supports-base-type?
 (defmulti supports-time-type?
   "Whether this database supports a `TIME` data type or equivalent."
   {:arglists '([driver])}
@@ -410,6 +424,7 @@
 
 (defmethod supports-time-type? ::test-extensions [_driver] true)
 
+;; TODO: replace this with supports-base-type?
 (defmulti supports-timestamptz-type?
   "Whether this database supports a `timestamp with time zone` data type or equivalent."
   {:arglists '([driver])}
