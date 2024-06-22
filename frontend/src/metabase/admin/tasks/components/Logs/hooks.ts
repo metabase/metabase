@@ -1,6 +1,6 @@
 import { useInterval } from "@mantine/hooks";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useMount } from "react-use";
+import { useLifecycles } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -46,15 +46,17 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
 
   // keep track of mounted state to avoid settings state after unmount
   // clear timeout that is polling for logs
-  useMount(() => {
-    isMountedRef.current = true;
-    fetchLogs();
-    pollingInterval.start();
-    return () => {
+  useLifecycles(
+    () => {
+      isMountedRef.current = true;
+      fetchLogs();
+      pollingInterval.start();
+    },
+    () => {
       isMountedRef.current = false;
       pollingInterval.stop();
-    };
-  });
+    },
+  );
 
   return { loaded, error, logs };
 }
