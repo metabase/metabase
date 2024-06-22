@@ -117,8 +117,9 @@
           (= :as x)   (recur (nnext args)
                              (into params (when (map? y)
                                             (let [qp (:query-params (set/map-invert y))]
-                                              ;; {c :count :keys [a b}} ; => [count a b]
-                                              (flatten (vals qp))))))
+                                              (when (map? qp)
+                                                ;; {c :count :keys [a b}} ; => [count a b]
+                                                (flatten (vals qp)))))))
           (symbol? x) (recur (next args)
                              (conj params x)))))))
 
