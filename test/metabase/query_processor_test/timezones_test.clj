@@ -248,7 +248,7 @@
       (for [i (range 366)]
         [(u.date/add start-date :day i)])]]))
 
-(defmethod driver/database-supports? [::driver ::extract-week-of-year-us]
+(defmethod driver/database-supports? [::driver/driver ::extract-week-of-year-us]
   [_driver _feature _database]
   true)
 
