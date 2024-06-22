@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -24,6 +23,7 @@
   ;; should be checking [[mt/supports-time-type?]] instead.
   #{:athena
     :bigquery-cloud-sdk
+    :oracle
     :redshift
     :sparksql
     :vertica})
@@ -194,7 +194,6 @@
 
 ;; Make sure TIME values are handled consistently (#10366)
 (defn- attempts []
-  ;; Actual value: "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"
   (zipmap
    [:date :time :datetime :time_ltz :time_tz :datetime_ltz :datetime_tz :datetime_tz_id]
    (mt/first-row
@@ -203,17 +202,6 @@
          {:query      {:fields [$date $time $datetime $time_ltz $time_tz $datetime_ltz $datetime_tz $datetime_tz_id]
                        :filter [:= $id 1]}
           :middleware {:format-rows? false}})))))
-
-(defn- dt-attempts []
-  ;; Actual value: "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"
-  (zipmap
-   [:date :datetime :datetime_ltz :datetime_tz :datetime_tz_id]
-   (mt/first-row
-    (qp/process-query
-     (mt/query attempts
-               {:query      {:fields [$date $datetime $datetime_ltz $datetime_tz $datetime_tz_id]
-                             :filter [:= $id 1]}
-                :middleware {:format-rows? false}})))))
 
 (defn- driver-distinguishes-between-base-types?
   "True if the current distinguishes between two base types when loading data in test datasets.
@@ -242,25 +230,6 @@
    (when (supports-datetime-with-zone-id?)
      {:datetime_tz_id (t/zoned-date-time "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]")})))
 
-(defmethod driver/database-supports? [::driver/driver ::datetime-with-tz] [_driver _feature _database] true)
-(defmethod driver/database-supports? [::driver/driver ::datetime-with-local-tz] [_driver _feature _database] true)
-;; WIP: filter out drivers that don't support these
-
-(deftest sql-datetime-timezone-handling-test
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql)
-                           (mt/normal-drivers-with-feature :set-timezone))
-    (mt/dataset dt-attempted-murders
-      (doseq [timezone ["UTC" #_#_"US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
-        (mt/with-temporary-setting-values [report-timezone timezone]
-          (let [expected        {:datetime_ltz (t/offset-date-time #t "2019-11-01T00:23:18.331-07:00" "UTC")
-                                 :datetime_tz  (t/offset-date-time #t "2019-11-01T00:23:18.331-07:00" "UTC")}
-                supported-type? {:datetime_tz  (driver.u/supports? driver/*driver* ::datetime-with-tz (mt/db))
-                                 :datetime_ltz (driver.u/supports? driver/*driver* ::datetime-with-local-tz (mt/db))}
-                actual          (select-keys (dt-attempts) (keys expected))
-                keep-supported-types #(m/filter-keys supported-type? %)]
-            (is (= (keep-supported-types expected)
-                   (keep-supported-types actual)))))))))
-
 (deftest sql-time-timezone-handling-test
   ;; Actual value : "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"
   ;; Oracle doesn't have a time type
@@ -279,7 +248,7 @@
       (for [i (range 366)]
         [(u.date/add start-date :day i)])]]))
 
-(defmethod driver/database-supports? [::driver ::extract-week-of-year-us]
+(defmethod driver/database-supports? [:driver ::extract-week-of-year-us]
   [_driver _feature _database]
   true)
 
