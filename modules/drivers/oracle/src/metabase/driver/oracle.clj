@@ -49,44 +49,44 @@
   [_ native-form]
   (sql.u/format-sql-and-fix-params :plsql native-form))
 
-(def ^:private database-type-pattern->base-type
-  [;; Any types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107578
-   [#"ANYDATA"     :type/*]  ; Instance of a given type with data plus a description of the type (?)
-   [#"ANYTYPE"     :type/*]  ; Can be any named SQL type or an unnamed transient type
-   [#"ARRAY"       :type/*]
-   [#"BFILE"       :type/*]
-   [#"BLOB"        :type/*]
-   [#"RAW"         :type/*]
-   [#"CHAR"        :type/Text]
-   [#"CLOB"        :type/Text]
-   [#"DATE"        :type/Date]
-   [#"DOUBLE"      :type/Float]
-   ;; Expression filter type
-   [#"^EXPRESSION" :type/*]
-   [#"FLOAT"       :type/Float]
-   ;; Does this make sense?
-   [#"INTERVAL"    :type/DateTime]
-   [#"LONG RAW"    :type/*]
-   [#"LONG"        :type/Text]
-   ;; Media types -- http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i121058
-   [#"^ORD"        :type/*]
-   [#"NUMBER"      :type/Decimal]
-   [#"REAL"        :type/Float]
-   [#"REF"         :type/*]
-   [#"ROWID"       :type/*]
-   ;; Spatial types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107588
-   [#"^SDO_"       :type/*]
-   [#"STRUCT"      :type/*]
-   [#"TIMESTAMP(\(\d\))? WITH TIME ZONE"       :type/DateTimeWithTZ]
-   [#"TIMESTAMP(\(\d\))? WITH LOCAL TIME ZONE" :type/DateTimeWithLocalTZ]
-   [#"TIMESTAMP"   :type/DateTime]
-   [#"URI"         :type/Text]
-   [#"XML"         :type/*]])
+(def ^:private database-type->base-type
+  (sql-jdbc.sync/pattern-based-database-type->base-type
+   [;; Any types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107578
+    [#"ANYDATA"     :type/*]  ; Instance of a given type with data plus a description of the type (?)
+    [#"ANYTYPE"     :type/*]  ; Can be any named SQL type or an unnamed transient type
+    [#"ARRAY"       :type/*]
+    [#"BFILE"       :type/*]
+    [#"BLOB"        :type/*]
+    [#"RAW"         :type/*]
+    [#"CHAR"        :type/Text]
+    [#"CLOB"        :type/Text]
+    [#"DATE"        :type/Date]
+    [#"DOUBLE"      :type/Float]
+    ;; Expression filter type
+    [#"^EXPRESSION" :type/*]
+    [#"FLOAT"       :type/Float]
+    ;; Does this make sense?
+    [#"INTERVAL"    :type/DateTime]
+    [#"LONG RAW"    :type/*]
+    [#"LONG"        :type/Text]
+    ;; Media types -- http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i121058
+    [#"^ORD"        :type/*]
+    [#"NUMBER"      :type/Decimal]
+    [#"REAL"        :type/Float]
+    [#"REF"         :type/*]
+    [#"ROWID"       :type/*]
+    ;; Spatial types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107588
+    [#"^SDO_"       :type/*]
+    [#"STRUCT"      :type/*]
+    [#"TIMESTAMP(\(\d\))? WITH TIME ZONE"       :type/DateTimeWithTZ]
+    [#"TIMESTAMP(\(\d\))? WITH LOCAL TIME ZONE" :type/DateTimeWithLocalTZ]
+    [#"TIMESTAMP"   :type/DateTime]
+    [#"URI"         :type/Text]
+    [#"XML"         :type/*]]))
 
 (defmethod sql-jdbc.sync/database-type->base-type :oracle
-  [_ database-type]
-  (let [database-type->base-type (sql-jdbc.sync/pattern-based-database-type->base-type database-type-pattern->base-type)]
-    (database-type->base-type database-type)))
+  [_ column-type]
+  (database-type->base-type column-type))
 
 (defn- non-ssl-spec [_details spec host port sid service-name]
   (assoc spec :subname (str "@" host
