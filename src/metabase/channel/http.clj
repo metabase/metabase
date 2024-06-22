@@ -62,6 +62,10 @@
                     :content-type :json}
                    request)))
 
+;; ------------------------------------------------------------------------------------------------;;
+;;                                           Alerts                                                ;;
+;; ------------------------------------------------------------------------------------------------;;
+
 (defn- qp-result->raw-data
   [qp-result]
   (let [data (:data qp-result)]
@@ -85,13 +89,3 @@
             {:url    (channel-http-url)
              :method (channel-http-request-method)
              :body   (json/generate-string request-body)})]))
-
-
-(comment
- (channel-http-url! "https://hooks.zapier.com/hooks/catch/4226479/2ov5qsf/")
- (channel-http-request-method! :post)
- (channel-http-auth-method! :none)
- #_(channel/send! :channel/http {:method :get
-                                 :url    "https://enhe8nkh8q3zi.x.pipedream.net"
-                                 :query-params {:x 1}
-                                 :headers {:x-metabase-channel true}}))
