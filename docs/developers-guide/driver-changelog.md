@@ -54,6 +54,11 @@ title: Driver interface changelog
   Honey SQL version) has been removed; replace all usages with the two-arity version. Honey SQL 2 has been the only
   supported version since Metabase 0.49.0.
 
+- The `:skip-drop-db?` option sometimes passed to methods for loading and destroying test data is no longer passed,
+  you can remove code that checks for it. Test data code is now better about avoiding unneeded/redundant calls to
+  `metabase.test.data.interface/create-db!`, so test data loading code should not need to call `DROP DATABASE IF
+  EXISTS` before loading test data.
+
 ## Metabase 0.50.0
 
 - The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to

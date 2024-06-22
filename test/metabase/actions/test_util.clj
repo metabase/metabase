@@ -19,6 +19,7 @@
    [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.random :as u.random]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -85,14 +86,17 @@
 (defn do-with-dataset-definition
   "Impl for [[with-temp-test-data]] and [[with-actions-test-data]] macros."
   [dataset-definition thunk]
-  (let [db (atom nil)]
+  ;; use a unique DB name each time so this is thread-safe
+  (let [db                 (atom nil)
+        dataset-definition (tx/get-dataset-definition dataset-definition)
+        dataset-definition (update dataset-definition :database-name #(str % "-" (u.random/random-name)))]
     (try
       (data/dataset dataset-definition
         (reset! db (data/db))
         (thunk))
       (finally
         (when-let [{driver :engine, db-id :id} @db]
-          (tx/destroy-db! driver (tx/get-dataset-definition dataset-definition))
+          (tx/destroy-db! driver dataset-definition)
           (t2/delete! Database :id db-id))))))
 
 (defmacro with-actions-test-data
@@ -114,7 +118,7 @@
       ...)"
   {:style/indent :defn}
   [table-definitions & body]
-  `(do-with-dataset-definition (apply tx/dataset-definition ~(str (gensym)) ~table-definitions) (fn [] ~@body)))
+  `(do-with-dataset-definition (apply tx/dataset-definition "temp-test-data" ~table-definitions) (fn [] ~@body)))
 
 (defmacro with-empty-db
   "Sets the current dataset to a freshly created db that gets destroyed at the conclusion of `body`.
@@ -123,7 +127,7 @@
    reuse a single database for all tests."
   {:style/indent :defn}
   [& body]
-  `(do-with-dataset-definition (tx/dataset-definition ~(str (gensym))) (fn [] ~@body)))
+  `(do-with-dataset-definition (tx/dataset-definition "empty-test-db") (fn [] ~@body)))
 
 (defn- delete-categories-1-query []
   (sql.qp/format-honeysql

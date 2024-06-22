@@ -139,3 +139,21 @@
   (apply sql.tx/standard-standalone-table-comment-sql args))
 
 (defmethod sql.tx/session-schema :h2 [_driver] "PUBLIC")
+
+;;; Make sure the misc one-off test drivers based on H2 aren't trying to reload or destroy the actual H2 data. The need
+;;; to implement these methods themselves and no-op
+(defmethod tx/create-db! :h2
+  [driver dbdef & options]
+  (when (= (:database-name dbdef) "test-data")
+    (assert (= driver :h2)
+            (format "Driver %s is attempting to use H2's implementation of %s, this will stomp on the H2 test data!"
+                    driver `tx/create-db!)))
+  (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver dbdef options))
+
+(defmethod tx/destroy-db! :h2
+  [driver dbdef]
+  (when (= (:database-name dbdef) "test-data")
+    (assert (= driver :h2)
+            (format "Driver %s is attempting to use H2's implementation of %s, this will stomp on the H2 test data!"
+                    driver `tx/destroy-db!)))
+  ((get-method tx/destroy-db! :sql-jdbc/test-extensions) driver dbdef))

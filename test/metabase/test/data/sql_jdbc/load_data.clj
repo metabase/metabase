@@ -206,12 +206,10 @@
   (delay (edn/read-string (slurp "test_resources/load-durations.edn"))))
 
 (defn create-db!
-  "Default implementation of `create-db!` for SQL drivers."
-  {:arglists '([driver dbdef & {:keys [skip-drop-db?]}])}
+  "Default implementation of [[metabase.test.data.interface/create-db!]] for SQL drivers. Loads test data into a data
+  warehouse (creates tables/columns and inserts rows)."
+  {:arglists '([driver dbdef & {:as _options}])}
   [driver {:keys [table-definitions] :as dbdef} & options]
-  ;; first execute statements to drop the DB if needed (this will do nothing if `skip-drop-db?` is true)
-  (doseq [statement (apply ddl/drop-db-ddl-statements driver dbdef options)]
-    (execute/execute-sql! driver :server dbdef statement))
   ;; now execute statements to create the DB
   (doseq [statement (ddl/create-db-ddl-statements driver dbdef)]
     (execute/execute-sql! driver :server dbdef statement))

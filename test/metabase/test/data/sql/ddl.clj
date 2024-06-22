@@ -13,19 +13,18 @@
 (defmulti drop-db-ddl-statements
   "Return a sequence of DDL statements for dropping a DB using the multimethods in the SQL test extensons namespace, if
   applicable."
-  {:arglists '([driver dbdef & {:keys [skip-drop-db?]}])}
+  {:arglists '([driver dbdef & {:as _options}])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
 (defmethod drop-db-ddl-statements :sql/test-extensions
-  [driver dbdef & {:keys [skip-drop-db?]}]
-  (when-not skip-drop-db?
-    (try
-      [(sql.tx/drop-db-if-exists-sql driver dbdef)]
-      (catch Throwable e
-        (throw (ex-info "Error generating DDL statements for dropping database"
-                        {:driver driver}
-                        e))))))
+  [driver dbdef & {:as _options}]
+  (try
+    [(sql.tx/drop-db-if-exists-sql driver dbdef)]
+    (catch Throwable e
+      (throw (ex-info "Error generating DDL statements for dropping database"
+                      {:driver driver}
+                      e)))))
 
 (defn create-db-ddl-statements
   "DDL statements to create the DB itself (does not include statements to drop the DB if it already exists).

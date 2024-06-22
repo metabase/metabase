@@ -388,7 +388,7 @@
         (let [max-bytes 50]
           (with-redefs [; redef this because the UNIX filename limit is 255 bytes, so we can't test it in CI
                         upload/max-bytes (constantly max-bytes)]
-            (doseq [c ["a" "出"]]
+            (doseq [^String c ["a" "出"]]
               (let [long-csv-file-prefix (apply str (repeat (inc max-bytes) c))
                     char-size            (count (.getBytes c "UTF-8"))]
                 (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix long-csv-file-prefix))]

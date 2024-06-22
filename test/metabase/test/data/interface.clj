@@ -359,8 +359,7 @@
   and load the appropriate data. (This refers to creating the actual *DBMS* database itself, *not* a Metabase
   `Database` object.)
 
-  Optional `options` as third param. Currently supported options include `skip-drop-db?`. If unspecified,
-  `skip-drop-db?` should default to `false`.
+  Optional key-value parameter `options`. Not currently used.
 
   This method should drop existing databases with the same name if applicable, unless the `skip-drop-db?` arg is
   truthy. This is to work around a scenario where the Postgres driver terminates the connection before dropping the DB
@@ -368,7 +367,7 @@
 
   This method is not expected to return anything; use `dbdef->connection-details` to get connection details for this
   database after you create it."
-  {:arglists '([driver database-definition & {:keys [skip-drop-db?]}])}
+  {:arglists '([driver database-definition & {:as _options}])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 

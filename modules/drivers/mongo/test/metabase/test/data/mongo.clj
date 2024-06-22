@@ -61,9 +61,7 @@
   false)
 
 (defmethod tx/create-db! :mongo
-  [driver {:keys [table-definitions], :as dbdef} & {:keys [skip-drop-db?], :or {skip-drop-db? false}}]
-  (when-not skip-drop-db?
-    (destroy-db! driver dbdef))
+  [driver {:keys [table-definitions], :as dbdef} & _options]
   (mongo.connection/with-mongo-database [^MongoDatabase db (tx/dbdef->connection-details driver :db dbdef)]
     (doseq [{:keys [field-definitions table-name rows]} table-definitions]
       (doseq [{:keys [field-name indexed?]} field-definitions]

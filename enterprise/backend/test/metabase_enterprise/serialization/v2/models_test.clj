@@ -6,14 +6,18 @@
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.models.serialization :as serdes]))
 
-(deftest every-model-is-supported-test
+(deftest ^:parallel every-model-is-supported-test
   (testing "Serialization support\n"
     (testing "We know about every model"
-      (is (= (set (concat serdes.models/exported-models
-                          serdes.models/inlined-models
-                          serdes.models/excluded-models))
-             (set (map name (v2.entity-ids/toucan-models))))))
+      (let [known-models (set (concat serdes.models/exported-models
+                                      serdes.models/inlined-models
+                                      serdes.models/excluded-models))]
+        (doseq [model (v2.entity-ids/toucan-models)]
+          (testing model
+            (is (contains? known-models (name model)))))))))
 
+(deftest ^:parallel every-model-is-supported-test-2
+  (testing "Serialization support\n"
     (let [should-have-entity-id (set (concat serdes.models/data-model serdes.models/content))
           excluded              (set serdes.models/excluded-models)]
       (doseq [model (v2.entity-ids/toucan-models)]

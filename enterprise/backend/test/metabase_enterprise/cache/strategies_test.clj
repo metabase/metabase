@@ -13,17 +13,20 @@
 (comment
   strategies/keep-me)
 
+(defn- caching-strategies-test-query []
+  (mt/mbql-query venues {:order-by [[:asc $id]] :limit 5}))
+
+(defn- caching-strategies-test-results [input]
+  {:cache/details (if input
+                    {:cached true, :updated_at input, :hash some?}
+                    {:stored true, :hash some?})
+   :row_count     5
+   :status        :completed})
+
 (deftest caching-strategies
   (mt/with-empty-h2-app-db
     (mt/with-premium-features #{:cache-granular-controls}
-
-      (let [query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 5})
-            mkres (fn [input]
-                    {:cache/details (if input
-                                      {:cached true, :updated_at input, :hash some?}
-                                      {:stored true, :hash some?})
-                     :row_count     5
-                     :status        :completed})]
+      (let [query (caching-strategies-test-query)]
         (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
           (testing "strategy = ttl"
             (let [query (assoc query :cache-strategy {:type             :ttl
@@ -32,19 +35,23 @@
                                                       :avg-execution-ms 500})]
               (testing "Results are stored and available immediately"
                 (mt/with-clock #t "2024-02-13T10:00:00Z"
-                  (is (=? (mkres nil)
+                  (is (=? (caching-strategies-test-results nil)
                           (-> (qp/process-query query) (dissoc :data))))
-                  (is (=? (mkres #t "2024-02-13T10:00:00Z")
+                  (is (=? (caching-strategies-test-results #t "2024-02-13T10:00:00Z")
                           (-> (qp/process-query query) (dissoc :data))))))
               (testing "4 seconds past that results are still there - 10 * 500 = 5 seconds"
                 (mt/with-clock #t "2024-02-13T10:00:04Z"
-                  (is (=? (mkres #t "2024-02-13T10:00:00Z")
+                  (is (=? (caching-strategies-test-results #t "2024-02-13T10:00:00Z")
                           (-> (qp/process-query query) (dissoc :data))))))
               (testing "6 seconds later results are unavailable"
                 (mt/with-clock #t "2024-02-13T10:00:06Z"
-                  (is (=? (mkres nil)
-                          (-> (qp/process-query query) (dissoc :data)))))))))
+                  (is (=? (caching-strategies-test-results nil)
+                          (-> (qp/process-query query) (dissoc :data)))))))))))))
 
+(deftest caching-strategies-2
+  (mt/with-empty-h2-app-db
+    (mt/with-premium-features #{:cache-granular-controls}
+      (let [query (caching-strategies-test-query)]
         (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
           (testing "strategy = duration"
             (let [query (assoc query :cache-strategy {:type            :duration
@@ -53,17 +60,21 @@
                                                       :min-duration-ms 0})]
               (testing "Results are stored and available immediately"
                 (mt/with-clock #t "2024-02-13T10:00:00Z"
-                  (is (=? (mkres nil)
+                  (is (=? (caching-strategies-test-results nil)
                           (-> (qp/process-query query) (dissoc :data))))
-                  (is (=? (mkres #t "2024-02-13T10:00:00Z")
+                  (is (=? (caching-strategies-test-results #t "2024-02-13T10:00:00Z")
                           (-> (qp/process-query query) (dissoc :data)))))
                 (mt/with-clock #t "2024-02-13T10:00:59Z"
-                  (is (=? (mkres #t "2024-02-13T10:00:00Z")
+                  (is (=? (caching-strategies-test-results #t "2024-02-13T10:00:00Z")
                           (-> (qp/process-query query) (dissoc :data)))))
                 (mt/with-clock #t "2024-02-13T10:01:01Z"
-                  (is (=? (mkres nil)
-                          (-> (qp/process-query query) (dissoc :data)))))))))
+                  (is (=? (caching-strategies-test-results nil)
+                          (-> (qp/process-query query) (dissoc :data)))))))))))))
 
+(deftest caching-strategies-3
+  (mt/with-empty-h2-app-db
+    (mt/with-premium-features #{:cache-granular-controls}
+      (let [query (caching-strategies-test-query)]
         (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
           (testing "strategy = schedule"
             (let [query (assoc query :cache-strategy {:type           :schedule
@@ -71,20 +82,24 @@
                                                       :invalidated-at (t/offset-date-time #t "2024-02-13T10:00:00Z")})]
               (testing "Results are stored and available immediately"
                 (mt/with-clock #t "2024-02-13T10:01:00Z"
-                  (is (=? (mkres nil)
+                  (is (=? (caching-strategies-test-results nil)
                           (-> (qp/process-query query) (dissoc :data))))
-                  (is (=? (mkres #t "2024-02-13T10:01:00Z")
+                  (is (=? (caching-strategies-test-results #t "2024-02-13T10:01:00Z")
                           (-> (qp/process-query query) (dissoc :data))))))
               (let [query (assoc-in query [:cache-strategy :invalidated-at] (t/offset-date-time #t "2024-02-13T10:02:00Z"))]
                 (testing "Cache is invalidated when schedule ran after the query"
                   (mt/with-clock #t "2024-02-13T10:03:00Z"
-                    (is (=? (mkres nil)
+                    (is (=? (caching-strategies-test-results nil)
                             (-> (qp/process-query query) (dissoc :data))))))
                 (testing "schedule did not run - cache is still intact"
                   (mt/with-clock #t "2024-02-13T10:08:00Z"
-                    (is (=? (mkres #t "2024-02-13T10:03:00Z")
-                            (-> (qp/process-query query) (dissoc :data))))))))))
+                    (is (=? (caching-strategies-test-results #t "2024-02-13T10:03:00Z")
+                            (-> (qp/process-query query) (dissoc :data))))))))))))))
 
+(deftest caching-strategies-4
+  (mt/with-empty-h2-app-db
+    (mt/with-premium-features #{:cache-granular-controls}
+      (let [query (caching-strategies-test-query)]
         (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
           (testing "strategy = query"
             (let [query (assoc query :cache-strategy {:type           :query
@@ -94,18 +109,18 @@
                                                       :invalidated-at (t/offset-date-time #t "2024-02-13T11:00:00Z")})]
               (testing "Results are stored and available immediately"
                 (mt/with-clock #t "2024-02-13T11:01:00Z"
-                  (is (=? (mkres nil)
+                  (is (=? (caching-strategies-test-results nil)
                           (-> (qp/process-query query) (dissoc :data))))
-                  (is (=? (mkres #t "2024-02-13T11:01:00Z")
+                  (is (=? (caching-strategies-test-results #t "2024-02-13T11:01:00Z")
                           (-> (qp/process-query query) (dissoc :data))))))
               (let [query (assoc-in query [:cache-strategy :invalidated-at] (t/offset-date-time #t "2024-02-13T11:02:00Z"))]
                 (testing "Cache is invalidated when schedule ran after the query"
                   (mt/with-clock #t "2024-02-13T11:03:00Z"
-                    (is (=? (mkres nil)
+                    (is (=? (caching-strategies-test-results nil)
                             (-> (qp/process-query query) (dissoc :data))))))
                 (testing "schedule did not run - cache is still intact"
                   (mt/with-clock #t "2024-02-13T11:08:00Z"
-                    (is (=? (mkres #t "2024-02-13T11:03:00Z")
+                    (is (=? (caching-strategies-test-results #t "2024-02-13T11:03:00Z")
                             (-> (qp/process-query query) (dissoc :data))))))))))))))
 
 (deftest e2e-advanced-caching
