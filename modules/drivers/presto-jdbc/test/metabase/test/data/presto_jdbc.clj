@@ -50,8 +50,6 @@
                              :type/Date                   "DATE"
                              :type/DateTime               "TIMESTAMP"
                              :type/DateTimeWithTZ         "TIMESTAMP WITH TIME ZONE"
-                             :type/DateTimeWithZoneID     "TIMESTAMP WITH TIME ZONE"
-                             :type/DateTimeWithZoneOffset "TIMESTAMP WITH TIME ZONE"
                              :type/Decimal                "DECIMAL"
                              :type/Float                  "DOUBLE"
                              :type/Integer                "INTEGER"

@@ -37,10 +37,6 @@
                                    :type/Text       "STRING"}]
   (defmethod sql.tx/field-base-type->sql-type [:sparksql base-type] [_ _] database-type))
 
-;; If someone tries to run Time column tests with SparkSQL give them a heads up that SparkSQL does not support it
-(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Time] [_ _]
-  (throw (UnsupportedOperationException. "SparkSQL does not have a TIME data type.")))
-
 (defmethod ddl.i/format-name :sparksql
   [_ s]
   (str/replace s #"-" "_"))

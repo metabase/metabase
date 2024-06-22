@@ -74,22 +74,14 @@
 (doseq [[base-type sql-type] {:type/BigInteger             "NUMBER(*,0)"
                               :type/Boolean                "NUMBER(1)"
                               :type/Date                   "DATE"
-                              :type/Temporal               "TIMESTAMP"
                               :type/DateTime               "TIMESTAMP"
                               :type/DateTimeWithTZ         "TIMESTAMP WITH TIME ZONE"
                               :type/DateTimeWithLocalTZ    "TIMESTAMP WITH LOCAL TIME ZONE"
-                              :type/DateTimeWithZoneOffset "TIMESTAMP WITH TIME ZONE"
-                              :type/DateTimeWithZoneID     "TIMESTAMP WITH TIME ZONE"
                               :type/Decimal                "DECIMAL"
                               :type/Float                  "BINARY_DOUBLE"
                               :type/Integer                "INTEGER"
                               :type/Text                   "VARCHAR2(4000)"}]
   (defmethod sql.tx/field-base-type->sql-type [:oracle base-type] [_ _] sql-type))
-
-;; If someone tries to run Time column tests with Oracle give them a heads up that Oracle does not support it
-(defmethod sql.tx/field-base-type->sql-type [:oracle :type/Time]
-  [_ _]
-  (throw (UnsupportedOperationException. "Oracle does not have a TIME data type.")))
 
 (defmethod sql.tx/drop-table-if-exists-sql :oracle
   [_ {:keys [database-name]} {:keys [table-name]}]

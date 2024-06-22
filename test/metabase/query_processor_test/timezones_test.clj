@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -11,6 +12,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util.date-2 :as u.date]))
 
@@ -207,8 +209,8 @@
   "True if the current distinguishes between two base types when loading data in test datasets.
   TODO — how is this supposed to work for MongoDB?"
   [base-type-1 base-type-2]
-  (not= (sql.tx/field-base-type->sql-type driver/*driver* base-type-1)
-        (sql.tx/field-base-type->sql-type driver/*driver* base-type-2)))
+  (not= (sql.tx/base-type->sql-type driver/*driver* base-type-1)
+        (sql.tx/base-type->sql-type driver/*driver* base-type-2)))
 
 (defn- supports-time-with-time-zone?   [] (driver-distinguishes-between-base-types? :type/TimeWithTZ :type/Time))
 (defn- supports-time-with-offset?      [] (driver-distinguishes-between-base-types? :type/TimeWithZoneOffset :type/TimeWithTZ))
@@ -230,10 +232,27 @@
    (when (supports-datetime-with-zone-id?)
      {:datetime_tz_id (t/zoned-date-time "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]")})))
 
+(deftest sql-datetime-timezone-handling-test
+  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql) (mt/normal-drivers-with-feature :set-timezone))
+    (mt/dataset attempted-murders
+      (let [original-value #t "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"]
+        (doseq [timezone ["UTC" "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
+          (mt/with-temporary-setting-values [report-timezone timezone]
+            (let [supported-type? {:datetime_ltz   (tx/supports-base-type? driver/*driver* :type/DateTimeWithLocalTZ)
+                                   :datetime_tz    (tx/supports-base-type? driver/*driver* :type/DateTimeWithZoneOffset)
+                                   :datetime_tz_id (tx/supports-base-type? driver/*driver* :type/DateTimeWithZoneID)}]
+              (doseq [[field-name read-value] (m/filter-keys supported-type? (attempts))]
+                (testing (str field-name '" should have an offset or time zone")
+                  (is (some #(isa? (type read-value) %) [java.time.OffsetDateTime java.time.ZonedDateTime])))
+                (testing (str field-name '" should be the same instant as the inserted value")
+                  (is (= (t/instant original-value)
+                         (t/instant read-value))))))))))))
+
 (deftest sql-time-timezone-handling-test
   ;; Actual value : "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"
-  ;; Oracle doesn't have a time type
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql) (set-timezone-drivers))
+  (mt/test-drivers (filter #(and (isa? driver/hierarchy % :sql)
+                                 (tx/supports-base-type? driver/*driver* :type/Time))
+                           (mt/normal-drivers-with-feature :set-timezone))
     (mt/dataset attempted-murders
       (doseq [timezone [nil "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
         (mt/with-temporary-setting-values [report-timezone timezone]

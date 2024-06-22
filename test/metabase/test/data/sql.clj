@@ -9,6 +9,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (comment metabase.driver.sql/keep-me)
@@ -142,25 +143,40 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti field-base-type->sql-type
-  "Return a native SQL type that should be used for fields of `base-type`."
+  "Return a native SQL type that should be used for fields of `base-type`.
+   Should be implemented if the driver supports creating columns that when synced, they will have `base-type`."
   {:arglists '([driver base-type])}
   (fn [driver base-type] [(tx/dispatch-on-driver-with-test-extensions driver) base-type])
   :hierarchy #'driver/hierarchy)
 
-(defmethod field-base-type->sql-type :default
+(defn- base-type->sql-type*
+  "Like `field-base-type->sql-type`, but returns nil if there is no sql type for the base type, and uses the global
+   hierarchy to fall back to an ancestor base type if there is no exact match."
   [driver base-type]
-  (or (some
-       (fn [ancestor-type]
-         (when-not (= ancestor-type :type/*)
-           (when-let [method (get (methods field-base-type->sql-type) [driver ancestor-type])]
-             (log/infof "No test data type mapping for driver %s for base type %s, falling back to ancestor base type %s"
-                        driver base-type ancestor-type)
-             (method driver base-type))))
-       (ancestors base-type))
+  (or
+   (u/ignore-exceptions (field-base-type->sql-type driver base-type))
+   (some
+    (fn [ancestor-type]
+      (when-not (= ancestor-type :type/*)
+        (when-let [sql-type (u/ignore-exceptions (field-base-type->sql-type driver ancestor-type))]
+          (log/infof "No test data type mapping for driver %s for base type %s, falling back to ancestor base type %s"
+                     driver base-type ancestor-type)
+          sql-type)))
+    (ancestors base-type))))
+
+(defn base-type->sql-type
+  "Returns a native SQL type that should be used for fields of `base-type`. Throws an exception if there is no sql
+   type for the base type."
+  [driver base-type]
+  (or (base-type->sql-type* driver base-type)
       (throw
        (Exception.
         (format "No test data type mapping for driver %s for base type %s; add an impl for field-base-type->sql-type."
                 driver base-type)))))
+
+(defmethod tx/supports-base-type? :sql/test-extensions
+  [driver base-type]
+  (some? (field-base-type->sql-type driver base-type)))
 
 (defmulti pk-sql-type
   "SQL type of a primary key field."
@@ -187,7 +203,8 @@
   (format "DROP DATABASE IF EXISTS %s;" (qualify-and-quote driver database-name)))
 
 (defmulti create-table-sql
-  "Return a `CREATE TABLE` statement."
+  "Return a `CREATE TABLE` statement. If  `base-type` is not supported by the driver,
+   create the column as if had a base-type of `type/Text`."
   {:arglists '([driver dbdef tabledef])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
@@ -227,8 +244,12 @@
                          (and (map? base-type) (contains? base-type :natives))
                          (get-in base-type [:natives driver])
 
+                         ;; if the base type is not supported, use the text type
+                         (false? (tx/supports-base-type? driver base-type))
+                         (base-type->sql-type driver :type/Text)
+
                          base-type
-                         (field-base-type->sql-type driver base-type))
+                         (base-type->sql-type driver base-type))
                        (throw (ex-info (format "Missing datatype for field %s for driver: %s"
                                                field-name driver)
                                        {:field  field-definition

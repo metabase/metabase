@@ -96,13 +96,19 @@
 ;;; -------------------------------- Making a load-data! impl with make-load-data-fn ---------------------------------
 
 (defn load-data-get-rows
-  "Used by `make-load-data-fn`; get a sequence of row maps for use in a `insert!` when loading table data."
-  [_driver _dbdef tabledef]
-  (let [fields-for-insert (mapv (comp keyword :field-name)
-                                (:field-definitions tabledef))]
+  "Used by `make-load-data-fn`; get a sequence of row maps for use in a `insert!` when loading table data.
+   If the driver supports the base type of a field, the value is used as is. Otherwise, the value is set to nil."
+  [driver _dbdef tabledef]
+  (let [field-defs (:field-definitions tabledef)]
     ;; TIMEZONE FIXME
     (for [row (:rows tabledef)]
-      (zipmap fields-for-insert row))))
+      (into {}
+            (map (fn [[field-def row-value]]
+                   (let [k (keyword (:field-name field-def))
+                         v (when (tx/supports-base-type? driver (:base-type field-def))
+                             row-value)]
+                     [k v])))
+            (map vector field-defs row)))))
 
 (defn- make-insert!
   "Used by `make-load-data-fn`; creates the actual `insert!` function that gets passed to the `insert-middleware-fns`
