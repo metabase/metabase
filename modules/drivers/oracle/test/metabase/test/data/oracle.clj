@@ -77,6 +77,8 @@
                               :type/DateTime               "TIMESTAMP"
                               :type/DateTimeWithTZ         "TIMESTAMP WITH TIME ZONE"
                               :type/DateTimeWithLocalTZ    "TIMESTAMP WITH LOCAL TIME ZONE"
+                              :type/DateTimeWithZoneOffset "TIMESTAMP WITH TIME ZONE"
+                              :type/DateTimeWithZoneID     "TIMESTAMP WITH TIME ZONE"
                               :type/Decimal                "DECIMAL"
                               :type/Float                  "BINARY_DOUBLE"
                               :type/Integer                "INTEGER"
@@ -217,7 +219,7 @@
 
 (defn drop-user! [username]
   (u/ignore-exceptions
-   (execute! "DROP USER \"%s\" CASCADE" username)))
+   (execute! "DROP USER %s CASCADE" username)))
 
 (defmethod tx/before-run :oracle
   [_]

@@ -105,7 +105,7 @@
       (into {}
             (map (fn [[field-def row-value]]
                    (let [k (keyword (:field-name field-def))
-                         v (when (tx/supports-base-type? driver (:base-type field-def))
+                         v (when (tx/supports-base-type-in-definition? driver (:base-type field-def))
                              row-value)]
                      [k v])))
             (map vector field-defs row)))))

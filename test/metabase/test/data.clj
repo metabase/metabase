@@ -34,19 +34,22 @@
 
      (There are several variations of this macro; see documentation below for more details.)"
   (:require
-   [clojure.test :as t]
+   [clojure.test]
    [colorize.core :as colorize]
+   [java-time.api :as t]
    [mb.hawk.init]
    [metabase.db :as mdb]
    [metabase.db.schema-migrations-test.impl
     :as schema-migrations-test.impl]
+   [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -243,10 +246,10 @@
      (data/dataset (get-dataset-definition) ...)"
   {:style/indent 1}
   [dataset & body]
-  `(t/testing (colorize/magenta ~(str (if (symbol? dataset)
-                                        (format "using %s dataset" dataset)
-                                        "using inline dataset")
-                                      \newline))
+  `(clojure.test/testing (colorize/magenta ~(str (if (symbol? dataset)
+                                                   (format "using %s dataset" dataset)
+                                                   "using inline dataset")
+                                                 \newline))
      (data.impl/do-with-dataset ~(if (and (symbol? dataset)
                                           (not (get &env dataset)))
                                    `(data.impl/resolve-dataset-definition '~(ns-name *ns*) '~dataset)
@@ -274,3 +277,39 @@
                    perms-group/admin     (#'perms-group/magic-group perms-group/admin-group-name)]
        (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
        ~@body)))
+
+(tx/defdataset every-base-type
+  "A dataset for testing every base-type. This should be used primarily for implementing `dataset-base-types`."
+  [["everything"
+    [{:field-name "date",           :base-type :type/Date}
+     {:field-name "datetime",       :base-type :type/DateTime}
+     {:field-name "datetime_tz",    :base-type :type/DateTimeWithTZ}
+     {:field-name "datetime_ltz",   :base-type :type/DateTimeWithLocalTZ}
+     {:field-name "datetime_tz_zo", :base-type :type/DateTimeWithZoneOffset}
+     {:field-name "datetime_tz_id", :base-type :type/DateTimeWithZoneID}
+     {:field-name "time",           :base-type :type/Time}
+     {:field-name "time_ltz",       :base-type :type/TimeWithLocalTZ}
+     {:field-name "time_tz",        :base-type :type/TimeWithZoneOffset}
+     {:field-name "num_crows",      :base-type :type/Integer}]
+    (for [[cnt t] [[6 #t "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"]]]
+      [(t/local-date t)                 ; date
+       (t/local-date-time t)            ; datetime
+       (t/offset-date-time t)           ; datetime-tz
+       (t/offset-date-time t)           ; datetime-ltz
+       (t/offset-date-time t)           ; datetime-tz-zo
+       t                                ; datetime-tz-id
+       (t/local-time t)                 ; time
+       (t/offset-time t)                ; time-ltz
+       (t/offset-time t)                ; time-tz
+       cnt])]])
+
+(defn dataset-base-types
+  "Returns the set of base types available to create in a dataset."
+  [driver]
+  (driver/with-driver driver
+    (dataset every-base-type
+      (t2/select-fn-set :base_type :model/Field))))
+
+(defmethod tx/supports-base-type-exactly? ::tx/test-extensions
+  [driver base-type]
+  (contains? (dataset-base-types driver) base-type))

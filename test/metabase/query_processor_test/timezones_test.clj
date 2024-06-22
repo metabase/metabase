@@ -238,10 +238,13 @@
       (let [original-value #t "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"]
         (doseq [timezone ["UTC" "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
           (mt/with-temporary-setting-values [report-timezone timezone]
-            (let [supported-type? {:datetime_ltz   (tx/supports-base-type? driver/*driver* :type/DateTimeWithLocalTZ)
-                                   :datetime_tz    (tx/supports-base-type? driver/*driver* :type/DateTimeWithZoneOffset)
-                                   :datetime_tz_id (tx/supports-base-type? driver/*driver* :type/DateTimeWithZoneID)}]
-              (doseq [[field-name read-value] (m/filter-keys supported-type? (attempts))]
+            (let [supported-type? {:datetime_ltz    (tx/supports-base-type-exactly? driver/*driver* :type/DateTimeWithLocalTZ)
+                                   ;; TODO: extend dataset to include both base types
+                                   :datetime_tz     (or (tx/supports-base-type-exactly? driver/*driver* :type/DateTimeWithZoneOffset)
+                                                        (tx/supports-base-type-exactly? driver/*driver* :type/DateTimeWithTZ))
+                                   :datetime_tz_id  (tx/supports-base-type-exactly? driver/*driver* :type/DateTimeWithZoneID)}
+                  results (attempts)]
+              (doseq [[field-name read-value] (m/filter-keys supported-type? results)]
                 (testing (str field-name '" should have an offset or time zone")
                   (is (some #(isa? (type read-value) %) [java.time.OffsetDateTime java.time.ZonedDateTime])))
                 (testing (str field-name '" should be the same instant as the inserted value")
@@ -251,7 +254,7 @@
 (deftest sql-time-timezone-handling-test
   ;; Actual value : "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"
   (mt/test-drivers (filter #(and (isa? driver/hierarchy % :sql)
-                                 (tx/supports-base-type? driver/*driver* :type/Time))
+                                 (tx/supports-base-type-exactly? driver/*driver* :type/Time))
                            (mt/normal-drivers-with-feature :set-timezone))
     (mt/dataset attempted-murders
       (doseq [timezone [nil "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]

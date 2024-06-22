@@ -171,12 +171,14 @@
 
 (doseq [[base-type sql-type] {:type/BigInteger     "BIGINT"
                               :type/Boolean        "BOOLEAN"
-                              :type/Date           "TIMESTAMP" ; Cal: why isn't this DATE?
+                              :type/Date           "TIMESTAMP"
                               :type/DateTime       "TIMESTAMP"
+                              :type/DateTimeWithTZ "TIMESTAMP"
                               :type/Decimal        "DECIMAL"
                               :type/Float          "DOUBLE"
                               :type/Integer        "INT"
-                              :type/Text           "STRING"}]
+                              :type/Text           "STRING"
+                              :type/Time           "TIMESTAMP"}]
   (defmethod sql.tx/field-base-type->sql-type [:athena base-type] [_ _] sql-type))
 
 ;; TODO: Maybe make `add-fk-sql a noop

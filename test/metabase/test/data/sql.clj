@@ -150,12 +150,12 @@
   (fn [driver base-type] [(tx/dispatch-on-driver-with-test-extensions driver) base-type])
   :hierarchy #'driver/hierarchy)
 
-(defn- base-type->sql-type
+(defn base-type->sql-type
   "Like [[field-base-type->sql-type]], but uses the type hierarchy to fall back to an ancestor base type if there is
    no exact match for the base-type."
   [driver base-type]
   (or
-   (field-base-type->sql-type driver base-type)
+   (u/ignore-exceptions (field-base-type->sql-type driver base-type))
    (some
     (fn [ancestor-type]
       (when-not (= ancestor-type :type/*)
@@ -165,9 +165,9 @@
           sql-type)))
     (ancestors base-type))))
 
-(defmethod tx/supports-base-type? :sql/test-extensions
+(defmethod tx/supports-base-type-in-definition? :sql/test-extensions
   [driver base-type]
-  (some? (field-base-type->sql-type driver base-type)))
+  (some? (base-type->sql-type driver base-type)))
 
 (defmulti pk-sql-type
   "SQL type of a primary key field."
@@ -235,8 +235,8 @@
                          (and (map? base-type) (contains? base-type :natives))
                          (get-in base-type [:natives driver])
 
-                         ;; if the base type is not supported, use the text type
-                         (false? (tx/supports-base-type? driver base-type))
+                         ;; if the base type is not supported in a dataset definition, use the text type
+                         (false? (tx/supports-base-type-in-definition? driver base-type))
                          (base-type->sql-type driver :type/Text)
 
                          base-type
