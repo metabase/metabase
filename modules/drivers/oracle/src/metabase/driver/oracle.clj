@@ -601,10 +601,6 @@
   (fn []
     (.getString rs i)))
 
-(defn- rs->conn ^Connection [^ResultSet rs]
-  (let [^C3P0ProxyConnection proxy-conn (.. rs getStatement getConnection)]
-    (.unwrap proxy-conn OracleConnection)))
-
 (defmethod sql-jdbc.execute/read-column-thunk [:oracle OracleTypes/TIMESTAMPTZ]
   [_driver ^ResultSet rs _rsmeta ^Integer i]
   ;; Oracle `TIMESTAMPTZ` types can have either a zone offset *or* a zone ID; you could fetch either `OffsetDateTime`
@@ -614,7 +610,9 @@
   ;; `TIMESTAMPTZ` and use `.offsetDateTimeValue` instead.
   (fn []
     (when-let [^TIMESTAMPTZ t (.getObject rs i TIMESTAMPTZ)]
-      (.offsetDateTimeValue t (rs->conn rs)))))
+      (let [^C3P0ProxyConnection proxy-conn (.. rs getStatement getConnection)
+            conn                            (.unwrap proxy-conn OracleConnection)]
+        (.offsetDateTimeValue t conn)))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:oracle OracleTypes/TIMESTAMPLTZ]
   [_driver ^ResultSet rs _rsmeta ^Integer i]
