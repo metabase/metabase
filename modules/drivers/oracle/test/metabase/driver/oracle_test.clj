@@ -30,6 +30,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -465,30 +466,37 @@
 (deftest read-timestamp-with-tz-test
   (mt/test-driver :oracle
     (testing "We should return TIMESTAMP WITH TIME ZONE columns correctly"
-      (let [sql   "SELECT timestamp '2024-06-20 16:05:00 -07:00' AS timestamp_tz FROM dual"
-            query (-> (mt/native-query {:query sql})
-                      (assoc-in [:middleware :format-rows?] false))]
-        ;; value should come back from driver with original zone info, regardless of report timezone
-        (are [report-tz]
+      (let [test-date "2024-12-20 16:05:00 US/Eastern"
+            sql       (format "SELECT TIMESTAMP '%s' AS timestamp_tz FROM dual" test-date)
+            query     (-> (mt/native-query {:query sql})
+                          (assoc-in [:middleware :format-rows?] false))]
+        (doseq [report-tz ["UTC" "US/Pacific"]]
           (mt/with-temporary-setting-values [report-timezone report-tz]
             (mt/with-native-query-testing-context query
-              (= [[#t "2024-06-20T16:05-07:00"]]
-                 (mt/rows (qp/process-query query)))))
-          "UTC"
-          "US/Pacific")))))
+              (testing "The value should come back from driver with original zone info, regardless of report timezone"
+                (= (t/offset-date-time (u.date/parse test-date) "US/Eastern")
+                   (ffirst (mt/rows (qp/process-query query))))))))))))
 
-(deftest read-timestamp-with-local-time-zone-test
+(deftest read-timestamp-with-local-tz-test
   (mt/test-driver :oracle
     (testing "We should return TIMESTAMP WITH LOCAL TIME ZONE columns correctly"
-      ;; these both come back as `java.sql.type/VARCHAR` for some wacko reason from the JDBC driver, so let's make sure
-      ;; we have code in place to work around that.
-      (let [sql   "SELECT CAST(TIMESTAMP '2024-06-20 16:05:00 -07:00' AS TIMESTAMP WITH LOCAL TIME ZONE) AS timestamp_tz FROM dual"
-            query (-> (mt/native-query {:query sql})
-                      (assoc-in [:middleware :format-rows?] false))]
-        (are [report-tz expected]
-          (mt/with-temporary-setting-values [report-timezone report-tz]
-            (mt/with-native-query-testing-context query
-              (= [[expected]]
-                 (mt/rows (qp/process-query query)))))
-          "UTC"        #t "2024-06-20T23:05+00:00[UTC]"
-          "US/Pacific" #t "2024-06-20T16:05-07:00[US/Pacific]")))))
+      (let [test-date  "2024-12-20 16:05:00 US/Pacific"
+            sql        (format "SELECT CAST(TIMESTAMP '%s' AS TIMESTAMP WITH LOCAL TIME ZONE) AS timestamp_tz FROM dual" test-date)
+            query      (-> (mt/native-query {:query sql})
+                           (assoc-in [:middleware :format-rows?] false))
+            spec       #(sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            old-format (-> (jdbc/query (spec) "SELECT value FROM NLS_SESSION_PARAMETERS WHERE PARAMETER = 'NLS_TIMESTAMP_TZ_FORMAT'")
+                           ffirst
+                           val)
+            do-with-temp-tz-format (fn [thunk]
+                                     ;; verify that the value is independent of NLS_TIMESTAMP_TZ_FORMAT
+                                     (jdbc/execute! (spec) "ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT = 'YYYY-MM-DD HH:MI'")
+                                     (thunk)
+                                     (jdbc/execute! (spec) (format "ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT = '%s'" old-format)))]
+        (do-with-temp-tz-format
+         (fn []
+           (doseq [report-tz ["UTC" "US/Pacific"]]
+             (mt/with-temporary-setting-values [report-timezone report-tz]
+               (mt/with-native-query-testing-context query
+                 (is (= (t/zoned-date-time (u.date/parse test-date) report-tz)
+                        (ffirst (mt/rows (qp/process-query query))))))))))))))
