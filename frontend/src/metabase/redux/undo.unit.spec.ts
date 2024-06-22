@@ -3,7 +3,8 @@ import { act } from "@testing-library/react";
 
 import type { Dispatch } from "metabase-types/store";
 
-import undoReducer, {
+import {
+  undoReducer,
   addUndo,
   dismissAllUndo,
   dismissUndo,
@@ -60,7 +61,7 @@ describe("metabase/redux/undo", () => {
 
       await store.dispatch(addUndo({ id: MOCK_ID }));
 
-      await store.dispatch(dismissUndo(MOCK_ID));
+      await store.dispatch(dismissUndo({ undoId: MOCK_ID }));
 
       expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
     });
@@ -96,7 +97,6 @@ describe("metabase/redux/undo", () => {
     });
 
     // pause undo (e.g. when mouse is over toast)
-    // @ts-expect-error undo is still not converted to TS
     store.dispatch(pauseUndo(store.getState().undo[0]));
 
     await act(async () => {
@@ -132,16 +132,24 @@ describe("metabase/redux/undo", () => {
 
     // await act is required to simulate store update on the next tick
     await act(async () => {
-      jest.advanceTimersByTime(timeout);
+      jest.advanceTimersByTime(timeout - 100);
     });
 
+    // verify undo is there
+    expect(store.getState().undo.length).toBe(1);
+
+    await act(async () => {
+      jest.advanceTimersByTime(100);
+    });
+
+    // verify undo is dismissed
     expect(store.getState().undo.length).toBe(0);
   });
 });
 
 const createMockStore = () => {
   const store = configureStore({
-    // @ts-expect-error undo is still not converted to TS
+    // @ts-expect-error rework undo reducer to RTK
     reducer: { undo: undoReducer },
   });
   return store as typeof store & { dispatch: Dispatch };
