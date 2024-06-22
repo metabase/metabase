@@ -33,7 +33,7 @@
    (java.sql Connection DatabaseMetaData ResultSet Types)
    (java.time Instant OffsetDateTime ZonedDateTime)
    (oracle.jdbc OracleConnection OracleTypes)
-   (oracle.sql TIMESTAMPLTZ TIMESTAMPTZ)))
+   (oracle.sql TIMESTAMPTZ)))
 
 (set! *warn-on-reflection* true)
 
@@ -605,21 +605,24 @@
   (let [^C3P0ProxyConnection proxy-conn (.. rs getStatement getConnection)]
     (.unwrap proxy-conn OracleConnection)))
 
-;; Oracle `TIMESTAMPTZ` or `TIMESTAMPLTZ` types can have either a zone offset *or* a zone ID; you could fetch either
-;; `OffsetDateTime` or `ZonedDateTime` using `.getObject`, but fetching the wrong type will result in an Exception,
-;; meaning we have try both and wrap the first in a try-catch. As far as I know there's no way to tell whether the
-;; value has a zone offset or ID without first fetching a `TIMESTAMPTZ` or `TIMESTAMPLTZ` object.
 (defmethod sql-jdbc.execute/read-column-thunk [:oracle OracleTypes/TIMESTAMPTZ]
   [_driver ^ResultSet rs _rsmeta ^Integer i]
+  ;; Oracle `TIMESTAMPTZ` types can have either a zone offset *or* a zone ID; you could fetch either `OffsetDateTime`
+  ;; or `ZonedDateTime` using `.getObject`, but fetching the wrong type will result in an Exception, meaning we have
+  ;; try both and wrap the first in a try-catch. As far as I know there's now way to tell whether the value has a zone
+  ;; offset or ID without first fetching a `TIMESTAMPTZ` object. So to avoid the try-catch we can fetch the
+  ;; `TIMESTAMPTZ` and use `.offsetDateTimeValue` instead.
   (fn []
     (when-let [^TIMESTAMPTZ t (.getObject rs i TIMESTAMPTZ)]
       (.offsetDateTimeValue t (rs->conn rs)))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:oracle OracleTypes/TIMESTAMPLTZ]
   [_driver ^ResultSet rs _rsmeta ^Integer i]
+  ;; `.offsetDateTimeValue` with TIMESTAMPLTZ returns the incorrect value with daylight savings time, so instead of
+  ;; trusting Oracle to get time zones right we assume the string value from `.getNString` is correct and is in a format
+  ;; we can parse.
   (fn []
-    (when-let [^TIMESTAMPLTZ t (.getObject rs i TIMESTAMPLTZ)]
-      (u.date/parse (.stringValue t (rs->conn rs))))))
+    (u.date/parse (.getNString rs i))))
 
 (defmethod unprepare/unprepare-value [:oracle OffsetDateTime]
   [_ t]
