@@ -93,9 +93,10 @@
                 (jdbc/print-sql-exception-chain e)
                 (throw e)))))))
 
+;; TODO: Verify all datasets can be created using this implementation!
 (defmethod load-data/load-data! :databricks-jdbc
   [& args]
-  (apply load-data/load-data-and-add-ids! args))
+  (apply load-data/load-data-maybe-add-ids! args))
 
 (defmethod execute/execute-sql! :databricks-jdbc [& args]
   (apply execute/sequentially-execute-sql! args))

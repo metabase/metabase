@@ -8,12 +8,10 @@
    [toucan2.core :as t2]))
 
 (deftest dataset-with-custom-pk-test
-  (mt/test-drivers (disj (->> (mt/normal-drivers-with-feature :metadata/key-constraints)
-                              (filter (mt/sql-jdbc-drivers))
-                              ;; Timeseries drivers currently support only testing with pre-loaded dataset
-                              (remove (tqpt/timeseries-drivers)))
-                         ;; dbricks TODO: Make this test compatible!
-                         :databricks-jdbc)
+  (mt/test-drivers (->> (mt/normal-drivers-with-feature :metadata/key-constraints)
+                        (filter (mt/sql-jdbc-drivers))
+                        ;; Timeseries drivers currently support only testing with pre-loaded dataset
+                        (remove (tqpt/timeseries-drivers)))
     (mt/dataset (mt/dataset-definition "custom-pk"
                                        ["user"
                                         [{:field-name "custom_id" :base-type :type/Integer :pk? true}]
@@ -45,12 +43,10 @@
     [[1 2]]]])
 
 (deftest dataset-with-custom-composite-pk-test
-  (mt/test-drivers (disj (->> (mt/normal-drivers-with-feature :metadata/key-constraints)
-                              (filter (mt/sql-jdbc-drivers))
-                              ;; Timeseries drivers currently support only testing with pre-loaded dataset
-                              (remove (tqpt/timeseries-drivers)))
-                         ;; dbricks TODO: make test compatible!
-                         :databricks-jdbc)
+  (mt/test-drivers (->> (mt/normal-drivers-with-feature :metadata/key-constraints)
+                        (filter (mt/sql-jdbc-drivers))
+                        ;; Timeseries drivers currently support only testing with pre-loaded dataset
+                        (remove (tqpt/timeseries-drivers)))
     (mt/dataset composite-pk
       (let [format-name #(ddl.i/format-name driver/*driver* %)]
         (testing "(artist_id, song_id) is a PK"
