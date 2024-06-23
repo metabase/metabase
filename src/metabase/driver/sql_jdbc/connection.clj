@@ -141,6 +141,9 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
    ;; timeout. This theoretically shouldn't happen since the QP should kill things after a certain timeout but it's
    ;; better to be safe than sorry -- it seems like in practice some connections disappear into the ether
    "unreturnedConnectionTimeout"  (jdbc-data-warehouse-unreturned-connection-timeout-seconds)
+   ;; set an efficient test query, as it will otherwise run getTables() which can be pretty massive in big databases.
+   ;; more details in https://www.mchange.com/projects/c3p0/#configuring_connection_testing
+   "preferredTestQuery" "SELECT 1"
    ;; Set the data source name so that the c3p0 JMX bean has a useful identifier, which incorporates the DB ID, driver,
    ;; and name from the details
    "dataSourceName"               (format "db-%d-%s-%s"
