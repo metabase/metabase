@@ -48,6 +48,7 @@ docker_setup_env() {
     file_env 'MB_EMAIL_SMTP_USERNAME'
     file_env 'MB_LDAP_PASSWORD'
     file_env 'MB_LDAP_BIND_DN'
+    file_env 'MB_ENCRYPTION_SECRET_KEY'
 }
 
 # detect if the container is started as root or not
