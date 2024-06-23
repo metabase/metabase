@@ -40,7 +40,6 @@ import {
   QueryBuilderMain,
   QueryBuilderViewHeaderContainer,
   QueryBuilderViewRoot,
-  StyledDebouncedFrame,
   StyledSyncedParametersList,
 } from "./View.styled";
 import ViewFooter from "./ViewFooter";
@@ -310,14 +309,8 @@ class View extends Component {
   };
 
   renderMain = ({ leftSidebar, rightSidebar }) => {
-    const {
-      question,
-      mode,
-      parameters,
-      isLiveResizable,
-      setParameterValue,
-      queryBuilderMode,
-    } = this.props;
+    const { question, mode, parameters, setParameterValue, queryBuilderMode } =
+      this.props;
 
     if (queryBuilderMode === "notebook") {
       // we need to render main only in view mode
@@ -343,14 +336,7 @@ class View extends Component {
           />
         )}
 
-        <StyledDebouncedFrame enabled={!isLiveResizable}>
-          <QueryVisualization
-            {...this.props}
-            noHeader
-            className={CS.spread}
-            mode={queryMode}
-          />
-        </StyledDebouncedFrame>
+        <QueryVisualization {...this.props} noHeader mode={queryMode} />
         <TimeseriesChrome
           question={this.props.question}
           updateQuestion={this.props.updateQuestion}
