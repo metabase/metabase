@@ -352,7 +352,8 @@
           (mt/test-drivers (mt/normal-drivers-with-feature ::iso-8601-test-fields-are-queryable ::parse-string-to-date)
             (is (= 1
                    (->> (mt/run-mbql-query times
-                          {:filter [:= !day.d "2008-10-19"]})
+                          {:fields [$d]
+                           :filter [:= !day.d "2008-10-19"]})
                         mt/rows
                         count)))))))))
 
