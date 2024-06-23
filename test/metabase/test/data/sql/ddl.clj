@@ -10,8 +10,6 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]))
 
-(set! *warn-on-reflection* true)
-
 (defmulti drop-db-ddl-statements
   "Return a sequence of DDL statements for dropping a DB using the multimethods in the SQL test extensons namespace, if
   applicable."
