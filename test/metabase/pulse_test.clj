@@ -5,6 +5,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.channel.slack :as channel.slack]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models
@@ -714,7 +715,8 @@
                              :rendered-info   {:attachments nil
                                                :content     [:div "hi again"]}
                              :channel-id      "FOO"}]
-            processed      (metabase.pulse/create-and-upload-slack-attachments! attachments (slack-uploader titles))]
+            processed      (with-redefs [slack/upload-file! (slack-uploader titles)]
+                            (#'channel.slack/create-and-upload-slack-attachments! attachments (slack-uploader titles)))]
         (is (= [{:title "a", :image_url "http://uploaded/a.png"}
                 {:title "b", :image_url "http://uploaded/b.png"}]
                processed))
@@ -732,7 +734,8 @@
                                                :content     [:div "hi again"]
                                                :render/text "hi again"}
                              :channel-id      "FOO"}]
-            processed      (metabase.pulse/create-and-upload-slack-attachments! attachments (slack-uploader titles))]
+            processed      (with-redefs [slack/upload-file! (slack-uploader titles)]
+                            (#'channel.slack/create-and-upload-slack-attachments! attachments (slack-uploader titles)))]
         (is (= [{:title "a", :image_url "http://uploaded/a.png"}
                 {:title "b", :text "hi again"}]
                processed))
