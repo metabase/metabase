@@ -74,7 +74,8 @@ function disableLastSelectedQueryColumn(
           columnItem.isDisabled ||
           (columnItem.isSelected && isOnlySelectedColumn),
       })),
-      isDisabled: groupItem.isSelected && isOnlySelectedColumn,
+      isDisabled:
+        groupItem.isDisabled || (groupItem.isSelected && isOnlySelectedColumn),
     };
   });
 }
