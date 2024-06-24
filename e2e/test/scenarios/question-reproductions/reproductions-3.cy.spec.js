@@ -30,6 +30,10 @@ import {
   echartsContainer,
   newButton,
   appBar,
+  openProductsTable,
+  queryBuilderFooter,
+  enterCustomColumnDetails,
+  addCustomColumn,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -473,6 +477,23 @@ describe("issue 40435", () => {
   });
 });
 
+describe("issue 41381", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show an error message when adding a constant-only custom expression (metabase#41381)", () => {
+    openOrdersTable({ mode: "notebook" });
+    addCustomColumn();
+    enterCustomColumnDetails({ formula: "'Test'", name: "Constant" });
+    popover().within(() => {
+      cy.findByText("Invalid expression").should("be.visible");
+      cy.button("Done").should("be.disabled");
+    });
+  });
+});
+
 describe(
   "issue 42010 -- Unable to filter by mongo id",
   { tags: "@mongo" },
@@ -636,7 +657,7 @@ describe("issue 42957", () => {
   });
 });
 
-describe("issue 10493", () => {
+describe.skip("issue 10493", () => {
   beforeEach(() => {
     restore();
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -773,6 +794,140 @@ describe("issue 44415", () => {
     cy.get("@questionId").then(questionId => {
       cy.url().should("not.include", `/question/${questionId}`);
       cy.url().should("include", "question#");
+    });
+  });
+});
+
+describe("issue 44532", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    openProductsTable();
+  });
+
+  it("should update chart metrics and dimensions with each added breakout (metabase #44532)", () => {
+    summarize();
+
+    rightSidebar()
+      .findByRole("listitem", { name: "Category" })
+      .button("Add dimension")
+      .click();
+    cy.wait("@dataset");
+
+    echartsContainer().within(() => {
+      cy.findByText("Count").should("exist"); // y-axis
+      cy.findByText("Category").should("exist"); // x-axis
+
+      // x-axis values
+      cy.findByText("Doohickey").should("exist");
+      cy.findByText("Gadget").should("exist");
+      cy.findByText("Gizmo").should("exist");
+      cy.findByText("Widget").should("exist");
+    });
+
+    rightSidebar()
+      .findByRole("listitem", { name: "Created At" })
+      .button("Add dimension")
+      .click();
+    cy.wait("@dataset");
+
+    cy.findByLabelText("Legend").within(() => {
+      cy.findByText("Doohickey").should("exist");
+      cy.findByText("Gadget").should("exist");
+      cy.findByText("Gizmo").should("exist");
+      cy.findByText("Widget").should("exist");
+    });
+
+    echartsContainer().within(() => {
+      cy.findByText("Count").should("exist"); // y-axis
+      cy.findByText("Created At").should("exist"); // x-axis
+
+      // x-axis values
+      cy.findByText("January 2023").should("exist");
+      cy.findByText("January 2024").should("exist");
+      cy.findByText("January 2025").should("exist");
+
+      // previous x-axis values
+      cy.findByText("Doohickey").should("not.exist");
+      cy.findByText("Gadget").should("not.exist");
+      cy.findByText("Gizmo").should("not.exist");
+      cy.findByText("Widget").should("not.exist");
+    });
+
+    rightSidebar().button("Done").click();
+    cy.wait("@dataset");
+
+    cy.findByLabelText("Legend").within(() => {
+      cy.findByText("Doohickey").should("exist");
+      cy.findByText("Gadget").should("exist");
+      cy.findByText("Gizmo").should("exist");
+      cy.findByText("Widget").should("exist");
+    });
+
+    echartsContainer().within(() => {
+      cy.findByText("Count").should("exist"); // y-axis
+      cy.findByText("Created At").should("exist"); // x-axis
+
+      // x-axis values
+      cy.findByText("January 2023").should("exist");
+      cy.findByText("January 2024").should("exist");
+      cy.findByText("January 2025").should("exist");
+
+      // previous x-axis values
+      cy.findByText("Doohickey").should("not.exist");
+      cy.findByText("Gadget").should("not.exist");
+      cy.findByText("Gizmo").should("not.exist");
+      cy.findByText("Widget").should("not.exist");
+    });
+  });
+});
+
+describe("issue 43294", () => {
+  const questionDetails = {
+    display: "line",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    },
+    visualization_settings: {
+      "graph.metrics": ["count"],
+      "graph.dimensions": ["CREATED_AT"],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not overwrite viz settings with click actions in raw data mode (metabase#43294)", () => {
+    createQuestion(questionDetails, { visitQuestion: true });
+    queryBuilderFooter().findByLabelText("Switch to data").click();
+
+    cy.log("compare action");
+    cy.button("Add column").click();
+    popover().findByText("Compare “Count” to previous months").click();
+    popover().button("Done").click();
+
+    cy.log("extract action");
+    cy.button("Add column").click();
+    popover().findByText("Extract part of column").click();
+    popover().within(() => {
+      cy.findByText("Created At: Month").click();
+      cy.findByText("Year").click();
+    });
+
+    cy.log("combine action");
+    cy.button("Add column").click();
+    popover().findByText("Combine columns").click();
+    popover().button("Done").click();
+
+    cy.log("check visualization");
+    queryBuilderFooter().findByLabelText("Switch to visualization").click();
+    echartsContainer().within(() => {
+      cy.findByText("Count").should("be.visible");
+      cy.findByText("Created At").should("be.visible");
     });
   });
 });

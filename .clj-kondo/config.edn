@@ -283,7 +283,12 @@
     metabase.metabot               :any
     metabase.models                :any
     metabase.moderation            :any
-    metabase.native-query-analyzer :any
+    metabase.native-query-analyzer #{metabase.config
+                                     metabase.driver
+                                     metabase.lib
+                                     metabase.public-settings
+                                     metabase.query-processor
+                                     metabase.util}
     metabase.permissions           :any
     metabase.plugins               :any
     metabase.public-settings       :any

@@ -16,7 +16,10 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
-import { AUTO_WIRE_TOAST_TIMEOUT } from "./constants";
+import {
+  AUTO_WIRE_TOAST_TIMEOUT,
+  AUTO_WIRE_UNDO_TOAST_TIMEOUT,
+} from "./constants";
 
 export const AUTO_WIRE_TOAST_ID = _.uniqueId();
 
@@ -75,7 +78,7 @@ export const showAutoWireParametersToast =
           message: t`The filter was auto-connected to all questions containing “${columnName}”.`,
           actionLabel: t`Undo`,
           showProgress: true,
-          timeout: 12000,
+          timeout: AUTO_WIRE_UNDO_TOAST_TIMEOUT,
           type: "filterAutoConnectDone",
           extraInfo: {
             dashcardIds: dashcardAttributes.map(({ id }) => id),
@@ -155,7 +158,7 @@ export const showAddedCardAutoWireParametersToast =
         addUndo({
           message,
           showProgress: true,
-          timeout: AUTO_WIRE_TOAST_TIMEOUT,
+          timeout: AUTO_WIRE_UNDO_TOAST_TIMEOUT,
           type: "filterAutoConnect",
           action: revertAutoWireParametersToNewCard,
         }),
@@ -166,7 +169,7 @@ export const showAddedCardAutoWireParametersToast =
 export const closeAutoWireParameterToast =
   (toastId: string = AUTO_WIRE_TOAST_ID) =>
   (dispatch: Dispatch) => {
-    dispatch(dismissUndo(toastId, false));
+    dispatch(dismissUndo({ undoId: toastId, track: false }));
   };
 
 const autoWireToastTypes = ["filterAutoConnect", "filterAutoConnectDone"];
@@ -176,7 +179,7 @@ export const closeAddCardAutoWireToasts =
 
     for (const undo of undos) {
       if (undo.type && autoWireToastTypes.includes(undo.type)) {
-        dispatch(dismissUndo(undo.id, false));
+        dispatch(dismissUndo({ undoId: undo.id, track: false }));
       }
     }
   };

@@ -166,7 +166,7 @@ function SourceDatasetBreadcrumbs({ question, collection, ...props }) {
   );
 }
 
-QuestionDataSource.shouldRender = ({ question, isObjectDetail }) =>
+QuestionDataSource.shouldRender = ({ question, isObjectDetail = false }) =>
   getDataSourceParts({ question, isObjectDetail }).length > 0;
 
 function getDataSourceParts({ question, subHead, isObjectDetail }) {

@@ -76,16 +76,12 @@
 (mu/defn ^:private search-string-clause-for-model
   [model                :- SearchableModel
    search-context       :- SearchContext
-   search-native-query? :- [:maybe :boolean]]
+   search-native-query  :- [:maybe true?]]
   (when-let [query (:search-string search-context)]
     (into
      [:or]
-     (for [column           (cond->> (search.config/searchable-columns-for-model model)
-                              (not search-native-query?)
-                              (remove #{:dataset_query})
-
-                              true
-                              (map #(search.config/column-with-model-alias model %)))
+     (for [column           (->> (search.config/searchable-columns model search-native-query)
+                                 (map #(search.config/column-with-model-alias model %)))
            wildcarded-token (->> (search.util/normalize query)
                                  search.util/tokenize
                                  (map search.util/wildcard-match))]
@@ -256,10 +252,11 @@
   This is function instead of a def so that optional-filter-clause can be defined anywhere in the codebase."
   []
   (merge
-   ;; models support search-native-query if dataset_query is one of the searchable columns
-   {:search-native-query (->> (dissoc (methods search.config/searchable-columns-for-model) :default)
-                              (filter (fn [[k v]]
-                                        (contains? (set (v k)) :dataset_query)))
+   ;; models support search-native-query if there are additional columns to search when the `search-native-query`
+   ;; argument is true
+   {:search-native-query (->> (dissoc (methods search.config/searchable-columns) :default)
+                              (filter (fn [[model f]]
+                                        (seq (set/difference (set (f model true)) (set (f model false))))))
                               (map first)
                               set)}
    (->> (dissoc (methods build-optional-filter-query) :default)

@@ -101,7 +101,7 @@ describe("InteractiveQuestion", () => {
   it("should initially render with a loader", async () => {
     setup();
 
-    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
   });
 
   it("should render when question is valid", async () => {
@@ -133,7 +133,7 @@ describe("InteractiveQuestion", () => {
       await within(screen.getByRole("gridcell")).findByText("Test Row"),
     ).toBeInTheDocument();
 
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
     // Mimicking drilling down by rerunning the query again
     const storeDispatch = store.dispatch as unknown as ThunkDispatch<
       State,
@@ -146,7 +146,7 @@ describe("InteractiveQuestion", () => {
     });
 
     expect(screen.queryByText("Question not found")).not.toBeInTheDocument();
-    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     expect(
       within(await screen.findByRole("gridcell")).getByText("Test Row"),
     ).toBeInTheDocument();

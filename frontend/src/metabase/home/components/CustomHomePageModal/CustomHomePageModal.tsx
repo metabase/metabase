@@ -59,7 +59,7 @@ export const CustomHomePageModal = ({
         icon: "info",
         timeout: 10000,
         id,
-        actions: [dismissUndo(id)],
+        actions: [dismissUndo({ undoId: id })],
         actionLabel: "Got it",
         canDismiss: false,
       }),

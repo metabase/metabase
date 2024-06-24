@@ -27,6 +27,7 @@
     "semver": "^7.5.4",
     "tsx": "^3.12.7",
     "typescript": "^5.1.6",
+    "underscore": "^1.13.6",
     "zx": "^8.1.0"
   },
   "devDependencies": {

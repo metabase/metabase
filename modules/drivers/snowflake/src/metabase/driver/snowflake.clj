@@ -145,9 +145,6 @@
            (not (contains? (connection-str->parameters (:connection-uri spec)) "ROLE")))
     (let [role-opts-str (sql-jdbc.common/additional-opts->string :url {:role (codec/url-encode (:role details))})]
       (-> spec
-          ;; It is advised to use either connection property or url parameter, not both. Eg. in the following link.
-          ;; https://docs.oracle.com/javase/8/docs/api/java/sql/DriverManager.html#getConnection-java.lang.String-java.util.Properties-
-          (dissoc :role)
           (update :connection-uri sql-jdbc.common/conn-str-with-additional-opts :url role-opts-str)))
     spec))
 
