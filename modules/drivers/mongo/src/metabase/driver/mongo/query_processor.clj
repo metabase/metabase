@@ -1157,10 +1157,9 @@
   usually does) refer to the fields introduced by the preceding maps."
   [aggr-expr]
   (let [aggr-name (annotate/aggregation-name (:query *query*) aggr-expr)
-        [aggr-expr' aggregations-seen] (-> (simplify-extracted-aggregations
-                                            aggr-name
-                                            (extract-aggregations aggr-expr aggr-name))
-                                           adjust-distinct-aggregations)
+        [aggr-expr' aggregations-seen] (->> (extract-aggregations aggr-expr aggr-name)
+                                            (simplify-extracted-aggregations aggr-name)
+                                            adjust-distinct-aggregations)
 
         raggr-expr (->rvalue aggr-expr')
         expandeds (map (fn [[aggr name]]
