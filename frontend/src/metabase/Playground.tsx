@@ -70,7 +70,7 @@ const PlaygroundBase = props => {
 const tableId = 1;
 
 export const Playground = _.compose(
-  Tables.load2({
+  Tables.load({
     id: () => tableId,
     query: {
       include_sensitive_fields: true,

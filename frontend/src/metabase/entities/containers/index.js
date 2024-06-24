@@ -10,15 +10,15 @@ export function addEntityContainers(entity) {
 
   // Entity.load higher-order component
   entity.load = ({ id, query, ...props } = {}) =>
-    entityObjectLoader({
+    entityObjectLoaderRtkQuery({
       entityType: entity.name,
       entityId: id,
       entityQuery: query,
       ...props,
     });
 
-  entity.load2 = ({ id, query, ...props } = {}) =>
-    entityObjectLoaderRtkQuery({
+  entity.loadLegacy = ({ id, query, ...props } = {}) =>
+    entityObjectLoader({
       entityType: entity.name,
       entityId: id,
       entityQuery: query,
