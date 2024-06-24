@@ -22,7 +22,7 @@ export const UndoList = styled.ul`
 `;
 
 export const ToastCard = styled(Card)<{
-  translateY: number;
+  translateY?: number;
   color?: string;
   noBorder?: boolean;
 }>`
@@ -31,7 +31,8 @@ export const ToastCard = styled(Card)<{
   min-width: 310px;
   max-width: calc(100vw - 2 * ${LIST_H_MARGINS});
   position: relative;
-  transform: ${props => `translateY(${props.translateY}px)`};
+  ${props =>
+    props.translateY ? `transform: translateY(${props.translateY}px)` : ""}
   ${props => (props.color ? `background-color: ${color(props.color)}` : "")};
   ${({ noBorder }) =>
     noBorder &&
