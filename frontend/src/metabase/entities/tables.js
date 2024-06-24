@@ -78,7 +78,7 @@ const Tables = createEntity({
       }
 
       if (fetchType === "fetchMetadataAndForeignTables") {
-        // TODO
+        throw new Error("Deprecated, use 'metabase/api' instead");
       }
 
       return {
