@@ -11,16 +11,17 @@ const METADATA = createMockMetadata({
 
 type SetupOpts = {
   startRule: string;
+  expressionPosition?: number;
 };
 
-function setup({ startRule }: SetupOpts) {
+function setup({ startRule, expressionPosition }: SetupOpts) {
   const query = createQuery({ metadata: METADATA });
   const stageIndex = 0;
   const { suggestions } = suggestWithExtras({
     source: "",
     query,
     stageIndex,
-    expressionPosition: undefined,
+    expressionPosition,
     metadata: METADATA,
     startRule,
     getColumnIcon,
