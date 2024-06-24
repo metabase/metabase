@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupDatabasesEndpoints,
-  setupRecentViewsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
@@ -51,7 +51,7 @@ const setup = async (
   const updateQuery = jest.fn();
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
-  setupRecentViewsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
 
   renderWithProviders(
     <DataStep

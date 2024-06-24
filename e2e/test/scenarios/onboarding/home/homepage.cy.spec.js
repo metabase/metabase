@@ -22,6 +22,7 @@ import {
   setTokenFeatures,
   entityPickerModal,
   dashboardGrid,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -31,7 +32,9 @@ describe("scenarios > home > homepage", () => {
     cy.intercept("GET", "/api/dashboard/**").as("getDashboard");
     cy.intercept("GET", "/api/automagic-*/table/**").as("getXrayDashboard");
     cy.intercept("GET", "/api/automagic-*/database/**").as("getXrayCandidates");
-    cy.intercept("GET", "/api/activity/recent_views").as("getRecentItems");
+    cy.intercept("GET", "/api/activity/recents?context=views").as(
+      "getRecentItems",
+    );
     cy.intercept("GET", "/api/activity/popular_items").as("getPopularItems");
     cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
     cy.intercept("POST", "/api/card/*/query").as("getQuestionQuery");
@@ -284,6 +287,7 @@ describe("scenarios > home > custom homepage", () => {
       });
 
       entityPickerModal().within(() => {
+        entityPickerModalTab("Dashboards").click();
         //Ensure that personal collections have been removed
         cy.findByText("First collection").should("exist");
         cy.findByText(/personal collection/).should("not.exist");

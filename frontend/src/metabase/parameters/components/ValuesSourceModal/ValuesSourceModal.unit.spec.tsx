@@ -10,7 +10,7 @@ import {
   setupSearchEndpoints,
   setupUnauthorizedCardsEndpoints,
   setupUnauthorizedCollectionsEndpoints,
-  setupRecentViewsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupTableQueryMetadataEndpoint,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
@@ -422,7 +422,7 @@ const setup = async ({
 
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints([]);
-  setupRecentViewsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
   setupCollectionByIdEndpoint({
     collections: [personalCollection],
   });

@@ -7777,12 +7777,54 @@ databaseChangeLog:
             tableName: sandboxes
             columns:
               - column:
+<<<<<<< HEAD
                   name: permission_id
                   type: int
                   remarks: 'The ID of the corresponding permissions path for this sandbox (deprecated)'
                   constraints:
                     nullable: true
                   defaultValue: null
+=======
+                  name: dataset_query_metrics_v2_migration_backup
+                  remarks: The copy of dataset_query before the metrics v2 migration
+                  type: ${text.type}
+
+  - changeSet:
+      id: v51.2024-05-13T16:00:00
+      author: metamben
+      comment: Migrate v1 metrics to v2 metrics
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateMetricsToV2"
+
+  - changeSet:
+      id: v51.2024-05-30T16:04:20
+      author: escherize
+      comment: Add context to recent views table
+      changes:
+        - addColumn:
+            tableName: recent_views
+            columns:
+              - column:
+                  name: context
+                  remarks: The contextual action that netted a recent view.
+                  type: varchar(256)
+                  defaultValue: "view"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-06-07T12:37:36
+      author: crisptrutski
+      comment: Rename query_field.direct_reference to query_field.indirect_reference
+      changes:
+        - renameColumn:
+            tableName: query_field
+            columnDataType: ${boolean.type}
+            oldColumnName: direct_reference
+            newColumnName: explicit_reference
+
+>>>>>>> 7b849da346 (Make recents understand context (#43478))
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

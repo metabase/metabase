@@ -44,6 +44,25 @@ export function entityPickerModalTab(name) {
   return cy.findAllByRole("tab").filter(`:contains(${name})`);
 }
 
+// displays at least these tabs:
+export function shouldDisplayTabs(tabs) {
+  tabs.forEach(tab => {
+    entityPickerModalTab(tab).should("exist");
+  });
+}
+
+export function tabsShouldBe(selected, tabs) {
+  cy.log(tabs);
+  cy.findAllByRole("tab").should("have.length", tabs.length);
+  tabs.forEach(tab => {
+    if (tab === selected) {
+      entityPickerModalTab(tab).and("have.attr", "aria-selected", "true");
+    } else {
+      entityPickerModalTab(tab).should("exist");
+    }
+  });
+}
+
 export function collectionOnTheGoModal() {
   return cy.findByTestId("create-collection-on-the-go");
 }
