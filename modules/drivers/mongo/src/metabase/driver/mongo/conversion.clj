@@ -39,8 +39,9 @@
   org.bson.types.Decimal128
   (from-document [^org.bson.types.Decimal128 input _opts]
     (try (.bigDecimalValue input)
+         ;; Convert negative and positive zero to 0M
          (catch ArithmeticException e
-           (if (str/includes? (ex-message e) "Negative zero can not be converted to a BigDecimal")
+           (if (str/includes? (ex-message e) "zero can not be converted to a BigDecimal")
              0M
              (throw e)))))
 
