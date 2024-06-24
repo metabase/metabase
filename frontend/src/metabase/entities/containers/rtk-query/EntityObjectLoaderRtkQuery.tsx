@@ -10,6 +10,7 @@ import {
   setRequestLoading,
   setRequestPromise,
 } from "metabase/redux/requests";
+import type { Dispatch } from "metabase-types/store";
 
 import type {
   EntityDefinition,
@@ -27,7 +28,7 @@ interface ChildrenProps<Entity, EntityWrapper> {
   // bulkUpdate
   // create
   // delete
-  // dispatch
+  dispatch: Dispatch;
   dispatchApiErrorEvent: boolean;
   error: unknown;
   // fetch
@@ -39,11 +40,11 @@ interface ChildrenProps<Entity, EntityWrapper> {
   fetched: boolean;
   // invalidateLists
   loading: boolean;
-  object: EntityWrapper | Entity; // EntityWrapper when wrapped is true
-  // reload
-  // remove
+  object: EntityWrapper | Entity | undefined; // EntityWrapper when wrapped is true, Entity otherwise
+  reload: () => void; // TODO
+  remove: () => void; // TODO
   // setFieldOrder
-  table: EntityWrapper;
+  // table: EntityWrapper;
   // update
   // updateProperty
 }
@@ -196,11 +197,13 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
   });
 
   const fetched = useSelector(state => {
-    return entityDefinition.selectors.getFetched(state, entityOptions);
+    const value = entityDefinition.selectors.getFetched(state, entityOptions);
+    return Boolean(value);
   });
 
   const loading = useSelector(state => {
-    return entityDefinition.selectors.getLoading(state, entityOptions);
+    const value = entityDefinition.selectors.getLoading(state, entityOptions);
+    return Boolean(value);
   });
 
   const error = useSelector(state => {

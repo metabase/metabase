@@ -50,11 +50,11 @@ export interface EntityDefinition<Entity, EntityWrapper> {
     >;
   };
   selectors: {
-    getFetched: Selector<boolean>;
-    getLoading: Selector<boolean>;
-    getError: Selector<unknown | null>;
+    getFetched: Selector<boolean | undefined>;
+    getLoading: Selector<boolean | undefined>;
+    getError: Selector<unknown | null | undefined>;
   } & {
-    [selectorName: string]: Selector<Entity>;
+    [selectorName: string]: Selector<Entity | undefined>;
   };
   wrapEntity: (object: Entity, dispatch: Dispatch) => EntityWrapper;
 }
