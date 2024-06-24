@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { getMilestones } from "./github";
-import { getLinkedIssues, getPRsFromCommitMessage } from "./linked-issues";
+import { getLinkedIssues, getPRsFromCommitMessage, getBackportSourcePRNumber } from "./linked-issues";
 import type { Issue, GithubProps, Milestone } from "./types";
 import {
   getMajorVersion,
@@ -54,13 +54,17 @@ async function getOriginalPR({
     pull_number: pullRequestNumber,
   });
 
-  if (pull?.data && isBackport(pull.data)) {
-    return getOriginalPR({
-      github,
-      repo,
-      owner,
-      pullRequestNumber: pull.data.number
-    });
+  if (pull?.data && isBackport(pull.data) && pull.data.body) {
+    const sourcePRNumber = getBackportSourcePRNumber(pull.data.body);
+    if (sourcePRNumber && sourcePRNumber !== pullRequestNumber) {
+      console.log('found backport PR', pull.data.number, 'source PR', sourcePRNumber);
+      return getOriginalPR({
+        github,
+        repo,
+        owner,
+        pullRequestNumber: sourcePRNumber,
+      });
+    }
   }
 
   const linkedIssues = await getLinkedIssues(pull.data.body ?? '');
