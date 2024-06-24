@@ -19,6 +19,7 @@ import missingCurrencyFormatting44086 from "./missing-currency-formatting-44086.
 import mixedPostiiveNegative from "./mixed-positive-negative.json";
 import nullDimension from "./null-dimension.json";
 import numericDimension from "./numeric-dimension.json";
+import percentagesOnChartBooleanDimensionCrashes44085 from "./percentages-on-chart-boolean-dimension-crashes-44085.json";
 import relativeDateDimension from "./relative-date-dimension.json";
 import showPercentagesOff from "./show-percentages-off.json";
 import showPercentagesOnChartDense from "./show-percentages-on-chart-dense.json";
@@ -62,4 +63,5 @@ export const data = {
   missingCurrencyFormatting3,
   missingColors44087,
   invalidDimensionSetting44085,
+  percentagesOnChartBooleanDimensionCrashes44085,
 };
