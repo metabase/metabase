@@ -402,9 +402,7 @@
                          :lib/desired-column-alias "ID",
                          :display-name "ID",
                          :position 10}]
-             (into []
-                   (map :short)
-                   (lib.filter.operator/filter-operators column)))))))
+             (mapv :short (lib.filter.operator/filter-operators column)))))))
 
 (deftest ^:parallel replace-filter-clause-test
   (testing "Make sure we are able to replace a filter clause using the lib functions for manipulating filters."
