@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { createQuery } from "metabase-lib/test-helpers";
+import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
 import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
 import { FieldPanel } from "./FieldPanel";
@@ -138,6 +138,26 @@ describe("QueryColumnPicker", () => {
     for (const column of otherColumns) {
       expect(column).toBeChecked();
       expect(column).toBeEnabled();
+    }
+  });
+
+  it("should not allow to remove fields for aggregated queries", async () => {
+    setup({
+      query: createQueryWithClauses({
+        query: createQuery(),
+        aggregations: [
+          { operatorName: "count" },
+          { operatorName: "sum", columnName: "PRICE", tableName: "PRODUCTS" },
+        ],
+      }),
+    });
+
+    const [group, ...columns] = screen.getAllByRole("checkbox");
+    expect(group).toBeChecked();
+    expect(group).toBeDisabled();
+    for (const column of columns) {
+      expect(column).toBeChecked();
+      expect(column).toBeDisabled();
     }
   });
 
