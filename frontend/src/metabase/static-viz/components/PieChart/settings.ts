@@ -2,7 +2,10 @@ import {
   fillWithDefaultValue,
   getCommonStaticVizSettings,
 } from "metabase/static-viz/lib/settings";
-import { getDefaultDimensionAndMetric } from "metabase/visualizations/lib/utils";
+import {
+  columnsAreValid,
+  getDefaultDimensionAndMetric,
+} from "metabase/visualizations/lib/utils";
 import {
   getDefaultColors,
   getDefaultPercentVisibility,
@@ -18,10 +21,25 @@ export function computeStaticPieChartSettings(
   dashcardSettings: VisualizationSettings,
 ): ComputedVisualizationSettings {
   const settings = getCommonStaticVizSettings(rawSeries, dashcardSettings);
-  const { dimension, metric } = getDefaultDimensionAndMetric(rawSeries);
+  const { dimension: defaultDimension, metric: defaultMetric } =
+    getDefaultDimensionAndMetric(rawSeries);
 
-  fillWithDefaultValue(settings, "pie.dimension", dimension);
-  fillWithDefaultValue(settings, "pie.metric", metric);
+  const dimensionIsValid = columnsAreValid(
+    settings["pie.dimension"],
+    rawSeries[0].data,
+  );
+  const metricIsValid = columnsAreValid(
+    settings["pie.metric"],
+    rawSeries[0].data,
+  );
+
+  fillWithDefaultValue(
+    settings,
+    "pie.dimension",
+    defaultDimension,
+    dimensionIsValid,
+  );
+  fillWithDefaultValue(settings, "pie.metric", defaultMetric, metricIsValid);
   fillWithDefaultValue(settings, "pie.show_legend", getDefaultShowLegend());
   fillWithDefaultValue(settings, "pie.show_total", getDefaultShowTotal());
   fillWithDefaultValue(

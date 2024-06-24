@@ -9,6 +9,7 @@ import dateDimension from "./date-dimension.json";
 import defaultSettings from "./default-settings.json";
 import hideLegend from "./hide-legend.json";
 import hideTotal from "./hide-total.json";
+import invalidDimensionSetting44085 from "./invalid-dimension-setting-44085.json";
 import largeMinimumSlicePercentage from "./large-min-slice-percentage.json";
 import longDimensionName from "./long-dimension-name.json";
 import missingColors44087 from "./missing-colors-44087.json";
@@ -60,4 +61,5 @@ export const data = {
   missingCurrencyFormatting2,
   missingCurrencyFormatting3,
   missingColors44087,
+  invalidDimensionSetting44085,
 };
