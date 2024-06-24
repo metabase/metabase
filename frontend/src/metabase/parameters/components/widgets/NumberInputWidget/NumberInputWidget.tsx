@@ -98,6 +98,10 @@ export function NumberInputWidget({
     })
     .filter(isNotNull);
 
+  const customLabelOptions = options.filter(
+    option => option.label !== option.value,
+  );
+
   function parseValue(value: string | number | undefined): number | null {
     if (value === undefined) {
       return null;
@@ -135,7 +139,7 @@ export function NumberInputWidget({
             placeholder={placeholder}
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
-            data={options.concat(valueOptions)}
+            data={customLabelOptions.concat(valueOptions)}
           />
         </TokenFieldWrapper>
       ) : (
