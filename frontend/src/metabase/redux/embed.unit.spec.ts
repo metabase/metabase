@@ -10,7 +10,7 @@ describe("embed reducer", () => {
     it("should set default options", () => {
       const store = createMockStore();
 
-      store.dispatch(setInitialUrlOptions({ search: "" }));
+      store.dispatch(setInitialUrlOptions({ search: "", hash: "" }));
 
       expect(store.getState().embed.options).toEqual(DEFAULT_EMBED_OPTIONS);
     });
@@ -19,7 +19,10 @@ describe("embed reducer", () => {
       const store = createMockStore();
 
       store.dispatch(
-        setInitialUrlOptions({ search: "top_nav=false&new_button=true" }),
+        setInitialUrlOptions({
+          search: "top_nav=false&new_button=true",
+          hash: "",
+        }),
       );
 
       expect(store.getState().embed.options.top_nav).toBe(false);
@@ -30,7 +33,10 @@ describe("embed reducer", () => {
       const store = createMockStore();
 
       store.dispatch(
-        setInitialUrlOptions({ search: "top_nav=false&invalid_option=123" }),
+        setInitialUrlOptions({
+          search: "top_nav=false&invalid_option=123",
+          hash: "",
+        }),
       );
 
       expect(store.getState().embed.options).not.toHaveProperty(

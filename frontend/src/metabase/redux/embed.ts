@@ -1,7 +1,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { pick } from "underscore";
 
-import { parseSearchOptions } from "metabase/lib/browser";
+import { parseSearchOptions, parseHashOptions } from "metabase/lib/browser";
 import type { EmbedOptions } from "metabase-types/store";
 
 export const DEFAULT_EMBED_OPTIONS: EmbedOptions = {
@@ -17,6 +17,7 @@ export const DEFAULT_EMBED_OPTIONS: EmbedOptions = {
 } as const;
 
 const allowedEmbedOptions = Object.keys(DEFAULT_EMBED_OPTIONS);
+const allowedEmbedHashOptions = ["font"];
 
 export const urlParameterToBoolean = (
   urlParameter: string | string[] | boolean | undefined,
@@ -40,13 +41,14 @@ const interactiveEmbedSlice = createSlice({
   reducers: {
     setInitialUrlOptions: (
       state,
-      action: PayloadAction<{ search: string }>,
+      action: PayloadAction<{ search: string; hash: string }>,
     ) => {
       const searchOptions = parseSearchOptions(action.payload.search);
 
       state.options = {
         ...DEFAULT_EMBED_OPTIONS,
         ...pick(searchOptions, allowedEmbedOptions),
+        ...pick(parseHashOptions(action.payload.hash), allowedEmbedHashOptions),
       };
     },
     setOptions: (state, action: PayloadAction<Partial<EmbedOptions>>) => {
