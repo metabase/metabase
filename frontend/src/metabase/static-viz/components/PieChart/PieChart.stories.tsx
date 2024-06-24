@@ -247,3 +247,10 @@ InvalidDimensionSetting44085.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const PercentagesOnChartBooleanDimensionCrashes44085 = Template.bind({});
+PercentagesOnChartBooleanDimensionCrashes44085.args = {
+  rawSeries: data.percentagesOnChartBooleanDimensionCrashes44085 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
