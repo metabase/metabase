@@ -58,21 +58,32 @@ const Tables = createEntity({
   schema: TableSchema,
 
   rtk: {
-    getUseGetListQuery: _requestType => useListTablesQuery,
+    getUseGetListQuery: _requestType => ({
+      useGetListQuery: useListTablesQuery,
+    }),
     getUseGetQuery: requestType => {
       if (requestType === "fetchMetadata") {
-        return useGetTableQueryMetadataQuery;
+        return {
+          useGetQuery: useGetTableQueryMetadataQuery,
+          options: {
+            refetchOnMountOrArgChange: false,
+          },
+        };
       }
 
       if (requestType === "fetchMetadataDeprecated") {
-        return useGetTableQueryMetadataQuery;
+        return {
+          useGetQuery: useGetTableQueryMetadataQuery,
+        };
       }
 
       if (requestType === "fetchMetadataAndForeignTables") {
         // TODO
       }
 
-      return useGetTableQuery;
+      return {
+        useGetQuery: useGetTableQuery,
+      };
     },
   },
 

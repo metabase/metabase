@@ -128,14 +128,15 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
     [entityId, entityQuery],
   );
 
-  const useGetQuery = entityDefinition.rtk.getUseGetQuery(requestType);
+  const { useGetQuery, options } =
+    entityDefinition.rtk.getUseGetQuery(requestType);
 
   const {
     data,
     error: rtkError,
     isLoading,
     refetch,
-  } = useGetQuery(entityId != null ? finalQuery : skipToken);
+  } = useGetQuery(entityId != null ? finalQuery : skipToken, options);
 
   const queryKey = useMemo(
     () => entityDefinition.getQueryKey(finalQuery),
