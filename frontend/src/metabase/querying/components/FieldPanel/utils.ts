@@ -47,7 +47,7 @@ function getGroupsWithColumns(
       displayName:
         groupInfo.fkReferenceName || groupInfo.displayName || t`Question`,
       isSelected: columnItems.every(({ isSelected }) => isSelected),
-      isDisabled: columnItems.some(({ isDisabled }) => isDisabled),
+      isDisabled: columnItems.every(({ isDisabled }) => isDisabled),
     };
   });
 }
@@ -69,7 +69,7 @@ function disableLastSelectedQueryColumn(groupItems: ColumnGroupItem[]) {
           columnItem.isDisabled ||
           (columnItem.isSelected && isOnlySelectedColumn),
       })),
-      isDisabled: groupItem.isDisabled || groupItem.isSelected,
+      isDisabled: groupItem.isSelected && isOnlySelectedColumn,
     };
   });
 }
@@ -133,16 +133,22 @@ export function toggleColumnGroupInQuery(
   query: Lib.Query,
   stageIndex: number,
   groupItem: ColumnGroupItem,
+  groupIndex: number,
 ) {
-  return groupItem.columnItems.reduce((query, columnItem) => {
-    if (groupItem.isSelected) {
-      return columnItem.isSelected
-        ? Lib.removeField(query, stageIndex, columnItem.column)
-        : query;
-    } else {
-      return columnItem.isSelected
-        ? query
-        : Lib.addField(query, stageIndex, columnItem.column);
-    }
-  }, query);
+  if (groupItem.isSelected) {
+    return groupItem.columnItems
+      .filter(columnItem => columnItem.isSelected && !columnItem.isDisabled)
+      .filter((_, columnIndex) => !(groupIndex === 0 && columnIndex === 0))
+      .reduce(
+        (query, { column }) => Lib.removeField(query, stageIndex, column),
+        query,
+      );
+  } else {
+    return groupItem.columnItems
+      .filter(columnItem => !columnItem.isSelected && !columnItem.isDisabled)
+      .reduce(
+        (query, { column }) => Lib.addField(query, stageIndex, column),
+        query,
+      );
+  }
 }
