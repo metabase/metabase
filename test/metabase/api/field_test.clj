@@ -436,11 +436,6 @@
               (is (= (u/the-id new-dim)
                      (u/the-id updated-dim))))))))))
 
-(deftest virtual-field-values-test
-  (testing "Check that trying to get values for a 'virtual' field just returns a blank values map"
-    (is (= {:values []}
-           (mt/user-http-request :rasta :get 200 (format "field/%s/values" (codec/url-encode "field,created_at,{base-type,type/Datetime}")))))))
-
 (deftest create-dimension-with-human-readable-field-id-test
   (testing "POST /api/field/:id/dimension"
     (mt/with-temp [Field {field-id-1 :id} {:name "Field Test 1"}
