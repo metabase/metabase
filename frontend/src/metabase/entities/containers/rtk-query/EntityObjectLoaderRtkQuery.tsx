@@ -40,9 +40,8 @@ interface ChildrenProps<Entity, EntityWrapper> {
   fetched: boolean;
   // invalidateLists
   loading: boolean;
-  object: EntityWrapper | Entity | undefined; // EntityWrapper when wrapped is true, Entity otherwise
-  reload: () => void; // TODO
-  remove: () => void; // TODO
+  object: EntityWrapper | Entity | undefined; // EntityWrapper when "wrapped" is true, Entity otherwise
+  reload: () => void;
   // setFieldOrder
   // table: EntityWrapper;
   // update
@@ -230,15 +229,6 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
     return entityDefinition.wrapEntity(object, dispatch);
   }, [dispatch, object, entityDefinition, wrapped]);
 
-  const reload = () => {
-    /* TODO */
-    refetch();
-  };
-
-  const remove = () => {
-    /* TODO */
-  };
-
   const renderedChildren = children({
     ...actionCreators,
     ...props,
@@ -250,8 +240,7 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
     loading,
     // alias the entities name:
     [entityAlias || entityDefinition.nameOne]: wrappedObject,
-    reload,
-    remove,
+    reload: refetch,
   });
 
   if (loadingAndErrorWrapper) {
