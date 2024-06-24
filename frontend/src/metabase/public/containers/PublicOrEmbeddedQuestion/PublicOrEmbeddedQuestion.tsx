@@ -1,17 +1,11 @@
-import cx from "classnames";
 import type { Location } from "history";
-import { updateIn } from "icepick";
 import { useCallback, useEffect, useState } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
-import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
-import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import { setErrorPage } from "metabase/redux/app";
 import { addParamValues, addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -22,20 +16,18 @@ import {
   setEmbedQuestionEndpoints,
   maybeUsePivotEndpoint,
 } from "metabase/services";
-import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
-import Visualization from "metabase/visualizations/components/Visualization";
-import Question from "metabase-lib/v1/Question";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import { applyParameters } from "metabase-lib/v1/queries/utils/card";
 import type {
   Card,
-  VisualizationSettings,
   Dataset,
   ParameterId,
   ParameterValuesMap,
 } from "metabase-types/api";
+
+import { PublicOrEmbeddedQuestionView } from "./PublicOrEmbeddedQuestionView";
 
 export const PublicOrEmbeddedQuestion = ({
   params: { uuid, token },
@@ -173,71 +165,29 @@ export const PublicOrEmbeddedQuestion = ({
     );
   };
 
-  const question = new Question(card, metadata);
-
-  const actionButtons = result && (
-    <QueryDownloadWidget
-      className={cx(CS.m1, CS.textMediumHover)}
-      question={question}
-      result={result}
-      uuid={uuid}
-      token={token}
-    />
-  );
-
-  const { bordered, titled, theme, hide_download_button, hide_parameters } =
+  const { bordered, hide_download_button, hide_parameters, theme, titled } =
     useEmbedFrameOptions({ location });
 
   return (
-    <EmbedFrame
-      name={card && card.name}
-      description={card && card.description}
-      actionButtons={actionButtons}
-      question={question}
-      parameters={getParameters()}
+    <PublicOrEmbeddedQuestionView
+      initialized={initialized}
+      card={card}
+      metadata={metadata}
+      result={result}
+      uuid={uuid}
+      token={token}
+      getParameters={getParameters}
       parameterValues={parameterValues}
       setParameterValue={setParameterValue}
-      enableParameterRequiredBehavior
       setParameterValueToDefault={setParameterValueToDefault}
       // We don't support background: false on questions (metabase#43838)
       background
       bordered={bordered}
-      titled={titled}
-      theme={theme}
       hide_download_button={hide_download_button}
       hide_parameters={hide_parameters}
-    >
-      <LoadingAndErrorWrapper
-        className={CS.flexFull}
-        loading={!result}
-        error={typeof result === "string" ? result : null}
-        noWrapper
-      >
-        {() => (
-          <Visualization
-            error={result && result.error}
-            rawSeries={[{ card: card, data: result && result.data }]}
-            className={cx(CS.full, CS.flexFull, CS.z1)}
-            onUpdateVisualizationSettings={(
-              settings: VisualizationSettings,
-            ) => {
-              setCard(prevCard =>
-                updateIn(
-                  prevCard,
-                  ["visualization_settings"],
-                  previousSettings => ({ ...previousSettings, ...settings }),
-                ),
-              );
-            }}
-            gridUnit={12}
-            showTitle={false}
-            isDashboard
-            mode={PublicMode}
-            metadata={metadata}
-            onChangeCardAndRun={() => {}}
-          />
-        )}
-      </LoadingAndErrorWrapper>
-    </EmbedFrame>
+      theme={theme}
+      titled={titled}
+      setCard={setCard}
+    />
   );
 };

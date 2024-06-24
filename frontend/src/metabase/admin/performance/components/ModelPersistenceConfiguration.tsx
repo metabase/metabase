@@ -80,7 +80,7 @@ export const ModelPersistenceConfiguration = () => {
 
   const dismissLoadingToast = useCallback(
     (toastId: number) => {
-      dispatch(dismissUndo(toastId));
+      dispatch(dismissUndo({ undoId: toastId }));
     },
     [dispatch],
   );

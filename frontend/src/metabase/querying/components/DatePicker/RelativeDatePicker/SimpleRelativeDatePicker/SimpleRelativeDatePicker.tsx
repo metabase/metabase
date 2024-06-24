@@ -1,5 +1,5 @@
 import type { RelativeDatePickerValue } from "../../types";
-import { SimpleCurrentDatePicker } from "../CurrentDatePicker";
+import { CurrentDatePicker } from "../CurrentDatePicker";
 import { SimpleDateIntervalPicker } from "../DateIntervalPicker";
 import { isIntervalValue } from "../utils";
 
@@ -15,6 +15,6 @@ export function SimpleRelativeDatePicker({
   return isIntervalValue(value) ? (
     <SimpleDateIntervalPicker value={value} onChange={onChange} />
   ) : (
-    <SimpleCurrentDatePicker value={value} onChange={onChange} />
+    <CurrentDatePicker value={value} onChange={onChange} />
   );
 }

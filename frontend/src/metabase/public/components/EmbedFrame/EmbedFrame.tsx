@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactNode, JSX } from "react";
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
@@ -54,7 +54,7 @@ export type EmbedFrameBaseProps = Partial<{
   description: string | null;
   question: Question;
   dashboard: Dashboard | null;
-  actionButtons: JSX.Element | null;
+  actionButtons: ReactNode;
   footerVariant: FooterVariant;
   parameters: Parameter[];
   parameterValues: ParameterValuesMap;
@@ -67,7 +67,10 @@ export type EmbedFrameBaseProps = Partial<{
   dashboardTabs: ReactNode;
 }>;
 
-export type EmbedFrameProps = EmbedFrameBaseProps & DashboardUrlHashOptions;
+type WithRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
+export type EmbedFrameProps = EmbedFrameBaseProps &
+  WithRequired<DashboardUrlHashOptions, "background">;
+
 const EMBED_THEME_CLASSES = (theme: DashboardUrlHashOptions["theme"]) => {
   if (!theme) {
     return null;
