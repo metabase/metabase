@@ -28,13 +28,19 @@
   `:metric` model in the `models-of-interest` list. This is a TODO to complete this work."
   (:require
    [clojure.set :as set]
+   [colorize.core :as colorize]
    [java-time.api :as t]
+   [malli.core :as mc]
+   [malli.error :as me]
    [medley.core :as m]
+   [metabase.config :as config]
    [metabase.models.collection.root :as root]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -150,36 +156,6 @@
 
 (def Item
   "The shape of a recent view item, returned from `GET /recent_views`."
-<<<<<<< HEAD
-  [:and {:registry {::pc [:map
-                          [:id [:or [:int {:min 1}] [:= "root"]]]
-                          [:name :string]
-                          [:authority_level [:enum :official "official" nil]]]}}
-   [:map
-    [:id [:int {:min 1}]]
-    [:name :string]
-    [:description [:maybe :string]]
-    [:model [:enum :dataset :card :dashboard :collection :table]]
-    [:can_write :boolean]
-    [:timestamp :string]]
-   [:multi {:dispatch :model}
-    [:card [:map
-            [:parent_collection ::pc]
-            [:display :string]
-            [:moderated_status [:enum "verified" nil]]]]
-    [:dataset [:map
-               [:parent_collection ::pc]
-               [:moderated_status [:enum "verified" nil]]]]
-    [:dashboard [:map [:parent_collection ::pc]]]
-    [:table [:map
-             [:display_name :string]
-             [:database [:map
-                         [:id [:int {:min 1}]]
-                         [:name :string]]]]]
-    [:collection [:map
-                  [:parent_collection ::pc]
-                  [:authority_level [:enum :official "official" nil]]]]]])
-=======
   (mc/schema
    [:and {:registry {::official [:maybe [:enum :official "official"]]
                      ::verified [:maybe [:enum :verified "verified"]]
@@ -216,7 +192,6 @@
                    [:parent_collection ::pc]
                    [:effective_location :string]
                    [:authority_level ::official]]]]]))
->>>>>>> 7b849da346 (Make recents understand context (#43478))
 
 (defmulti fill-recent-view-info
   "Fills in additional information for a recent view, such as the display name of the object.
@@ -400,17 +375,7 @@
                   :name (:database-name table)
                   :initial_sync_status (:initial-sync-status table)}})))
 
-<<<<<<< HEAD
-(defn ^:private do-query [user-id]  (t2/select :model/RecentViews {:select [:rv.* [:rc.type :card_type]]
-                                                                   :from [[:recent_views :rv]]
-                                                                   :where [:and [:= :rv.user_id user-id]]
-                                                                   :left-join [[:report_card :rc]
-                                                                               [:and
-                                                                                ;; only want to join on card_type if it's a card
-                                                                                [:= :rv.model "card"]
-                                                                                [:= :rc.id :rv.model_id]]]
-                                                                   :order-by [[:rv.timestamp :desc]]}))
-=======
+
 (def ^:private query-context->recent-context
   {:views      "view"
    :selections "selection"})
@@ -429,7 +394,6 @@
                                               [:= :rv.model "card"]
                                               [:= :rc.id :rv.model_id]]]
                                  :order-by  [[:rv.timestamp :desc]]}))
->>>>>>> 7b849da346 (Make recents understand context (#43478))
 
 (mu/defn ^:private model->return-model [model :- :keyword]
   (if (= :question model) :card model))
@@ -456,20 +420,6 @@
      :collection (m/index-by :id (collection-recents collection-ids))
      :table      (m/index-by :id (table-recents table-ids))}))
 
-<<<<<<< HEAD
-(mu/defn get-list :- [:sequential Item]
-  "Gets all recent views for a given user. Returns a list of at most 20 [[Item]]s per [[models-of-interest]].
-
-  [[do-query]] can return nils, and we remove them here becuase models can be deleted, and we don't want to show those
-  in the recent views."
-  [user-id]
-  (if-let [views (not-empty (do-query user-id))]
-    (let [entity->id->data (get-entity->id->data views)]
-      (->> views
-           (map (partial post-process entity->id->data))
-           (remove nil?)))
-    []))
-=======
 (def ^:private ItemValidator (mc/validator Item))
 
 (defn error-avoider
@@ -504,4 +454,3 @@
                            (m/distinct-by (juxt :id :model)))
                           recent-items)]
      {:recents view-items})))
->>>>>>> 7b849da346 (Make recents understand context (#43478))
