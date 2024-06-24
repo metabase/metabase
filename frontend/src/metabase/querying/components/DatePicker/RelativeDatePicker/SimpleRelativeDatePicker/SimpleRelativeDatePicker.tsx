@@ -15,6 +15,6 @@ export function SimpleRelativeDatePicker({
   return isIntervalValue(value) ? (
     <SimpleDateIntervalPicker value={value} onChange={onChange} />
   ) : (
-    <CurrentDatePicker value={value} onChange={onChange} padded={false} />
+    <CurrentDatePicker value={value} onChange={onChange} />
   );
 }

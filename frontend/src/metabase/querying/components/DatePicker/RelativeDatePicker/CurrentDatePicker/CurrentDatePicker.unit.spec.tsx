@@ -23,9 +23,7 @@ const userEvent = _userEvent.setup({
 function setup({ value = DEFAULT_VALUE }: SetupOpts = {}) {
   const onChange = jest.fn();
 
-  renderWithProviders(
-    <CurrentDatePicker value={value} onChange={onChange} padded={true} />,
-  );
+  renderWithProviders(<CurrentDatePicker value={value} onChange={onChange} />);
 
   return { onChange };
 }

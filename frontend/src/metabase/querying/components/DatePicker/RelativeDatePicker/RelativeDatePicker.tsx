@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
+import { Divider, Flex, PopoverBackButton, Tabs, Box } from "metabase/ui";
 
 import type { RelativeDatePickerValue } from "../types";
 
@@ -76,11 +76,9 @@ export function RelativeDatePicker({
               onSubmit={handleSubmit}
             />
           ) : (
-            <CurrentDatePicker
-              value={value}
-              onChange={onChange}
-              padded={true}
-            />
+            <Box p="md">
+              <CurrentDatePicker value={value} onChange={onChange} />
+            </Box>
           )}
         </Tabs.Panel>
       ))}

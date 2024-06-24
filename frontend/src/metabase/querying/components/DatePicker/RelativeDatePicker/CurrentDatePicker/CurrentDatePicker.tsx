@@ -14,14 +14,9 @@ import { UNIT_GROUPS } from "./constants";
 interface CurrentDatePickerProps {
   value: RelativeDatePickerValue;
   onChange: (value: RelativeDatePickerValue) => void;
-  padded: boolean;
 }
 
-export function CurrentDatePicker({
-  value,
-  onChange,
-  padded,
-}: CurrentDatePickerProps) {
+export function CurrentDatePicker({ value, onChange }: CurrentDatePickerProps) {
   const getTooltipLabel = (unit: DatePickerTruncationUnit) => {
     return formatDateRange({ ...value, unit });
   };
@@ -31,7 +26,7 @@ export function CurrentDatePicker({
   };
 
   return (
-    <Stack p={padded ? "md" : undefined}>
+    <Stack>
       {UNIT_GROUPS.map((group, groupIndex) => (
         <Group key={groupIndex}>
           {group.map(unit => (
