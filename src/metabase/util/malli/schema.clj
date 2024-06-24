@@ -333,8 +333,7 @@
      [:slug {:optional true} :string]
      [:name {:optional true} :string]
      [:default {:optional true} :any]
-     [:sectionId {:optional true} NonBlankString]
-     [:temporal_units {:optional true}]]
+     [:sectionId {:optional true} NonBlankString]]
     (deferred-tru "parameter must be a map with :id and :type keys")))
 
 (def ParameterMapping
