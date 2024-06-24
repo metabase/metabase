@@ -64,6 +64,14 @@ function getJoinQueryHelpers(query: Lib.Query) {
     Lib.joinConditionRHSColumns(query, 0, table),
   );
 
+  const defaultStrategy = Lib.availableJoinStrategies(query, 0).find(
+    strategy => Lib.displayInfo(query, 0, strategy).default,
+  );
+
+  if (!defaultStrategy) {
+    throw new Error("No default strategy found");
+  }
+
   const defaultOperator = Lib.joinConditionOperators(query, 0).find(
     operator => Lib.displayInfo(query, 0, operator).default,
   );
@@ -72,29 +80,44 @@ function getJoinQueryHelpers(query: Lib.Query) {
     throw new Error("No default operator found");
   }
 
-  return { table, defaultOperator, findLHSColumn, findRHSColumn };
+  return {
+    table,
+    defaultStrategy,
+    defaultOperator,
+    findLHSColumn,
+    findRHSColumn,
+  };
 }
 
 function getJoinedQuery() {
   const query = createQuery({ metadata });
 
-  const { table, defaultOperator, findLHSColumn, findRHSColumn } =
-    getJoinQueryHelpers(query);
+  const {
+    table,
+    defaultStrategy,
+    defaultOperator,
+    findLHSColumn,
+    findRHSColumn,
+  } = getJoinQueryHelpers(query);
 
   const ordersProductId = findLHSColumn("ORDERS", "PRODUCT_ID");
   const productsId = findRHSColumn("PRODUCTS", "ID");
 
+  const stageIndex = -1;
   const condition = Lib.joinConditionClause(
     query,
-    0,
+    stageIndex,
     defaultOperator,
     ordersProductId,
     productsId,
   );
 
-  const join = Lib.withJoinFields(Lib.joinClause(table, [condition]), "all");
+  const join = Lib.withJoinFields(
+    Lib.joinClause(table, [condition], defaultStrategy),
+    "all",
+  );
 
-  return Lib.join(query, 0, join);
+  return Lib.join(query, stageIndex, join);
 }
 
 function getJoinedQueryWithMultipleConditions() {
@@ -445,36 +468,6 @@ describe("Notebook Editor > Join Step", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should handle join strategy", async () => {
-    const { getRecentJoin } = setup(
-      createMockNotebookStep({ query: getJoinedQuery() }),
-    );
-
-    await userEvent.click(screen.getByLabelText("Change join type"));
-    let popover = await screen.findByTestId("select-list");
-    let leftJoin = within(popover).getByLabelText("Left outer join");
-    let rightJoin = within(popover).getByLabelText("Right outer join");
-
-    expect(leftJoin).toHaveAttribute("aria-selected", "true");
-    expect(rightJoin).toHaveAttribute("aria-selected", "false");
-
-    await userEvent.click(rightJoin);
-    await waitFor(() =>
-      expect(screen.queryByTestId("select-list")).not.toBeInTheDocument(),
-    );
-
-    await userEvent.click(screen.getByLabelText("Change join type"));
-    popover = await screen.findByTestId("select-list");
-    leftJoin = within(popover).getByLabelText("Left outer join");
-    rightJoin = within(popover).getByLabelText("Right outer join");
-
-    expect(leftJoin).toHaveAttribute("aria-selected", "false");
-    expect(rightJoin).toHaveAttribute("aria-selected", "true");
-
-    const { strategy } = getRecentJoin();
-    expect(strategy.shortName).toBe("right-join");
-  });
-
   it("should handle join operator", async () => {
     const { getRecentJoin } = setup(
       createMockNotebookStep({ query: getJoinedQuery() }),
@@ -503,6 +496,93 @@ describe("Notebook Editor > Join Step", () => {
 
     const [condition] = getRecentJoin().conditions;
     expect(condition.operator.shortName).toBe("!=");
+  });
+
+  describe("join strategies", () => {
+    it("should be able to change the join strategy for a new join clause", async () => {
+      const { getRecentJoin } = setup();
+
+      await userEvent.click(
+        within(screen.getByLabelText("Right table")).getByRole("button"),
+      );
+      const lhsTableModal = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(await within(lhsTableModal).findByText("Reviews"));
+
+      await userEvent.click(screen.getByLabelText("Change join type"));
+      const strategyPopover = await screen.findByTestId("select-list");
+      await userEvent.click(
+        within(strategyPopover).getByLabelText("Right outer join"),
+      );
+
+      await userEvent.click(screen.getByLabelText("Left column"));
+      const lhsColumnPopover = await screen.findByTestId("lhs-column-picker");
+      await userEvent.click(within(lhsColumnPopover).getByText("ID"));
+
+      const rhsColumnPopover = await screen.findByTestId("rhs-column-picker");
+      await userEvent.click(within(rhsColumnPopover).getByText("ID"));
+
+      const { strategy } = getRecentJoin();
+      expect(strategy.shortName).toBe("right-join");
+    });
+
+    it("should be able to change the join strategy of an existing join clause", async () => {
+      const { getRecentJoin } = setup(
+        createMockNotebookStep({ query: getJoinedQuery() }),
+      );
+
+      await userEvent.click(screen.getByLabelText("Change join type"));
+      let popover = await screen.findByTestId("select-list");
+      let leftJoin = within(popover).getByLabelText("Left outer join");
+      let rightJoin = within(popover).getByLabelText("Right outer join");
+
+      expect(leftJoin).toHaveAttribute("aria-selected", "true");
+      expect(rightJoin).toHaveAttribute("aria-selected", "false");
+
+      await userEvent.click(rightJoin);
+      await waitFor(() =>
+        expect(screen.queryByTestId("select-list")).not.toBeInTheDocument(),
+      );
+
+      await userEvent.click(screen.getByLabelText("Change join type"));
+      popover = await screen.findByTestId("select-list");
+      leftJoin = within(popover).getByLabelText("Left outer join");
+      rightJoin = within(popover).getByLabelText("Right outer join");
+
+      expect(leftJoin).toHaveAttribute("aria-selected", "false");
+      expect(rightJoin).toHaveAttribute("aria-selected", "true");
+
+      const { strategy } = getRecentJoin();
+      expect(strategy.shortName).toBe("right-join");
+    });
+
+    it("should be able to change the join strategy of an existing join clause after removing the rhs table and selecting join conditions", async () => {
+      const { getRecentJoin } = setup(
+        createMockNotebookStep({ query: getJoinedQuery() }),
+      );
+
+      await userEvent.click(screen.getByLabelText("Change join type"));
+      const strategyPopover = await screen.findByTestId("select-list");
+      await userEvent.click(
+        within(strategyPopover).getByLabelText("Right outer join"),
+      );
+
+      await userEvent.click(
+        within(screen.getByLabelText("Right table")).getByRole("button", {
+          name: /Products/,
+        }),
+      );
+      const lhsTableModal = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(await within(lhsTableModal).findByText("Reviews"));
+
+      const lhsColumnPopover = await screen.findByTestId("lhs-column-picker");
+      await userEvent.click(within(lhsColumnPopover).getByText("ID"));
+
+      const rhsColumnPopover = await screen.findByTestId("rhs-column-picker");
+      await userEvent.click(within(rhsColumnPopover).getByText("ID"));
+
+      const { strategy } = getRecentJoin();
+      expect(strategy.shortName).toBe("right-join");
+    });
   });
 
   describe("join fields", () => {

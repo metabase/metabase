@@ -40,8 +40,9 @@ export function joins(query: Query, stageIndex: number): Join[] {
 export function joinClause(
   joinable: Joinable,
   conditions: JoinCondition[],
+  strategy: JoinStrategy,
 ): Join {
-  return ML.join_clause(joinable, conditions);
+  return ML.join_clause(joinable, conditions, strategy);
 }
 
 export function joinConditionClause(
