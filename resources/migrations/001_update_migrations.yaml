@@ -8017,6 +8017,22 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
+      id: v51.2024-06-14T06:45:34
+      author: johnswanson
+      comment: Create index on view_log (model, model_id, timestamp)
+      changes:
+        - createIndex:
+            tableName: view_log
+            columns:
+              - column:
+                  name: model
+              - column:
+                  name: model_id
+              - column:
+                  name: timestamp
+            indexName: idx_view_log_model_model_id_timestamp
+
+  - changeSet:
       id: v51.2024-06-14T06:45:35
       author: johnswanson
       comment: Populate `last_viewed_at` for dashboards
