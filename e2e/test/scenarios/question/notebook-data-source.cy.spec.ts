@@ -28,6 +28,8 @@ import {
   resyncDatabase,
   saveQuestion,
   startNewQuestion,
+  shouldDisplayTabs,
+  tabsShouldBe,
   visitModel,
   visitQuestion,
   visualize,
@@ -88,12 +90,7 @@ describe("scenarios > notebook > data source", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         cy.findAllByRole("tab").should("have.length", 2);
-        entityPickerModalTab("Recents").should("not.exist");
-        entityPickerModalTab("Models").and(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        entityPickerModalTab("Models").should("exist");
         entityPickerModalTab("Tables").should("exist");
         entityPickerModalTab("Saved questions").should("not.exist");
       });
@@ -107,9 +104,9 @@ describe("scenarios > notebook > data source", () => {
       });
 
       startNewQuestion();
+
       entityPickerModal().within(() => {
-        cy.findAllByRole("tab").should("have.length", 2);
-        entityPickerModalTab("Recents").should("not.exist");
+        shouldDisplayTabs(["Tables", "Saved questions"]);
         entityPickerModalTab("Models").should("not.exist");
         entityPickerModalTab("Tables").and(
           "have.attr",
@@ -189,7 +186,6 @@ describe("scenarios > notebook > data source", () => {
 
         startNewQuestion();
         entityPickerModal().within(() => {
-          entityPickerModalTab("Recents").should("not.exist");
           entityPickerModalTab("Tables").click();
           cy.findByText(dbName).click();
           cy.findByText(schemaName).click();
@@ -280,18 +276,14 @@ describe("scenarios > notebook > data source", () => {
         .click();
 
       entityPickerModal().within(() => {
-        entityPickerModalTab("Models").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        shouldDisplayTabs(["Models", "Tables", "Saved questions"]);
+
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
         assertDataPickerEntitySelected(2, "Second collection");
         assertDataPickerEntitySelected(3, checkNotNull(modelDetails.name));
 
-        entityPickerModalTab("Recents").click();
-        cy.findByTestId("result-item")
+        cy.findByText(checkNotNull(modelDetails.name))
           .should("exist")
           .and("contain.text", checkNotNull(modelDetails.name))
           .and("have.attr", "aria-selected", "true");
@@ -312,12 +304,6 @@ describe("scenarios > notebook > data source", () => {
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "Orders Model");
 
-        entityPickerModalTab("Recents").click();
-        cy.findByTestId("result-item")
-          .should("exist")
-          .and("contain.text", "Orders Model")
-          .and("have.attr", "aria-selected", "true");
-
         cy.button("Close").click();
       });
 
@@ -333,12 +319,6 @@ describe("scenarios > notebook > data source", () => {
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
         assertDataPickerEntitySelected(2, "Orders Model");
-
-        entityPickerModalTab("Recents").click();
-        cy.findByTestId("result-item")
-          .should("exist")
-          .and("contain.text", "Orders Model")
-          .and("have.attr", "aria-selected", "true");
       });
     });
 
@@ -373,13 +353,6 @@ describe("scenarios > notebook > data source", () => {
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, sourceQuestionName);
 
-        entityPickerModalTab("Recents").click();
-        cy.findAllByTestId("result-item").should("have.length", 1);
-        cy.findByTestId("result-item")
-          .should("exist")
-          .and("contain.text", "Nested Question")
-          .and("not.have.attr", "aria-selected", "true");
-
         cy.button("Close").click();
       });
 
@@ -402,16 +375,6 @@ describe("scenarios > notebook > data source", () => {
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
         assertDataPickerEntitySelected(2, sourceQuestionName);
-
-        entityPickerModalTab("Recents").click();
-        cy.findAllByTestId("result-item")
-          .contains(nestedQuestionDetails.name)
-          .parents("button")
-          .and("not.have.attr", "aria-selected", "true");
-        cy.findAllByTestId("result-item")
-          .contains(sourceQuestionName)
-          .parents("button")
-          .and("have.attr", "aria-selected", "true");
       });
     });
   });
@@ -435,9 +398,8 @@ describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       cy.findAllByRole("tab").should("have.length", 2);
-      entityPickerModalTab("Recents").should("not.exist");
-      entityPickerModalTab("Models").and("have.attr", "aria-selected", "true");
-      entityPickerModalTab("Tables").should("exist");
+      entityPickerModalTab("Tables").should("be.visible");
+      entityPickerModalTab("Models").should("be.visible");
       entityPickerModalTab("Saved questions").should("not.exist");
     });
   });
