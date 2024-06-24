@@ -41,7 +41,6 @@ import {
   DashboardTabsContainer,
   Footer,
   Header,
-  IntersectionObserverTarget,
   ParametersWidgetContainer,
   Root,
   Separator,
@@ -207,9 +206,12 @@ export const EmbedFrame = ({
             <Separator />
           </Header>
         )}
-        <span style={{ position: "relative" }}>
-          <IntersectionObserverTarget ref={intersectionObserverTargetRef} />
-        </span>
+        {/**
+         * I put the target for IntersectionObserver right above the parameters container,
+         * so that it detects when the parameters container is about to be sticky (is about
+         * to go out of the viewport).
+         */}
+        <span ref={intersectionObserverTargetRef} />
         {hasVisibleParameters && (
           <ParametersWidgetContainer
             embedFrameTheme={theme}

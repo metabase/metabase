@@ -181,11 +181,3 @@ export const Footer = styled.footer<{ variant: FooterVariant }>`
     padding: 1.5rem;
   }
 `;
-
-export const IntersectionObserverTarget = styled.span`
-  position: absolute;
-  width: 100%;
-  height: 60px;
-  bottom: 0;
-  transform: translateY(100%);
-`;
