@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
 import { cardApi } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Card } from "metabase/ui";
+import { Card, Flex, Icon, Title } from "metabase/ui";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import BaseVisualization from "metabase/visualizations/components/Visualization";
 import type { SearchResult, Series } from "metabase-types/api";
+import { ActionIcon } from "@mantine/core";
 
 export function VisualizerCanvas({
   used,
@@ -60,7 +61,15 @@ export function VisualizerCanvas({
   return (
     <Card w="100%" h="100%">
       {chart && (
-        <BaseVisualization rawSeries={[{ ...chart }]} metadata={metadata} />
+        <>
+          <Flex mx="xs">
+            <Title mb="md">{chart?.card.name}</Title>
+            <ActionIcon ml="auto">
+              <Icon name="gear" />
+            </ActionIcon>
+          </Flex>
+          <BaseVisualization rawSeries={[{ ...chart }]} metadata={metadata} />
+        </>
       )}
     </Card>
   );
