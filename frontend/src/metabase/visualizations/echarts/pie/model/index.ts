@@ -106,9 +106,17 @@ export function getPieChartModel(
       // batik does not support hsl
       const color = Color(colors[String(dimensionValue)]).hex();
 
+      let key: string | number;
+      if (dimensionValue == null) {
+        key = NULL_DISPLAY_VALUE;
+      } else if (typeof dimensionValue === "boolean") {
+        key = String(dimensionValue);
+      } else {
+        key = dimensionValue;
+      }
+
       return {
-        key:
-          dimensionValue == null ? NULL_DISPLAY_VALUE : String(dimensionValue),
+        key,
         value: isNonPositive ? -1 * metricValue : metricValue,
         tooltipDisplayValue: metricValue,
         normalizedPercentage: metricValue / total, // slice percentage values are normalized to 0-1 scale
