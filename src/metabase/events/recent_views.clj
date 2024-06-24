@@ -48,19 +48,6 @@
 (m/defmethod events/publish-event! ::card-query-event
   "Handle processing for a single card query event."
   [topic {:keys [card-id user-id context] :as _event}]
-<<<<<<< HEAD
-  (span/with-span!
-    {:name (str "recent-views-" (name topic))
-     :topic topic
-     :card-id card-id
-     :user-id user-id}
-    (try
-      (let [model    "card"
-            user-id  (or user-id api/*current-user-id*)]
-        ;; we don't want to count pinned card views
-        (when-not (#{:collection :dashboard} context)
-          (recent-views/update-users-recent-views! user-id model card-id)))
-=======
   (try
     (let [user-id  (or user-id api/*current-user-id*)]
       ;; we don't want to count pinned card views
@@ -81,7 +68,6 @@
   (when (= context :question)
     (try
       (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Card object-id :view)
->>>>>>> 7b849da346 (Make recents understand context (#43478))
       (catch Throwable e
         (log/warnf e "Failed to process recent_views event: %s" topic)))))
 
