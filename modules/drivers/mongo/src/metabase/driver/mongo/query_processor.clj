@@ -1136,14 +1136,14 @@
                                   ;; \$ is added to identifiers so eg. `q~count1` becomes `$q~count1`. Those values
                                   ;; are used match against `aggr-expr` where identifiers have the prefix.
                                   (map #(str \$ %)))
-                            distinct-keys)
-        aggr-expr' (walk/postwalk (fn [x]
-                                    (if (and (string? x)
-                                             (distinct-vals x))
-                                      {$size x}
-                                      x))
-                                  aggr-expr)]
-    [aggr-expr' mappings]))
+                            distinct-keys)]
+    [(walk/postwalk (fn [x]
+                      (if (and (string? x)
+                               (distinct-vals x))
+                        {$size x}
+                        x))
+                    aggr-expr)
+     mappings]))
 
 (defn- expand-aggregations
   "Expands the aggregations in `aggr-expr` into groupings and post processing
