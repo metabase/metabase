@@ -380,28 +380,28 @@
               :position 10,
               :fingerprint {:global {:distinct-count 2, :nil% 0.0}}}))))
   (testing "should return text-like operators for text-like PKs and FKs"
-    (for [semantic-type [:type/PK :type/FK]
-          :let [column {:description nil,
-                        :lib/type :metadata/column,
-                        :base-type :type/MongoBSONID,
-                        :semantic-type semantic-type
-                        :table-id 7,
-                        :name "ID",
-                        :coercion-strategy nil,
-                        :lib/source :source/table-defaults,
-                        :lib/source-column-alias "ID",
-                        :settings nil,
-                        :lib/source-uuid "ad9a276f-3af8-4e5a-b17e-d8170273ec0a",
-                        :nfc-path nil,
-                        :database-type "STRING",
-                        :effective-type :type/MongoBSONID,
-                        :fk-target-field-id nil,
-                        :id 14,
-                        :parent-id nil,
-                        :visibility-type :normal,
-                        :lib/desired-column-alias "ID",
-                        :display-name "ID",
-                        :position 10}]]
+    (doseq [semantic-type [:type/PK :type/FK]
+            :let [column {:description nil,
+                          :lib/type :metadata/column,
+                          :base-type :type/MongoBSONID,
+                          :semantic-type semantic-type
+                          :table-id 7,
+                          :name "ID",
+                          :coercion-strategy nil,
+                          :lib/source :source/table-defaults,
+                          :lib/source-column-alias "ID",
+                          :settings nil,
+                          :lib/source-uuid "ad9a276f-3af8-4e5a-b17e-d8170273ec0a",
+                          :nfc-path nil,
+                          :database-type "STRING",
+                          :effective-type :type/MongoBSONID,
+                          :fk-target-field-id nil,
+                          :id 14,
+                          :parent-id nil,
+                          :visibility-type :normal,
+                          :lib/desired-column-alias "ID",
+                          :display-name "ID",
+                          :position 10}]]
         (is (= [:= :!= :is-null :not-null :is-empty :not-empty]
                (mapv :short (lib.filter.operator/filter-operators column)))))))
 
