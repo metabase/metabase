@@ -276,7 +276,11 @@ function useIsFiltersSticky() {
   const [isSticky, setIsSticky] = useState(false);
 
   useEffect(() => {
-    if (intersectionObserverTargetRef.current) {
+    if (
+      intersectionObserverTargetRef.current &&
+      // Allow this hook in tests, since Node don't have access to some Browser APIs
+      typeof IntersectionObserver !== "undefined"
+    ) {
       const settings: IntersectionObserverInit = {
         threshold: 1,
       };
