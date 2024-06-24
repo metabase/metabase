@@ -8027,7 +8027,7 @@ databaseChangeLog:
             sql: >-
               UPDATE report_dashboard rd
               LEFT JOIN (
-                  SELECT dashboard_id, MAX(last_used_at) AS max_card_last_used
+                  SELECT dashboard_id, MAX(COALESCE(last_used_at, '1970-01-01 00:00:00')) AS max_card_last_used
                   FROM report_dashboardcard
                   JOIN report_card ON report_dashboardcard.card_id = report_card.id
                   GROUP BY dashboard_id
