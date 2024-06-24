@@ -6,7 +6,7 @@ import { isWithinIframe } from "metabase/lib/dom";
 
 export const useEmbedFrameOptions = ({ location }: { location: Location }) => {
   const {
-    background,
+    background = true,
     bordered = isWithinIframe(),
     titled = true,
     theme,

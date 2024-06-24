@@ -10,12 +10,12 @@ type EmbedTitledControls = {
   titled: EmbedTitle;
 };
 
-type EmbedHideDownloadButton = boolean | null;
+export type EmbedHideDownloadButton = boolean | null;
 type EmbedHideDownloadButtonControls = {
   hideDownloadButton: EmbedHideDownloadButton;
 };
 
-type EmbedHideParameters = string | null;
+export type EmbedHideParameters = string | null;
 export type EmbedHideParametersControls = {
   hideParameters: EmbedHideParameters;
 };
