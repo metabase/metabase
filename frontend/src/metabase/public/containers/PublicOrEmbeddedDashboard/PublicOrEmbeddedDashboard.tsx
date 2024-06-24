@@ -90,6 +90,7 @@ type PublicOrEmbeddedDashboardProps = OwnProps &
 class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboardProps> {
   _initialize = async () => {
     const {
+      dashboard,
       initialize,
       fetchDashboard,
       fetchDashboardCardData,
@@ -98,20 +99,22 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
       dashboardId,
     } = this.props;
 
-    initialize();
+    if (!dashboard) {
+      initialize();
 
-    const result = await fetchDashboard({
-      dashId: String(dashboardId),
-      queryParams: parameterQueryParams,
-    });
+      const result = await fetchDashboard({
+        dashId: String(dashboardId),
+        queryParams: parameterQueryParams,
+      });
 
-    if (!isSuccessfulFetchDashboardResult(result)) {
-      setErrorPage(result.payload);
-      return;
+      if (!isSuccessfulFetchDashboardResult(result)) {
+        setErrorPage(result.payload);
+        return;
+      }
     }
 
     try {
-      if (this.props.dashboard?.tabs?.length === 0) {
+      if (dashboard?.tabs?.length === 0) {
         await fetchDashboardCardData({ reload: false, clearCache: true });
       }
     } catch (error) {
