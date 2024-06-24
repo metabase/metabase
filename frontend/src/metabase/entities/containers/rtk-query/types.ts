@@ -34,6 +34,9 @@ export interface EntityDefinition {
   actions: {
     [actionName: string]: (...args: unknown[]) => unknown;
   };
+  actionTypes: Record<string, string>;
+  getQueryKey: (entityQuery: EntityQuery) => string;
+  getObjectStatePath: (entityId: EntityId) => string;
   nameOne: string;
   normalize: (object: unknown) => {
     object: unknown;

@@ -1,10 +1,16 @@
 import { bindActionCreators } from "@reduxjs/toolkit";
-import { useMemo, type ComponentType, type ReactNode } from "react";
+import { useEffect, useMemo, type ComponentType, type ReactNode } from "react";
 import _ from "underscore";
 
 import { skipToken } from "metabase/api";
 import DefaultLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import {
+  setRequestError,
+  setRequestLoaded,
+  setRequestLoading,
+  setRequestPromise,
+} from "metabase/redux/requests";
 
 import type {
   EntityDefinition,
@@ -106,7 +112,67 @@ export const EntityObjectLoaderRtkQuery = ({
       : entityQueryProp,
   );
 
-  useGetQuery(entityId != null ? { id: entityId, ...entityQuery } : skipToken);
+  const {
+    data,
+    error: rtkError,
+    isLoading,
+    refetch,
+  } = useGetQuery(
+    entityId != null ? { id: entityId, ...entityQuery } : skipToken,
+  );
+  const queryKey = useMemo(
+    () => entityDefinition.getQueryKey(entityQuery),
+    [entityDefinition, entityQuery],
+  );
+
+  const objectStatePath = useMemo(() => {
+    if (!entityId) {
+      return [];
+    }
+
+    return entityDefinition.getObjectStatePath(entityId);
+  }, [entityDefinition, entityId]);
+
+  const requestStatePath = useMemo(() => {
+    // TODO: requestType instead of fetchType?
+    return [...objectStatePath, fetchType];
+  }, [objectStatePath, fetchType]);
+
+  useEffect(() => {
+    if (isLoading) {
+      // @ts-expect-error - invalid typings in redux-actions package
+      dispatch(setRequestLoading(requestStatePath, queryKey));
+
+      dispatch(
+        setRequestPromise(
+          // @ts-expect-error - invalid typings in redux-actions package
+          requestStatePath,
+          queryKey,
+          new Promise<void>(resolve => resolve()),
+        ),
+      );
+    }
+  }, [dispatch, isLoading, requestStatePath, queryKey]);
+
+  useEffect(() => {
+    if (rtkError) {
+      // @ts-expect-error - invalid typings in redux-actions package
+      dispatch(setRequestError(requestStatePath, queryKey, rtkError));
+    }
+  }, [dispatch, rtkError, requestStatePath, queryKey]);
+
+  useEffect(() => {
+    if (data) {
+      // @ts-expect-error - invalid typings in redux-actions package
+      dispatch(setRequestLoaded(requestStatePath, queryKey));
+
+      const normalized = entityDefinition.normalize(data);
+      dispatch({
+        type: entityDefinition.actionTypes.FETCH,
+        payload: normalized,
+      });
+    }
+  }, [dispatch, data, entityDefinition, requestStatePath, queryKey]);
 
   const entityOptions = useMemo(
     () => ({ entityId, requestType }),
@@ -154,6 +220,7 @@ export const EntityObjectLoaderRtkQuery = ({
 
   const reload = () => {
     /* TODO */
+    refetch();
   };
 
   const remove = () => {
@@ -165,7 +232,7 @@ export const EntityObjectLoaderRtkQuery = ({
     ...props,
     entityId, // TODO: maybe unnecessary
     entityQuery: memoizedEntityQuery, // TODO: maybe unnecessary
-    object: wrappedObject, // TODO: maybe unnecessary
+    object: wrappedObject,
     fetched, // TODO: maybe unnecessary
     loading, // TODO: maybe unnecessary
     error, // TODO: maybe unnecessary
