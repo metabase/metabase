@@ -14,7 +14,7 @@ coverage:
           - back-end
 
       front-end:
-        target: 50%
+        target: 60%
         threshold: 5%
         flags:
           - front-end
