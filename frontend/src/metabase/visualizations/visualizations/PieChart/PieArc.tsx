@@ -48,10 +48,11 @@ export const PieArc = ({
   }, [d3Arc, shouldRenderLabel, slice]);
 
   const labelColor = rest.fill && getTextColorForBackground(rest.fill);
+  const pathShape = d3Arc(slice) ?? undefined;
 
   return (
     <>
-      <path data-testid="slice" d={d3Arc(slice)} {...rest} />
+      <path data-testid="slice" d={pathShape} {...rest} />
       {shouldRenderLabel && label != null && (
         <Label
           style={{ visibility: isLabelVisible ? "visible" : "hidden" }}
