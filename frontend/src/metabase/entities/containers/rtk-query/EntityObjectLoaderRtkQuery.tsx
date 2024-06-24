@@ -1,6 +1,5 @@
 import { bindActionCreators } from "@reduxjs/toolkit";
 import { useEffect, useMemo, type ComponentType, type ReactNode } from "react";
-import _ from "underscore";
 
 import { skipToken } from "metabase/api";
 import DefaultLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -24,23 +23,30 @@ import type {
   RequestType,
 } from "./types";
 
-// props that shouldn't be passed to children in order to properly stack
-const CONSUMED_PROPS = [
-  "entityType",
-  "entityId",
-  "entityQuery",
-  "entityAlias",
-  // "reload", // Masked by `reload` function. Should we rename that?
-  "wrapped",
-  "properties",
-  "loadingAndErrorWrapper",
-  "LoadingAndErrorWrapper",
-  "selectorName",
-  "requestType",
-  "fetchType",
-];
-
-interface ChildrenProps {}
+interface ChildrenProps<Entity, EntityWrapper> {
+  // bulkUpdate
+  // create
+  // delete
+  // dispatch
+  dispatchApiErrorEvent: boolean;
+  error: unknown;
+  // fetch
+  // fetchForeignKeys
+  // fetchList
+  // fetchMetadata
+  // fetchMetadataAndForeignTables
+  // fetchMetadataDeprecated
+  fetched: boolean;
+  // invalidateLists
+  loading: boolean;
+  object: EntityWrapper | Entity; // EntityWrapper when wrapped is true
+  // reload
+  // remove
+  // setFieldOrder
+  table: EntityWrapper;
+  // update
+  // updateProperty
+}
 
 interface LoadingAndErrorWrapperProps {
   children: ReactNode;
@@ -49,8 +55,8 @@ interface LoadingAndErrorWrapperProps {
   noWrapper?: boolean;
 }
 
-export interface Props {
-  children: (props: ChildrenProps) => ReactNode;
+export interface Props<Entity, EntityWrapper> {
+  children: (props: ChildrenProps<Entity, EntityWrapper>) => ReactNode;
   dispatchApiErrorEvent?: boolean;
   entityAlias?: string;
   entityId: EntityId | EntityIdSelector | undefined;
@@ -67,7 +73,12 @@ export interface Props {
   wrapped?: boolean;
 }
 
-export const EntityObjectLoaderRtkQuery = ({
+/**
+ * For the database entity generic types would be:
+ *   Entity        -> Database from metabase-types/api/database.ts
+ *   EntityWrapper -> Database from metabase-lib/v1/metadata/Database.ts
+ */
+export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
   children,
   dispatchApiErrorEvent = true,
   entityAlias,
@@ -82,7 +93,7 @@ export const EntityObjectLoaderRtkQuery = ({
   selectorName = "getObject",
   wrapped = false,
   ...props
-}: Props) => {
+}: Props<Entity, EntityWrapper>) {
   const dispatch = useDispatch();
 
   const entityType = useSelector(state =>
@@ -91,12 +102,13 @@ export const EntityObjectLoaderRtkQuery = ({
       : entityTypeProp,
   );
 
-  const entityDefinition: EntityDefinition = useMemo(() => {
-    // dynamic require due to circular dependencies
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const entitiesDefinitions = require("metabase/entities");
-    return entitiesDefinitions[entityType];
-  }, [entityType]);
+  const entityDefinition: EntityDefinition<Entity, EntityWrapper> =
+    useMemo(() => {
+      // dynamic require due to circular dependencies
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const entitiesDefinitions = require("metabase/entities");
+      return entitiesDefinitions[entityType];
+    }, [entityType]);
 
   const { useGetQuery } = entityDefinition.rtk;
 
@@ -195,20 +207,9 @@ export const EntityObjectLoaderRtkQuery = ({
     return entityDefinition.selectors.getError(state, entityOptions);
   });
 
-  const memoizedEntityQuery = useSelector(() => entityQuery, _.isEqual);
-
   const actionCreators = useMemo(() => {
     return bindActionCreators(entityDefinition.actions, dispatch);
   }, [entityDefinition.actions, dispatch]);
-
-  // const normalizedObject = useMemo(() => {
-  //   if (!object) {
-  //     return object;
-  //   }
-
-  //   const normalized = entityDefinition.normalize(object);
-  //   return normalized.object;
-  // }, [entityDefinition, object]);
 
   const wrappedObject = useMemo(() => {
     if (!wrapped || !object) {
@@ -230,12 +231,12 @@ export const EntityObjectLoaderRtkQuery = ({
   const renderedChildren = children({
     ...actionCreators,
     ...props,
-    entityId, // TODO: maybe unnecessary
-    entityQuery: memoizedEntityQuery, // TODO: maybe unnecessary
+    dispatch,
+    dispatchApiErrorEvent,
+    error,
     object: wrappedObject,
-    fetched, // TODO: maybe unnecessary
-    loading, // TODO: maybe unnecessary
-    error, // TODO: maybe unnecessary
+    fetched,
+    loading,
     // alias the entities name:
     [entityAlias || entityDefinition.nameOne]: wrappedObject,
     reload,
@@ -255,7 +256,7 @@ export const EntityObjectLoaderRtkQuery = ({
   }
 
   return renderedChildren;
-};
+}
 
 /**
  * @deprecated HOCs are deprecated

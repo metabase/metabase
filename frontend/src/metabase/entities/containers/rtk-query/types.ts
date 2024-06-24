@@ -30,7 +30,7 @@ export interface EntityOptions {
   requestType: RequestType;
 }
 
-export interface EntityDefinition {
+export interface EntityDefinition<Entity, EntityWrapper> {
   actions: {
     [actionName: string]: (...args: unknown[]) => unknown;
   };
@@ -53,7 +53,8 @@ export interface EntityDefinition {
     getFetched: Selector<boolean>;
     getLoading: Selector<boolean>;
     getError: Selector<unknown | null>;
-    [selectorName: string]: Selector<unknown>;
+  } & {
+    [selectorName: string]: Selector<Entity>;
   };
-  wrapEntity: (object: unknown, dispatch: Dispatch) => unknown;
+  wrapEntity: (object: Entity, dispatch: Dispatch) => EntityWrapper;
 }
