@@ -7430,11 +7430,6 @@ databaseChangeLog:
                   remarks: The copy of dataset_query before the metrics v2 migration
                   type: ${text.type}
       preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: report_card
-                columnName: dataset_query_metrics_v2_migration_backup
 
   - changeSet:
       id: v51.2024-05-13T16:00:00
