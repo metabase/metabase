@@ -21,6 +21,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver.util :as driver.u]
+   [metabase.models.card :as card]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -78,13 +79,16 @@
    {{:keys [database]} :root :keys [source query-filter]}]
   (let [source-table (if (->> source (mi/instance-of? :model/Table))
                        (-> source u/the-id)
-                       (->> source u/the-id (str "card__")))]
+                       (->> source u/the-id (str "card__")))
+        model?       (and (mi/instance-of? :model/Card source)
+                          (card/model? source))]
     (assoc ground-metric-with-dimensions
            :dataset_query {:database database
                            :type     :query
                            :query    (cond-> (assoc metric-definition
                                                     :source-table source-table)
-                                       query-filter (assoc :filter query-filter))})))
+                                       (and (not model?)
+                                            query-filter) (assoc :filter query-filter))})))
 
 (defn- instantiate-visualization
   [[k v] dimensions metrics]

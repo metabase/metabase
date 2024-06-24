@@ -502,7 +502,7 @@ describe("scenarios > collection defaults", () => {
       // we need to do this manually because we need to await the correct number of api requests to keep this from flaking
 
       entityPickerModal().within(() => {
-        cy.findByTestId("loading-spinner").should("not.exist");
+        cy.findByTestId("loading-indicator").should("not.exist");
         cy.findByRole("tab", { name: /Collections/ }).click();
         cy.wait([
           "@getCollectionItems",

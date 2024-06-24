@@ -451,7 +451,9 @@
                                  ;; too many false positives for now
                                  :unused-ret-vals
                                  ;; Kondo lints this for us anyway, and this isn't as easy to configure.
-                                 :wrong-arity]
+                                 :wrong-arity
+                                 ;; Kondo lints this for us anyway, and this isn't as easy to configure.
+                                 :suspicious-expression]
                ;; Snowplow has a dynamic dependency on okhttp3.CookieJar that we
                ;; don't use but eastwood detects. This is discussed in Slack here
                ;; https://clojurians.slack.com/archives/C03S1KBA2/p1667925853699669

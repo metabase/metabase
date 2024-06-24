@@ -134,7 +134,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
               color: hoverColor,
               backgroundColor: "transparent",
             },
-            "&:disabled": {
+            "&:disabled, &[data-disabled=true]": {
               color: theme.fn.themeColor("text-light"),
               borderColor: "transparent",
               backgroundColor: "transparent",

@@ -7894,6 +7894,26 @@ databaseChangeLog:
       rollback: # no rollback necessary here too
 
   - changeSet:
+      id: v50.2024-06-20T13:21:30
+      author: noahmoss
+      comment: 'Drop permission_id column on sandboxes table to fix down migrations'
+      changes:
+        - dropColumn:
+            tableName: sandboxes
+            columnName: permission_id
+      rollback:
+        - addColumn:
+            tableName: sandboxes
+            columns:
+              - column:
+                  name: permission_id
+                  type: int
+                  remarks: 'The ID of the corresponding permissions path for this sandbox (deprecated)'
+                  constraints:
+                    nullable: true
+                  defaultValue: null
+
+  - changeSet:
       id: v51.2024-05-13T15:30:57
       author: metamben
       comment: Backup of dataset_query rewritten by the metrics v2 migration
