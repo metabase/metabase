@@ -240,3 +240,10 @@ MissingColors44087.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const InvalidDimensionSetting44085 = Template.bind({});
+InvalidDimensionSetting44085.args = {
+  rawSeries: data.invalidDimensionSetting44085 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
