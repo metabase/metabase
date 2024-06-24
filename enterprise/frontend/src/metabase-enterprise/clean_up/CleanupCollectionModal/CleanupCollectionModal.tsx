@@ -5,7 +5,7 @@ import _ from "underscore";
 import {
   skipToken,
   useGetCollectionQuery,
-  useListCollectionItemsQuery,
+  useListStaleCollectionItemsQuery,
 } from "metabase/api";
 import { CollectionTable } from "metabase/collections/components/CollectionContent/CollectionContent.styled";
 import { ItemsTable } from "metabase/components/ItemsTable";
@@ -21,9 +21,17 @@ import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import { CleanupCleanState } from "./CleanupCleanState";
 import { CleanupCollectionBulkActions } from "./CleanupCollectionBulkActions";
+import CS from "./CleanupCollectionModal.module.css";
 import { CleanupCollectionModalHeader } from "./CleanupCollectionModalHeader";
 import { usePagination } from "./hooks";
-import { itemKeyFn, type DateFilter, getDateFilterOptionLabel } from "./utils";
+import {
+  itemKeyFn,
+  type DateFilter,
+  getDateFilterLabel,
+  getDateFilterValue,
+} from "./utils";
+
+const PAGE_SIZE = 10;
 
 interface CleanupCollectionModalProps {
   onClose: () => void;
@@ -38,7 +46,7 @@ export const CleanupCollectionModal = ({
   const collectionId = Urls.extractCollectionId(slug);
 
   // pagination
-  const pagination = usePagination({ initialPage: 0, pageSize: 10 });
+  const pagination = usePagination({ initialPage: 0, pageSize: PAGE_SIZE });
   const { setPage, setTotal, paginationFilters } = pagination;
 
   // sorting
@@ -57,6 +65,9 @@ export const CleanupCollectionModal = ({
 
   // filters
   const [dateFilter, setDateFilter] = useState<DateFilter>("six-months");
+  const before_date = useMemo(() => {
+    return getDateFilterValue(dateFilter);
+  }, [dateFilter]);
   const handleChangeDateFilter = (dateFilter: DateFilter) => {
     setDateFilter(dateFilter);
     pagination.resetPage();
@@ -66,9 +77,9 @@ export const CleanupCollectionModal = ({
   const collectionQuery = useGetCollectionQuery(
     collectionId ? { id: collectionId } : skipToken,
   );
-  const itemsQuery = useListCollectionItemsQuery(
+  const itemsQuery = useListStaleCollectionItemsQuery(
     collectionId
-      ? { id: collectionId, ...paginationFilters, ...sortOptions }
+      ? { id: collectionId, ...paginationFilters, ...sortOptions, before_date }
       : skipToken,
   );
 
@@ -77,17 +88,17 @@ export const CleanupCollectionModal = ({
 
   const collection = collectionQuery.data;
   const itemsData = itemsQuery.data?.data;
+  const total = itemsQuery.data?.total ?? 0;
   const items: CollectionItem[] = useMemo(() => {
     const items = itemsData ?? [];
     return items.map(item => Search.wrapEntity(item, dispatch));
   }, [itemsData, dispatch]);
 
   // pagination cont.
-  const hasPagination = pagination.pages > 1 && (itemsData?.length ?? 0) > 0;
+  const hasPagination = total > PAGE_SIZE;
   useEffect(
     function updatePaginationTotal() {
-      const total = itemsQuery.data?.total ?? 0;
-      setTotal(total);
+      setTotal(itemsQuery.data?.total);
     },
     [setTotal, itemsQuery.data?.total],
   );
@@ -108,7 +119,10 @@ export const CleanupCollectionModal = ({
       size={1118}
     >
       <Modal.Overlay />
-      <Modal.Content mih={isLoading ? "25rem" : undefined}>
+      <Modal.Content
+        className={CS.modalContent}
+        mih={isLoading ? "25rem" : undefined}
+      >
         <Modal.Header px="2.5rem" py="2rem">
           <CleanupCollectionModalHeader
             dateFilter={dateFilter}
@@ -116,12 +130,14 @@ export const CleanupCollectionModal = ({
             onClose={handleClose}
           />
         </Modal.Header>
-        <Modal.Body px="2.5rem" pb="2rem">
+        <Modal.Body
+          px="2.5rem"
+          mih={{ md: isLoading ? 638 : undefined }}
+          className={CS.modalBody}
+        >
           <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>
             {items.length === 0 ? (
-              <CleanupCleanState
-                duration={getDateFilterOptionLabel(dateFilter)}
-              />
+              <CleanupCleanState duration={getDateFilterLabel(dateFilter)} />
             ) : (
               <>
                 <Text mb="1rem" fw="bold" lh="1rem">
@@ -140,21 +156,29 @@ export const CleanupCollectionModal = ({
                     onSelectAll={() => selectOnlyTheseItems?.(items)}
                     onSelectNone={clear}
                     showActionMenu={false}
+                    isLink={false}
                   />
                 </CollectionTable>
               </>
             )}
           </DelayedLoadingAndErrorWrapper>
-          <Flex justify="end" mt="1rem">
-            {hasPagination && (
-              <PaginationControls
-                showTotal
-                itemsLength={items.length}
-                {...pagination}
-              />
-            )}
-          </Flex>
         </Modal.Body>
+        <Flex
+          pt="1rem"
+          px="2.5rem"
+          pb="2rem"
+          justify="end"
+          className={CS.modalFooter}
+        >
+          {hasPagination && (
+            <PaginationControls
+              showTotal
+              itemsLength={items.length}
+              {...pagination}
+              total={total}
+            />
+          )}
+        </Flex>
         <CleanupCollectionBulkActions
           selected={selected}
           clearSelectedItem={clear}

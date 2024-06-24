@@ -156,6 +156,12 @@ export type ListCollectionItemsResponse = {
   models: CollectionItemModel[] | null;
 } & PaginationResponse;
 
+export type ListStaleCollectionItemsRequest = {
+  id: CollectionId;
+  beforeDate?: string;
+} & PaginationRequest &
+  Partial<SortingOptions>;
+
 export interface UpdateCollectionRequest {
   id: RegularCollectionId;
   name?: string;

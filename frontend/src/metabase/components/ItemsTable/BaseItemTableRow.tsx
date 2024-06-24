@@ -16,6 +16,7 @@ type BaseItemTableRowProps = PropsWithChildren<
     | "items"
     | "getIsSelected"
     | "isPinned"
+    | "isLink"
     | "collection"
     | "selectedItems"
     | "onDrop"
@@ -40,6 +41,7 @@ export const TableRow = ({
   deleteBookmark,
   ItemComponent = DefaultItemRenderer,
   isPinned,
+  isLink,
   onCopy,
   onMove,
   onToggleSelected,
@@ -66,6 +68,7 @@ export const TableRow = ({
       onMove={onMove}
       onToggleSelected={onToggleSelected}
       showActionMenu={showActionMenu}
+      isLink={isLink}
     />
   </tr>
 );
@@ -83,6 +86,7 @@ export const ItemDragSourceTableRow = ({
   onToggleSelected,
   item,
   isSelected,
+  isLink,
   itemKey,
   collection,
   onClick,
@@ -111,6 +115,7 @@ export const ItemDragSourceTableRow = ({
           deleteBookmark={deleteBookmark}
           collection={collection}
           isPinned={isPinned}
+          isLink={isLink}
           onCopy={onCopy}
           onMove={onMove}
           onToggleSelected={onToggleSelected}
