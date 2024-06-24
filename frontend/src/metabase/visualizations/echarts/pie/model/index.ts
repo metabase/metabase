@@ -107,7 +107,8 @@ export function getPieChartModel(
       const color = Color(colors[String(dimensionValue)]).hex();
 
       return {
-        key: dimensionValue ?? NULL_DISPLAY_VALUE,
+        key:
+          dimensionValue == null ? NULL_DISPLAY_VALUE : String(dimensionValue),
         value: isNonPositive ? -1 * metricValue : metricValue,
         tooltipDisplayValue: metricValue,
         normalizedPercentage: metricValue / total, // slice percentage values are normalized to 0-1 scale
