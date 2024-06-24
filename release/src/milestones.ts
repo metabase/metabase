@@ -186,9 +186,11 @@ export async function setMilestoneForCommits({
     })));
   }
 
-  console.log(`Tagging ${issuesToTag.length} issues with milestone ${nextMilestone.title}`)
+  const uniqueIssuesToTag = _.uniq(issuesToTag);
 
-  for (const issueNumber of issuesToTag) { // for loop to avoid rate limiting
+  console.log(`Tagging ${uniqueIssuesToTag.length} issues with milestone ${nextMilestone.title}`)
+
+  for (const issueNumber of uniqueIssuesToTag) { // for loop to avoid rate limiting
     await setMilestone({ github, owner, repo, issueNumber, milestone: nextMilestone });
   }
 }
