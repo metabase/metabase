@@ -19,7 +19,7 @@ import {
   dashboardCards,
   queryBuilderMain,
 } from "e2e/support/helpers";
-import { PIVOT_TABLE_BODY_LABEL } from "metabase/visualizations/visualizations/PivotTable/PivotTable";
+import { PIVOT_TABLE_BODY_LABEL } from "metabase/visualizations/visualizations/PivotTable/constants";
 
 const {
   ORDERS,

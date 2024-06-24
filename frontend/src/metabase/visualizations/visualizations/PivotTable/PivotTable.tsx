@@ -42,6 +42,7 @@ import {
   CELL_HEIGHT,
   LEFT_HEADER_LEFT_SPACING,
   MIN_HEADER_CELL_WIDTH,
+  PIVOT_TABLE_BODY_LABEL,
 } from "./constants";
 import {
   settings,
@@ -57,8 +58,6 @@ import {
   topHeaderCellSizeAndPositionGetter,
   getCellWidthsForSection,
 } from "./utils";
-
-export const PIVOT_TABLE_BODY_LABEL = "pivot-table-body-grid";
 
 const mapStateToProps = (state: State) => ({
   fontFamily: getSetting(state, "application-font"),
