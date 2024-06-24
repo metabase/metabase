@@ -421,7 +421,12 @@ export default class PieChart extends Component {
       MIN_LABEL_FONT_SIZE,
     );
 
-    const pie = d3.pie().sort(null).padAngle(PAD_ANGLE);
+    const pie = d3
+      .pie()
+      .sort(null)
+      .padAngle(PAD_ANGLE)
+      .value(d => d.value);
+
     const arc = d3
       .arc()
       .outerRadius(outerRadius)
