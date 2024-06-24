@@ -163,6 +163,7 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
       // @ts-expect-error - invalid typings in redux-actions package
       dispatch(setRequestLoading(requestStatePath, queryKey));
 
+      // TODO: is this necessary?
       dispatch(
         setRequestPromise(
           // @ts-expect-error - invalid typings in redux-actions package
