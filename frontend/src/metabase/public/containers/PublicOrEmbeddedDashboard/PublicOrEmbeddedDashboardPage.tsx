@@ -2,7 +2,6 @@ import type { WithRouterProps } from "react-router";
 
 import { useSyncURLSlug } from "metabase/dashboard/components/DashboardTabs/use-sync-url-slug";
 import {
-  useDashboardNav,
   useDashboardUrlParams,
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
@@ -37,8 +36,6 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
     titled,
     font,
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
-
-  useDashboardNav({ isFullscreen });
 
   useSyncURLSlug({ location });
 
