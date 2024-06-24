@@ -8,11 +8,12 @@ import {
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import CS from "metabase/css/core/index.css";
+import { NAVIGATE_TO_NEW_CARD } from "metabase/dashboard/actions";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
-import { useStore } from "metabase/lib/redux";
+import { useDispatch, useStore } from "metabase/lib/redux";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
@@ -48,7 +49,7 @@ const InteractiveDashboardInner = ({
     hiddenParameters,
     initialParameterValues,
   });
-
+  const dispatch = useDispatch();
   const { theme } = useEmbedTheme();
 
   const { font } = useEmbedFont();
@@ -79,6 +80,8 @@ const InteractiveDashboardInner = ({
       });
 
       if (url) {
+        dispatch({ type: NAVIGATE_TO_NEW_CARD, payload: { dashboardId } });
+
         setAdhocQuestionUrl(url);
       }
     }
@@ -87,6 +90,7 @@ const InteractiveDashboardInner = ({
   if (adhocQuestionUrl) {
     return (
       <InteractiveAdHocQuestion
+        isOpenedFromDashboard
         questionPath={adhocQuestionUrl}
         withTitle={withTitle}
         height={questionHeight}

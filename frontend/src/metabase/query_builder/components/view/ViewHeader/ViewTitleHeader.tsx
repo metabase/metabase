@@ -82,6 +82,7 @@ export function ViewTitleHeader({
   onSave,
   onOpenModal,
   isNavBarOpen,
+  originalQuestion,
   result,
   queryBuilderMode,
   updateQuestion,
@@ -164,6 +165,7 @@ export function ViewTitleHeader({
             isObjectDetail={isObjectDetail}
             isNative={isNative}
             isSummarized={isSummarized}
+            originalQuestion={originalQuestion}
             onOpenModal={onOpenModal}
           />
         )}

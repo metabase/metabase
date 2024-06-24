@@ -11,12 +11,22 @@ import {
 } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import { getDashboard } from "metabase/query_builder/selectors";
 
-export function DashboardBackButton() {
+interface DashboardBackButtonProps {
+  noLink?: boolean;
+  onClick?: () => void;
+}
+
+export function DashboardBackButton({
+  noLink,
+  onClick,
+}: DashboardBackButtonProps) {
   const dashboard = useSelector(getDashboard);
   const dispatch = useDispatch();
 
   const handleClick = () => {
     dispatch(navigateBackToDashboard(dashboard.id));
+
+    onClick?.();
   };
 
   if (!dashboard) {
@@ -29,8 +39,12 @@ export function DashboardBackButton() {
     <Tooltip tooltip={label}>
       <BackButtonContainer>
         <BackButton
-          as={Link}
-          to={Urls.dashboard(dashboard)}
+          {...(noLink
+            ? {}
+            : {
+                as: Link,
+                to: Urls.dashboard(dashboard),
+              })}
           round
           icon="arrow_left"
           aria-label={label}

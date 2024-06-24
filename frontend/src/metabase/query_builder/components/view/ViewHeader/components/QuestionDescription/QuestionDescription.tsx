@@ -1,18 +1,25 @@
-/* eslint-disable react/prop-types */
 import { t, ngettext, msgid } from "ttag";
 
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
 import { QuestionDataSource } from "../QuestionDataSource";
 
 import { AggregationAndBreakoutDescription } from "./QuestionDescription.styled";
+
+interface QuestionDescriptionProps {
+  question: Question;
+  originalQuestion?: Question;
+  isObjectDetail?: boolean;
+  onClick?: () => void;
+}
 
 export const QuestionDescription = ({
   question,
   originalQuestion,
   isObjectDetail,
   onClick,
-}) => {
+}: QuestionDescriptionProps) => {
   const query = question.query();
   const { isNative } = Lib.queryDisplayInfo(query);
 
@@ -60,6 +67,7 @@ export const QuestionDescription = ({
       );
     }
   }
+
   if (question.database()) {
     return (
       <QuestionDataSource
