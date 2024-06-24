@@ -29,8 +29,8 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            const branchName = '${{ github.ref }}';
-            const commitMessage = '${{ github.event.head_commit.message }}';
+            const branchName = `${{ github.ref }}`;
+            const commitMessage = context?.payload?.head_commit?.message ?? '';
 
             await setMilestoneForCommits({
               github,
