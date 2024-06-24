@@ -1,6 +1,6 @@
+import type { Series as D3Series } from "d3";
 import * as d3 from "d3";
-import type { Series as D3Series } from "d3-shape";
-import { stack, stackOffsetDiverging, stackOffsetExpand } from "d3-shape";
+import { stack, stackOffsetDiverging, stackOffsetExpand } from "d3";
 import _ from "underscore";
 
 import { formatNullable } from "metabase/lib/formatting/nullable";
