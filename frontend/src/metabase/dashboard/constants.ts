@@ -49,7 +49,7 @@ export const DASHBOARD_SLOW_TIMEOUT = 15 * 1000;
 export const DASHBOARD_PDF_EXPORT_ROOT_ID =
   "Dashboard-Parameters-And-Cards-Container";
 
-export const DEFAULT_EMBED_DISPLAY_OPTIONS: EmbedDisplayParams = {
+export const DEFAULT_DASHBOARD_DISPLAY_OPTIONS: EmbedDisplayParams = {
   bordered: false,
   titled: true,
   cardTitled: true,
