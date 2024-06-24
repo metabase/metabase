@@ -47,8 +47,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
       dashboardId={dashboardId}
       isFullscreen={isFullscreen}
       refreshPeriod={refreshPeriod}
-      // TODO: fix
-      hideParameters={hideParameters ?? null}
+      hideParameters={hideParameters}
       isNightMode={isNightMode}
       hasNightModeToggle={hasNightModeToggle}
       setRefreshElapsedHook={setRefreshElapsedHook}
@@ -56,8 +55,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
       onFullscreenChange={onFullscreenChange}
       onRefreshPeriodChange={onRefreshPeriodChange}
       bordered={bordered}
-      // TODO: fix
-      hideDownloadButton={hideDownloadButton ?? null}
+      hideDownloadButton={hideDownloadButton}
       theme={theme}
       titled={titled}
       font={font}
