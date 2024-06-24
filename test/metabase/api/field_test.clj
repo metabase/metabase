@@ -14,7 +14,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
-   [ring.util.codec :as codec]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
