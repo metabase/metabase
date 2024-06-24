@@ -5,6 +5,7 @@
    [malli.json-schema :as mjs]
    [metabase.api.common :as api]
    [metabase.api.common.openapi :as openapi]
+   [metabase.api.routes :as routes]
    [metabase.util.malli.schema :as ms]))
 
 ;;; inner helpers
@@ -136,3 +137,6 @@
                                   {:allOf [{:type "string", :minLength 1}
                                            {}]}}}}
          (openapi/openapi-object #'routes))))
+
+(deftest ^:parallel openapi-all-routes
+  (is (openapi/openapi-object #'routes/routes)))
