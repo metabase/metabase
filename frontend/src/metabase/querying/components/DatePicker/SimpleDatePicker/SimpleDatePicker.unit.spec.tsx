@@ -35,7 +35,7 @@ describe("SimpleDatePicker", () => {
 
     await userEvent.click(screen.getByDisplayValue("All time"));
     await userEvent.click(screen.getByText("Current"));
-    await userEvent.click(screen.getByDisplayValue("Day"));
+    await userEvent.click(screen.getByText("Day"));
     await userEvent.click(screen.getByText("Month"));
     await userEvent.click(screen.getByText("Apply"));
 
