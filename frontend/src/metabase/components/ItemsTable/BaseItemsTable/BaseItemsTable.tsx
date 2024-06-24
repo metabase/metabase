@@ -104,6 +104,7 @@ export type BaseItemsTableProps = {
   selectedItems?: CollectionItem[];
   hasUnselected?: boolean;
   isPinned?: boolean;
+  isLink?: boolean;
   sortingOptions?: SortingOptions;
   onSortingOptionsChange?: (newSortingOptions: SortingOptions) => void;
   onToggleSelected?: OnToggleSelectedWithItem;
@@ -132,6 +133,7 @@ export const BaseItemsTable = ({
   selectedItems,
   hasUnselected,
   isPinned,
+  isLink,
   onCopy,
   onMove,
   onDrop,
@@ -208,6 +210,7 @@ export const BaseItemsTable = ({
         items={items}
         getIsSelected={getIsSelected}
         isPinned={isPinned}
+        isLink={isLink}
         collection={collection}
         selectedItems={selectedItems}
         onDrop={onDrop}

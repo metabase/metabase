@@ -1,0 +1,13 @@
+.modalContent {
+  display: flex !important;
+  flex-direction: column;
+}
+
+.modalBody {
+  position: relative;
+  overflow-y: scroll;
+}
+
+.modalFooter {
+  background: white;
+}

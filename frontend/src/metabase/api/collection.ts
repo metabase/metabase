@@ -1,6 +1,7 @@
 import type {
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
+  ListStaleCollectionItemsRequest,
   UpdateCollectionRequest,
   Collection,
   CreateCollectionRequest,
@@ -55,6 +56,18 @@ export const collectionApi = Api.injectEndpoints({
       providesTags: (response, error, { models }) =>
         provideCollectionItemListTags(response?.data ?? [], models),
     }),
+    listStaleCollectionItems: builder.query<
+      ListCollectionItemsResponse,
+      ListStaleCollectionItemsRequest
+    >({
+      query: ({ id, ...params }) => ({
+        method: "GET",
+        url: `/api/collection/${id}/items`, // TODO: change to real endpoint once it exists
+        params,
+      }),
+      providesTags: response =>
+        provideCollectionItemListTags(response?.data ?? []),
+    }),
     getCollection: builder.query<Collection, getCollectionRequest>({
       query: ({ id, ...body }) => {
         return {
@@ -107,6 +120,7 @@ export const {
   useListCollectionsQuery,
   useListCollectionsTreeQuery,
   useListCollectionItemsQuery,
+  useListStaleCollectionItemsQuery,
   useGetCollectionQuery,
   useCreateCollectionMutation,
   useUpdateCollectionMutation,

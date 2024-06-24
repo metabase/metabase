@@ -14,6 +14,7 @@ export const BaseItemsTableBody = ({
   items,
   getIsSelected = () => false,
   isPinned,
+  isLink,
   collection,
   selectedItems,
   onDrop,
@@ -33,6 +34,7 @@ export const BaseItemsTableBody = ({
   | "items"
   | "getIsSelected"
   | "isPinned"
+  | "isLink"
   | "collection"
   | "selectedItems"
   | "onDrop"
@@ -47,7 +49,7 @@ export const BaseItemsTableBody = ({
   | "showActionMenu"
 >) => {
   const isDndAvailable = useSelector(getIsDndAvailable);
-  const isObservingMove = !!onMove || !onDrop;
+  const isObservingMove = !!onMove || !!onDrop;
   const isDragable = isDndAvailable && isObservingMove;
 
   const TableRowComponent = isDragable ? ItemDragSourceTableRow : TableRow;
@@ -67,6 +69,7 @@ export const BaseItemsTableBody = ({
             testIdPrefix={testIdPrefix}
             item={item}
             isSelected={isSelected}
+            isLink={isLink}
             selectedItems={selectedItems}
             onDrop={onDrop}
             collection={collection}
