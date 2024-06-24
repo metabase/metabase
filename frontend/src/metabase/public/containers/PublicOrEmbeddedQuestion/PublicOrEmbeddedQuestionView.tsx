@@ -49,9 +49,9 @@ export function PublicOrEmbeddedQuestionView({
   setParameterValue: (parameterId: ParameterId, value: any) => Promise<void>;
   setParameterValueToDefault: (parameterId: ParameterId) => void;
   bordered: boolean;
-  hide_download_button?: boolean;
-  hide_parameters?: string;
-  theme?: DisplayTheme;
+  hide_download_button: boolean | null;
+  hide_parameters: string | null;
+  theme: DisplayTheme | undefined;
   titled: boolean;
   setCard: Dispatch<SetStateAction<Card<DatasetQuery> | null>>;
 }) {
