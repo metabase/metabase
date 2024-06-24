@@ -90,6 +90,7 @@ export function PivotTableTestWrapper(props?: any) {
         settings={vizSettings}
         data={{ rows, cols }}
         width={600}
+        height={400}
         onVisualizationClick={() => {}}
         onUpdateVisualizationSettings={newSettings =>
           setVizSettings({ ...vizSettings, ...newSettings })
