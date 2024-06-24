@@ -158,7 +158,7 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
 
   function getRecentJoin() {
     const query = getNextQuery();
-    const [join] = Lib.joins(query, 0);
+    const [join] = Lib.joins(query, step.stageIndex);
 
     const strategy = Lib.displayInfo(query, 0, Lib.joinStrategy(join));
     const fields = Lib.joinFields(join);
@@ -166,13 +166,13 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
     const conditions = Lib.joinConditions(join).map(condition => {
       const { operator, lhsColumn, rhsColumn } = Lib.joinConditionParts(
         query,
-        0,
+        step.stageIndex,
         condition,
       );
       return {
-        operator: Lib.displayInfo(query, 0, operator),
-        lhsColumn: Lib.displayInfo(query, 0, lhsColumn),
-        rhsColumn: Lib.displayInfo(query, 0, rhsColumn),
+        operator: Lib.displayInfo(query, step.stageIndex, operator),
+        lhsColumn: Lib.displayInfo(query, step.stageIndex, lhsColumn),
+        rhsColumn: Lib.displayInfo(query, step.stageIndex, rhsColumn),
       };
     });
 
@@ -811,6 +811,138 @@ describe("Notebook Editor > Join Step", () => {
         within(firstCondition).queryByLabelText("Remove condition"),
       ).not.toBeInTheDocument();
     });
+  });
+
+  describe("temporal bucket sync", () => {
+    async function selectColumnWithBucket(bucketName: string) {
+      await userEvent.click(screen.getByLabelText("Temporal bucket"));
+      await userEvent.click(screen.getByText("More…"));
+      await userEvent.click(screen.getByText(bucketName));
+    }
+
+    it.each([
+      {
+        lhsBucketName: "Don't bin",
+        rhsBucketName: "Don't bin",
+        expectedColumnName: "Created At",
+      },
+      {
+        lhsBucketName: "Year",
+        rhsBucketName: "Don't bin",
+        expectedColumnName: "Created At: Year",
+      },
+      {
+        lhsBucketName: "Don't bin",
+        rhsBucketName: "Quarter",
+        expectedColumnName: "Created At: Quarter",
+      },
+      {
+        lhsBucketName: "Year",
+        rhsBucketName: "Month",
+        expectedColumnName: "Created At: Year",
+      },
+    ])(
+      "should set the temporal bucket for all columns in a new join condition equal to the first non-empty temporal bucket of the columns",
+      async ({ lhsBucketName, rhsBucketName, expectedColumnName }) => {
+        const { getRecentJoin } = setup(createMockNotebookStep());
+
+        const picketModal = await screen.findByTestId("entity-picker-modal");
+        await userEvent.click(await within(picketModal).findByText("Reviews"));
+        await selectColumnWithBucket(lhsBucketName);
+        await selectColumnWithBucket(rhsBucketName);
+
+        const { conditions } = getRecentJoin();
+        const [condition] = conditions;
+        expect(condition.lhsColumn.displayName).toBe(expectedColumnName);
+        expect(condition.rhsColumn.displayName).toBe(expectedColumnName);
+      },
+    );
+
+    it.each([
+      {
+        oldBucketName: "Don't bin",
+        newLhsBucketName: "Don't bin",
+        newRhsBucketName: undefined,
+        expectedColumnName: "Created At",
+      },
+      {
+        oldBucketName: "Don't bin",
+        newLhsBucketName: undefined,
+        newRhsBucketName: "Don't bin",
+        expectedColumnName: "Created At",
+      },
+      {
+        oldBucketName: "Don't bin",
+        newLhsBucketName: "Year",
+        newRhsBucketName: undefined,
+        expectedColumnName: "Created At: Year",
+      },
+      {
+        oldBucketName: "Don't bin",
+        newLhsBucketName: undefined,
+        newRhsBucketName: "Year",
+        expectedColumnName: "Created At: Year",
+      },
+      {
+        oldBucketName: "Month",
+        newLhsBucketName: "Don't bin",
+        newRhsBucketName: undefined,
+        expectedColumnName: "Created At",
+      },
+      {
+        oldBucketName: "Month",
+        newLhsBucketName: undefined,
+        newRhsBucketName: "Don't bin",
+        expectedColumnName: "Created At",
+      },
+      {
+        oldBucketName: "Month",
+        newLhsBucketName: "Year",
+        newRhsBucketName: undefined,
+        expectedColumnName: "Created At: Year",
+      },
+      {
+        oldBucketName: "Year",
+        newLhsBucketName: undefined,
+        newRhsBucketName: "Month",
+        expectedColumnName: "Created At: Month",
+      },
+      {
+        oldBucketName: "Month",
+        newLhsBucketName: "Year",
+        newRhsBucketName: "Quarter",
+        expectedColumnName: "Created At: Quarter",
+      },
+    ])(
+      "should set the temporal bucket for all columns in an existing join condition to the temporal bucket of the last selected column",
+      async ({
+        oldBucketName,
+        newLhsBucketName,
+        newRhsBucketName,
+        expectedColumnName,
+      }) => {
+        const { getRecentJoin } = setup(createMockNotebookStep());
+
+        const picketModal = await screen.findByTestId("entity-picker-modal");
+        await userEvent.click(await within(picketModal).findByText("Reviews"));
+        await selectColumnWithBucket(oldBucketName);
+        await selectColumnWithBucket(oldBucketName);
+
+        if (newLhsBucketName) {
+          await userEvent.click(screen.getByLabelText("Left column"));
+          await selectColumnWithBucket(newLhsBucketName);
+        }
+        if (newRhsBucketName) {
+          await userEvent.click(screen.getByLabelText("Right column"));
+          await selectColumnWithBucket(newRhsBucketName);
+        }
+
+        const { conditions } = getRecentJoin();
+        const [condition] = conditions;
+        expect(condition.lhsColumn.displayName).toBe(expectedColumnName);
+        expect(condition.rhsColumn.displayName).toBe(expectedColumnName);
+      },
+    );
   });
 
   describe("read-only", () => {
