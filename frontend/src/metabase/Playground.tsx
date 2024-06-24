@@ -20,7 +20,6 @@ import Tables from "./entities/tables";
 // 8. metabase-api/queries/removeQueryResult
 // 9. metabase-api/internalSubscriptions/subscriptionsUpdated
 
-
 // Tables.load gives these props:
 // - bulkUpdate
 // - create
@@ -46,12 +45,23 @@ import Tables from "./entities/tables";
 // - updateProperty
 // all props without specified type are functions
 
+// Mismatching things in state:
+// - requests.entities.tables.1.fetchMetadataDeprecated.queryKey
+//   - missing id
+//
+// test fetchMetadata
+// test fetchMetadataAndForeignTables
+
 const PlaygroundBase = props => {
+  console.log(props);
+
   return (
     <div>
-      <div>loading: {props.loading ? 'true': 'false'}</div>
-      <div>fetched: {props.fetched ? 'true': 'false'}</div>
-      <div>dispatchApiErrorEvent: {props.dispatchApiErrorEvent ? 'true': 'false'}</div>
+      <div>loading: {props.loading ? "true" : "false"}</div>
+      <div>fetched: {props.fetched ? "true" : "false"}</div>
+      <div>
+        dispatchApiErrorEvent: {props.dispatchApiErrorEvent ? "true" : "false"}
+      </div>
       <div>table display name: {props.table.displayName()}</div>
     </div>
   );
@@ -60,11 +70,14 @@ const PlaygroundBase = props => {
 const tableId = 1;
 
 export const Playground = _.compose(
-  Tables.load({
+  Tables.load2({
     id: () => tableId,
     query: {
       include_sensitive_fields: true,
     },
+    fetchType: "fetchMetadataDeprecated",
+    requestType: "fetchMetadataDeprecated",
+    selectorName: "getObjectUnfiltered",
   }),
 )(PlaygroundBase);
 

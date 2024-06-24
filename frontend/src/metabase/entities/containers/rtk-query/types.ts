@@ -42,12 +42,12 @@ export interface EntityDefinition<Entity, EntityWrapper> {
     object: unknown;
   };
   rtk: {
-    useGetQuery: UseQuery<
-      QueryDefinition<unknown, BaseQueryFn, TagType, unknown>
-    >;
-    useGetListQuery: UseQuery<
-      QueryDefinition<unknown, BaseQueryFn, TagType, unknown[]>
-    >;
+    getUseGetQuery: (
+      requestType: RequestType,
+    ) => UseQuery<QueryDefinition<unknown, BaseQueryFn, TagType, unknown>>;
+    getUseGetListQuery: (
+      requestType: RequestType,
+    ) => UseQuery<QueryDefinition<unknown, BaseQueryFn, TagType, unknown[]>>;
   };
   selectors: {
     getFetched: Selector<boolean | undefined>;

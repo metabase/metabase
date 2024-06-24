@@ -3,7 +3,13 @@ import { updateIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { databaseApi, tableApi, useGetTableQuery, useGetTableQueryMetadataQuery, useListTablesQuery } from "metabase/api";
+import {
+  databaseApi,
+  tableApi,
+  useGetTableQuery,
+  useGetTableQueryMetadataQuery,
+  useListTablesQuery,
+} from "metabase/api";
 import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
 import Segments from "metabase/entities/segments";
@@ -52,11 +58,22 @@ const Tables = createEntity({
   schema: TableSchema,
 
   rtk: {
-    useGetQuery: useGetTableQuery,
-    useGetListQuery: useListTablesQuery,
-    // fetchMetadata,
-    // fetchMetadataDeprecated: useGetTableQueryMetadataQuery,
-    // fetchMetadataAndForeignTables:
+    getUseGetListQuery: _requestType => useListTablesQuery,
+    getUseGetQuery: requestType => {
+      if (requestType === "fetchMetadata") {
+        return useGetTableQueryMetadataQuery;
+      }
+
+      if (requestType === "fetchMetadataDeprecated") {
+        return useGetTableQueryMetadataQuery;
+      }
+
+      if (requestType === "fetchMetadataAndForeignTables") {
+        // TODO
+      }
+
+      return useGetTableQuery;
+    },
   },
 
   api: {

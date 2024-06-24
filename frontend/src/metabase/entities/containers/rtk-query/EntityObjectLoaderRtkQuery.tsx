@@ -111,8 +111,6 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
       return entitiesDefinitions[entityType];
     }, [entityType]);
 
-  const { useGetQuery } = entityDefinition.rtk;
-
   const entityId = useSelector(state =>
     typeof entityIdProp === "function"
       ? entityIdProp(state, props)
@@ -125,6 +123,7 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
       : entityQueryProp,
   );
 
+  const useGetQuery = entityDefinition.rtk.getUseGetQuery(requestType);
   const {
     data,
     error: rtkError,
