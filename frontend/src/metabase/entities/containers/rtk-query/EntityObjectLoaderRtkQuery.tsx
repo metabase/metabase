@@ -152,9 +152,8 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
   }, [entityDefinition, entityId]);
 
   const requestStatePath = useMemo(() => {
-    // TODO: requestType instead of fetchType?
-    return [...objectStatePath, fetchType];
-  }, [objectStatePath, fetchType]);
+    return [...objectStatePath, requestType];
+  }, [objectStatePath, requestType]);
 
   useEffect(() => {
     if (isLoading) {
