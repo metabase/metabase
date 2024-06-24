@@ -123,18 +123,23 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
       : entityQueryProp,
   );
 
+  const finalQuery = useMemo(
+    () => ({ id: entityId, ...entityQuery }),
+    [entityId, entityQuery],
+  );
+
   const useGetQuery = entityDefinition.rtk.getUseGetQuery(requestType);
+
   const {
     data,
     error: rtkError,
     isLoading,
     refetch,
-  } = useGetQuery(
-    entityId != null ? { id: entityId, ...entityQuery } : skipToken,
-  );
+  } = useGetQuery(entityId != null ? finalQuery : skipToken);
+
   const queryKey = useMemo(
-    () => entityDefinition.getQueryKey(entityQuery),
-    [entityDefinition, entityQuery],
+    () => entityDefinition.getQueryKey(finalQuery),
+    [entityDefinition, finalQuery],
   );
 
   const objectStatePath = useMemo(() => {
