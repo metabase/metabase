@@ -33,7 +33,8 @@ import {
   openProductsTable,
 } from "e2e/support/helpers";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 describe("issue 32625, issue 31635", () => {
   const CC_NAME = "Is Promotion";
@@ -859,5 +860,54 @@ describe("issue 44532", () => {
       cy.findByText("Gizmo").should("not.exist");
       cy.findByText("Widget").should("not.exist");
     });
+  });
+});
+
+describe("issue 43531", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should be possible to change the join tables in a saved question (metabase#43531)", () => {
+    //
+    createQuestion(
+      {
+        name: "Question 43531",
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+              condition: [
+                "=",
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+              ],
+              alias: "Products",
+            },
+            {
+              fields: "all",
+              "source-table": PEOPLE_ID,
+              condition: [
+                "=",
+                ["field", ORDERS.USER_ID, null],
+                ["field", PEOPLE.ID, { "join-alias": "People" }],
+              ],
+              alias: "People",
+            },
+          ],
+        },
+      },
+      { wrapId: true, visitQuestion: true },
+    );
+
+    openNotebook();
+
+    cy.findAllByTestId("notebook-cell-item").contains("People").click();
+    modal().findByText("Reviews").click();
+
+    saveQuestion();
   });
 });
