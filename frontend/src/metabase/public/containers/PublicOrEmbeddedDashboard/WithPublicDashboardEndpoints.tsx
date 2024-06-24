@@ -7,6 +7,7 @@ import {
 } from "metabase/services";
 import type { DashboardId } from "metabase-types/api";
 
+/** @deprecated - prefer `usePublicDashboardEndpoints`*/
 export const WithPublicDashboardEndpoints = <T extends WithRouterProps>(
   Component: ComponentType<T>,
 ): ComponentType<T & { dashboardId: DashboardId }> => {
@@ -29,4 +30,16 @@ export const WithPublicDashboardEndpoints = <T extends WithRouterProps>(
   }
 
   return DashboardEndpointsInner;
+};
+
+export const usePublicDashboardEndpoints = (props: WithRouterProps) => {
+  const { uuid, token } = props.params;
+  if (uuid) {
+    setPublicDashboardEndpoints();
+  } else if (token) {
+    setEmbedDashboardEndpoints();
+  }
+  const dashboardId = uuid || token;
+
+  return { dashboardId };
 };

@@ -1,4 +1,4 @@
-import type { Location } from "history";
+import type { WithRouterProps } from "react-router";
 
 import { useSyncURLSlug } from "metabase/dashboard/components/DashboardTabs/use-sync-url-slug";
 import {
@@ -6,19 +6,15 @@ import {
   useDashboardUrlParams,
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
-import type { DashboardId } from "metabase-types/api";
 
 import { PublicOrEmbeddedDashboard } from "./PublicOrEmbeddedDashboard";
-import { WithPublicDashboardEndpoints } from "./WithPublicDashboardEndpoints";
+import { usePublicDashboardEndpoints } from "./WithPublicDashboardEndpoints";
 
-const _PublicOrEmbeddedDashboardPage = ({
-  dashboardId,
-  location,
-}: {
-  dashboardId: DashboardId;
-  location: Location;
-}) => {
-  const parameterQueryParams = location.query;
+export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
+  const { location } = props;
+  const parameterQueryParams = props.location.query;
+
+  const { dashboardId } = usePublicDashboardEndpoints(props);
 
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId,
@@ -70,8 +66,3 @@ const _PublicOrEmbeddedDashboardPage = ({
     />
   );
 };
-
-export const PublicOrEmbeddedDashboardPage = WithPublicDashboardEndpoints(
-  // @ts-expect-error - WIP
-  _PublicOrEmbeddedDashboardPage,
-);
