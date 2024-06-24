@@ -159,6 +159,7 @@
                 [:= :recent_views.model_id :d.id]]}))
 
 (def Item
+  "The shape of a recent view item, returned from `GET /recent_views`."
   (mc/schema
    [:and {:registry {::official [:maybe [:enum :official "official"]]
                      ::verified [:maybe [:enum :verified "verified"]]
@@ -414,7 +415,6 @@
                                               [:= :rv.model "card"]
                                               [:= :rc.id :rv.model_id]]]
                                  :order-by  [[:rv.timestamp :desc]]}))
-
 
 (mu/defn ^:private model->return-model [model :- :keyword]
   (if (= :question model) :card model))
