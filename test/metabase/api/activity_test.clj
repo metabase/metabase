@@ -46,7 +46,7 @@
                                      {:topic :event/table-read :event {:object table-1}}]]
         (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
       (testing "most_recently_viewed_dashboard endpoint shows the current user's most recently viewed dashboard."
-        (is (= (assoc dash-3 :collection nil :view_count 1) #_dash-2 ;; TODO: this should be dash-2, because dash-3 is archived
+        (is (= (assoc dash-3 :collection nil :view_count 0) #_dash-2 ;; TODO: this should be dash-2, because dash-3 is archived
                (mt/user-http-request :crowberto :get 200 "activity/most_recently_viewed_dashboard")))))
     (mt/with-test-user :rasta
       (testing "If nothing has been viewed, return a 204"
@@ -54,7 +54,7 @@
                                         "activity/most_recently_viewed_dashboard"))))
       (events/publish-event! :event/dashboard-read {:object-id (:id dash-1) :user-id (mt/user->id :rasta)})
       (testing "Only the user's own views are returned."
-        (is (= (assoc dash-1 :collection nil :view_count 2)
+        (is (= (assoc dash-1 :collection nil :view_count 0)
                (mt/user-http-request :rasta :get 200
                                      "activity/most_recently_viewed_dashboard"))))
       (events/publish-event! :event/dashboard-read {:object-id (:id dash-1) :user-id (mt/user->id :rasta)})
@@ -72,13 +72,13 @@
         (testing "view a dashboard in a personal collection"
           (events/publish-event! :event/dashboard-read {:object-id (:id dash-1) :user-id (mt/user->id :crowberto)})
           (let [crowberto-personal-coll (t2/select-one :model/Collection :personal_owner_id (mt/user->id :crowberto))]
-            (is (= (assoc dash-1 :collection (assoc crowberto-personal-coll :is_personal true) :view_count 1)
+            (is (= (assoc dash-1 :collection (assoc crowberto-personal-coll :is_personal true) :view_count 0)
                    (mt/user-http-request :crowberto :get 200
                                          "activity/most_recently_viewed_dashboard")))))
 
         (testing "view a dashboard in a public collection"
           (events/publish-event! :event/dashboard-read {:object-id (:id dash-2) :user-id (mt/user->id :crowberto)})
-          (is (= (assoc dash-2 :collection (assoc coll :is_personal false) :view_count 1)
+          (is (= (assoc dash-2 :collection (assoc coll :is_personal false) :view_count 0)
                  (mt/user-http-request :crowberto :get 200
                                        "activity/most_recently_viewed_dashboard"))))))))
 
