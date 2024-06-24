@@ -46,17 +46,6 @@ const NUMBER_REGEX = /([\+\-])?[^0-9]*([0-9\., ]+)/;
 
 const DEFAULT_NUMBER_SEPARATORS = ".,";
 
-// TODO: unit test this!
-function roundNumber(n: number, maximumFractionDigits?: number) {
-  if (maximumFractionDigits === undefined) {
-    return n;
-  }
-
-  const factor = Math.pow(10, maximumFractionDigits);
-
-  return Math.round(n * factor) / factor;
-}
-
 function getDefaultNumberOptions(options: { decimals?: string | number }) {
   const defaults = { ...DEFAULT_NUMBER_OPTIONS };
 
@@ -153,7 +142,7 @@ export function formatNumber(
       // fall back to old, less capable formatter
       // NOTE: does not handle things like currency, percent
       return FIXED_NUMBER_FORMATTER(
-        roundNumber(number, options.maximumFractionDigits),
+        roundFloat(number, options.maximumFractionDigits),
       );
     }
   }
@@ -268,7 +257,7 @@ function formatNumberScientific(
   options: FormatNumberOptionsType,
 ) {
   if (options.maximumFractionDigits) {
-    value = roundNumber(value, options.maximumFractionDigits);
+    value = roundFloat(value, options.maximumFractionDigits);
   }
   const exp = replaceNumberSeparators(
     value.toExponential(options.minimumFractionDigits),
@@ -284,4 +273,20 @@ function formatNumberScientific(
   } else {
     return exp;
   }
+}
+
+/**
+ * Rounds a floating-point number to the specified number of decimal places.
+ */
+export function roundFloat(
+  value: number,
+  decimalPlaces: number = DEFAULT_NUMBER_OPTIONS.maximumFractionDigits,
+) {
+  if (decimalPlaces === undefined) {
+    return value;
+  }
+
+  const factor = Math.pow(10, decimalPlaces);
+
+  return Math.round(value * factor) / factor;
 }
