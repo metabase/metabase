@@ -455,9 +455,7 @@ describe("DashCardCardParameterMapper", () => {
 
     expect(parameterActions.resetParameterMapping).not.toHaveBeenCalled();
 
-    const { rerender } = setup({
-      ...props,
-    });
+    const { rerender } = setup(props);
 
     rerender(
       <DashCardCardParameterMapper
