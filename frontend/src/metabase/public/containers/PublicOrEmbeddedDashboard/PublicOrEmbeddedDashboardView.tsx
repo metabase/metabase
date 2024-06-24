@@ -144,7 +144,7 @@ export function PublicOrEmbeddedDashboardView({
       setParameterValueToDefault={setParameterValueToDefault}
       enableParameterRequiredBehavior
       actionButtons={
-        buttons.length > 0 ? <div className={CS.flex}>{buttons}</div> : null
+        buttons.length > 0 && <div className={CS.flex}>{buttons}</div>
       }
       dashboardTabs={
         dashboard?.tabs &&
