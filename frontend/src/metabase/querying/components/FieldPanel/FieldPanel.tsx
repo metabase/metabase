@@ -39,13 +39,8 @@ export const FieldPanel = ({
     onChange(toggleColumnInQuery(query, stageIndex, columnItem));
   };
 
-  const handleGroupToggle = (
-    groupItem: ColumnGroupItem,
-    groupIndex: number,
-  ) => {
-    onChange(
-      toggleColumnGroupInQuery(query, stageIndex, groupItem, groupIndex),
-    );
+  const handleGroupToggle = (groupItem: ColumnGroupItem) => {
+    onChange(toggleColumnGroupInQuery(query, stageIndex, groupItem));
   };
 
   return (
@@ -80,7 +75,7 @@ export const FieldPanel = ({
                 checked={groupItem.isSelected}
                 disabled={groupItem.isDisabled}
                 aria-label={groupItem.displayName}
-                onChange={() => handleGroupToggle(groupItem, groupIndex)}
+                onChange={() => handleGroupToggle(groupItem)}
               />
             </Box>
             {groupItem.columnItems.map((columnItem, columnIndex) => (
