@@ -1128,10 +1128,7 @@
 
   `aggr-expr` is expected to be a clause that is a result of [[extract-aggregations]]. For details see its docstring.
 
-  Distinct values are computed using the `$addToSet` in a `$group` stage. `$size` transforms them to actual count.
-
-  If there is a need for more _pre-post_ transformations (as per results of [[expand-aggregations]]), this function
-  should be generalized."
+  Distinct values are computed using the `$addToSet` in a `$group` stage. `$size` transforms them to actual count."
   [[aggr-expr mappings]]
   (let [distinct-keys (filter (fn [[clause]] (= :distinct clause)) (keys mappings))
         distinct-vals (into #{}

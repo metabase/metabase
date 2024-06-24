@@ -288,7 +288,7 @@
 (deftest ^:parallel multiple-aggregations-with-distinct-count-expression-test
   (mt/test-driver
    :mongo
-   (testing "Should generate correct queries for `:distinct` in expressions ()"
+   (testing "Should generate correct queries for `:distinct` in expressions (#35425)"
      (is (= {:projections ["expression" "expression_2"],
              :query
              [{"$group"
