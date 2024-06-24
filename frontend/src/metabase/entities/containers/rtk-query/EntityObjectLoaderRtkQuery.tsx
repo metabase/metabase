@@ -75,7 +75,7 @@ export interface Props<Entity, EntityWrapper> {
 }
 
 /**
- * For the database entity generic types would be:
+ * For example, generic types for the Database entity would be:
  *   Entity        -> Database from metabase-types/api/database.ts
  *   EntityWrapper -> Database from metabase-lib/v1/metadata/Database.ts
  */

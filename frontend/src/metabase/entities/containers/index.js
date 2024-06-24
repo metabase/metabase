@@ -9,13 +9,19 @@ export function addEntityContainers(entity) {
   const ObjectName = entity.nameOne;
 
   // Entity.load higher-order component
-  entity.load = ({ id, query, ...props } = {}) =>
-    entityObjectLoaderRtkQuery({
+  entity.load = ({ id, query, ...props } = {}) => {
+    // TODO: map all entities
+    if (!entity.rtk) {
+      return entity.loadLegacy({ id, query, ...props });
+    }
+
+    return entityObjectLoaderRtkQuery({
       entityType: entity.name,
       entityId: id,
       entityQuery: query,
       ...props,
     });
+  };
 
   entity.loadLegacy = ({ id, query, ...props } = {}) =>
     entityObjectLoader({
