@@ -52,7 +52,7 @@ export interface EntityDefinition<Entity, EntityWrapper> {
     object: unknown;
   };
   rtk: {
-    getUseGetQuery: (requestType: RequestType) => {
+    getUseGetQuery: (fetchType: FetchType) => {
       useGetQuery: UseQuery<
         QueryDefinition<unknown, BaseQueryFn, TagType, unknown>
       >;

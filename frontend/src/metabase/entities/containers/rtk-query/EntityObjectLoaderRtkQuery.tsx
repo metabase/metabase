@@ -129,7 +129,7 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
   );
 
   const { useGetQuery, options } =
-    entityDefinition.rtk.getUseGetQuery(requestType);
+    entityDefinition.rtk.getUseGetQuery(fetchType);
 
   const {
     data,
