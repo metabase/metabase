@@ -169,16 +169,20 @@ describe("QueryColumnPicker", () => {
       Lib.expressionClause("+", [1, 2]),
     );
     setup({ query });
-    const [orderGroup] = screen.getAllByRole("checkbox");
+    const [orderGroup, firstColumn] = screen.getAllByRole("checkbox");
     const customColumn = screen.getByRole("checkbox", { name: "Custom" });
     expect(orderGroup).toBeChecked();
     expect(orderGroup).toBeEnabled();
+    expect(firstColumn).toBeChecked();
+    expect(firstColumn).toBeEnabled();
     expect(customColumn).toBeChecked();
     expect(customColumn).toBeDisabled();
 
     await userEvent.click(orderGroup);
     expect(orderGroup).not.toBeChecked();
     expect(orderGroup).toBeEnabled();
+    expect(firstColumn).toBeChecked();
+    expect(firstColumn).toBeDisabled();
     expect(customColumn).toBeChecked();
     expect(customColumn).toBeDisabled();
   });

@@ -64,7 +64,9 @@ function disableLastSelectedQueryColumn(
     }
 
     const isOnlySelectedColumn =
-      groupItem.columnItems.filter(({ isSelected }) => isSelected).length === 1;
+      groupItem.columnItems.filter(
+        ({ isSelected, isEditable }) => isSelected && isEditable,
+      ).length === 1;
 
     return {
       ...groupItem,
