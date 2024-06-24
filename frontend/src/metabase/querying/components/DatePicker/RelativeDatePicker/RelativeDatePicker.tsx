@@ -76,7 +76,11 @@ export function RelativeDatePicker({
               onSubmit={handleSubmit}
             />
           ) : (
-            <CurrentDatePicker value={value} onChange={onChange} />
+            <CurrentDatePicker
+              value={value}
+              onChange={onChange}
+              padded={true}
+            />
           )}
         </Tabs.Panel>
       ))}
