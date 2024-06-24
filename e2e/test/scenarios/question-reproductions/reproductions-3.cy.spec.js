@@ -31,6 +31,9 @@ import {
   newButton,
   appBar,
   openProductsTable,
+  queryBuilderFooter,
+  enterCustomColumnDetails,
+  addCustomColumn,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -474,6 +477,23 @@ describe("issue 40435", () => {
   });
 });
 
+describe("issue 41381", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show an error message when adding a constant-only custom expression (metabase#41381)", () => {
+    openOrdersTable({ mode: "notebook" });
+    addCustomColumn();
+    enterCustomColumnDetails({ formula: "'Test'", name: "Constant" });
+    popover().within(() => {
+      cy.findByText("Invalid expression").should("be.visible");
+      cy.button("Done").should("be.disabled");
+    });
+  });
+});
+
 describe(
   "issue 42010 -- Unable to filter by mongo id",
   { tags: "@mongo" },
@@ -858,6 +878,56 @@ describe("issue 44532", () => {
       cy.findByText("Gadget").should("not.exist");
       cy.findByText("Gizmo").should("not.exist");
       cy.findByText("Widget").should("not.exist");
+    });
+  });
+});
+
+describe("issue 43294", () => {
+  const questionDetails = {
+    display: "line",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    },
+    visualization_settings: {
+      "graph.metrics": ["count"],
+      "graph.dimensions": ["CREATED_AT"],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not overwrite viz settings with click actions in raw data mode (metabase#43294)", () => {
+    createQuestion(questionDetails, { visitQuestion: true });
+    queryBuilderFooter().findByLabelText("Switch to data").click();
+
+    cy.log("compare action");
+    cy.button("Add column").click();
+    popover().findByText("Compare “Count” to previous months").click();
+    popover().button("Done").click();
+
+    cy.log("extract action");
+    cy.button("Add column").click();
+    popover().findByText("Extract part of column").click();
+    popover().within(() => {
+      cy.findByText("Created At: Month").click();
+      cy.findByText("Year").click();
+    });
+
+    cy.log("combine action");
+    cy.button("Add column").click();
+    popover().findByText("Combine columns").click();
+    popover().button("Done").click();
+
+    cy.log("check visualization");
+    queryBuilderFooter().findByLabelText("Switch to visualization").click();
+    echartsContainer().within(() => {
+      cy.findByText("Count").should("be.visible");
+      cy.findByText("Created At").should("be.visible");
     });
   });
 });

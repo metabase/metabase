@@ -9,12 +9,10 @@ import type { DashCardId, Parameter } from "metabase-types/api";
 export function useResetParameterMapping({
   editingParameter,
   isNative,
-  isDisabled,
   dashcardId,
 }: {
   editingParameter: Parameter | null | undefined;
   isNative: boolean;
-  isDisabled: boolean;
   dashcardId: DashCardId;
 }) {
   const prevParameter = usePrevious(editingParameter);
@@ -25,11 +23,7 @@ export function useResetParameterMapping({
       return;
     }
 
-    if (
-      isNative &&
-      isDisabled &&
-      prevParameter.type !== editingParameter.type
-    ) {
+    if (isNative && prevParameter.type !== editingParameter.type) {
       const subType = getParameterSubType(editingParameter);
       const prevSubType = getParameterSubType(prevParameter);
 
@@ -37,12 +31,5 @@ export function useResetParameterMapping({
         dispatch(resetParameterMapping(editingParameter.id, dashcardId));
       }
     }
-  }, [
-    isNative,
-    isDisabled,
-    prevParameter,
-    editingParameter,
-    dispatch,
-    dashcardId,
-  ]);
+  }, [isNative, prevParameter, editingParameter, dispatch, dashcardId]);
 }

@@ -15,7 +15,7 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 
-import { FilterHeader } from "./QuestionFilters";
+import { QuestionFiltersHeader } from "./QuestionFiltersHeader";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -49,7 +49,7 @@ function setup({
 
     return (
       <div data-testid="TEST_CONTAINER">
-        <FilterHeader
+        <QuestionFiltersHeader
           question={question}
           expanded={isExpanded}
           updateQuestion={handleQueryChange}
@@ -76,7 +76,7 @@ function setup({
   return { getNextQuery, getFilterColumnNameForStage };
 }
 
-describe("FilterHeader", () => {
+describe("QuestionFiltersHeader", () => {
   it("should not render if expanded is false", () => {
     setup({ isExpanded: false });
     expect(screen.queryByTestId("TEST_CONTAINER")).toBeEmptyDOMElement();

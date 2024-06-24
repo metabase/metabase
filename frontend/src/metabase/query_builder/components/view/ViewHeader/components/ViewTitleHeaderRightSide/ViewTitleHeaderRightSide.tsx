@@ -1,34 +1,35 @@
 import cx from "classnames";
+import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
-import type { ModalType } from "metabase/query_builder/components/QueryModals";
 import {
   SaveButton,
   ViewHeaderActionPanel,
   ViewHeaderIconButtonContainer,
   ViewRunButtonWithTooltip,
-} from "metabase/query_builder/components/view/ViewHeader/ViewHeader.styled";
+} from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import {
   ExploreResultsLink,
   FilterHeaderButton,
-  FilterHeaderToggle,
+  QuestionFiltersHeaderToggle,
   QuestionActions,
   QuestionNotebookButton,
   QuestionSummarizeWidget,
   ToggleNativeQueryPreview,
 } from "metabase/query_builder/components/view/ViewHeader/components";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
+import type { QueryModalType } from "metabase/query_builder/constants";
 import { Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
-type ViewTitleHeaderRightSideProps = {
+interface ViewTitleHeaderRightSideProps {
   question: Question;
   result: Dataset;
   queryBuilderMode: QueryBuilderMode;
@@ -48,7 +49,7 @@ type ViewTitleHeaderRightSideProps = {
     ignoreCache?: boolean;
   }) => void;
   cancelQuery: () => void;
-  onOpenModal: (modalType: ModalType) => void;
+  onOpenModal: (modalType: QueryModalType) => void;
   onEditSummary: () => void;
   onCloseSummary: () => void;
   setQueryBuilderMode: (
@@ -68,7 +69,7 @@ type ViewTitleHeaderRightSideProps = {
   isShowingQuestionInfoSidebar: boolean;
   onModelPersistenceChange: () => void;
   isObjectDetail: boolean;
-};
+}
 
 export function ViewTitleHeaderRightSide({
   question,
@@ -100,7 +101,7 @@ export function ViewTitleHeaderRightSide({
   isShowingQuestionInfoSidebar,
   onModelPersistenceChange,
   isObjectDetail,
-}: ViewTitleHeaderRightSideProps) {
+}: ViewTitleHeaderRightSideProps): React.JSX.Element {
   const isShowingNotebook = queryBuilderMode === "notebook";
   const { isEditable } = Lib.queryDisplayInfo(question.query());
 
@@ -140,12 +141,12 @@ export function ViewTitleHeaderRightSide({
 
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
-      {FilterHeaderToggle.shouldRender({
+      {QuestionFiltersHeaderToggle.shouldRender({
         question,
         queryBuilderMode,
         isObjectDetail,
       }) && (
-        <FilterHeaderToggle
+        <QuestionFiltersHeaderToggle
           className={cx(CS.ml2, CS.mr1)}
           query={question.query()}
           isExpanded={areFiltersExpanded}
