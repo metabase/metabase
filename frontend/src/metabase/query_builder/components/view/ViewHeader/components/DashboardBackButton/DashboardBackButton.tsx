@@ -8,7 +8,7 @@ import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import {
   BackButton,
   BackButtonContainer,
-} from "metabase/query_builder/components/view/ViewHeader/ViewHeader.styled";
+} from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import { getDashboard } from "metabase/query_builder/selectors";
 
 export function DashboardBackButton() {

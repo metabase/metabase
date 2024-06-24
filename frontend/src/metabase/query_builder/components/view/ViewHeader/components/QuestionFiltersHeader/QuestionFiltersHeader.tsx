@@ -11,7 +11,7 @@ interface FilterHeaderToggleProps {
   onCollapse: () => void;
 }
 
-export function FilterHeaderToggle({
+export function QuestionFiltersHeaderToggle({
   className,
   query,
   isExpanded,
@@ -36,7 +36,7 @@ interface FilterHeaderProps {
   updateQuestion: (question: Question, opts: { run: boolean }) => void;
 }
 
-export function FilterHeader({
+export function QuestionFiltersHeader({
   question,
   expanded,
   updateQuestion,
@@ -75,5 +75,5 @@ const shouldRender = ({
   );
 };
 
-FilterHeader.shouldRender = shouldRender;
-FilterHeaderToggle.shouldRender = shouldRender;
+QuestionFiltersHeader.shouldRender = shouldRender;
+QuestionFiltersHeaderToggle.shouldRender = shouldRender;

@@ -19,7 +19,7 @@ import {
   updateQuestion,
 } from "metabase/query_builder/actions";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import { FilterHeader } from "metabase/query_builder/components/view/ViewHeader/components";
+import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components";
 import {
   getCard,
   getFirstQueryResult,
@@ -102,12 +102,12 @@ export const InteractiveQuestionResult = ({
           {withResetButton && <ResetButton onClick={onResetButtonClick} />}
         </Flex>
 
-        {FilterHeader.shouldRender({
+        {QuestionFiltersHeader.shouldRender({
           question,
           queryBuilderMode: uiControls.queryBuilderMode,
           isObjectDetail: false,
         }) && (
-          <FilterHeader
+          <QuestionFiltersHeader
             expanded
             question={question}
             updateQuestion={(...args) => dispatch(updateQuestion(...args))}
