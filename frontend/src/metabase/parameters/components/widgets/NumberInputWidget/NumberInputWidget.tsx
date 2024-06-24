@@ -66,11 +66,6 @@ export function NumberInputWidget({
     }
   };
 
-  function shouldCreate(value: string | number) {
-    const res = parseNumberValue(value);
-    return res !== null && res.toString() === value;
-  }
-
   const filteredUnsavedArrayValue = useMemo(
     () => unsavedArrayValue.filter((x): x is number => x !== undefined),
     [unsavedArrayValue],
@@ -84,15 +79,7 @@ export function NumberInputWidget({
   const options =
     data?.values
       .map(getOption)
-      .filter((item): item is SelectItem => item !== null)
-      .filter(
-        // avoid rendering the label in the value tag, because this only
-        // works when the value has just been selected
-        item =>
-          !filteredUnsavedArrayValue.some(
-            val => val?.toString() === item.value,
-          ),
-      ) ?? [];
+      .filter((item): item is SelectItem => item !== null) ?? [];
 
   const valueOptions = unsavedArrayValue
     .map((value): SelectItem | null => {
@@ -111,6 +98,27 @@ export function NumberInputWidget({
     })
     .filter(isNotNull);
 
+  function parseValue(value: string | number | undefined): number | null {
+    if (value === undefined) {
+      return null;
+    }
+
+    const opt = options.find(option => {
+      const label = option.label || option.value?.toString();
+      return label === value?.toString();
+    });
+
+    if (opt) {
+      return parseNumberValue(opt.value);
+    }
+    return parseNumberValue(value);
+  }
+
+  function shouldCreate(value: string | number) {
+    const res = parseValue(value);
+    return res !== null;
+  }
+
   return (
     <WidgetRoot className={className}>
       {label && <WidgetLabel>{label}</WidgetLabel>}
@@ -120,7 +128,7 @@ export function NumberInputWidget({
             onSearchChange={setQuery}
             onChange={(values: string[]) =>
               setUnsavedArrayValue(
-                values.map(value => parseNumberValue(value) ?? undefined),
+                values.map(value => parseValue(value) ?? undefined),
               )
             }
             value={filteredUnsavedArrayValue.map(value => value?.toString())}

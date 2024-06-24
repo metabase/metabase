@@ -170,7 +170,7 @@ describe("NumberInputWidget", () => {
 
       const button = screen.getByRole("button", { name: "Add filter" });
       await userEvent.click(button);
-      expect(setValue).toHaveBeenCalledWith([456]);
+      expect(setValue).toHaveBeenCalledWith([123, 456]);
     });
 
     it("should be unsettable", async () => {
@@ -214,6 +214,32 @@ describe("NumberInputWidget", () => {
       await userEvent.click(button);
 
       expect(setValue).toHaveBeenCalledWith([42, 55, 66]);
+    });
+
+    it("allow entering comma-separated value by label", async () => {
+      const values: ParameterValue[] = [["42", "Foo"], ["66", "Bar"], ["55"]];
+      const parameter = createMockParameter({
+        values_source_type: "static-list",
+        values_source_config: { values },
+      });
+
+      const { setValue } = setup({
+        value: [],
+        arity: "n",
+        parameter,
+        values,
+      });
+
+      const combobox = screen.getByRole("combobox");
+      const input = getInput(combobox);
+      await userEvent.type(input, "Foo,Bar,55,", {
+        pointerEventsCheck: 0,
+      });
+
+      const button = screen.getByRole("button", { name: "Add filter" });
+      await userEvent.click(button);
+
+      expect(setValue).toHaveBeenCalledWith([42, 66, 55]);
     });
   });
 });
