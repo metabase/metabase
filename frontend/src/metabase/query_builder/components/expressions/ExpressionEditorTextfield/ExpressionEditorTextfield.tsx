@@ -176,6 +176,7 @@ function transformPropsToState(
     startRule,
     stageIndex,
     query,
+    expressionPosition,
   });
 
   const { suggestions = [], helpText = null } = suggestWithExtras({
@@ -238,7 +239,14 @@ class ExpressionEditorTextfield extends React.Component<
     newProps: Readonly<ExpressionEditorTextfieldProps>,
   ) {
     // we only refresh our state if we had no previous state OR if our expression changed
-    const { expression, clause, startRule, query, stageIndex } = newProps;
+    const {
+      expression,
+      clause,
+      startRule,
+      query,
+      stageIndex,
+      expressionPosition,
+    } = newProps;
     const hasLegacyExpressionChanged = !_.isEqual(
       this.props.expression,
       expression,
@@ -255,6 +263,7 @@ class ExpressionEditorTextfield extends React.Component<
         startRule,
         stageIndex,
         query,
+        expressionPosition,
       });
       const currentSource = this.state.source;
       this.setState(transformPropsToState(newProps));
@@ -528,7 +537,8 @@ class ExpressionEditorTextfield extends React.Component<
 
   compileExpression() {
     const { source } = this.state;
-    const { query, stageIndex, startRule, name } = this.props;
+    const { query, stageIndex, startRule, name, expressionPosition } =
+      this.props;
     if (!source || source.length === 0) {
       return null;
     }
@@ -538,6 +548,7 @@ class ExpressionEditorTextfield extends React.Component<
       query,
       stageIndex,
       startRule,
+      expressionPosition,
     });
 
     return { expression, expressionClause };

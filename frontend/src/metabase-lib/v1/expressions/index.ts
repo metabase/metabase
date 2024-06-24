@@ -128,40 +128,34 @@ export function formatSegmentName(
 export function parseDimension(
   name: string,
   {
-    reference,
     query,
     stageIndex,
+    expressionPosition,
   }: {
-    reference: string;
     query: Lib.Query;
     stageIndex: number;
     source: string;
+    expressionPosition: number | undefined;
   },
 ) {
-  const columns = Lib.expressionableColumns(query, stageIndex);
+  const columns = Lib.expressionableColumns(
+    query,
+    stageIndex,
+    expressionPosition,
+  );
 
-  return columns
-    .filter(column => {
-      const displayInfo = Lib.displayInfo(query, stageIndex, column);
+  return columns.find(column => {
+    const displayInfo = Lib.displayInfo(query, stageIndex, column);
 
-      const nameWithSeparator = getDisplayNameWithSeparator(
+    return EDITOR_FK_SYMBOLS.symbols.some(separator => {
+      const displayName = getDisplayNameWithSeparator(
         displayInfo.longDisplayName,
+        separator,
       );
 
-      return nameWithSeparator !== reference;
-    })
-    .find(column => {
-      const displayInfo = Lib.displayInfo(query, stageIndex, column);
-
-      return EDITOR_FK_SYMBOLS.symbols.some(separator => {
-        const displayName = getDisplayNameWithSeparator(
-          displayInfo.longDisplayName,
-          separator,
-        );
-
-        return displayName === name;
-      });
+      return displayName === name;
     });
+  });
 }
 
 export function formatLegacyDimensionName(

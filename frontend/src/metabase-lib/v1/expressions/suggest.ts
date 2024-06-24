@@ -67,7 +67,7 @@ export type SuggestArgs = {
   reportTimezone?: string;
   startRule: string;
   targetOffset?: number;
-  expressionPosition?: number;
+  expressionPosition: number | undefined;
   getColumnIcon: (column: Lib.ColumnMetadata) => string;
 };
 

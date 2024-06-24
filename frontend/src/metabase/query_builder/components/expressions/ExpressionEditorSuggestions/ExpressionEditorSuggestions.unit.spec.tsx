@@ -51,6 +51,7 @@ function setup({ source = "", startRule }: SetupOpts) {
     metadata: METADATA,
     startRule: "expression",
     getColumnIcon,
+    expressionPosition: undefined,
   });
 
   const onHighlightSuggestion = jest.fn();

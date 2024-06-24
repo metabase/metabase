@@ -20,6 +20,7 @@ function setup({ startRule }: SetupOpts) {
     source: "",
     query,
     stageIndex,
+    expressionPosition: undefined,
     metadata: METADATA,
     startRule,
     getColumnIcon,
