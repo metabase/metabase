@@ -103,8 +103,8 @@
              (format "Migration(s) [%s] uses invalid types (in %s)"
                      (str/join "," (map #(str "'" % "'") using-types?))
                      (str/join "," (map #(str "'" % "'") target-types)))
-              {:invalid-ids using-types?
-               :target-types target-types})))))
+             {:invalid-ids using-types?
+              :target-types target-types})))))
 
 (defn require-no-bare-blob-or-text-types!
   "Ensures that no \"text\" or \"blob\" type columns are added in any changesets."
