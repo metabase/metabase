@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import { useToggle } from "metabase/hooks/use-toggle";
+import type { QueryModalType } from "metabase/query_builder/constants";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
@@ -49,7 +50,7 @@ interface ViewTitleHeaderProps {
     ignoreCache?: boolean;
   }) => void;
   cancelQuery: () => void;
-  onOpenModal: (modalType: string) => void;
+  onOpenModal: (modalType: QueryModalType) => void;
   onEditSummary: () => void;
   onCloseSummary: () => void;
   setQueryBuilderMode: (
