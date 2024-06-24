@@ -450,14 +450,33 @@
                                :aggregation [[:count]]
                                :breakout [[:field %last-login {:temporal-unit :month}]]}})
              (optimize-temporal-filters/optimize-temporal-filters
-              (lib.tu.macros/mbql-query users
-                {:filter [:between
-                          [:+ [:field %last-login {:temporal-unit :month}] [:interval 3 :month]]
-                          [:relative-datetime -12 :month]
-                          [:relative-datetime 0 :month]]
-                 :source-query {:source-table $$users
-                                :aggregation [[:count]]
-                                :breakout [[:field %last-login {:temporal-unit :month}]]}}))))))
+               (lib.tu.macros/mbql-query users
+                 {:filter [:between
+                           [:+ [:field %last-login {:temporal-unit :month}] [:interval 3 :month]]
+                           [:relative-datetime -12 :month]
+                           [:relative-datetime 0 :month]]
+                  :source-query {:source-table $$users
+                                 :aggregation [[:count]]
+                                 :breakout [[:field %last-login {:temporal-unit :month}]]}}))))))
+  (testing "Optimize when temporal unit on field is not specified. (#42291)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/with-fields [(meta/field-metadata :orders :id)])
+                    (lib/filter (lib/between
+                                  (lib/+
+                                    (meta/field-metadata :orders :created-at)
+                                    (lib/interval 10 :minute))
+                                  (lib/relative-datetime -10 :minute)
+                                  (lib/relative-datetime 0 :minute))))]
+      (is (=? {:query {:filter [:and
+                                [:>=
+                                 [:+ [:field (meta/id :orders :created-at) {}]
+                                  [:interval 10 :minute]]
+                                 [:relative-datetime -10 :minute]]
+                                [:<
+                                 [:+ [:field (meta/id :orders :created-at) {}]
+                                  [:interval 10 :minute]]
+                                 [:relative-datetime 1 :minute]]]}}
+              (optimize-temporal-filters (lib.convert/->legacy-MBQL query))))))
   (testing "Don't optimize when temporal units are different. (#42291)"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/with-fields [(meta/field-metadata :orders :id)])
