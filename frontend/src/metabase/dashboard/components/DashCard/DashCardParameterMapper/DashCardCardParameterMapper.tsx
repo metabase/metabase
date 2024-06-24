@@ -87,7 +87,6 @@ export function DashCardCardParameterMapper({
   useResetParameterMapping({
     editingParameter,
     isNative,
-    isDisabled,
     dashcardId: dashcard.id,
   });
 
