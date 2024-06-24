@@ -17,6 +17,7 @@
 
    TODOs should be addressed during follow-up of monger removal."
   (:require
+   [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [metabase.query-processor.timezone :as qp.timezone]))
@@ -37,7 +38,11 @@
 
   org.bson.types.Decimal128
   (from-document [^org.bson.types.Decimal128 input _opts]
-    (.bigDecimalValue input))
+    (try (.bigDecimalValue input)
+         (catch ArithmeticException e
+           (if (str/includes? (ex-message e) "Negative zero can not be converted to a BigDecimal")
+             0M
+             (throw e)))))
 
   java.util.List
   (from-document [^java.util.List input opts]
