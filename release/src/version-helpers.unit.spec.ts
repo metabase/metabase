@@ -1,3 +1,4 @@
+import type { Tag } from "./types";
 import {
   isValidVersionString,
   getOSSVersion,
@@ -12,7 +13,10 @@ import {
   getNextVersions,
   getGenericVersion,
   getMilestoneName,
+  getLastReleaseFromTags,
+  versionSort,
 } from "./version-helpers";
+
 
 describe("version-helpers", () => {
   describe("isValidVersionString", () => {
@@ -466,5 +470,86 @@ describe("getMilestoneName", () => {
     ["v1.50.1", "0.50.1"],
   ])("%s -> %s", (input, expected) => {
     expect(getMilestoneName(input)).toBe(expected);
+  });
+});
+
+describe('getLatReleaseFromTags', () => {
+  it('should return the latest release tag for minor versions', () => {
+    const latest = getLastReleaseFromTags([
+      { ref: 'refs/tags/v0.12.0' },
+      { ref: 'refs/tags/v0.12.2' },
+      { ref: 'refs/tags/v0.12.1' },
+    ] as Tag[]);
+    expect(latest).toBe('v0.12.2');
+  });
+
+  it('should return the latest tag for major version', () => {
+    const latest = getLastReleaseFromTags([
+      { ref: 'refs/tags/v0.12.9' },
+      { ref: 'refs/tags/v0.12.8' },
+      { ref: 'refs/tags/v0.13.0' },
+    ] as Tag[]);
+    expect(latest).toBe('v0.13.0');
+  });
+
+  it('should ignore release candidates', () => {
+    const latest = getLastReleaseFromTags([
+      { ref: 'refs/tags/v0.12.0' },
+      { ref: 'refs/tags/v0.12.2-RC99' },
+      { ref: 'refs/tags/v0.12.1' },
+    ] as Tag[]);
+    expect(latest).toBe('v0.12.1');
+  });
+});
+
+describe('verisonSort', () => {
+  it('should sort major versions', () => {
+    const diff1 = versionSort('v0.50.9', 'v0.48.1');
+    expect(diff1).toBeGreaterThan(0);
+
+    const diff2 = versionSort('v0.40.9', 'v0.50.1');
+    expect(diff2).toBeLessThan(0);
+
+    const diff3 = versionSort('v0.50.0', 'v0.50.0');
+    expect(diff3).toBe(0);
+  });
+
+  it('should sort minor versions', () => {
+    const diff1 = versionSort('v0.48.10', 'v0.48.1');
+    expect(diff1).toBeGreaterThan(0);
+
+    const diff2 = versionSort('v0.40.2', 'v0.40.4');
+    expect(diff2).toBeLessThan(0);
+
+    const diff3 = versionSort('v0.50.11', 'v0.50.11');
+    expect(diff3).toBe(0);
+  });
+
+  it('should handle versions with or without Vs', () => {
+    const diff1 = versionSort('v0.48.10', 'v0.48.1');
+    expect(diff1).toBeGreaterThan(0);
+
+    const diff2 = versionSort('0.40.2', 'v0.40.4');
+    expect(diff2).toBeLessThan(0);
+
+    const diff3 = versionSort('v0.50.11', '0.50.11');
+    expect(diff3).toBe(0);
+
+    const diff4 = versionSort('0.50.12', '0.50.11');
+    expect(diff4).toBeGreaterThan(0);
+  });
+
+  it('should ignore the ee/oss prefix', () => {
+    const diff1 = versionSort('v0.48.10', 'v1.48.1');
+    expect(diff1).toBeGreaterThan(0);
+
+    const diff2 = versionSort('1.40.2', 'v0.40.4');
+    expect(diff2).toBeLessThan(0);
+
+    const diff3 = versionSort('v0.50.11', '1.50.11');
+    expect(diff3).toBe(0);
+
+    const diff4 = versionSort('50.12', '1.50.11');
+    expect(diff4).toBeGreaterThan(0);
   });
 });
