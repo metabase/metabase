@@ -240,9 +240,6 @@
 
 ;;; -------------------------------------------------- FieldValues ---------------------------------------------------
 
-(def ^:private empty-field-values
-  {:values []})
-
 (declare search-values)
 
 (mu/defn field->values :- ms/FieldValuesResult
