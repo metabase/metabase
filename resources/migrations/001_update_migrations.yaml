@@ -7777,14 +7777,12 @@ databaseChangeLog:
             tableName: sandboxes
             columns:
               - column:
-<<<<<<< HEAD
                   name: permission_id
                   type: int
                   remarks: 'The ID of the corresponding permissions path for this sandbox (deprecated)'
                   constraints:
                     nullable: true
                   defaultValue: null
-=======
                   name: dataset_query_metrics_v2_migration_backup
                   remarks: The copy of dataset_query before the metrics v2 migration
                   type: ${text.type}
@@ -7824,7 +7822,6 @@ databaseChangeLog:
             oldColumnName: direct_reference
             newColumnName: explicit_reference
 
->>>>>>> 7b849da346 (Make recents understand context (#43478))
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
