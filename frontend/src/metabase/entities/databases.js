@@ -2,13 +2,18 @@ import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 import _ from "underscore";
 
-import { databaseApi } from "metabase/api";
+import {
+  databaseApi,
+  useGetDatabaseMetadataQuery,
+  useGetDatabaseQuery,
+  useListDatabaseIdFieldsQuery,
+} from "metabase/api";
 import { color } from "metabase/lib/colors";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import {
-  fetchData,
-  createThunkAction,
   compose,
+  createThunkAction,
+  fetchData,
   withAction,
   withCachedDataAndRequestState,
   withNormalize,
@@ -40,6 +45,26 @@ const Databases = createEntity({
 
   nameOne: "database",
   nameMany: "databases",
+
+  rtk: {
+    getUseGetQuery: fetchType => {
+      if (fetchType === "fetchDatabaseMetadata") {
+        return {
+          useGetQuery: useGetDatabaseMetadataQuery,
+        };
+      }
+
+      if (fetchType === "fetchIdFields") {
+        return {
+          useGetQuery: useListDatabaseIdFieldsQuery,
+        };
+      }
+
+      return {
+        useGetQuery: useGetDatabaseQuery,
+      };
+    },
+  },
 
   api: {
     list: (entityQuery, dispatch) =>
