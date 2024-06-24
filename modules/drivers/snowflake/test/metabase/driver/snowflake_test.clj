@@ -414,27 +414,27 @@
 (deftest ^:synchronized pk-auth-custom-role-e2e-test
   (mt/test-driver
    :snowflake
-   (let [account (tx/db-test-env-var-or-throw :snowflake :account)
-         warehouse (tx/db-test-env-var-or-throw :snowflake :warehouse)
+   (let [account           (tx/db-test-env-var-or-throw :snowflake :account)
+         warehouse         (tx/db-test-env-var-or-throw :snowflake :warehouse)
          ;; User with default role PULIC. To access the db custom role has to be used.
-         user (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-custom-user)
+         user              (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-custom-user)
          private-key-value (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
-         db (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
-         database {:name    "Snowflake RSA test DB custom"
-                   :engine  :snowflake
-                   ;; Details as collected from `api handler POST / database` are used.
-                   :details {:role                nil
-                             :warehouse           warehouse
-                             :db                  db
-                             :password            nil
-                             :private-key-options "uploaded"
-                             :advanced-options    false
-                             :schema-filters-type "all"
-                             :account             account
-                             :private-key-value   (str "data:application/octet-stream;base64,"
-                                                       (u/encode-base64 private-key-value))
-                             :tunnel-enabled      false
-                             :user                user}}]
+         db                (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
+         database          {:name    "Snowflake RSA test DB custom"
+                            :engine  :snowflake
+                            ;; Details as collected from `api handler POST / database` are used.
+                            :details {:role                nil
+                                      :warehouse           warehouse
+                                      :db                  db
+                                      :password            nil
+                                      :private-key-options "uploaded"
+                                      :advanced-options    false
+                                      :schema-filters-type "all"
+                                      :account             account
+                                      :private-key-value   (str "data:application/octet-stream;base64,"
+                                                                (u/encode-base64 private-key-value))
+                                      :tunnel-enabled      false
+                                      :user                user}}]
      ;; TODO: We should make those message returned when role is incorrect more descriptive!
      (testing "Database can not be accessed with `nil` default role"
        (is (= "Looks like the Database name is incorrect."
@@ -452,9 +452,9 @@
                       :details))
         ;; As the request is asynchronous, wait for sync to complete.
        (Thread/sleep 7000))
-     (let [[db :as dbs] (t2/select :model/Database :name "Snowflake RSA test DB custom")
+     (let [[db :as dbs]       (t2/select :model/Database :name "Snowflake RSA test DB custom")
            [table :as tables] (t2/select :model/Table :db_id (:id db))
-           fields (t2/select :model/Field :table_id (:id table))]
+           fields             (t2/select :model/Field :table_id (:id table))]
        (testing "Created database is correctly synced"
          (testing "Application database contains one database, one table and one new field"
            (is (= 1 (count dbs)))
@@ -474,36 +474,36 @@
 (deftest ^:synchronized pk-auth-default-role-e2e-test
   (mt/test-driver
    :snowflake
-   (let [account (tx/db-test-env-var-or-throw :snowflake :account)
-         warehouse (tx/db-test-env-var-or-throw :snowflake :warehouse)
+   (let [account           (tx/db-test-env-var-or-throw :snowflake :account)
+         warehouse         (tx/db-test-env-var-or-throw :snowflake :warehouse)
          ;; User with default role PULIC. To access the db custom role has to be used.
-         user (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-default-user)
+         user              (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-default-user)
          private-key-value (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
-         db (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
-         database {:name    "Snowflake RSA test DB default"
-                   :engine  :snowflake
-                   ;; Details as collected from `api handler POST / database` are used.
-                   :details {:role                nil
-                             :warehouse           warehouse
-                             :db                  db
-                             :password            nil
-                             :private-key-options "uploaded"
-                             :advanced-options    false
-                             :schema-filters-type "all"
-                             :account             account
-                             :private-key-value   (str "data:application/octet-stream;base64,"
-                                                       (u/encode-base64 private-key-value))
-                             :tunnel-enabled      false
-                             :user                user}}]
+         db                (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
+         database          {:name    "Snowflake RSA test DB default"
+                            :engine  :snowflake
+                            ;; Details as collected from `api handler POST / database` are used.
+                            :details {:role                nil
+                                      :warehouse           warehouse
+                                      :db                  db
+                                      :password            nil
+                                      :private-key-options "uploaded"
+                                      :advanced-options    false
+                                      :schema-filters-type "all"
+                                      :account             account
+                                      :private-key-value   (str "data:application/octet-stream;base64,"
+                                                                (u/encode-base64 private-key-value))
+                                      :tunnel-enabled      false
+                                      :user                user}}]
      (testing "Database can be created using _default_ `nil` role"
        ;; Map containing :details is expected to be database, hence considering request successful.
        (is (contains? (mt/user-http-request :crowberto :post 200 "database" database)
                       :details))
         ;; As the request is asynchronous, wait for sync to complete.
        (Thread/sleep 7000))
-     (let [[db :as dbs] (t2/select :model/Database :name "Snowflake RSA test DB default")
+     (let [[db :as dbs]       (t2/select :model/Database :name "Snowflake RSA test DB default")
            [table :as tables] (t2/select :model/Table :db_id (:id db))
-           fields (t2/select :model/Field :table_id (:id table))]
+           fields             (t2/select :model/Field :table_id (:id table))]
        (testing "Created database is correctly synced"
          (testing "Application database contains one database, one table and one new field"
            (is (= 1 (count dbs)))
