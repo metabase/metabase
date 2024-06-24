@@ -345,7 +345,7 @@
                                   :changes [{:modifyDataType {:newDataType "datetime"}}]
                                   :rollback nil)))
 
-    (testing "but not if it's an older migration)"
+    (testing "(but not if it's an older migration)"
       (is (validate! (mock-change-set :id "v45.12-345"
                                       :changes [{:createTable {:tableName "my_table"
                                                                :remarks "meow"
