@@ -24,6 +24,7 @@ import {
 } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import type { IconName } from "metabase/ui";
+import type { RecentItem } from "metabase-types/api";
 
 import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
@@ -197,6 +198,7 @@ export const useCommandPalette = ({
                 database: result.database_name,
                 href: wrappedResult.getUrl(),
                 iconColor: icon.color,
+                subtext: getSearchResultSubtext(wrappedResult),
               },
             };
           }),
@@ -242,22 +244,15 @@ export const useCommandPalette = ({
               dispatch(push(href));
             }
           },
-          extra:
-            item.model === "table"
-              ? {
-                  database: item.database.name,
-                  href: Urls.modelToUrl(item),
-                  iconColor: icon.color,
-                }
-              : {
-                  parentCollection:
-                    item.parent_collection.id === null
-                      ? ROOT_COLLECTION.name
-                      : item.parent_collection.name,
-                  isVerified: item.moderated_status === "verified",
-                  href: Urls.modelToUrl(item),
-                  iconColor: icon.color,
-                },
+          extra: {
+            isVerified:
+              item.model === "table"
+                ? false
+                : item.moderated_status === "verified",
+            href: Urls.modelToUrl(item),
+            iconColor: icon.color,
+            subtext: getRecentItemSubtext(item),
+          },
         };
       }) || []
     );
@@ -300,4 +295,25 @@ export const useCommandPalette = ({
     hasQuery ? [...adminActions, ...adminSettingsActions] : [],
     [adminActions, adminSettingsActions, hasQuery],
   );
+};
+
+const getSearchResultSubtext = (wrappedSearchResult: any) => {
+  if (wrappedSearchResult.model === "indexed-entity") {
+    return t`a record in ${wrappedSearchResult.model_name}`;
+  } else {
+    return (
+      wrappedSearchResult.getCollection().name ||
+      wrappedSearchResult.database_name
+    );
+  }
+};
+
+const getRecentItemSubtext = (item: RecentItem) => {
+  if (item.model === "table") {
+    return item.database.name;
+  } else if (item.parent_collection.id === null) {
+    return ROOT_COLLECTION.name;
+  } else {
+    return item.parent_collection.name;
+  }
 };
