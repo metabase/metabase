@@ -16,18 +16,20 @@ function getColumnItems(
   query: Lib.Query,
   stageIndex: number,
   group: Lib.ColumnGroup,
-) {
+): ColumnItem[] {
   return Lib.getColumnsFromColumnGroup(group).map(column => {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
+    const isEditable =
+      !columnInfo.isAggregation &&
+      !columnInfo.isBreakout &&
+      !columnInfo.isCalculated;
 
     return {
       column,
       displayName: columnInfo.displayName,
       isSelected: columnInfo.selected ?? false,
-      isDisabled:
-        columnInfo.isAggregation ||
-        columnInfo.isBreakout ||
-        columnInfo.isCalculated,
+      isEditable,
+      isDisabled: !isEditable,
     };
   });
 }
@@ -36,7 +38,7 @@ function getGroupsWithColumns(
   query: Lib.Query,
   stageIndex: number,
   columns: Lib.ColumnMetadata[],
-) {
+): ColumnGroupItem[] {
   const groups = Lib.groupColumns(columns);
   return groups.map(group => {
     const groupInfo = Lib.displayInfo(query, stageIndex, group);
@@ -52,7 +54,9 @@ function getGroupsWithColumns(
   });
 }
 
-function disableLastSelectedQueryColumn(groupItems: ColumnGroupItem[]) {
+function disableLastSelectedQueryColumn(
+  groupItems: ColumnGroupItem[],
+): ColumnGroupItem[] {
   return groupItems.map((groupItem, groupIndex) => {
     if (groupIndex !== 0) {
       return groupItem;
@@ -74,7 +78,9 @@ function disableLastSelectedQueryColumn(groupItems: ColumnGroupItem[]) {
   });
 }
 
-function deduplicateGroupNames(groupItems: ColumnGroupItem[]) {
+function deduplicateGroupNames(
+  groupItems: ColumnGroupItem[],
+): ColumnGroupItem[] {
   const groupNames = new Map<string, number>();
 
   return groupItems.map(groupItem => {
@@ -137,7 +143,7 @@ export function toggleColumnGroupInQuery(
 ) {
   if (groupItem.isSelected) {
     return groupItem.columnItems
-      .filter(columnItem => columnItem.isSelected && !columnItem.isDisabled)
+      .filter(columnItem => columnItem.isSelected && columnItem.isEditable)
       .filter((_, columnIndex) => !(groupIndex === 0 && columnIndex === 0))
       .reduce(
         (query, { column }) => Lib.removeField(query, stageIndex, column),
@@ -145,7 +151,7 @@ export function toggleColumnGroupInQuery(
       );
   } else {
     return groupItem.columnItems
-      .filter(columnItem => !columnItem.isSelected && !columnItem.isDisabled)
+      .filter(columnItem => !columnItem.isSelected && columnItem.isEditable)
       .reduce(
         (query, { column }) => Lib.addField(query, stageIndex, column),
         query,

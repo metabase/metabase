@@ -4,6 +4,7 @@ export type ColumnItem = {
   column: Lib.ColumnMetadata;
   displayName: string;
   isSelected: boolean;
+  isEditable: boolean;
   isDisabled: boolean;
 };
 
