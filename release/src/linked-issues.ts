@@ -22,3 +22,9 @@ export function getPRsFromCommitMessage(message: string) {
 
   return result.map(r => Number(r[1]));
 }
+
+// backport PRs just have a pr number in the body without a keyword
+export function getBackportSourcePRNumber(body: string) {
+  const matches = body.match(/#(\d+)/);
+  return matches ? Number(matches[1]) : null;
+}
