@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { getMilestones } from "./github";
 import { getLinkedIssues, getPRsFromCommitMessage } from "./linked-issues";
 import type { Issue, GithubProps, Milestone } from "./types";
@@ -158,8 +160,11 @@ export async function setMilestoneForCommits({
   console.log('Next milestone:', nextMilestone.title);
 
   // figure out issue or PR
-  const PRsToCheck = commitMessages.flatMap(getPRsFromCommitMessage).filter(isNotNull);
-
+  const PRsToCheck = _.uniq(
+    commitMessages
+      .flatMap(getPRsFromCommitMessage)
+      .filter(isNotNull)
+  );
   if (!PRsToCheck.length) {
     throw new Error('No PRs found in commit messages');
   }
