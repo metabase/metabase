@@ -15,9 +15,6 @@ import { msToSeconds } from "metabase/lib/time";
  * @returns {number} — cache TTL value in seconds (from db or instance default) that will be used
  */
 export function getQuestionsImplicitCacheTTL(question) {
-  if (!MetabaseSettings.get("enable-query-caching")) {
-    return null;
-  }
   if (question.database().cache_ttl) {
     // Database's cache TTL is in hours, need to convert that to seconds
     return question.database().cache_ttl * 60 * 60;
@@ -61,7 +58,6 @@ export function hasQuestionCacheSection(question) {
 
   return (
     type === "question" &&
-    question.metadata().setting("enable-query-caching") &&
     (question.canWrite() || question.lastQueryStart() != null)
   );
 }

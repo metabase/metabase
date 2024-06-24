@@ -139,6 +139,7 @@
   regex-email-bodies
   reset-inbox!
   summarize-multipart-email
+  summarize-multipart-single-email
   with-expected-messages
   with-fake-inbox]
 
@@ -161,7 +162,8 @@
   application-database-metadata-provider]
 
  [mw.session
-  with-current-user]
+  with-current-user
+  as-admin]
 
  [perms.test-util
   with-restored-data-perms!

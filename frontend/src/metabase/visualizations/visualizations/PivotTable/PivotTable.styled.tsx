@@ -4,11 +4,7 @@ import styled from "@emotion/styled";
 import { color, alpha, adjustBrightness } from "metabase/lib/colors";
 import type { MantineTheme } from "metabase/ui";
 
-import {
-  CELL_HEIGHT,
-  PIVOT_TABLE_FONT_SIZE,
-  RESIZE_HANDLE_WIDTH,
-} from "./constants";
+import { CELL_HEIGHT, RESIZE_HANDLE_WIDTH } from "./constants";
 
 export const RowToggleIconRoot = styled.div`
   display: flex;
@@ -158,7 +154,7 @@ interface PivotTableRootProps {
 
 export const PivotTableRoot = styled.div<PivotTableRootProps>`
   height: 100%;
-  font-size: ${PIVOT_TABLE_FONT_SIZE};
+  font-size: ${({ theme }) => theme.other.pivotTable.cell.fontSize};
 
   ${props =>
     props.isDashboard

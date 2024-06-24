@@ -86,7 +86,7 @@ describe("useEntityQuery", () => {
   it("should be initially loading", () => {
     setup();
 
-    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
   });
 
   it("should initially load data only once the reload flag", async () => {

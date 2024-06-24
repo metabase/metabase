@@ -59,7 +59,9 @@ import customYAxisRangeWithColumnScaling from "./custom-y-axis-range-with-column
 import dataLabelsUnderTrendGoalLines41280 from "./data-labels-under-trend-goal-lines-41280.json";
 import goalBetweenExtentAndChartBound from "./goal-between-extent-and-chart-bound.json";
 import goalLineDisabled from "./goal-line-disabled.json";
+import goalLineLogYScale from "./goal-line-log-y-scale.json";
 import goalLineOutOfBounds37848 from "./goal-line-out-of-bounds-37848.json";
+import goalLinePowYScale from "./goal-line-pow-y-scale.json";
 import goalLineUnderSeries38824 from "./goal-line-under-series-38824.json";
 import goalVerySmall from "./goal-very-small.json";
 import histogramTicks45Degrees from "./histogram-ticks-45-degrees.json";
@@ -88,6 +90,7 @@ import nullCategoryValueFormatting from "./null-category-value-formatting.json";
 import numberOfInsightsError39608 from "./number-of-insights-error-39608.json";
 import numericXAxisIncludesZero37082 from "./numeric-x-axis-includes-zero-37082.json";
 import powYScaleCustomYAxisRange from "./pow-y-scale-custom-y-axis-range.json";
+import safariNonIanaTimezoneRepro44128 from "./safari-non-iana-timezone-repro-44128.json";
 import ticksNativeWeekWithGapLongRange from "./ticks-native-week-with-gap-long-range.json";
 import ticksNativeWeekWithGapShortRange from "./ticks-native-week-with-gap-short-range.json";
 import timeSeriesTicksCompactFormattingMixedTimezones from "./time-series-ticks-compact-formatting-mixed-timezones.json";
@@ -113,6 +116,8 @@ export const data = {
   lineLinearXScale,
   lineLinearXScaleUnsorted,
   lineLogYScale,
+  goalLineLogYScale,
+  goalLinePowYScale,
   lineLogYScaleNegative,
   lineShowDotsAuto,
   lineShowDotsOn,
@@ -220,4 +225,5 @@ export const data = {
   comboDataLabelsAutoCompactnessPropagatesFromTotals,
   areaChartSteppedNullsInterpolated,
   areaChartSteppedNullsSkipped,
+  safariNonIanaTimezoneRepro44128,
 };

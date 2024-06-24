@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
+import { UploadInput } from "metabase/components/upload";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -18,6 +19,7 @@ import {
 } from "metabase/plugins";
 import { softReloadCard } from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
+import type { ModalType } from "metabase/query_builder/components/QueryModals";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -28,6 +30,7 @@ import {
   checkCanBeModel,
   checkDatabaseCanPersistDatasets,
 } from "metabase-lib/v1/metadata/utils/models";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 import { UploadMode } from "metabase-types/store/upload";
 
 import { ViewHeaderIconButtonContainer } from "../../ViewHeader.styled";
@@ -50,11 +53,14 @@ interface Props {
   isBookmarked: boolean;
   isShowingQuestionInfoSidebar: boolean;
   handleBookmark: () => void;
-  onOpenModal: (modalType: string) => void;
+  onOpenModal: (modalType: ModalType) => void;
   question: Question;
   setQueryBuilderMode: (
-    mode: string,
-    opt: { datasetEditorTab: string },
+    mode: QueryBuilderMode,
+    opts?: {
+      shouldUpdateUrl?: boolean;
+      datasetEditorTab?: DatasetEditorTab;
+    },
   ) => void;
   turnDatasetIntoQuestion: () => void;
   onInfoClick: () => void;
@@ -289,13 +295,10 @@ export const QuestionActions = ({
       </Tooltip>
       {canAppend && (
         <>
-          <input
-            type="file"
-            accept="text/csv,text/tab-separated-values"
+          <UploadInput
             id="upload-file-input"
             ref={fileInputRef}
             onChange={handleFileUpload}
-            style={{ display: "none" }}
           />
           <Tooltip tooltip={t`Upload data to this model`}>
             <ViewHeaderIconButtonContainer>

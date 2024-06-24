@@ -44,10 +44,10 @@ If instead you're wondering about what data Metabase the company can see, check 
 
 ### Application permissions
 
-[Application permissions](application.md) (available on paid plans) dictate access to Metabase application-level features, including:
+[Application permissions](application.md) (available on [Pro and Enterprise plans](https://www.metabase.com/pricing/)) dictate access to Metabase application-level features, including:
 
 - **Settings**: The Settings tab in the Admin panel.
-- **Monitoring access**: The Tools, Audit, and Troubleshooting tabs in the Admin panel.
+- **Monitoring access**: The Tools and Troubleshooting tabs in the Admin panel.
 - **Subscriptions and Alerts**. Which groups can create/edit dashboard subscriptions and alerts.
 
 ### SQL snippet folder permissions

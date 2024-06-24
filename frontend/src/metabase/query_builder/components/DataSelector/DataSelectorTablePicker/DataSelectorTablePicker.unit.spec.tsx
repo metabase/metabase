@@ -42,7 +42,7 @@ describe("DataSelectorTablePicker", () => {
         tables: [createMockTable({ initial_sync_status })],
       });
       setup({ database });
-      expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     },
   );
 
@@ -51,7 +51,7 @@ describe("DataSelectorTablePicker", () => {
       tables: [createMockTable({ initial_sync_status: "complete" })],
     });
     setup({ database });
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
   });
 
   it("when no table is in database", () => {

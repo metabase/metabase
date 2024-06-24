@@ -682,11 +682,11 @@ describe("scenarios > dashboard > tabs", () => {
     ).as("saveCard");
 
     filterWidget().click();
-    popover().findByText("Past 7 days").click();
+    popover().findByText("Previous 7 days").click();
 
     // Loader in the 2nd tab
     getDashboardCard(0).within(() => {
-      cy.findByTestId("loading-spinner").should("exist");
+      cy.findByTestId("loading-indicator").should("exist");
       cy.wait("@saveCard");
       cy.findAllByTestId("table-row").should("exist");
     });
@@ -695,7 +695,7 @@ describe("scenarios > dashboard > tabs", () => {
     // should not show a loader and re-run query
     goToTab("Tab 1");
     getDashboardCard(0).within(() => {
-      cy.findByTestId("loading-spinner").should("not.exist");
+      cy.findByTestId("loading-indicator").should("not.exist");
       cy.findAllByTestId("table-row").should("exist");
     });
   });

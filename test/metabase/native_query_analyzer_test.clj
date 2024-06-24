@@ -33,7 +33,7 @@
 (deftest ^:parallel field-matching-test
   (binding [query-analyzer/*parse-queries-in-test?* true]
     (let [q (fn [sql]
-              (#'query-analyzer/field-ids-for-sql (mt/native-query {:query sql})))]
+              (#'query-analyzer/field-ids-for-native (mt/native-query {:query sql})))]
       (testing "simple query matches"
         (is (= {:explicit #{(mt/id :venues :id)} :implicit nil}
                (q "select id from venues"))))

@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { useCallback, useEffect, useState } from "react";
+import { type ComponentType, useCallback, useEffect, useState } from "react";
 
 import {
   ALL_MODELS,
@@ -34,6 +34,20 @@ import {
   CollectionTable,
 } from "./CollectionContent.styled";
 
+const getDefaultSortingOptions = (
+  collection: Collection | undefined,
+): SortingOptions => {
+  return isRootTrashCollection(collection)
+    ? {
+        sort_column: "last_edited_at",
+        sort_direction: SortDirection.Desc,
+      }
+    : {
+        sort_column: "name",
+        sort_direction: SortDirection.Asc,
+      };
+};
+
 export type CollectionItemsTableProps = {
   collectionId: CollectionId;
 } & Partial<{
@@ -55,7 +69,22 @@ export type CollectionItemsTableProps = {
   toggleItem: (item: CollectionItem) => void;
   onClick: (item: CollectionItem) => void;
   showActionMenu: boolean;
+  EmptyContentComponent?: ComponentType<{
+    collection?: Collection;
+  }>;
 }>;
+
+const DefaultEmptyContentComponent = ({
+  collection,
+}: {
+  collection?: Collection;
+}) => {
+  return (
+    <CollectionEmptyContent>
+      <CollectionEmptyState collection={collection} />
+    </CollectionEmptyContent>
+  );
+};
 
 export const CollectionItemsTable = ({
   collectionId,
@@ -77,14 +106,12 @@ export const CollectionItemsTable = ({
   models = ALL_MODELS,
   onClick,
   showActionMenu = true,
+  EmptyContentComponent = DefaultEmptyContentComponent,
 }: CollectionItemsTableProps) => {
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
 
   const [unpinnedItemsSorting, setUnpinnedItemsSorting] =
-    useState<SortingOptions>({
-      sort_column: "name",
-      sort_direction: SortDirection.Asc,
-    });
+    useState<SortingOptions>(() => getDefaultSortingOptions(collection));
 
   const [total, setTotal] = useState<number | null>(null);
 
@@ -157,11 +184,7 @@ export const CollectionItemsTable = ({
           !loading && !hasPinnedItems && unpinnedItems.length === 0;
 
         if (isEmpty && !loadingUnpinnedItems) {
-          return (
-            <CollectionEmptyContent>
-              <CollectionEmptyState collection={collection} />
-            </CollectionEmptyContent>
-          );
+          return <EmptyContentComponent collection={collection} />;
         }
 
         return (

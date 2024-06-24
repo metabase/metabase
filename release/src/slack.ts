@@ -328,7 +328,7 @@ export async function sendPublishCompleteMessage({
   repo: string,
 }) {
   const message = `:partydeploy: *${githubRunLink(`${getGenericVersion(version)} Release is Complete`, runId.toString(), owner, repo)}* :partydeploy:\n
-   • ${slackLink("Release Notes", `https://github.com/${owner}/${repo}/releases`)} - ${mentionSlackTeam('growth')}
+   • ${slackLink("Release Notes", `https://github.com/${owner}/${repo}/releases`)} - ${mentionSlackTeam('tech-writers')}
    • ${slackLink("EE Extra Build", `https://github.com/${owner}/metabase-ee-extra/pulls`)} - ${mentionSlackTeam('core-ems')}
    • ${slackLink("Ops Issues", `https://github.com/${owner}/metabase-ops/issues`)} - ${mentionSlackTeam('successengineers')}
    • ${slackLink("Docs Update", `https://github.com/${owner}/metabase.github.io/pulls`)} - ${mentionSlackTeam('tech-writers')}

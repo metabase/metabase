@@ -64,7 +64,7 @@
            :params params)))
 
 ;; `:sql` drivers almost certainly don't need to override this method, and instead can implement
-;; `unprepare/unprepare-value` for specific classes, or, in extereme cases, `unprepare/unprepare` itself.
+;; `unprepare/unprepare-value` for specific classes, or, in extreme cases, `unprepare/unprepare` itself.
 (defmethod driver/splice-parameters-into-native-query :sql
   [driver {:keys [params], sql :query, :as query}]
   (cond-> query

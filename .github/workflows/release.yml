@@ -553,14 +553,17 @@ jobs:
     steps:
       - uses: actions/github-script@v7
         with:
-          github_token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: | # js
+            const version = '${{ inputs.version }}';
+            const enterpriseVersion = version.replace(/^v0\./, "v1.");
+
             github.rest.repos.createDispatchEvent({
               owner: '${{ github.repository_owner }}',
               repo: 'metabase-ee-extra',
               event_type: 'update-ee-extra-build',
               client_payload: {
-                version: '${{ inputs.version }}'
+                version: enterpriseVersion,
               }
             });
 

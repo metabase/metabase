@@ -37,7 +37,7 @@ Metabase offers several options for single sign-on (SSO) authentication.
 
 ### SSO for Metabase Pro and Enterprise plans
 
-With some paid plans, you have more options to help orchestrate lots of people and groups.
+With [Pro and Enterprise plans](https://www.metabase.com/pricing/), you have more options to help orchestrate lots of people and groups.
 
 - [JWT][jwt]
 - LDAP advanced features

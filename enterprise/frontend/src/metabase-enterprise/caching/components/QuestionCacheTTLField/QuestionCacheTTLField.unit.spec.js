@@ -18,7 +18,6 @@ function setup({
   const onChange = jest.fn();
 
   mockSettings({
-    "enable-query-caching": true,
     "query-caching-ttl-ratio": cacheTTLMultiplier,
     "query-caching-min-ttl": minCacheThreshold,
   });

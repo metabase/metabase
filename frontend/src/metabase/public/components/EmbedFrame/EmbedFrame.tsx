@@ -129,10 +129,7 @@ export const EmbedFrame = ({
       setHasInnerScroll(document.documentElement.scrollTop > 0);
     };
 
-    document.addEventListener("scroll", handleScroll, {
-      capture: false,
-      passive: true,
-    });
+    document.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => document.removeEventListener("scroll", handleScroll);
   }, []);

@@ -1,10 +1,16 @@
 (ns metabase.api.common.openapi
   "Generate OpenAPI schema for defendpoint routes"
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [malli.core :as mc]
    [malli.json-schema :as mjs]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli.schema :as ms])
+  (:import [clojure.lang PersistentVector]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ^:dynamic *definitions* nil)
 
@@ -28,23 +34,31 @@
         (update :properties fix-locations))))
 
 (defn- fix-type
-  "Fix type of params to make it more understandable to Rapidoc."
+  "Change type of params to make it more understandable to Rapidoc."
   [{:keys [schema] :as param}]
   ;; TODO: figure out how to teach rapidoc `[:or [:enum "all"] nat-int?]`
   (cond
     (and (:oneOf schema)
          (= (second (:oneOf schema)) {:type "null"}))
-    (recur
-     (assoc param :required false :schema (first (:oneOf schema))))
+    (let [real-schema (merge (first (:oneOf schema))
+                             (select-keys schema [:description :default]))]
+      (recur
+       (assoc param :required false :schema real-schema)))
 
-    (= (:enum schema) ["true" "false" true false])
-    (assoc param :schema {:type "boolean"})
+    (= (:enum schema) (mc/children ms/BooleanValue))
+    (assoc param :schema (-> (dissoc schema :enum) (assoc :type "boolean")))
+
+    (= (:enum schema) (mc/children ms/MaybeBooleanValue))
+    (assoc param
+           :schema (-> (dissoc schema :enum) (assoc :type "boolean"))
+           :required false)
 
     :else
     param))
 
-(defn- fix-schema ;; TODO: unify this with `fix-type` somehow?
-  "Fix type of request body to make it more understandable to Rapidoc."
+;; TODO: unify this with `fix-type` somehow, but `:required` is making this hard
+(defn- fix-schema
+  "Change type of request body to make it more understandable to Rapidoc."
   [{:keys [required] :as schema}]
   (let [not-required (atom #{})]
     (-> schema
@@ -57,7 +71,8 @@
                                               (= (second (:oneOf v)) {:type "null"}))
                                          (do
                                            (swap! not-required conj k)
-                                           (assoc (first (:oneOf v)) :description (:description v)))
+                                           (merge (first (:oneOf v))
+                                                  (select-keys v [:description :default])))
 
                                          (= (:enum v) ["true" "false" true false])
                                          (-> (dissoc v :enum) (assoc :type "boolean"))
@@ -86,21 +101,56 @@
     (->> (walk {:prefix ""} root)
          (filter #(-> % :route meta :schema)))))
 
+(defn- compojure-query-params
+  "This function is not trying to parse whole compojure syntax, just get the names of query parameters out"
+  [args]
+  (loop [args args
+         params []]
+    (if (empty? args)
+      (map keyword params)
+      (let [[x y] args]
+        (cond
+          ;; we don't care about rest binding
+          (= '& x)    (recur (nnext args) params)
+          ;; and about coercion too
+          (= :<< x)   (recur (nnext args) params)
+          (= :as x)   (recur (nnext args)
+                             (into params (when (map? y)
+                                            (let [qp (:query-params (set/map-invert y))]
+                                              (when (map? qp)
+                                                ;; {c :count :keys [a b}} ; => [count a b]
+                                                (flatten (vals qp)))))))
+          (symbol? x) (recur (next args)
+                             (conj params x)))))))
+
+(defn- compojure-renames
+  "Find out everything that's renamed in Compojure routes"
+  [args]
+  (let [idx (inc (.indexOf ^PersistentVector args :as))]
+    (when (pos? idx)
+      (let [req-bindings (get args idx)
+            renames      (->> (keys req-bindings) ; {{c :count} :query-params} ; => [{c :count}]
+                              (filter map?)       ; no stuff like {:keys [a]}
+                              (apply merge))]
+        (update-keys renames keyword)))))
+
 (defn- schema->params
   "https://spec.openapis.org/oas/latest.html#parameter-object"
   [full-path args schema]
   (let [{:keys [properties required]} (json-schema-transform schema)
         required                      (set required)
         in-path?                      (set (map (comp keyword second) (re-seq #"\{([^}]+)\}" full-path)))
-        in-query?                     (into #{} (map #(if (symbol? %) (keyword %) %) args))]
+        in-query?                     (set (compojure-query-params args))
+        renames                       (compojure-renames args)]
     (for [[k param-schema] properties
+          :let             [k (get renames k k)]
           :when            (or (in-path? k) (in-query? k))]
       (fix-type
        (cond-> {:in          (if (in-path? k) :path :query)
                 :name        k
                 :required    (contains? required k)
                 :schema      (dissoc param-schema :description)}
-         (:description schema) (assoc :description (:description param-schema)))))))
+         (:description param-schema) (assoc :description (:description param-schema)))))))
 
 (defn- defendpoint->path-item
   "Generate OpenAPI desc for a single handler
@@ -137,11 +187,14 @@
                           (merge-with into acc {k v}))
                         {}
                         (for [{:keys [path tag route]} (collect-routes root)]
-                          [path (defendpoint->path-item tag path route)]))]
+                          (try
+                            [path (defendpoint->path-item tag path route)]
+                            (catch Exception e
+                              (throw (ex-info (str "Exception at " path) {} e))))))]
       {:paths      paths
        :components {:schemas @*definitions*}})))
 
 (comment
   ;; See what is the result of generation, could be helpful debugging what's wrong with display in rapidoc
   ;; `resolve` is to appease clj-kondo which will complain for #'
-  (defendpoint->path-item nil "/path" (resolve 'metabase.api.collection/GET_:id_items)))
+  (defendpoint->path-item nil "/path" (resolve 'metabase-enterprise.serialization.api/POST_export)))

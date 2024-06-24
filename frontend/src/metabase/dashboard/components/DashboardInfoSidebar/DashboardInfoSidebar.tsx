@@ -15,7 +15,6 @@ import {
 import { isDashboardCacheable } from "metabase/dashboard/utils";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
 import { Stack, Switch } from "metabase/ui";
@@ -102,10 +101,7 @@ const DashboardInfoSidebarBody = ({
   const canWrite = dashboard.can_write && !dashboard.archived;
   const isCacheable = isDashboardCacheable(dashboard);
 
-  const showCaching =
-    canWrite &&
-    PLUGIN_CACHING.isEnabled() &&
-    MetabaseSettings.get("enable-query-caching");
+  const showCaching = canWrite && PLUGIN_CACHING.isEnabled();
 
   return (
     <>
