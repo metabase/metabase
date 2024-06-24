@@ -181,6 +181,7 @@
                 {:id "ID",
                  :name "my collection",
                  :description "this is my collection",
+                 :effective_location (->location parent-coll-id)
                  :model :collection,
                  :can_write true,
                  :authority_level nil,
