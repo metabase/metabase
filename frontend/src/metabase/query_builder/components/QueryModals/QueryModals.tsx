@@ -67,7 +67,7 @@ interface QueryModalsProps {
     config?: { rerunQuery: boolean },
   ) => Promise<void>;
   onCloseModal: () => void;
-  onOpenModal: (modal: QueryModalType) => void;
+  onOpenModal: (modalType: QueryModalType) => void;
   onChangeLocation: (location: string) => void;
   setQuestionCollection: (
     { id }: Pick<Card, "id">,
