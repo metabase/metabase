@@ -468,7 +468,20 @@ export function FieldValuesWidgetInner({
     options,
   });
 
-  const parseFreeformValue = (value: string | number) => {
+  const valueForLabel = (label: string | number) => {
+    const option = fieldValues.find(option => {
+      const opt = option[1] ?? option[0]?.toString();
+      return opt === label;
+    });
+
+    if (option) {
+      return option[0];
+    }
+    return label;
+  };
+
+  const parseFreeformValue = (labelOrValue: string | number) => {
+    const value = valueForLabel(labelOrValue);
     return isNumeric(fields[0], parameter)
       ? parseNumberValue(value)
       : parseStringValue(value);

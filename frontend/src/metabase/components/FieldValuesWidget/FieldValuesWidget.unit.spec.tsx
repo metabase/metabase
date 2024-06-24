@@ -1,4 +1,9 @@
-import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
+import userEvent from "@testing-library/user-event";
+
+import {
+  setupFieldSearchValuesEndpoints,
+  setupParameterValuesEndpoints,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -9,6 +14,7 @@ import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
 import Fields from "metabase/entities/fields";
 import { checkNotNull, isNotNull } from "metabase/lib/types";
 import type Field from "metabase-lib/v1/metadata/Field";
+import { createMockParameter } from "metabase-types/api/mocks";
 import {
   ORDERS,
   PRODUCTS,
@@ -45,6 +51,13 @@ async function setup({
     .spyOn(Fields.objectActions, "fetchFieldValues")
     .mockImplementation(fetchFieldValues);
 
+  const onChange = jest.fn();
+
+  setupParameterValuesEndpoints({
+    values: [],
+    has_more_values: false,
+  });
+
   if (searchValue) {
     fields.forEach(field => {
       setupFieldSearchValuesEndpoints(field?.id as number, searchValue);
@@ -55,7 +68,7 @@ async function setup({
     <FieldValuesWidget
       value={[]}
       fields={fields.filter(isNotNull)}
-      onChange={jest.fn()}
+      onChange={onChange}
       prefix={prefix}
       {...props}
     />,
@@ -66,7 +79,7 @@ async function setup({
 
   await waitForLoaderToBeRemoved();
 
-  return { fetchFieldValues };
+  return { fetchFieldValues, onChange };
 }
 
 describe("FieldValuesWidget", () => {
@@ -266,6 +279,33 @@ describe("FieldValuesWidget", () => {
           table_id: expressionField.table_id,
         }),
       );
+    });
+  });
+
+  describe("custom labels", () => {
+    it("should use custom labels if provided", async () => {
+      const valuesField = checkNotNull(metadata.field(LISTABLE_PK_FIELD_ID));
+      const { onChange } = await setup({
+        fields: [valuesField],
+        parameter: createMockParameter({
+          values_source_type: "static-list",
+          values_source_config: {
+            values: [
+              ["A", "Foo"],
+              ["B", "Bar"],
+            ],
+          },
+        }),
+      });
+
+      const combobox = screen
+        .getByRole("combobox")
+        // eslint-disable-next-line testing-library/no-node-access
+        .getElementsByTagName("input")[1];
+
+      await userEvent.type(combobox, "Foo,");
+
+      expect(onChange).toHaveBeenLastCalledWith(["A"]);
     });
   });
 });
