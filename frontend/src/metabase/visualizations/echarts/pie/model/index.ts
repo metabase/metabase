@@ -3,8 +3,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { findWithIndex } from "metabase/lib/arrays";
-import { getColorsForValues } from "metabase/lib/colors/charts";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { getDefaultColors } from "metabase/visualizations/shared/settings/pie";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -92,24 +92,19 @@ export function getPieChartModel(
     return currTotal + metricValue;
   }, 0);
 
+  // sometimes viz settings are malformed and "pie.colors" does not contain a
+  // key for the current dimension value, so we need to compute defaults to
+  // ensure every key has a color
+  const defaultColors = getDefaultColors(rawSeries, settings);
+  const colors = { ...defaultColors, ...settings["pie.colors"] };
+
   const [slices, others] = _.chain(rows)
     .map((row, index): PieSlice => {
       const { dimensionValue, metricValue } = getRowValues(row, colDescs);
 
-      if (!settings["pie.colors"]) {
-        throw Error(`"pie.colors" setting is not defined`);
-      }
-
-      const colorKey = String(dimensionValue);
-      const storedColor = settings["pie.colors"][colorKey];
-      // sometimes viz settings are malformed and "pie.colors" does not contain
-      // a key for the current dimension value
-      // TODO to fix 1610 in dynamic viz, we need to compute all the defaults in a single call
-      const storedOrDefaultColor =
-        storedColor || getColorsForValues([colorKey])[colorKey];
       // older viz settings can have hsl values that need to be converted since
       // batik does not support hsl
-      const color = Color(storedOrDefaultColor).hex();
+      const color = Color(colors[String(dimensionValue)]).hex();
 
       return {
         key: dimensionValue ?? NULL_DISPLAY_VALUE,
