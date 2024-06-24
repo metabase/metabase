@@ -5,10 +5,8 @@ import type { HTMLAttributes } from "react";
 import { rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { useSelector } from "metabase/lib/redux";
-import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { getFontFiles } from "metabase/styled-components/selectors";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
-import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 import type { FontFile } from "metabase-types/api";
 
 interface SdkContentWrapperProps {
@@ -35,12 +33,10 @@ const SdkGlobalStylesInner = styled.div<
     fontFiles: FontFile[] | null;
   }
 >`
-  ${({ theme }) => getMetabaseCssVariables(theme)}
-
   font-size: ${({ theme }) => theme.other.fontSize};
 
-  ${aceEditorStyles}
-  ${saveDomImageStyles}
+  ${({ theme }) => getMetabaseCssVariables(theme)}
+
   ${rootStyle}
 
   ${({ baseUrl }) => defaultFontFiles({ baseUrl })}
