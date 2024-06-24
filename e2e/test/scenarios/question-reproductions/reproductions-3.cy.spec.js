@@ -32,6 +32,8 @@ import {
   appBar,
   openProductsTable,
   queryBuilderFooter,
+  enterCustomColumnDetails,
+  addCustomColumn,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -472,6 +474,23 @@ describe("issue 40435", () => {
     cy.findByRole("columnheader", { name: "ID" }).should("be.visible");
     cy.findByRole("columnheader", { name: "User ID" }).should("be.visible");
     cy.findByRole("columnheader", { name: "Product ID" }).should("be.visible");
+  });
+});
+
+describe("issue 41381", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show an error message when adding a constant-only custom expression (metabase#41381)", () => {
+    openOrdersTable({ mode: "notebook" });
+    addCustomColumn();
+    enterCustomColumnDetails({ formula: "'Test'", name: "Constant" });
+    popover().within(() => {
+      cy.findByText("Invalid expression").should("be.visible");
+      cy.button("Done").should("be.disabled");
+    });
   });
 });
 

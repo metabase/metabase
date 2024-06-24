@@ -144,22 +144,27 @@ export function diagnose({
   const expressionMode: Lib.ExpressionMode =
     startRuleToExpressionModeMapping[startRule] ?? startRule;
 
-  const possibleError = Lib.diagnoseExpression(
-    query,
-    stageIndex,
-    expressionMode,
-    mbqlOrError,
-    expressionPosition,
-  );
+  try {
+    const possibleError = Lib.diagnoseExpression(
+      query,
+      stageIndex,
+      expressionMode,
+      mbqlOrError,
+      expressionPosition,
+    );
 
-  if (possibleError) {
-    console.warn("diagnostic error", possibleError.message);
+    if (possibleError) {
+      console.warn("diagnostic error", possibleError.message);
 
-    // diagnoseExpression returns some messages which are user-friendly and some which are not.
-    // If the `friendly` flag is true, we can use the possibleError as-is; if not then use a generic message.
-    return possibleError.friendly
-      ? possibleError
-      : { message: t`Invalid expression` };
+      // diagnoseExpression returns some messages which are user-friendly and some which are not.
+      // If the `friendly` flag is true, we can use the possibleError as-is; if not then use a generic message.
+      return possibleError.friendly
+        ? possibleError
+        : { message: t`Invalid expression` };
+    }
+  } catch (error) {
+    console.warn("diagnostic error", error);
+    return { message: t`Invalid expression` };
   }
 
   return null;
