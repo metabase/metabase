@@ -11,3 +11,11 @@ export function parseNumberValue(value: any): number | null {
     return null;
   }
 }
+
+export function isInteger(num: unknown): num is number | bigint {
+  return Number.isInteger(num) || typeof num === "bigint";
+}
+
+export function isFloat(num: unknown): num is number {
+  return typeof Number.isFinite(num) && !Number.isInteger(num);
+}

@@ -1041,6 +1041,24 @@ describe("scenarios > question > filter", () => {
     });
   });
 
+  it("should handle big integers", () => {
+    cy.createNativeQuestion(
+      {
+        name: "BigInt",
+        native: {
+          query:
+            "select 9123372036854000123 n union all select 9123372036854000124",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    queryBuilderMain().within(() => {
+      cy.findByText("9123372036854000123");
+      cy.findByText("9123372036854000124");
+    });
+  });
+
   // TODO: fixme!
   it.skip("should render custom expression helper near the custom expression field", () => {
     openReviewsTable({ mode: "notebook" });

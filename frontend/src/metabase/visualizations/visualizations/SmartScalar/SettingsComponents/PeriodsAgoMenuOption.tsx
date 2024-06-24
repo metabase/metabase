@@ -2,6 +2,7 @@ import type { KeyboardEvent, MouseEvent } from "react";
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { isInteger } from "metabase/lib/number";
 import { rem, Group, Text, Box } from "metabase/ui";
 import type { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import type { SmartScalarComparisonPeriodsAgo } from "metabase-types/api";
@@ -68,7 +69,7 @@ export function PeriodsAgoMenuOption({
         return;
       }
 
-      if (!Number.isInteger(value)) {
+      if (!isInteger(value)) {
         onChange({ type, value: Math.floor(value) ?? MIN_VALUE });
         reSelectInput();
         return;

@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
+import { isInteger } from "metabase/lib/number";
 import { isEmpty } from "metabase/lib/validate";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
@@ -371,7 +372,7 @@ function computeTrendPeriodsAgo({
   }
 
   const { type, value } = comparison;
-  if (type === COMPARISON_TYPES.PERIODS_AGO && !Number.isInteger(value)) {
+  if (type === COMPARISON_TYPES.PERIODS_AGO && !isInteger(value)) {
     throw Error("No integer value supplied for periods ago comparison.");
   }
   const dateUnitsAgo = value ?? 1;
