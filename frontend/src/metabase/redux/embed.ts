@@ -1,7 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import { pick } from "underscore";
 
-import { parseSearchOptions, parseHashOptions } from "metabase/lib/browser";
+import { parseHashOptions, parseSearchOptions } from "metabase/lib/browser";
 import type { EmbedOptions } from "metabase-types/store";
 
 export const DEFAULT_EMBED_OPTIONS: EmbedOptions = {
@@ -15,9 +14,6 @@ export const DEFAULT_EMBED_OPTIONS: EmbedOptions = {
   additional_info: true,
   action_buttons: true,
 } as const;
-
-const allowedEmbedOptions = Object.keys(DEFAULT_EMBED_OPTIONS);
-const allowedEmbedHashOptions = ["font"];
 
 export const urlParameterToBoolean = (
   urlParameter: string | string[] | boolean | undefined,
@@ -47,8 +43,8 @@ const interactiveEmbedSlice = createSlice({
 
       state.options = {
         ...DEFAULT_EMBED_OPTIONS,
-        ...pick(searchOptions, allowedEmbedOptions),
-        ...pick(parseHashOptions(action.payload.hash), allowedEmbedHashOptions),
+        ...searchOptions,
+        ...parseHashOptions(action.payload.hash),
       };
     },
     setOptions: (state, action: PayloadAction<Partial<EmbedOptions>>) => {

@@ -29,18 +29,24 @@ describe("embed reducer", () => {
       expect(store.getState().embed.options.new_button).toBe(true);
     });
 
-    it("should ignore invalid options", () => {
+    it("should store all parameters (in v50)", () => {
       const store = createMockStore();
 
       store.dispatch(
         setInitialUrlOptions({
           search: "top_nav=false&invalid_option=123",
-          hash: "",
+          hash: "#something=else",
         }),
       );
 
-      expect(store.getState().embed.options).not.toHaveProperty(
+      expect(store.getState().embed.options).toHaveProperty("top_nav", false);
+      expect(store.getState().embed.options).toHaveProperty(
         "invalid_option",
+        123,
+      );
+      expect(store.getState().embed.options).toHaveProperty(
+        "something",
+        "else",
       );
     });
   });
