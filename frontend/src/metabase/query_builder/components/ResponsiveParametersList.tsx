@@ -31,11 +31,15 @@ export const ResponsiveParametersList = ({
   setParameterValueToDefault,
   enableParameterRequiredBehavior,
 }: ResponsiveParametersListProps) => {
-  const [mobileShowParameterList, setShowMobileParameterList] = useState(false);
+  const [showParameterList, setShowParameterList] = useState(false);
   const isSmallScreen = useIsSmallScreen();
 
   const handleFilterButtonClick = useCallback(() => {
-    setShowMobileParameterList(mobileShow => !mobileShow);
+    setShowParameterList(show => !show);
+  }, []);
+
+  const handleCloseButtonClick = useCallback(() => {
+    setShowParameterList(false);
   }, []);
 
   const activeFilters = useMemo(() => {
@@ -45,50 +49,50 @@ export const ResponsiveParametersList = ({
   return (
     <ResponsiveParametersListRoot
       isSmallScreen={isSmallScreen}
-      isShowingMobile={mobileShowParameterList}
+      isShowingMobile={showParameterList}
     >
-      {isSmallScreen && (
-        <FilterButton
-          borderless
-          primary
-          icon="filter"
-          onClick={handleFilterButtonClick}
-        >
-          {activeFilters > 0
-            ? ngettext(
-                msgid`${activeFilters} active filter`,
-                `${activeFilters} active filters`,
-                activeFilters,
-              )
-            : `Filters`}
-        </FilterButton>
-      )}
-      <ParametersListContainer
-        isSmallScreen={isSmallScreen}
-        isShowingMobile={mobileShowParameterList}
+      <FilterButton
+        borderless
+        primary
+        icon="filter"
+        onClick={handleFilterButtonClick}
       >
-        {isSmallScreen && (
-          <ParametersListHeader>
-            <h3>Filters</h3>
-            <Button
-              onlyIcon
-              borderless
-              icon="close"
-              onClick={handleFilterButtonClick}
-            />
-          </ParametersListHeader>
-        )}
-        <StyledParametersList
-          question={question}
-          parameters={parameters}
-          setParameterValue={setParameterValue}
-          setParameterIndex={setParameterIndex}
-          setParameterValueToDefault={setParameterValueToDefault}
-          enableParameterRequiredBehavior={enableParameterRequiredBehavior}
-          isEditing
-          commitImmediately
-        />
-      </ParametersListContainer>
+        {activeFilters > 0
+          ? ngettext(
+              msgid`${activeFilters} active filter`,
+              `${activeFilters} active filters`,
+              activeFilters,
+            )
+          : `Filters`}
+      </FilterButton>
+      {(isSmallScreen || showParameterList) && (
+        <ParametersListContainer
+          isSmallScreen={isSmallScreen}
+          isShowingMobile={showParameterList}
+        >
+          {isSmallScreen && (
+            <ParametersListHeader>
+              <h3>Filters</h3>
+              <Button
+                onlyIcon
+                borderless
+                icon="close"
+                onClick={handleCloseButtonClick}
+              />
+            </ParametersListHeader>
+          )}
+          <StyledParametersList
+            question={question}
+            parameters={parameters}
+            setParameterValue={setParameterValue}
+            setParameterIndex={setParameterIndex}
+            setParameterValueToDefault={setParameterValueToDefault}
+            enableParameterRequiredBehavior={enableParameterRequiredBehavior}
+            isEditing
+            commitImmediately
+          />
+        </ParametersListContainer>
+      )}
     </ResponsiveParametersListRoot>
   );
 };
