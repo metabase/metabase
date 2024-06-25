@@ -15,7 +15,6 @@ import {
   moveDashboardToCollection,
 } from "metabase/dashboard/actions";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
-import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
 import type { DashboardControlsPassedProps } from "metabase/dashboard/hoc/types";
 import type {
   FetchDashboardResult,
@@ -168,7 +167,7 @@ export type DashboardProps = {
   }) => void;
 } & DashboardControlsPassedProps;
 
-function DashboardInner(props: DashboardProps) {
+function Dashboard(props: DashboardProps) {
   const {
     addCardOnLoad,
     addCardToDashboard,
@@ -569,4 +568,4 @@ function isSuccessfulFetchDashboardResult(
   return !hasError;
 }
 
-export const Dashboard = DashboardControls(DashboardInner);
+export { Dashboard };

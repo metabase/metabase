@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect } from "react";
 import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
-import type { Route } from "react-router";
+import type { Route, WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
@@ -12,6 +12,10 @@ import _ from "underscore";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import CS from "metabase/css/core/index.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
+import {
+  useDashboardUrlParams,
+  useRefreshDashboard,
+} from "metabase/dashboard/hooks";
 import favicon from "metabase/hoc/Favicon";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
@@ -101,7 +105,7 @@ const mapDispatchToProps = {
 const connector = connect(mapStateToProps, mapDispatchToProps);
 type ReduxProps = ConnectedProps<typeof connector>;
 
-type DashboardAppProps = OwnProps & ReduxProps;
+type DashboardAppProps = OwnProps & ReduxProps & WithRouterProps;
 
 const DashboardApp = (props: DashboardAppProps) => {
   const { dashboard, isRunning, isLoadingComplete, isEditing, isDirty, route } =
@@ -177,18 +181,60 @@ const DashboardApp = (props: DashboardAppProps) => {
     isRunning: _isRunning,
     isLoadingComplete: _isLoadingComplete,
     children,
+    location,
     ...dashboardProps
   } = props;
+
+  const { refreshDashboard } = useRefreshDashboard({
+    // todo: fix
+    // @ts-expect-error - WIP
+    dashboardId: dashboard?.id,
+    parameterQueryParams: props.location.query,
+  });
+
+  const {
+    hasNightModeToggle,
+    hideDownloadButton,
+    hideParameters,
+    isFullscreen,
+    isNightMode,
+    onNightModeChange,
+    refreshPeriod,
+    onFullscreenChange,
+    setRefreshElapsedHook,
+    onRefreshPeriodChange,
+    theme,
+    titled,
+    font,
+  } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
+
+  const parameterQueryParams = location.query;
 
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
       <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
 
-      {/* @ts-expect-error for now until we can get the prop-drilled types sorted out. Previously DashboardControls was a JS file so types weren't checked, but now there's a Pandora's box here */}
       <Dashboard
+        location={location}
         dashboardId={getDashboardId(props)}
         editingOnLoad={editingOnLoad}
         addCardOnLoad={addCardOnLoad}
+        isFullscreen={isFullscreen}
+        refreshPeriod={refreshPeriod}
+        hideParameters={hideParameters}
+        isNightMode={isNightMode}
+        hasNightModeToggle={hasNightModeToggle}
+        setRefreshElapsedHook={setRefreshElapsedHook}
+        onNightModeChange={onNightModeChange}
+        onFullscreenChange={onFullscreenChange}
+        onRefreshPeriodChange={onRefreshPeriodChange}
+        hideDownloadButton={hideDownloadButton}
+        theme={theme}
+        titled={titled}
+        font={font}
+        parameterQueryParams={parameterQueryParams}
+        // @ts-expect-error - WIP
+        cardTitled={true}
         {...dashboardProps}
       />
       {/* For rendering modal urls */}
