@@ -1745,35 +1745,36 @@
   (impl/test-migrations ["v50.2024-04-25T01:04:06"] [migrate!]
     (migrate!)
     (pulse-channel-test/with-send-pulse-setup!
-      (let [user-id  (:id (new-instance-with-default :core_user))
-            pulse-id (:id (new-instance-with-default :pulse {:creator_id user-id}))
-            pc       (new-instance-with-default :pulse_channel {:pulse_id pulse-id})]
-        ;; trigger this so we schedule a trigger for send-pulse
-        (task.send-pulses/update-send-pulse-trigger-if-needed! pulse-id pc :add-pc-ids #{(:id pc)})
-        (testing "sanity check that we have a send pulse trigger and 2 jobs"
-          (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id))))
-          (is (= #{"metabase.task.send-pulses.send-pulse.job"
-                   "metabase.task.send-pulses.init-send-pulse-triggers.job"}
-                 (scheduler-job-keys))))
-        (testing "migrate down will remove init-send-pulse-triggers job, send-pulse job and send-pulse triggers"
-          (migrate! :down 49)
-          (is (= #{} (scheduler-job-keys)))
-          (is (= 0 (count (pulse-channel-test/send-pulse-triggers pulse-id)))))
-        (testing "the init-send-pulse-triggers job should be re-run after migrate up"
-          (migrate!)
-          ;; we redefine this so quartz triggers that run on different threads use the same db connection as this test
-          (with-redefs [mdb.connection/*application-db* mdb.connection/*application-db*]
-            ;; simulate starting MB after migrate up, which will trigger this function
-            (task/init! ::task.send-pulses/SendPulses)
-            ;; wait a bit for the InitSendPulseTriggers to run
-            (u/poll {:thunk #(pulse-channel-test/send-pulse-triggers pulse-id)
-                     :done? #(= 1 %)})
-            (testing "sanity check that we have a send pulse trigger and 2 jobs after restart"
-              (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pc [(:id pc)])}
-                     (pulse-channel-test/send-pulse-triggers pulse-id)))
-              (is (= #{"metabase.task.send-pulses.send-pulse.job"
-                       "metabase.task.send-pulses.init-send-pulse-triggers.job"}
-                     (scheduler-job-keys))))))))))
+      (with-redefs [task/*quartz-scheduler* task/*quartz-scheduler*]
+        (let [user-id  (:id (new-instance-with-default :core_user))
+              pulse-id (:id (new-instance-with-default :pulse {:creator_id user-id}))
+              pc       (new-instance-with-default :pulse_channel {:pulse_id pulse-id})]
+          ;; trigger this so we schedule a trigger for send-pulse
+          (task.send-pulses/update-send-pulse-trigger-if-needed! pulse-id pc :add-pc-ids #{(:id pc)})
+          (testing "sanity check that we have a send pulse trigger and 2 jobs"
+            (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id))))
+            (is (= #{"metabase.task.send-pulses.send-pulse.job"
+                     "metabase.task.send-pulses.init-send-pulse-triggers.job"}
+                   (scheduler-job-keys))))
+          (testing "migrate down will remove init-send-pulse-triggers job, send-pulse job and send-pulse triggers"
+            (migrate! :down 49)
+            (is (= #{} (scheduler-job-keys))))
+
+          (testing "the init-send-pulse-triggers job should be re-run after migrate up"
+            (migrate!)
+            ;; we redefine this so quartz triggers that run on different threads use the same db connection as this test
+            (with-redefs [mdb.connection/*application-db* mdb.connection/*application-db*]
+              ;; simulate starting MB after migrate up, which will trigger this function
+              (task/init! ::task.send-pulses/SendPulses)
+              ;; wait a bit for the InitSendPulseTriggers to run
+              (u/poll {:thunk #(pulse-channel-test/send-pulse-triggers pulse-id)
+                       :done? #(= 1 %)})
+              (testing "sanity check that we have a send pulse trigger and 2 jobs after restart"
+                (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pc [(:id pc)])}
+                       (pulse-channel-test/send-pulse-triggers pulse-id)))
+                (is (= #{"metabase.task.send-pulses.send-pulse.job"
+                         "metabase.task.send-pulses.init-send-pulse-triggers.job"}
+                       (scheduler-job-keys)))))))))))
 
 (def ^:private area-bar-combo-cards-test-data
   {"stack display takes priority"
