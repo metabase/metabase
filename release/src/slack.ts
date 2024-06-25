@@ -116,7 +116,7 @@ export async function sendPreReleaseStatus({
 			"type": "section",
 			"text": {
 				"type": "mrkdwn",
-				"text": `_<https://github.com/metabase/metabase/milestone/${milestoneId}|:direction-sign: Milestone> targeted for release on ${date}_`,
+				"text": `_<https://github.com/metabase/metabase/milestone/${milestoneId}|:direction-sign: Milestone> targeted for release on ${date}_ ${mentionSlackTeam('core-release')}`,
 			}
 		},
   ];
