@@ -52,7 +52,7 @@
 
 
 (defn- optimizable-expr? [expr]
-  (lib.util.match/match expr
+  (lib.util.match/match-one expr
     #{:field :expression}
     (and (temporal-ref? &match)
          (let [unit (or (temporal-unit &match) :default)]
@@ -114,8 +114,17 @@
 (defmethod can-optimize-filter? :between
   [filter-clause]
   (lib.util.match/match-one filter-clause
-    [_
-     (field :guard optimizable-expr?)
+    [:between
+     [(_offset :guard #{:+ :-})
+      (field :guard (every-pred (comp #{:field :expression} first) optimizable-expr?))
+      [:interval _ _]]
+     (temporal-value-1 :guard optimizable-temporal-value?)
+     (temporal-value-2 :guard optimizable-temporal-value?)]
+    (and (field-and-temporal-value-have-compatible-units? field temporal-value-1)
+         (field-and-temporal-value-have-compatible-units? field temporal-value-2))
+
+    [:between
+     (field :guard (every-pred (comp #{:field :expression} first) optimizable-expr?))
      (temporal-value-1 :guard optimizable-temporal-value?)
      (temporal-value-2 :guard optimizable-temporal-value?)]
     (and (field-and-temporal-value-have-compatible-units? field temporal-value-1)

@@ -9,8 +9,8 @@ export const useEmbedFrameOptions = ({ location }: { location: Location }) => {
     bordered = isWithinIframe(),
     titled = true,
     theme,
-    hide_parameters,
-    hide_download_button,
+    hide_parameters = null,
+    hide_download_button = null,
   } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
 
   return {

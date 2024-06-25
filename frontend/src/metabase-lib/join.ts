@@ -40,8 +40,9 @@ export function joins(query: Query, stageIndex: number): Join[] {
 export function joinClause(
   joinable: Joinable,
   conditions: JoinCondition[],
+  strategy: JoinStrategy,
 ): Join {
-  return ML.join_clause(joinable, conditions);
+  return ML.join_clause(joinable, conditions, strategy);
 }
 
 export function joinConditionClause(
@@ -117,7 +118,7 @@ export function joinConditionUpdateTemporalBucketing(
   query: Query,
   stageIndex: number,
   condition: JoinCondition,
-  bucket: Bucket,
+  bucket: Bucket | null,
 ): JoinCondition {
   return ML.join_condition_update_temporal_bucketing(
     query,

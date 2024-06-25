@@ -28,6 +28,7 @@ import { getEngineNativeAceMode } from "metabase/lib/engine";
 import { checkNotNull } from "metabase/lib/types";
 import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
+import type { QueryModalType } from "metabase/query_builder/constants";
 import { getSetting } from "metabase/selectors/settings";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -131,7 +132,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
   setParameterValue: (parameterId: ParameterId, value: string) => void;
   setParameterValueToDefault: (parameterId: ParameterId) => void;
-  onOpenModal: (modalType: string) => void;
+  onOpenModal: (modalType: QueryModalType) => void;
   toggleDataReference: () => void;
   toggleTemplateTagsEditor: () => void;
   toggleSnippetSidebar: () => void;
