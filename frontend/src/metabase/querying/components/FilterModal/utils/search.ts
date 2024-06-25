@@ -1,7 +1,8 @@
 import { t } from "ttag";
 
+import type { GroupItem } from "metabase/querying/components/FilterContent";
+
 import { SEARCH_KEY } from "../constants";
-import type { GroupItem } from "../types";
 
 export function isSearchActive(searchText: string) {
   return searchText.length > 0;
