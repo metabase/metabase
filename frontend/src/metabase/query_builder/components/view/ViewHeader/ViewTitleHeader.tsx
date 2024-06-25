@@ -135,6 +135,7 @@ export function ViewTitleHeader({
     }
   }, [previousQuestion, question, expandFilters, previousQuery, query]);
 
+  const { isNative } = Lib.queryDisplayInfo(query);
   const isSaved = question.isSaved();
   const isModelOrMetric =
     question.type() === "model" || question.type() === "metric";
@@ -163,6 +164,7 @@ export function ViewTitleHeader({
             question={question}
             isObjectDetail={isObjectDetail}
             isSummarized={isSummarized}
+            isNative={isNative}
             originalQuestion={originalQuestion}
             onOpenModal={onOpenModal}
           />

@@ -1,4 +1,5 @@
 import type React from "react";
+import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import {
@@ -19,6 +20,7 @@ import type Question from "metabase-lib/v1/Question";
 interface AdHocQuestionLeftSideProps {
   question: Question;
   originalQuestion?: Question;
+  isNative?: boolean;
   isObjectDetail?: boolean;
   isSummarized?: boolean;
   onOpenModal: (key: QueryModalType) => void;
@@ -30,6 +32,7 @@ export function AdHocQuestionLeftSide(
   const {
     question,
     originalQuestion,
+    isNative,
     isObjectDetail,
     isSummarized,
     onOpenModal,
@@ -47,12 +50,16 @@ export function AdHocQuestionLeftSide(
     <AdHocLeftSideRoot>
       <ViewHeaderMainLeftContentContainer>
         <AdHocViewHeading color="medium">
-          <QuestionDescription
-            question={question}
-            originalQuestion={originalQuestion}
-            isObjectDetail={isObjectDetail}
-            onClick={handleTitleClick}
-          />
+          {isNative ? (
+            t`New question`
+          ) : (
+            <QuestionDescription
+              question={question}
+              originalQuestion={originalQuestion}
+              isObjectDetail={isObjectDetail}
+              onClick={handleTitleClick}
+            />
+          )}
         </AdHocViewHeading>
       </ViewHeaderMainLeftContentContainer>
       <ViewHeaderLeftSubHeading>
