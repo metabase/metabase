@@ -523,7 +523,7 @@ export function FieldValuesWidgetInner({
       return {
         value: value?.toString() ?? "",
         label,
-        customLabel: option[1],
+        customLabel: getLabel(option),
       };
     },
     [fields, formatOptions],
@@ -540,6 +540,7 @@ export function FieldValuesWidgetInner({
               formatOptions,
               value: props.value,
               displayValue: props.customLabel,
+              hasCustomLabel: props.customLabel !== undefined,
             });
 
           return (
@@ -762,13 +763,14 @@ function renderValue({
   autoLoad?: boolean;
   compact?: boolean;
   displayValue?: string;
+  hasCustomLabel?: boolean;
 }) {
   return (
     <ValueComponent
       value={value}
       column={fields[0]}
       maximumFractionDigits={20}
-      remap={showRemapping(fields)}
+      remap={displayValue || showRemapping(fields)}
       displayValue={displayValue}
       {...formatOptions}
     />
