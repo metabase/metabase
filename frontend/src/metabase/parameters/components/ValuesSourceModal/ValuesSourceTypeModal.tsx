@@ -16,6 +16,7 @@ import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import { useSelector } from "metabase/lib/redux";
+import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Flex, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -426,7 +427,7 @@ const ListSourceModal = ({
 function ModelHint() {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
-  const href = "https://www.metabase.com/learn/data-modeling/models";
+  const href = getLearnUrl("learn/data-modeling/models");
   const text = t`do it once in a model`;
   const link = showMetabaseLinks ? (
     <strong>
