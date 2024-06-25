@@ -425,9 +425,9 @@ function ModelHint() {
   const href = "https://www.metabase.com/learn/data-modeling/models";
   const text = t`do it once in a model`;
   const link = showMetabaseLinks ? (
-    <ExternalLink href={href} style={{ fontWeight: "bold" }}>
-      {text}
-    </ExternalLink>
+    <strong>
+      <ExternalLink href={href}>{text}</ExternalLink>
+    </strong>
   ) : (
     text
   );
