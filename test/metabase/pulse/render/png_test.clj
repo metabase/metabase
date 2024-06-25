@@ -23,4 +23,4 @@
 (deftest installed-fonts-test
   (testing "Are the correct fonts available for rendering?"
     (is (= []
-           (mapv #x(.getName %) (.getAllFonts (java.awt.GraphicsEnvironment/getLocalGraphicsEnvironment)))))))
+           (mapv #(.getName %) (.getAllFonts (java.awt.GraphicsEnvironment/getLocalGraphicsEnvironment)))))))
