@@ -1,6 +1,9 @@
 import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { NO_COLLECTION_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  NO_COLLECTION_PERSONAL_COLLECTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   visualize,
@@ -35,6 +38,7 @@ import {
   enterCustomColumnDetails,
   addCustomColumn,
   tableInteractive,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -841,6 +845,36 @@ describe("issue 44415", () => {
       cy.url().should("not.include", `/question/${questionId}`);
       cy.url().should("include", "question#");
     });
+  });
+});
+
+describe("issue 37374", () => {
+  beforeEach(() => {
+    restore();
+    cy.signIn("nodata");
+  });
+
+  it("should not allow to re-run the query after changing the viz settings when there is no data access (metabase#37374)", () => {
+    visitQuestion(ORDERS_QUESTION_ID);
+
+    cy.log("run button is available for non-adhoc questions");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    queryBuilderHeader()
+      .findByTestId("run-button")
+      .should("be.visible")
+      .click();
+    cy.wait("@cardQuery");
+    tableInteractive().findByText("Tax").should("be.visible");
+
+    cy.log(
+      "changing viz settings works but there is no run button for ad-hoc questions",
+    );
+    cy.findByTestId("viz-settings-button").click();
+    cy.findByTestId("chart-settings-table-columns")
+      .findByTestId("Tax-hide-button")
+      .click();
+    tableInteractive().findByText("Tax").should("not.exist");
+    queryBuilderHeader().findByTestId("run-button").should("not.exist");
   });
 });
 
