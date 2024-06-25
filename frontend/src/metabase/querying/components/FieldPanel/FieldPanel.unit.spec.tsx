@@ -3,7 +3,11 @@ import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
+import {
+  columnFinder,
+  createQuery,
+  createQueryWithClauses,
+} from "metabase-lib/test-helpers";
 import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
 import { FieldPanel } from "./FieldPanel";
@@ -159,6 +163,143 @@ describe("QueryColumnPicker", () => {
       expect(column).toBeChecked();
       expect(column).toBeDisabled();
     }
+  });
+
+  it("should not allow to remove fields for breakout queries", async () => {
+    setup({
+      query: createQueryWithClauses({
+        query: createQuery(),
+        breakouts: [{ tableName: "PRODUCTS", columnName: "PRICE" }],
+      }),
+    });
+
+    const [group, ...columns] = screen.getAllByRole("checkbox");
+    expect(group).toBeChecked();
+    expect(group).toBeDisabled();
+    for (const column of columns) {
+      expect(column).toBeChecked();
+      expect(column).toBeDisabled();
+    }
+  });
+
+  it("should not allow to remove the only field from multi-stage queries", () => {
+    const initialQuery = Lib.appendStage(
+      createQueryWithClauses({
+        query: createQuery(),
+        breakouts: [{ tableName: "PRODUCTS", columnName: "PRICE" }],
+      }),
+    );
+    const stageIndex = 1;
+    const findColumn = columnFinder(
+      initialQuery,
+      Lib.fieldableColumns(initialQuery, stageIndex),
+    );
+    setup({
+      query: Lib.filter(
+        initialQuery,
+        stageIndex,
+        Lib.numberFilterClause({
+          operator: "=",
+          column: findColumn("PRODUCTS", "PRICE"),
+          values: [1],
+        }),
+      ),
+    });
+
+    const [group, ...columns] = screen.getAllByRole("checkbox");
+    expect(group).toBeChecked();
+    expect(group).toBeDisabled();
+    expect(columns.length).toBe(1);
+    for (const column of columns) {
+      expect(column).toBeChecked();
+      expect(column).toBeDisabled();
+    }
+  });
+
+  it("should allow to remove some but not all fields from multi-stage queries", async () => {
+    const initialQuery = Lib.appendStage(
+      createQueryWithClauses({
+        query: createQuery(),
+        breakouts: [
+          { tableName: "PRODUCTS", columnName: "PRICE" },
+          { tableName: "PRODUCTS", columnName: "CREATED_AT" },
+        ],
+      }),
+    );
+    const stageIndex = 1;
+    const findColumn = columnFinder(
+      initialQuery,
+      Lib.fieldableColumns(initialQuery, stageIndex),
+    );
+    setup({
+      query: Lib.filter(
+        initialQuery,
+        stageIndex,
+        Lib.numberFilterClause({
+          operator: "=",
+          column: findColumn("PRODUCTS", "PRICE"),
+          values: [1],
+        }),
+      ),
+    });
+
+    const [group, firstColumn, secondColumn] = screen.getAllByRole("checkbox");
+    expect(group).toBeChecked();
+    expect(group).toBeEnabled();
+
+    // remove all columns - the first column is not removed
+    await userEvent.click(group);
+    expect(group).not.toBeChecked();
+    expect(group).toBeEnabled();
+    expect(firstColumn).toBeChecked();
+    expect(firstColumn).toBeDisabled();
+    expect(secondColumn).not.toBeChecked();
+    expect(secondColumn).toBeEnabled();
+
+    // add all columns
+    await userEvent.click(group);
+    expect(group).toBeChecked();
+    expect(group).toBeEnabled();
+    expect(firstColumn).toBeChecked();
+    expect(firstColumn).toBeEnabled();
+    expect(secondColumn).toBeChecked();
+    expect(secondColumn).toBeEnabled();
+
+    // remove the first column - the second column is disabled
+    await userEvent.click(firstColumn);
+    expect(group).not.toBeChecked();
+    expect(group).toBeEnabled();
+    expect(firstColumn).not.toBeChecked();
+    expect(firstColumn).toBeEnabled();
+    expect(secondColumn).toBeChecked();
+    expect(secondColumn).toBeDisabled();
+
+    // add the first column
+    await userEvent.click(firstColumn);
+    expect(group).toBeChecked();
+    expect(group).toBeEnabled();
+    expect(firstColumn).toBeChecked();
+    expect(firstColumn).toBeEnabled();
+    expect(secondColumn).toBeChecked();
+    expect(secondColumn).toBeEnabled();
+
+    // remove the second column - the first column is disabled
+    await userEvent.click(secondColumn);
+    expect(group).not.toBeChecked();
+    expect(group).toBeEnabled();
+    expect(firstColumn).toBeChecked();
+    expect(firstColumn).toBeDisabled();
+    expect(secondColumn).not.toBeChecked();
+    expect(secondColumn).toBeEnabled();
+
+    // add the second column
+    await userEvent.click(secondColumn);
+    expect(group).toBeChecked();
+    expect(group).toBeEnabled();
+    expect(firstColumn).toBeChecked();
+    expect(firstColumn).toBeEnabled();
+    expect(secondColumn).toBeChecked();
+    expect(secondColumn).toBeEnabled();
   });
 
   it("should not allow to remove custom columns", async () => {
