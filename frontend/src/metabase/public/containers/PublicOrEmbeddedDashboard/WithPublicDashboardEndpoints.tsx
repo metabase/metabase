@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import { useEffect, type ComponentType } from "react";
 import type { WithRouterProps } from "react-router";
 
 import {
@@ -21,11 +21,15 @@ export const WithPublicDashboardEndpoints = <T extends WithRouterProps>(
 
 export const usePublicDashboardEndpoints = (props: WithRouterProps) => {
   const { uuid, token } = props.params;
-  if (uuid) {
-    setPublicDashboardEndpoints();
-  } else if (token) {
-    setEmbedDashboardEndpoints();
-  }
+
+  useEffect(() => {
+    if (uuid) {
+      setPublicDashboardEndpoints();
+    } else if (token) {
+      setEmbedDashboardEndpoints();
+    }
+  }, [uuid, token]);
+
   const dashboardId = uuid || token;
 
   return { dashboardId };
