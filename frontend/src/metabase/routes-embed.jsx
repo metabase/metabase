@@ -4,7 +4,7 @@ import { PublicNotFound } from "metabase/public/components/PublicNotFound";
 import PublicApp from "metabase/public/containers/PublicApp";
 import { PublicOrEmbeddedQuestion } from "metabase/public/containers/PublicOrEmbeddedQuestion";
 
-import { PublicOrEmbeddedDashboardPage } from "./public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardPage";
+import { PublicOrEmbeddedDashboardPage } from "./public/containers/PublicOrEmbeddedDashboard";
 
 export const getRoutes = store => (
   <Route>
