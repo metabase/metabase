@@ -6,7 +6,6 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks";
-import EditableText from "metabase/core/components/EditableText";
 import {
   revertToRevision,
   toggleAutoApplyFilters,
@@ -25,6 +24,7 @@ import {
   ContentSection,
   DashboardInfoSidebarRoot,
   DescriptionHeader,
+  EditableDescription,
   HistoryHeader,
 } from "./DashboardInfoSidebar.styled";
 
@@ -123,7 +123,7 @@ const DashboardInfoSidebarBody = ({
     <>
       <ContentSection>
         <DescriptionHeader>{t`About`}</DescriptionHeader>
-        <EditableText
+        <EditableDescription
           initialValue={dashboard.description}
           isDisabled={!canWrite}
           onChange={handleDescriptionChange}
@@ -132,6 +132,7 @@ const DashboardInfoSidebarBody = ({
           isOptional
           isMultiline
           isMarkdown
+          hasError={!!descriptionError}
           placeholder={t`Add description`}
           key={`dashboard-description-${dashboard.description}`}
           style={{ fontSize: ".875rem" }}
