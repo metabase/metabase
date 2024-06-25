@@ -348,9 +348,9 @@ const filterDashboard = ({
   cy.findByText("Text").click();
 
   popover().within(() => {
-    const Gizmo = isLabeled ? "Gizmo Label" : "Gizmo";
+    const GIZMO = isLabeled ? "Gizmo Label" : "Gizmo";
 
-    cy.findByText(Gizmo).should("be.visible");
+    cy.findByText(GIZMO).should("be.visible");
     cy.findByText("Doohickey").should(isField ? "be.visible" : "not.exist");
     cy.findByText("Gadget").should(isSandboxed ? "not.exist" : "be.visible");
     cy.findByText("Widget").should(isSandboxed ? "not.exist" : "be.visible");
@@ -360,7 +360,7 @@ const filterDashboard = ({
     cy.findByText("Widget").should(isSandboxed ? "not.exist" : "be.visible");
     cy.findByText("Doohickey").should(isField ? "be.visible" : "not.exist");
 
-    cy.findByText(Gizmo).click();
+    cy.findByText(GIZMO).click();
     cy.button("Add filter").click();
   });
 };
