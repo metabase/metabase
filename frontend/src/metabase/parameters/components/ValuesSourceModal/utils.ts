@@ -7,7 +7,7 @@ export const getValuesText = (
   values: (string | ParameterValue)[] = [],
 ): string => {
   return stringify(
-    values.map(toRow).filter(x => x[0] !== null),
+    values.map(toRow).filter(([value]) => value !== null),
     {
       delimiter: ", ",
       quote: '"',
