@@ -1,4 +1,11 @@
-import { createContext, type PropsWithChildren, useContext } from "react";
+import {
+  createContext,
+  type PropsWithChildren,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { useUnmount } from "react-use";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
@@ -6,7 +13,7 @@ import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { resetQB } from "metabase/query_builder/actions";
+import { initializeQBRaw, resetQB } from "metabase/query_builder/actions";
 import {
   getCard,
   getFirstQueryResult,
@@ -31,6 +38,12 @@ type InteractiveQuestionContextType = {
   defaultHeight?: number;
   isQuestionLoading: boolean;
   isQueryRunning: boolean;
+  resetQuestion: () => void;
+  onReset?: () => void;
+  onNavigateBack?: () => void;
+  withTitle?: boolean;
+  customTitle?: React.ReactNode;
+  withResetButton?: boolean;
 };
 
 export const InteractiveQuestionContext = createContext<
@@ -41,11 +54,31 @@ const returnNull = () => null;
 
 export const InteractiveQuestionProvider = ({
   children,
-  isQuestionLoading,
+  location,
+  params,
   componentPlugins,
+  onReset,
+  onNavigateBack,
+  withTitle = false,
+  customTitle,
+  withResetButton,
 }: PropsWithChildren<{
-  isQuestionLoading: boolean;
+  location: {
+    search?: string;
+    hash?: string;
+    pathname?: string;
+    query?: Record<string, unknown>;
+  };
+  params: {
+    slug?: string;
+  };
   componentPlugins?: SdkPluginsConfig;
+  withResetButton?: boolean;
+  onReset?: () => void;
+  onNavigateBack?: () => void;
+
+  withTitle?: boolean;
+  customTitle?: React.ReactNode;
 }>) => {
   const dispatch = useDispatch();
 
@@ -55,6 +88,36 @@ export const InteractiveQuestionProvider = ({
   const result = useSelector(getFirstQueryResult);
   const uiControls = useSelector(getUiControls);
   const queryResults = useSelector(getQueryResults);
+
+  const hasQuestionChanges =
+    card && (!card.id || card.id !== card.original_card_id);
+
+  const [isQuestionLoading, setIsQuestionLoading] = useState(true);
+
+  const loadQuestion = useCallback(async () => {
+    setIsQuestionLoading(true);
+
+    try {
+      await dispatch(initializeQBRaw(location, params));
+    } catch (e) {
+      console.error(`Failed to get question`, e);
+      setIsQuestionLoading(false);
+    }
+  }, [dispatch, location, params]);
+
+  useEffect(() => {
+    loadQuestion();
+  }, [loadQuestion]);
+
+  useEffect(() => {
+    if (queryResults) {
+      setIsQuestionLoading(false);
+    }
+  }, [queryResults]);
+
+  const resetQuestion = () => {
+    loadQuestion();
+  };
 
   const { isRunning: isQueryRunning } = uiControls;
 
@@ -84,6 +147,12 @@ export const InteractiveQuestionProvider = ({
         defaultHeight,
         isQuestionLoading,
         isQueryRunning,
+        resetQuestion,
+        onReset: onReset || resetQuestion,
+        onNavigateBack: onNavigateBack || resetQuestion,
+        withTitle,
+        customTitle,
+        withResetButton: hasQuestionChanges && withResetButton,
       }}
     >
       {children}

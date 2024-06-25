@@ -1,9 +1,4 @@
-import { useEffect, useState } from "react";
-
 import type { SdkClickActionPluginsConfig } from "embedding-sdk";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { initializeQBRaw } from "metabase/query_builder/actions";
-import { getQueryResults } from "metabase/query_builder/selectors";
 
 import { InteractiveQuestionProvider } from "../public/InteractiveQuestion/context";
 
@@ -25,49 +20,19 @@ export const InteractiveAdHocQuestion = ({
   height,
   plugins,
 }: InteractiveAdHocQuestionProps) => {
-  const dispatch = useDispatch();
-
-  const queryResults = useSelector(getQueryResults);
-
-  const [isQuestionLoading, setIsQuestionLoading] = useState(true);
-
-  const loadQuestion = async (
-    dispatch: ReturnType<typeof useDispatch>,
-    questionUrl: string,
-  ) => {
-    setIsQuestionLoading(true);
-
-    const { location, params } = getQuestionParameters(questionUrl);
-    try {
-      await dispatch(initializeQBRaw(location, params));
-    } catch (e) {
-      console.error(`Failed to get question`, e);
-      setIsQuestionLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadQuestion(dispatch, questionPath);
-  }, [dispatch, questionPath]);
-
-  useEffect(() => {
-    if (queryResults) {
-      setIsQuestionLoading(false);
-    }
-  }, [queryResults]);
+  const { location, params } = getQuestionParameters(questionPath);
 
   return (
     <InteractiveQuestionProvider
-      isQuestionLoading={isQuestionLoading}
+      location={location}
+      params={params}
       componentPlugins={plugins}
+      onReset={onNavigateBack}
+      onNavigateBack={onNavigateBack}
+      withTitle={withTitle}
+      withResetButton={true}
     >
-      <InteractiveQuestionResult
-        onNavigateBack={onNavigateBack}
-        height={height}
-        withResetButton
-        onResetButtonClick={onNavigateBack}
-        withTitle={withTitle}
-      />
+      <InteractiveQuestionResult height={height} />
     </InteractiveQuestionProvider>
   );
 };

@@ -18,21 +18,13 @@ import { QuestionFiltersHeader } from "metabase/query_builder/components/view/Vi
 import { Box, Flex, Group, Stack } from "metabase/ui";
 
 interface InteractiveQuestionResultProps {
-  onNavigateBack: () => void;
-  withResetButton?: boolean;
-  onResetButtonClick: () => void;
   withTitle?: boolean;
   customTitle?: React.ReactNode;
   height?: string | number;
 }
 
 export const InteractiveQuestionResult = ({
-  onNavigateBack,
   height,
-  withResetButton,
-  onResetButtonClick,
-  withTitle,
-  customTitle,
 }: InteractiveQuestionResultProps): React.ReactElement => {
   const dispatch = useDispatch();
 
@@ -46,6 +38,11 @@ export const InteractiveQuestionResult = ({
     question,
     result,
     uiControls,
+    onReset,
+    onNavigateBack,
+    withResetButton,
+    withTitle,
+    customTitle,
   } = useInteractiveQuestionContext();
 
   if (isQuestionLoading || isQueryRunning) {
@@ -71,7 +68,7 @@ export const InteractiveQuestionResult = ({
               </h2>
             ))}
 
-          {withResetButton && <ResetButton onClick={onResetButtonClick} />}
+          {withResetButton && <ResetButton onClick={() => onReset?.()} />}
         </Flex>
 
         {QuestionFiltersHeader.shouldRender({
