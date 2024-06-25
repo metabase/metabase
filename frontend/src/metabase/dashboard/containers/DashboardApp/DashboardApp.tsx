@@ -216,7 +216,7 @@ const DashboardApp = (props: DashboardAppProps) => {
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
       <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
-
+      {/* @ts-expect-error - types coming from thunks are not correct*/}
       <Dashboard
         location={location}
         dashboardId={getDashboardId(props)}
@@ -236,8 +236,6 @@ const DashboardApp = (props: DashboardAppProps) => {
         titled={titled}
         font={font}
         parameterQueryParams={parameterQueryParams}
-        // @ts-expect-error - WIP
-        cardTitled={true}
         {...dashboardProps}
       />
       {/* For rendering modal urls */}
