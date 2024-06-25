@@ -2,12 +2,20 @@ import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useGetCollectionQuery } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import NormalCollections, {
   getExpandedCollectionsById,
 } from "metabase/entities/collections";
 import { createEntity, undo } from "metabase/lib/entities";
 import { SnippetCollectionSchema } from "metabase/schema";
+
+const useGetQuery = opts => {
+  return useGetCollectionQuery({
+    namespace: "snippets",
+    ...opts,
+  });
+};
 
 /**
  * @deprecated use "metabase/api" instead
@@ -18,6 +26,12 @@ const SnippetCollections = createEntity({
 
   displayNameOne: t`snippet collection`,
   displayNameMany: t`snippet collections`,
+
+  rtk: {
+    getUseGetQuery: () => ({
+      useGetQuery,
+    }),
+  },
 
   api: _.mapObject(
     NormalCollections.api,
