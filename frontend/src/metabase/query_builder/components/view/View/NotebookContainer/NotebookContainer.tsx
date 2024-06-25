@@ -47,9 +47,12 @@ export const NotebookContainer = ({
   const { isShowingNotebookNativePreview, notebookNativePreviewSidebarWidth } =
     useSelector(getUiControls);
 
+  const borderWidth = 1;
+  const sidebarMargin = 4;
   const minNotebookWidth = 640;
-  const minSidebarWidth = 428;
-  const maxSidebarWidth = windowWidth - minNotebookWidth;
+  const minSidebarWidth = 428 - borderWidth;
+  const maxSidebarWidth =
+    windowWidth - minNotebookWidth - borderWidth - sidebarMargin;
   const sidebarWidth = notebookNativePreviewSidebarWidth || minSidebarWidth;
   const windowBreakpoint = 1280;
 
