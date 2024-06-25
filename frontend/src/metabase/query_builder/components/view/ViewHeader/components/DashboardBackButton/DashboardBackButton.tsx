@@ -11,12 +11,10 @@ import {
 } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import { getDashboard } from "metabase/query_builder/selectors";
 
-type DashboardBackButtonProps =
-  | { noLink?: false; onClick?: () => void }
-  | {
-      noLink: true;
-      onClick: () => void;
-    };
+type DashboardBackButtonProps = {
+  noLink?: boolean;
+  onClick?: () => void;
+};
 
 export function DashboardBackButton({
   noLink,

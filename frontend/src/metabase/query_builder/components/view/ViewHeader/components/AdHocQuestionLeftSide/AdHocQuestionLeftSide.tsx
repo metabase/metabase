@@ -19,7 +19,6 @@ import type Question from "metabase-lib/v1/Question";
 interface AdHocQuestionLeftSideProps {
   question: Question;
   originalQuestion?: Question;
-  isNative?: boolean;
   isObjectDetail?: boolean;
   isSummarized?: boolean;
   onOpenModal: (key: QueryModalType) => void;

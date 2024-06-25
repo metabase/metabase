@@ -88,7 +88,7 @@ type PublicOrEmbeddedDashboardProps = OwnProps &
   EmbedDisplayParams;
 
 class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboardProps> {
-  _initialize = async () => {
+  _initialize = async (isForceUpdate?: boolean) => {
     const {
       dashboard,
       initialize,
@@ -99,7 +99,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
       dashboardId,
     } = this.props;
 
-    if (!dashboard) {
+    if (!dashboard || isForceUpdate) {
       initialize();
 
       const result = await fetchDashboard({
@@ -133,7 +133,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
 
   async componentDidUpdate(prevProps: PublicOrEmbeddedDashboardProps) {
     if (this.props.dashboardId !== prevProps.dashboardId) {
-      return this._initialize();
+      return this._initialize(true);
     }
 
     if (!_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {
