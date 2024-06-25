@@ -52,7 +52,7 @@ export function diagnose({
   stageIndex,
   metadata,
   name = null,
-  expressionPosition,
+  expressionIndex,
 }: {
   source: string;
   startRule: "expression" | "aggregation" | "boolean";
@@ -60,7 +60,7 @@ export function diagnose({
   stageIndex: number;
   name?: string | null;
   metadata?: Metadata;
-  expressionPosition?: number;
+  expressionIndex: number | undefined;
 }): ErrorWithMessage | null {
   if (!source || source.length === 0) {
     return null;
@@ -115,6 +115,7 @@ export function diagnose({
       name,
       query,
       stageIndex,
+      expressionIndex,
       database,
     });
 
@@ -150,7 +151,7 @@ export function diagnose({
       stageIndex,
       expressionMode,
       mbqlOrError,
-      expressionPosition,
+      expressionIndex,
     );
 
     if (possibleError) {
@@ -176,6 +177,7 @@ function prattCompiler({
   name,
   query,
   stageIndex,
+  expressionIndex,
   database,
 }: {
   source: string;
@@ -183,10 +185,18 @@ function prattCompiler({
   name: string | null;
   query: Lib.Query;
   stageIndex: number;
+  expressionIndex: number | undefined;
   database?: Database | null;
 }): ErrorWithMessage | Expr {
   const tokens = lexify(source);
-  const options = { source, startRule, name, query, stageIndex };
+  const options = {
+    source,
+    startRule,
+    name,
+    query,
+    stageIndex,
+    expressionIndex,
+  };
 
   // PARSE
   const { root, errors } = parse(tokens, {
@@ -218,10 +228,8 @@ function prattCompiler({
 
       return Lib.legacyRef(query, stageIndex, segment);
     } else {
-      const reference = options.name ?? ""; // avoid circular reference
-
       // fallback
-      const dimension = parseDimension(name, { reference, ...options });
+      const dimension = parseDimension(name, options);
       if (!dimension) {
         throw new ResolverError(t`Unknown Field: ${name}`, node);
       }
