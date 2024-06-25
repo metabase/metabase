@@ -15,10 +15,9 @@ import SelectButton from "metabase/core/components/SelectButton";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
-import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Alert, Icon } from "metabase/ui";
+import { Box, Flex, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -38,6 +37,7 @@ import type { FetchParameterValuesOpts } from "../../actions";
 import { fetchParameterValues } from "../../actions";
 
 import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
+import S from "./ValuesSourceTypeModal.module.css";
 import {
   ModalHelpMessage,
   ModalLabel,
@@ -437,19 +437,14 @@ function ModelHint() {
   );
 
   return (
-    <Alert
-      icon={<Icon name="info_filled" color={color("text-dark")} />}
-      variant="light"
-      mt="lg"
-      p="md"
-      styles={{
-        root: {
-          backgroundColor: color("bg-light"),
-        },
-      }}
-    >
-      {jt`If you find yourself doing value-label mapping often, you might want to ${link}.`}
-    </Alert>
+    <Box mt="lg" p="md" className={S.info}>
+      <Flex gap="md" align="center">
+        <Icon name="info_filled" color="text-dark" className={S.icon} />
+        <div>
+          {jt`If you find yourself doing value-label mapping often, you might want to ${link}.`}
+        </div>
+      </Flex>
+    </Box>
   );
 }
 
