@@ -11,6 +11,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.ui-logic :as ui-logic]
+   [metabase.util.retry :as retry]
    [toucan2.core :as t2]))
 
 (def ^:private payload-types #{:notification/alert :notification/dashboard-subscription})
@@ -166,9 +167,13 @@
 
 (defmethod should-send-notification? :notification/dashboard-subscription
   [payload]
-  (if (:skip_if_empty (get-in payload [:context :dashboard-subscription]))
-    (not (are-all-parts-empty? (:payload payload)))
-    true))
+  (let [dashboard-sub (get-in payload [:context :dashboard-subscription])
+        dashboard     (get-in payload [:context :dashboard])]
+
+    (cond
+     (:archived dashboard) false
+     (:skip_if_empty dashboard-sub) (not (are-all-parts-empty? (:payload payload)))
+     :else true)))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                           Public APIs                                           ;;
@@ -177,6 +182,23 @@
 (def ^:private payload-type->event-type
   {:notification/alert                  :event/alert-send
    :notification/dashboard-subscription :event/subscription-send})
+
+(defn- channel-send!
+  [& args]
+  (try
+    (apply channel/send! args)
+    (catch Exception e
+      ;; Token errors have already been logged and we should not retry.
+      (when-not (and (= :channel/slack (first args))
+                     (contains? (:errors (ex-data e)) :slack-token))
+        (throw e)))))
+
+(defn- send-retrying!
+  [& args]
+  (try
+    (apply (retry/decorate channel-send!) args)
+    (catch Throwable e
+      (log/error e "Error sending notification!"))))
 
 (mu/defn send-notification!
   "Send the notification."
@@ -198,11 +220,15 @@
                                 :object  {:recipients (map :recipients channel+recipients)
                                           :filters    (:parameters notification-info)}})
         (doseq [channel channel+recipients]
-          (log/infof "Sending notification %d to channel: %s" (:payload_id notification) channel)
-          (doseq [message (channel/render-notification (:channel_type channel)
-                                                       payload
-                                                       (:recipients channel))]
-            (channel/send! (:channel_type channel) message)))
+          (try
+           (log/infof "Sending notification %d to channel: %s" (:payload_id notification) channel)
+           (doseq [message (channel/render-notification (:channel_type channel)
+                                                        payload
+                                                        (:recipients channel))]
+             (send-retrying! (:channel_type channel) message))
+           (catch Exception e
+                       (log/errorf e "Error sending %s %d to channel %s"
+                                   (:payload_type notification) (:payload_id notification) (:channel_type channel)))))
         (when (and (= :notification/alert payload-type)
                    (:alert_first_only notification-info))
           (t2/delete! :model/Pulse (:id notification-info))))
