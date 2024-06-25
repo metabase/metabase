@@ -482,6 +482,12 @@ export const setParameterIsMultiSelect = createThunkAction(
     updateParameter(dispatch, getState, parameterId, parameter => ({
       ...parameter,
       isMultiSelect: isMultiSelect,
+      default:
+        !isMultiSelect &&
+        Array.isArray(parameter.default) &&
+        parameter.default.length > 1
+          ? [parameter.default[0]]
+          : parameter.default,
     }));
 
     return { id: parameterId, isMultiSelect };
