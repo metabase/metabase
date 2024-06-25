@@ -261,6 +261,13 @@
                      :id "v51.2024-01-01T10:30:00"
                      :changes [(mock-create-table-changes)])))))
 
+  (testing "other change types are exempt"
+    (is (= :ok
+           (validate!
+            (mock-change-set
+             :changes
+             [{:sql {:dbms "h2", :sql "1"}}])))))
+
   (testing "nil preConditions is allowed"
     (is (= :ok
            (validate! (mock-change-set

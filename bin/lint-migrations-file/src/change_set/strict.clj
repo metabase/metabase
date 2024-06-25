@@ -143,7 +143,7 @@
   (or
    (int? id)
    (< (major-version id) 51)
-   (not (some change-types-requiring-preconditions (mapcat keys changes)))
+   (not-any? change-types-requiring-preconditions (mapcat keys changes))
    (contains? change-set :preConditions)))
 
 (defn- disallow-delete-cascade-with-add-column
