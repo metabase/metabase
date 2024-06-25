@@ -34,7 +34,7 @@ export function getParameterValueFromQueryParams(
   return normalizeParameterValueForWidget(parsedValue, parameter);
 }
 
-function parseParameterValue(value: any, parameter: Parameter) {
+export function parseParameterValue(value: any, parameter: Parameter) {
   const type = getParameterType(parameter);
   if (type === "temporal-unit") {
     const availableUnits = Lib.availableTemporalUnits();
