@@ -46,7 +46,7 @@ export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   startRule?: string;
   reportTimezone?: string;
   header?: ReactNode;
-  expressionPosition?: number;
+  expressionIndex?: number;
 
   onChangeExpression?: (name: string, expression: Expression) => void;
   onChangeClause?: (
@@ -70,7 +70,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     startRule,
     reportTimezone,
     header,
-    expressionPosition,
+    expressionIndex,
     onChangeExpression,
     onChangeClause,
     onRemoveExpression,
@@ -199,7 +199,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
         </FieldLabel>
         <ExpressionEditorTextfield
           expression={expression}
-          expressionPosition={expressionPosition}
+          expressionIndex={expressionIndex}
           clause={clause}
           startRule={startRule}
           name={name}
