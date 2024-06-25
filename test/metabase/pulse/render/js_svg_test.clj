@@ -104,3 +104,8 @@
                                   (json/generate-string settings)
                                   (json/generate-string {})))]
       (validate-svg-string :progress svg-string))))
+
+(deftest parse-svg-sanitizes-characters-test
+  (testing "Characters discouraged or not permitted by the xml 1.0 specification are removed. (#"
+    (#'js-svg/parse-svg-string
+     "<svg xmlns=\"http://www.w3.org/2000/svg\">\u001F</svg>")))
