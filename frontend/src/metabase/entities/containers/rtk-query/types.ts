@@ -1,9 +1,5 @@
 import type { UseQuery } from "@reduxjs/toolkit/dist/query/react/buildHooks";
-import type {
-  BaseQueryFn,
-  QueryDefinition,
-  SubscriptionOptions,
-} from "@reduxjs/toolkit/query";
+import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
 
 import type { TagType } from "metabase/api/tags";
 import type { Dispatch, State } from "metabase-types/store";
@@ -34,12 +30,6 @@ export interface EntityOptions {
   requestType: RequestType;
 }
 
-// This type is defined in RTK Query but is not exported
-export type UseQuerySubscriptionOptions = SubscriptionOptions & {
-  skip?: boolean;
-  refetchOnMountOrArgChange?: boolean | number;
-};
-
 export interface EntityDefinition<Entity, EntityWrapper> {
   actions: {
     [actionName: string]: (...args: unknown[]) => unknown;
@@ -54,7 +44,6 @@ export interface EntityDefinition<Entity, EntityWrapper> {
   rtk: {
     getUseGetQuery: (fetchType: FetchType) => {
       action?: string;
-      options?: UseQuerySubscriptionOptions;
       transformResponse?: (data: Entity, query: EntityQuery) => unknown;
       useGetQuery: UseQuery<
         QueryDefinition<unknown, BaseQueryFn, TagType, Entity>

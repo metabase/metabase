@@ -61,9 +61,6 @@ const Tables = createEntity({
       if (fetchType === "fetchMetadata") {
         return {
           useGetQuery: useGetTableQueryMetadataQuery,
-          options: {
-            refetchOnMountOrArgChange: false,
-          },
         };
       }
 
