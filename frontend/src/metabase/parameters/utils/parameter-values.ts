@@ -1,5 +1,6 @@
 import type { Query } from "history";
 
+import * as Lib from "metabase-lib";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
@@ -34,13 +35,18 @@ export function getParameterValueFromQueryParams(
 }
 
 function parseParameterValue(value: any, parameter: Parameter) {
+  const type = getParameterType(parameter);
+  if (type === "temporal-unit") {
+    const availableUnits = Lib.availableTemporalUnits();
+    return availableUnits.some(unit => unit === value) ? value : null;
+  }
+
   // TODO this casting should be removed as we tidy up Parameter types
   const { fields } = parameter as FieldFilterUiParameter;
   if (Array.isArray(fields) && fields.length > 0) {
     return parseParameterValueForFields(value, fields);
   }
 
-  const type = getParameterType(parameter);
   if (type === "number") {
     return parseParameterValueForNumber(value);
   }
