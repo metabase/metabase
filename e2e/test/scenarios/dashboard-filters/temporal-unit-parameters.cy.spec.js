@@ -503,20 +503,20 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       popover().findByText("UNIT").click();
       saveDashboard();
 
-      cy.log("verify click behavior with a valid temporal unit");
-      getDashboardCard().findByText("year").click();
-      dashboardHeader().findByText("Target dashboard").should("be.visible");
-      filterWidget().findByText("Year").should("be.visible");
-      getDashboardCard().findByText("Created At: Year").should("be.visible");
-
       cy.log("verify that invalid temporal units are ignored");
-      visitDashboard("@sourceDashboardId");
       getDashboardCard().findByText("invalid").click();
       dashboardHeader().findByText("Target dashboard").should("be.visible");
       filterWidget()
         .findByText(/invalid/i)
         .should("not.exist");
       getDashboardCard().findByText("Created At: Month").should("be.visible");
+
+      cy.log("verify click behavior with a valid temporal unit");
+      visitDashboard("@sourceDashboardId");
+      getDashboardCard().findByText("year").click();
+      dashboardHeader().findByText("Target dashboard").should("be.visible");
+      filterWidget().findByText("Year").should("be.visible");
+      getDashboardCard().findByText("Created At: Year").should("be.visible");
     });
 
     it("should pass a temporal unit with 'custom destination -> url' click behavior", () => {
