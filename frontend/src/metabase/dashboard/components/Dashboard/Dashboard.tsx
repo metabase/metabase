@@ -96,7 +96,7 @@ export type DashboardProps = {
   selectedTabId: SelectedTabId;
   isNavigatingBackToDashboard: boolean;
   addCardOnLoad?: DashCardId;
-  editingOnLoad?: string | string[];
+  editingOnLoad?: string | string[] | boolean;
 
   initialize: (opts?: { clearCache?: boolean }) => void;
     fetchDashboardCardMetadata: () => Promise<void>;

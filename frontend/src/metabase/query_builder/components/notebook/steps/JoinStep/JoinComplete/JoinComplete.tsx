@@ -64,7 +64,7 @@ export function JoinComplete({
       joinPosition,
     );
     if (newConditions.length) {
-      const newJoin = Lib.joinClause(newTable, newConditions);
+      const newJoin = Lib.joinClause(newTable, newConditions, strategy);
       onJoinChange(newJoin);
     } else {
       onDraftRhsTableChange(newTable);

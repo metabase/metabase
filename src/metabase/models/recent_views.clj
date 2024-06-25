@@ -21,6 +21,7 @@
    [clojure.set :as set]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.models.collection :as collection]
    [metabase.models.collection.root :as root]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -156,7 +157,8 @@
                          [:name :string]]]]]
     [:collection [:map
                   [:parent_collection ::pc]
-                  [:authority_level [:enum :official "official" nil]]]]]])
+                  [:effective_location :string]
+                  [:authority_level [:enum "official" nil]]]]]])
 
 (defmulti fill-recent-view-info
   "Fills in additional information for a recent view, such as the display name of the object.
@@ -295,9 +297,22 @@
                                  {:select [:id :name :description :authority_level :archived :location]
                                   :where [:and
                                           [:in :id collection-ids]
-                                          [:= :archived false]]})]
-      (->> (t2/hydrate collections :effective_parent)
-           (map #(m/dissoc-in % [:effective_parent :type]))))))
+                                          [:= :archived false]]})
+          coll->parent-id (fn [c]
+                            (some-> c collection/effective-location-path collection/location-path->ids last))
+          parent-ids (into #{} (keep coll->parent-id) collections)
+          id->parent-coll (merge {nil (root-coll)}
+                                 (when (seq parent-ids)
+                                   (t2/select-pk->fn identity :model/Collection
+                                                     {:select [:id :name :authority_level]
+                                                      :where [:in :id parent-ids]})))]
+      ;; replace the collection ids with their collection data:
+      (map
+       (fn effective-collection-assocer [c]
+         (assoc c
+                :effective_parent (->> (coll->parent-id c) id->parent-coll)
+                :effective_location (collection/effective-location-path c)))
+       collections))))
 
 (defmethod fill-recent-view-info :collection [{:keys [_model model_id timestamp model_object]}]
   (when-let [collection (and
@@ -309,7 +324,8 @@
      :model :collection
      :can_write (mi/can-write? collection)
      :timestamp (str timestamp)
-     :authority_level (:authority_level collection)
+     :authority_level (some-> (:authority_level collection) name)
+     :effective_location (:effective_location collection)
      :parent_collection (or (:effective_parent collection) (root-coll))}))
 
 ;; == Recent Tables ==
