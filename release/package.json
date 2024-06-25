@@ -11,6 +11,7 @@
     "build": "esbuild src/index.ts --bundle --outfile=dist/index.cjs --platform=node --target=node16",
     "prettier": "prettier --write",
     "release-offline": "tsx release-offline.ts",
+    "copy-required-checks": "tsx ./src/required-checks.ts",
     "test:unit": "jest --testPathPattern unit",
     "test:integration": "jest --testPathPattern integration"
   },
@@ -26,7 +27,8 @@
     "semver": "^7.5.4",
     "tsx": "^3.12.7",
     "typescript": "^5.1.6",
-    "zx": "^7.2.3"
+    "underscore": "^1.13.6",
+    "zx": "^8.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.22.19",
