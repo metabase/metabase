@@ -9,6 +9,8 @@ import CS from "metabase/css/core/index.css";
 import { isCypressActive } from "metabase/env";
 import resizeObserver from "metabase/lib/resize-observer";
 
+import { explicitSizeRefreshModeContext } from "./context";
+
 const WAIT_TIME = 300;
 
 const REFRESH_MODE = {
@@ -21,7 +23,7 @@ const REFRESH_MODE = {
   none: (fn: () => void) => fn,
 };
 
-type RefreshMode = keyof typeof REFRESH_MODE;
+export type RefreshMode = keyof typeof REFRESH_MODE;
 
 interface ExplicitSizeProps<T> {
   selector?: string;
@@ -49,6 +51,8 @@ function ExplicitSize<T extends BaseInnerProps>({
     const displayName = ComposedComponent.displayName || ComposedComponent.name;
 
     class WrappedComponent extends Component<T> {
+      static contextType = explicitSizeRefreshModeContext;
+
       static displayName = `ExplicitSize[${displayName}]`;
 
       state: SizeState;
@@ -59,8 +63,7 @@ function ExplicitSize<T extends BaseInnerProps>({
 
       _printMediaQuery = window.matchMedia && window.matchMedia("print");
 
-      _refreshMode: RefreshMode =
-        typeof refreshMode === "string" ? refreshMode : "throttle";
+      _refreshMode: RefreshMode;
 
       _updateSize: () => void;
 
@@ -72,6 +75,12 @@ function ExplicitSize<T extends BaseInnerProps>({
         };
 
         this._printMediaQuery = window.matchMedia && window.matchMedia("print");
+        if (this.context) {
+          this._refreshMode = this.context as RefreshMode;
+        } else {
+          this._refreshMode =
+            typeof refreshMode === "string" ? refreshMode : "throttle";
+        }
         const refreshFn = REFRESH_MODE[this._getRefreshMode()];
         this._updateSize = refreshFn(this.__updateSize);
       }
