@@ -35,9 +35,11 @@ import {
   enterCustomColumnDetails,
   addCustomColumn,
   tableInteractive,
+  queryBuilderMain,
 } from "e2e/support/helpers";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
+  SAMPLE_DATABASE;
 
 describe("issue 32625, issue 31635", () => {
   const CC_NAME = "Is Promotion";
@@ -1038,5 +1040,58 @@ describe("issue 40399", () => {
       cy.findByTestId("preview-root").findAllByText("Gizmo").should("exist");
       cy.findByTestId("preview-root").findAllByText("Widget").should("exist");
     });
+  });
+});
+
+describe("issue 44668", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not drop graph.metrics after adding a new query stage (metabase#44668)", () => {
+    createQuestion(
+      {
+        display: "bar",
+        query: {
+          aggregation: [["count"]],
+          breakout: [["field", PEOPLE.STATE, { "base-type": "type/Text" }]],
+          "source-table": PEOPLE_ID,
+          limit: 5,
+        },
+        visualization_settings: {
+          "graph.metrics": ["count"],
+          "graph.dimensions": ["STATE"],
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    openNotebook();
+
+    cy.findAllByTestId("action-buttons").last().button("Custom column").click();
+    enterCustomColumnDetails({ formula: 'concat([Count], "")', name: "C2" });
+    popover().button("Done").click();
+
+    visualize();
+
+    echartsContainer().within(() => {
+      cy.findByText("State").should("be.visible"); // x-axis
+      cy.findByText("Count").should("be.visible"); // y-axis
+
+      // x-axis values
+      ["AK", "AL", "AR", "AZ", "CA"].forEach(state => {
+        cy.findByText(state).should("be.visible");
+      });
+    });
+
+    // custom expression series
+    queryBuilderMain()
+      .findByLabelText("Legend")
+      .within(() => {
+        ["68", "56", "49", "20", "90"].forEach(state => {
+          cy.findByText(state).should("be.visible");
+        });
+      });
   });
 });
