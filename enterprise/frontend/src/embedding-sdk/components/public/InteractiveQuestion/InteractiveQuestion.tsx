@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { InteractiveQuestionProvider } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { initializeQBRaw } from "metabase/query_builder/actions";
@@ -65,16 +66,19 @@ export const _InteractiveQuestion = ({
   }, [queryResults]);
 
   return (
-    <InteractiveQuestionResult
+    <InteractiveQuestionProvider
       isQuestionLoading={isQuestionLoading}
-      onNavigateBack={handleQuestionReset}
-      height={height}
       componentPlugins={plugins}
-      withResetButton={hasQuestionChanges && withResetButton}
-      onResetButtonClick={handleQuestionReset}
-      withTitle={withTitle}
-      customTitle={customTitle}
-    />
+    >
+      <InteractiveQuestionResult
+        onNavigateBack={handleQuestionReset}
+        height={height}
+        withResetButton={hasQuestionChanges && withResetButton}
+        onResetButtonClick={handleQuestionReset}
+        withTitle={withTitle}
+        customTitle={customTitle}
+      />
+    </InteractiveQuestionProvider>
   );
 };
 

@@ -5,6 +5,8 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { initializeQBRaw } from "metabase/query_builder/actions";
 import { getQueryResults } from "metabase/query_builder/selectors";
 
+import { InteractiveQuestionProvider } from "../public/InteractiveQuestion/context";
+
 import { InteractiveQuestionResult } from "./InteractiveQuestionResult";
 
 interface InteractiveAdHocQuestionProps {
@@ -55,15 +57,18 @@ export const InteractiveAdHocQuestion = ({
   }, [queryResults]);
 
   return (
-    <InteractiveQuestionResult
+    <InteractiveQuestionProvider
       isQuestionLoading={isQuestionLoading}
-      onNavigateBack={onNavigateBack}
-      height={height}
       componentPlugins={plugins}
-      withResetButton
-      onResetButtonClick={onNavigateBack}
-      withTitle={withTitle}
-    />
+    >
+      <InteractiveQuestionResult
+        onNavigateBack={onNavigateBack}
+        height={height}
+        withResetButton
+        onResetButtonClick={onNavigateBack}
+        withTitle={withTitle}
+      />
+    </InteractiveQuestionProvider>
   );
 };
 
