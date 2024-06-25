@@ -15,8 +15,8 @@ import {
   moveDashboardToCollection,
 } from "metabase/dashboard/actions";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
-import type { DashboardControlsPassedProps } from "metabase/dashboard/hoc/types";
 import type {
+  DashboardDisplayOptionControls,
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
@@ -90,6 +90,9 @@ export type DashboardProps = {
   isNavigatingBackToDashboard: boolean;
   addCardOnLoad?: DashCardId;
   editingOnLoad?: string | string[] | boolean;
+  location: Location;
+  dashboardId: DashboardId;
+  parameterQueryParams: Query;
 
   initialize: (opts?: { clearCache?: boolean }) => void;
   cancelFetchDashboardCardData: () => void;
@@ -165,7 +168,7 @@ export type DashboardProps = {
     reload?: boolean;
     clearCache?: boolean;
   }) => void;
-} & DashboardControlsPassedProps;
+} & DashboardDisplayOptionControls;
 
 function Dashboard(props: DashboardProps) {
   const {
