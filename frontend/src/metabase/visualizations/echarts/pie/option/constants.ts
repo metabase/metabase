@@ -6,6 +6,7 @@ export const SUNBURST_SERIES_OPTION: RegisteredSeriesOption["sunburst"] = {
   sort: undefined,
   label: {
     rotate: 0,
+    minAngle: 15,
     overflow: "none",
     fontSize: 20,
     fontWeight: 700,
