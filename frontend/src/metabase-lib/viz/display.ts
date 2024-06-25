@@ -99,10 +99,25 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       return Lib.isCoordinate(column);
     });
     if (areBreakoutsCoordinates) {
+      const [{ breakout: breakoutOne }, { breakout: breakoutTwo }] =
+        getBreakoutsWithColumns(query, stageIndex, breakouts);
+      const binningOne = Lib.binning(breakoutOne);
+      const binningTwo = Lib.binning(breakoutTwo);
+      const areBothBinned = binningOne !== null && binningTwo !== null;
+
+      if (areBothBinned) {
+        return {
+          display: "map",
+          settings: {
+            "map.type": "grid",
+          },
+        };
+      }
+
       return {
         display: "map",
         settings: {
-          "map.type": "grid",
+          "map.type": "pin",
         },
       };
     }
