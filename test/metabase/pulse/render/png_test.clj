@@ -19,3 +19,8 @@
   (testing "The PNG of a table should not clip any of its content"
     (let [^java.awt.image.BufferedImage png (@#'png/render-to-png test-table-html-2 1200)]
       (is (< 320 (.getWidth png) 360)))))
+
+(deftest installed-fonts-test
+  (testing "Are the correct fonts available for rendering?"
+    (is (= []
+           (mapv #x(.getName %) (.getAllFonts (java.awt.GraphicsEnvironment/getLocalGraphicsEnvironment)))))))
