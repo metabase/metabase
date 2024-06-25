@@ -60,12 +60,6 @@ export interface EntityDefinition<Entity, EntityWrapper> {
         QueryDefinition<unknown, BaseQueryFn, TagType, Entity>
       >;
     };
-    getUseGetListQuery: (requestType: RequestType) => {
-      options?: UseQuerySubscriptionOptions;
-      useGetQuery: UseQuery<
-        QueryDefinition<unknown, BaseQueryFn, TagType, Entity[]>
-      >;
-    };
   };
   selectors: {
     getFetched: Selector<boolean | undefined>;

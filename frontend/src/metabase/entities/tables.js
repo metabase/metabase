@@ -8,7 +8,6 @@ import {
   tableApi,
   useGetTableQuery,
   useGetTableQueryMetadataQuery,
-  useListTablesQuery,
 } from "metabase/api";
 import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
@@ -58,9 +57,6 @@ const Tables = createEntity({
   schema: TableSchema,
 
   rtk: {
-    getUseGetListQuery: _fetchType => ({
-      useGetListQuery: useListTablesQuery,
-    }),
     getUseGetQuery: fetchType => {
       if (fetchType === "fetchMetadata") {
         return {
