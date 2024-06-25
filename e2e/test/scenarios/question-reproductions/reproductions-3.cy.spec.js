@@ -923,7 +923,6 @@ describe("issue 40399", () => {
     createQuestion(
       {
         name: "40399",
-
         query: {
           "source-table": PRODUCTS_ID,
           joins: [
