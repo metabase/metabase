@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { useGetParameterValuesQuery } from "metabase/api";
 import ParameterFieldWidgetValue from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
@@ -43,7 +45,7 @@ function FormattedParameterValue({
   );
 
   if (isLoading) {
-    return null;
+    return <span>{t`Loading…`}</span>;
   }
 
   if (parameterHasNoDisplayValue(value)) {
