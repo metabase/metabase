@@ -17,10 +17,10 @@
    [toucan2.core :as t2]))
 
 (defn execute-card
-  "Execute the query for a single Card. `options` are passed along to the Query Processor."
-  [{pulse-creator-id :creator_id} card]
+  "Execute the query for a single Card with [[user-perm-id]]'s permissions."
+  [user-perm-id card]
   ;; The Card must either be executed in the context of a User
-  {:pre [(integer? pulse-creator-id)]}
+  {:pre [(integer? user-perm-id)]}
   (let [card-id (:id card)]
     (try
       (when-let [{query     :dataset_query
@@ -35,13 +35,13 @@
                                   (assoc query :middleware {:skip-results-metadata? true
                                                             :process-viz-settings?  true
                                                             :js-int-to-string?      false})
-                                  (cond-> {:executed-by pulse-creator-id
+                                  (cond-> {:executed-by user-perm-id
                                                   :context     :pulse
                                                   :card-id     card-id}
                                           (= card-type :model)
                                           (assoc :metadata/model-metadata metadata))))))
-              result        (if pulse-creator-id
-                              (mw.session/with-current-user pulse-creator-id
+              result        (if user-perm-id
+                              (mw.session/with-current-user user-perm-id
                                 (process-query))
                               (process-query))]
           {:card   card

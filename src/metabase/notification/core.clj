@@ -13,9 +13,11 @@
    [metabase.util.ui-logic :as ui-logic]
    [toucan2.core :as t2]))
 
+(def ^:private payload-types #{:notification/alert :notification/dashboard-subscription})
+
 (def ^:private Notification
   [:map
-   [:payload_type [:enum :notification/alert :notification/dashboard-subscription]]
+   [:payload_type (into [:enum ] payload-types)]
    [:payload_id   pos-int?]
    [:creator_id   pos-int?]])
 
@@ -35,17 +37,6 @@
                                                                       [:cards [:sequential :map]]
                                                                       [:creator :map]]]]]]]])
 
-(def ^:private AlertPayload
-  [:map {:closed true}
-   [:payload-type [:= :notification/alert]]
-   [:context      [:map
-                   [:trigger      :map]
-                   [:alert        :map]]]
-   [:paylaod      [:map
-                   [:type [:= :card]]
-                   [:card :map]
-                   [:result :map]]]])
-
 (def ^:private DashboardSubscriptionPayload
   [:notification/dashboard-subscription [:map {:closed true}
                                           [:payload-type           [:= :notification/dashboard-subscription]]
@@ -64,8 +55,6 @@
     (for [pc pcs]
       (let [channel-type (keyword "channel" (name (:channel_type pc)))]
         {:channel_type  channel-type
-         ;; We need this for alert schedule text, it's so silly, can we remove it?
-         :schedule_type (:schedule_type pc)
          :recipients    (if (= :channel/email channel-type)
                           (concat (map (fn [user]
                                          {:kind :user
@@ -82,58 +71,54 @@
                                   ;; non-user-email
                                   (map (fn [email] {:recipient email
                                                     :kind      :external-email}) (get-in pc [:recipients :emails])))
-                          [{:kind      :slack-channel
-                            :recipient (get-in pc [:details :channel])}])}))))
+                          [(get-in pc [:details :channel])])}))))
 
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                        Multimethods                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defmulti ^:private execute-payload
-  "Turn a notification into a payload that can be sent to a channel"
-  :payload_type)
-
-(defmulti ^:private notification->payload-info
+(defmulti ^:private notification->payload
   :payload_type)
 
 (defmulti ^:private should-send-notification?
   "Returns true if given the pulse type and resultset a new notification (pulse or alert) should be sent"
-  (fn [payload-info _payload] (:payload_type payload-info)))
+  :payload_type)
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                           Alerts                                                ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(mu/defmethod notification->payload-info :notification/alert :- PayloadInfo
+(def ^:private AlertPayload
+  [:map {:closed true}
+   [:payload_type [:= :notification/alert]]
+   [:context      [:map
+                   [:card    :map]
+                   [:trigger :map]
+                   [:alert   :map]]]
+   [:payload      [:map
+                   [:type [:= :card]]
+                   [:card :map]
+                   [:result :map]]]])
+
+(mu/defmethod notification->payload :notification/alert :- AlertPayload
   [notification :- Notification]
-  (let [alert (assoc (t2/hydrate (t2/select-one :model/Pulse (:payload_id notification)) :creator)
-                     :card_id
-                     (t2/select-one-fn :card_id :model/PulseCard :pulse_id (:payload_id notification)))]
-    (assoc notification :alert alert)))
-
-(mu/defmethod execute-payload :notification/alert :- AlertPayload
-  [payload-info :- PayloadInfo]
-  (let [card (t2/select-one :model/Card :id (get-in payload-info [:alert :card_id]) :archived false)]
-    {:payload-type  :notification/alert
-     :payload       (noti.execute/execute-card (:creator_id payload-info) card)
-     :pulse         (:alert payload-info)
-     :pulse-channel :a
-     :card          card}))
-
-;;TODO 1 notification can have one payload, but the payload will be rendered for multiple channels
-#_(mu/defn send-alert!
-   [notification :- Notification]
-   (let [alert-card-id        (t2/select-one-fn :card_id :model/PulseCard :pulse_id (:payload_id notification))
-         alert-card           (t2/select-one :model/Card :id alert-card-id)
-         notification-content {:payload_type :notification/alert
-                               :context      {:trigger {:type :manual}
-                                              :alert   (assoc (t2/hydrate (t2/select-one :model/Pulse (:payload_id notification)) :creator)
-                                                              :card_id
-                                                              alert-card-id)
-                                              :card    alert-card
-                                              :pulse-channel}}]
-     (send-notification! notification-content (notification->channel+recipients notification nil))))
+  (let [alert (t2/select-one :model/Pulse (:payload_id notification))
+        card  (t2/select-one :model/Card {:select [:c.*]
+                                          :from   [[:report_card :c]]
+                                          :left-join [[:pulse_card :pc] [:= :pc.card_id :c.id]]
+                                          :where     [:and
+                                                      [:= :pc.pulse_id (:payload_id notification)]]})]
+    {:payload_type :notification/alert
+     :payload      (noti.execute/execute-card (:creator_id notification) card)
+     :context      {:alert   alert
+                    :card    card
+                    ;; we use these for alert email. see [[metabase.email.messages/alert-context]]
+                    ;; though now we don't have a notion of trigger but we'll soon, and schedule_type belongs to
+                    ;; trigger not notification's
+                    :trigger (t2/select-one-fn
+                              #(select-keys % [:schedule_type :schedule_hour :schedule_day :schedule_frame])
+                              :model/PulseChannel :pulse_id (:payload_id notification) :enabled true)}}))
 
 (defn- is-card-empty?
   "Check if the card is empty"
@@ -162,15 +147,15 @@
            (get-in first-result [:result :data :rows])))))
 
 (defmethod should-send-notification? :notification/alert
-  [payload-info payload]
-  (let [alert           (:alert payload-info)
+  [payload]
+  (let [alert           (get-in payload [:context :alert])
         alert-condition (:alert_condition alert)]
     (cond
       (= "rows" alert-condition)
-      (not (is-card-empty? payload))
+      (not (is-card-empty? (:payload payload)))
 
       (= "goal" alert-condition)
-      (goal-met? alert payload)
+      (goal-met? alert (:payload payload))
 
       :else
       (let [^String error-text (tru "Unrecognized alert with condition ''{0}''" alert-condition)]
@@ -186,14 +171,15 @@
   (every? is-card-empty? results))
 
 (defmethod should-send-notification? :notification/dashboard-subscription
-  [payload-info payload]
-  (if (:skip_if_empty (:dashboard-subscription payload-info))
-    (not (are-all-parts-empty? payload))
+  [payload]
+  (if (:skip_if_empty (get-in payload [:context :dashboard-subscription]))
+    (not (are-all-parts-empty? (:payload payload)))
     true))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                           Public APIs                                           ;;
 ;; ------------------------------------------------------------------------------------------------;;
+
 (def ^:private payload-type->event-type
   {:notification/alert                  :event/alert-send
    :notification/dashboard-subscription :event/subscription-send})
@@ -202,39 +188,34 @@
   "Send the notification."
   ([notification :- Notification]
    (send-notification!
-    (notification->payload-info notification)
+    notification
     (notification->channel+recipients notification nil)))
-  ([payload-info :- PayloadInfo
-    channel+recipients]
-   #p payload-info
-   #_(let [payload                (execute-payload payload-info)
-           payload-type           (:payload_type payload-info)
-           notification-info      (if (= :notification/alert payload-type)
-                                    (:alert payload-info)
-                                    (:dashboard-subscription payload-info))]
-       (if (should-send-notification? payload-info payload)
-         (do
-          #_(events/publish-event! (get payload-type->event-type payload-type)
-                                   {:id      (:payload_id payload-info)
-                                    :user-id (:creator_id payload-info)
-                                    :object  {:recipients (map :recipients channel+recipients)
-                                              :filters    (:parameters notification-info)}})
-          (doseq [channel channel+recipients]
-            (let [channel-details {:channel_type (:channel_type channel)}]
-              (log/infof "Sending notification %d to channel: %s" (:payload_id payload-info) channel)
-              (doseq [message (channel/render-notification channel-details
-                                                           payload
-                                                           (:recipients channel)
-                                                           nil)]
-                (channel/send! channel-details message))))
-          (when (and (= :notification/alert payload-type)
-                     (:alert_first_only notification-info))
-            (t2/delete! :model/Pulse (:id notification-info))))
-         (log/infof "Skipping notification %s" (select-keys payload-info [:payload_id :payload_type]))))))
-
-
+  ([notification channel+recipients]
+   (let [payload                (notification->payload notification)
+         payload-type           (:payload_type payload)
+         notification-info      (if (= :notification/alert payload-type)
+                                  (get-in payload [:context :alert])
+                                  (get-in payload [:context :dashboard-subscription]))]
+     (if (should-send-notification? payload)
+       (do
+        (events/publish-event! (get payload-type->event-type payload-type)
+                               {:id      (:payload_id notification)
+                                :user-id (:creator_id notification)
+                                :object  {:recipients (map :recipients channel+recipients)
+                                          :filters    (:parameters notification-info)}})
+        (doseq [channel channel+recipients]
+          (log/infof "Sending notification %d to channel: %s" (:payload_id notification) channel)
+          (doseq [message (channel/render-notification (:channel_type channel)
+                                                       payload
+                                                       (:recipients channel))]
+            (channel/send! (:channel_type channel) message)))
+        (when (and (= :notification/alert payload-type)
+                   (:alert_first_only notification-info))
+          (t2/delete! :model/Pulse (:id notification-info))))
+       (log/infof "Skipping notification %s" (select-keys notification [:payload_id :payload_type]))))))
 
 (comment
- (send-notification! {:payload_type :notification/alert
-                      :payload_id 1
-                      :creator_id 2}))
+ (ngoc/with-tc
+   (send-notification! {:payload_type :notification/alert
+                        :payload_id 1
+                        :creator_id 2})))

@@ -21,7 +21,7 @@
   {:added    "0.51.0"
    :arglists '([channel-type notification-content recipients])}
   (fn [channel-type notification-content _recipients]
-    [channel-type (:payload-type notification-content)]))
+    [channel-type (:payload_type notification-content)]))
 
 (defmulti send!
   "Send a message to a channel."
