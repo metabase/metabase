@@ -69,7 +69,7 @@ jobs:
 
       - name: Run Loki Visual Tests
         run: |
-          yarn test-visual:loki
+          yarn loki test
 
       - name: Generate Visual Report on Failure
         if: failure()
