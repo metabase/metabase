@@ -664,7 +664,7 @@ describe("issue 40064", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should be able to edit a custom column with the same name as one of the columns used in the expression", () => {
+  it("should be able to edit a custom column with the same name as one of the columns used in the expression (metabase#40064)", () => {
     createQuestion(
       {
         query: {
