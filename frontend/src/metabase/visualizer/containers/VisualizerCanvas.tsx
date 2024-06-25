@@ -8,6 +8,8 @@ import BaseVisualization from "metabase/visualizations/components/Visualization"
 import type { SearchResult, Series } from "metabase-types/api";
 import { ActionIcon } from "@mantine/core";
 
+import { useVizSettings } from "../useVizSettings";
+
 export function VisualizerCanvas({
   used,
 }: {
@@ -15,6 +17,8 @@ export function VisualizerCanvas({
 }) {
   const [chart, setChart] = useState<Series>();
   const dispatch = useDispatch();
+
+  const { openVizSettings } = useVizSettings();
 
   const handleAddUsed = async (result: SearchResult) => {
     if (!result) {
@@ -64,7 +68,7 @@ export function VisualizerCanvas({
         <>
           <Flex mx="xs">
             <Title mb="md">{chart?.card.name}</Title>
-            <ActionIcon ml="auto">
+            <ActionIcon ml="auto" onClick={() => openVizSettings()}>
               <Icon name="gear" />
             </ActionIcon>
           </Flex>
