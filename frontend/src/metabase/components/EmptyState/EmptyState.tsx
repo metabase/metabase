@@ -1,9 +1,8 @@
-import Text from "metabase/components/type/Text";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
-import { Icon, isValidIconName } from "metabase/ui";
+import { Icon, Text, isValidIconName } from "metabase/ui";
 
 import {
   EmptyStateActions,
@@ -80,7 +79,7 @@ const EmptyState = ({
         </h2>
       )}
       {message && (
-        <Text role="status" color="medium" className="empty-state-message">
+        <Text role="status" color="medium" mt="xs">
           {message}
         </Text>
       )}

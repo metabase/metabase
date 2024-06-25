@@ -51,7 +51,7 @@ export type DateOperator = {
 export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "previous",
-    displayName: t`Past`,
+    displayName: t`Previous`,
     init: filter => getPreviousDateFilter(filter),
     test: filter => isPreviousDateFilter(filter),
     group: "relative",

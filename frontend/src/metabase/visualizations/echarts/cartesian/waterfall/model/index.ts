@@ -3,6 +3,7 @@ import {
   filterNullDimensionValues,
   getCardsColumnByDataKeyMap,
   getJoinedCardsDataset,
+  scaleDataset,
   sortDataset,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
@@ -53,13 +54,22 @@ export const getWaterfallChartModel = (
     renderingContext,
   );
 
-  let dataset = getJoinedCardsDataset(rawSeries, cardsColumns, showWarning);
-  dataset = sortDataset(dataset, settings["graph.x_axis.scale"], showWarning);
+  const unsortedDataset = getJoinedCardsDataset(
+    rawSeries,
+    cardsColumns,
+    showWarning,
+  );
+  const dataset = sortDataset(
+    unsortedDataset,
+    settings["graph.x_axis.scale"],
+    showWarning,
+  );
+  let scaledDataset = scaleDataset(dataset, [seriesModel], settings);
 
   const xAxisModel = getWaterfallXAxisModel(
     dimensionModel,
     rawSeries,
-    dataset,
+    scaledDataset,
     settings,
     renderingContext,
     showWarning,
@@ -69,7 +79,7 @@ export const getWaterfallChartModel = (
     xAxisModel.axisType === "time" ||
     xAxisModel.isHistogram
   ) {
-    dataset = filterNullDimensionValues(dataset, showWarning);
+    scaledDataset = filterNullDimensionValues(scaledDataset, showWarning);
   }
 
   const yAxisScaleTransforms = getAxisTransforms(
@@ -77,9 +87,9 @@ export const getWaterfallChartModel = (
   );
 
   const transformedDataset = getWaterfallDataset(
-    dataset,
+    scaledDataset,
     yAxisScaleTransforms,
-    seriesModel,
+    seriesModel.dataKey,
     settings,
     xAxisModel,
   );
@@ -117,7 +127,7 @@ export const getWaterfallChartModel = (
 
   // Extending the original dataset with total datum for tooltips
   const originalDatasetWithTotal = extendOriginalDatasetWithTotalDatum(
-    dataset,
+    scaledDataset,
     transformedDataset[transformedDataset.length - 1],
     seriesModel.dataKey,
     settings,

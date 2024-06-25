@@ -189,24 +189,19 @@
       11111                     java.lang.Long)))
 
 (deftest ^:parallel row->types-test
-  (testing "array rows ignored properly in JSON row->types (#21752)"
-    (let [arr-row   {:bob (json/encode [:bob :cob :dob 123 "blob"])}
-          obj-row   {:zlob (json/encode {:blob Long/MAX_VALUE})}]
-      (is (= {[:bob] clojure.lang.PersistentVector} (#'sql-jdbc.describe-table/json-map->types arr-row)))
-      (is (= {[:zlob "blob"] java.lang.Long} (#'sql-jdbc.describe-table/json-map->types obj-row)))))
+  (testing "none object rows ignored properly in JSON row->types (#21752, #44459)"
+    (let [arr-row    {:bob (json/encode [:bob :cob :dob 123 "blob"])}
+          obj-row    {:zlob (json/encode {:blob Long/MAX_VALUE})}
+          string-row {:naked (json/encode "string")}]
+     (is (= {} (#'sql-jdbc.describe-table/json-map->types string-row)))
+     (is (= {} (#'sql-jdbc.describe-table/json-map->types arr-row)))
+     (is (= {[:zlob "blob"] java.lang.Long} (#'sql-jdbc.describe-table/json-map->types obj-row)))))
   (testing "JSON json-map->types handles bigint OK (#22732)"
     (let [int-row   {:zlob (json/encode {"blob" (inc (bigint Long/MAX_VALUE))})}
           float-row {:zlob "{\"blob\": 12345678901234567890.12345678901234567890}"}]
       (is (= {[:zlob "blob"] clojure.lang.BigInt} (#'sql-jdbc.describe-table/json-map->types int-row)))
       ;; no idea how to force it to use BigDecimal here
-      (is (= {[:zlob "blob"] Double} (#'sql-jdbc.describe-table/json-map->types float-row)))))
-  (testing "JSON unfolding supports naked values"
-    (let [string-row {:naked (json/encode "string")}
-          arr-row    {:naked (json/encode [1 2])}]
-      (is (= {[:naked] String}
-             (#'sql-jdbc.describe-table/json-map->types string-row)))
-      (is (= {[:naked] clojure.lang.PersistentVector}
-             (#'sql-jdbc.describe-table/json-map->types arr-row))))))
+      (is (= {[:zlob "blob"] Double} (#'sql-jdbc.describe-table/json-map->types float-row))))))
 
 (deftest ^:parallel key-limit-test
   (testing "we don't read too many keys even from long jsons"
@@ -344,6 +339,39 @@
                  driver/*driver*
                  (mt/db)
                  {:name "json" :id (mt/id "json")}))))))))
+
+(deftest json-columns-with-values-are-not-object-test
+  (testing "able sync a db with jsonb columns where value is an array or a string #44459"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+      (mt/dataset (mt/dataset-definition
+                    "naked_json"
+                    ["json_table"
+                     [{:field-name "array_col" :base-type :type/JSON}
+                      {:field-name "string_col" :base-type :type/JSON}]
+                     [ ["[1, 2, 3]" "\"just-a-string-in-a-json-column\""]]])
+
+        (testing "there should be no nested fields"
+         (is (= #{} (sql-jdbc.sync/describe-nested-field-columns
+                     driver/*driver*
+                     (mt/db)
+                     {:name "json_table" :id (mt/id "json_table")}))))
+
+        (sync/sync-database! (mt/db))
+        (is (=? (if (mysql/mariadb? (mt/db))
+                  #{{:name "id"
+                     :base_type :type/Integer}
+                    {:name "array_col"
+                     :base_type :type/Text}
+                    {:name "string_col"
+                     :base_type :type/Text}}
+                  #{{:name "id"
+                     :base_type :type/Integer}
+                    {:name "array_col"
+                     :base_type :type/JSON}
+                    {:name "string_col"
+                     :base_type :type/JSON}})
+                (t2/select-fn-set #(select-keys % [:name :base_type])
+                                  :model/Field :table_id (mt/id "json_table"))))))))
 
 (mt/defdataset big-json
   [["big_json_table"

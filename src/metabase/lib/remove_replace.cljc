@@ -197,7 +197,7 @@
       (if location
         (-> query
             (remove-replace-location stage-number query location target-clause remove-replace-fn)
-            normalize-fields-clauses)
+            (normalize-fields-clauses location))
         query))))
 
 (mu/defn remove-clause :- :metabase.lib.schema/query
@@ -563,25 +563,36 @@
          (lib.equality/matching-column-sets? query stage-number fields
                                              (lib.metadata.calculation/default-columns-for-stage query stage-number)))))
 
-(defn- normalize-fields-for-join [query stage-number join]
-  (if (#{:none :all} (:fields join))
+(defn- normalize-fields-for-join [query stage-number removed-location join]
+  (cond
     ;; Nothing to do if it's already a keyword.
-    join
-    (cond-> join
-      (lib.equality/matching-column-sets?
-        query stage-number (:fields join)
-        (lib.metadata.calculation/returned-columns query stage-number (assoc join :fields :all)))
-      (assoc :fields :all))))
+    (#{:none :all} (:fields join)) join
 
-(defn- normalize-fields-for-stage [query stage-number]
+    ;; If it's missing, treat it as `:all` unless we just removed a field.
+    ;; TODO: This really should be a different function called by `remove-field`; it also needs to filter on the stage.
+    (and (or (= removed-location [:aggregation])
+             (= removed-location [:breakout]))
+         (not (contains? join :fields)))
+    (assoc join :fields :all)
+
+    (lib.equality/matching-column-sets?
+      query stage-number (:fields join)
+      (lib.metadata.calculation/returned-columns query stage-number (assoc join :fields :all)))
+    (assoc join :fields :all)
+
+    :else join))
+
+(defn- normalize-fields-for-stage [query stage-number removed-location]
   (let [stage (lib.util/query-stage query stage-number)]
     (cond-> query
       (specifies-default-fields? query stage-number)
       (lib.util/update-query-stage stage-number dissoc :fields)
 
-      (:joins stage)
+      (and (empty? (:aggregation stage))
+           (empty? (:breakout stage))
+           (:joins stage))
       (lib.util/update-query-stage stage-number update :joins
-                                   (partial mapv #(normalize-fields-for-join query stage-number %))))))
+                                   (partial mapv #(normalize-fields-for-join query stage-number removed-location %))))))
 
 (mu/defn normalize-fields-clauses :- :metabase.lib.schema/query
   "Check all the `:fields` clauses in the query - on the stages and any joins - and drops them if they are equal to the
@@ -589,5 +600,10 @@
   - For stages, if the `:fields` list is identical to the default fields for this stage.
   - For joins, replace it with `:all` if it's all the fields that are in the join by default.
   - For joins, remove it if the list is empty (the default for joins is no fields)."
-  [query :- :metabase.lib.schema/query]
-  (reduce normalize-fields-for-stage query (range (count (:stages query)))))
+  ([query :- :metabase.lib.schema/query]
+   (normalize-fields-clauses query nil))
+  ([query            :- :metabase.lib.schema/query
+    removed-location :- [:maybe [:sequential :any]]]
+   (reduce #(normalize-fields-for-stage %1 %2 removed-location)
+           query
+           (range (count (:stages query))))))

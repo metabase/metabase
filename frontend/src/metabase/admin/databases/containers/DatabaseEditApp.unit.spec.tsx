@@ -48,13 +48,11 @@ const ENGINES_MOCK: Record<string, Engine> = {
 const MockComponent = () => <div />;
 
 interface SetupOpts {
-  cachingEnabled?: boolean;
   databaseIdParam?: string;
   initialRoute?: string;
 }
 
 async function setup({
-  cachingEnabled = false,
   databaseIdParam = "",
   initialRoute = `/${databaseIdParam}`,
 }: SetupOpts = {}) {
@@ -67,7 +65,6 @@ async function setup({
     "token-features": createMockTokenFeatures({
       cache_granular_controls: true,
     }),
-    "enable-query-caching": cachingEnabled,
   });
 
   const { history } = renderWithProviders(

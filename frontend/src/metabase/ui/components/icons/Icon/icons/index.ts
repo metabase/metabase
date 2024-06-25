@@ -323,6 +323,8 @@ import sort_component from "./sort.svg?component";
 import sort_source from "./sort.svg?source";
 import sort_arrows_component from "./sort_arrows.svg?component";
 import sort_arrows_source from "./sort_arrows.svg?source";
+import sparkles_component from "./sparkles.svg?component";
+import sparkles_source from "./sparkles.svg?source";
 import split_component from "./split.svg?component";
 import split_source from "./split.svg?source";
 import sql_component from "./sql.svg?component";
@@ -1056,6 +1058,10 @@ export const Icons = {
   snippet: {
     component: snippet_component,
     source: snippet_source,
+  },
+  sparkles: {
+    component: sparkles_component,
+    source: sparkles_source,
   },
   star_filled: {
     component: star_filled_component,

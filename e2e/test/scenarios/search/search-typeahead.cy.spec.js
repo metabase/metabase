@@ -24,7 +24,7 @@ import {
         user === "admin" ? Object.entries(USERS).length : 1;
 
       cy.findByPlaceholderText("Search…").type("pers");
-      cy.findByTestId("loading-spinner").should("not.exist");
+      cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByTestId("search-results-list").within(() => {
         cy.findAllByText(/personal collection$/i).should(
           "have.length",

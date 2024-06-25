@@ -5,6 +5,7 @@ import type { MetabaseTheme } from "embedding-sdk";
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { mainReducers } from "metabase/reducers-main";
 import type { MantineThemeOverride } from "metabase/ui";
+import { Box } from "metabase/ui";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { getStore } from "./entities-store";
@@ -57,7 +58,9 @@ export const SdkVisualizationWrapper = ({
   children: React.ReactElement;
   theme?: MetabaseTheme;
 }) => (
-  <VisualizationWrapper>
-    <SdkThemeProvider theme={theme}>{children}</SdkThemeProvider>
-  </VisualizationWrapper>
+  <Box fz="0.875rem">
+    <VisualizationWrapper>
+      <SdkThemeProvider theme={theme}>{children}</SdkThemeProvider>
+    </VisualizationWrapper>
+  </Box>
 );

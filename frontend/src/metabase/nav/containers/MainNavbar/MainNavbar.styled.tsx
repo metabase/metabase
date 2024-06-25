@@ -8,7 +8,7 @@ import {
   breakpointMinSmall,
   space,
 } from "metabase/styled-components/theme";
-import { Icon } from "metabase/ui";
+import { Box, type BoxProps, Icon } from "metabase/ui";
 
 import { SidebarLink } from "./SidebarItems";
 
@@ -82,7 +82,7 @@ export const SidebarContentRoot = styled.div`
   justify-content: space-between;
 `;
 
-export const SidebarSection = styled.div`
+export const SidebarSection = styled(Box)<BoxProps>`
   margin-top: ${space(1)};
   margin-bottom: ${space(2)};
   padding-inline-start: ${space(2)};

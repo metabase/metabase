@@ -11,7 +11,11 @@ import type {
 } from "metabase-types/api";
 
 import { rootId } from "../constants/simple";
-import { getFieldsForStrategyType, translateConfigToAPI } from "../utils";
+import {
+  getFieldsForStrategyType,
+  populateMinDurationSeconds,
+  translateConfigToAPI,
+} from "../utils";
 
 export const useSaveStrategy = (
   targetId: number | null,
@@ -52,13 +56,18 @@ export const useSaveStrategy = (
         const validatedStrategy =
           strategies[values.type].validateWith.validateSync(newStrategy);
 
-        const newConfig = {
+        const newConfig: CacheConfig = {
           ...baseConfig,
           strategy: validatedStrategy,
         };
 
         const translatedConfig = translateConfigToAPI(newConfig);
         await CacheConfigApi.update(translatedConfig);
+
+        if (newConfig.strategy.type === "ttl") {
+          newConfig.strategy = populateMinDurationSeconds(newConfig.strategy);
+        }
+
         setConfigs([...otherConfigs, newConfig]);
       }
     },

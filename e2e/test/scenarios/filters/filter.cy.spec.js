@@ -133,7 +133,7 @@ describe("scenarios > question > filter", () => {
     cy.findByTestId("apply-filters").click();
 
     cy.log("Reported failing on v0.36.4 and v0.36.5.1");
-    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
     cy.findAllByText("148.23"); // one of the subtotals for this product
     cy.findAllByText("Fantastic Wool Shirt").should("not.exist");
   });
@@ -521,14 +521,10 @@ describe("scenarios > question > filter", () => {
     popover().within(() => {
       cy.findByText("Created At").click();
       cy.findByText("Relative dates…").click();
-      cy.findByText("Past").click();
-      cy.findByLabelText("Options").click();
+      cy.findByText("Previous").click();
+      cy.findByText(/^Include/).click();
+      cy.button("Add filter").click();
     });
-    popover()
-      .last()
-      .findByText(/^Include/)
-      .click();
-    popover().button("Add filter").click();
 
     getNotebookStep("filter")
       .findByText("Created At is in the previous 30 days")
@@ -545,11 +541,10 @@ describe("scenarios > question > filter", () => {
     getNotebookStep("filter")
       .findByText("Created At is in the previous 30 days")
       .click();
-    popover().findByLabelText("Options").click();
+
     popover()
-      .last()
       .findByTestId("include-current-interval-option")
-      .should("have.attr", "aria-selected", "true");
+      .should("have.attr", "aria-checked", "true");
   });
 
   it("should be able to convert case-insensitive filter to custom expression (metabase#14959)", () => {

@@ -1,5 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { assoc, updateIn, dissoc } from "icepick";
+import { assoc, updateIn, dissoc, getIn } from "icepick";
 import _ from "underscore";
 
 import { bookmarkApi } from "metabase/api";
@@ -62,10 +62,14 @@ const Bookmarks = createEntity({
   objectSelectors: {
     getIcon,
   },
+
   reducer: (state = {}, { type, payload, error }) => {
     if (type === Questions.actionTypes.UPDATE && payload?.object) {
       const { archived, type, id, name } = payload.object;
       const key = `card-${id}`;
+      if (!getIn(state, [key])) {
+        return state;
+      }
       if (archived) {
         return dissoc(state, key);
       } else {
@@ -80,6 +84,9 @@ const Bookmarks = createEntity({
     if (type === Dashboards.actionTypes.UPDATE && payload?.object) {
       const { archived, id, name } = payload.object;
       const key = `dashboard-${id}`;
+      if (!getIn(state, [key])) {
+        return state;
+      }
       if (archived) {
         return dissoc(state, key);
       } else {
@@ -91,6 +98,9 @@ const Bookmarks = createEntity({
       const { id, authority_level, name } = payload.object;
       const key = `collection-${id}`;
 
+      if (!getIn(state, [key])) {
+        return state;
+      }
       if (payload.object.archived) {
         return dissoc(state, key);
       } else {

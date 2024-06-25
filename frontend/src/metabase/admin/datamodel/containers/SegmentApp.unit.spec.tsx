@@ -33,7 +33,11 @@ interface SetupOpts {
 const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
-  setupCardDataset();
+  setupCardDataset({
+    data: {
+      rows: [[null]],
+    },
+  });
   setupSegmentsEndpoints([]);
 
   const { history } = renderWithProviders(

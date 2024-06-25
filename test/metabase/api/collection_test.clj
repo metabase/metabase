@@ -1111,7 +1111,7 @@
                  [:= :collection_type collection/trash-collection-type] 1
                  :else 2]] :asc]
               [:%lower.name :asc]]
-             (api.collection/children-sort-clause nil app-db)))))
+             (api.collection/children-sort-clause {:official-collections-first? true} app-db)))))
   (testing "Sorting by last-edited-at"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
@@ -1121,7 +1121,9 @@
             [:%isnull.last_edit_timestamp]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]]
-           (api.collection/children-sort-clause [:last-edited-at :asc] :mysql)))
+           (api.collection/children-sort-clause {:sort-column :last-edited-at
+                                                 :sort-direction :asc
+                                                 :official-collections-first? true} :mysql)))
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
                [:= :collection_type nil] 0
@@ -1130,7 +1132,9 @@
             [:last_edit_timestamp :nulls-last]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]]
-           (api.collection/children-sort-clause [:last-edited-at :asc] :postgres))))
+           (api.collection/children-sort-clause {:sort-column :last-edited-at
+                                                 :sort-direction :asc
+                                                 :official-collections-first? true} :postgres))))
   (testing "Sorting by last-edited-by"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
@@ -1142,7 +1146,9 @@
             [:last_edit_first_name :nulls-last]
             [:last_edit_first_name :asc]
             [:%lower.name :asc]]
-           (api.collection/children-sort-clause [:last-edited-by :asc] :postgres)))
+           (api.collection/children-sort-clause {:sort-column :last-edited-by
+                                                 :sort-direction :asc
+                                                 :official-collections-first? true} :postgres)))
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
                [:= :collection_type nil] 0
@@ -1153,7 +1159,9 @@
             [:%isnull.last_edit_first_name]
             [:last_edit_first_name :asc]
             [:%lower.name :asc]]
-           (api.collection/children-sort-clause [:last-edited-by :asc] :mysql))))
+           (api.collection/children-sort-clause {:sort-column :last-edited-by
+                                                 :sort-direction :asc
+                                                 :official-collections-first? true} :mysql))))
   (testing "Sorting by model"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
@@ -1162,7 +1170,9 @@
                :else 2]] :asc]
             [:model_ranking :asc]
             [:%lower.name :asc]]
-           (api.collection/children-sort-clause [:model :asc] :postgres)))
+           (api.collection/children-sort-clause {:sort-column :model
+                                                 :sort-direction :asc
+                                                 :official-collections-first? true} :postgres)))
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
                [:= :collection_type nil] 0
@@ -1170,7 +1180,9 @@
                :else 2]] :asc]
             [:model_ranking :desc]
             [:%lower.name :asc]]
-           (api.collection/children-sort-clause [:model :desc] :mysql)))))
+           (api.collection/children-sort-clause {:sort-column :model
+                                                 :sort-direction :desc
+                                                 :official-collections-first? true} :mysql)))))
 
 (deftest snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
@@ -1216,6 +1228,7 @@
   (merge
    (mt/object-defaults Collection)
    {:slug                "lucky_pigeon_s_personal_collection"
+    :can_restore         false
     :can_delete          false
     :can_write           true
     :name                "Lucky Pigeon's Personal Collection"
@@ -2166,6 +2179,12 @@
        (filter #(= (:id %) item-id))
        first))
 
+(defn- get-item-with-id-in-root [id]
+  (->> (mt/user-http-request :crowberto :get 200 (str "collection/root/items"))
+       :data
+       (filter #(= (:id %) id))
+       first))
+
 (deftest ^:parallel can-restore
   (testing "can_restore is correctly populated for dashboard"
     (testing "when I can actually restore it"
@@ -2216,7 +2235,19 @@
     (testing "when I can actually restore it"
       (t2.with-temp/with-temp [:model/Collection collection {:name "A"}]
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
-        (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id collection)))))))))
+        (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id collection))))))))
+  (testing "can_restore is correctly populated for things in the root collection"
+    (t2.with-temp/with-temp [:model/Collection collection {:name "A"}
+                             :model/Dashboard dashboard {:name "Dashboard"}]
+      (is (contains? (get-item-with-id-in-root (u/the-id dashboard)) :can_restore))
+      (is (contains? (get-item-with-id-in-root (u/the-id collection)) :can_restore))
+      (is (false? (:can_restore (get-item-with-id-in-root (u/the-id dashboard)))))
+      (is (false? (:can_restore (get-item-with-id-in-root (u/the-id collection)))))))
+  (testing "can_restore is correctly populated for things in other collections"
+    (t2.with-temp/with-temp [:model/Collection collection {:name "container"}
+                             :model/Dashboard dashboard {:name "Dashboard" :collection_id (u/the-id collection)}]
+      (is (contains? (get-item-with-id-in-coll (u/the-id collection) (u/the-id dashboard)) :can_restore ))
+      (is (false? (:can_restore (get-item-with-id-in-coll (u/the-id collection) (u/the-id dashboard))))))))
 
 (deftest nothing-can-be-moved-to-the-trash
   (t2.with-temp/with-temp [:model/Dashboard dashboard {}
