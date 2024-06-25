@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import type { Location } from "history";
-import { Link, Route } from "react-router";
+import { Link, Route, withRouter } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/core/components/TabButton";
@@ -13,7 +13,7 @@ import type { DashboardState, State } from "metabase-types/store";
 import { DashboardTabs } from "./DashboardTabs";
 import { TEST_DASHBOARD_STATE } from "./test-utils";
 import { useDashboardTabs } from "./use-dashboard-tabs";
-import { getSlug } from "./use-sync-url-slug";
+import { getSlug, useSyncURLSlug } from "./use-sync-url-slug";
 
 function setup({
   tabs,
@@ -34,23 +34,22 @@ function setup({
     },
   };
 
-  const DashboardComponent = ({ location }: { location: Location }) => {
-    const { selectedTabId } = useDashboardTabs({ location, dashboardId: 1 });
+  const RoutedDashboardComponent = withRouter(
+    ({ location }: { location: Location }) => {
+      const { selectedTabId } = useDashboardTabs({ dashboardId: 1 });
+      useSyncURLSlug({ location });
 
-    return (
-      <>
-        <DashboardTabs
-          dashboardId={1}
-          location={location}
-          isEditing={isEditing}
-        />
-        <span>Selected tab id is {selectedTabId}</span>
-        <br />
-        <span>Path is {location.pathname + location.search}</span>
-        <Link to="/someotherpath">Navigate away</Link>
-      </>
-    );
-  };
+      return (
+        <>
+          <DashboardTabs dashboardId={1} isEditing={isEditing} />
+          <span>Selected tab id is {selectedTabId}</span>
+          <br />
+          <span>Path is {location.pathname + location.search}</span>
+          <Link to="/someotherpath">Navigate away</Link>
+        </>
+      );
+    },
+  );
 
   const OtherComponent = () => {
     const selectedTabId = useSelector(getSelectedTabId);
@@ -66,7 +65,10 @@ function setup({
 
   const { store } = renderWithProviders(
     <>
-      <Route path="dashboard/:slug(/:tabSlug)" component={DashboardComponent} />
+      <Route
+        path="dashboard/:slug(/:tabSlug)"
+        component={RoutedDashboardComponent}
+      />
       <Route path="someotherpath" component={OtherComponent} />
     </>,
     {

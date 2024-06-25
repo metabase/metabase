@@ -120,5 +120,5 @@ export interface DashboardState {
   };
   tabDeletions: Record<TabDeletionId, TabDeletion>;
 
-  theme: DisplayTheme | null;
+  theme: DisplayTheme;
 }

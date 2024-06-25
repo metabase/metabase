@@ -12,6 +12,7 @@ import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
+import { SyncedDashboardTabs } from "metabase/dashboard/components/DashboardTabs/SyncedDashboardTabs";
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import { DashboardData } from "metabase/dashboard/hoc/DashboardData";
 import { getIsHeaderVisible, getTabs } from "metabase/dashboard/selectors";
@@ -28,7 +29,6 @@ import { Icon } from "metabase/ui";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { FixedWidthContainer } from "../components/Dashboard/Dashboard.styled";
-import { DashboardTabs } from "../components/DashboardTabs";
 
 import {
   ItemContent,
@@ -154,7 +154,7 @@ class AutomaticDashboardAppInner extends Component {
                   </div>
                   {this.props.tabs.length > 1 && (
                     <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
-                      <DashboardTabs location={this.props.location} />
+                      <SyncedDashboardTabs location={this.props.location} />
                     </div>
                   )}
                 </FixedWidthContainer>

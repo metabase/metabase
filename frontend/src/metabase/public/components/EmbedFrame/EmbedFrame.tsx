@@ -35,6 +35,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import type { DashboardUrlHashOptions } from "../../../dashboard/types";
 import ParameterValueWidgetS from "../../../parameters/components/ParameterValueWidget.module.css";
 
 import EmbedFrameS from "./EmbedFrame.module.css";
@@ -83,21 +84,13 @@ type Props = OwnProps &
     location: Location;
   };
 
-interface HashOptions {
-  bordered?: boolean;
-  titled?: boolean;
-  theme?: "night" | "transparent";
-  hide_parameters?: string;
-  hide_download_button?: boolean;
-}
-
 function mapStateToProps(state: State) {
   return {
     hasEmbedBranding: !getSetting(state, "hide-embed-branding?"),
   };
 }
 
-const EMBED_THEME_CLASSES = (theme: HashOptions["theme"]) => {
+const EMBED_THEME_CLASSES = (theme: DashboardUrlHashOptions["theme"]) => {
   if (!theme) {
     return null;
   }
@@ -164,7 +157,7 @@ function EmbedFrame({
     theme,
     hide_parameters,
     hide_download_button,
-  } = parseHashOptions(location.hash) as HashOptions;
+  } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
 
   const hideParameters = [hide_parameters, hiddenParameterSlugs]
     .filter(Boolean)

@@ -1,7 +1,7 @@
 import cx from "classnames";
-import type { Location } from "history";
 import type { ReactNode } from "react";
 import { useCallback, useEffect } from "react";
+import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
@@ -22,7 +22,6 @@ import { useWebNotification } from "metabase/hooks/use-web-notification";
 import { parseHashOptions } from "metabase/lib/browser";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { closeNavbar, setErrorPage } from "metabase/redux/app";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { getIsNavbarOpen } from "metabase/selectors/app";
@@ -31,18 +30,8 @@ import {
   canManageSubscriptions,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type {
-  Dashboard as IDashboard,
-  DashboardId,
-  DashCardDataMap,
-  DashCardId,
-  DatabaseId,
-  ParameterId,
-  ParameterValueOrArray,
-} from "metabase-types/api";
-import type { SelectedTabId, State, StoreDashcard } from "metabase-types/store";
+import type { DashboardId } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import * as dashboardActions from "../../actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
@@ -74,52 +63,13 @@ import {
 type OwnProps = {
   dashboardId?: DashboardId;
   route: Route;
-  params: { slug: string };
+  params: {
+    slug: string;
+  };
   children?: ReactNode;
 };
 
-type StateProps = {
-  canManageSubscriptions: boolean;
-  isAdmin: boolean;
-  isNavbarOpen: boolean;
-  isEditing: boolean;
-  isSharing: boolean;
-  dashboardBeforeEditing: IDashboard | null;
-  isEditingParameter: boolean;
-  isDirty: boolean;
-  dashboard: IDashboard | null;
-  dashcardData: DashCardDataMap;
-  slowCards: Record<DashCardId, unknown>;
-  databases: Record<DatabaseId, Database>;
-  parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  metadata: Metadata;
-  loadingStartTime: number | null;
-  clickBehaviorSidebarDashcard: StoreDashcard | null;
-  isAddParameterPopoverOpen: boolean;
-  sidebar: State["dashboard"]["sidebar"];
-  pageFavicon: string | null;
-  documentTitle: string | undefined;
-  isRunning: boolean;
-  isLoadingComplete: boolean;
-  isHeaderVisible: boolean;
-  isAdditionalInfoVisible: boolean;
-  selectedTabId: SelectedTabId;
-  isNavigatingBackToDashboard: boolean;
-  getEmbeddedParameterVisibility: (
-    slug: string,
-  ) => EmbeddingParameterVisibility | null;
-};
-
-type DispatchProps = {
-  archiveDashboard: (id: DashboardId) => Promise<void>;
-  closeNavbar: () => void;
-  setErrorPage: (error: unknown) => void;
-  onChangeLocation: (location: Location) => void;
-};
-
-type DashboardAppProps = OwnProps & StateProps & DispatchProps;
-
-const mapStateToProps = (state: State): StateProps => {
+const mapStateToProps = (state: State) => {
   const metadata = getMetadata(state);
   return {
     canManageSubscriptions: canManageSubscriptions(state),
@@ -162,6 +112,11 @@ const mapDispatchToProps = {
   setErrorPage,
   onChangeLocation: push,
 };
+
+const connector = connect(mapStateToProps, mapDispatchToProps);
+type ReduxProps = ConnectedProps<typeof connector>;
+
+type DashboardAppProps = OwnProps & ReduxProps;
 
 const DashboardApp = (props: DashboardAppProps) => {
   const { dashboard, isRunning, isLoadingComplete, isEditing, isDirty, route } =
@@ -235,6 +190,7 @@ const DashboardApp = (props: DashboardAppProps) => {
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
       <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
 
+      {/* @ts-expect-error for now until we can get the prop-drilled types sorted out. Previously DashboardControls was a JS file so types weren't checked, but now there's a Pandora's box here */}
       <Dashboard
         dashboardId={getDashboardId(props)}
         editingOnLoad={editingOnLoad}
@@ -251,15 +207,21 @@ function getDashboardId({ dashboardId, params }: DashboardAppProps) {
   if (dashboardId) {
     return dashboardId;
   }
-  return Urls.extractEntityId(params.slug);
+
+  return Urls.extractEntityId(params.slug) as DashboardId;
 }
 
 export const DashboardAppConnected = _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
-  favicon(({ pageFavicon }: StateProps) => pageFavicon),
-  title(({ dashboard, documentTitle }: StateProps) => ({
-    title: documentTitle || dashboard?.name,
-    titleIndex: 1,
-  })),
+  connector,
+  favicon(({ pageFavicon }: Pick<ReduxProps, "pageFavicon">) => pageFavicon),
+  title(
+    ({
+      dashboard,
+      documentTitle,
+    }: Pick<ReduxProps, "dashboard" | "documentTitle">) => ({
+      title: documentTitle || dashboard?.name,
+      titleIndex: 1,
+    }),
+  ),
   titleWithLoadingTime("loadingStartTime"),
 )(DashboardApp);
