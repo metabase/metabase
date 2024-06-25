@@ -393,13 +393,12 @@
           (let [model (update model :result_metadata
                               (fn [v]
                                 (map #(assoc % :display_name "FOO") v)))
-                {:keys [column_aliases #_create_table_ddl]} (metabot-util/denormalize-model model)]
+                {:keys [column_aliases create_table_ddl]} (metabot-util/denormalize-model model)]
             (is (= "\"TOTAL\" AS FOO, \"products__CATEGORY\" AS FOO_2, \"self__CATEGORY\" AS FOO_3"
                    column_aliases))
             ;; Ensure that the same aliases are used in the create table ddl
             ;; 7 = 3 for the column names + 2 for the type creation + 2 for the type references
-            ;; FIXME: This test is flaky on CI (metabase#36785)
-            #_(is (= 7 (count (re-seq #"FOO" create_table_ddl))))))))))
+            (is (= 7 (count (re-seq #"FOO" create_table_ddl))))))))))
 
 (deftest ^:parallel deconflicting-aliases-test
   (testing "Test sql_name generation deconfliction:
