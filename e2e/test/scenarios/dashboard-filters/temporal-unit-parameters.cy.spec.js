@@ -393,6 +393,40 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       });
     });
 
+    it("should connect multiple parameters to the same column in a card and drill thru, with the last parameter taking priority", () => {
+      createQuestion(singleBreakoutQuestionDetails);
+      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
+        visitDashboard(dashboard.id),
+      );
+
+      editDashboard();
+      addQuestion(singleBreakoutQuestionDetails.name);
+      addTemporalUnitParameter();
+      selectDashboardFilter(getDashboardCard(), "Created At");
+      addTemporalUnitParameter();
+      selectDashboardFilter(getDashboardCard(), "Created At");
+      saveDashboard();
+
+      filterWidget().eq(0).click();
+      popover().findByText("Quarter").click();
+      filterWidget().eq(1).click();
+      popover().findByText("Year").click();
+      getDashboardCard().within(() => {
+        // metabase#44684
+        // should be "Created At: Year" and "2022" because the last parameter is "Year"
+        cy.findByText("Created At: Quarter").should("be.visible");
+        cy.findByText("Q2 2022").should("be.visible");
+        cy.findByText(singleBreakoutQuestionDetails.name).click();
+      });
+      appBar()
+        .should("contain.text", "Started from")
+        .should("contain.text", singleBreakoutQuestionDetails.name);
+      queryBuilderMain().within(() => {
+        cy.findByText("Created At: Year").should("be.visible");
+        cy.findByText("2022").should("be.visible");
+      });
+    });
+
     it("should connect a parameter to multiple questions within a dashcard and drill thru", () => {
       createDashboardWithMultiSeriesCard().then(dashboard =>
         visitDashboard(dashboard.id),
