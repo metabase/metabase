@@ -22,6 +22,7 @@
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.params.field-values :as params.field-values]
+   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -110,7 +111,7 @@
   just the column identifiers, perhaps for use with something like `select-keys`. Clutch!
 
     (t2/select Field:params-columns-only)"
-  ['Field :id :table_id :display_name :base_type :semantic_type :has_field_values])
+  [:model/Field :id :table_id :display_name :base_type :name :semantic_type :has_field_values :fk_target_field_id])
 
 (defn- fields->table-id->name-field
   "Given a sequence of `fields,` return a map of Table ID -> to a `:type/Name` Field in that Table, if one exists. In
@@ -164,9 +165,8 @@
   [field-ids :- [:maybe [:set ms/PositiveInt]]]
   (when (seq field-ids)
     (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
-                        (t2/hydrate :has_field_values :name_field [:dimensions :human_readable_field])
+                        (t2/hydrate :has_field_values :name_field [:dimensions :human_readable_field] :target)
                         remove-dimensions-nonpublic-columns))))
-
 
 (defmulti ^:private ^{:hydrate :param_values} param-values
   "Add a `:param_values` map (Field ID -> FieldValues) containing FieldValues for the Fields referenced by the
@@ -197,17 +197,6 @@
 ;;; |                                               DASHBOARD-SPECIFIC                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private dashcards->parameter-mapping-field-clauses :- [:maybe [:set mbql.s/Field]]
-  "Return set of any Fields referenced directly by the Dashboard's `:parameters` (i.e., 'explicit' parameters) by
-  looking at the appropriate `:parameter_mappings` entries for its Dashcards."
-  [dashcards]
-  (when-let [fields (seq (for [dashcard dashcards
-                               param    (:parameter_mappings dashcard)
-                               :let     [field-clause (param-target->field-clause (:target param) (:card dashcard))]
-                               :when    field-clause]
-                           field-clause))]
-    (set fields)))
-
 (declare card->template-tag-field-ids)
 
 (defn- cards->card-param-field-ids
@@ -222,10 +211,21 @@
   `dashcards` must be hydrated with :card."
   [dashcards]
   (set/union
-   (set (lib.util.match/match (seq (dashcards->parameter-mapping-field-clauses dashcards))
-          [:field (id :guard integer?) _]
-          id))
-   (cards->card-param-field-ids (map :card dashcards))))
+    (set (for [{:keys [card] :as dashcard} dashcards
+               param    (:parameter_mappings dashcard)
+               :let     [field-clause (param-target->field-clause (:target param) (:card dashcard))]
+               :when    field-clause
+               :let     [field-id (or
+                                    ;; Get the field id from the field-clause if it contains it. This is the common case
+                                    ;; for mbql queries.
+                                    (lib.util.match/match-one field-clause [:field (id :guard integer?) _] id)
+                                    ;; Attempt to get the field clause from the model metadata corresponding to the field.
+                                    ;; This is the common case for native queries in which mappings from original columns
+                                    ;; have been performed using model metadata.
+                                    (:id (qp.util/field->field-info field-clause (:result_metadata card))))]
+               :when field-id]
+           field-id))
+    (cards->card-param-field-ids (map :card dashcards))))
 
 (defn get-linked-field-ids
   "Retrieve a map relating paramater ids to field ids."

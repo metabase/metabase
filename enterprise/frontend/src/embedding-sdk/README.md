@@ -1,36 +1,45 @@
-> **NOTE**: This SDK is actively being developed. We don't recommend using it in production yet!
+> **NOTE**: This SDK is actively being developed. You can expect some changes to the API. The SDK currently only works with a specific version of Metabase.
 
 # Metabase Embedding SDK for React
 
 The Metabase Embedding SDK for React offers a way to integrate Metabase into your application more seamlessly and with greater flexibility than using the current interactive embedding offering based on iframes.
+
+<div>
+  <a href="https://www.loom.com/share/b6998692937c4ecaab1af097f2123c6f">
+    <img style="max-width: 300px" src="https://cdn.loom.com/sessions/thumbnails/b6998692937c4ecaab1af097f2123c6f-with-play.gif">
+  </a>
+</div>
+
+[Watch a 5-minute tour of the SDK's features.](https://www.loom.com/share/b6998692937c4ecaab1af097f2123c6f)
 
 Features currently supported:
 
 - embedding questions - static
 - embedding questions - w/drill-down
 - embedding dashboards - static
+- embedding dashboards - w/drill-down
 - embedding the collection browser
 - theming with CSS variables
 - plugins for custom actions
 
 Features planned:
 
-- embedding dashboards - w/ drill-down
 - subscribing to events
+
+# Changelog
+[View changelog](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 
 # Prerequisites
 
 - You have an application using React 17 or higher
 - You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
-- You have a running Metabase instance using a compatible version of the enterprise binary. The v1.50.0 release candidate is the only supported version at this time. We do not recommend running this in production.
+- You have a running Metabase instance using a compatible version of the enterprise binary. v1.50.x are the only supported versions at this time.
 
 # Getting started
 
 ## Start Metabase
 
-Currently, the SDK only works with specific versions of Metabase.
-
-> Note these are not considered stable. Do not use these in production.
+Currently, the SDK only works with Metabase version 50.
 
 You have the following options:
 
@@ -39,12 +48,12 @@ You have the following options:
 Start the Metabase container:
 
 ```bash
-docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.50.0-RC2
+docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.50.6
 ```
 
 ### 2. Running the Jar file
 
-1. Download the Jar file from https://downloads.metabase.com/enterprise/v1.50.0-RC2/metabase.jar
+1. Download the Jar file from https://downloads.metabase.com/enterprise/v1.50.6/metabase.jar
 2. Create a new directory and move the Metabase JAR into it.
 3. Change into your new Metabase directory and run the JAR.
 
@@ -225,7 +234,7 @@ export default function App() {
 }
 ```
 
-### Embedding an interactive question (drill-down)
+### Embedding an interactive question (with drill-down)
 
 ```jsx
 import React from "react";
@@ -258,7 +267,7 @@ After the SDK is configured, you can embed your dashboard using the `StaticDashb
 - **withTitle**: `boolean` – Whether the dashboard should display a title.
 - **withCardTitle**: `boolean` – Whether the dashboard cards should display a title.
 - **withDownloads**: `boolean | null` – Whether to hide the download button.
-- **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
+- **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. [More information here](https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters)
 
 
 ```jsx
@@ -277,6 +286,49 @@ export default function App() {
   return (
     <MetabaseProvider config={config}>
         <StaticDashboard
+          dashboardId={dashboardId}
+          initialParameterValues={initialParameterValues}
+          withTitle={false}
+          withDownloads={false}
+          hiddenParameters={hideParameters}
+        />
+    </MetabaseProvider>
+  );
+}
+```
+
+### Embedding an interactive dashboard (with drill-down)
+
+After the SDK is configured, you can embed your dashboard using the `InteractiveDashboard` component.
+
+
+#### Parameters
+
+- **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
+- **initialParameterValues**: `Record<string, string | string[]>` – Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
+- **withTitle**: `boolean` – Whether the dashboard should display a title.
+- **withCardTitle**: `boolean` – Whether the dashboard cards should display a title.
+- **withDownloads**: `boolean | null` – Whether to hide the download button.
+- **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
+- **questionHeight**: `number | null` – Height of a question component when drilled from the dashboard to a question level.
+- **questionPlugins** `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add drill-down menu. [See this](#implementing-custom-actions) for more details
+
+```jsx
+import React from "react";
+import { MetabaseProvider, InteractiveDashboard } from "@metabase/embedding-sdk-react";
+
+const config = {...}
+
+export default function App() {
+  const dashboardId = 1; // This is the dashboard ID you want to embed
+  const initialParameterValues = {}; // Define your query parameters here
+
+  // choose parameter names that are in your dashboard
+  const hiddenParameters = ["location", "city"]
+
+  return (
+    <MetabaseProvider config={config}>
+        <InteractiveDashboard
           dashboardId={dashboardId}
           initialParameterValues={initialParameterValues}
           withTitle={false}
@@ -425,6 +477,9 @@ const theme = {
 
         // Default background color of cells, defaults to `background`
         backgroundColor: "#FFFFFF",
+
+        // Font size of cell values, defaults to ~12.5px
+        fontSize: "12.5px",
       },
 
       idColumn: {
@@ -445,25 +500,37 @@ const theme = {
       },
     },
 
+    // Cartesian chart
+    cartesian: {
+      // Padding around the cartesian charts.
+      // Uses CSS's `padding` property format.
+      padding: "4px 8px",
+    },
+
     // Pivot table
     pivotTable: {
+      cell: {
+        // Font size of cell values, defaults to ~12px
+        fontSize: "12px",
+      },
+
       // Pivot row toggle to expand or collapse row
       rowToggle: {
         textColor: "#FFFFFF",
         backgroundColor: "#95A5A6",
       },
     },
-    
+
     collectionBrowser: {
        breadcrumbs: {
          expandButton: {
-           textColor: "#8118F4";
-           backgroundColor: "#767D7C";
-           hoverTextColor: "#CE8C8C";
-           hoverBackgroundColor: "#69264B";
-         };
-       };
-     };
+           textColor: "#8118F4",
+           backgroundColor: "#767D7C",
+           hoverTextColor: "#CE8C8C",
+           hoverBackgroundColor: "#69264B",
+         },
+       },
+     },
   },
 };
 ```

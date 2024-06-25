@@ -1,7 +1,7 @@
 import { assocIn } from "icepick";
 import _ from "underscore";
 
-import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_QUESTION_ID,
@@ -9,6 +9,7 @@ import {
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
   ADMIN_PERSONAL_COLLECTION_ID,
+  ALL_USERS_GROUP_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
@@ -25,13 +26,15 @@ import {
   pickEntity,
   entityPickerModal,
   openCollectionMenu,
+  createQuestion,
+  entityPickerModalItem,
 } from "e2e/support/helpers";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
 const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, FEEDBACK_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > collection defaults", () => {
   beforeEach(() => {
@@ -280,6 +283,74 @@ describe("scenarios > collection defaults", () => {
       cy.signInAsAdmin();
     });
 
+    it("should handle moving a question when you don't have access to entier collection path (metabase#44316", () => {
+      cy.createCollection({
+        name: "Collection A",
+      }).then(({ body: collectionA }) => {
+        cy.createCollection({
+          name: "Collection B",
+          parent_id: collectionA.id,
+        }).then(({ body: collectionB }) => {
+          cy.createCollection({
+            name: "Collection C",
+            parent_id: collectionB.id,
+          }).then(({ body: collectionC }) => {
+            cy.createCollection({
+              name: "Collection D",
+              parent_id: collectionC.id,
+            }).then(({ body: collectionD }) => {
+              cy.createCollection({
+                name: "Collection E",
+                parent_id: collectionD.id,
+              }).then(({ body: collectionE }) => {
+                cy.updatePermissionsGraph({
+                  [ALL_USERS_GROUP_ID]: {
+                    [SAMPLE_DB_ID]: {
+                      "view-data": "unrestricted",
+                      "create-queries": "query-builder-and-native",
+                    },
+                  },
+                });
+                cy.updateCollectionGraph({
+                  [ALL_USERS_GROUP_ID]: {
+                    root: "none",
+                    [collectionA.id]: "none",
+                    [collectionB.id]: "write",
+                    [collectionC.id]: "none",
+                    [collectionD.id]: "none",
+                    [collectionE.id]: "write",
+                  },
+                });
+                cy.signIn("none");
+                createQuestion(
+                  {
+                    name: "Foo Question",
+                    query: {
+                      "source-table": FEEDBACK_ID,
+                    },
+                    collection_id: collectionE.id,
+                  },
+                  {
+                    visitQuestion: true,
+                  },
+                );
+              });
+            });
+          });
+        });
+      });
+
+      cy.findByTestId("qb-header").icon("ellipsis").click();
+      popover().findByText("Move").click();
+      entityPickerModalItem(1, "Collection B").should("exist");
+      entityPickerModalItem(2, "Collection E").should("exist");
+
+      entityPickerModal().should(
+        "not.contain.text",
+        "You don't have permissions to do that.",
+      );
+    });
+
     it("should show list of collection items even if one question has invalid parameters (metabase#25543)", () => {
       const questionDetails = {
         native: { query: "select 1 --[[]]", "template-tags": {} },
@@ -431,7 +502,7 @@ describe("scenarios > collection defaults", () => {
       // we need to do this manually because we need to await the correct number of api requests to keep this from flaking
 
       entityPickerModal().within(() => {
-        cy.findByTestId("loading-spinner").should("not.exist");
+        cy.findByTestId("loading-indicator").should("not.exist");
         cy.findByRole("tab", { name: /Collections/ }).click();
         cy.wait([
           "@getCollectionItems",
@@ -814,124 +885,130 @@ describe("scenarios > collection items listing", () => {
       archiveAll();
     });
 
-    it("should allow to sort unpinned items by columns asc and desc", () => {
-      ["A", "B", "C"].forEach((letter, i) => {
-        cy.createDashboard({
-          name: `${letter} Dashboard`,
-          collection_position: null,
+    it(
+      "should allow to sort unpinned items by columns asc and desc",
+      { tags: "@flaky" },
+      () => {
+        ["A", "B", "C"].forEach((letter, i) => {
+          cy.createDashboard({
+            name: `${letter} Dashboard`,
+            collection_position: null,
+          });
+
+          // Signing in as a different users, so we have different names in "Last edited by"
+          // In that way we can test sorting by this column correctly
+          cy.signIn("normal");
+
+          cy.createQuestion({
+            name: `${letter} Question`,
+            collection_position: null,
+            query: TEST_QUESTION_QUERY,
+          });
         });
 
-        // Signing in as a different users, so we have different names in "Last edited by"
-        // In that way we can test sorting by this column correctly
-        cy.signIn("normal");
+        visitRootCollection();
+        // We're waiting for the loading spinner to disappear from the main sidebar.
+        // Otherwise, this causes the page re-render and the flaky test.
+        cy.findByTestId("main-navbar-root").get("circle").should("not.exist");
 
-        cy.createQuestion({
-          name: `${letter} Question`,
-          collection_position: null,
-          query: TEST_QUESTION_QUERY,
+        getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
+          expect(actualNames, "sorted alphabetically by default").to.deep.equal(
+            sortedNames,
+          );
         });
-      });
 
-      visitRootCollection();
-      // We're waiting for the loading spinner to disappear from the main sidebar.
-      // Otherwise, this causes the page re-render and the flaky test.
-      cy.findByTestId("main-navbar-root").get("circle").should("not.exist");
+        toggleSortingFor(/Name/i);
+        cy.wait("@getCollectionItems");
 
-      getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-        expect(actualNames, "sorted alphabetically by default").to.deep.equal(
-          sortedNames,
-        );
-      });
+        getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
+          expect(actualNames, "sorted alphabetically reversed").to.deep.equal(
+            sortedNames.reverse(),
+          );
+        });
 
-      toggleSortingFor(/Name/i);
-      cy.wait("@getCollectionItems");
+        toggleSortingFor(/Name/i);
+        // Not sure why the same XHR doesn't happen after we click the "Name" sorting again?
+        getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
+          expect(actualNames, "sorted alphabetically").to.deep.equal(
+            sortedNames,
+          );
+        });
 
-      getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-        expect(actualNames, "sorted alphabetically reversed").to.deep.equal(
-          sortedNames.reverse(),
-        );
-      });
+        toggleSortingFor(/Type/i);
+        cy.wait("@getCollectionItems");
+        getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
+          const dashboardsFirst = _.chain(sortedNames)
+            .sortBy(name => name.toLowerCase().includes("question"))
+            .sortBy(name => name.toLowerCase().includes("collection"))
+            .sortBy(name => name.toLowerCase().includes("metabase analytics"))
+            .value();
+          expect(actualNames, "sorted dashboards first").to.deep.equal(
+            dashboardsFirst,
+          );
+        });
 
-      toggleSortingFor(/Name/i);
-      // Not sure why the same XHR doesn't happen after we click the "Name" sorting again?
-      getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-        expect(actualNames, "sorted alphabetically").to.deep.equal(sortedNames);
-      });
+        toggleSortingFor(/Type/i);
+        cy.wait("@getCollectionItems");
+        getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
+          const questionsFirst = _.chain(sortedNames)
+            .sortBy(name => name.toLowerCase().includes("question"))
+            .sortBy(name => name.toLowerCase().includes("dashboard"))
+            .value();
+          expect(actualNames, "sorted questions first").to.deep.equal(
+            questionsFirst,
+          );
+        });
 
-      toggleSortingFor(/Type/i);
-      cy.wait("@getCollectionItems");
-      getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-        const dashboardsFirst = _.chain(sortedNames)
-          .sortBy(name => name.toLowerCase().includes("question"))
-          .sortBy(name => name.toLowerCase().includes("collection"))
-          .sortBy(name => name.toLowerCase().includes("metabase analytics"))
-          .value();
-        expect(actualNames, "sorted dashboards first").to.deep.equal(
-          dashboardsFirst,
-        );
-      });
+        const lastEditedByColumnTestId = "collection-entry-last-edited-by";
 
-      toggleSortingFor(/Type/i);
-      cy.wait("@getCollectionItems");
-      getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-        const questionsFirst = _.chain(sortedNames)
-          .sortBy(name => name.toLowerCase().includes("question"))
-          .sortBy(name => name.toLowerCase().includes("dashboard"))
-          .value();
-        expect(actualNames, "sorted questions first").to.deep.equal(
-          questionsFirst,
-        );
-      });
+        toggleSortingFor(/Last edited by/i);
+        cy.wait("@getCollectionItems");
 
-      const lastEditedByColumnTestId = "collection-entry-last-edited-by";
+        cy.findAllByTestId(lastEditedByColumnTestId).then(nodes => {
+          const actualNames = _.map(nodes, "innerText");
+          const sortedNames = _.chain(actualNames)
+            .sortBy(actualNames)
+            .sortBy(name => !name)
+            .value();
+          expect(
+            actualNames,
+            "sorted by last editor name alphabetically",
+          ).to.deep.equal(sortedNames);
+        });
 
-      toggleSortingFor(/Last edited by/i);
-      cy.wait("@getCollectionItems");
+        toggleSortingFor(/Last edited by/i);
+        cy.wait("@getCollectionItems");
 
-      cy.findAllByTestId(lastEditedByColumnTestId).then(nodes => {
-        const actualNames = _.map(nodes, "innerText");
-        const sortedNames = _.chain(actualNames)
-          .sortBy(actualNames)
-          .sortBy(name => !name)
-          .value();
-        expect(
-          actualNames,
-          "sorted by last editor name alphabetically",
-        ).to.deep.equal(sortedNames);
-      });
+        cy.findAllByTestId(lastEditedByColumnTestId).then(nodes => {
+          const actualNames = _.map(nodes, "innerText");
+          const sortedNames = _.sortBy(actualNames);
+          expect(
+            actualNames,
+            "sorted by last editor name alphabetically reversed",
+          ).to.deep.equal(sortedNames.reverse());
+        });
 
-      toggleSortingFor(/Last edited by/i);
-      cy.wait("@getCollectionItems");
+        toggleSortingFor(/Last edited at/i);
+        cy.wait("@getCollectionItems");
 
-      cy.findAllByTestId(lastEditedByColumnTestId).then(nodes => {
-        const actualNames = _.map(nodes, "innerText");
-        const sortedNames = _.sortBy(actualNames);
-        expect(
-          actualNames,
-          "sorted by last editor name alphabetically reversed",
-        ).to.deep.equal(sortedNames.reverse());
-      });
+        getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
+          expect(actualNames, "sorted newest last").to.deep.equal(sortedNames);
+        });
 
-      toggleSortingFor(/Last edited at/i);
-      cy.wait("@getCollectionItems");
+        toggleSortingFor(/Last edited at/i);
+        cy.wait("@getCollectionItems");
 
-      getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-        expect(actualNames, "sorted newest last").to.deep.equal(sortedNames);
-      });
-
-      toggleSortingFor(/Last edited at/i);
-      cy.wait("@getCollectionItems");
-
-      getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-        const newestFirst = _.chain(sortedNames)
-          .reverse()
-          .sortBy(name => name.toLowerCase().includes("collection"))
-          .sortBy(name => name.toLowerCase().includes("personal"))
-          .sortBy(name => name.toLowerCase().includes("metabase analytics"))
-          .value();
-        expect(actualNames, "sorted newest first").to.deep.equal(newestFirst);
-      });
-    });
+        getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
+          const newestFirst = _.chain(sortedNames)
+            .reverse()
+            .sortBy(name => name.toLowerCase().includes("collection"))
+            .sortBy(name => name.toLowerCase().includes("personal"))
+            .sortBy(name => name.toLowerCase().includes("metabase analytics"))
+            .value();
+          expect(actualNames, "sorted newest first").to.deep.equal(newestFirst);
+        });
+      },
+    );
 
     it("should reset pagination if sorting applied on not first page", () => {
       _.times(15, i => cy.createDashboard(`dashboard ${i}`));

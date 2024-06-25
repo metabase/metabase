@@ -4,7 +4,7 @@ import type { MetabotEntityType } from "metabase-types/store";
 
 export type MetabotQueryRunResult = "success" | "failure" | "bad-sql";
 
-const SCEMA_NAME = "metabot";
+const SCHEMA_NAME = "metabot";
 const TEMPLATE_VERSION = "1-0-1";
 
 export const trackMetabotQueryRun = (
@@ -14,7 +14,7 @@ export const trackMetabotQueryRun = (
   visualization_type: string | null,
   is_rerun: boolean,
 ) => {
-  trackSchemaEvent(SCEMA_NAME, TEMPLATE_VERSION, {
+  trackSchemaEvent(SCHEMA_NAME, TEMPLATE_VERSION, {
     event: "metabot_query_run",
     entity_type,
     prompt_template_versions,
@@ -29,7 +29,7 @@ export const trackMetabotFeedbackReceived = (
   prompt_template_versions: string[] | null,
   feedback_type: MetabotFeedbackType | null,
 ) => {
-  trackSchemaEvent(SCEMA_NAME, TEMPLATE_VERSION, {
+  trackSchemaEvent(SCHEMA_NAME, TEMPLATE_VERSION, {
     event: "metabot_feedback_received",
     entity_type,
     prompt_template_versions,

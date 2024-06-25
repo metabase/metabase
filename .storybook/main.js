@@ -10,6 +10,7 @@ module.exports = {
     "../frontend/**/*.stories.mdx",
     "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
   ],
+  staticDirs: ["../resources/frontend_client"],
   addons: [
     "@storybook/addon-essentials",
     "@storybook/addon-links",

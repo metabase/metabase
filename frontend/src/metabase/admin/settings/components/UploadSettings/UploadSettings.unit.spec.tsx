@@ -514,7 +514,9 @@ describe("Admin > Settings > UploadSetting", () => {
         name: "Update settings",
       });
       await userEvent.click(updateButton);
-      expect(await screen.findByTestId("loading-spinner")).toBeInTheDocument();
+      expect(
+        await screen.findByTestId("loading-indicator"),
+      ).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Update settings" }),
       ).not.toBeInTheDocument();
@@ -540,7 +542,9 @@ describe("Admin > Settings > UploadSetting", () => {
         name: "Update settings",
       });
       await userEvent.click(updateButton);
-      expect(await screen.findByTestId("loading-spinner")).toBeInTheDocument();
+      expect(
+        await screen.findByTestId("loading-indicator"),
+      ).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Update settings" }),
       ).not.toBeInTheDocument();

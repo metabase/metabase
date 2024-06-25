@@ -9,7 +9,7 @@ on:
         type: string
         required: true
       git_ref:
-        description: 'Valid git reference e.g. branches, tags, hashes'
+        description: 'A git commit hash that will be used to build the SDK'
         type: string
         required: true
 

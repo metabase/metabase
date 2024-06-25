@@ -66,12 +66,11 @@
         used-fields    (into #{} (map keep-source+alias-props) usages)
         nominal-fields (into #{} (keep ->nominal-ref) usages)
         nfc-roots      (into #{} (keep nfc-root) used-fields)]
-    (letfn [(used? [[_tag id-or-name {::add/keys [source-table]}, :as field]]
+    (letfn [(used? [[_tag _id-or-name {::add/keys [source-table]}, :as field]]
               (or (contains? used-fields (keep-source+alias-props field))
                   ;; We should also consider a Field to be used if we're referring to it with a nominal field literal
                   ;; ref in the next stage -- that's actually how you're supposed to be doing it anyway.
-                  (and (integer? id-or-name)
-                       (= source-table ::add/source)
+                  (and (= source-table ::add/source)
                        (contains? nominal-fields (->nominal-ref field)))
                   (contains? nfc-roots (field-id-props field))))
             (used?* [field]

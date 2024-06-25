@@ -26,7 +26,7 @@ export function HeadBreadcrumbs({
   variant = "head",
   parts,
   divider,
-  inactiveColor,
+  inactiveColor = undefined,
   ...props
 }) {
   return (

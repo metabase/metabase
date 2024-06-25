@@ -1,0 +1,18 @@
+@keyframes animated-progress {
+  0% {
+    transform: scaleX(1);
+  }
+
+  100% {
+    transform: scaleX(0);
+  }
+}
+
+.progress {
+  animation: animated-progress linear;
+  transform-origin: left;
+}
+
+.toast:hover .progress {
+  animation-play-state: paused;
+}
