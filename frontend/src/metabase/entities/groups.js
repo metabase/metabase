@@ -8,6 +8,10 @@ import {
 import { permissionApi, useGetPermissionsGroupQuery } from "metabase/api";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 
+const useGetQuery = ({ id }) => {
+  return useGetPermissionsGroupQuery(id);
+};
+
 /**
  * @deprecated use "metabase/api" instead
  */
@@ -17,7 +21,7 @@ const Groups = createEntity({
 
   rtk: {
     getUseGetQuery: () => ({
-      useGetQuery: useGetPermissionsGroupQuery,
+      useGetQuery,
     }),
   },
 
