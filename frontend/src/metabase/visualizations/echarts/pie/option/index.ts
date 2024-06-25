@@ -1,3 +1,4 @@
+import Color from "color";
 import type { EChartsOption } from "echarts";
 import cloneDeep from "lodash.clonedeep";
 
@@ -109,14 +110,37 @@ export function getPieChartOption(
     graphic: graphicOption,
     series: {
       ...seriesOption,
-      data: chartModel.slices.map(s => ({
-        value: s.value,
-        name: s.key,
-        itemStyle: { color: s.color },
-        label: {
-          color: getTextColorForBackground(s.color, renderingContext.getColor),
-        },
-      })),
+      data: chartModel.slices.map(s => {
+        const labelColor = getTextColorForBackground(
+          s.color,
+          renderingContext.getColor,
+        );
+
+        return {
+          value: s.value,
+          name: s.key,
+          itemStyle: { color: s.color },
+          label: {
+            color: labelColor,
+          },
+          emphasis: { itemStyle: { color: s.color }, label: { minAngle: 15 } },
+          blur: {
+            itemStyle: {
+              // We have to fade the slices through `color` rather than `opacity`
+              // becuase echarts' will apply the opacity to the white border,
+              // causing the underlying color to leak. It is safe to use non-hex
+              // values here, since this value will never be used in batik
+              // (there's no emphasis/blur for static viz).
+              color: Color(s.color).fade(0.7).rgb().string(),
+              opacity: 1,
+            },
+            label: {
+              opacity:
+                labelColor === renderingContext.getColor("text-dark") ? 0.3 : 1,
+            },
+          },
+        };
+      }),
     },
   };
 }
