@@ -46,7 +46,7 @@ export function setFilterListSource({ values }) {
       .clear()
       .type(
         values
-          .map(function (value) {
+          .map(value => {
             if (Array.isArray(value)) {
               return value.join(", ");
             }
