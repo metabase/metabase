@@ -4,7 +4,8 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { useCollectionQuery, useQuestionQuery } from "metabase/common/hooks";
+import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { useQuestionQuery } from "metabase/common/hooks";
 import { getDashboard } from "metabase/dashboard/selectors";
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
@@ -78,9 +79,9 @@ function MainNavbar({
     id: questionId,
   });
 
-  const { data: collection } = useCollectionQuery({
-    id: collectionId,
-  });
+  const { data: collection } = useGetCollectionQuery(
+    collectionId ? { id: collectionId } : skipToken,
+  );
 
   useEffect(() => {
     function handleSidebarKeyboardShortcut(e: KeyboardEvent) {
