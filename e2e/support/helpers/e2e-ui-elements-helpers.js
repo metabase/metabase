@@ -233,6 +233,20 @@ export function dashboardCards() {
   return cy.get("[data-element-id=dashboard-cards-container]");
 }
 
+export function tableInteractive() {
+  return cy.findByTestId("TableInteractive-root");
+}
+
+export function tableHeaderClick(headerString) {
+  tableInteractive().within(() => {
+    cy.findByTextEnsureVisible(headerString).trigger("mousedown");
+  });
+
+  tableInteractive().within(() => {
+    cy.findByTextEnsureVisible(headerString).trigger("mouseup");
+  });
+}
+
 /**
  * selects the global new button
  * @param {*} menuItem optional, if provided, will click the New button and return the menu item with the text provided
