@@ -1746,7 +1746,7 @@
     (migrate!)
     (pulse-channel-test/with-send-pulse-setup!
       ;; the `pulse-channell-test/with-send-pulse-setup!` macro dynamically binds an in-memory scheduler to `task/*quartz-scheduler*`
-      ;; but we need to re-bind that to global here because the InitSendPulseTriggers job will need access to the scheduler, 
+      ;; but we need to re-bind that to global here because the InitSendPulseTriggers job will need access to the scheduler,
       ;; and since quartz job is running in a different thread other than this test's thread, we need to bind it globally
       (with-redefs [task/*quartz-scheduler* task/*quartz-scheduler*]
         (let [user-id  (:id (new-instance-with-default :core_user))
