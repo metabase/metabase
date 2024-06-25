@@ -12,9 +12,7 @@ import { useSelector } from "metabase/lib/redux";
 import { PublicOrEmbeddedDashboard } from "./PublicOrEmbeddedDashboard";
 import { usePublicDashboardEndpoints } from "./WithPublicDashboardEndpoints";
 
-export const PublicOrEmbeddedDashboardPage = (
-  props: WithRouterProps & { debug: string },
-) => {
+export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
   const { location } = props;
   const parameterQueryParams = props.location.query;
 
