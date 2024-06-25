@@ -90,7 +90,6 @@ type PublicOrEmbeddedDashboardProps = OwnProps &
 class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboardProps> {
   _initialize = async (isForceUpdate?: boolean) => {
     const {
-      dashboard,
       initialize,
       fetchDashboard,
       fetchDashboardCardData,
@@ -99,7 +98,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
       dashboardId,
     } = this.props;
 
-    if (!dashboard || isForceUpdate) {
+    if (!this.props.dashboard || isForceUpdate) {
       initialize();
 
       const result = await fetchDashboard({
@@ -114,7 +113,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
     }
 
     try {
-      if (dashboard?.tabs?.length === 0) {
+      if (this.props.dashboard?.tabs?.length === 0) {
         await fetchDashboardCardData({ reload: false, clearCache: true });
       }
     } catch (error) {
