@@ -64,6 +64,8 @@ import {
   canUseDashboardEndpoints,
   canUseCardEndpoints,
   getTokenFieldPlaceholder,
+  getLabel,
+  getValue,
 } from "./utils";
 
 const MAX_SEARCH_RESULTS = 100;
@@ -385,12 +387,13 @@ export function FieldValuesWidgetInner({
   // This is needed to show the correct display value for the current value in the MultiSelect
   const valueOptions = useMemo(() => {
     return value
-      .map(value => fieldValues.find(entry => entry[0] === value))
+      .map(value => fieldValues.find(entry => getValue(entry) === value))
       .filter((entry): entry is FieldValue => Boolean(entry));
   }, [value, fieldValues]);
 
   function customLabel(value: RowValue): string | undefined {
-    return fieldValues.find(entry => entry[0] === value)?.[1];
+    const option = fieldValues.find(entry => getValue(entry) === value);
+    return option && getLabel(option);
   }
 
   if (!valueRenderer) {
@@ -410,9 +413,9 @@ export function FieldValuesWidgetInner({
       renderValue({
         fields,
         formatOptions,
-        value: option[0],
+        value: getValue(option),
         autoLoad: false,
-        displayValue: option[1],
+        displayValue: getLabel(option),
       });
   }
 
@@ -470,13 +473,14 @@ export function FieldValuesWidgetInner({
 
   const valueForLabel = (label: string | number) => {
     const option = fieldValues.find(option => {
-      const opt = option[1] ?? option[0]?.toString();
+      const opt = getLabel(option) ?? getValue(option)?.toString();
       return opt === label;
     });
 
     if (option) {
-      return option[0];
+      return getValue(option);
     }
+
     return label;
   };
 
@@ -502,10 +506,10 @@ export function FieldValuesWidgetInner({
       value: string;
       customLabel?: string;
     } {
-      const value = option[0];
+      const value = getValue(option);
       const column = fields[0];
       const label =
-        option[1] ??
+        getLabel(option) ??
         formatValue(value, {
           ...formatOptions,
           column,
