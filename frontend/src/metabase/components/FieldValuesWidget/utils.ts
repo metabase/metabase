@@ -327,6 +327,6 @@ export function getLabel(option: FieldValue): string | undefined {
   return option[1];
 }
 
-export function getValue(option: FieldValue): RowValue | undefined {
+export function getValue(option: FieldValue): RowValue {
   return option[0];
 }
