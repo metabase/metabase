@@ -23,6 +23,7 @@
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.models.secret :as secret]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -78,7 +79,8 @@
     ;; Spatial types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107588
     [#"^SDO_"       :type/*]
     [#"STRUCT"      :type/*]
-    [#"TIMESTAMP(\(\d\))? WITH TIME ZONE" :type/DateTimeWithTZ]
+    [#"TIMESTAMP(\(\d\))? WITH TIME ZONE"       :type/DateTimeWithTZ]
+    [#"TIMESTAMP(\(\d\))? WITH LOCAL TIME ZONE" :type/DateTimeWithLocalTZ]
     [#"TIMESTAMP"   :type/DateTime]
     [#"URI"         :type/Text]
     [#"XML"         :type/*]]))
@@ -612,11 +614,15 @@
     (when-let [^TIMESTAMPTZ t (.getObject rs i TIMESTAMPTZ)]
       (let [^C3P0ProxyConnection proxy-conn (.. rs getStatement getConnection)
             conn                            (.unwrap proxy-conn OracleConnection)]
-        ;; TIMEZONE FIXME - we need to warn if the Oracle JDBC driver is `ojdbc7.jar`, which probably won't have this
-        ;; method
-        ;;
-        ;; I think we can call `(oracle.jdbc.OracleDriver/getJDBCVersion)` and check whether it returns 4.2+
         (.offsetDateTimeValue t conn)))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:oracle OracleTypes/TIMESTAMPLTZ]
+  [_driver ^ResultSet rs _rsmeta ^Integer i]
+  ;; `.offsetDateTimeValue` with TIMESTAMPLTZ returns the incorrect value with daylight savings time, so instead of
+  ;; trusting Oracle to get time zones right we assume the string value from `.getNString` is correct and is in a format
+  ;; we can parse.
+  (fn []
+    (u.date/parse (.getNString rs i))))
 
 (defmethod unprepare/unprepare-value [:oracle OffsetDateTime]
   [_ t]
