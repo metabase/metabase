@@ -43,6 +43,7 @@ import {
   CELL_HEIGHT,
   LEFT_HEADER_LEFT_SPACING,
   MIN_HEADER_CELL_WIDTH,
+  PIVOT_TABLE_BODY_LABEL,
 } from "./constants";
 import {
   settings,
@@ -456,6 +457,7 @@ function _PivotTable({
                 <AutoSizer disableWidth>
                   {() => (
                     <Grid
+                      aria-label={PIVOT_TABLE_BODY_LABEL}
                       width={width - leftHeaderWidth}
                       height={bodyHeight}
                       className={CS.textDark}
