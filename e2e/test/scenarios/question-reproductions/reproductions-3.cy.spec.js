@@ -949,15 +949,15 @@ describe("issue 40399", () => {
 
     openNotebook();
 
-    cy.findByTestId("step-filter-0-0").within(() => {
-      cy.findByTestId("step-preview-button").click();
+    getNotebookStep("filter", { stage: 0 }).within(() => {
+      cy.icon("play").click();
       cy.findByTestId("preview-root")
         .findAllByText("Widget")
         .should("be.visible");
     });
 
-    cy.findByTestId("step-join-0-0").within(() => {
-      cy.findByTestId("step-preview-button").click();
+    getNotebookStep("join", { stage: 0 }).within(() => {
+      cy.icon("play").click();
       cy.findByTestId("preview-root")
         .findAllByText("Gizmo")
         .should("be.visible");
@@ -965,8 +965,8 @@ describe("issue 40399", () => {
       cy.findByTestId("preview-root").findByText("Widget").should("not.exist");
     });
 
-    cy.findByTestId("step-data-0-0").within(() => {
-      cy.findByTestId("step-preview-button").click();
+    getNotebookStep("data", { stage: 0 }).within(() => {
+      cy.icon("play").click();
       cy.findByTestId("preview-root")
         .findAllByText("Gizmo")
         .should("be.visible");
