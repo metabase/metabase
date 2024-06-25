@@ -328,6 +328,33 @@ describe("QueryColumnPicker", () => {
     expect(customColumn).toBeDisabled();
   });
 
+  it("should not allow to remove columns when there are expressions and only one removable column in multi-stage queries", () => {
+    const initialQuery = Lib.appendStage(
+      createQueryWithClauses({
+        query: createQuery(),
+        breakouts: [{ tableName: "PRODUCTS", columnName: "PRICE" }],
+      }),
+    );
+    const stageIndex = 1;
+    setup({
+      query: Lib.expression(
+        initialQuery,
+        stageIndex,
+        "Custom",
+        Lib.expressionClause("+", [1, 2]),
+      ),
+    });
+
+    const [group, ...columns] = screen.getAllByRole("checkbox");
+    expect(group).toBeChecked();
+    expect(group).toBeDisabled();
+    expect(columns.length).toBe(2);
+    for (const column of columns) {
+      expect(column).toBeChecked();
+      expect(column).toBeDisabled();
+    }
+  });
+
   it("should allow to search for columns", async () => {
     setup();
     await userEvent.type(
