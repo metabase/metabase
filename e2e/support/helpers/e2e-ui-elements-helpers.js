@@ -252,12 +252,16 @@ export function dashboardCards() {
   return cy.get("[data-element-id=dashboard-cards-container]");
 }
 
+export function tableInteractive() {
+  return cy.findByTestId("TableInteractive-root");
+}
+
 export function tableHeaderClick(headerString) {
-  cy.findByTestId("TableInteractive-root").within(() => {
+  tableInteractive().within(() => {
     cy.findByTextEnsureVisible(headerString).trigger("mousedown");
   });
 
-  cy.findByTestId("TableInteractive-root").within(() => {
+  tableInteractive().within(() => {
     cy.findByTextEnsureVisible(headerString).trigger("mouseup");
   });
 }

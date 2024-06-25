@@ -32,9 +32,12 @@ import {
   appBar,
   openProductsTable,
   queryBuilderFooter,
+  enterCustomColumnDetails,
+  addCustomColumn,
+  tableInteractive,
 } from "e2e/support/helpers";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("issue 32625, issue 31635", () => {
   const CC_NAME = "Is Promotion";
@@ -475,6 +478,23 @@ describe("issue 40435", () => {
   });
 });
 
+describe("issue 41381", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show an error message when adding a constant-only custom expression (metabase#41381)", () => {
+    openOrdersTable({ mode: "notebook" });
+    addCustomColumn();
+    enterCustomColumnDetails({ formula: "'Test'", name: "Constant" });
+    popover().within(() => {
+      cy.findByText("Invalid expression").should("be.visible");
+      cy.button("Done").should("be.disabled");
+    });
+  });
+});
+
 describe(
   "issue 42010 -- Unable to filter by mongo id",
   { tags: "@mongo" },
@@ -634,6 +654,51 @@ describe("issue 42957", () => {
       entityPickerModalTab("Models").click();
 
       cy.findByText("Collection without models").should("not.exist");
+    });
+  });
+});
+
+describe("issue 40064", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to edit a custom column with the same name as one of the columns used in the expression (metabase#40064)", () => {
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: {
+            Tax: ["*", ["field", ORDERS.TAX, { "base-type": "type/Float" }], 2],
+          },
+          limit: 1,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.log("check the initial expression value");
+    tableInteractive().findByText("4.14").should("be.visible");
+
+    cy.log("update the expression and check the value");
+    openNotebook();
+    getNotebookStep("expression").findByText("Tax").click();
+    enterCustomColumnDetails({ formula: "[Tax] * 3" });
+    popover().button("Update").click();
+    visualize();
+    tableInteractive().findByText("6.21").should("be.visible");
+
+    cy.log("rename the expression and make sure you cannot create a cycle");
+    openNotebook();
+    getNotebookStep("expression").findByText("Tax").click();
+    enterCustomColumnDetails({ formula: "[Tax] * 3", name: "Tax3" });
+    popover().button("Update").click();
+    getNotebookStep("expression").findByText("Tax3").click();
+    enterCustomColumnDetails({ formula: "[Tax3] * 3", name: "Tax3" });
+    popover().within(() => {
+      cy.findByText("Unknown Field: Tax3").should("be.visible");
+      cy.button("Update").should("be.disabled");
     });
   });
 });
@@ -909,6 +974,69 @@ describe("issue 43294", () => {
     echartsContainer().within(() => {
       cy.findByText("Count").should("be.visible");
       cy.findByText("Created At").should("be.visible");
+    });
+  });
+});
+
+describe("issue 40399", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show results from other stages in a stages preview (metabase#40399)", () => {
+    createQuestion(
+      {
+        name: "40399",
+        query: {
+          "source-table": PRODUCTS_ID,
+          joins: [
+            {
+              fields: "all",
+              alias: "Orders",
+              "source-table": ORDERS_ID,
+              strategy: "left-join",
+              condition: [
+                "=",
+                ["field", PRODUCTS.ID, null],
+                ["field", ORDERS.PRODUCT_ID, { "join-alias": "Orders" }],
+              ],
+            },
+          ],
+          filter: ["=", ["field", PRODUCTS.CATEGORY, null], "Widget"],
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+
+    openNotebook();
+
+    getNotebookStep("filter", { stage: 0 }).within(() => {
+      cy.icon("play").click();
+      cy.findByTestId("preview-root")
+        .findAllByText("Widget")
+        .should("be.visible");
+    });
+
+    getNotebookStep("join", { stage: 0 }).within(() => {
+      cy.icon("play").click();
+      cy.findByTestId("preview-root")
+        .findAllByText("Gizmo")
+        .should("be.visible");
+
+      cy.findByTestId("preview-root").findByText("Widget").should("not.exist");
+    });
+
+    getNotebookStep("data", { stage: 0 }).within(() => {
+      cy.icon("play").click();
+      cy.findByTestId("preview-root")
+        .findAllByText("Gizmo")
+        .should("be.visible");
+
+      cy.findByTestId("preview-root").findAllByText("Gizmo").should("exist");
+      cy.findByTestId("preview-root").findAllByText("Widget").should("exist");
     });
   });
 });
