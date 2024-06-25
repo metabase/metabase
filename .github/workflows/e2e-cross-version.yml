@@ -3,6 +3,8 @@ name: E2E Cross-version Tests
 on:
   schedule:
     - cron: '0 9 * * 0'
+  pull_request: # just for testing
+    types: [opened, synchronize]
 
 jobs:
   cross-version-testing:
@@ -100,17 +102,7 @@ jobs:
     if: ${{ always() && contains(needs.*.result, 'failure') }}
     name: Cross-version test failure
     runs-on: ubuntu-22.04
-    env:
-      BRANCH_NAME: ${{ github.event.workflow_run.head_branch }}
-      AUTHOR_NAME: ${{ github.event.workflow_run.head_commit.author.name }}
     steps:
-      - name: Generate job summary
-        run: |
-          echo "# ${{ github.event.workflow_run.name }} workflow failed! :x:" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "View the failed run attempt (#${{ github.event.workflow_run.run_attempt }}) using the following link:" >> $GITHUB_STEP_SUMMARY
-          echo "${{ github.event.workflow_run.html_url }}" >> $GITHUB_STEP_SUMMARY
-
       - uses: actions/setup-node@v4
         with:
           node-version: lts/Hydrogen # 18.x.x
@@ -119,9 +111,9 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: | # js
-            const FAILED_RUN_URL = "${{ github.event.workflow_run.html_url }}";
-            const FAILED_RUN_NAME = "${{ github.event.workflow_run.name }}";
-            const BREAKING_COMMIT = "${{ github.event.workflow_run.head_sha }}";
+            const FAILED_RUN_URL = "${{ github.event.schedule.html_url }}";
+            const FAILED_RUN_NAME = "${{ github.event.schedule.name }}";
+            const BREAKING_COMMIT = "${{ github.event.schedule.head_sha }}";
             const AUTHOR = process.env.AUTHOR_NAME;
             const BRANCH = process.env.BRANCH_NAME;
 
