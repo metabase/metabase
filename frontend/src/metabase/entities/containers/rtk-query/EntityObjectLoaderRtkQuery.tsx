@@ -73,9 +73,7 @@ export interface Props<Entity, EntityWrapper> {
   wrapped?: boolean;
 }
 
-const defaultTransformResponse = (data: unknown, _query: EntityQuery) => {
-  return data;
-};
+const defaultTransformResponse = (data: unknown, _query: EntityQuery) => data;
 
 /**
  * Replacement for EntityObjectLoader for better compatibility with RTK Query.
