@@ -1,4 +1,4 @@
-import { getLinkedIssues, getPRsFromCommitMessage } from "./linked-issues";
+import { getLinkedIssues, getPRsFromCommitMessage, getBackportSourcePRNumber } from "./linked-issues";
 
 const closingKeywords = [
   "Close",
@@ -129,5 +129,20 @@ describe("getPRsFromCommitMessage", () => {
   it("should return the PR id for a message with multiple backport PRs", () => {
     expect(getPRsFromCommitMessage("Backport (#123) (#456)")).toEqual([123, 456]);
     expect(getPRsFromCommitMessage("Backport (#1234) and (#4567)")).toEqual([1234, 4567]);
+  });
+});
+
+describe("getBackportSourcePRNumber", () => {
+  it("should return `null` when no PR is found", () => {
+    expect(getBackportSourcePRNumber("")).toBeNull();
+    expect(getBackportSourcePRNumber("Lorem ipsum dolor sit amet.")).toBeNull();
+    expect(getBackportSourcePRNumber("#yolo")).toBeNull();
+
+  });
+
+  it("should return the pr number when it is found", () => {
+    expect(getBackportSourcePRNumber("#4567")).toBe(4567);
+    expect(getBackportSourcePRNumber(" #4567 ")).toBe(4567);
+    expect(getBackportSourcePRNumber("backports #4567 and #6789")).toBe(4567);
   });
 });

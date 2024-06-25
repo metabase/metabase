@@ -5,6 +5,7 @@
   `toJSMap` functions to turn Clojure's normal datastructures into js native structures."
   (:require
    [cheshire.core :as json]
+   [clojure.string :as str]
    [metabase.config :as config]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.render.js-engine :as js]
@@ -88,9 +89,23 @@
         (.setTextContent ""))
       node)))
 
+(defn- sanitize-svg
+  "Using a regex of negated allowed characters according to the XML 1.0 spec, replace disallowed characters with an empty string."
+  [svg-string]
+  (let [allowed-chars (re-pattern (str "[^"
+                                       "\u0009"
+                                       "\u000A"
+                                       "\u000D"
+                                       "\u0020-\uD7FF"
+                                       "\uE000-\uFFFD"
+                                       "\u10000-\u10FFFF"
+                                       "]"))]
+    (str/replace svg-string allowed-chars "")))
+
 (defn- parse-svg-string [^String s]
-  (let [factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
-    (with-open [is (ByteArrayInputStream. (.getBytes s StandardCharsets/UTF_8))]
+  (let [s (sanitize-svg s)
+        factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
+    (with-open [is (ByteArrayInputStream. (.getBytes ^String s StandardCharsets/UTF_8))]
       (.createDocument factory "file:///fake.svg" is))))
 
 (def ^:dynamic ^:private *svg-render-width*

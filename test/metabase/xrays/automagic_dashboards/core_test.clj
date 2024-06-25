@@ -655,6 +655,44 @@
                             :when name]
                         name)))))))))))
 
+(deftest basic-root-model-test-4
+  (testing "Simple model with an aggregation and a filter should not leak filter to the upper cards"
+    (mt/dataset test-data
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (let [source-query {:database (mt/id)
+                            :query    (mt/$ids
+                                        {:source-table $$products
+                                         :aggregation [[:count]],
+                                         :breakout [$products.id]
+                                         :filter [:time-interval $products.created_at -30 :day]})
+                            :type     :query}]
+          (mt/with-temp
+            [Collection {collection-id :id} {}
+             Card       card                {:table_id        (mt/id :products)
+                                             :collection_id   collection-id
+                                             :dataset_query   source-query
+                                             :result_metadata (mt/with-test-user
+                                                                  :rasta
+                                                                  (result-metadata-for-query
+                                                                   source-query))
+                                             :type            :model}]
+            (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))]
+              (ensure-single-table-sourced (mt/id :products) dashboard)
+              ;; Count of records
+              ;; Distributions:
+              ;; - Summary statistics
+              ;; - Count
+              ;; - Distinct count
+              ;; - Null values
+              (is (= 4 (->> dashboard :dashcards (filter :card) count)))
+              (ensure-dashboard-sourcing card dashboard)
+              ;; This ensures we don't get :filter on queries derived from a model
+              (is (empty?
+                   (for [{:keys [dataset_query]} (:dashcards dashboard)
+                         :when (:filter dataset_query)]
+                     dataset_query))))))))))
+
+
 (deftest model-title-does-not-leak-abstraction-test
   (testing "The title of a model or question card should not be X model or X question, but just X."
     (mt/dataset test-data

@@ -17,7 +17,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { ViewTitleHeader } from "./ViewHeader";
+import { ViewTitleHeader } from "./ViewTitleHeader";
 
 console.warn = jest.fn();
 
@@ -184,7 +184,7 @@ function setupSavedNative(props = {}) {
   };
 }
 
-describe("ViewHeader", () => {
+describe("ViewTitleHeader", () => {
   const TEST_CASE = {
     SAVED_GUI_QUESTION: {
       card: getSavedGUIQuestionCard(),

@@ -171,6 +171,10 @@ export const queryBuilderHeader = () => {
   return cy.findByTestId("qb-header");
 };
 
+export const queryBuilderFooter = () => {
+  return cy.findByTestId("view-footer");
+};
+
 export const closeQuestionActions = () => {
   queryBuilderHeader().click();
 };
