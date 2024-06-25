@@ -515,7 +515,7 @@ const PivotTable = ExplicitSize<
     className?: string;
   }
 >({
-  wrapped: true,
+  wrapped: false,
   refreshMode: "debounceLeading",
 })(_PivotTable);
 
