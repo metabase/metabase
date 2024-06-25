@@ -15,7 +15,7 @@ import {
   normalizeParameter,
   parameterHasNoDisplayValue,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type { ParameterValue } from "metabase-types/api";
+import type { ParameterValue, RowValue } from "metabase-types/api";
 
 type FormattedParameterValueProps = {
   parameter: UiParameter;
@@ -52,11 +52,13 @@ function FormattedParameterValue({
     return placeholder;
   }
 
-  const first = Array.isArray(value) ? value[0] : value;
+  const first = getValue(value);
   const values = parameter?.values_source_config?.values ?? data?.values;
   const displayValue = values?.find(
-    value => valueToString(value) === first?.toString(),
+    value => getValue(value)?.toString() === first?.toString(),
   );
+
+  const label = getLabel(displayValue);
 
   if (
     isFieldFilterUiParameter(parameter) &&
@@ -67,19 +69,32 @@ function FormattedParameterValue({
       <ParameterFieldWidgetValue
         fields={getFields(parameter)}
         value={value}
-        displayValue={displayValue?.[1]}
+        displayValue={label}
       />
     );
+  }
+
+  if (label) {
+    return <span>{formatParameterValue(label, parameter)}</span>;
   }
 
   return <span>{formatParameterValue(value, parameter)}</span>;
 }
 
-function valueToString(
+function getValue(
+  value: string | number | number[] | ParameterValue | undefined,
+): RowValue | undefined {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+  return value?.toString();
+}
+
+function getLabel(
   value: string | ParameterValue | undefined,
 ): string | undefined {
   if (Array.isArray(value)) {
-    return value[0]?.toString();
+    return value[1];
   }
   return value?.toString();
 }
