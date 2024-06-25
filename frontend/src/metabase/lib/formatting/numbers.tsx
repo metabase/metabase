@@ -282,10 +282,6 @@ export function roundFloat(
   value: number,
   decimalPlaces: number = DEFAULT_NUMBER_OPTIONS.maximumFractionDigits,
 ) {
-  if (decimalPlaces === undefined) {
-    return value;
-  }
-
   const factor = Math.pow(10, decimalPlaces);
 
   return Math.round(value * factor) / factor;
