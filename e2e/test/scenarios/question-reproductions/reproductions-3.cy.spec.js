@@ -1034,7 +1034,7 @@ describe("issue 19894", () => {
       },
     });
 
-    cy.visit(`/question/notebook`);
+    startNewQuestion();
 
     modal().findByText("Saved questions").click();
     modal().findByText("Q1").click();
