@@ -365,6 +365,12 @@ const getErrorMessage = (question: Question) => {
   throw new Error(`Unsupported or unknown question.type(): ${type}`);
 };
 
+const getLabel = (value: string | ParameterValue): string | undefined =>
+  Array.isArray(value) ? value[1] : undefined;
+
+const valueHasLabel = (value: string | ParameterValue) =>
+  getLabel(value) !== undefined;
+
 interface ListSourceModalProps {
   parameter: Parameter;
   sourceType: ValuesSourceType;
@@ -387,9 +393,7 @@ const ListSourceModal = ({
     [onChangeSourceConfig],
   );
 
-  const hasCustomLabels = sourceConfig.values?.some(
-    value => Array.isArray(value) && value.length === 2,
-  );
+  const hasCustomLabels = sourceConfig.values?.some(valueHasLabel);
 
   return (
     <ModalBodyWithPane>
