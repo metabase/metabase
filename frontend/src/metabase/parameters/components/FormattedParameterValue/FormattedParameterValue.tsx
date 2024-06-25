@@ -26,6 +26,8 @@ function FormattedParameterValue({
   value,
   placeholder,
 }: FormattedParameterValueProps) {
+  const hasMultipleValues = Array.isArray(value) && value.length !== 1;
+
   const { data, isLoading } = useGetParameterValuesQuery(
     {
       parameter: normalizeParameter(parameter),
@@ -36,7 +38,7 @@ function FormattedParameterValue({
         !parameter ||
         parameterHasNoDisplayValue(value) ||
         Boolean(parameter.values_source_config?.values) ||
-        (Array.isArray(value) && value.length !== 1),
+        hasMultipleValues,
     },
   );
 
