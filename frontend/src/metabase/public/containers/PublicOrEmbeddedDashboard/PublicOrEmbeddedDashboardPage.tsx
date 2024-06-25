@@ -5,11 +5,16 @@ import {
   useDashboardUrlParams,
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
+import { getDashboardComplete } from "metabase/dashboard/selectors";
+import { SetTitle } from "metabase/hoc/Title";
+import { useSelector } from "metabase/lib/redux";
 
 import { PublicOrEmbeddedDashboard } from "./PublicOrEmbeddedDashboard";
 import { usePublicDashboardEndpoints } from "./WithPublicDashboardEndpoints";
 
-export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
+export const PublicOrEmbeddedDashboardPage = (
+  props: WithRouterProps & { debug: string },
+) => {
   const { location } = props;
   const parameterQueryParams = props.location.query;
 
@@ -39,25 +44,30 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
 
   useSyncURLSlug({ location });
 
+  const dashboard = useSelector(getDashboardComplete);
+
   return (
-    <PublicOrEmbeddedDashboard
-      dashboardId={dashboardId}
-      isFullscreen={isFullscreen}
-      refreshPeriod={refreshPeriod}
-      hideParameters={hideParameters}
-      isNightMode={isNightMode}
-      hasNightModeToggle={hasNightModeToggle}
-      setRefreshElapsedHook={setRefreshElapsedHook}
-      onNightModeChange={onNightModeChange}
-      onFullscreenChange={onFullscreenChange}
-      onRefreshPeriodChange={onRefreshPeriodChange}
-      bordered={bordered}
-      hideDownloadButton={hideDownloadButton}
-      theme={theme}
-      titled={titled}
-      font={font}
-      parameterQueryParams={parameterQueryParams}
-      cardTitled={true}
-    />
+    <>
+      <SetTitle title={dashboard?.name} />
+      <PublicOrEmbeddedDashboard
+        dashboardId={dashboardId}
+        isFullscreen={isFullscreen}
+        refreshPeriod={refreshPeriod}
+        hideParameters={hideParameters}
+        isNightMode={isNightMode}
+        hasNightModeToggle={hasNightModeToggle}
+        setRefreshElapsedHook={setRefreshElapsedHook}
+        onNightModeChange={onNightModeChange}
+        onFullscreenChange={onFullscreenChange}
+        onRefreshPeriodChange={onRefreshPeriodChange}
+        bordered={bordered}
+        hideDownloadButton={hideDownloadButton}
+        theme={theme}
+        titled={titled}
+        font={font}
+        parameterQueryParams={parameterQueryParams}
+        cardTitled={true}
+      />
+    </>
   );
 };
