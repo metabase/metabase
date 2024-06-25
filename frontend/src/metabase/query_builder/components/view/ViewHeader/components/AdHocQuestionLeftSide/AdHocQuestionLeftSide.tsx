@@ -1,5 +1,4 @@
 import type React from "react";
-import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import {
@@ -32,7 +31,6 @@ export function AdHocQuestionLeftSide(
   const {
     question,
     originalQuestion,
-    isNative,
     isObjectDetail,
     isSummarized,
     onOpenModal,
@@ -50,16 +48,12 @@ export function AdHocQuestionLeftSide(
     <AdHocLeftSideRoot>
       <ViewHeaderMainLeftContentContainer>
         <AdHocViewHeading color="medium">
-          {isNative ? (
-            t`New question`
-          ) : (
-            <QuestionDescription
-              question={question}
-              originalQuestion={originalQuestion}
-              isObjectDetail={isObjectDetail}
-              onClick={handleTitleClick}
-            />
-          )}
+          <QuestionDescription
+            question={question}
+            originalQuestion={originalQuestion}
+            isObjectDetail={isObjectDetail}
+            onClick={handleTitleClick}
+          />
         </AdHocViewHeading>
       </ViewHeaderMainLeftContentContainer>
       <ViewHeaderLeftSubHeading>

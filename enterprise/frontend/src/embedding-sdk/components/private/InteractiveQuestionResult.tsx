@@ -8,6 +8,7 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { QuestionTitle } from "embedding-sdk/components/private/QuestionTitle";
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
 import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import { useSdkSelector } from "embedding-sdk/store";
@@ -23,7 +24,6 @@ import QueryVisualization from "metabase/query_builder/components/QueryVisualiza
 import { ViewHeaderContainer } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import {
   DashboardBackButton,
-  QuestionDescription,
   QuestionFiltersHeader,
 } from "metabase/query_builder/components/view/ViewHeader/components";
 import {
@@ -35,7 +35,6 @@ import {
 } from "metabase/query_builder/selectors";
 import { Box, Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import * as Lib from "metabase-lib";
 
 const returnNull = () => null;
 
@@ -90,10 +89,6 @@ export const InteractiveQuestionResult = ({
   const plugins = componentPlugins || globalPlugins;
   const mode = question && getEmbeddingMode(question, plugins || undefined);
 
-  const isSaved = question.isSaved();
-  const query = question.query();
-  const { isNative } = Lib.queryDisplayInfo(query);
-
   question.alertType = returnNull; // FIXME: this removes "You can also get an alert when there are some results." feature for question
 
   return (
@@ -108,18 +103,7 @@ export const InteractiveQuestionResult = ({
             <DashboardBackButton noLink onClick={onNavigateBack} />
           )}
 
-          {withTitle &&
-            (customTitle || (
-              <h2 className={cx(CS.h2, CS.textWrap)}>
-                {isSaved ? (
-                  question.displayName()
-                ) : isNative ? (
-                  t`New question`
-                ) : (
-                  <QuestionDescription question={question} />
-                )}
-              </h2>
-            ))}
+          {withTitle && (customTitle || <QuestionTitle question={question} />)}
 
           {withResetButton && <ResetButton onClick={onResetButtonClick} />}
         </ViewHeaderContainer>
