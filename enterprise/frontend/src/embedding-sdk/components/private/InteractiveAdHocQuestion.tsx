@@ -27,7 +27,6 @@ export const InteractiveAdHocQuestion = ({
       location={location}
       params={params}
       componentPlugins={plugins}
-      onReset={onNavigateBack}
       onNavigateBack={onNavigateBack}
       withTitle={withTitle}
       withResetButton={true}
