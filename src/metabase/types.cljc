@@ -167,6 +167,7 @@
 (derive :type/Comment :type/Text)
 
 (derive :type/PostgresEnum :type/Text)
+(derive :type/OracleCLOB :type/Text)
 
 ;;; DateTime Types
 
@@ -252,6 +253,7 @@
 
 (derive :type/DruidHyperUnique :type/field-values-unsupported)
 (derive :type/DruidJSON :type/field-values-unsupported)
+(derive :type/OracleCLOB :type/field-values-unsupported)
 
 ;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced
 ;;; filter options like starts with / contains
