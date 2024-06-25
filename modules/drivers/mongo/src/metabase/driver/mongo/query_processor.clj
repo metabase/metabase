@@ -9,7 +9,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
-   [metabase.driver.mongo.operators :refer [$add $addToSet $and $avg $concat $cond
+   [metabase.driver.mongo.operators :refer [$add $addFields $addToSet $and $avg $concat $cond
                                             $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
                                             $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min
                                             $minute $mod $month $multiply $ne $not $or $project $regexMatch $second
@@ -43,9 +43,6 @@
 
 ;; this is just a very limited schema to make sure we're generating valid queries. We should expand it more in the
 ;; future
-
-(def ^:private $addFields
-  :$addFields)
 
 (def ^:private $ProjectStage   [:map-of [:= $project]   [:map-of ms/NonBlankString :any]])
 (def ^:private $SortStage      [:map-of [:= $sort]      [:map-of ms/NonBlankString [:enum -1 1]]])
@@ -1012,9 +1009,7 @@
      [(field-alias field-or-expr) (format "$_id.%s" (field-alias field-or-expr))])
    (for [ag aggregations
          :let [ag-name (annotate/aggregation-name (:query *query*) ag)]]
-     [ag-name (if (mbql.u/is-clause? :distinct (unwrap-named-ag ag))
-                {$size (str \$ ag-name)}
-                true)])))
+     [ag-name true])))
 
 (defmulti ^:private expand-aggregation
   "Expand aggregations like `:share` and `:var` that can't be done as top-level aggregations in the `$group` stage
@@ -1125,6 +1120,29 @@
     [(str \$ aggr-name) {aggr-group aggr-name}]
     extracted-aggr))
 
+(defn- adjust-distinct-aggregations
+  "This function transforms `aggr-expr'` as in [[expand-aggregations]] so identifiers representing array that is
+  a set of _distinct_ values are wrapped in `{$size...}.
+
+  `aggr-expr` is expected to be a clause that is a result of [[extract-aggregations]]. For details see its docstring.
+
+  Distinct values are computed using the `$addToSet` in a `$group` stage. `$size` transforms them to actual count."
+  [[aggr-expr mappings]]
+  (let [distinct-keys (filter (fn [[clause]] (= :distinct clause)) (keys mappings))
+        distinct-vals (into #{}
+                            (comp (map #(get mappings %))
+                                  ;; \$ is added to identifiers so eg. `q~count1` becomes `$q~count1`. Those values
+                                  ;; are used match against `aggr-expr` where identifiers have the prefix.
+                                  (map #(str \$ %)))
+                            distinct-keys)]
+    [(walk/postwalk (fn [x]
+                      (if (and (string? x)
+                               (distinct-vals x))
+                        {$size x}
+                        x))
+                    aggr-expr)
+     mappings]))
+
 (defn- expand-aggregations
   "Expands the aggregations in `aggr-expr` into groupings and post processing
   expressions. The return value is a map with the following keys:
@@ -1134,9 +1152,10 @@
   usually does) refer to the fields introduced by the preceding maps."
   [aggr-expr]
   (let [aggr-name (annotate/aggregation-name (:query *query*) aggr-expr)
-        [aggr-expr' aggregations-seen] (simplify-extracted-aggregations
-                                        aggr-name
-                                        (extract-aggregations aggr-expr aggr-name))
+        [aggr-expr' aggregations-seen] (->> (extract-aggregations aggr-expr aggr-name)
+                                            (simplify-extracted-aggregations aggr-name)
+                                            adjust-distinct-aggregations)
+
         raggr-expr (->rvalue aggr-expr')
         expandeds (map (fn [[aggr name]]
                          (expand-aggregation [:aggregation-options aggr {:name name}]))
