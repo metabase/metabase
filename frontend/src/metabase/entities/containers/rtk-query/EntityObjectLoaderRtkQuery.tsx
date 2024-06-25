@@ -189,6 +189,8 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
 
   useEffect(() => {
     if (data) {
+      // TODO: originally this call was in setTimeout(, 0);
+
       // @ts-expect-error - invalid typings in redux-actions package
       dispatch(setRequestLoaded(requestStatePath, queryKey));
 
