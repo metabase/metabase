@@ -11,7 +11,7 @@ export function processSource(options: {
   source: string;
   query: Lib.Query;
   stageIndex: number;
-  expressionPosition: number | undefined;
+  expressionIndex: number | undefined;
   startRule: string;
   name?: string;
 }) {

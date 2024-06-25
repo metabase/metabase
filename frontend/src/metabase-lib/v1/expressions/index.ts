@@ -130,19 +130,15 @@ export function parseDimension(
   {
     query,
     stageIndex,
-    expressionPosition,
+    expressionIndex,
   }: {
     query: Lib.Query;
     stageIndex: number;
     source: string;
-    expressionPosition: number | undefined;
+    expressionIndex: number | undefined;
   },
 ) {
-  const columns = Lib.expressionableColumns(
-    query,
-    stageIndex,
-    expressionPosition,
-  );
+  const columns = Lib.expressionableColumns(query, stageIndex, expressionIndex);
 
   return columns.find(column => {
     const displayInfo = Lib.displayInfo(query, stageIndex, column);

@@ -52,7 +52,7 @@ export function diagnose({
   stageIndex,
   metadata,
   name = null,
-  expressionPosition,
+  expressionIndex,
 }: {
   source: string;
   startRule: "expression" | "aggregation" | "boolean";
@@ -60,7 +60,7 @@ export function diagnose({
   stageIndex: number;
   name?: string | null;
   metadata?: Metadata;
-  expressionPosition: number | undefined;
+  expressionIndex: number | undefined;
 }): ErrorWithMessage | null {
   if (!source || source.length === 0) {
     return null;
@@ -115,7 +115,7 @@ export function diagnose({
       name,
       query,
       stageIndex,
-      expressionPosition,
+      expressionIndex,
       database,
     });
 
@@ -151,7 +151,7 @@ export function diagnose({
       stageIndex,
       expressionMode,
       mbqlOrError,
-      expressionPosition,
+      expressionIndex,
     );
 
     if (possibleError) {
@@ -177,7 +177,7 @@ function prattCompiler({
   name,
   query,
   stageIndex,
-  expressionPosition,
+  expressionIndex,
   database,
 }: {
   source: string;
@@ -185,7 +185,7 @@ function prattCompiler({
   name: string | null;
   query: Lib.Query;
   stageIndex: number;
-  expressionPosition: number | undefined;
+  expressionIndex: number | undefined;
   database?: Database | null;
 }): ErrorWithMessage | Expr {
   const tokens = lexify(source);
@@ -195,7 +195,7 @@ function prattCompiler({
     name,
     query,
     stageIndex,
-    expressionPosition,
+    expressionIndex,
   };
 
   // PARSE

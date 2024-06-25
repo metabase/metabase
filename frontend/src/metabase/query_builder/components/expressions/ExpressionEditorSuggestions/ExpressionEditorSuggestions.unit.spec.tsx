@@ -39,10 +39,10 @@ function Wrapper(props: WrapperProps) {
 type SetupOpts = {
   source?: string;
   startRule: string;
-  expressionPosition?: number;
+  expressionIndex?: number;
 };
 
-function setup({ source = "", startRule, expressionPosition }: SetupOpts) {
+function setup({ source = "", startRule, expressionIndex }: SetupOpts) {
   const query = createQuery({ metadata: METADATA });
   const stageIndex = 0;
   const { suggestions } = suggest({
@@ -52,7 +52,7 @@ function setup({ source = "", startRule, expressionPosition }: SetupOpts) {
     metadata: METADATA,
     startRule: "expression",
     getColumnIcon,
-    expressionPosition,
+    expressionIndex,
   });
 
   const onHighlightSuggestion = jest.fn();

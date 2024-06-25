@@ -122,7 +122,7 @@ interface ExpressionEditorTextfieldProps {
   stageIndex: number;
   metadata: Metadata;
   startRule: "expression" | "aggregation" | "boolean";
-  expressionPosition?: number;
+  expressionIndex?: number;
   width?: number;
   reportTimezone?: string;
   textAreaId?: string;
@@ -162,7 +162,7 @@ function transformPropsToState(
     clause,
     query,
     stageIndex,
-    expressionPosition,
+    expressionIndex,
     metadata,
     reportTimezone,
     showMetabaseLinks,
@@ -176,7 +176,7 @@ function transformPropsToState(
     startRule,
     stageIndex,
     query,
-    expressionPosition,
+    expressionIndex,
   });
 
   const { suggestions = [], helpText = null } = suggestWithExtras({
@@ -184,7 +184,7 @@ function transformPropsToState(
     startRule,
     source,
     targetOffset: 0,
-    expressionPosition,
+    expressionIndex,
     query,
     stageIndex,
     metadata,
@@ -245,7 +245,7 @@ class ExpressionEditorTextfield extends React.Component<
       startRule,
       query,
       stageIndex,
-      expressionPosition,
+      expressionIndex,
     } = newProps;
     const hasLegacyExpressionChanged = !_.isEqual(
       this.props.expression,
@@ -263,7 +263,7 @@ class ExpressionEditorTextfield extends React.Component<
         startRule,
         stageIndex,
         query,
-        expressionPosition,
+        expressionIndex,
       });
       const currentSource = this.state.source;
       this.setState(transformPropsToState(newProps));
@@ -537,8 +537,7 @@ class ExpressionEditorTextfield extends React.Component<
 
   compileExpression() {
     const { source } = this.state;
-    const { query, stageIndex, startRule, name, expressionPosition } =
-      this.props;
+    const { query, stageIndex, startRule, name, expressionIndex } = this.props;
     if (!source || source.length === 0) {
       return null;
     }
@@ -548,7 +547,7 @@ class ExpressionEditorTextfield extends React.Component<
       query,
       stageIndex,
       startRule,
-      expressionPosition,
+      expressionIndex,
     });
 
     return { expression, expressionClause };
@@ -561,7 +560,7 @@ class ExpressionEditorTextfield extends React.Component<
       name,
       query,
       stageIndex,
-      expressionPosition,
+      expressionIndex,
       metadata,
     } = this.props;
 
@@ -575,7 +574,7 @@ class ExpressionEditorTextfield extends React.Component<
       name,
       query,
       stageIndex,
-      expressionPosition,
+      expressionIndex,
       metadata,
     });
   }
@@ -587,7 +586,7 @@ class ExpressionEditorTextfield extends React.Component<
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       onCommit,
       onError,
-      expressionPosition,
+      expressionIndex,
     } = this.props;
     const { source } = this.state;
 
@@ -596,7 +595,7 @@ class ExpressionEditorTextfield extends React.Component<
       startRule,
       query,
       stageIndex,
-      expressionPosition,
+      expressionIndex,
     });
 
     this.setState({ errorMessage });
@@ -641,7 +640,7 @@ class ExpressionEditorTextfield extends React.Component<
       reportTimezone,
       stageIndex,
       metadata,
-      expressionPosition,
+      expressionIndex,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       showMetabaseLinks,
       shortcuts = [],
@@ -652,7 +651,7 @@ class ExpressionEditorTextfield extends React.Component<
       startRule,
       source,
       targetOffset: cursor.column,
-      expressionPosition,
+      expressionIndex,
       query,
       stageIndex,
       metadata,
