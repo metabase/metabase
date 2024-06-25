@@ -53,16 +53,18 @@ export interface EntityDefinition<Entity, EntityWrapper> {
   };
   rtk: {
     getUseGetQuery: (fetchType: FetchType) => {
-      useGetQuery: UseQuery<
-        QueryDefinition<unknown, BaseQueryFn, TagType, unknown>
-      >;
+      action?: string;
       options?: UseQuerySubscriptionOptions;
+      transformResponse?: (data: Entity, query: EntityQuery) => unknown;
+      useGetQuery: UseQuery<
+        QueryDefinition<unknown, BaseQueryFn, TagType, Entity>
+      >;
     };
     getUseGetListQuery: (requestType: RequestType) => {
-      useGetQuery: UseQuery<
-        QueryDefinition<unknown, BaseQueryFn, TagType, unknown[]>
-      >;
       options?: UseQuerySubscriptionOptions;
+      useGetQuery: UseQuery<
+        QueryDefinition<unknown, BaseQueryFn, TagType, Entity[]>
+      >;
     };
   };
   selectors: {

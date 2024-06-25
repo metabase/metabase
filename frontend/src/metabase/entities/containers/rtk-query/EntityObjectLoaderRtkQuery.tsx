@@ -73,6 +73,10 @@ export interface Props<Entity, EntityWrapper> {
   wrapped?: boolean;
 }
 
+const defaultTransformResponse = (data: unknown, _query: EntityQuery) => {
+  return data;
+};
+
 /**
  * Replacement for EntityObjectLoader for better compatibility with RTK Query.
  *
@@ -131,8 +135,12 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
     [entityId, entityQuery],
   );
 
-  const { useGetQuery, options } =
-    entityDefinition.rtk.getUseGetQuery(fetchType);
+  const {
+    action = entityDefinition.actionTypes.FETCH,
+    transformResponse = defaultTransformResponse,
+    options,
+    useGetQuery,
+  } = entityDefinition.rtk.getUseGetQuery(fetchType);
 
   const {
     data,
@@ -187,13 +195,21 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
       // @ts-expect-error - invalid typings in redux-actions package
       dispatch(setRequestLoaded(requestStatePath, queryKey));
 
-      const normalized = entityDefinition.normalize(data);
-      dispatch({
-        type: entityDefinition.actionTypes.FETCH,
-        payload: normalized,
-      });
+      const transformed = transformResponse(data, finalQuery);
+      const normalized = entityDefinition.normalize(transformed);
+
+      dispatch({ type: action, payload: normalized });
     }
-  }, [dispatch, data, entityDefinition, requestStatePath, queryKey]);
+  }, [
+    action,
+    dispatch,
+    data,
+    entityDefinition,
+    finalQuery,
+    transformResponse,
+    requestStatePath,
+    queryKey,
+  ]);
 
   const entityOptions = useMemo(
     () => ({ entityId, requestType }),

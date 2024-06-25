@@ -35,6 +35,11 @@ export const FETCH_DATABASE_SCHEMAS =
 export const FETCH_DATABASE_IDFIELDS =
   "metabase/entities/database/FETCH_DATABASE_IDFIELDS";
 
+const transformFetchIdFieldsResponse = (data, query) => ({
+  idFields: data,
+  id: query.id,
+});
+
 /**
  * @deprecated use "metabase/api" instead
  */
@@ -56,6 +61,8 @@ const Databases = createEntity({
 
       if (fetchType === "fetchIdFields") {
         return {
+          action: FETCH_DATABASE_IDFIELDS,
+          transformResponse: transformFetchIdFieldsResponse,
           useGetQuery: useListDatabaseIdFieldsQuery,
         };
       }
