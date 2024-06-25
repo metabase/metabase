@@ -14,23 +14,27 @@ export const PublicComponentWrapper = ({
 }) => {
   const loginStatus = useSdkSelector(getLoginStatus);
 
+  let content;
+
   if (loginStatus.status === "uninitialized") {
-    return <div>{t`Initializing…`}</div>;
+    content = <div>{t`Initializing…`}</div>;
   }
 
   if (loginStatus.status === "validated") {
-    return <div>{t`JWT is valid.`}</div>;
+    content = <div>{t`JWT is valid.`}</div>;
   }
 
   if (loginStatus.status === "loading") {
-    return <SdkLoader />;
+    content = <SdkLoader />;
   }
 
   if (loginStatus.status === "error") {
-    return <SdkError message={loginStatus.error.message} />;
+    content = <SdkError message={loginStatus.error.message} />;
   }
 
   return (
-    <PublicComponentStylesWrapper>{children}</PublicComponentStylesWrapper>
+    <PublicComponentStylesWrapper>
+      {content || children}
+    </PublicComponentStylesWrapper>
   );
 };

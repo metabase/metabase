@@ -33,20 +33,14 @@ export const InteractiveQuestionResult = ({
   const { defaultHeight, isQueryRunning, queryResults, question } =
     useInteractiveQuestionData();
 
+  let content;
+
   if (isQuestionLoading || isQueryRunning) {
-    return <SdkLoader />;
-  }
-
-  if (!question || !queryResults) {
-    return <SdkError message={t`Question not found`} />;
-  }
-
-  return (
-    <Box
-      className={cx(CS.flexFull, CS.fullWidth)}
-      h={height ?? defaultHeight}
-      bg="var(--mb-color-bg-question)"
-    >
+    content = <SdkLoader />;
+  } else if (!question || !queryResults) {
+    content = <SdkError message={t`Question not found`} />;
+  } else {
+    content = (
       <Stack h="100%">
         <Flex direction="row" gap="md" px="md" align="center">
           <BackButton />
@@ -59,6 +53,16 @@ export const InteractiveQuestionResult = ({
           <QuestionVisualization />
         </Group>
       </Stack>
+    );
+  }
+
+  return (
+    <Box
+      className={cx(CS.flexFull, CS.fullWidth)}
+      h={height ?? defaultHeight}
+      bg="var(--mb-color-bg-question)"
+    >
+      {content}
     </Box>
   );
 };
