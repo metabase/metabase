@@ -6,16 +6,18 @@
 
 (deftest config-test
   (testing "Make sure our Jetty config functions work as expected/we don't accidentally break things (#9333)"
-    (with-redefs [config/config-str (constantly "10")]
+    (with-redefs [config/config-str (constantly "10")
+                  config/config-bool (constantly true)]
       (is (= {:keystore            "10"
               :max-queued          10
               :request-header-size 10
               :port                10
               :min-threads         10
               :host                "10"
-              :daemon?             false
+              :daemon?             true
               :ssl?                true
               :sni-host-check?     false
+              :client-auth         :need
               :trust-password      "10"
               :key-password        "10"
               :truststore          "10"
