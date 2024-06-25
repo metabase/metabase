@@ -154,37 +154,37 @@
                                           :model "database")))
 
             (testing "making a query will cache it"
-              (is (=? {:cached false :data some?}
+              (is (=? {:cached nil :data some?}
                       (run-query! card1-id)))
-              (is (=? {:cached true :data some?}
+              (is (=? {:cached some? :data some?}
                       (run-query! card1-id)))
-              (is (=? {:cached true :data some?}
+              (is (=? {:cached some? :data some?}
                       (run-query! card2-id))))
 
             (testing "invalidation drops cache only for affected card"
               (is (=? {:count 1}
                       (invalidate! 200 :question card2-id :include :overrides)))
-              (is (=? {:cached true :data some?}
+              (is (=? {:cached some? :data some?}
                       (run-query! card1-id)))
-              (is (=? {:cached false :data some?}
+              (is (=? {:cached nil :data some?}
                       (run-query! card2-id))))
 
             (testing "but invalidating a whole config drops cache for any affected card"
               (doseq [card-id [card1-id card2-id]]
                 (is (=? {:count 1}
                         (invalidate! 200 :database (mt/id))))
-                (is (=? {:cached false :data some?}
+                (is (=? {:cached nil :data some?}
                         (run-query! card-id {:ignore_cache true})))))
 
             (testing "when invalidating database config directly, dashboard-related queries are still cached"
               (is (=? {:count 1}
                       (invalidate! 200 :database (mt/id))))
-              (is (=? {:cached true :data some?}
+              (is (=? {:cached some? :data some?}
                       (run-query! card1-id {:dashboard_id (:id dash)}))))
 
             (testing "but with overrides - will go through every card and mark cache invalidated"
               ;; not a concrete number here since (mt/id) can have a bit more than 2 cards we've currently defined
               (is (=? {:count pos-int?}
                       (invalidate! 200 :include :overrides :database (mt/id))))
-              (is (=? {:cached false :data some?}
+              (is (=? {:cached nil :data some?}
                       (run-query! card1-id {:dashboard_id (:id dash)}))))))))))
