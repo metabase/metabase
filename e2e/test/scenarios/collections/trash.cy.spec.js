@@ -16,6 +16,9 @@ import {
   navigationSidebar,
   restore,
   entityPickerModalTab,
+  visitCollection,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 describe("scenarios > collections > trash", () => {
@@ -502,7 +505,7 @@ describe("scenarios > collections > trash", () => {
     ).as("question");
 
     cy.get("@question").then(question => {
-      cy.visit(`/question/${question.id}-question-a`);
+      visitQuestion(question.id);
       // should not have disabled actions in top navbar
       cy.findAllByTestId("qb-header-action-panel").within(() => {
         cy.findByText("Filter").should("not.exist");
@@ -521,7 +524,7 @@ describe("scenarios > collections > trash", () => {
     });
 
     cy.get("@dashboard").then(dashboard => {
-      cy.visit(`/dashboard/${dashboard.id}-dashboard-a`);
+      visitDashboard(dashboard.id);
 
       cy.findAllByTestId("dashboard-header").within(() => {
         cy.icon("pencil").should("not.exist");
@@ -577,7 +580,7 @@ describe("scenarios > collections > trash", () => {
     cy.signInAsNormalUser();
 
     cy.get("@collection").then(collection => {
-      cy.visit(`/collection/${collection.id}-collection-a`);
+      visitCollection(collection.id);
       archiveBanner().findByText("Restore").should("not.exist");
       archiveBanner().findByText("Move").should("not.exist");
       archiveBanner().findByText("Delete permanently").should("not.exist");
@@ -646,7 +649,7 @@ describe("scenarios > collections > trash", () => {
       cy.intercept("GET", `/api/collection/${collection.id}`).as(
         "getCollection",
       );
-      cy.visit(`/collection/${collection.id}-collection-a`);
+      visitCollection(collection.id);
       cy.wait("@getCollection");
       assertTrashSelectinInNavigationSidebar();
     });
@@ -654,7 +657,7 @@ describe("scenarios > collections > trash", () => {
     cy.log("Make sure trash is selected for a trashed dashboard");
     cy.get("@dashboard").then(dashboard => {
       cy.intercept("GET", `/api/dashboard/${dashboard.id}`).as("getDashboard");
-      cy.visit(`/dashboard/${dashboard.id}-dashboard-a`);
+      visitDashboard(dashboard.id);
       cy.wait("@getDashboard");
       openNavigationSidebar();
       assertTrashSelectinInNavigationSidebar();
@@ -666,7 +669,7 @@ describe("scenarios > collections > trash", () => {
       cy.intercept("POST", `/api/card/${question.id}/query`).as(
         "getQuestionResult",
       );
-      cy.visit(`/question/${question.id}-question-a`);
+      visitQuestion(question.id);
       cy.wait("@getQuestionResult");
       openNavigationSidebar();
       assertTrashSelectinInNavigationSidebar();
