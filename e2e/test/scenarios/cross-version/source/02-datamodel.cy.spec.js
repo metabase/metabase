@@ -1,6 +1,9 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
+import {
+  createSegment,
+  createMetric,
+} from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID, REVIEWS, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
 
@@ -118,7 +121,7 @@ it("should configure data model settings", () => {
   const metric = {
     name: "Revenue",
     description: "Sum of orders subtotal",
-    type: "metric",
+    table_id: ORDERS_ID, // legacy api
     definition: {
       "source-table": ORDERS_ID,
       aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
@@ -135,7 +138,7 @@ it("should configure data model settings", () => {
     },
   };
 
-  cy.createQuestion(metric);
+  createMetric(metric); // legacy api
   createSegment(segment);
 
   cy.visit("/admin/datamodel/segments");
