@@ -10,6 +10,10 @@ import { addUndo } from "metabase/redux/undo";
 
 export const UNSUBSCRIBE = "metabase/entities/alerts/unsubscribe";
 
+const useGetQuery = ({ id }) => {
+  return useGetAlertQuery(id);
+};
+
 /**
  * @deprecated use "metabase/api" instead
  */
@@ -20,7 +24,7 @@ const Alerts = createEntity({
 
   rtk: {
     getUseGetQuery: () => ({
-      useGetQuery: useGetAlertQuery,
+      useGetQuery,
     }),
   },
 
