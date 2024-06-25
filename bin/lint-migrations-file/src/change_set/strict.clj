@@ -141,7 +141,6 @@
   desired."
   [{:keys [id changes] :as change-set}]
   (or
-   (int? id)
    (< (major-version id) 51)
    (not-any? change-types-requiring-preconditions (mapcat keys changes))
    (contains? change-set :preConditions)))
