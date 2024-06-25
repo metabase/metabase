@@ -21,30 +21,6 @@
    [:payload_id   pos-int?]
    [:creator_id   pos-int?]])
 
-(def ^:private PayloadInfo
-  [:merge
-   Notification
-   [:multi {:dispatch :payload_type}
-    [:notification/alert [:map
-                          ;; should be model/Alert in the future
-                          [:alert [:and (ms/InstanceOf :model/Pulse)
-                                   [:map [:card_id pos-int?]]]]]]
-    [:notification/dashboard-subscription [:map
-                                           ;; should be model/DashboardSubscription in the future
-                                           [:dashboard-subscription [:and (ms/InstanceOf :model/Pulse)
-                                                                     [:map
-                                                                      [:dashboard_id pos-int?]
-                                                                      [:cards [:sequential :map]]
-                                                                      [:creator :map]]]]]]]])
-
-(def ^:private DashboardSubscriptionPayload
-  [:notification/dashboard-subscription [:map {:closed true}
-                                          [:payload-type           [:= :notification/dashboard-subscription]]
-                                          [:dashboard              :map]
-                                          [:dashboard-subscription :map]
-                                          [:result                 [:sequential :map]]]])
-
-
 (defn- notification->channel+recipients
   [notification pc-ids]
   (let [pcs (if (some? pc-ids)
@@ -121,9 +97,9 @@
                               :model/PulseChannel :pulse_id (:payload_id notification) :enabled true)}}))
 
 (defn- is-card-empty?
-  "Check if the card is empty"
-  [card]
-  (if-let [result (:result card)]
+  "Check if the part is empty"
+  [part]
+  (if-let [result (:result part)]
     (or (zero? (-> result :row_count))
         ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
         (= [[nil]]
@@ -164,6 +140,24 @@
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    Dashboard Subscriptions                                      ;;
 ;; ------------------------------------------------------------------------------------------------;;
+
+(def ^:private DashboardSubscriptionPayload
+  [:map {:closed true}
+   [:payload_type [:= :notification/dashboard-subscription]]
+   [:context      [:map {:closed true}
+                   [:dashboard-subscription :map]
+                   [:dashboard :map]]]
+   [:payload      [:sequential :any]]])
+
+(mu/defmethod notification->payload :notification/dashboard-subscription :- DashboardSubscriptionPayload
+  [notification :- Notification]
+  (let [dashsub   (t2/select-one :model/Pulse (:payload_id notification))
+        dashboard (t2/select-one :model/Dashboard (:dashboard_id dashsub))
+        payload   (noti.execute/execute-dashboard dashsub dashboard)]
+    {:payload_type :notification/dashboard-subscription
+     :payload      payload
+     :context      {:dashboard-subscription dashsub
+                    :dashboard              dashboard}}))
 
 (defn- are-all-parts-empty?
   "Do none of the cards have any results?"
@@ -216,6 +210,6 @@
 
 (comment
  (ngoc/with-tc
-   (send-notification! {:payload_type :notification/alert
-                        :payload_id 1
+   (send-notification! {:payload_type :notification/dashboard-subscription
+                        :payload_id 3
                         :creator_id 2})))

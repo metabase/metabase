@@ -41,7 +41,6 @@
        {:value default-value})
      (dissoc parameter :default))))
 
-
 (defn virtual-card-of-type?
   "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, else returns `nil`.
 

@@ -158,10 +158,12 @@
       attachment)))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard-subscription] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload dashboard pulse]} channel-ids]
-  (for [channel-id channel-ids]
-    {:channel-id  channel-id
-     :attachments (remove nil?
-                          (flatten [(slack-dashboard-header pulse dashboard)
-                                    (create-slack-attachment-data payload)
-                                    (slack-dashboard-footer pulse dashboard)]))}))
+  [_channel-type {:keys [payload context]} channel-ids]
+  (let [{dashsub :dashboard-subscription
+         dashboard :dashboard}           context]
+    (for [channel-id channel-ids]
+      {:channel-id  channel-id
+       :attachments (remove nil?
+                            (flatten [(slack-dashboard-header dashsub dashboard)
+                                      (create-slack-attachment-data payload)
+                                      (slack-dashboard-footer dashsub dashboard)]))})))

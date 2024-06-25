@@ -89,8 +89,10 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard-subscription] :- [:sequential EmailMessage]
-  [_channel-details {:keys [dashboard payload pulse]} recipients]
-  (let [{:keys [user-emails
+  [_channel-details {:keys [payload context]} recipients]
+  (let [{dashsub :dashboard-subscription
+         dashboard :dashboard}       context
+        {:keys [user-emails
                 non-user-emails]} (recipients->emails recipients)
         timezone                  (some->> payload (some :card) channel.shared/defaulted-timezone)
         email-subject             (:name dashboard)
@@ -98,10 +100,10 @@
                                     (construct-pulse-email
                                      email-subject
                                      user-emails
-                                     (messages/render-pulse-email timezone pulse dashboard payload nil)))
+                                     (messages/render-pulse-email timezone dashsub dashboard payload nil)))
         email-to-nonusers         (for [non-user-email non-user-emails]
                                     (construct-pulse-email
                                      email-subject
                                      [non-user-email]
-                                     (messages/render-pulse-email timezone pulse dashboard payload non-user-email)))]
+                                     (messages/render-pulse-email timezone dashsub dashboard payload non-user-email)))]
     (filter some? (conj email-to-nonusers email-to-users))))
