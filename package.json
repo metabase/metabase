@@ -46,7 +46,7 @@
     "d3-shape": "^3.1.0",
     "dayjs": "^1.10.4",
     "diff": "^3.2.0",
-    "echarts": "^5.5.0",
+    "echarts": "^5.5.1-rc.1",
     "formik": "^2.4.5",
     "hast-util-from-html": "^2.0.1",
     "hast-util-to-html": "^9.0.0",
