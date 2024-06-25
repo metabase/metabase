@@ -13,7 +13,11 @@ import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { initializeQBRaw, resetQB } from "metabase/query_builder/actions";
+import {
+  initializeQBRaw,
+  resetQB,
+  updateQuestion,
+} from "metabase/query_builder/actions";
 import {
   getCard,
   getFirstQueryResult,
@@ -23,6 +27,7 @@ import {
 } from "metabase/query_builder/selectors";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import * as MBLib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, Dataset } from "metabase-types/api";
 import type { QueryBuilderUIControls } from "metabase-types/store";
@@ -44,6 +49,9 @@ type InteractiveQuestionContextType = {
   withTitle?: boolean;
   customTitle?: React.ReactNode;
   withResetButton?: boolean;
+  onQueryChange: (query: MBLib.Query) => Promise<void>;
+  isFilterOpen: boolean;
+  setIsFilterOpen: (value: boolean) => void;
 };
 
 export const InteractiveQuestionContext = createContext<
@@ -81,6 +89,8 @@ export const InteractiveQuestionProvider = ({
   customTitle?: React.ReactNode;
 }>) => {
   const dispatch = useDispatch();
+
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   const globalPlugins = useSdkSelector(getPlugins);
   const question = useSelector(getQuestion);
@@ -134,6 +144,14 @@ export const InteractiveQuestionProvider = ({
     question.alertType = returnNull; // FIXME: this removes "You can also get an alert when there are some results." feature for question
   }
 
+  const onQueryChange = async (query: MBLib.Query) => {
+    if (question) {
+      const nextLegacyQuery = MBLib.toLegacyQuery(query);
+      const nextQuestion = question.setDatasetQuery(nextLegacyQuery);
+      await dispatch(updateQuestion(nextQuestion, { run: true }));
+    }
+  };
+
   return (
     <InteractiveQuestionContext.Provider
       value={{
@@ -153,6 +171,9 @@ export const InteractiveQuestionProvider = ({
         withTitle,
         customTitle,
         withResetButton: hasQuestionChanges && withResetButton,
+        onQueryChange,
+        isFilterOpen,
+        setIsFilterOpen,
       }}
     >
       {children}
