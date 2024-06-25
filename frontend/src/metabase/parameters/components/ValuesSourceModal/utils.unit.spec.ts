@@ -31,7 +31,7 @@ describe("getValuesText", () => {
       "42, Foo\nBar\nBaz",
     );
   });
-  it("should stringify values with comma's by escaping them with quotes", () => {
+  it("should stringify values with commas by escaping them with quotes", () => {
     expect(getValuesText([["Foo,Bar"], "Baz,Quu"])).toBe(
       `"Foo,Bar"\n"Baz,Quu"`,
     );
@@ -51,7 +51,8 @@ describe("getValuesText", () => {
       ]),
     ).toBe(`10, Foo\n20, Bar Baz`);
   });
-  it("should stringify label with comma's by escaping them with quotes", () => {
+
+  it("should stringify label with commas by escaping them with quotes", () => {
     expect(
       getValuesText([
         [10, "Foo,Bar"],
@@ -59,6 +60,7 @@ describe("getValuesText", () => {
       ]),
     ).toBe(`10, "Foo,Bar"\n20, "Baz,Quu"`);
   });
+
   it("should stringify labels with newlines or tabs by escaping them with quotes", () => {
     expect(
       getValuesText([
