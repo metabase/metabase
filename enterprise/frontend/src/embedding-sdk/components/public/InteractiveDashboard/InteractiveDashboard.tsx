@@ -17,6 +17,7 @@ import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEm
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import type { QuestionDashboardCard } from "metabase-types/api";
+import { withIsolatedStore } from "embedding-sdk/components/private/IsolatedStoreProvider";
 
 export type InteractiveDashboardProps = SdkDashboardDisplayProps & {
   questionHeight?: number;
@@ -120,5 +121,5 @@ const InteractiveDashboardInner = ({
 };
 
 export const InteractiveDashboard = withPublicComponentWrapper(
-  InteractiveDashboardInner,
+  withIsolatedStore(InteractiveDashboardInner),
 );

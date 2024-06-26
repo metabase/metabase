@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { initializeQBRaw } from "metabase/query_builder/actions";
 import { getCard, getQueryResults } from "metabase/query_builder/selectors";
 import type { CardId } from "metabase-types/api";
+import { withIsolatedStore } from "embedding-sdk/components/private/IsolatedStoreProvider";
 
 interface InteractiveQuestionProps {
   questionId: CardId;
@@ -78,8 +79,9 @@ export const _InteractiveQuestion = ({
   );
 };
 
-export const InteractiveQuestion =
-  withPublicComponentWrapper(_InteractiveQuestion);
+export const InteractiveQuestion = withPublicComponentWrapper(
+  withIsolatedStore(_InteractiveQuestion),
+);
 
 export const getQuestionParameters = (questionId: CardId) => {
   return {
