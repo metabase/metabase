@@ -1,0 +1,278 @@
+[
+  {
+    "card": {
+      "original_card_id": 361,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-06-06T00:33:51.905973Z",
+      "parameters": [],
+      "metabase_version": "v0.2.0-SNAPSHOT (a727fad)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "trashed_from_location": null,
+        "slug": "pie",
+        "name": "Pie",
+        "personal_owner_id": null,
+        "type": null,
+        "is_sample": false,
+        "id": 23,
+        "entity_id": "hy98llXqY3i_uwtm5ISY_",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2024-06-03T19:59:20.91934Z"
+      },
+      "visualization_settings": {},
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-06-06T00:33:52.156638Z"
+      },
+      "collection_preview": true,
+      "entity_id": "fKxTptYDO-vP6MR3mPJui",
+      "display": "pie",
+      "parameter_mappings": [],
+      "id": 361,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              "date",
+              {
+                "base-type": "type/Date",
+                "temporal-unit": "day-of-week"
+              }
+            ]
+          ],
+          "source-table": "card__101"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-06-06T00:33:51.905973Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": null,
+      "type": "question",
+      "last_used_at": null,
+      "dashboard_count": 0,
+      "last_query_start": null,
+      "name": "Pie - Relative Date Dimension - UK Car Accidents by Day of Week",
+      "query_type": "query",
+      "collection_id": 23,
+      "enable_embedding": false,
+      "database_id": 2,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-06-05T21:21:49.288174Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "semantic_type": "type/CreationDate",
+          "unit": "day-of-week",
+          "name": "date",
+          "field_ref": [
+            "field",
+            "date",
+            {
+              "base-type": "type/Date",
+              "temporal-unit": "day-of-week"
+            }
+          ],
+          "effective_type": "type/Integer",
+          "id": 1417,
+          "visibility_type": "normal",
+          "display_name": "Date",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1460,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2014-01-01",
+                "latest": "2017-12-31"
+              }
+            }
+          },
+          "base_type": "type/Integer"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 2,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 208,
+                "q1": 208.30515864914088,
+                "q3": 209,
+                "max": 209,
+                "sd": 0.48795003647426655,
+                "avg": 208.71428571428572
+              }
+            }
+          }
+        }
+      ],
+      "can_run_adhoc_query": true,
+      "table_id": 154,
+      "collection_position": null,
+      "view_count": 0,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        [1, 209],
+        [2, 208],
+        [3, 208],
+        [4, 209],
+        [5, 209],
+        [6, 209],
+        [7, 209]
+      ],
+      "cols": [
+        {
+          "database_type": "date",
+          "semantic_type": "type/CreationDate",
+          "table_id": 154,
+          "unit": "day-of-week",
+          "name": "date",
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            "date",
+            {
+              "base-type": "type/Date",
+              "temporal-unit": "day-of-week"
+            }
+          ],
+          "effective_type": "type/Integer",
+          "id": 1417,
+          "position": 1,
+          "visibility_type": "normal",
+          "display_name": "Date",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1460,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2014-01-01",
+                "latest": "2017-12-31"
+              }
+            }
+          },
+          "base_type": "type/Integer"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT (CAST(extract(dow from CAST(\"source\".\"date\" AS timestamp)) AS integer) + 1) AS \"date\", COUNT(*) AS \"count\" FROM (SELECT \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"date\" AS \"date\", \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"total_accident\" AS \"total_accident\", 0 - \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"total_accident\" AS \"Total Accident Inverted\" FROM \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\") AS \"source\" GROUP BY (CAST(extract(dow from CAST(\"source\".\"date\" AS timestamp)) AS integer) + 1) ORDER BY (CAST(extract(dow from CAST(\"source\".\"date\" AS timestamp)) AS integer) + 1) ASC",
+        "params": null
+      },
+      "dataset": true,
+      "model": true,
+      "format-rows?": true,
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "semantic_type": "type/CreationDate",
+            "unit": "day-of-week",
+            "name": "date",
+            "field_ref": [
+              "field",
+              "date",
+              {
+                "base-type": "type/Date",
+                "temporal-unit": "day-of-week"
+              }
+            ],
+            "effective_type": "type/Integer",
+            "id": 1417,
+            "visibility_type": "normal",
+            "display_name": "Date",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1460,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2014-01-01",
+                  "latest": "2017-12-31"
+                }
+              }
+            },
+            "base_type": "type/Integer"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 208,
+                  "q1": 208.30515864914088,
+                  "q3": 209,
+                  "max": 209,
+                  "sd": 0.48795003647426655,
+                  "avg": 208.71428571428572
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

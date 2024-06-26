@@ -1,0 +1,255 @@
+[
+  {
+    "card": {
+      "original_card_id": 375,
+      "can_delete": false,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-06-24T20:44:54.977307Z",
+      "parameters": [],
+      "metabase_version": "v0.2.0-SNAPSHOT (105a72a)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "trashed_from_location": null,
+        "slug": "pie",
+        "archive_operation_id": null,
+        "name": "Pie",
+        "personal_owner_id": null,
+        "type": null,
+        "is_sample": false,
+        "id": 23,
+        "archived_directly": null,
+        "entity_id": "hy98llXqY3i_uwtm5ISY_",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2024-06-03T19:59:20.91934Z"
+      },
+      "visualization_settings": {
+        "pie.percent_visibility": "inside"
+      },
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-06-24T20:44:55.2295Z"
+      },
+      "collection_preview": true,
+      "entity_id": "2k5Rkpdb7-Cr4PPdWHSyO",
+      "archived_directly": false,
+      "display": "pie",
+      "parameter_mappings": [],
+      "id": 375,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              "hasmeat",
+              {
+                "base-type": "type/Boolean"
+              }
+            ]
+          ],
+          "source-table": "card__72"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-06-24T20:47:56.04478Z",
+      "moderation_reviews": [],
+      "can_restore": false,
+      "creator_id": 1,
+      "average_query_time": 429,
+      "type": "question",
+      "last_used_at": "2024-06-24T20:47:56.04478Z",
+      "dashboard_count": 1,
+      "last_query_start": "2024-06-24T20:47:55.680233Z",
+      "name": "Pie - boolean dimension crashes with labels on chart - 44085",
+      "query_type": "query",
+      "collection_id": 23,
+      "enable_embedding": false,
+      "database_id": 2,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-06-20T18:26:28.464763Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "semantic_type": "type/Category",
+          "name": "hasmeat",
+          "field_ref": [
+            "field",
+            "hasmeat",
+            {
+              "base-type": "type/Boolean"
+            }
+          ],
+          "effective_type": "type/Boolean",
+          "id": 1312,
+          "visibility_type": "normal",
+          "display_name": "Hasmeat",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 2,
+              "nil%": 0
+            }
+          },
+          "base_type": "type/Boolean"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 2,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 422,
+                "q1": 422,
+                "q3": 752,
+                "max": 752,
+                "sd": 233.3452377915607,
+                "avg": 587
+              }
+            }
+          }
+        }
+      ],
+      "can_run_adhoc_query": true,
+      "table_id": 138,
+      "collection_position": null,
+      "view_count": 2,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        [false, 752],
+        [true, 422]
+      ],
+      "cols": [
+        {
+          "database_type": "bool",
+          "semantic_type": "type/Category",
+          "table_id": 138,
+          "name": "hasmeat",
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            "hasmeat",
+            {
+              "base-type": "type/Boolean"
+            }
+          ],
+          "effective_type": "type/Boolean",
+          "id": 1312,
+          "position": 4,
+          "visibility_type": "normal",
+          "display_name": "Hasmeat",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 2,
+              "nil%": 0
+            }
+          },
+          "base_type": "type/Boolean"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT \"source\".\"hasmeat\" AS \"hasmeat\", COUNT(*) AS \"count\" FROM (SELECT \"csv_upload_data\".\"csv_upload_kyle_meals_20231121133704\".\"id\" AS \"id\", \"csv_upload_data\".\"csv_upload_kyle_meals_20231121133704\".\"meal\" AS \"meal\", \"csv_upload_data\".\"csv_upload_kyle_meals_20231121133704\".\"description\" AS \"description\", \"csv_upload_data\".\"csv_upload_kyle_meals_20231121133704\".\"date\" AS \"date\", \"csv_upload_data\".\"csv_upload_kyle_meals_20231121133704\".\"hasmeat\" AS \"hasmeat\", \"csv_upload_data\".\"csv_upload_kyle_meals_20231121133704\".\"meats_0\" AS \"meats_0\" FROM \"csv_upload_data\".\"csv_upload_kyle_meals_20231121133704\") AS \"source\" GROUP BY \"source\".\"hasmeat\" ORDER BY \"source\".\"hasmeat\" ASC",
+        "params": null
+      },
+      "dataset": true,
+      "model": true,
+      "format-rows?": true,
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "semantic_type": "type/Category",
+            "name": "hasmeat",
+            "field_ref": [
+              "field",
+              "hasmeat",
+              {
+                "base-type": "type/Boolean"
+              }
+            ],
+            "effective_type": "type/Boolean",
+            "id": 1312,
+            "visibility_type": "normal",
+            "display_name": "Hasmeat",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2,
+                "nil%": 0
+              }
+            },
+            "base_type": "type/Boolean"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 422,
+                  "q1": 422,
+                  "q3": 752,
+                  "max": 752,
+                  "sd": 233.3452377915607,
+                  "avg": 587
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]
