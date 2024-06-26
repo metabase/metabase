@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
-import { setUIControls } from "metabase/query_builder/actions";
+import {
+  type UpdateQuestionOpts,
+  setUIControls,
+} from "metabase/query_builder/actions";
 import { Box, Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -15,7 +18,10 @@ export type NotebookProps = {
   isResultDirty: boolean;
   reportTimezone: string;
   hasVisualizeButton?: boolean;
-  updateQuestion: (question: Question) => Promise<void>;
+  updateQuestion: (
+    question: Question,
+    options?: UpdateQuestionOpts,
+  ) => Promise<void>;
   runQuestionQuery: () => void;
   setQueryBuilderMode: (mode: string) => void;
   readOnly?: boolean;
@@ -64,7 +70,7 @@ const Notebook = ({
 
   const handleUpdateQuestion = (question: Question): Promise<void> => {
     dispatch(setUIControls({ isModifiedFromNotebook: true }));
-    return updateQuestion(question);
+    return updateQuestion(question, { shouldUpdateUrl: true });
   };
 
   return (
