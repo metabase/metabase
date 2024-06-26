@@ -591,6 +591,27 @@ function removeFilter() {
   cy.findByTestId("question-row-count").should("have.text", "Showing 2 rows");
 }
 
+describe("issue 33439", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show an error message when trying to use convertTimezone on an unsupported db (metabase#33439)", () => {
+    openOrdersTable({ mode: "notebook" });
+    addCustomColumn();
+    enterCustomColumnDetails({
+      formula:
+        'convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")',
+      name: "Date",
+    });
+    popover().within(() => {
+      cy.findByText("Unsupported function convert-timezone");
+      cy.button("Done").should("be.disabled");
+    });
+  });
+});
+
 describe("issue 42244", () => {
   const COLUMN_NAME = "Created At".repeat(5);
 
@@ -926,6 +947,26 @@ describe("issue 44532", () => {
       cy.findByText("Gadget").should("not.exist");
       cy.findByText("Gizmo").should("not.exist");
       cy.findByText("Widget").should("not.exist");
+    });
+  });
+});
+
+describe("issue 33441", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show an error message for an incorrect date expression (metabase#33441)", () => {
+    openOrdersTable({ mode: "notebook" });
+    addCustomColumn();
+    enterCustomColumnDetails({
+      formula: 'datetimeDiff([Created At] , now, "days")',
+      name: "Date",
+    });
+    popover().within(() => {
+      cy.findByText("Invalid expression").should("be.visible");
+      cy.button("Done").should("be.disabled");
     });
   });
 });
