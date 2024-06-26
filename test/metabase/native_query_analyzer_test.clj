@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.db.connection :as mdb.connection]
+   [metabase.driver :as driver]
    [metabase.native-query-analyzer :as query-analyzer]
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]))
@@ -49,9 +50,9 @@
                (q "select \"ID\" from venues"))))
       (testing "you can mix quoted and unquoted names"
         (is (= {:explicit #{(mt/id :venues :id) (mt/id :venues :name)} :implicit nil}
-               (q "select v.\"ID\", v.name from venues")))
+               (q "select v.\"ID\", v.name from venues v")))
         (is (= {:explicit #{(mt/id :venues :id) (mt/id :venues :name)} :implicit nil}
-               (q "select v.`ID`, v.name from venues"))))
+               (q "select v.`ID`, v.name from venues v"))))
       (testing "It will find all relevant columns if query is not specific"
         (is (= {:explicit #{(mt/id :venues :id) (mt/id :checkins :id)} :implicit nil}
                (q "select id from venues join checkins"))))
@@ -64,4 +65,9 @@
                    :implicit count)))
         (is (= 6
                (-> (q "select v.* from venues v join checkins")
-                   :implicit count)))))))
+                   :implicit count))))
+
+      (when (not (contains? #{:snowflake :oracle} driver/*driver*))
+        (testing "Analysis does not fail due to keywords that are only reserved in other databases"
+          (is (= {:explicit #{(mt/id :venues :id)} :implicit nil}
+                 (q "select id as final from venues"))))))))

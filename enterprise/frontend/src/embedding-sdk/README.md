@@ -4,6 +4,14 @@
 
 The Metabase Embedding SDK for React offers a way to integrate Metabase into your application more seamlessly and with greater flexibility than using the current interactive embedding offering based on iframes.
 
+<div>
+  <a href="https://www.loom.com/share/b6998692937c4ecaab1af097f2123c6f">
+    <img style="max-width: 300px" src="https://cdn.loom.com/sessions/thumbnails/b6998692937c4ecaab1af097f2123c6f-with-play.gif">
+  </a>
+</div>
+
+[Watch a 5-minute tour of the SDK's features.](https://www.loom.com/share/b6998692937c4ecaab1af097f2123c6f)
+
 Features currently supported:
 
 - embedding questions - static
@@ -591,8 +599,10 @@ return (
 
 # Known limitations
 
-- The Metabase Embedding SDK only supports React on SPA Webpack applications. Applications built with Vite aren't currently supported. We aim to add support for other platforms in the near future.
-- Authorized Origins setting only supports 1 origin for CORS at the moment. We are working on supporting multiple origins in the near future.
+- The Metabase Embedding SDK does not support server-side rendering (SSR) at the moment.
+  - If you are using a framework with SSR support such as Next.js or Remix, you have to ensure that the SDK components are rendered on the client side.
+  - For example, you can apply the `"use client"` directive on Next.js or use the `remix-utils/ClientOnly` component on Remix.
+
 # Feedback
 
 For issues and feedback, there are two options:

@@ -4,7 +4,6 @@
    [metabase.api.common :as api]
    [metabase.channel.core :as channel]
    [metabase.events :as events]
-   [metabase.integrations.slack :as slack]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.database :refer [Database]]
@@ -12,7 +11,6 @@
    [metabase.models.pulse :as pulse :refer [Pulse]]
    [metabase.models.serialization :as serdes]
    [metabase.pulse.parameters :as pulse-params]
-   [metabase.pulse.render :as render]
    [metabase.pulse.util :as pu]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server.middleware.session :as mw.session]
@@ -179,33 +177,6 @@
   [card :- (ms/InstanceOf :model/Card)]
   (or (some->> card database-id (t2/select-one Database :id) qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))
-
-(def slack-width
-  "Maximum width of the rendered PNG of HTML to be sent to Slack. Content that exceeds this width (e.g. a table with
-  many columns) is truncated."
-  1200)
-
-(defn create-and-upload-slack-attachments!
-  "Create an attachment in Slack for a given Card by rendering its content into an image and uploading
-  it. Slack-attachment-uploader is a function which takes image-bytes and an attachment name, uploads the file, and
-  returns an image url, defaulting to slack/upload-file!.
-
-  Nested `blocks` lists containing text cards are passed through unmodified."
-  ([attachments] (create-and-upload-slack-attachments! attachments slack/upload-file!))
-  ([attachments slack-attachment-uploader]
-   (letfn [(f [a] (select-keys a [:title :title_link :fallback]))]
-     (reduce (fn [processed {:keys [rendered-info attachment-name channel-id] :as attachment-data}]
-               (conj processed (if (:blocks attachment-data)
-                                 attachment-data
-                                 (if (:render/text rendered-info)
-                                   (-> (f attachment-data)
-                                       (assoc :text (:render/text rendered-info)))
-                                   (let [image-bytes (render/png-from-render-info rendered-info slack-width)
-                                         image-url   (slack-attachment-uploader image-bytes attachment-name channel-id)]
-                                     (-> (f attachment-data)
-                                         (assoc :image_url image-url)))))))
-             []
-             attachments))))
 
 (defn- are-all-parts-empty?
   "Do none of the cards have any results?"

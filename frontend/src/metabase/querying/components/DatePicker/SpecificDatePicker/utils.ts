@@ -2,12 +2,19 @@ import dayjs from "dayjs";
 
 import type {
   DatePickerOperator,
+  DatePickerValue,
   SpecificDatePickerOperator,
   SpecificDatePickerValue,
 } from "../types";
 
 import { TABS } from "./constants";
 import type { Tab } from "./types";
+
+export function isSpecificValue(
+  value?: DatePickerValue,
+): value is SpecificDatePickerValue {
+  return value?.type === "specific";
+}
 
 export function getTabs(
   availableOperators: ReadonlyArray<DatePickerOperator>,

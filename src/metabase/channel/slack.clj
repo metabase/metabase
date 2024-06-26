@@ -53,12 +53,12 @@
     :tab-title
     (text->markdown-block (format "# %s" (:text payload)))))
 
-(def slack-width
+(def ^:private slack-width
   "Maximum width of the rendered PNG of HTML to be sent to Slack. Content that exceeds this width (e.g. a table with
   many columns) is truncated."
   1200)
 
-(defn create-and-upload-slack-attachments!
+(defn- create-and-upload-slack-attachments!
   "Create an attachment in Slack for a given Card by rendering its content into an image and uploading
   it. Slack-attachment-uploader is a function which takes image-bytes and an attachment name, uploads the file, and
   returns an image url, defaulting to slack/upload-file!.

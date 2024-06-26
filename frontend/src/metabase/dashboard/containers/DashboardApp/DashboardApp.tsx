@@ -137,7 +137,7 @@ const DashboardApp = (props: DashboardAppProps) => {
     }
 
     return () => {
-      dispatch(dismissUndo(slowToastId));
+      dispatch(dismissUndo({ undoId: slowToastId }));
     };
   }, [
     dashboard?.name,
@@ -149,7 +149,7 @@ const DashboardApp = (props: DashboardAppProps) => {
 
   const onConfirmToast = useCallback(async () => {
     await requestPermission();
-    dispatch(dismissUndo(slowToastId));
+    dispatch(dismissUndo({ undoId: slowToastId }));
   }, [dispatch, requestPermission, slowToastId]);
 
   const onTimeout = useCallback(() => {
