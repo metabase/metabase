@@ -99,10 +99,8 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       return Lib.isCoordinate(column);
     });
     if (areBreakoutsCoordinates) {
-      const [{ breakout: breakoutOne }, { breakout: breakoutTwo }] =
-        getBreakoutsWithColumns(query, stageIndex, breakouts);
-      const binningOne = Lib.binning(breakoutOne);
-      const binningTwo = Lib.binning(breakoutTwo);
+      const binningOne = Lib.binning(breakouts[0]);
+      const binningTwo = Lib.binning(breakouts[1]);
       const areBothBinned = binningOne !== null && binningTwo !== null;
 
       if (areBothBinned) {
