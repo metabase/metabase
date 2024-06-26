@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from "react";
+import { useMemo, type ComponentType } from "react";
 import { Provider } from "react-redux";
 
 import { sdkReducers, store, useSdkSelector } from "embedding-sdk/store";
@@ -10,8 +10,6 @@ import { getStore } from "metabase/store";
 
 import { PublicComponentWrapper } from "./PublicComponentWrapper";
 
-type Store = ReturnType<typeof getStore>;
-
 export function withPublicComponentWrapper<P extends object>(
   WrappedComponent: ComponentType<P>,
 ): React.FC<P> {
@@ -19,12 +17,14 @@ export function withPublicComponentWrapper<P extends object>(
     const token = useSdkSelector(getSessionTokenState);
     const isLoggedIn = useSdkSelector(getIsLoggedIn);
 
-    const [isolatedStore, setIsolatedStore] = useState<Store | null>(null);
-
     // refresh the internal store when the token changes
-    useEffect(() => {
-      setIsolatedStore(getStore(sdkReducers, null, store.getState()));
-    }, [token, isLoggedIn]);
+
+    const isolatedStore = useMemo(
+      () => {
+        return getStore(sdkReducers, null, store.getState());
+      }, // eslint-disable-next-line react-hooks/exhaustive-deps
+      [token, isLoggedIn],
+    );
 
     return (
       <Provider store={isolatedStore}>
