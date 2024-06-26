@@ -258,7 +258,8 @@
                            perm-value))
 
 (mu/defn table-permission-for-groups :- PermissionValue
-  "Returns the effective permission value for a given *group*, permission type, and database ID, and table ID."
+  "Returns the effective permission value provided by a set of *group-ids*, for a provided permission type, database
+  ID, and table ID."
   [group-ids perm-type database-id table-id]
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
@@ -279,8 +280,8 @@
         (least-permissive-value perm-type))))
 
 (mu/defn groups-have-permission-for-table? :- :boolean
-  "Returns a Boolean indicating whether the group has the specified permission value for the given table ID, or a more
-  permissive value."
+  "Returns a Boolean indicating whether the provided groups grant the specified permission level or higher for the given
+  table ID, or a more permissive value. (i.e. if a user is in all of these groups, would they have this permission?)"
   [group-ids perm-type perm-value database-id table-id]
   (at-least-as-permissive? perm-type
                            (table-permission-for-groups group-ids perm-type database-id table-id)
