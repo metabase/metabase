@@ -2030,10 +2030,10 @@
              (is (= {:row-count 1}
                     (update-csv! ::upload/append {:file file, :table-id (:id table)})))
              (testing "Check the data was appended into the table"
-               (is (= #p (map second (rows-with-auto-pk
-                                      [(csv/read-csv original-row)
-                                       (csv/read-csv appended-row)]))
-                      #p (map rest (rows-for-table table)))))
+               (is (= (map second (rows-with-auto-pk
+                                   [(csv/read-csv original-row)
+                                    (csv/read-csv appended-row)]))
+                      (map rest (rows-for-table table)))))
              (io/delete-file file))))))))
 
 (deftest append-with-really-long-names-that-duplicate
