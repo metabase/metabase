@@ -83,7 +83,7 @@
                :average_execution_time nil
                :context                nil
                :running_time           int?
-               :cached                 false}
+               :cached                 nil}
               (process-userland-query query))
           "Result should have query execution info")
       (is (=? {:hash         "58af781ea2ba252ce3131462bdc7c54bc57538ed965d55beec62928ce8b32635"
