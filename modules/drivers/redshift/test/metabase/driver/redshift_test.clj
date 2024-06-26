@@ -1,6 +1,7 @@
 (ns metabase.driver.redshift-test
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -558,12 +559,16 @@
                           (range num-queries))]
         ;; now attempt to cancel any of those queries we can using CANCEL statements. We might have to do this a few
         ;; times if some of the queries in the background threads haven't shown up yet, so iterate up to 10 times until
-        ;; we kill SOMETHING.
-        (loop [max-iterations 10]
-          (when (pos? max-iterations)
-            (let [killed-pids (detect-canceled-queries-test-kill-long-running-queries!)]
-              (when (empty killed-pids)
-                (recur (long (dec max-iterations)))))))
+        ;; we CANCEL all (most of) the queries.
+        ;;
+        ;; It seems like the first query always gets marked DONE right away, probably because it doesn't need to wait
+        ;; for a lock, so let's just wait until we kill 4 queries.
+        (loop [killed-pids #{}, max-iterations 10]
+          (when (and (< (count killed-pids) 4)
+                     (pos? max-iterations))
+            (let [newly-killed-pids (detect-canceled-queries-test-kill-long-running-queries!)]
+              (recur (set/union killed-pids newly-killed-pids)
+                     (long (dec max-iterations))))))
         ;; Now let's check the status of the last query and make sure it was killed before the entire 20 seconds was up
         ;; or it otherwise timed out, and make sure the error was propagated. Why not check all of the queries?
         ;; Sometimes the first one gets marked `DONE` right away, not sure why, but maybe because it's not waiting for
