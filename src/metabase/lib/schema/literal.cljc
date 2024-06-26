@@ -1,14 +1,14 @@
 (ns metabase.lib.schema.literal
   "Malli schemas for string, temporal, number, and boolean literals."
   (:require
-   #?@(:clj ([metabase.lib.schema.literal.jvm]))
+   #?@(:clj  ([java-time.api :as t]
+              [metabase.lib.schema.literal.jvm])
+       :cljs ([metabase.lib.schema.literal.js]))
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.shared.util.internal.time-common :as shared.ut.common]
-   [metabase.util.malli.registry :as mr]
-   #?@(:clj
-       ([java-time.api :as t]))))
+   [metabase.util.malli.registry :as mr]))
 
 (defmethod expression/type-of-method :dispatch-type/nil
   [_nil]
@@ -18,17 +18,23 @@
   [_bool]
   :type/Boolean)
 
-#?(:clj
-   (defn- big-int? [x]
+(defn- big-int? [x]
+  #?(:clj
      (or (instance? java.math.BigInteger x)
-         (instance? clojure.lang.BigInt x))))
+         (instance? clojure.lang.BigInt x))
+
+     :cljs
+     (metabase.lib.schema.literal.js/big-int? x)))
+
+(mr/def ::big-int
+  #?(:clj  :metabase.lib.schema.literal.jvm/big-integer
+     :cljs :metabase.lib.schema.literal.js/big-integer))
 
 (mr/def ::integer
-  #?(:clj [:multi
-           {:dispatch big-int?}
-           [true  :metabase.lib.schema.literal.jvm/big-integer]
-           [false :int]]
-     :cljs :int))
+  [:multi
+   {:dispatch big-int?}
+   [true  ::big-int]
+   [false :int]])
 
 (defmethod expression/type-of-method :dispatch-type/integer
   [_int]

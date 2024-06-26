@@ -23,7 +23,8 @@
               [metabase.util.jvm :as u.jvm]
               [metabase.util.string :as u.str]
               [potemkin :as p]
-              [ring.util.codec :as codec])))
+              [ring.util.codec :as codec])
+       :cljs ([metabase.lib.schema.literal.js])))
   #?(:clj (:import
            (clojure.lang Reflector)
            (java.text Normalizer Normalizer$Form)
@@ -819,6 +820,9 @@
     (symbol? x)     :dispatch-type/symbol
     (fn? x)         :dispatch-type/fn
     (regexp? x)     :dispatch-type/regex
+    ;; JS-only mappings
+    #?@(:cljs
+        ((metabase.lib.schema.literal.js/big-int? x) :dispatch-type/integer))
     ;; we should add more mappings here as needed
     :else           :dispatch-type/*))
 

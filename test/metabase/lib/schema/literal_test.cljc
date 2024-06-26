@@ -124,3 +124,16 @@
       ;; look at the `:effective-type` and/or `:effective-type`, not the wrapped literal type.
       [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Number} "Not a number"]
       ::expression/string)))
+
+#?(:cljs
+   (deftest ^:parallel js-bigint-test
+     (testing #'literal/big-int?
+       (is (#'literal/big-int? (js/BigInt 100))))
+     (testing "literal schemas"
+       (are [schema] (not (me/humanize (mc/explain schema (js/BigInt 100))))
+         ::literal/big-int
+         ::literal/integer
+         ::literal/literal))
+     (testing #'expression/type-of
+       (is (= :type/Integer
+              (expression/type-of (js/BigInt 100)))))))

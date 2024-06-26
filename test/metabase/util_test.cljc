@@ -396,6 +396,11 @@
       :dispatch-type/fn
       :dispatch-type/*)))
 
+#?(:cljs
+   (deftest ^:parallel cljs-big-int-dispatch-type-test
+     (is (= :dispatch-type/integer
+            (u/dispatch-type-keyword (js/BigInt 100))))))
+
 (deftest ^:parallel assoc-dissoc-test
   (testing `lib.options/with-option-value
     (is (= {:foo "baz"}
