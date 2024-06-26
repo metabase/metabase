@@ -4,7 +4,6 @@ import { useMount } from "react-use";
 import _ from "underscore";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { setErrorPage } from "metabase/redux/app";
 import { addParamValues, addFields } from "metabase/redux/metadata";
@@ -17,6 +16,7 @@ import {
   maybeUsePivotEndpoint,
 } from "metabase/services";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import { applyParameters } from "metabase-lib/v1/queries/utils/card";

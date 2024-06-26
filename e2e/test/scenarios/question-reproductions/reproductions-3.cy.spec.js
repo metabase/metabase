@@ -589,6 +589,27 @@ function removeFilter() {
   cy.findByTestId("question-row-count").should("have.text", "Showing 2 rows");
 }
 
+describe("issue 33439", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show an error message when trying to use convertTimezone on an unsupported db (metabase#33439)", () => {
+    openOrdersTable({ mode: "notebook" });
+    addCustomColumn();
+    enterCustomColumnDetails({
+      formula:
+        'convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")',
+      name: "Date",
+    });
+    popover().within(() => {
+      cy.findByText("Unsupported function convert-timezone");
+      cy.button("Done").should("be.disabled");
+    });
+  });
+});
+
 describe("issue 42244", () => {
   const COLUMN_NAME = "Created At".repeat(5);
 
@@ -928,6 +949,26 @@ describe("issue 44532", () => {
   });
 });
 
+describe("issue 33441", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show an error message for an incorrect date expression (metabase#33441)", () => {
+    openOrdersTable({ mode: "notebook" });
+    addCustomColumn();
+    enterCustomColumnDetails({
+      formula: 'datetimeDiff([Created At] , now, "days")',
+      name: "Date",
+    });
+    popover().within(() => {
+      cy.findByText("Invalid expression").should("be.visible");
+      cy.button("Done").should("be.disabled");
+    });
+  });
+});
+
 describe("issue 43294", () => {
   const questionDetails = {
     display: "line",
@@ -1038,5 +1079,78 @@ describe("issue 40399", () => {
       cy.findByTestId("preview-root").findAllByText("Gizmo").should("exist");
       cy.findByTestId("preview-root").findAllByText("Widget").should("exist");
     });
+  });
+});
+
+describe("issue 19894", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show all columns when using the join column selecter (metabase#19894)", () => {
+    createQuestion(
+      {
+        name: "Q1",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        },
+      },
+      {
+        wrapId: true,
+      },
+    );
+
+    createQuestion({
+      name: "Q2",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["sum", ["field", PRODUCTS.PRICE, null]]],
+        breakout: [["field", PRODUCTS.CATEGORY, null]],
+      },
+    });
+
+    createQuestion({
+      name: "Q3",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["avg", ["field", PRODUCTS.RATING, null]]],
+        breakout: [["field", PRODUCTS.CATEGORY, null]],
+      },
+    });
+
+    startNewQuestion();
+
+    modal().findByText("Saved questions").click();
+    modal().findByText("Q1").click();
+
+    cy.button("Join data").click();
+
+    modal().findByText("Saved questions").click();
+    modal().findByText("Q2").click();
+
+    popover().findByText("Category").click();
+    popover().findByText("Category").click();
+
+    cy.button("Join data").click();
+
+    modal().findByText("Saved questions").click();
+    modal().findByText("Q3").click();
+
+    popover().findByText("Category").should("be.visible");
+    popover().findByText("Count").should("be.visible");
+
+    popover().findByText("Q1").click();
+    popover().findByText("Q2").click();
+
+    popover().findByText("Category").should("be.visible");
+    popover().findByText("Sum of Price").should("be.visible");
+
+    popover().findByText("Q1").click();
+
+    popover().findByText("Category").should("be.visible");
+    popover().findByText("Count").should("be.visible");
   });
 });
