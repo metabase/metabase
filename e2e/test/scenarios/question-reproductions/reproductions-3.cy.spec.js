@@ -35,9 +35,11 @@ import {
   enterCustomColumnDetails,
   addCustomColumn,
   tableInteractive,
+  join,
 } from "e2e/support/helpers";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 describe("issue 32625, issue 31635", () => {
   const CC_NAME = "Is Promotion";
@@ -772,6 +774,92 @@ describe.skip("issue 10493", () => {
       cy.findByText("Quantity").should("exist");
       cy.findByText("25").should("exist");
       cy.findByText("75").should("exist");
+    });
+  });
+});
+
+describe("issue 32020", () => {
+  const question1Details = {
+    name: "Q1",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["sum", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }]],
+      ],
+      breakout: [
+        ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+      ],
+    },
+  };
+
+  const question2Details = {
+    name: "Q2",
+    query: {
+      "source-table": PEOPLE_ID,
+      aggregation: [
+        ["max", ["field", PEOPLE.LONGITUDE, { "base-type": "type/Float" }]],
+      ],
+      breakout: [
+        ["field", PEOPLE.ID, { "base-type": "type/BigInteger" }],
+        [
+          "field",
+          PEOPLE.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    createQuestion(question1Details);
+    createQuestion(question2Details);
+  });
+
+  it("should be possible to use aggregation columns from source and joined questions in aggregation (metabase#32020)", () => {
+    startNewQuestion();
+
+    cy.log("create joined question manually");
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText(question1Details.name).click();
+    });
+    join();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText(question2Details.name).click();
+    });
+    popover().findByText("ID").click();
+    popover().findByText("ID").click();
+
+    cy.log("aggregation column from the source question");
+    getNotebookStep("summarize")
+      .findByText(/Pick the metric/)
+      .click();
+    popover().within(() => {
+      cy.findByText("Sum of ...").click();
+      cy.findByText("Sum of Total").click();
+    });
+
+    cy.log("aggregation column from the joined question");
+    getNotebookStep("summarize").icon("add").click();
+    popover().within(() => {
+      cy.findByText("Sum of ...").click();
+      cy.findByText(question2Details.name).click();
+      cy.findByText("Max of Longitude").click();
+    });
+
+    cy.log("visualize and check results");
+    visualize();
+    tableInteractive().within(() => {
+      cy.findByText("Sum of Sum of Total").should("be.visible");
+      cy.findByText("Sum of Q2 → Max").should("be.visible");
     });
   });
 });
