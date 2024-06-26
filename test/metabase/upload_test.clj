@@ -134,8 +134,8 @@
   [rows]
   (with-open [reader (io/reader (csv-file-with rows))]
     (let [[header & rows] (csv/read-csv reader)
-          normalized-header (for [h header] (#'upload/normalize-column-name nil h))]
-      (#'upload/detect-schema (upload-parsing/get-settings) normalized-header rows))))
+          column-names (#'upload/derive-column-names nil header)]
+      (#'upload/detect-schema (upload-parsing/get-settings) column-names rows))))
 
 (deftest ^:parallel detect-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
