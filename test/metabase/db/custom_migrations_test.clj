@@ -312,8 +312,8 @@
 
 (deftest downgrade-dashboard-tabs-test
   (testing "Migrations v47.00-029: downgrade dashboard tab test"
-    ;; it's "v47.00-030" but not "v47.00-029" because for some reasons,
-    ;; SOMETIMES the rollback of custom migration doens't get triggered on mysql and this test got flaky.
+    ;; it's "v47.00-030" but not "v47.00-029" for some reason,
+    ;; SOMETIMES the rollback of custom migration doesn't get triggered on mysql and this test got flaky.
     (impl/test-migrations "v47.00-030" [migrate!]
       (migrate!)
       (let [user-id      (first (t2/insert-returning-pks! (t2/table-name :model/User) {:first_name  "Howard"
@@ -1745,35 +1745,39 @@
   (impl/test-migrations ["v50.2024-04-25T01:04:06"] [migrate!]
     (migrate!)
     (pulse-channel-test/with-send-pulse-setup!
-      (let [user-id  (:id (new-instance-with-default :core_user))
-            pulse-id (:id (new-instance-with-default :pulse {:creator_id user-id}))
-            pc       (new-instance-with-default :pulse_channel {:pulse_id pulse-id})]
-        ;; trigger this so we schedule a trigger for send-pulse
-        (task.send-pulses/update-send-pulse-trigger-if-needed! pulse-id pc :add-pc-ids #{(:id pc)})
-        (testing "sanity check that we have a send pulse trigger and 2 jobs"
-          (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id))))
-          (is (= #{"metabase.task.send-pulses.send-pulse.job"
-                   "metabase.task.send-pulses.init-send-pulse-triggers.job"}
-                 (scheduler-job-keys))))
-        (testing "migrate down will remove init-send-pulse-triggers job, send-pulse job and send-pulse triggers"
-          (migrate! :down 49)
-          (is (= #{} (scheduler-job-keys)))
-          (is (= 0 (count (pulse-channel-test/send-pulse-triggers pulse-id)))))
-        (testing "the init-send-pulse-triggers job should be re-run after migrate up"
-          (migrate!)
-          ;; we need to redef this so quarzt trigger that run on a different thread use the same db connection as this test
-          (with-redefs [mdb.connection/*application-db* mdb.connection/*application-db*]
-            ;; simulate starting MB after migrate up, which will trigger this function
-            (task/init! ::task.send-pulses/SendPulses)
-            ;; wait a bit for the InitSendPulseTriggers to run
-            (u/poll {:thunk #(pulse-channel-test/send-pulse-triggers pulse-id)
-                     :done? #(= 1 %)})
-            (testing "sanity check that we have a send pulse trigger and 2 jobs after restart"
-              (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pc [(:id pc)])}
-                     (pulse-channel-test/send-pulse-triggers pulse-id)))
-              (is (= #{"metabase.task.send-pulses.send-pulse.job"
-                       "metabase.task.send-pulses.init-send-pulse-triggers.job"}
-                     (scheduler-job-keys))))))))))
+      ;; the `pulse-channell-test/with-send-pulse-setup!` macro dynamically binds an in-memory scheduler to `task/*quartz-scheduler*`
+      ;; but we need to re-bind that to global here because the InitSendPulseTriggers job will need access to the scheduler,
+      ;; and since quartz job is running in a different thread other than this test's thread, we need to bind it globally
+      (with-redefs [task/*quartz-scheduler* task/*quartz-scheduler*]
+        (let [user-id  (:id (new-instance-with-default :core_user))
+              pulse-id (:id (new-instance-with-default :pulse {:creator_id user-id}))
+              pc       (new-instance-with-default :pulse_channel {:pulse_id pulse-id})]
+          ;; trigger this so we schedule a trigger for send-pulse
+          (task.send-pulses/update-send-pulse-trigger-if-needed! pulse-id pc :add-pc-ids #{(:id pc)})
+          (testing "sanity check that we have a send pulse trigger and 2 jobs"
+            (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id))))
+            (is (= #{"metabase.task.send-pulses.send-pulse.job"
+                     "metabase.task.send-pulses.init-send-pulse-triggers.job"}
+                   (scheduler-job-keys))))
+          (testing "migrate down will remove init-send-pulse-triggers job, send-pulse job and send-pulse triggers"
+            (migrate! :down 49)
+            (is (= #{} (scheduler-job-keys))))
+
+          (testing "the init-send-pulse-triggers job should be re-run after migrate up"
+            (migrate!)
+            ;; we redefine this so quartz triggers that run on different threads use the same db connection as this test
+            (with-redefs [mdb.connection/*application-db* mdb.connection/*application-db*]
+              ;; simulate starting MB after migrate up, which will trigger this function
+              (task/init! ::task.send-pulses/SendPulses)
+              ;; wait a bit for the InitSendPulseTriggers to run
+              (u/poll {:thunk #(pulse-channel-test/send-pulse-triggers pulse-id)
+                       :done? #(= 1 %)})
+              (testing "sanity check that we have a send pulse trigger and 2 jobs after restart"
+                (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pc [(:id pc)])}
+                       (pulse-channel-test/send-pulse-triggers pulse-id)))
+                (is (= #{"metabase.task.send-pulses.send-pulse.job"
+                         "metabase.task.send-pulses.init-send-pulse-triggers.job"}
+                       (scheduler-job-keys)))))))))))
 
 (def ^:private area-bar-combo-cards-test-data
   {"stack display takes priority"
@@ -1995,3 +1999,21 @@
           :date_joined   :%now})
         (migrate!)
         (is (false? (sample-content-created?)))))))
+
+(deftest decrypt-cache-settings-test
+  (impl/test-migrations "v50.2024-06-12T12:33:07" [migrate!]
+    (encryption-test/with-secret-key "whateverwhatever"
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
+                            {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
+                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}]))
+
+    (testing "Values were indeed encrypted"
+      (is (not= "true" (t2/select-one-fn :value :setting :key "enable-query-caching"))))
+
+    (encryption-test/with-secret-key "whateverwhatever"
+      (migrate!))
+
+    (testing "But not anymore"
+      (is (= "true" (t2/select-one-fn :value :setting :key "enable-query-caching")))
+      (is (= "100" (t2/select-one-fn :value :setting :key "query-caching-ttl-ratio")))
+      (is (= "123" (t2/select-one-fn :value :setting :key "query-caching-min-ttl"))))))

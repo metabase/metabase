@@ -51,7 +51,6 @@
             (is (= (-> (into {} (t2/select-one Collection :id (:id parent)))
                        (dissoc :id :location)
                        (assoc :parent_id nil)
-                       (assoc :trashed_from_parent_id nil)
                        (update :created_at t/offset-date-time))
                    (-> (yaml/from-file (io/file dump-dir "collections" parent-filename (str parent-filename ".yaml")))
                        (dissoc :serdes/meta)
@@ -60,7 +59,6 @@
             (is (= (-> (into {} (t2/select-one Collection :id (:id child)))
                        (dissoc :id :location)
                        (assoc :parent_id (:entity_id parent))
-                       (assoc :trashed_from_parent_id nil)
                        (update :created_at t/offset-date-time))
                    (-> (yaml/from-file (io/file dump-dir "collections" parent-filename
                                                 child-filename (str child-filename ".yaml")))

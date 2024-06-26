@@ -1,9 +1,13 @@
-import { useDispatch } from "metabase/lib/redux";
+import { t } from "ttag";
+
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import { setUIControls } from "metabase/query_builder/actions";
 import {
   CompareAggregations,
-  getTitle,
+  getOffsetPeriod,
 } from "metabase/query_builder/components/CompareAggregations";
+import { getQuestion } from "metabase/query_builder/selectors";
 import { trackColumnCompareViaPlusModal } from "metabase/querying/analytics";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
@@ -37,6 +41,7 @@ export const CompareAggregationsAction: LegacyDrill = ({
     onChangeCardAndRun,
     onClose,
   }: ClickActionPopoverProps) => {
+    const currentQuestion = useSelector(getQuestion);
     const dispatch = useDispatch();
 
     function handleSubmit(aggregations: Lib.ExpressionClause[]) {
@@ -45,7 +50,7 @@ export const CompareAggregationsAction: LegacyDrill = ({
         query,
       );
 
-      const nextQuestion = question.setQuery(nextQuery);
+      const nextQuestion = checkNotNull(currentQuestion).setQuery(nextQuery);
       const nextCard = nextQuestion.card();
 
       trackColumnCompareViaPlusModal(
@@ -83,4 +88,20 @@ export const CompareAggregationsAction: LegacyDrill = ({
       popover: Popover,
     },
   ];
+};
+
+export const getTitle = (
+  query: Lib.Query,
+  stageIndex: number,
+  aggregation?: Lib.AggregationClause | Lib.ExpressionClause,
+): string => {
+  const period = getOffsetPeriod(query, stageIndex);
+
+  if (!aggregation) {
+    return t`Compare to previous ${period}`;
+  }
+
+  const info = Lib.displayInfo(query, stageIndex, aggregation);
+
+  return t`Compare “${info.displayName}” to previous ${period}`;
 };

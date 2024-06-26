@@ -13,7 +13,10 @@
    [metabase.db.query :as mdb.query]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.util :as lib.util]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
@@ -69,7 +72,6 @@
    :type                   mi/transform-keyword})
 
 (doto :model/Card
-  (derive ::mi/has-trashed-from-collection-id)
   (derive :metabase/model)
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive ::perms/use-parent-collection-perms)
@@ -130,21 +132,34 @@
    :id
    {:default 0}))
 
+(defn- source-card-id
+  [query]
+  (let [query-type (lib/normalized-query-type query)]
+    (case query-type
+      :query      (-> query mbql.normalize/normalize qp.util/query->source-card-id)
+      :mbql/query (-> query lib/normalize lib.util/source-card-id)
+      nil)))
+
 (defn with-can-run-adhoc-query
   "Adds can_run_adhoc_query to each card."
   [cards]
-  (mi/instances-with-hydrated-data
-   cards :can_run_adhoc_query
-   (fn []
-     (into {}
-           (comp
-            (filter (comp seq :dataset_query))
-            (map
-             (fn [{card-id :id :keys [dataset_query]}]
-               [card-id (query-perms/can-run-query? dataset_query)])))
-           cards))
-   :id
-   {:default false}))
+  (let [dataset-cards (filter (comp seq :dataset_query) cards)
+        source-card-ids (into #{}
+                              (keep (comp source-card-id :dataset_query))
+                              dataset-cards)]
+    (binding [query-perms/*card-instances*
+              (when (seq source-card-ids)
+                (t2/select-fn->fn :id identity [Card :id :collection_id] :id [:in source-card-ids]))]
+      (mi/instances-with-hydrated-data
+       cards :can_run_adhoc_query
+       (fn []
+         (into {}
+               (map
+                (fn [{card-id :id :keys [dataset_query]}]
+                  [card-id (query-perms/can-run-query? dataset_query)]))
+               dataset-cards))
+       :id
+       {:default false}))))
 
 (mi/define-batched-hydration-method add-can-run-adhoc-query
   :can_run_adhoc_query
@@ -731,7 +746,7 @@
                 ;; `collection_id` and `description` can be `nil` (in order to unset them).
                 ;; Other values should only be modified if they're passed in as non-nil
                 (u/select-keys-when card-updates
-                                    :present #{:collection_id :collection_position :description :cache_ttl :trashed_from_collection_id}
+                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly}
                                     :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                :result_metadata :collection_preview :verified-result-metadata?})))
@@ -875,7 +890,7 @@
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
-           result_metadata table_id visualization_settings trashed_from_collection_id]}]
+           result_metadata table_id visualization_settings]}]
   (->> (map serdes/mbql-deps parameter_mappings)
        (reduce set/union #{})
        (set/union (serdes/parameters-deps parameters))
@@ -883,7 +898,6 @@
        ; table_id and collection_id are nullable.
        (set/union (when table_id #{(serdes/table->path table_id)}))
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
-       (set/union (when trashed_from_collection_id #{[{:model "Collection" :id trashed_from_collection_id}]}))
        (set/union (result-metadata-deps result_metadata))
        (set/union (serdes/mbql-deps dataset_query))
        (set/union (serdes/visualization-settings-deps visualization_settings))

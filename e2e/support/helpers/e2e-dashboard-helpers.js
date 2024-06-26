@@ -269,8 +269,12 @@ export function dashboardSaveButton() {
   return cy.findByTestId("edit-bar").findByRole("button", { name: "Save" });
 }
 
+export function dashboardParameterSidebar() {
+  return cy.findByTestId("dashboard-parameter-sidebar");
+}
+
 export function dashboardParametersDoneButton() {
-  return cy.findByTestId("dashboard-parameter-sidebar").button("Done");
+  return dashboardParameterSidebar().button("Done");
 }
 
 /**

@@ -75,8 +75,10 @@
   the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
   is not necessary.
 
-  For archived, we can either include everthing (when archived is `nil`), only archived (when `archived` is true),
-  or only non-archived (when `archived` is false).
+  For archived, we can either include only archived items (when archived is truthy) or exclude archived items (when
+  archived is falsey).
+
+  The Trash Collection itself (the container for archived items) is *always* included.
 
   To select only personal collections, pass in `personal-only` as `true`.
   This will select only collections where `personal_owner_id` is not `nil`."
@@ -101,7 +103,14 @@
                        (perms/audit-namespace-clause :namespace namespace)
                        (collection/visible-collection-ids->honeysql-filter-clause
                         :id
-                        (collection/permissions-set->visible-collection-ids permissions-set))]
+                        (collection/permissions-set->visible-collection-ids
+                         permissions-set
+                         {:include-archived-items (if archived
+                                                    :only
+                                                    :exclude)
+                          :include-trash-collection? true
+                          :permission-level :read
+                          :archive-operation-id nil}))]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
                           [[[:case
@@ -109,7 +118,7 @@
                              [:= :type collection/trash-collection-type] 1
                              :else 2]] :asc]
                           [:%lower.name :asc]]})
-   exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -141,7 +150,7 @@
         (cond->> collections
           (mi/can-read? root)
           (cons root))))
-    (t2/hydrate collections :can_write :is_personal)
+    (t2/hydrate collections :can_write :is_personal :can_delete)
     ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal collections we translate the name to user's locale
     (for [collection collections]
@@ -258,13 +267,14 @@
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
    ;; when specified, only return results of this type.
    [:models       {:optional true} [:maybe [:set (into [:enum] (map keyword) valid-model-param-values)]]]
-   [:sort-info    {:optional true} [:maybe [:tuple
-                                            (into [:enum {:error/message "sort-columns"}]
-                                                  (map normalize-sort-choice)
-                                                  valid-sort-columns)
-                                            (into [:enum {:error/message "sort-direction"}]
-                                                  (map normalize-sort-choice)
-                                                  valid-sort-directions)]]]])
+   [:sort-info    {:optional true} [:maybe [:map
+                                            [:sort-column (into [:enum {:error/message "sort-columns"}]
+                                                                (map normalize-sort-choice)
+                                                                valid-sort-columns)]
+                                            [:sort-direction (into [:enum {:error/message "sort-direction"}]
+                                                                   (map normalize-sort-choice)
+                                                                   valid-sort-directions)]
+                                            [:official-collections-first? {:optional true} :boolean]]]]])
 
 (defmulti ^:private collection-children-query
   "Query that will fetch the 'children' of a `collection`, for different types of objects. Possible options are listed
@@ -329,6 +339,7 @@
                          :p.name
                          :p.entity_id
                          :p.collection_position
+                         :p.collection_id
                          [(h2x/literal "pulse") :model]]
        :from            [[:pulse :p]]
        :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
@@ -363,7 +374,7 @@
 
 (defmethod collection-children-query :timeline
   [_ collection {:keys [archived? pinned-state]}]
-  {:select [:id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
+  {:select [:id :collection_id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
    :from   [[:timeline :timeline]]
    :where  [:and
             (poison-when-pinned-clause pinned-state)
@@ -388,7 +399,8 @@
 (defn- card-query [card-type collection {:keys [archived? pinned-state]}]
   (-> {:select    (cond->
                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
-                     :c.trashed_from_collection_id
+                     :c.collection_id
+                     :c.archived_directly
                      :c.archived
                      :c.dataset_query
                      [(h2x/literal (case card-type
@@ -421,7 +433,19 @@
                                    [:= :r.model (h2x/literal "Card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   [:= :collection_id (:id collection)]
+                   (collection/visible-collection-ids->honeysql-filter-clause
+                    :collection_id
+                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
+                                                                        {:include-archived-items :all
+                                                                         :permission-level (if archived?
+                                                                                             :write
+                                                                                             :read)
+                                                                         :archive-operation-id nil}))
+                   (if (collection/is-trash? collection)
+                     [:= :c.archived_directly true]
+                     [:and
+                      [:= :collection_id (:id collection)]
+                      [:= :c.archived_directly false]])
                    [:= :archived (boolean archived?)]
                    (case card-type
                      :model
@@ -505,7 +529,8 @@
   (-> (t2/instance :model/Card row)
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
-      (t2/hydrate :can_write :can_restore)
+      (update :archived_directly api/bit->boolean)
+      (t2/hydrate :can_write :can_restore :can_delete)
       (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
@@ -519,7 +544,8 @@
 
 (defn- dashboard-query [collection {:keys [archived? pinned-state]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
-                   :d.trashed_from_collection_id
+                   :d.collection_id
+                   :d.archived_directly
                    [(h2x/literal "dashboard") :model]
                    [:u.id :last_edit_user]
                    :archived
@@ -534,7 +560,19 @@
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   [:= :collection_id (:id collection)]
+                   (collection/visible-collection-ids->honeysql-filter-clause
+                    :collection_id
+                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
+                                                                        {:include-archived-items :all
+                                                                         :archive-operation-id nil
+                                                                         :permission-level (if archived?
+                                                                                             :write
+                                                                                             :read)}))
+                   (if (collection/is-trash? collection)
+                     [:= :d.archived_directly true]
+                     [:and
+                      [:= :collection_id (:id collection)]
+                      [:not= :d.archived_directly true]])
                    [:= :archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
@@ -545,7 +583,8 @@
 (defn- post-process-dashboard [dashboard]
   (-> (t2/instance :model/Dashboard dashboard)
       (update :archived api/bit->boolean)
-      (t2/hydrate :can_write :can_restore)
+      (update :archived_directly api/bit->boolean)
+      (t2/hydrate :can_write :can_restore :can_delete)
       (dissoc :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
 
@@ -564,25 +603,30 @@
 
 (defn- collection-query
   [collection {:keys [archived? collection-namespace pinned-state]}]
-  (-> (assoc (collection/effective-children-query
-              collection
-              (if archived?
-                [:or [:= :archived true] [:= :id (collection/trash-collection-id)]]
-                [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])
-              (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
-              (snippets-collection-filter-clause))
-             ;; We get from the effective-children-query a normal set of columns selected:
-             ;; want to make it fit the others to make UNION ALL work
-             :select [:id
-                      :archived
-                      :name
-                      :description
-                      :entity_id
-                      :personal_owner_id
-                      :location
-                      [:type :collection_type]
-                      [(h2x/literal "collection") :model]
-                      :authority_level])
+  (-> (assoc
+       (collection/effective-children-query
+        collection
+        (if archived?
+          [:or
+           [:= :archived true]
+           [:= :id (collection/trash-collection-id)]]
+          [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])
+        (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
+        (snippets-collection-filter-clause))
+       ;; We get from the effective-children-query a normal set of columns selected:
+       ;; want to make it fit the others to make UNION ALL work
+       :select [:id
+                [:id :collection_id]
+                :archived
+                :name
+                :description
+                :entity_id
+                :personal_owner_id
+                :location
+                :archived_directly
+                [:type :collection_type]
+                [(h2x/literal "collection") :model]
+                :authority_level])
       ;; the nil indicates that collections are never pinned.
       (sql.helpers/where (pinned-state->clause pinned-state nil))))
 
@@ -592,8 +636,10 @@
 
 (defn- annotate-collections
   [parent-coll colls]
-  (let [visible-collection-ids (collection/permissions-set->visible-collection-ids
-                                @api/*current-user-permissions-set*)
+  (let [visible-collection-ids (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
+                                                                                   {:include-archived-items :all
+                                                                                    :archive-operation-id nil
+                                                                                    :permission-level :read})
 
         descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-ids->honeysql-filter-clause
                                                                          :id
@@ -610,18 +656,20 @@
                 {:dataset #{}
                  :metric  #{}
                  :card    #{}}
-                (t2/reducible-query {:select-distinct [:collection_id :type]
-                                     :from            [:report_card]
-                                     :where           [:and
-                                                       [:= :archived false]
-                                                       [:in :collection_id descendant-collection-ids]]}))
+                (when (seq descendant-collection-ids)
+                  (t2/reducible-query {:select-distinct [:collection_id :type]
+                                       :from            [:report_card]
+                                       :where           [:and
+                                                         [:= :archived false]
+                                                         [:in :collection_id descendant-collection-ids]]})))
 
         collections-containing-dashboards
-        (->> (t2/query {:select-distinct [:collection_id]
-                        :from :report_dashboard
-                        :where [:and
-                                [:= :archived false]
-                                [:in :collection_id descendant-collection-ids]]})
+        (->> (when (seq descendant-collection-ids)
+               (t2/query {:select-distinct [:collection_id]
+                          :from :report_dashboard
+                          :where [:and
+                                  [:= :archived false]
+                                  [:in :collection_id descendant-collection-ids]]}))
              (map :collection_id)
              (into #{}))
 
@@ -659,7 +707,7 @@
       (-> (t2/instance :model/Collection row)
           collection/maybe-localize-trash-name
           (update :archived api/bit->boolean)
-          (t2/hydrate :can_write :effective_location :collection/can_restore)
+          (t2/hydrate :can_write :effective_location :can_restore :can_delete)
           (dissoc :collection_position :display :moderated_status :icon
                   :collection_preview :dataset_query :table_id :query_type :is_upload)
           update-personal-collection))))
@@ -682,7 +730,7 @@
         (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
 
 (defn- remove-unwanted-keys [row]
-  (dissoc row :collection_type :model_ranking :trashed_from_collection_id))
+  (dissoc row :collection_type :model_ranking :archived_directly))
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
@@ -695,32 +743,11 @@
     :snippet    :model/NativeQuerySnippet
     :timeline   :model/Timeline))
 
-(defn- can-read-in-trash? [collection row]
-  (mi/can-write?
-   (t2/instance
-    (model-name->toucan-model (:model row))
-    (assoc (select-keys row [:id :trashed_from_collection_id :archived])
-           :collection_id (:id collection)))))
-
-(defn- maybe-check-permissions
-  "Generally, if you have permission to read a collection, you have permission to read everything in it.
-  This is *not* true for the Trash collection. This contains all trashed items. In this case, we need to filter the
-  list down to those items for which the user actually has permissions.
-
-  Because this is the trash collection, we only want to show the user items which they could move out of the trash if
-  desired. Therefore, we want *write* permissions, not just read."
-  [collection rows]
-  (cond->> rows
-    (collection/is-trash? collection)
-    (filter #(can-read-in-trash? collection %))))
-
 (defn- post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
   `post-process-collection-children`. Must respect the order passed in."
   [collection rows]
   (->> (map-indexed (fn [i row] (vary-meta row assoc ::index i)) rows) ;; keep db sort order
-       (map #(assoc % :collection_id (:id collection)))
-       (maybe-check-permissions collection)
        (group-by :model)
        (into []
              (comp (map (fn [[model rows]]
@@ -728,6 +755,8 @@
                    cat
                    (map coalesce-edit-info)))
        (map remove-unwanted-keys)
+       ;; the collection these are presented "in" is the ID of the collection we're getting `/items` on.
+       (map #(assoc % :collection_id (:id collection)))
        (sort-by (comp ::index meta))))
 
 (defn- select-name
@@ -747,11 +776,12 @@
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
   [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
+   :collection_id
+   [:archived_directly :boolean]
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
    :collection_type [:archived :boolean]
-   [:trashed_from_collection_id :integer]
    ;; for determining whether a model is based on a csv-uploaded table
    [:table_id :integer] [:is_upload :boolean] :query_type])
 
@@ -786,19 +816,25 @@
         (for [model [:card :metric :dataset :dashboard :snippet :pulse :collection :timeline]]
           (:select (collection-children-query model {:id 1 :location "/"} nil)))))
 
+(defn- official-collections-first-sort-clause [{:keys [official-collections-first?]}]
+  (when official-collections-first?
+    [[[:case [:= :authority_level "official"] 0 :else 1]] :asc]))
+
+(def ^:private normal-collections-first-sort-clause
+  [[[:case
+     [:= :collection_type nil] 0
+     [:= :collection_type collection/trash-collection-type] 1
+     :else 2]]
+   :asc])
 
 (defn children-sort-clause
   "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
   treatment of nulls in the different app db types."
   [sort-info db-type]
-  ;; always put "Metabase Analytics" last
-  (into [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
-         [[[:case
-            [:= :collection_type nil] 0
-            [:= :collection_type collection/trash-collection-type] 1
-            :else 2]] :asc]]
-        (case sort-info
-          nil                     [[:%lower.name :asc]]
+  (->> (into [(official-collections-first-sort-clause sort-info)
+              normal-collections-first-sort-clause]
+        (case ((juxt :sort-column :sort-direction) sort-info)
+          [nil nil]               [[:%lower.name :asc]]
           [:name :asc]            [[:%lower.name :asc]]
           [:name :desc]           [[:%lower.name :desc]]
           [:last-edited-at :asc]  [(if (= db-type :mysql)
@@ -806,13 +842,12 @@
                                      [:last_edit_timestamp :nulls-last])
                                    [:last_edit_timestamp :asc]
                                    [:%lower.name :asc]]
-          [:last-edited-at :desc] (remove nil?
-                                          [(case db-type
-                                             :mysql    [:%isnull.last_edit_timestamp]
-                                             :postgres [:last_edit_timestamp :desc-nulls-last]
-                                             :h2       nil)
-                                           [:last_edit_timestamp :desc]
-                                           [:%lower.name :asc]])
+          [:last-edited-at :desc] [(case db-type
+                                     :mysql    [:%isnull.last_edit_timestamp]
+                                     :postgres [:last_edit_timestamp :desc-nulls-last]
+                                     :h2       nil)
+                                   [:last_edit_timestamp :desc]
+                                   [:%lower.name :asc]]
           [:last-edited-by :asc]  [(if (= db-type :mysql)
                                      [:%isnull.last_edit_last_name]
                                      [:last_edit_last_name :nulls-last])
@@ -822,20 +857,21 @@
                                      [:last_edit_first_name :nulls-last])
                                    [:last_edit_first_name :asc]
                                    [:%lower.name :asc]]
-          [:last-edited-by :desc] (remove nil?
-                                          [(case db-type
-                                             :mysql    [:%isnull.last_edit_last_name]
-                                             :postgres [:last_edit_last_name :desc-nulls-last]
-                                             :h2       nil)
-                                           [:last_edit_last_name :desc]
-                                           (case db-type
-                                             :mysql    [:%isnull.last_edit_first_name]
-                                             :postgres [:last_edit_last_name :desc-nulls-last]
-                                             :h2       nil)
-                                           [:last_edit_first_name :desc]
-                                           [:%lower.name :asc]])
+          [:last-edited-by :desc] [(case db-type
+                                     :mysql    [:%isnull.last_edit_last_name]
+                                     :postgres [:last_edit_last_name :desc-nulls-last]
+                                     :h2       nil)
+                                   [:last_edit_last_name :desc]
+                                   (case db-type
+                                     :mysql    [:%isnull.last_edit_first_name]
+                                     :postgres [:last_edit_last_name :desc-nulls-last]
+                                     :h2       nil)
+                                   [:last_edit_first_name :desc]
+                                   [:%lower.name :asc]]
           [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
-          [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]])))
+          [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]))
+       (remove nil?)
+       (into [])))
 
 (defn- collection-children*
   [collection models {:keys [sort-info] :as options}]
@@ -902,7 +938,13 @@
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       collection/personal-collection-with-ui-details
-      (t2/hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :is_personal :collection/can_restore)))
+      (t2/hydrate :parent_id
+                  :effective_location
+                  [:effective_ancestors :can_write]
+                  :can_write
+                  :is_personal
+                  :can_restore
+                  :can_delete)))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"
@@ -941,21 +983,27 @@
   *  `pinned_state` - when `is_pinned`, return pinned objects only.
                    when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything. By default returns everything"
-  [id models archived pinned_state sort_column sort_direction]
-  {id             ms/PositiveInt
-   models         [:maybe Models]
-   archived       [:maybe ms/BooleanValue]
-   pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
-   sort_column    [:maybe (into [:enum] valid-sort-columns)]
-   sort_direction [:maybe (into [:enum] valid-sort-directions)]}
+  [id models archived pinned_state sort_column sort_direction official_collections_first]
+  {id                         ms/PositiveInt
+   models                     [:maybe Models]
+   archived                   [:maybe ms/BooleanValue]
+   pinned_state               [:maybe (into [:enum] valid-pinned-state-values)]
+   sort_column                [:maybe (into [:enum] valid-sort-columns)]
+   sort_direction             [:maybe (into [:enum] valid-sort-directions)]
+   official_collections_first [:maybe ms/MaybeBooleanValue]}
   (let [model-kwds (set (map keyword (u/one-or-many models)))
         collection (api/read-check Collection id)]
     (u/prog1 (collection-children collection
                                   {:models       model-kwds
                                    :archived?    (or archived (:archived collection) (collection/is-trash? collection))
                                    :pinned-state (keyword pinned_state)
-                                   :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
-                                                  (or (some-> sort_direction normalize-sort-choice) :asc)]})
+                                   :sort-info    {:sort-column (or (some-> sort_column normalize-sort-choice) :name)
+                                                  :sort-direction (or (some-> sort_direction normalize-sort-choice) :asc)
+                                                  ;; default to sorting official collections first, except for the trash.
+                                                  :official-collections-first? (if (and (nil? official_collections_first)
+                                                                                        (not (collection/is-trash? collection)))
+                                                                                 true
+                                                                                 (boolean official_collections_first))}})
       (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*}))))
 
 
@@ -998,13 +1046,14 @@
 
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter."
-  [models archived namespace pinned_state sort_column sort_direction]
-  {models         [:maybe Models]
-   archived       [:maybe ms/BooleanValue]
-   namespace      [:maybe ms/NonBlankString]
-   pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
-   sort_column    [:maybe (into [:enum] valid-sort-columns)]
-   sort_direction [:maybe (into [:enum] valid-sort-directions)]}
+  [models archived namespace pinned_state sort_column sort_direction official_collections_first]
+  {models                     [:maybe Models]
+   archived                   [:maybe ms/BooleanValue]
+   namespace                  [:maybe ms/NonBlankString]
+   pinned_state               [:maybe (into [:enum] valid-pinned-state-values)]
+   sort_column                [:maybe (into [:enum] valid-sort-columns)]
+   sort_direction             [:maybe (into [:enum] valid-sort-directions)]
+   official_collections_first [:maybe ms/MaybeBooleanValue]}
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
@@ -1015,8 +1064,11 @@
      {:archived?      (boolean archived)
       :models         model-kwds
       :pinned-state   (keyword pinned_state)
-      :sort-info      [(or (some-> sort_column normalize-sort-choice) :name)
-                       (or (some-> sort_direction normalize-sort-choice) :asc)]})))
+      :sort-info      {:sort-column (or (some-> sort_column normalize-sort-choice) :name)
+                       :sort-direction (or (some-> sort_direction normalize-sort-choice) :asc)
+                       ;; default to sorting official collections first, but provide the option not to
+                       :official-collections-first? (or (nil? official_collections_first)
+                                                        (boolean official_collections_first))}})))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
@@ -1089,6 +1141,10 @@
         (api/check-403
          (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
            (collection/perms-for-moving collection-before-update new-parent)))
+
+        ;; We can't move a collection to the Trash
+        (api/check-400
+         (not (collection/is-trash? new-parent)))
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location)))))
 
@@ -1112,23 +1168,9 @@
   appropriate permissions checks and changes."
   [collection-before-update collection-updates]
   (condp #(api/column-will-change? %1 collection-before-update %2) collection-updates
-    ;; note that archiving includes a move. So if they include `archived` (with or without `parent_id`), that's an
-    ;; archive/unarchive. If they only include `parent_id`, that's a move.
     :archived (archive-collection! collection-before-update collection-updates)
     :parent_id (move-collection! collection-before-update collection-updates)
     :no-op))
-
-(api/defendpoint DELETE "/:id"
-  "Delete a collection entirely."
-  [id]
-  {id ms/PositiveInt}
-  (let [collection-before-delete (t2/select-one :model/Collection :id id)]
-    (api/check-403
-     (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-                                              (collection/perms-for-archiving collection-before-delete)))
-    ;; we can only delete archived collections
-    (api/check-400 (:archived collection-before-delete))
-    (t2/delete! :model/Collection :id id)))
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."

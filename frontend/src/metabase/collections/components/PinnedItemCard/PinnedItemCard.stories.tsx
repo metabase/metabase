@@ -15,6 +15,7 @@ const collection = {
   description: null,
   archived: false,
   can_restore: false,
+  can_delete: false,
   location: "/",
 };
 

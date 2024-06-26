@@ -12,7 +12,7 @@ import { getDirection } from "../utils";
 
 export function getDirectionText(value: DateOffsetIntervalValue): string {
   const direction = getDirection(value);
-  return direction === "last" ? t`Past` : t`Next`;
+  return direction === "last" ? t`Previous` : t`Next`;
 }
 
 export function setUnit(

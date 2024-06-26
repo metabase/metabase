@@ -21,6 +21,7 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
+import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
 import { getMainElement } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
@@ -89,7 +90,7 @@ export type DashboardProps = {
   selectedTabId: SelectedTabId;
   isNavigatingBackToDashboard: boolean;
   addCardOnLoad?: DashCardId;
-  editingOnLoad?: string | string[];
+  editingOnLoad?: string | string[] | boolean;
 
   initialize: (opts?: { clearCache?: boolean }) => void;
   cancelFetchDashboardCardData: () => void;
@@ -118,6 +119,7 @@ export type DashboardProps = {
   navigateToNewCardFromDashboard: typeof navigateToNewCardFromDashboard;
   setParameterDefaultValue: (id: ParameterId, value: RowValue) => void;
   setParameterRequired: (id: ParameterId, value: boolean) => void;
+  setParameterTemporalUnits: (id: ParameterId, value: boolean) => void;
   setParameterIsMultiSelect: (id: ParameterId, isMultiSelect: boolean) => void;
   setParameterQueryType: (id: ParameterId, queryType: ValuesQueryType) => void;
   setParameterSourceType: (
@@ -182,7 +184,7 @@ function DashboardInner(props: DashboardProps) {
     isEditing,
     isFullscreen,
     isNavigatingBackToDashboard,
-    isNightMode,
+    isNightMode = false,
     isSharing,
     onRefreshPeriodChange,
     parameterValues,
@@ -221,6 +223,7 @@ function DashboardInner(props: DashboardProps) {
 
   const canWrite = Boolean(dashboard?.can_write);
   const canRestore = Boolean(dashboard?.can_restore);
+  const canDelete = Boolean(dashboard?.can_delete);
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
 
@@ -355,10 +358,7 @@ function DashboardInner(props: DashboardProps) {
       setHasScroll(event.target.scrollTop > 0);
     };
 
-    node.addEventListener("scroll", handleScroll, {
-      capture: false,
-      passive: true,
-    });
+    node.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => node.removeEventListener("scroll", handleScroll);
   }, [isInitialized]);
@@ -433,7 +433,11 @@ function DashboardInner(props: DashboardProps) {
                 entityType="dashboard"
                 canWrite={canWrite}
                 canRestore={canRestore}
-                onUnarchive={() => dispatch(setArchivedDashboard(false))}
+                canDelete={canDelete}
+                onUnarchive={async () => {
+                  await dispatch(setArchivedDashboard(false));
+                  await dispatch(Bookmarks.actions.invalidateLists());
+                }}
                 onMove={({ id }) => dispatch(moveDashboardToCollection({ id }))}
                 onDeletePermanently={() => {
                   const { id } = dashboard;
@@ -541,6 +545,7 @@ function DashboardInner(props: DashboardProps) {
                   props.setParameterFilteringParameters
                 }
                 setParameterRequired={props.setParameterRequired}
+                setParameterTemporalUnits={props.setParameterTemporalUnits}
                 isFullscreen={props.isFullscreen}
                 params={props.params}
                 sidebar={props.sidebar}

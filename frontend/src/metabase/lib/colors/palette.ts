@@ -10,7 +10,7 @@ export const ACCENT_COUNT = 8;
 // NOTE: KEEP SYNCRONIZED WITH:
 // frontend/src/metabase/css/core/colors.module.css
 // frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
-// enterprise/frontend/src/embedding-sdk/components/private/SdkContentWrapper.tsx
+// frontend/src/metabase/styled-components/theme/css-variables.ts
 // .storybook/preview-head.html
 export const colors = {
   brand: "#509EE3",
@@ -86,6 +86,13 @@ const aliases: Record<string, (palette: ColorPalette) => string> = {
   "accent7-dark": palette => shade(color(`accent7`, palette)),
 };
 
+/**
+ * @deprecated use CSS variables instead where possible,
+ * i.e. `var(--mb-color-text-light)`.
+ *
+ * When the hex values are needed, use the themeColor function
+ * from Mantine's theme, i.e. `theme.fn.themeColor("text-light")`
+ */
 export function color(
   colorName: keyof ColorPalette,
   palette?: ColorPalette,
@@ -108,14 +115,35 @@ export function color(color: any, palette: ColorPalette = colors) {
   return color;
 }
 
+/**
+ * @deprecated use the color-mix method with CSS variables instead
+ * where possible, i.e. `color-mix(in srgb, var(--mb-color-bg-light), transparent 10%)`
+ *
+ * When the hex values are needed, use the themeColor function
+ * from Mantine's theme, i.e. `alpha(theme.fn.themeColor("text-light"), 0.1)`
+ */
 export const alpha = (c: string, a: number) => {
   return Color(color(c)).alpha(a).string();
 };
 
+/**
+ * @deprecated use the color-mix method with CSS variables instead
+ * where possible, i.e. `color-mix(in srgb, var(--mb-color-text-light), white 10%)`
+ *
+ * When the hex values are needed, use the themeColor function
+ * from Mantine's theme, i.e. `lighten(theme.fn.themeColor("text-light"), 0.1)`
+ */
 export const lighten = (c: string, f: number = 0.5) => {
   return Color(color(c)).lighten(f).string();
 };
 
+/**
+ * @deprecated use the color-mix method with CSS variables instead
+ * where possible, i.e. `color-mix(in srgb, var(--mb-color-text-light), black 10%)`
+ *
+ * When the hex values are needed, use the themeColor function
+ * from Mantine's theme, i.e. `darken(theme.fn.themeColor("text-light"), 0.1)`
+ */
 export const darken = (c: string, f: number = 0.25) => {
   return Color(color(c)).darken(f).string();
 };
@@ -168,13 +196,13 @@ export const getTextColorForBackground = (
   getColor: ColorGetter = color,
 ) => {
   const whiteTextContrast =
-    Color(getColor(backgroundColor)).contrast(Color(getColor("white"))) *
+    Color(getColor(backgroundColor)).contrast(Color(getColor("text-white"))) *
     whiteTextColorPriorityFactor;
   const darkTextContrast = Color(getColor(backgroundColor)).contrast(
     Color(getColor("text-dark")),
   );
 
   return whiteTextContrast > darkTextContrast
-    ? getColor("white")
+    ? getColor("text-white")
     : getColor("text-dark");
 };

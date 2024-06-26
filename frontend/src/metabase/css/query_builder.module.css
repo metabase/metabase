@@ -91,15 +91,15 @@
 }
 
 .SelectionItem:hover :global(.Icon) {
-  color: var(--color-text-white) !important;
+  color: var(--mb-color-text-white) !important;
 }
 
 .SelectionItem:hover .SelectionModuleDisplay {
-  color: var(--color-text-white);
+  color: var(--mb-color-text-white);
 }
 
 .SelectionItem:hover .SelectionModuleDescription {
-  color: var(--color-text-white);
+  color: var(--mb-color-text-white);
 }
 
 .SelectionItem.SelectionItemSelected :global(.Icon-check) {
@@ -125,7 +125,11 @@
 }
 
 .Loading {
-  background-color: color-mod(var(--mb-color-bg-white) alpha(-28%));
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-bg-white) 70%,
+    transparent
+  );
   transition: opacity 0.5s;
 }
 

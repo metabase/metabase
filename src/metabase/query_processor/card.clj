@@ -166,11 +166,11 @@
 (mu/defn process-query-for-card-default-qp :- :some
   "Default value of the `:qp` option for [[process-query-for-card]]."
   [query :- ::qp.schema/query
-   rff   :- ::qp.schema/rff]
+   rff   :- [:maybe ::qp.schema/rff]]
   (qp/process-query (qp/userland-query query) rff))
 
-(defn- process-query-for-card-default-run-fn
-  "Create the default `:run` function for [[process-query-for-card]]."
+(defn process-query-for-card-default-run-fn
+  "Create the default `:make-run` function for [[process-query-for-card]]."
   [qp export-format]
   (^:once fn* [query info]
    (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
@@ -179,10 +179,14 @@
 (mu/defn process-query-for-card
   "Run the query for Card with `parameters` and `constraints`. By default, returns results in a
   `metabase.async.streaming_response.StreamingResponse` (see [[metabase.async.streaming-response]]) that should be
-  returned as the result of an API endpoint fn, but you can return something different by passing a different `:run`
-  option. `:run` has a signature
+  returned as the result of an API endpoint fn, but you can return something different by passing a different `:make-run`
+  option. `:make-run` has a signature.
 
-    (run query info) => result
+    (make-run qp export-format) => (fn run [query info])
+
+  The produced `run` fn has a signature, it should use the qp in to produce the results.
+
+    (run query info) => results
 
   Will throw an Exception if preconditions (such as read perms) are not met *before* returning the
   `StreamingResponse`.
@@ -192,13 +196,12 @@
   options."
   [card-id :- ::lib.schema.id/card
    export-format
-   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp run ignore-cache]
+   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp make-run ignore-cache]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
-             qp          process-query-for-card-default-qp
-             ;; param `run` can be used to control how the query is ran, e.g. if you need to customize the `context`
+             ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
              ;; passed to the QP
-             run         (process-query-for-card-default-run-fn qp export-format)}}]
+             make-run    process-query-for-card-default-run-fn}}]
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
   (let [dash-viz (when (and (not= context :question)
                             dashcard-id)
@@ -207,12 +210,17 @@
                                                  :type :result_metadata :visualization_settings :display
                                                  :cache_invalidated_at]
                                                 :id card-id))
+        ;; We need to check this here because dashcards don't get selected until this point
+        qp       (if (= :pivot (:display card))
+                   qp.pivot/run-pivot-query
+                   (or qp process-query-for-card-default-qp))
+        runner   (make-run qp export-format)
         query    (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                      (update :viz-settings (fn [viz] (merge viz dash-viz)))
                      (update :middleware (fn [middleware]
                                            (merge
-                                            {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
-                                            middleware))))
+                                             {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
+                                             middleware))))
         info     (cond-> {:executed-by            api/*current-user-id*
                           :context                context
                           :card-id                card-id
@@ -226,7 +234,4 @@
     (log/tracef "Running query for Card %d:\n%s" card-id
                 (u/pprint-to-str query))
     (binding [qp.perms/*card-id* card-id]
-      (let [run (if (= :pivot (:display card))
-                  (process-query-for-card-default-run-fn qp.pivot/run-pivot-query export-format)
-                  run)]
-        (run query info)))))
+      (runner query info))))

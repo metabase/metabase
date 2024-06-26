@@ -232,12 +232,33 @@ describe("ParameterSidebar", () => {
       expect(screen.getByDisplayValue("Equal to")).toBeInTheDocument();
     });
   });
+
+  describe("temporal-unit", () => {
+    it("should not render the type or operator", async () => {
+      setup({ parameter: createMockUiParameter({ type: "temporal-unit" }) });
+      expect(await screen.findByText("Label")).toBeInTheDocument();
+      expect(screen.queryByText("Filter type")).not.toBeInTheDocument();
+      expect(screen.queryByText("Filter operator")).not.toBeInTheDocument();
+    });
+
+    it("should set available temporal units", async () => {
+      const parameter = createMockUiParameter({
+        type: "temporal-unit",
+        temporal_units: ["day"],
+      });
+      const { onChangeTemporalUnits } = setup({ parameter });
+      await userEvent.click(await screen.findByText("Day"));
+      await userEvent.click(await screen.findByLabelText("Month"));
+      expect(onChangeTemporalUnits).toHaveBeenCalledWith(["day", "month"]);
+    });
+  });
 });
 
 const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
   const onChangeQueryType = jest.fn();
   const onChangeName = jest.fn();
   const onChangeIsMultiSelect = jest.fn();
+  const onChangeTemporalUnits = jest.fn();
 
   renderWithProviders(
     <ParameterSettings
@@ -252,9 +273,15 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
       onChangeSourceType={jest.fn()}
       onChangeSourceConfig={jest.fn()}
       onChangeRequired={jest.fn()}
+      onChangeTemporalUnits={onChangeTemporalUnits}
       hasMapping={false}
     />,
   );
 
-  return { onChangeQueryType, onChangeName, onChangeIsMultiSelect };
+  return {
+    onChangeQueryType,
+    onChangeName,
+    onChangeIsMultiSelect,
+    onChangeTemporalUnits,
+  };
 };

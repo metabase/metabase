@@ -10,6 +10,10 @@ import {
 import type { ParameterMappingOption as ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import {
+  getParameterColumns,
+  isParameterVariableTarget,
+} from "metabase-lib/v1/parameters/utils/targets";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type {
   BaseDashboardCard,
@@ -17,6 +21,7 @@ import type {
   ParameterTarget,
   QuestionDashboardCard,
   DimensionReference,
+  Parameter,
 } from "metabase-types/api";
 
 const VIZ_WITH_CUSTOM_MAPPING_UI = ["placeholder", "link"];
@@ -40,6 +45,7 @@ export function getMappingOptionByTarget<T extends DashboardCard>(
   dashcard: T,
   target?: ParameterTarget | null,
   question?: T extends QuestionDashboardCard ? Question : undefined,
+  parameter?: Parameter,
 ): ParameterMappingOption | undefined {
   if (!target) {
     return;
@@ -51,10 +57,15 @@ export function getMappingOptionByTarget<T extends DashboardCard>(
     return;
   }
 
-  const isVirtual = isVirtualDashCard(dashcard);
   const isNative = isQuestionDashCard(dashcard)
     ? isNativeDashCard(dashcard)
     : false;
+
+  if (!isNative && isParameterVariableTarget(target)) {
+    return;
+  }
+
+  const isVirtual = isVirtualDashCard(dashcard);
   const normalizedTarget = normalize(target);
   const matchedMappingOptions = mappingOptions.filter(mappingOption =>
     _.isEqual(mappingOption.target, normalizedTarget),
@@ -71,9 +82,10 @@ export function getMappingOptionByTarget<T extends DashboardCard>(
     return;
   }
 
-  const query = question.query();
-  const stageIndex = -1;
-  const columns = Lib.visibleColumns(query, stageIndex);
+  const { query, stageIndex, columns } = getParameterColumns(
+    question,
+    parameter,
+  );
   const fieldRef = normalizedTarget[1];
 
   const [columnByTargetIndex] = Lib.findColumnIndexesFromLegacyRefs(

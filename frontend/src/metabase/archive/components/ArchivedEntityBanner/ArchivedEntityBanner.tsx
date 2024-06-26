@@ -4,8 +4,9 @@ import { c, t } from "ttag";
 import type { CollectionPickerValueItem } from "metabase/common/components/CollectionPicker";
 import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
 import { ConfirmDeleteModal } from "metabase/components/ConfirmDeleteModal";
-import { Box, Flex, FixedSizeIcon, Text } from "metabase/ui";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 
+import Styles from "./ArchivedEntityBanner.module.css";
 import { BannerButton } from "./BannerButton";
 
 type ArchivedEntityBannerProps = {
@@ -13,6 +14,7 @@ type ArchivedEntityBannerProps = {
   entityType: string;
   canWrite: boolean;
   canRestore: boolean;
+  canDelete: boolean;
   onUnarchive: () => void;
   onMove: (collection: CollectionPickerValueItem) => void;
   onDeletePermanently: () => void;
@@ -23,11 +25,13 @@ export const ArchivedEntityBanner = ({
   entityType,
   canRestore,
   canWrite,
+  canDelete,
   onUnarchive,
   onMove,
   onDeletePermanently,
 }: ArchivedEntityBannerProps) => {
   const [modal, setModal] = useState<"move" | "delete" | null>(null);
+  const hasAction = canWrite || canDelete || canRestore;
 
   return (
     <>
@@ -43,28 +47,36 @@ export const ArchivedEntityBanner = ({
             <Box
               style={{ marginInlineEnd: "1rem" }}
               display={{ base: "none", sm: "block" }}
+              mt="2px"
             >
-              <FixedSizeIcon color="white" name="trash_filled" />
+              <Icon className={Styles.iconStyle} name="trash_filled" />
             </Box>
-            <Text color="white" size="md" lh="1rem">
+            <Text color="text-white" size="md" lh="1rem">
               {c(
                 "{0} is the entity in the trash, e.g. collection, dashboard, etc.",
               ).t`This ${entityType} is in the trash.`}
             </Text>
           </Flex>
-          {canWrite && (
+          {hasAction && (
             <Flex gap={{ base: "sm", sm: "md" }}>
               {canRestore && (
                 <BannerButton iconName="revert" onClick={onUnarchive}>
                   {t`Restore`}
                 </BannerButton>
               )}
-              <BannerButton iconName="move" onClick={() => setModal("move")}>
-                {t`Move`}
-              </BannerButton>
-              <BannerButton iconName="trash" onClick={() => setModal("delete")}>
-                {t`Delete permanently`}
-              </BannerButton>
+              {canWrite && (
+                <BannerButton iconName="move" onClick={() => setModal("move")}>
+                  {t`Move`}
+                </BannerButton>
+              )}
+              {canDelete && (
+                <BannerButton
+                  iconName="trash"
+                  onClick={() => setModal("delete")}
+                >
+                  {t`Delete permanently`}
+                </BannerButton>
+              )}
             </Flex>
           )}
         </Flex>

@@ -18,6 +18,7 @@
    [metabase.util.compress :as u.compress]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.random :as u.random]
    [ring.core.protocols :as ring.protocols])
@@ -123,28 +124,32 @@
 (api/defendpoint POST "/export"
   "Serialize and retrieve Metabase instance.
 
-  Parameters:
-  - `dirname`: str, name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)
-  - `all_collections`: bool, serialize all collections (default: true, unless you specify `collection`)
-  - `collection`: array of int, db id of a collection to serialize
-  - `settings`: bool, if Metabase settings should be serialized (default: `true`)
-  - `data_model`: bool, if Metabase data model should be serialized (default: `true`)
-  - `field_values`: bool, if cached field values should be serialized (default: `false`)
-  - `database_secrets`: bool, if details how to connect to each db should be serialized (default: `false`)
-
-  Outputs .tar.gz file with serialization results and an `export.log` file.
-  On error just returns serialization logs."
+  Outputs `.tar.gz` file with serialization results and an `export.log` file.
+  On error outputs serialization logs directly."
   [:as {{:strs [all_collections collection settings data_model field_values database_secrets dirname]
          :or   {all_collections true
                 settings        true
                 data_model      true}}
         :query-params}]
-  {collection       [:maybe (ms/QueryVectorOf ms/PositiveInt)]
-   all_collections  [:maybe ms/BooleanValue]
-   settings         [:maybe ms/BooleanValue]
-   data_model       [:maybe ms/BooleanValue]
-   field_values     [:maybe ms/BooleanValue]
-   database_secrets [:maybe ms/BooleanValue]}
+  {dirname          (mu/with [:maybe string?]
+                             {:description "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"})
+   collection       (mu/with [:maybe (ms/QueryVectorOf ms/PositiveInt)]
+                             {:description "collections' db ids to serialize"})
+   all_collections  (mu/with [:maybe ms/BooleanValue]
+                             {:default     true
+                              :description "Serialize all collections (`true` unless you specify `collection`)"})
+   settings         (mu/with [:maybe ms/BooleanValue]
+                             {:default true
+                              :description "Serialize Metabase settings"})
+   data_model       (mu/with [:maybe ms/BooleanValue]
+                             {:default true
+                              :description "Serialize Metabase data model"})
+   field_values     (mu/with [:maybe ms/BooleanValue]
+                             {:default false
+                              :description "Serialize cached field values"})
+   database_secrets (mu/with [:maybe ms/BooleanValue]
+                             {:default false
+                              :description "Serialize details how to connect to each db"})}
   (api/check-superuser)
   (let [start              (System/nanoTime)
         opts               {:targets                  (mapv #(vector "Collection" %)

@@ -76,7 +76,7 @@
   io.github.eerohele/pp                     {:git/tag "2024-01-04.60"           ; super fast pretty-printing library
                                              :git/sha "a428751"
                                              :git/url "https://github.com/eerohele/pp"}
-  io.github.metabase/macaw                  {:mvn/version "0.1.45"}             ; Parse native SQL queries
+  io.github.metabase/macaw                  {:mvn/version "0.1.60"}             ; Parse native SQL queries
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1" #_ "must be 1.7.1"} ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
@@ -451,7 +451,9 @@
                                  ;; too many false positives for now
                                  :unused-ret-vals
                                  ;; Kondo lints this for us anyway, and this isn't as easy to configure.
-                                 :wrong-arity]
+                                 :wrong-arity
+                                 ;; Kondo lints this for us anyway, and this isn't as easy to configure.
+                                 :suspicious-expression]
                ;; Snowplow has a dynamic dependency on okhttp3.CookieJar that we
                ;; don't use but eastwood detects. This is discussed in Slack here
                ;; https://clojurians.slack.com/archives/C03S1KBA2/p1667925853699669
@@ -665,9 +667,17 @@
    :extra-paths ["dev/src"]
    :main-opts   ["-m" "dev.liquibase"]}
 
-  ;; the following aliases are convenience for running tests against certain parts of the codebase.
-  ;;
-  ;;   clj -X:dev:ee:ee-dev:test:test/mbql
+  ;; Migrate CLI:
+  ;;    clojure -M:migrate <command>
+  ;; E.g.
+  ;;    clojure -M:migrate up                       ;; migrate up to the latest
+  ;;    clojure -M:migrate rollback count 2         ;; rollback 2 migrations
+  ;;    clojure -M:migrate rollback id "v40.00.001" ;; rollback to a specific migration with id
+  ;;    clojure -M:migrate status                   ;; print the latest migration id
+  :migrate
+  {:extra-deps {io.github.camsaul/humane-are {:mvn/version "1.0.2"}}
+   :extra-paths ["dev/src"]
+   :main-opts   ["-m" "dev.migrate"]}
 
   ;; run tests against MLv2. Very fast since this is almost all ^:parallel
   :test/mlv2

@@ -44,7 +44,11 @@
 }
 
 .borderLight {
-  border-color: color-mod(var(--mb-color-border) alpha(-80%)) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--mb-color-border) 20%,
+    transparent
+  ) !important;
 }
 
 .borderError {
@@ -52,7 +56,7 @@
 }
 
 .borderSuccess {
-  border-color: var(--color-success) !important;
+  border-color: var(--mb-color-success) !important;
 }
 
 .borderBrand {

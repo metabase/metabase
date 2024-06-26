@@ -16,3 +16,8 @@ export type StrategyData = {
   shortLabel?: StrategyLabel;
   validateWith: AnySchema;
 };
+
+export enum PerformanceTabId {
+  Databases = "databases",
+  Models = "models",
+}

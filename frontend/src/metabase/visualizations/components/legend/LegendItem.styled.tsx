@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const LegendItemRoot = styled.div<{ isVertical: boolean }>`
@@ -40,18 +39,18 @@ export const LegendItemDot = styled.div`
 export const LegendItemTitle = styled.div`
   color: var(--mb-color-text-dark);
   font-weight: bold;
-  font-size: 12px;
+  font-size: 0.85em;
   margin-left: 4px;
   overflow: hidden;
 `;
 
 export const LegendItemRemoveIcon = styled(Icon)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   cursor: pointer;
   margin-left: 0.5rem;
 
   &:hover {
-    color: ${color("text-medium")};
+    color: var(--mb-color-text-medium);
   }
 `;
 

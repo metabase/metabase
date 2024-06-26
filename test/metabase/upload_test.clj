@@ -133,8 +133,9 @@
   "Calls detect-schema on rows from a CSV file. `rows` is a vector of strings"
   [rows]
   (with-open [reader (io/reader (csv-file-with rows))]
-    (let [[header & rows] (csv/read-csv reader)]
-      (#'upload/detect-schema (upload-parsing/get-settings) header rows))))
+    (let [[header & rows] (csv/read-csv reader)
+          column-names (#'upload/derive-column-names nil header)]
+      (#'upload/detect-schema (upload-parsing/get-settings) column-names rows))))
 
 (deftest ^:parallel detect-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -458,6 +459,39 @@
             (testing "Check the data was uploaded into the table"
               (is (= 2
                      (count (rows-for-table table)))))))))))
+
+(deftest infer-separator-catch-exception-test
+  (testing "errors in [[upload/infer-separator]] should not prevent the upload (#44034)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+        (with-upload-table!
+          [table (create-from-csv-and-sync-with-defaults!
+                  :file (csv-file-with ["\"c1\",\"c2\""
+                                        "\"a,b,c\",\"d\""]))]
+          (testing "Check the data was uploaded into the table correctly"
+            (is (= (header-with-auto-pk ["c1", "c2"])
+                   (column-names-for-table table)))
+            (is (= (rows-with-auto-pk [["a,b,c" "d"]])
+                   (rows-for-table table)))))))))
+
+(deftest infer-separator-test
+  (testing "doesn't error when checking alternative separators (#44034)"
+    (let [file (csv-file-with ["\"c1\",\"c2\""
+                               "\"a,b,c\",\"d\""])]
+      (is (= \, (#'upload/infer-separator file)))))
+  (doseq [[separator lines] example-files]
+    (testing (str "inferring " separator)
+      (let [f (csv-file-with lines)
+            s ({:tab \tab :semi-colon \; :comma \,} separator)]
+        (is (= s (#'upload/infer-separator f))))))
+  ;; it's actually decently hard to make it not stumble on comma or semicolon. The strategy here is that the data
+  ;; column count is greater than the header column count regardless of the separators we choose
+  (let [lines [","
+               ",,,;;;\t\t"]]
+    (testing "throws an error if there's no clear winner"
+      (let [f (csv-file-with lines)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unable to recognise file separator"
+                              (#'upload/infer-separator f)))))))
 
 (deftest create-from-csv-date-test
   (testing "Upload a CSV file with a datetime column"
@@ -1959,3 +1993,69 @@
             (is (= [false] (mapv :active (t2/select :model/Table :id (:id table)))))
             (testing "We do not clean up any of the child resources synchronously (yet?)"
               (is (seq (t2/select :model/Field :table_id (:id table)))))))))))
+
+(deftest create-csv-from-really-long-names
+  (testing "Upload a CSV file with unique column names that get sanitized to the same string"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+       (let [long-string (str (str/join (repeat 1000 "really_")) "long")]
+         (with-upload-table!
+           [table (create-from-csv-and-sync-with-defaults!
+                   :file (csv-file-with [(str (str "a_" long-string ",")
+                                              (str "b_" long-string ",")
+                                              (str "b_" long-string "_with_a"))
+                                         "a,b1,b2"]))]
+           (testing "Table and Fields exist after sync"
+             (testing "Check the data was uploaded into the table correctly"
+               (let [column-names (column-names-for-table table)]
+                 (is (=  @#'upload/auto-pk-column-name (first column-names)))
+                 (is (= 4 (count (distinct column-names))))
+                 (is (= 1 (count (filter #(str/starts-with? % "a_") column-names))))
+                 (is (= 2 (count (filter #(str/starts-with? % "b_") column-names)))))))))))))
+
+(deftest append-with-really-long-names
+  (testing "Upload a CSV file with unique column names that get sanitized to the same string"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+       (let [long-string  (str (str/join (repeat 1000 "really_")) "long")
+             header       (str (str "a_" long-string ",")
+                               (str "b_" long-string))
+             original-row "a,b"
+             appended-row "A,B"]
+         (with-upload-table!
+           [table (create-from-csv-and-sync-with-defaults!
+                   :file (csv-file-with [header original-row]))]
+           (let [csv-rows [header appended-row]
+                 file     (csv-file-with csv-rows (mt/random-name))]
+             (is (= {:row-count 1}
+                    (update-csv! ::upload/append {:file file, :table-id (:id table)})))
+             (testing "Check the data was appended into the table"
+               (is (= (map second (rows-with-auto-pk
+                                   [(csv/read-csv original-row)
+                                    (csv/read-csv appended-row)]))
+                      (map rest (rows-for-table table)))))
+             (io/delete-file file))))))))
+
+(deftest append-with-really-long-names-that-duplicate
+  (testing "Upload a CSV file with unique column names that get sanitized to the same string"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+       (let [long-string  (str (str/join (repeat 1000 "really_")) "long")
+             header       (str (str "a_" long-string ",")
+                               (str "b_" long-string ",")
+                               (str "b_" long-string "_with_a"))
+             original-row "a,b1,b2"
+             appended-row "A,B1,B2"]
+         (with-upload-table!
+           [table (create-from-csv-and-sync-with-defaults!
+                   :file (csv-file-with [header original-row]))]
+           (let [csv-rows [header appended-row]
+                 file     (csv-file-with csv-rows (mt/random-name))]
+             ;; TODO: we should be able to make this work with smarter truncation
+             (is (= {:message "The CSV file contains duplicate column names."
+                     :data    {:status-code 422}}
+                    (catch-ex-info (update-csv! ::upload/append {:file file, :table-id (:id table)}))))
+             (testing "Check the data was not uploaded into the table"
+               (is (= (map second (rows-with-auto-pk [(csv/read-csv original-row)]))
+                      (map rest (rows-for-table table)))))
+             (io/delete-file file))))))))

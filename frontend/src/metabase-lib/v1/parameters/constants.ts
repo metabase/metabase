@@ -149,6 +149,7 @@ export const SINGLE_OR_MULTI_SELECTABLE_TYPES: Record<
   category: "any",
   id: "any",
   location: ["=", "!="],
+  number: ["=", "!="],
 };
 
 export const FIELD_FILTER_PARAMETER_TYPES = [
@@ -177,11 +178,11 @@ export const DATE_MBQL_FILTER_MAPPING: FilterMap = {
     mapping: ["=", null, ["relative-datetime", -1, "day"]],
   },
   past7days: {
-    name: t`Past 7 Days`,
+    name: t`Previous 7 Days`,
     mapping: ["time-interval", null, -7, "day"],
   },
   past30days: {
-    name: t`Past 30 Days`,
+    name: t`Previous 30 Days`,
     mapping: ["time-interval", null, -30, "day"],
   },
   past1weeks: {

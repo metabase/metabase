@@ -7,7 +7,7 @@ import { t } from "ttag";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getSectionsWithPlugins } from "metabase/admin/settings/selectors";
-import { useListRecentItemsQuery, useSearchQuery } from "metabase/api";
+import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import Search from "metabase/entities/search";
@@ -73,7 +73,7 @@ export const useCommandPalette = ({
     },
   );
 
-  const { data: recentItems } = useListRecentItemsQuery(undefined, {
+  const { data: recentItems } = useListRecentsQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
 
@@ -85,6 +85,9 @@ export const useCommandPalette = ({
   );
 
   const docsAction = useMemo<PaletteAction[]>(() => {
+    const link = debouncedSearchText
+      ? getDocsSearchUrl({ query: debouncedSearchText })
+      : docsUrl;
     const ret: PaletteAction[] = [
       {
         id: "search_docs",
@@ -95,11 +98,10 @@ export const useCommandPalette = ({
         keywords: debouncedSearchText, // Always match the debouncedSearchText string
         icon: "document",
         perform: () => {
-          if (debouncedSearchText) {
-            window.open(getDocsSearchUrl({ debouncedSearchText }));
-          } else {
-            window.open(docsUrl);
-          }
+          window.open(link);
+        },
+        extra: {
+          href: link,
         },
       },
     ];
@@ -176,11 +178,12 @@ export const useCommandPalette = ({
         ].concat(
           searchResults.data.map((result, index) => {
             const wrappedResult = Search.wrapEntity(result, dispatch);
+            const icon = getIcon(wrappedResult);
             return {
               id: `search-result-${result.model}-${result.id}`,
               name: result.name,
               subtitle: result.description || "",
-              icon: getIcon(result).name,
+              icon: icon.name,
               section: "search",
               keywords: debouncedSearchText,
               priority: Priority.NORMAL,
@@ -193,6 +196,7 @@ export const useCommandPalette = ({
                 isVerified: result.moderated_status === "verified",
                 database: result.database_name,
                 href: wrappedResult.getUrl(),
+                iconColor: icon.color,
               },
             };
           }),
@@ -224,33 +228,38 @@ export const useCommandPalette = ({
 
   const recentItemsActions = useMemo<PaletteAction[]>(() => {
     return (
-      filterRecentItems(recentItems ?? []).map(item => ({
-        id: `recent-item-${getName(item)}-${item.model}-${item.id}`,
-        name: getName(item),
-        icon: getIcon(item).name,
-        section: "recent",
-        perform: () => {
-          // Need to keep this logic here for when user selects via keyboard
-          const href = Urls.modelToUrl(item);
-          if (href) {
-            dispatch(push(href));
-          }
-        },
-        extra:
-          item.model === "table"
-            ? {
-                database: item.database.name,
-                href: Urls.modelToUrl(item),
-              }
-            : {
-                parentCollection:
-                  item.parent_collection.id === null
-                    ? ROOT_COLLECTION.name
-                    : item.parent_collection.name,
-                isVerified: item.moderated_status === "verified",
-                href: Urls.modelToUrl(item),
-              },
-      })) || []
+      filterRecentItems(recentItems ?? []).map(item => {
+        const icon = getIcon(item);
+        return {
+          id: `recent-item-${getName(item)}-${item.model}-${item.id}`,
+          name: getName(item),
+          icon: icon.name,
+          section: "recent",
+          perform: () => {
+            // Need to keep this logic here for when user selects via keyboard
+            const href = Urls.modelToUrl(item);
+            if (href) {
+              dispatch(push(href));
+            }
+          },
+          extra:
+            item.model === "table"
+              ? {
+                  database: item.database.name,
+                  href: Urls.modelToUrl(item),
+                  iconColor: icon.color,
+                }
+              : {
+                  parentCollection:
+                    item.parent_collection.id === null
+                      ? ROOT_COLLECTION.name
+                      : item.parent_collection.name,
+                  isVerified: item.moderated_status === "verified",
+                  href: Urls.modelToUrl(item),
+                  iconColor: icon.color,
+                },
+        };
+      }) || []
     );
   }, [dispatch, recentItems]);
 

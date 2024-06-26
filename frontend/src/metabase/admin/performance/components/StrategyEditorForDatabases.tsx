@@ -10,7 +10,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErr
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { Stack, Flex } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
-import { DurationUnit } from "metabase-types/api";
+import { CacheDurationUnit } from "metabase-types/api";
 
 import { rootId } from "../constants/simple";
 import { useCacheConfigs } from "../hooks/useCacheConfigs";
@@ -70,7 +70,7 @@ const StrategyEditorForDatabases_Base = ({
   const savedStrategy = targetConfig?.strategy;
 
   if (savedStrategy?.type === "duration") {
-    savedStrategy.unit = DurationUnit.Hours;
+    savedStrategy.unit = CacheDurationUnit.Hours;
   }
 
   const {
@@ -127,7 +127,7 @@ const StrategyEditorForDatabases_Base = ({
   }
 
   return (
-    <TabWrapper role="region" aria-label={t`Data caching settings`}>
+    <TabWrapper aria-label={t`Database caching settings`}>
       <Stack spacing="xl" lh="1.5rem" maw="32rem" mb="1.5rem">
         <aside>
           {t`Speed up queries by caching their results.`}
@@ -135,7 +135,7 @@ const StrategyEditorForDatabases_Base = ({
         </aside>
       </Stack>
       {confirmationModal}
-      <Flex gap="xl">
+      <Flex gap="xl" style={{ overflow: "hidden" }}>
         <RoundedBox twoColumns={canOverrideRootStrategy}>
           {canOverrideRootStrategy && (
             <PLUGIN_CACHING.StrategyFormLauncherPanel

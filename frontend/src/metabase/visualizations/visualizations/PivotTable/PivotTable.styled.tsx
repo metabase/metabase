@@ -4,11 +4,7 @@ import styled from "@emotion/styled";
 import { color, alpha, adjustBrightness } from "metabase/lib/colors";
 import type { MantineTheme } from "metabase/ui";
 
-import {
-  CELL_HEIGHT,
-  PIVOT_TABLE_FONT_SIZE,
-  RESIZE_HANDLE_WIDTH,
-} from "./constants";
+import { CELL_HEIGHT, RESIZE_HANDLE_WIDTH } from "./constants";
 
 export const RowToggleIconRoot = styled.div`
   display: flex;
@@ -73,7 +69,7 @@ const getCellBackgroundColor = ({
     return alpha("bg-black", 0.1);
   }
 
-  return color(backgroundColor ?? "white");
+  return color(backgroundColor ?? "bg-white");
 };
 
 const getCellHoverBackground = (
@@ -95,7 +91,7 @@ const getColor = ({
   isNightMode,
 }: PivotTableCellProps & { theme: MantineTheme }) => {
   if (isNightMode) {
-    return color("white");
+    return color("text-white");
   }
 
   return color(theme.other.table.cell.textColor);
@@ -158,7 +154,7 @@ interface PivotTableRootProps {
 
 export const PivotTableRoot = styled.div<PivotTableRootProps>`
   height: 100%;
-  font-size: ${PIVOT_TABLE_FONT_SIZE};
+  font-size: ${({ theme }) => theme.other.pivotTable.cell.fontSize};
 
   ${props =>
     props.isDashboard
@@ -170,7 +166,7 @@ export const PivotTableRoot = styled.div<PivotTableRootProps>`
 
 export const PivotTableSettingLabel = styled.span`
   font-weight: 700;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;
 
 export const ResizeHandle = styled.div`

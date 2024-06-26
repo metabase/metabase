@@ -22,23 +22,10 @@ const setupGranularCacheControls = (opts: SetupOpts) => {
 };
 
 describe("QuestionInfoSidebar", () => {
-  it("should show caching controls if caching is enabled", async () => {
+  it("should show caching controls", async () => {
     const card = createMockCard({});
-    const settings = createMockSettings({
-      "enable-query-caching": true,
-    });
+    const settings = createMockSettings({});
     await setupGranularCacheControls({ card, settings });
     expect(screen.getByText("Caching policy")).toBeInTheDocument();
-  });
-
-  it("should not show caching controls if caching is disabled", async () => {
-    const card = createMockCard({
-      cache_ttl: 10,
-    });
-    const settings = createMockSettings({
-      "enable-query-caching": false,
-    });
-    await setupGranularCacheControls({ card, settings });
-    expect(screen.queryByText("Cache policy")).not.toBeInTheDocument();
   });
 });

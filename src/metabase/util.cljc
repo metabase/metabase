@@ -247,7 +247,12 @@
          (subs s 1))))
 
 (defn snake-keys
-  "Convert the keys in a map from `kebab-case` to `snake_case`."
+  "Convert the top-level keys in a map to `snake_case`."
+  [m]
+  (update-keys m ->snake_case_en))
+
+(defn deep-snake-keys
+  "Recursively convert the keys in a map to `snake_case`."
   [m]
   (recursive-map-keys ->snake_case_en m))
 

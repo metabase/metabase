@@ -16,6 +16,7 @@ import {
   dimensionFilterForParameter,
   variableFilterForParameter,
 } from "metabase-lib/v1/parameters/utils/filters";
+import { getParameterColumns } from "metabase-lib/v1/parameters/utils/targets";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { ClickObjectDataRow } from "metabase-lib/v1/queries/drills/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -35,6 +36,8 @@ import type {
   UserAttribute,
 } from "metabase-types/api";
 import { isImplicitActionClickBehavior } from "metabase-types/guards";
+
+import { parseParameterValue } from "./parameter-parsing";
 
 interface Target {
   id: Parameter["id"];
@@ -142,11 +145,9 @@ export function getTargetsForQuestion(question: Question): Target[] {
 }
 
 function getTargetsForStructuredQuestion(question: Question): Target[] {
-  const query = question.query();
-  const stageIndex = -1;
-  const visibleColumns = Lib.visibleColumns(query, stageIndex);
+  const { query, stageIndex, columns } = getParameterColumns(question);
 
-  return visibleColumns.map(targetColumn => {
+  return columns.map(targetColumn => {
     const dimension: ClickBehaviorDimensionTarget["dimension"] = [
       "dimension",
       Lib.legacyRef(query, stageIndex, targetColumn),
@@ -373,6 +374,12 @@ export function formatSourceForTarget(
   },
 ) {
   const datum = data[source.type][source.id.toLowerCase()] || {};
+  const parameter = getParameter(target, { extraData, clickBehavior });
+
+  if (parameter?.type === "temporal-unit") {
+    return parseParameterValue(datum.value, parameter);
+  }
+
   if (
     "column" in datum &&
     datum.column &&
@@ -383,7 +390,6 @@ export function formatSourceForTarget(
 
     if (target.type === "parameter") {
       // we should serialize differently based on the target parameter type
-      const parameter = getParameter(target, { extraData, clickBehavior });
       if (parameter) {
         return formatDateForParameterType(
           datum.value,

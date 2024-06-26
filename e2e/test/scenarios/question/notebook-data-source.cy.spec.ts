@@ -21,8 +21,8 @@ import {
   resyncDatabase,
   saveQuestion,
   onlyOnOSS,
-  onlyOnEE,
   startNewQuestion,
+  shouldDisplayTabs,
   tabsShouldBe,
   visitModel,
   visitQuestion,
@@ -73,34 +73,6 @@ describe("scenarios > notebook > data source", () => {
       },
     );
 
-    it.skip("should display tables from the only existing database by default on an enterprise instance without token activation (metabase#40223)", () => {
-      onlyOnEE();
-      cy.visit("/");
-      cy.findByTestId("app-bar").findByText("New").click();
-      popover().findByTextEnsureVisible("Question").click();
-      cy.findByTestId("data-step-cell").should(
-        "have.text",
-        "Pick your starting data",
-      );
-
-      entityPickerModal().within(() => {
-        cy.log("Should not have Recents tab");
-        cy.findAllByRole("tab").should("have.length", 0);
-
-        entityPickerModalLevel(0).should("not.exist");
-        entityPickerModalLevel(1).should("not.exist");
-        entityPickerModalLevel(2).get("[data-index]").should("have.length", 8);
-        assertDataPickerEntityNotSelected(2, "Accounts");
-        assertDataPickerEntityNotSelected(2, "Analytic Events");
-        assertDataPickerEntityNotSelected(2, "Feedback");
-        assertDataPickerEntityNotSelected(2, "Invoices");
-        assertDataPickerEntityNotSelected(2, "Orders");
-        assertDataPickerEntityNotSelected(2, "People");
-        assertDataPickerEntityNotSelected(2, "Products");
-        assertDataPickerEntityNotSelected(2, "Reviews");
-      });
-    });
-
     it("should not show saved questions if only models exist (metabase#25142)", () => {
       createQuestion({
         name: "GUI Model",
@@ -111,8 +83,7 @@ describe("scenarios > notebook > data source", () => {
 
       startNewQuestion();
       entityPickerModal().within(() => {
-        cy.findAllByRole("tab").should("have.length", 3);
-        entityPickerModalTab("Recents").should("exist");
+        cy.findAllByRole("tab").should("have.length", 2);
         entityPickerModalTab("Models").should("exist");
         entityPickerModalTab("Tables").should("exist");
         entityPickerModalTab("Saved questions").should("not.exist");
@@ -127,8 +98,9 @@ describe("scenarios > notebook > data source", () => {
       });
 
       startNewQuestion();
+
       entityPickerModal().within(() => {
-        tabsShouldBe("Recents", ["Recents", "Tables", "Saved questions"]);
+        shouldDisplayTabs(["Tables", "Saved questions"]);
         entityPickerModalTab("Models").should("not.exist");
       });
     });
@@ -200,7 +172,6 @@ describe("scenarios > notebook > data source", () => {
 
         startNewQuestion();
         entityPickerModal().within(() => {
-          entityPickerModalTab("Recents").should("exist");
           entityPickerModalTab("Tables").click();
           cy.findByText(dbName).click();
           cy.findByText(schemaName).click();
@@ -267,19 +238,12 @@ describe("scenarios > notebook > data source", () => {
         .click();
 
       entityPickerModal().within(() => {
-        tabsShouldBe("Models", [
-          "Recents",
-          "Models",
-          "Tables",
-          "Saved questions",
-        ]);
+        shouldDisplayTabs(["Models", "Tables", "Saved questions"]);
 
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
         assertDataPickerEntitySelected(2, "Second collection");
         assertDataPickerEntitySelected(3, checkNotNull(modelDetails.name));
-
-        entityPickerModalTab("Recents").click();
 
         cy.findByText(checkNotNull(modelDetails.name))
           .should("exist")
@@ -300,13 +264,6 @@ describe("scenarios > notebook > data source", () => {
         );
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "Orders Model");
-        entityPickerModalTab("Recents").click();
-
-        cy.findByText("Orders Model")
-          .should("exist")
-          .and("contain.text", "Orders Model")
-          .closest("button")
-          .and("have.attr", "aria-selected", "true");
 
         cy.button("Close").click();
       });
@@ -323,13 +280,6 @@ describe("scenarios > notebook > data source", () => {
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
         assertDataPickerEntitySelected(2, "Orders Model");
-
-        entityPickerModalTab("Recents").click();
-        cy.findByText("Orders Model")
-          .should("exist")
-          .and("contain.text", "Orders Model")
-          .closest("button")
-          .and("have.attr", "aria-selected", "true");
       });
     });
 
@@ -365,12 +315,6 @@ describe("scenarios > notebook > data source", () => {
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, sourceQuestionName);
 
-        entityPickerModalTab("Recents").click();
-        cy.findByText("Nested Question")
-          .parents("button")
-          .should("be.visible")
-          .and("not.have.attr", "aria-selected", "true");
-
         cy.button("Close").click();
       });
 
@@ -393,16 +337,6 @@ describe("scenarios > notebook > data source", () => {
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
         assertDataPickerEntitySelected(2, sourceQuestionName);
-
-        entityPickerModalTab("Recents").click();
-        cy.findAllByTestId("result-item")
-          .contains(nestedQuestionDetails.name)
-          .parents("button")
-          .and("not.have.attr", "aria-selected", "true");
-        cy.findAllByTestId("result-item")
-          .contains(sourceQuestionName)
-          .parents("button")
-          .and("have.attr", "aria-selected", "true");
       });
     });
   });
@@ -424,8 +358,7 @@ describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
     });
     startNewQuestion();
     entityPickerModal().within(() => {
-      cy.findAllByRole("tab").should("have.length", 3);
-      entityPickerModalTab("Recents").should("be.visible");
+      cy.findAllByRole("tab").should("have.length", 2);
       entityPickerModalTab("Tables").should("be.visible");
       entityPickerModalTab("Models").should("be.visible");
       entityPickerModalTab("Saved questions").should("not.exist");

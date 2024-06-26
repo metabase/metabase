@@ -260,7 +260,7 @@
   [card-and-data column-settings]
   (update-in card-and-data [:card :visualization_settings
                             :column_settings]
-             (fn [a b] (merge-with merge a b)) (update-vals column-settings u/snake-keys)))
+             (fn [a b] (merge-with merge a b)) (update-vals column-settings u/deep-snake-keys)))
 
 (defn- make-settings-for-col
   "Make the column-settings map for the given `col` the :card or :data `destination`.

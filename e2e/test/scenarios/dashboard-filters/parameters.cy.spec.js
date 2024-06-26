@@ -18,6 +18,7 @@ import {
   updateDashboardCards,
   setFilter,
   spyRequestFinished,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -72,36 +73,35 @@ describe("scenarios > dashboard > parameters", () => {
     // (this doesn't make sense to do, but it illustrates the feature)
     selectDashboardFilter(getDashboardCard(0), "Name");
 
-    getDashboardCard(1).within(() => {
-      cy.findByLabelText("close icon").click();
-    });
     selectDashboardFilter(getDashboardCard(1), "Category");
 
-    // finish editing filter and save dashboard
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Save").click();
-
-    // wait for saving to finish
-    cy.wait("@dashboard");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("You're editing this dashboard.").should("not.exist");
+    saveDashboard();
 
     // confirm that typing searches both fields
     filterWidget().contains("Text").click();
 
     // After typing "Ga", you should see this name
-    popover().find("input").type("Ga");
+    popover().within(() => multiAutocompleteInput().type("Ga"));
     cy.wait("@dashboard");
-    popover().contains("Gabrielle Considine");
+    popover().last().contains("Gabrielle Considine");
 
     // Continue typing a "d" and you see "Gadget"
-    popover().find("input").type("d");
+    popover()
+      .first()
+      .within(() => multiAutocompleteInput().type("d"));
     cy.wait("@dashboard");
 
-    popover().within(() => {
-      cy.findByText("Gadget").click();
-      cy.button("Add filter").click();
-    });
+    popover()
+      .last()
+      .within(() => {
+        cy.findByText("Gadget").click();
+      });
+
+    popover()
+      .first()
+      .within(() => {
+        cy.button("Add filter").click();
+      });
 
     cy.location("search").should("eq", "?text=Gadget");
     cy.findAllByTestId("dashcard-container").first().should("contain", "0");
@@ -613,7 +613,7 @@ describe("scenarios > dashboard > parameters", () => {
       setFilter("Time", "Relative Date");
 
       sidebar().findByText("Default value").next().click();
-      popover().contains("Past 7 days").click({ force: true });
+      popover().contains("Previous 7 days").click({ force: true });
       saveDashboard();
 
       const { interceptor } = spyRequestFinished("dashcardRequestSpy");
@@ -638,28 +638,34 @@ describe("scenarios > dashboard > parameters", () => {
         .click();
 
       selectDashboardFilter(getDashboardCard(0), "Created At");
+      selectDashboardFilter(getDashboardCard(1), "Created At");
+
       saveDashboard();
 
       cy.get("@dashcardRequestSpy").should("have.callCount", 2);
     });
 
     it("should fetch dashcard data when parameter mapping is removed", () => {
-      // Connect filter to 1 card only
+      cy.log("Connect filter to 1 card only");
+
       editDashboard();
       cy.findByTestId("edit-dashboard-parameters-widget-container")
         .findByText("Date Filter")
         .click();
       selectDashboardFilter(getDashboardCard(0), "Created At");
-      disconnectDashboardFilter(getDashboardCard(1));
+
       saveDashboard();
 
       cy.get("@dashcardRequestSpy").should("have.callCount", 1);
 
-      // Disconnect filter from the 1st card
+      cy.log("Disconnect filter from the 1st card");
+
       editDashboard();
+
       cy.findByTestId("edit-dashboard-parameters-widget-container")
         .findByText("Date Filter")
         .click();
+
       disconnectDashboardFilter(getDashboardCard(0));
       saveDashboard();
 
@@ -724,7 +730,7 @@ describe("scenarios > dashboard > parameters", () => {
       filterWidget().click();
 
       popover().within(() => {
-        cy.findByRole("textbox").type("Antwan Fisher");
+        multiAutocompleteInput().type("Antwan Fisher");
         cy.button("Add filter").click();
       });
 
@@ -749,7 +755,7 @@ describe("scenarios > dashboard > parameters", () => {
       filterWidget().click();
 
       popover().within(() => {
-        cy.findByRole("textbox").type("Antwan Fisher");
+        multiAutocompleteInput().type("Antwan Fisher");
         cy.button("Add filter").click();
       });
 

@@ -1,4 +1,3 @@
-import { t } from "ttag";
 import _ from "underscore";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
@@ -9,11 +8,6 @@ import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
-import {
-  isDateParameter,
-  isNumberParameter,
-  isStringParameter,
-} from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
   ActionDashboardCard,
   BaseDashboardCard,
@@ -27,7 +21,6 @@ import type {
   Database,
   Dataset,
   EmbedDataset,
-  Parameter,
   QuestionDashboardCard,
   VirtualCard,
   VirtualCardDisplay,
@@ -136,22 +129,6 @@ export function showVirtualDashCardInfoText(
   } else {
     return true;
   }
-}
-
-export function getNativeDashCardEmptyMappingText(parameter: Parameter) {
-  if (isDateParameter(parameter)) {
-    return t`A date variable in this card can only be connected to a time type with the single date option.`;
-  }
-
-  if (isNumberParameter(parameter)) {
-    return t`A number variable in this card can only be connected to a number filter with Equal to operator.`;
-  }
-
-  if (isStringParameter(parameter)) {
-    return t`A text variable in this card can only be connected to a text filter with Is operator.`;
-  }
-
-  return t`Add a variable to this question to connect it to a dashboard filter.`;
 }
 
 export function getAllDashboardCards(dashboard: Dashboard) {

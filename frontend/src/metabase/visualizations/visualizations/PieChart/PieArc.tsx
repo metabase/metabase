@@ -1,4 +1,4 @@
-import type d3 from "d3";
+import type { Arc, DefaultArcObject } from "d3";
 import type { SVGAttributes } from "react";
 import { useEffect, useRef, useState } from "react";
 
@@ -10,8 +10,8 @@ import { getMaxLabelDimension } from "./utils";
 const LABEL_PADDING = 4;
 
 interface PieArcProps extends SVGAttributes<SVGPathElement> {
-  d3Arc: d3.svg.Arc<d3.svg.arc.Arc>;
-  slice: d3.svg.arc.Arc;
+  d3Arc: Arc<unknown, DefaultArcObject>;
+  slice: DefaultArcObject;
   label?: string;
   labelFontSize: number;
   shouldRenderLabel?: boolean;
@@ -48,10 +48,12 @@ export const PieArc = ({
   }, [d3Arc, shouldRenderLabel, slice]);
 
   const labelColor = rest.fill && getTextColorForBackground(rest.fill);
+  const arcPath = d3Arc(slice) ?? undefined;
 
   return (
     <>
-      <path data-testid="slice" d={d3Arc(slice)} {...rest} />
+      <path data-testid="slice" d={arcPath} {...rest} />
+
       {shouldRenderLabel && label != null && (
         <Label
           style={{ visibility: isLabelVisible ? "visible" : "hidden" }}

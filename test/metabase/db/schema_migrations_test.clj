@@ -11,9 +11,9 @@
   (:require
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.db.custom-migrations-test :as custom-migrations-test]
@@ -33,6 +33,8 @@
    [metabase.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -1494,10 +1496,13 @@
 
 (deftest cache-config-migration-test
   (testing "Caching config is correctly copied over"
-    (impl/test-migrations "v50.2024-04-12T12:33:09" [migrate!]
-      (mdb.query/update-or-insert! :model/Setting {:key "enable-query-caching"} (constantly {:value "true"}))
-      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-ttl-ratio"} (constantly {:value "100"}))
-      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-min-ttl"} (constantly {:value "123"}))
+    (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
+      ;; this peculiar setup is to reproduce #44012, `enable-query-caching` should be unencrypted for the condition
+      ;; to hit it
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}])
+      (encryption-test/with-secret-key "whateverwhatever"
+        (t2/insert! :setting [{:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
+                              {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}]))
 
       (let [user (create-raw-user! (mt/random-email))
             db   (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
@@ -1521,31 +1526,34 @@
                                            :database_id            db
                                            :created_at             :%now
                                            :updated_at             :%now})]
-        (migrate!)
+
+        (encryption-test/with-secret-key "whateverwhatever"
+          (migrate! :up))
 
         (is (=? [{:model    "root"
                   :model_id 0
-                  :strategy :ttl
+                  :strategy "ttl"
                   :config   {:multiplier      100
                              :min_duration_ms 123}}
                  {:model    "database"
                   :model_id db
-                  :strategy :duration
+                  :strategy "duration"
                   :config   {:duration 10 :unit "hours"}}
                  {:model    "dashboard"
                   :model_id dash
-                  :strategy :duration
+                  :strategy "duration"
                   :config   {:duration 20 :unit "hours"}}
                  {:model    "question"
                   :model_id card
-                  :strategy :duration
+                  :strategy "duration"
                   :config   {:duration 30 :unit "hours"}}]
-                (t2/select :model/CacheConfig))))))
+                (->> (t2/select :cache_config)
+                     (mapv #(update % :config json/decode true))))))))
   (testing "And not copied if caching is disabled"
-    (impl/test-migrations "v50.2024-04-12T12:33:09" [migrate!]
-      (mdb.query/update-or-insert! :model/Setting {:key "enable-query-caching"} (constantly {:value "false"}))
-      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-ttl-ratio"} (constantly {:value "100"}))
-      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-min-ttl"} (constantly {:value "123"}))
+    (impl/test-migrations ["v50.2024-04-12T12:33:07"] [migrate!]
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "false")}
+                            {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
+                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}])
 
       ;; this one to have custom configuration to check they are not copied over
       (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
@@ -1554,7 +1562,35 @@
                                                       (assoc :cache_ttl 10)))
       (migrate!)
       (is (= []
-             (t2/select :model/CacheConfig))))))
+             (t2/select :cache_config))))))
+
+(deftest cache-config-mysql-update-test
+  (when (= (mdb/db-type) :mysql)
+    (testing "Root cache config for mysql is updated with correct values"
+      (encryption-test/with-secret-key "whateverwhatever"
+        (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
+          (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
+                                {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
+                                {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}])
+
+          ;; the idea here is that `v50.2024-04-12T12:33:09` during execution with partially encrypted data (see
+          ;; `cache-config-migration-test`) instead of throwing an error just silently put zeros in config. If config
+          ;; contains zeros, we assume human did not touch it yet and update with existing (decrypted thanks to
+          ;; `v50.2024-06-12T12:33:07`) settings
+          (t2/insert! :cache_config {:model    "root"
+                                     :model_id 0
+                                     :strategy "ttl"
+                                     :config   (json/encode {:multiplier      0
+                                                             :min_duration_ms 0})})
+          (migrate!)
+
+          (is (=? {:model    "root"
+                   :model_id 0
+                   :strategy "ttl"
+                   :config {:multiplier      100
+                            :min_duration_ms 123}}
+                  (-> (t2/select-one :cache_config)
+                      (update :config json/decode true)))))))))
 
 (deftest split-data-permissions-migration-test
   (testing "View Data and Create Query permissions are created correctly based on existing data permissions"
@@ -1980,6 +2016,37 @@
         (is (= #{(format "/block/db/%d/" db-id)}
                (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))))))
 
+(deftest sandboxing-rollback-test
+  ;; Rollback tests flake on MySQL, so only run on Postgres/H2
+  (mt/test-drivers [:postgres :h2]
+    (testing "Can we rollback to 49 when sandboxing is configured"
+      (impl/test-migrations ["v50.2024-01-10T03:27:29" "v50.2024-06-20T13:21:30"] [migrate!]
+        (let [db-id         (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "DB"
+                                                                                       :engine     "h2"
+                                                                                       :created_at :%now
+                                                                                       :updated_at :%now
+                                                                                       :details    "{}"}))
+              table-id      (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                                    :schema     "SchemaName"
+                                                                                    :name       "Table"
+                                                                                    :created_at :%now
+                                                                                    :updated_at :%now
+                                                                                    :active     true}))
+              permission-id (t2/insert-returning-pk! (t2/table-name :model/Permissions) {:object "/db/fake-permission/"
+                                                                                         :group_id 1})
+              _             (t2/query-one {:insert-into :sandboxes
+                                           :values      [{:group_id             1
+                                                          :table_id             table-id
+                                                          :attribute_remappings "{\"foo\", 1}"
+                                                          :permission_id        permission-id}]})
+              expected        {:group_id             1
+                               :table_id             table-id
+                               :attribute_remappings "{\"foo\", 1}"}]
+          (migrate!)
+          (is (=? expected (t2/select-one :sandboxes :table_id table-id)))
+          (migrate! :down 49)
+          (is (=? expected (t2/select-one :sandboxes :table_id table-id))))))))
+
 (deftest view-count-test
   (testing "report_card.view_count and report_dashboard.view_count should be populated"
     (impl/test-migrations ["v50.2024-04-25T16:29:31" "v50.2024-04-25T16:29:36"] [migrate!]
@@ -2025,67 +2092,96 @@
         (is (= 1 (t2/select-one-fn :view_count :report_card card-id)))
         (is (= 2 (t2/select-one-fn :view_count :report_dashboard dash-id)))))))
 
-(deftest move-to-trash-test
-  (testing "existing archived items should be moved to the Trash"
-    (impl/test-migrations ["v50.2024-05-14T12:42:44" "v50.2024-05-14T12:42:52"] [migrate!]
-      (let [user       (create-raw-user! (mt/random-email))
-            db         (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
-                                                                       (update :details json/generate-string)
-                                                                       (update :engine str)))
-            dash       (t2/insert-returning-pk! (t2/table-name :model/Dashboard)
-                                                {:name       "A dashboard"
-                                                 :archived   true
-                                                 :creator_id (:id user)
-                                                 :created_at :%now
-                                                 :updated_at :%now
-                                                 :parameters ""})
-            card       (t2/insert-returning-pk! (t2/table-name Card)
-                                                {:name                   "Card"
-                                                 :archived               true
-                                                 :display                "table"
-                                                 :dataset_query          "{}"
-                                                 :visualization_settings "{}"
-                                                 :cache_ttl              30
-                                                 :creator_id             (:id user)
-                                                 :database_id            db
-                                                 :created_at             :%now
-                                                 :updated_at             :%now})
-            collection (t2/insert-returning-pk! (t2/table-name Collection)
-                                                {:name     "Silly Collection"
-                                                 :slug     "silly-collection"
-                                                 :archived true})]
-        (is (empty? (t2/select-fn-set :id :model/Dashboard :collection_id (collection/trash-collection-id))))
-        (is (empty? (t2/select-fn-set :id :model/Card :collection_id (collection/trash-collection-id))))
-        (is (empty? (t2/select-fn-set :id :model/Collection :location (collection/children-location (collection/trash-collection)))))
-        (migrate!)
-        (is (set/subset? #{dash} (t2/select-fn-set :id :model/Dashboard :collection_id (collection/trash-collection-id))))
-        (is (set/subset? #{card} (t2/select-fn-set :id :model/Card :collection_id (collection/trash-collection-id))))
-        (is (set/subset? #{collection} (t2/select-fn-set :id :model/Collection :location (collection/children-location (collection/trash-collection)))))))))
-
 (deftest trash-migrations-test
-  (impl/test-migrations ["v50.2024-05-14T12:13:22" "v50.2024-05-14T12:42:52"] [migrate!]
+  (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-29T18:42:15"] [migrate!]
     (with-redefs [collection/is-trash? (constantly false)]
       (let [collection-id    (t2/insert-returning-pk! (t2/table-name :model/Collection)
-                                                      {:name "Silly Collection"
-                                                       :slug "silly-collection"})
+                                                      {:name     "Silly Collection"
+                                                       :archived true
+                                                       :slug     "silly-collection"})
             subcollection-id (t2/insert-returning-pk! (t2/table-name :model/Collection)
                                                       {:name     "Subcollection"
                                                        :slug     "subcollection"
+                                                       :archived true
                                                        :location (collection/children-location (t2/select-one :model/Collection :id collection-id))})]
         (migrate!)
-        (mt/user-http-request :crowberto :put 200 (str "/collection/" subcollection-id) {:archived true})
-        (mt/user-http-request :crowberto :put 200 (str "/collection/" collection-id) {:archived true})
-        (mt/user-http-request :crowberto :delete 200 (str "/collection/" collection-id))
-        (testing "sanity check: `collection` no longer exists"
-          (is (nil? (t2/select-one :model/Collection :id collection-id))))
+        (is (:archived_directly (t2/select-one :model/Collection :id collection-id)))
+        (is (not (:archived_directly (t2/select-one :model/Collection :id subcollection-id))))
+        (is (= (:archive_operation_id (t2/select-one :model/Collection :id collection-id))
+               (:archive_operation_id (t2/select-one :model/Collection :id subcollection-id))))
         (let [trash-collection-id (collection/trash-collection-id)]
-          (testing "After a down-migration, it stays in the trash"
+          (testing "After a down-migration, the trash is removed entirely."
             (migrate! :down 49)
-            (is (= (str "/" trash-collection-id "/") (t2/select-one-fn :location :model/Collection :id subcollection-id))))
-          (testing "but it's not really the trash anymore"
-            (is (nil? (:type (t2/select-one :model/Collection :id trash-collection-id)))))
+            (is (nil? (t2/select-one :model/Collection :name "Trash")))
+            (is (= "/" (t2/select-one-fn :location :model/Collection :id collection-id)))
+            (is (= (str "/" collection-id "/") (t2/select-one-fn :location :model/Collection :id subcollection-id))))
           (testing "we can migrate back up"
             (migrate!)
+            (is (:archived_directly (t2/select-one :model/Collection :id collection-id)))
+            (is (not (:archived_directly (t2/select-one :model/Collection :id subcollection-id))))
             (is (not= trash-collection-id (t2/select-one-pk :model/Collection :type "trash")))
-            (is (= (str "/" (t2/select-one-pk :model/Collection :type "trash") "/")
+            (is (= (str "/" collection-id "/")
                    (t2/select-one-fn :location :model/Collection :id subcollection-id)))))))))
+
+(deftest trash-migrations-make-archive-operation-ids-correctly
+  (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-29T18:42:15"] [migrate!]
+    (with-redefs [collection/is-trash? (constantly false)]
+      (let [relevant-collection-ids (atom #{})
+            parent-id (fn [id]
+                        (:parent_id (t2/hydrate (t2/select-one :model/Collection :id id) :parent_id)))
+            make-collection! (fn [{:keys [archived? in]}]
+                               (let [result (t2/insert-returning-pk!
+                                             (t2/table-name :model/Collection) {:archived archived?
+                                                                                :name (str (gensym))
+                                                                                :slug (#'collection/slugify (str (gensym)))
+                                                                                :location (if in
+                                                                                            (collection/children-location (t2/select-one :model/Collection :id in))
+                                                                                            "/")})]
+                                 (swap! relevant-collection-ids conj result)
+                                 result))
+            a (make-collection! {:archived? true})
+            b (make-collection! {:archived? false :in a})
+            c (make-collection! {:archived? true :in b})
+            d (make-collection! {:archived? true :in c})
+            e (make-collection! {:archived? true :in d})
+            f (make-collection! {:archived? true :in e})
+            g (make-collection! {:archived? true :in e})
+            h (make-collection! {:archived? false :in g})
+            i (make-collection! {:archived? true :in h})]
+        (migrate!)
+        (let [archive-operation-id->collection-ids (m/map-vals #(into #{} (map :id %)) (group-by :archive_operation_id (t2/select :model/Collection :id [:in @relevant-collection-ids])))]
+          (is (= 4 (count archive-operation-id->collection-ids)))
+          (testing "Each contiguous subtree has its own archive_operation_id"
+            (is (= #{#{a} ;; => A is one subtree, none of its children are archived.
+                     #{c d e f g} ;; => C/D/E/[F,G] is a big ol' subtree
+                     #{i} ;; => I is the last archived subtree. It's a grandchild of G, but H isn't archived.
+                     #{b h}} ;; => not archived at all, `archive_operation_id` is nil
+                   (set (vals archive-operation-id->collection-ids)))))
+          (testing "Trashed directly is correctly set"
+            (is (= {true #{a c i}
+                    false #{d e f g}
+                    nil #{b h}}
+                   (m/map-vals #(into #{} (map :id %)) (group-by :archived_directly (t2/select :model/Collection :id [:in @relevant-collection-ids])))))))
+        ;; We can roll back. Nothing got moved around.
+        (migrate! :down 49)
+        (is (= nil (parent-id a)))
+        (is (= a (parent-id b)))
+        (is (= b (parent-id c)))
+        (is (= c (parent-id d)))
+        (is (= d (parent-id e)))
+        (is (= e (parent-id f)))
+        (is (= e (parent-id g)))
+        (is (= g (parent-id h)))
+        (is (= h (parent-id i)))
+        (migrate!)
+        (let [archive-operation-id->collection-ids (m/map-vals #(into #{} (map :id %)) (group-by :archive_operation_id (t2/select :model/Collection :id [:in @relevant-collection-ids])))]
+          (is (= 4 (count archive-operation-id->collection-ids)))
+          (doseq [id (keys archive-operation-id->collection-ids)]
+            (when-not (nil? id)
+              (is (uuid? (java.util.UUID/fromString id)))))
+          (testing "Run the same test as above just to make sure that it survives the round trip"
+            (is (= #{#{a} ;; => A is one subtree, none of its children are archived.
+                     #{c d e f g} ;; => C/D/E/[F,G] is a big ol' subtree
+                     #{i} ;; => I is the last archived subtree. It's a grandchild of G, but H isn't archived.
+                     #{b h}} ;; => not archived at all, `archive_operation_id` is nil
+                   (set (vals archive-operation-id->collection-ids))))))))))

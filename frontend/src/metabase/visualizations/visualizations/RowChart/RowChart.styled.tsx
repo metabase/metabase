@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 
 import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
 import LegendLayout from "metabase/visualizations/components/legend/LegendLayout";
+import { getChartPadding } from "metabase/visualizations/visualizations/CartesianChart/padding";
 
 interface RowVisualizationRootProps {
   isQueryBuilder: boolean;
@@ -10,8 +11,7 @@ interface RowVisualizationRootProps {
 export const RowVisualizationRoot = styled.div<RowVisualizationRootProps>`
   display: flex;
   flex-direction: column;
-  padding: ${({ isQueryBuilder }) =>
-    isQueryBuilder ? "1rem 1rem 1rem 2rem" : "0.5rem 1rem"};
+  padding: ${getChartPadding};
   overflow: hidden;
 `;
 

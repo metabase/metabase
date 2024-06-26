@@ -5751,6 +5751,9 @@ databaseChangeLog:
       id: v49.2024-03-26T20:27:58
       author: noahmoss
       comment: Added 0.46.0 - Delete the truncate audit log task (renamed to truncate audit tables)
+      # Apparently this migration can hang when connection pool is small (#44528). It's also not needed
+      # as of v50 due to #42383 so let's skip it.
+      ignore: true
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.DeleteTruncateAuditLogTask"
@@ -7227,25 +7230,6 @@ databaseChangeLog:
                   defaultValue: false
 
   - changeSet:
-      id: v50.2024-04-12T12:33:09
-      author: piranha
-      comment: 'Copy old cache configurations to cache_config table'
-      changes:
-        - sqlFile:
-            dbms: postgresql
-            path: custom_sql/fill_cache_config.pg.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: mysql,mariadb
-            path: custom_sql/fill_cache_config.my.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: h2
-            path: custom_sql/fill_cache_config.h2.sql
-            relativeToChangelogFile: true
-      rollback: # no rollback necessary, we're not removing the columns yet
-
-  - changeSet:
       id: v50.2024-04-15T16:30:35
       author: qnkhuat
       comment: Add report_card.last_used_at
@@ -7674,187 +7658,6 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v50.2024-05-14T12:13:22
-      author: johnswanson
-      comment: Add `collection.trashed_from_location`
-      changes:
-        - addColumn:
-            tableName: collection
-            columns:
-              - column:
-                  name: trashed_from_location
-                  type: ${text.type}
-                  remarks: "The previous location this collection was trashed from"
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v50.2024-05-14T12:13:33
-      author: johnswanson
-      comment: Add `report_card.trashed_from_collection_id`
-      changes:
-        - addColumn:
-            tableName: report_card
-            columns:
-              - column:
-                  name: trashed_from_collection_id
-                  type: int
-                  remarks: "The previous parent collection this card was trashed *from*"
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v50.2024-05-14T12:13:39
-      author: johnswanson
-      comment: Add `report_dashboard.trashed_from_collection_id`
-      changes:
-        - addColumn:
-            tableName: report_dashboard
-            columns:
-              - column:
-                  name: trashed_from_collection_id
-                  type: int
-                  remarks: "The previous parent collection this dashboard was trashed *from*"
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:16
-      author: johnswanson
-      comment: Drop foreign key constraint fk_snippet_collection_id
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: native_query_snippet
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_snippet_collection_id
-            onDelete: SET NULL
-      changes:
-        - dropForeignKeyConstraint:
-            baseTableName: native_query_snippet
-            constraintName: fk_snippet_collection_id
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:27
-      author: johnswanson
-      comment: Add foreign key constraint fk_snippet_collection_id with CASCADE delete
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: native_query_snippet
-            constraintName: fk_snippet_collection_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: native_query_snippet
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_snippet_collection_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:29
-      author: johnswanson
-      comment: Drop foreign key constraint fk_pulse_collection_id
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: pulse
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_pulse_collection_id
-            onDelete: SET NULL
-      changes:
-        - dropForeignKeyConstraint:
-            baseTableName: pulse
-            constraintName: fk_pulse_collection_id
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:32
-      author: johnswanson
-      comment: Add foreign key constraint fk_pulse_collection_id with CASCADE delete
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: pulse
-            constraintName: fk_pulse_collection_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: pulse
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_pulse_collection_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:33
-      author: johnswanson
-      comment: Drop foreign key constraint fk_card_collection_id
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: report_card
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_card_collection_id
-            onDelete: SET NULL
-      changes:
-        - dropForeignKeyConstraint:
-            baseTableName: report_card
-            constraintName: fk_card_collection_id
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:36
-      author: johnswanson
-      comment: Add foreign key constraint fk_card_collection_id with CASCADE delete
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: report_card
-            constraintName: fk_card_collection_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: report_card
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_card_collection_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:37
-      author: johnswanson
-      comment: Drop foreign key constraint fk_dashboard_collection_id
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: report_dashboard
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_dashboard_collection_id
-            onDelete: SET NULL
-      changes:
-        - dropForeignKeyConstraint:
-            baseTableName: report_dashboard
-            constraintName: fk_dashboard_collection_id
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:40
-      author: johnswanson
-      comment: Add foreign key constraint fk_dashboard_collection_id with CASCADE delete
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: report_dashboard
-            constraintName: fk_dashboard_collection_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: report_dashboard
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_dashboard_collection_id
-            onDelete: CASCADE
-
-  - changeSet:
       id: v50.2024-05-14T12:42:42
       author: johnswanson
       comment: Create the Trash collection
@@ -7876,92 +7679,7 @@ databaseChangeLog:
               WHERE permissions.object IN (
                 SELECT CONCAT('/collection/', collection.id, '/') FROM collection WHERE collection.type = 'trash'
               );
-              UPDATE collection
-              SET
-                entity_id = NULL,
-                archived = true,
-                name = 'Trash (Auto-Generated)',
-                type = NULL
-              WHERE type = 'trash';
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:44
-      author: johnswanson
-      comment: Move existing archived collections to the Trash - (Postgres)
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: postgresql
-      changes:
-        - sql:
-            sql: >-
-              UPDATE collection AS c1
-              SET trashed_from_location = c1.location,
-                  location = CONCAT('/', c2.id, '/')
-              FROM (SELECT id FROM collection WHERE type = 'trash') AS c2
-              WHERE c1.archived = true AND c1.namespace IS NULL;
-      rollback: # not needed. See above: `Trash` becomes a normal collection
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:46
-      author: johnswanson
-      comment: Move existing archived collections to the Trash - (H2)
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: h2
-      changes:
-        - sql:
-            sql: >-
-              UPDATE collection AS c1
-              SET trashed_from_location = c1.location,
-                  location = CONCAT('/', (SELECT id FROM collection WHERE type = 'trash'), '/')
-              WHERE c1.archived = true AND c1.namespace IS NULL;
-      rollback: # Not needed.
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:48
-      author: johnswanson
-      comment: Move existing archived collections to the Trash - (MySQL/MariaDB)
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
-      changes:
-        - sql:
-            sql: >-
-              UPDATE collection AS c1
-              JOIN (
-                  SELECT id FROM collection WHERE type = 'trash'
-              ) AS c2
-              SET c1.trashed_from_location = c1.location,
-                  c1.location = CONCAT('/', c2.id, '/')
-              WHERE c1.archived = true AND c1.namespace IS NULL;
-      rollback: # Not needed
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:50
-      author: johnswanson
-      comment: Move existing archived dashboards to the Trash
-      changes:
-        - sql:
-            sql: >-
-              UPDATE report_dashboard
-              SET trashed_from_collection_id = collection_id, collection_id = (SELECT id FROM collection WHERE type = 'trash')
-              WHERE archived = true;
-      rollback: # Not needed
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:52
-      author: johnswanson
-      comment: Move existing archived cards to the Trash
-      changes:
-        - sql:
-            sql: >-
-              UPDATE report_card
-              SET trashed_from_collection_id = collection_id, collection_id = (SELECT id FROM collection WHERE type = 'trash')
-              WHERE archived = true;
-      rollback: # Not needed
+              DELETE FROM collection WHERE type = 'trash';
 
   - changeSet:
       id: v50.2024-05-15T13:13:13
@@ -8033,6 +7751,172 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.CreateSampleContent"
 
   - changeSet:
+      id: v50.2024-05-29T14:04:47
+      author: johnswanson
+      comment: Add `report_dashboard.archived_directly`
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: archived_directly
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: "Was this thing trashed directly"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v50.2024-05-29T14:04:53
+      author: johnswanson
+      comment: Add `report_card.archived_directly`
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: archived_directly
+                  type: ${boolean.type}
+                  remarks: "Was this thing trashed directly"
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v50.2024-05-29T14:04:58
+      author: johnswanson
+      comment: Add `collection.archive_operation_id`
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: archive_operation_id
+                  type: char(36)
+                  remarks: "The UUID of the trash operation. Each time you trash a collection subtree, you get a unique ID."
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-05-29T14:05:01
+      author: johnswanson
+      comment: Add `collection.archived_directly`
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: archived_directly
+                  type: ${boolean.type}
+                  remarks: "Whether the item was trashed independently or as a subcollection"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-05-29T14:05:03
+      author: johnswanson
+      comment: Populate `archived_directly` and `archive_operation_id` (Postgres)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: trash/postgres.sql
+            relativeToChangelogFile: true
+      rollback: # not needed, columns will be deleted
+
+  - changeSet:
+      id: v50.2024-05-29T18:42:13
+      author: johnswanson
+      comment: Populate `archived_directly` and `archive_operation_id` (H2)
+      changes:
+        - sqlFile:
+            dbms: h2
+            path: trash/h2.sql
+            relativeToChangelogFile: true
+      rollback: # not needed, columns will be deleted
+
+  - changeSet:
+      id: v50.2024-05-29T18:42:14
+      author: johnswanson
+      comment: Populate `archived_directly` and `archive_operation_id` (MySQL)
+      changes:
+        - sqlFile:
+            dbms: mysql
+            path: trash/mysql.sql
+            relativeToChangelogFile: true
+      rollback: # not needed, columns will be deleted
+
+  - changeSet:
+      id: v50.2024-05-29T18:42:15
+      author: johnswanson
+      comment: Populate `archived_directly` and `archive_operation_id` (MariaDB)
+      changes:
+        - sqlFile:
+            dbms: mariadb
+            path: trash/mariadb.sql
+            relativeToChangelogFile: true
+      rollback: # not needed, columns will be deleted
+
+  - changeSet:
+      id: v50.2024-06-12T12:33:07
+      author: piranha
+      comment: 'Decrypt some settings so the next migration runs well'
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DecryptCacheSettings"
+      rollback: # no rollback necessary, they'll be encrypted if you downgrade and touch them
+
+  - changeSet:
+      # this had id `v50.2024-04-12T12:33:09` before #44048
+      id: v50.2024-06-12T12:33:08
+      author: piranha
+      comment: 'Copy old cache configurations to cache_config table'
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: custom_sql/fill_cache_config.pg.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: custom_sql/fill_cache_config.my.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: custom_sql/fill_cache_config.h2.sql
+            relativeToChangelogFile: true
+      rollback: # no rollback necessary, we're not removing the columns yet
+
+  - changeSet:
+      id: v50.2024-06-12T12:33:09
+      author: piranha
+      comment: 'Fix root cache config for mysql if it is wrong'
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: custom_sql/fill_cache_config_root_fix.my.sql
+            relativeToChangelogFile: true
+      rollback: # no rollback necessary here too
+
+  - changeSet:
+      id: v50.2024-06-20T13:21:30
+      author: noahmoss
+      comment: 'Drop permission_id column on sandboxes table to fix down migrations'
+      changes:
+        - dropColumn:
+            tableName: sandboxes
+            columnName: permission_id
+      rollback:
+        - addColumn:
+            tableName: sandboxes
+            columns:
+              - column:
+                  name: permission_id
+                  type: int
+                  remarks: 'The ID of the corresponding permissions path for this sandbox (deprecated)'
+                  constraints:
+                    nullable: true
+                  defaultValue: null
+
+  - changeSet:
       id: v51.2024-05-13T15:30:57
       author: metamben
       comment: Backup of dataset_query rewritten by the metrics v2 migration
@@ -8053,13 +7937,89 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateMetricsToV2"
 
+  - changeSet:
+      id: v51.2024-05-30T16:04:20
+      author: escherize
+      comment: Add context to recent views table
+      changes:
+        - addColumn:
+            tableName: recent_views
+            columns:
+              - column:
+                  name: context
+                  remarks: The contextual action that netted a recent view.
+                  type: varchar(256)
+                  defaultValue: "view"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-06-07T12:37:36
+      author: crisptrutski
+      comment: Rename query_field.direct_reference to query_field.indirect_reference
+      changes:
+        - renameColumn:
+            tableName: query_field
+            columnDataType: ${boolean.type}
+            oldColumnName: direct_reference
+            newColumnName: explicit_reference
+
+  - changeSet:
+      id: v51.2024-06-12T18:53:02
+      author: noahmoss
+      comment: Drop incorrect index on login_history
+      changes:
+        - dropIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
+      rollback:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
+            columns:
+              - column:
+                  name: session_id
+              - column:
+                  name: device_id
+
+  - changeSet:
+      id: v51.2024-06-12T18:53:03
+      author: noahmoss
+      comment: Create index on login_history (user_id, device_id)
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: device_id
+      rollback:
+        - dropIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
 #
 # ADVICE:
 #
-# 1) Run ./bin/lint-migrations-file.sh to run core.spec checks against any changes you make here. Liquibase is pretty
+# 1) Think through some of these points when writing a migration, learn from our past mistakes:
+#    - Do you really need a migration? Could the feature work without it? Prefer not to if possible.
+#      Data in the wild can be vastly different from what you expect, and it's hard to get right.
+#    - If you still need to, make sure it works when Metabase is encrypted. Fields like `metabase_database.details`
+#      or `setting.value` can be encrypted, so you need to decrypt them in your migration. See #42617, #44048.
+#    - Prefer SQL migrations over custom migrations.
+#    - Postgres, MySQL and H2 have their differences. Make sure your migration works for all.
+#    - Custom migrations and their tests demand a high level of reliability. They should only use code from the standard library.
+#      Requiring code from the Metabase codebase is a bad idea because it can change and break your migration.
+#      More in `metabase.db.custom_migrations` namespace doc.
+#    - Custom migrations shouldn't use Toucan models; work directly with the table names.
+#
+# 2) Run ./bin/lint-migrations-file.sh to run core.spec checks against any changes you make here. Liquibase is pretty
 #    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
 #    this check but it's nicer to know now instead of waiting for CI.
 #
@@ -8068,7 +8028,7 @@ databaseChangeLog:
 #       automatically and the migrations linter will check for the presence of rollback where required as
 #       much as possible.
 #
-# 2) Migration IDs should follow the format
+# 3) Migration IDs should follow the format
 #
 #    vMM.TIMESTAMP
 #

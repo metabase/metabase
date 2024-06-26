@@ -1,5 +1,5 @@
 import type { CardId } from "./card";
-import type { RowValue } from "./dataset";
+import type { RowValue, TemporalUnit } from "./dataset";
 import type { ConcreteFieldReference, ExpressionReference } from "./query";
 
 export type StringParameterType =
@@ -25,10 +25,13 @@ export type DateParameterType =
   | "date/quarter-year"
   | "date/all-options";
 
+export type TemporalUnitParameterType = "temporal-unit";
+
 export type ParameterType =
   | StringParameterType
   | NumberParameterType
-  | DateParameterType;
+  | DateParameterType
+  | TemporalUnitParameterType;
 
 export type ParameterId = string;
 
@@ -48,6 +51,7 @@ export interface Parameter extends ParameterValuesConfig {
   isMultiSelect?: boolean;
   value?: any;
   target?: ParameterTarget;
+  temporal_units?: TemporalUnit[];
 }
 
 export interface ParameterValuesConfig {
@@ -115,4 +119,27 @@ export type ParameterQueryObject = {
   type: string;
   target: ParameterTarget;
   value: ParameterValueOrArray;
+};
+
+export type NormalizedParameter = {
+  id: ParameterId;
+  name: string;
+  slug: string;
+  type: string;
+  target?: ParameterTarget;
+  options?: ParameterOptions;
+  values_query_type?: ValuesQueryType;
+  values_source_type?: ValuesSourceType;
+  values_source_config?: ValuesSourceConfig;
+};
+
+export type GetParameterValuesRequest = {
+  parameter: NormalizedParameter;
+  field_ids: number[];
+};
+
+export type SearchParameterValuesRequest = {
+  parameter: Parameter;
+  field_ids: number[];
+  query: string;
 };

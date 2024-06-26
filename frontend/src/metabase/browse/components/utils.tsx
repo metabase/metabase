@@ -1,13 +1,9 @@
 import { t } from "ttag";
 
-import type { SortingOptions } from "metabase/components/ItemsTable/BaseItemsTable";
-import { SortDirection } from "metabase/components/ItemsTable/Columns";
-import type {
-  CollectionEssentials,
-  ModelResult,
-  SearchResult,
-} from "metabase-types/api";
+import type { CollectionEssentials, SearchResult } from "metabase-types/api";
+import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
+import type { ModelResult } from "../types";
 import { getCollectionName } from "../utils";
 
 import { pathSeparatorChar } from "./constants";
@@ -108,4 +104,20 @@ export const sortModels = (
 
     return sort_direction === SortDirection.Asc ? result : -result;
   });
+};
+
+/** Find the maximum number of recently viewed models to show.
+ * This is roughly proportional to the number of models the user
+ * has permission to see */
+export const getMaxRecentModelCount = (
+  /** How many models the user has permission to see */
+  modelCount: number,
+) => {
+  if (modelCount > 20) {
+    return 8;
+  }
+  if (modelCount > 9) {
+    return 4;
+  }
+  return 0;
 };

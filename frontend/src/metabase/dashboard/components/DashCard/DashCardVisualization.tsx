@@ -16,6 +16,7 @@ import type { IconName, IconProps } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import Visualization from "metabase/visualizations/components/Visualization";
+import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {
   Dashboard,
@@ -44,7 +45,8 @@ interface DashCardVisualizationProps {
   dashboard: Dashboard;
   dashcard: DashboardCard;
   series: Series;
-  mode?: Mode;
+  mode?: QueryClickActionsMode | Mode;
+  href: string | undefined;
 
   gridSize: {
     width: number;
@@ -70,6 +72,7 @@ interface DashCardVisualizationProps {
   /** If public sharing or static/public embed */
   isPublicOrEmbedded?: boolean;
   isXray?: boolean;
+  withTitle?: boolean;
 
   error?: { message?: string; icon?: IconName };
   headerIcon?: IconProps;
@@ -91,6 +94,7 @@ export function DashCardVisualization({
   dashboard,
   series,
   mode,
+  href,
   gridSize,
   gridItemWidth,
   totalNumGridCols,
@@ -111,6 +115,7 @@ export function DashCardVisualization({
   isFullscreen = false,
   isMobile = false,
   isEditingParameter,
+  withTitle = true,
   onChangeCardAndRun,
   showClickBehaviorSidebar,
   onChangeLocation,
@@ -241,13 +246,14 @@ export function DashCardVisualization({
       rawSeries={series}
       metadata={metadata}
       mode={mode}
+      href={href}
       gridSize={gridSize}
       totalNumGridCols={totalNumGridCols}
       headerIcon={headerIcon}
       expectedDuration={expectedDuration}
       error={error?.message}
       errorIcon={error?.icon}
-      showTitle
+      showTitle={withTitle}
       isAction={isAction}
       isDashboard
       isSlow={isSlow}

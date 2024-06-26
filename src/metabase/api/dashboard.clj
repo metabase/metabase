@@ -25,6 +25,7 @@
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
    [metabase.models.dashboard-tab :as dashboard-tab]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
@@ -97,6 +98,7 @@
                            :dashcard/action
                            :dashcard/linkcard-info]
                 :can_restore
+                :can_delete
                 :last_used_param_values
                 :tabs
                 :collection_authority_level
@@ -253,7 +255,8 @@
         hydrate-dashboard-details
         collection.root/hydrate-root-collection
         hide-unreadable-cards
-        add-query-average-durations)))
+        add-query-average-durations
+        (api/present-in-trash-if-archived-directly (collection/trash-collection-id)))))
 
 (defn- cards-to-copy
   "Returns a map of which cards we need to copy and which are not to be copied. The `:copy` key is a map from id to
@@ -703,9 +706,13 @@
           ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
           ;; tests that exclude it. so this only checks for dashcards
           update-dashcards-and-tabs?         (contains? dash-updates :dashcards)
-          dash-updates                       (api/move-on-archive-or-unarchive current-dash dash-updates (collection/trash-collection-id))]
+          dash-updates                       (api/updates-with-archived-directly current-dash dash-updates)]
       (collection/check-allowed-to-change-collection current-dash dash-updates)
       (check-allowed-to-change-embedding current-dash dash-updates)
+      ;; Can't move things to the Trash.
+      (when (some-> dash-updates :collection_id (= (collection/trash-collection-id)))
+        (throw (ex-info (tru "Cannot move a card to the trash collection.")
+                        {:status-code 400})))
       (api/check-500
         (do
           (t2/with-transaction [_conn]
@@ -715,7 +722,7 @@
             (when-let [updates (not-empty
                                 (u/select-keys-when
                                     dash-updates
-                                  :present #{:description :position :width :collection_id :collection_position :cache_ttl :trashed_from_collection_id}
+                                  :present #{:description :position :width :collection_id :collection_position :cache_ttl :archived_directly}
                                   :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                              :embedding_params :archived :auto_apply_filters}))]
               (t2/update! Dashboard id updates)
@@ -731,19 +738,19 @@
                      current-tabs      :tabs
                      :as               hydrated-current-dash} (t2/hydrate current-dash [:dashcards :series :card] :tabs)
                     _                                         (when (and (seq current-tabs)
-                                                       (not (every? #(some? (:dashboard_tab_id %)) dashcards)))
-                                              (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
-                                                              {:status-code 400})))
+                                                                         (not (every? #(some? (:dashboard_tab_id %)) dashcards)))
+                                                                (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
+                                                                                {:status-code 400})))
                     new-tabs                                  (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
                     {:keys [old->new-tab-id
                             deleted-tab-ids]
                      :as   tabs-changes-stats}                (dashboard-tab/do-update-tabs! (:id current-dash) current-tabs new-tabs)
                     deleted-tab-ids                           (set deleted-tab-ids)
                     current-dashcards                         (remove (fn [dashcard]
-                                                      (contains? deleted-tab-ids (:dashboard_tab_id dashcard)))
-                                                    current-dashcards)
+                                                                        (contains? deleted-tab-ids (:dashboard_tab_id dashcard)))
+                                                                      current-dashcards)
                     new-dashcards                             (cond->> dashcards
-                                              ;; fixup the temporary tab ids with the real ones
+                                                                ;; fixup the temporary tab ids with the real ones
                                                                 (seq old->new-tab-id)
                                                                 (map (fn [card]
                                                                        (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
@@ -752,8 +759,8 @@
                     dashcards-changes-stats                   (do-update-dashcards! hydrated-current-dash current-dashcards new-dashcards)]
                 (reset! changes-stats
                         (merge
-                          (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
-                          (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards]))))))
+                         (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
+                         (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards]))))))
           true))
       (let [dashboard (t2/select-one :model/Dashboard id)]
         ;; skip publishing the event if it's just a change in its collection position
@@ -840,8 +847,9 @@
   "Get all of the required query metadata for the cards on dashboard."
   [id]
   {id ms/PositiveInt}
-  (let [dashboard (get-dashboard id)]
-    (api.query-metadata/dashboard-metadata dashboard)))
+  (data-perms/with-relevant-permissions-for-user api/*current-user-id*
+    (let [dashboard (get-dashboard id)]
+      (api.query-metadata/dashboard-metadata dashboard))))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
@@ -989,6 +997,20 @@
                                               1 first)))
          :has_more_values has_more_values}))))
 
+(defn- combine-chained-fitler-results
+  [results]
+  (let [;; merge values with remapped values taking priority
+        values (->> (mapcat :values results)
+                    (sort-by count)
+                    (m/index-by first)
+                    vals)]
+    (cond->> values
+      (seq values)
+      ;; sort by remapped values only if all values are remapped
+      (sort-by (case (count (first values))
+                 2 second
+                 1 first)))))
+
 (mu/defn chain-filter :- ms/FieldValuesResult
   "C H A I N filters!
 
@@ -1010,18 +1032,15 @@
                            {:param       (get (:resolved-params dashboard) param-key)
                             :status-code 400})))
        (try
-         (let [results         (map (if (seq query)
+         (let [;; results can come back as [[value] ...] *or* as [[value remapped] ...].
+               results         (map (if (seq query)
                                       #(chain-filter/chain-filter-search % constraints query :limit result-limit)
                                       #(chain-filter/chain-filter % constraints :limit result-limit))
                                     field-ids)
-               values          (distinct (mapcat :values results))
                has_more_values (boolean (some true? (map :has_more_values results)))]
-           ;; results can come back as [[v] ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
-           {:values          (cond->> values
-                                      (seq values)
-                                      (sort-by (case (count (first values))
-                                                 2 second
-                                                 1 first)))
+           {:values          (or (combine-chained-fitler-results results)
+                                 ;; chain filter results can't be nil
+                                 [])
             :has_more_values has_more_values})
          (catch clojure.lang.ExceptionInfo e
            (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)

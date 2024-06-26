@@ -3,11 +3,11 @@
   namespace is to:
 
   1. Translate Metabase-isms into generic SQL that Macaw can understand.
-  2. Contain Metabase-specific business logic.
+  2. Encapsulate Metabase-specific business logic.
 
   The primary way of interacting with parsed queries is through their associated QueryFields (see model
   file). QueryFields are maintained through the `update-query-fields-for-card!` function. This is invoked as part of
-  the lifecycle of a card (see Card model).
+  the lifecycle of a card (see the Card model).
 
   Query rewriting happens with the `replace-names` function."
   (:require
@@ -15,6 +15,7 @@
    [clojure.string :as str]
    [macaw.core :as macaw]
    [metabase.config :as config]
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.native-query-analyzer.impl :as nqa.impl]
    [metabase.native-query-analyzer.parameter-substitution :as nqa.sub]
@@ -71,10 +72,10 @@
   [field value]
   (if-let [f (quote->stripper (first value))]
     [:= field (f value)]
-    ;; Technically speaking this is not correct for all databases.
+    ;; Technically speaking, this is not correct for all databases.
     ;;
-    ;; For example Oracle treats non-quoted identifiers as uppercase, but still expects a case-sensitive match.
-    ;; Similarly, Postgres treat all non-quoted identifiers as lowercase, and again expects an exact match.
+    ;; For example, Oracle treats non-quoted identifiers as uppercase, but still expects a case-sensitive match.
+    ;; Similarly, Postgres treats all non-quoted identifiers as lowercase, and again expects an exact match.
     ;; H2 on the other hand will choose whether to cast it to uppercase or lowercase based on a system variable... T_T
     ;;
     ;; MySQL, by contrast, is truly case-insensitive, and as the lowest common denominator it's what we cater for.
@@ -104,7 +105,7 @@
      (field-query :f.name (:column column))
      (into [:or] (map table-query tables))]))
 
-(defn- direct-field-ids-for-query
+(defn- explicit-field-ids-for-query
   "Selects IDs of Fields that could be used in the query"
   [{column-maps :columns table-maps :tables} db-id]
   (let [columns (map :component column-maps)
@@ -128,8 +129,8 @@
       ;; limit to the named tables
       (seq table-wildcards)            (map :component table-wildcards))))
 
-(defn- indirect-field-ids-for-query
-  "Similar to direct-field-ids-for-query, but for wildcard selects"
+(defn- implicit-field-ids-for-query
+  "Similar to explicit-field-ids-for-query, but for wildcard selects"
   [parsed-query db-id]
   (when-let [tables (wildcard-tables parsed-query)]
     (t2/select-pks-set :model/Field (merge field-and-table-fragment
@@ -138,24 +139,32 @@
                                                     [:= :f.active true]
                                                     (into [:or] (map table-query tables))]}))))
 
-(defn field-ids-for-sql
-  "Returns a `{:direct #{...} :indirect #{...}}` map with field IDs that (may) be referenced in the given card's
+(defn- field-ids-for-sql
+  "Returns a `{:explicit #{...} :implicit #{...}}` map with field IDs that (may) be referenced in the given card's
   query. Errs on the side of optimism: i.e., it may return fields that are *not* in the query, and is unlikely to fail
   to return fields that are in the query.
 
-  Direct references are columns that are named in the query; indirect ones are from wildcards. If a field could be
-  both direct and indirect, it will *only* show up in the `:direct` set."
+  Explicit references are columns that are named in the query; implicit ones are from wildcards. If a field could be
+  both explicit and implicit, it will *only* show up in the `:explicit` set."
+  [driver query]
+  (let [db-id        (:database query)
+        macaw-opts   (nqa.impl/macaw-options driver)
+        sql-string   (:query (nqa.sub/replace-tags query))
+        parsed-query (macaw/query->components (macaw/parsed-query sql-string macaw-opts) macaw-opts)
+        explicit-ids (explicit-field-ids-for-query parsed-query db-id)
+        implicit-ids (set/difference
+                      (implicit-field-ids-for-query parsed-query db-id)
+                      explicit-ids)]
+    {:explicit explicit-ids
+     :implicit implicit-ids}))
+
+(defn field-ids-for-native
+  "Returns a `{:explicit #{...} :implicit #{...}}` map with field IDs that (may) be referenced in the given card's
+  query. Currently only support SQL-based dialects."
   [query]
-  (when (and (active?)
-             (:native query))
-    (let [db-id        (:database query)
-          sql-string   (:query (nqa.sub/replace-tags query))
-          driver       (driver.u/database->driver db-id)
-          macaw-opts   (nqa.impl/macaw-options driver)
-          parsed-query (macaw/query->components (macaw/parsed-query sql-string) macaw-opts)
-          direct-ids   (direct-field-ids-for-query parsed-query db-id)
-          indirect-ids (set/difference
-                        (indirect-field-ids-for-query parsed-query db-id)
-                        direct-ids)]
-      {:direct   direct-ids
-       :indirect indirect-ids})))
+  (when (and (active?) (:native query))
+    (let [driver (driver.u/database->driver (:database query))]
+      ;; TODO this approach is not extensible, we need to move to multimethods.
+      ;; See https://github.com/metabase/metabase/issues/43516 for long term solution.
+      (when (isa? driver/hierarchy driver :sql)
+        (field-ids-for-sql driver query)))))

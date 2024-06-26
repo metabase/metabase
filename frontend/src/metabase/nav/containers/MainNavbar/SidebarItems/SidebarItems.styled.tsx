@@ -70,7 +70,7 @@ NodeRoot.defaultProps = {
 };
 
 export const collectionDragAndDropHoverStyle = css`
-  color: ${color("text-white")};
+  color: var(--mb-color-text-white);
   background-color: var(--mb-color-brand);
 `;
 
@@ -96,12 +96,13 @@ const itemContentStyle = css`
 `;
 
 export const FullWidthButton = styled.button<{ isSelected: boolean }>`
+  color: inherit;
   cursor: pointer;
 
   ${itemContentStyle}
   ${TreeNode.NameContainer} {
     font-weight: 700;
-    color: ${props => getTextColor(props.isSelected)};
+    color: ${props => (props.isSelected ? color("brand") : "inherit")};
     text-align: start;
 
     &:hover {

@@ -5,7 +5,7 @@ import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { remapParameterValuesToTemplateTags } from "metabase-lib/v1/parameters/utils/template-tags";
 import { isTransientId } from "metabase-lib/v1/queries/utils/card";
-import type { ParameterId, ParameterValue } from "metabase-types/api";
+import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
 
 import type Question from "./Question";
 import type NativeQuery from "./queries/NativeQuery";
@@ -47,7 +47,7 @@ export function getUrl(
 export function getUrlWithParameters(
   question: Question,
   parameters: ParameterWithTarget[],
-  parameterValues: Record<ParameterId, ParameterValue>,
+  parameterValues: Record<ParameterId, ParameterValueOrArray>,
   { objectId }: { objectId?: string | number } = {},
 ): string {
   const includeDisplayIsLocked = true;
@@ -60,6 +60,12 @@ export function getUrlWithParameters(
     let questionWithParameters = question.setParameters(parameters);
 
     if (isEditable) {
+      // treat the dataset/model question like it is already composed so that we can apply
+      // dataset/model-specific metadata to the underlying dimension options
+      questionWithParameters =
+        question.type() !== "question"
+          ? question.composeQuestionAdhoc().setParameters(parameters)
+          : questionWithParameters;
       questionWithParameters = questionWithParameters
         .setParameterValues(parameterValues)
         ._convertParametersToMbql();

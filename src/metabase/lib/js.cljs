@@ -65,6 +65,7 @@
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
+   [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
@@ -368,6 +369,8 @@
   Recursively converts CLJS maps and sequences into JS objects and arrays."
   [x]
   (cond
+    ;; `(seqable? nil) ; => true`, so we need to check for it before
+    (nil? x)     nil
     ;; Note that map? is only true for CLJS maps, not JS objects.
     (map? x)     (display-info-map->js x)
     (string? x)  x
@@ -1252,10 +1255,24 @@
   ;; Set up this query stage's `:aggregation` list as the context for [[lib.convert/->pMBQL]] to convert legacy
   ;; `[:aggregation 0]` refs into pMBQL `[:aggregation uuid]` refs.
   (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
-    (let [haystack (mapv ->column-or-ref legacy-columns)
-          needles  (map legacy-ref->pMBQL legacy-refs)]
-      #_{:clj-kondo/ignore [:discouraged-var]}
-      (to-array (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack)))))
+    (let [haystack      (mapv ->column-or-ref legacy-columns)
+          needles       (map legacy-ref->pMBQL legacy-refs)
+          column-refs   (into {} (keep-indexed (fn [i col]
+                                                 [(-> col
+                                                      lib.core/ref
+                                                      lib.convert/->legacy-MBQL
+                                                      normalize-legacy-ref)
+                                                  i]))
+                              legacy-columns)
+          exact-matches (map #(-> %
+                                  (js->clj :keywordize-keys true)
+                                  (update 0 keyword)
+                                  column-refs)
+                             legacy-refs)]
+      (if (every? #(and % (>= % 0)) exact-matches)
+        (to-array exact-matches)
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (to-array (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack))))))
 
 (defn ^:export source-table-or-card-id
   "Returns the ID of the source table (as a number) or the ID of the source card (as a string prefixed
@@ -1481,12 +1498,12 @@
 
 (defn ^:export join-clause
   "Create a join clause (an `:mbql/join` map) against something `joinable` (Table metadata, a Saved Question, another
-  query, etc.) with 1 or more `conditions`, which should be an array of filter clauses. You can then adjust this join
-  clause with functions like [[with-join-fields]], or add it to a query with [[join]].
+  query, etc.) with 1 or more `conditions`, which should be an array of filter clauses, and a join strategy. You can
+  then adjust this join clause with functions like [[with-join-fields]], or add it to a query with [[join]].
 
   > **Code health:** Healthy"
-  [joinable conditions]
-  (lib.core/join-clause joinable conditions))
+  [joinable conditions strategy]
+  (lib.core/join-clause joinable conditions strategy))
 
 (defn ^:export join
   "Add `a-join`, a join clause as created by [[join-clause]], to the specified stage of `a-query`.
@@ -1954,7 +1971,7 @@
   #js {"column"     column
        "query"      a-query
        "stageIndex" stage-number
-       "value"      (if (= value :null) nil value)})
+       "value"      (lib.drill-thru.common/drill-value->js value)})
 
 (defn ^:export aggregation-drill-details
   "Returns a JS object with the details needed to render the complex UI for `compare-aggregation` drills.

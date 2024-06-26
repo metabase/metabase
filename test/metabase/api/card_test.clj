@@ -62,31 +62,31 @@
 
 (def card-defaults
   "The default card params."
-  {:archived                   false
-   :collection_id              nil
-   :collection_position        nil
-   :collection_preview         true
-   :dataset_query              {}
-   :type                       "question"
-   :description                nil
-   :display                    "scalar"
-   :enable_embedding           false
-   :initially_published_at     nil
-   :entity_id                  nil
-   :embedding_params           nil
-   :made_public_by_id          nil
-   :parameters                 []
-   :parameter_mappings         []
-   :moderation_reviews         ()
-   :public_uuid                nil
-   :query_type                 nil
-   :cache_ttl                  nil
-   :average_query_time         nil
-   :last_query_start           nil
-   :result_metadata            nil
-   :cache_invalidated_at       nil
-   :view_count                 0
-   :trashed_from_collection_id nil})
+  {:archived               false
+   :collection_id          nil
+   :collection_position    nil
+   :collection_preview     true
+   :dataset_query          {}
+   :type                   "question"
+   :description            nil
+   :display                "scalar"
+   :enable_embedding       false
+   :initially_published_at nil
+   :entity_id              nil
+   :embedding_params       nil
+   :made_public_by_id      nil
+   :parameters             []
+   :parameter_mappings     []
+   :moderation_reviews     ()
+   :public_uuid            nil
+   :query_type             nil
+   :cache_ttl              nil
+   :average_query_time     nil
+   :last_query_start       nil
+   :result_metadata        nil
+   :cache_invalidated_at   nil
+   :view_count             0
+   :archived_directly      false})
 
 ;; Used in dashboard tests
 (def card-defaults-no-hydrate
@@ -2375,8 +2375,8 @@
       (let [orig qp.card/process-query-for-card]
         (with-redefs [qp.card/process-query-for-card (fn [card-id export-format & options]
                                                        (apply orig card-id export-format
-                                                              :run (fn [{:keys [constraints]} _]
-                                                                     {:constraints constraints})
+                                                              :make-run (constantly (fn [{:keys [constraints]} _]
+                                                                                      {:constraints constraints}))
                                                               options))]
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
             (is (= {:constraints nil}
@@ -3670,3 +3670,13 @@
                 (update :fields #(map (fn [x] (select-keys x [:id])) %))
                 (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
                 (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))))
+
+(deftest card-query-metadata-no-tables-test
+  (testing "Don't throw an error if users doesn't have access to any tables #44043"
+    (let [original-can-read? mi/can-read?]
+      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:limit 1})}]
+       (with-redefs [mi/can-read? (fn [& args]
+                                    (if (= :model/Table (apply mi/dispatch-on-model args))
+                                      false
+                                      (apply original-can-read? args)))]
+         (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" (:id card))))))))))

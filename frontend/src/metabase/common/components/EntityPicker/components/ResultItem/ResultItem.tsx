@@ -2,9 +2,10 @@ import { t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { color } from "metabase/lib/colors";
+import { humanize, titleize } from "metabase/lib/formatting";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
-import { Flex, Tooltip, FixedSizeIcon } from "metabase/ui";
+import { FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
 import { ENTITY_PICKER_Z_INDEX } from "../EntityPickerModal";
@@ -22,6 +23,7 @@ export type ResultItemType = Pick<SearchResult, "model" | "name"> &
       | "moderated_status"
       | "display"
       | "database_name"
+      | "table_schema"
     >
   >;
 
@@ -50,7 +52,7 @@ export const ResultItem = ({
     >
       <Flex gap="md" miw="10rem" align="center" style={{ flex: 1 }}>
         <FixedSizeIcon
-          color={color(icon.color ?? (isSelected ? "white" : "brand"))}
+          color={color(icon.color ?? (isSelected ? "text-white" : "brand"))}
           name={icon.name}
           style={{
             flexShrink: 0,
@@ -74,7 +76,7 @@ export const ResultItem = ({
       {parentInfo && (
         <Flex
           style={{
-            color: isSelected ? color("white") : color("text-light"),
+            color: isSelected ? color("text-white") : color("text-light"),
             flexShrink: 0,
           }}
           align="center"
@@ -91,9 +93,19 @@ export const ResultItem = ({
 
 function getParentInfo(item: ResultItemType) {
   if (item.model === "table") {
+    const icon = getIcon({ model: "database" }).name;
+    const databaseName = item.database_name ?? t`Database`;
+
+    if (!item.table_schema) {
+      return {
+        icon,
+        name: databaseName,
+      };
+    }
+
     return {
-      icon: getIcon({ model: "database" }).name,
-      name: item.database_name ?? t`Database`,
+      icon,
+      name: `${databaseName} (${titleize(humanize(item.table_schema))})`,
     };
   }
 

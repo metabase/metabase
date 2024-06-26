@@ -12,7 +12,7 @@ export const ActionOptionListItem = styled.div<ActionOptionProps>`
   color: ${props =>
     props.isSelected ? color("text-white") : color("text-normal")};
   background-color: ${props =>
-    props.isSelected ? "var(--mb-color-brand)" : color("white")};
+    props.isSelected ? color("brand") : color("bg-white")};
   cursor: pointer;
 
   display: flex;
@@ -27,7 +27,7 @@ export const ActionOptionListItem = styled.div<ActionOptionProps>`
 
   &:hover {
     background-color: ${() => lighten("brand", 0.1)};
-    color: ${color("text-white")};
+    color: var(--mb-color-text-white);
   }
 `;
 

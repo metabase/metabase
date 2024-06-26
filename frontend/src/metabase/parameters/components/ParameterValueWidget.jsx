@@ -323,7 +323,14 @@ function Widget({
   }
 
   if (isTemporalUnitParameter(parameter)) {
-    return <TemporalUnitWidget setValue={setValue} onClose={onPopoverClose} />;
+    return (
+      <TemporalUnitWidget
+        parameter={parameter}
+        value={value}
+        setValue={setValue}
+        onClose={onPopoverClose}
+      />
+    );
   }
 
   if (isTextWidget(parameter)) {
@@ -342,6 +349,7 @@ function Widget({
 
   if (isNumberParameter(parameter)) {
     const arity = getNumberParameterArity(parameter);
+
     return (
       <NumberInputWidget
         value={normalizedValue}
