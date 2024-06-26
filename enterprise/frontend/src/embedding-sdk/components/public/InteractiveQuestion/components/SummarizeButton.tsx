@@ -10,12 +10,14 @@ export const SummarizeButton = () => {
   const { question, isSummarizeOpen, setIsSummarizeOpen } =
     useInteractiveQuestionContext();
 
-  const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
+  let shouldShowButton = true;
+  if (question) {
+    const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
+    shouldShowButton = !isNative && isEditable && !question.isArchived();
+  }
+
   return (
-    !isNative &&
-    isEditable &&
-    !question.isArchived() &&
-    question && (
+    shouldShowButton && (
       <QuestionSummarizeWidget
         className={cx(CS.hide, CS.smShow)}
         isShowingSummarySidebar={isSummarizeOpen}

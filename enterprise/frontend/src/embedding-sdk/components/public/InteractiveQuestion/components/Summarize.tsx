@@ -3,10 +3,26 @@ import {
   SummarizeContent,
   useSummarizeQuery,
 } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/SummarizeContent";
+import type * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
 export const Summarize = () => {
   const { onQueryChange, question } = useInteractiveQuestionContext();
 
+  return (
+    question && (
+      <SummarizeInner question={question} onQueryChange={onQueryChange} />
+    )
+  );
+};
+
+export const SummarizeInner = ({
+  question,
+  onQueryChange,
+}: {
+  question: Question;
+  onQueryChange: (query: Lib.Query) => void;
+}) => {
   const {
     aggregations,
     handleAddAggregations,
