@@ -156,9 +156,17 @@ function withTemporalBucketAndBinningStrategy(
   );
 }
 
-interface AggregationClauseOpts {
-  operatorName: string;
-}
+type AggregationClauseOpts =
+  | {
+      operatorName: string;
+      tableName?: never;
+      columnName?: never;
+    }
+  | {
+      operatorName: string;
+      tableName: string;
+      columnName: string;
+    };
 
 interface BreakoutClauseOpts {
   columnName: string;
@@ -214,6 +222,12 @@ export function createQueryWithClauses({
       -1,
       Lib.aggregationClause(
         findAggregationOperator(query, aggregation.operatorName),
+        aggregation.columnName && aggregation.tableName
+          ? columnFinder(query, Lib.visibleColumns(query, -1))(
+              aggregation.tableName,
+              aggregation.columnName,
+            )
+          : undefined,
       ),
     );
   }, queryWithExpressions);
