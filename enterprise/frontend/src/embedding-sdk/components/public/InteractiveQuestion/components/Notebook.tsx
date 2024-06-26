@@ -37,7 +37,7 @@ export const Notebook = () => {
         updateQuestion={(question: Question) =>
           dispatch(updateQuestion(question))
         }
-        runQuestionQuery={runQuestionQuery}
+        runQuestionQuery={() => dispatch(runQuestionQuery())}
         setQueryBuilderMode={() => setIsNotebookOpen(false)}
         hasVisualizeButton={true}
       />

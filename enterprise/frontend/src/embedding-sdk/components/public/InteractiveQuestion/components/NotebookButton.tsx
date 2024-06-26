@@ -8,7 +8,7 @@ export const NotebookButton = () => {
     question &&
     QuestionNotebookButton.shouldRender({
       question,
-      isActionListVisible: false,
+      isActionListVisible: true,
     }) && (
       <QuestionNotebookButton
         isShowingNotebook={isNotebookOpen}
