@@ -11,7 +11,6 @@ import { QuestionResetButton } from "embedding-sdk/components/public/Interactive
 import { Title } from "embedding-sdk/components/public/InteractiveQuestion/components/Title";
 import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
 import { Box, Flex, Group, Stack } from "metabase/ui";
 
 import { QuestionVisualization } from "../public/InteractiveQuestion/components";
@@ -25,8 +24,6 @@ interface InteractiveQuestionResultProps {
 export const InteractiveQuestionResult = ({
   height,
 }: InteractiveQuestionResultProps): React.ReactElement => {
-  useDispatch();
-
   const {
     defaultHeight,
     isQueryRunning,

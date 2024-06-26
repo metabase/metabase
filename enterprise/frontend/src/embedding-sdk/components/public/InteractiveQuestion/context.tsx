@@ -28,7 +28,7 @@ import type { Card, Dataset } from "metabase-types/api";
 import type { QueryBuilderUIControls } from "metabase-types/store";
 
 type InteractiveQuestionContextType = {
-  question: Question;
+  question: Question | undefined;
   card: Card | null;
   result: Dataset | null;
   uiControls: QueryBuilderUIControls;
