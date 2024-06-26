@@ -7,6 +7,7 @@
 
   CSSBox JavaDoc is here: http://cssbox.sourceforge.net/api/index.html"
   (:require
+   [clojure.walk :as walk]
    [hiccup.core :refer [html]]
    [metabase.formatter :as formatter]
    [metabase.pulse.render.style :as style]
@@ -14,7 +15,7 @@
    [metabase.util.malli :as mu])
   (:import
    (cz.vutbr.web.css MediaSpec)
-   (java.awt Graphics2D RenderingHints)
+   (java.awt Font GraphicsEnvironment Graphics2D RenderingHints)
    (java.awt.image BufferedImage)
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)
@@ -73,16 +74,66 @@
           (.getSubimage image 0 0 content-width (.getHeight image))
           image)))))
 
+(defn- get-supported-glyphs
+  "Get a list of the unicode chars supported by the font `font-name`, if it can be found."
+  [font-name]
+  (style/register-fonts-if-needed!)
+  (let [env (GraphicsEnvironment/getLocalGraphicsEnvironment)
+        fonts (.getAllFonts env)
+        font ^Font (some #(when (= font-name (.getName ^Font %)) %) fonts)]
+    (when font
+      (let [char-range (range 0x0000 0xFFFF)]
+        (filter #(let [code (int %)]
+                   (.canDisplay font code)) char-range)))))
+
+(def ^:private lato-supported-chars
+  (into #{} (map char) (get-supported-glyphs "Lato Regular")))
+
+#_
+(def ^:private non-latin-regex
+  (re-pattern "[^A-Za-z0-9!@#$%^&*()_+\\-=\\[\\]{}|;:'\",.<>?/`~\\s\\t\\n\\r]"))
+
+(defn- wrap-non-lato-chars
+  "Wrap characters not supported by the installed Lato font in a span so that we can explicitly set the font to sans-serif.
+  We do this to work around unexpected font-fallback behaviours in CSSBox.
+
+  Lato is properly loaded/registered in `metabase.pulse.render.style/regiter-fonts!`, which means the
+  java.awt GraphicsEnvironment has Lato available as a Physical font. The loaded physical font does not contain
+  glyphs to properly render many international characters, and instead of falling back to another font on a per-glyph basis,
+  it simply renders a '[?]', which is no good.
+
+  If a given string, inside a `transformable-element` contains any character that isn't Lato-compatible, replace the entire string.
+  This is done to make the string as consistent as possible (no mixing fonts in a single string)."
+  [content]
+  (let [transformable-els            #{:div :span :td :th :tr :table :p :tbody :thead}
+        string-wrapper (fn [part]
+                         (if (and (string? part)
+                                  (not (every? #(contains? lato-supported-chars %) part))
+                                  #_(re-find non-latin-regex part))
+                           [:span {:style (style/style {:font-family "sans-serif"})} part]
+                           part))]
+    (walk/postwalk
+     (fn [form]
+       (if (and
+            (not (map-entry? form))
+            (vector? form)
+            (transformable-els (first form)))
+         (mapv string-wrapper form)
+         form))
+     content)))
+
 (mu/defn render-html-to-png :- bytes?
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."
   ^bytes [{:keys [content]} :- formatter/RenderedPulseCard
           width]
   (try
-    (let [html (html [:html [:body {:style (style/style
-                                            {:margin           0
-                                             :padding          0
-                                             :background-color :white})}
-                             content]])]
+    (let [html (html [:html
+                      [:body {:style (style/style
+                                      {:font-family      "Lato, 'Helvetica Neue', 'Lucida Grande', sans-serif"
+                                       :margin           0
+                                       :padding          0
+                                       :background-color :white})}
+                       (wrap-non-lato-chars content)]])]
       (with-open [os (ByteArrayOutputStream.)]
         (-> (render-to-png html width)
             (write-image! "png" os))
