@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { InteractiveQuestionProvider } from "embedding-sdk/components/public/InteractiveQuestion/context";
@@ -21,7 +23,10 @@ export const _InteractiveQuestion = ({
   plugins,
   height,
 }: InteractiveQuestionProps): JSX.Element | null => {
-  const { location, params } = getQuestionParameters(questionId);
+  const { location, params } = useMemo(
+    () => getQuestionParameters(questionId),
+    [questionId],
+  );
 
   return (
     <InteractiveQuestionProvider
