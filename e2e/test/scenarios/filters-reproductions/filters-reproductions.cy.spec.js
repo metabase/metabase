@@ -22,6 +22,7 @@ import {
   enterCustomColumnDetails,
   createQuestion,
   tableHeaderClick,
+  openNotebook,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, PRODUCTS, PRODUCTS_ID, ORDERS, REVIEWS, PEOPLE, PEOPLE_ID } =
@@ -181,7 +182,7 @@ describe("issue 16621", () => {
   });
 });
 
-describe.skip("issue 18770", () => {
+describe("issue 18770", () => {
   const questionDetails = {
     name: "18770",
     query: {
@@ -200,12 +201,12 @@ describe.skip("issue 18770", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("post-aggregation filter shouldn't affect the drill-through options (metabase#18770)", () => {
-    cy.icon("notebook").click();
-    // It is important to manually triger "visualize" in order to generate `result_metadata`
+    openNotebook();
+    // It is important to manually triger "visualize" in order to generate the `result_metadata`
     // Otherwise, we might get false negative even when this issue gets resolved.
     // In order to do that, we have to change the breakout field first or it will never generate and send POST /api/dataset request.
     cy.findAllByTestId("notebook-cell-item")
@@ -216,13 +217,19 @@ describe.skip("issue 18770", () => {
 
     visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("4,784").click();
-    popover()
-      .should("contain", "See these Orders")
-      .and("contain", "Break out by a…")
-      .and("contain", "Filter by this value")
-      .and("contain", "Automatic explorations");
+    cy.findAllByTestId("cell-data")
+      .filter(":contains(4,784)")
+      .should("have.length", 1)
+      .click();
+    popover().within(() => {
+      cy.findByText("Filter by this value").should("be.visible");
+      cy.findAllByRole("button")
+        .should("have.length", 4)
+        .and("contain", "<")
+        .and("contain", ">")
+        .and("contain", "=")
+        .and("contain", "≠");
+    });
   });
 });
 
