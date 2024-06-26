@@ -212,9 +212,6 @@ describe("issue 8030 + 32444", () => {
 
         setFilter("Text or Category", "Is");
         selectDashboardFilter(cy.findAllByTestId("dashcard").first(), "Title");
-
-        undoToast().findByRole("button", { name: "Auto-connect" }).click();
-
         cy.findAllByTestId("dashcard")
           .eq(1)
           .findByLabelText("Disconnect")
@@ -927,9 +924,11 @@ describe("issue 19494", () => {
 
     connectFilterToCard({ filterName: "Card 1 Filter", cardPosition: 0 });
     setDefaultFilter("Doohickey");
+    undoToast().findByText("Undo auto-connection").click();
 
     connectFilterToCard({ filterName: "Card 2 Filter", cardPosition: -1 });
     setDefaultFilter("Gizmo");
+    undoToast().findByText("Undo auto-connection").click();
 
     saveDashboard();
 
@@ -1549,7 +1548,7 @@ describe("issue 25322", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameterDetails.name).click();
-    popover().findByTestId("loading-indicator").should("exist");
+    popover().findByTestId("loading-spinner").should("exist");
   });
 });
 
