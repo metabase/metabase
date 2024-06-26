@@ -112,6 +112,7 @@ const DashboardApp = (props: DashboardAppProps) => {
   const { dashboard, isRunning, isLoadingComplete, isEditing, isDirty, route } =
     props;
 
+  const dashboardId = getDashboardId(props);
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
   const addCardOnLoad = options.add != null ? Number(options.add) : undefined;
@@ -187,9 +188,7 @@ const DashboardApp = (props: DashboardAppProps) => {
   } = props;
 
   const { refreshDashboard } = useRefreshDashboard({
-    // todo: fix
-    // @ts-expect-error - WIP
-    dashboardId: dashboard?.id,
+    dashboardId: dashboardId,
     parameterQueryParams: props.location.query,
   });
 
@@ -219,7 +218,7 @@ const DashboardApp = (props: DashboardAppProps) => {
       {/* @ts-expect-error - types coming from thunks are not correct*/}
       <Dashboard
         location={location}
-        dashboardId={getDashboardId(props)}
+        dashboardId={dashboardId}
         editingOnLoad={editingOnLoad}
         addCardOnLoad={addCardOnLoad}
         isFullscreen={isFullscreen}
