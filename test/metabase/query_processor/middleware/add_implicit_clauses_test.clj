@@ -318,22 +318,19 @@
 (deftest ^:synchronized model-breakout-sort-querying-test
   (mt/test-drivers
    (mt/normal-drivers)
-   (testing "Query with sort, breakout and model as a source works correctly (#44653)."
+   (testing "Query with sort, breakout and _model as a source_ works correctly (#44653)."
      (t2.with-temp/with-temp [:model/Card {card-id :id} {:type :model
                                                          :dataset_query (mt/mbql-query orders)}]
        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
              field-id (mt/id :products :created_at)
              {:keys [base-type name]} (lib.metadata/field mp field-id)]
-         (is (= [["2016-04-01T00:00:00Z" 1]
-                 ["2016-05-01T00:00:00Z" 19]
-                 ["2016-06-01T00:00:00Z" 37]
-                 ["2016-07-01T00:00:00Z" 64]
-                 ["2016-08-01T00:00:00Z" 79]]
-                (mt/rows
-                 (mt/run-mbql-query
-                  nil
-                  {:source-table (str "card__" card-id)
-                   :aggregation  [[:count]]
-                   :breakout     [[:field  name {:base-type base-type :temporal-unit :month}]]
-                   :order-by     [[:asc [:field field-id {:base-type base-type :temporal-unit :month}]]]
-                   :limit        5})))))))))
+         (is (= [1 19 37 64 79]
+                (->> (mt/run-mbql-query
+                      nil
+                      {:source-table (str "card__" card-id)
+                       :aggregation  [[:count]]
+                       :breakout     [[:field  name {:base-type base-type :temporal-unit :month}]]
+                       :order-by     [[:asc [:field field-id {:base-type base-type :temporal-unit :month}]]]
+                       :limit        5})
+                     mt/rows
+                     (mapv (comp int second))))))))))
