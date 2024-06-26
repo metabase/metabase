@@ -635,6 +635,10 @@ describe("issue 35290", () => {
       .should("contain", "Add or remove columns")
       // verify column name is shown
       .should("contain", "Created At");
+
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.icon("warning").should("not.exist");
+    });
   });
 });
 
