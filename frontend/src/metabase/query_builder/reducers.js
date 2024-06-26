@@ -355,8 +355,8 @@ export const zoomedRowObjectId = handleActions(
   null,
 );
 
-// the card that is actively being worked on
-export const card = handleActions(
+// the cards that are actively being worked on
+export const cards = handleActions(
   {
     [RESET_QB]: { next: (state, { payload }) => null },
     [INITIALIZE_QB]: {
@@ -403,7 +403,7 @@ export const card = handleActions(
       }),
     },
   },
-  null,
+  [],
 );
 
 // a copy of the card being worked on at it's last known saved state.  if the card is NEW then this should be null.

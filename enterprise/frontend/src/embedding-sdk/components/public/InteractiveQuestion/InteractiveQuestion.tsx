@@ -42,6 +42,7 @@ export const _InteractiveQuestion = ({
     setIsQuestionLoading(true);
 
     const { location, params } = getQuestionParameters(questionId);
+
     try {
       await dispatch(initializeQBRaw(location, params));
     } catch (e) {
@@ -50,13 +51,13 @@ export const _InteractiveQuestion = ({
     }
   };
 
-  useEffect(() => {
+  const reloadQuestion = useCallback(() => {
     loadQuestion(dispatch, questionId);
   }, [dispatch, questionId]);
 
-  const handleQuestionReset = useCallback(() => {
-    loadQuestion(dispatch, questionId);
-  }, [dispatch, questionId]);
+  useEffect(() => {
+    reloadQuestion();
+  }, [reloadQuestion]);
 
   useEffect(() => {
     if (queryResults) {
@@ -67,11 +68,11 @@ export const _InteractiveQuestion = ({
   return (
     <InteractiveQuestionResult
       isQuestionLoading={isQuestionLoading}
-      onNavigateBack={handleQuestionReset}
+      onNavigateBack={reloadQuestion}
       height={height}
       componentPlugins={plugins}
       withResetButton={hasQuestionChanges && withResetButton}
-      onResetButtonClick={handleQuestionReset}
+      onResetButtonClick={reloadQuestion}
       withTitle={withTitle}
       customTitle={customTitle}
     />
