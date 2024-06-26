@@ -23,6 +23,8 @@ import {
   onlyOnOSS,
   entityPickerModalItem,
   newButton,
+  createQuestion,
+  getNotebookStep,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -551,6 +553,42 @@ describe("issue 30610", () => {
     updateQuestion();
     createAdHocQuestion("Orders");
     visualizeAndAssertColumns();
+  });
+});
+
+describe("issue 36669", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to change question data source to raw data after selecting saved question (metabase#36669)", () => {
+    const questionDetails = {
+      name: "Orders 36669",
+      query: {
+        "source-table": ORDERS_ID,
+        limit: 5,
+      },
+    };
+
+    createQuestion(questionDetails).then(() => {
+      startNewQuestion();
+    });
+
+    modal().within(() => {
+      cy.findByPlaceholderText("Search…").type("Orders 36669");
+
+      cy.findByRole("tabpanel").findByText("Orders 36669").click();
+    });
+
+    getNotebookStep("data").findByText("Orders 36669").click();
+
+    modal().within(() => {
+      cy.findAllByRole("tab").contains("Tables").click();
+
+      cy.log("verify Tables are listed");
+      cy.findByRole("tabpanel").should("contain", "Orders");
+    });
   });
 });
 
