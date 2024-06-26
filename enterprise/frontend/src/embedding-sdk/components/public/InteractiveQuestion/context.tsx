@@ -54,6 +54,8 @@ type InteractiveQuestionContextType = {
   setIsFilterOpen: (value: boolean) => void;
   isSummarizeOpen: boolean;
   setIsSummarizeOpen: (value: boolean) => void;
+  isNotebookOpen: boolean;
+  setIsNotebookOpen: (value: boolean) => void;
 };
 
 export const InteractiveQuestionContext = createContext<
@@ -94,6 +96,7 @@ export const InteractiveQuestionProvider = ({
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSummarizeOpen, setIsSummarizeOpen] = useState(false);
+  const [isNotebookOpen, setIsNotebookOpen] = useState(false);
 
   const globalPlugins = useSdkSelector(getPlugins);
   const question = useSelector(getQuestion);
@@ -179,6 +182,8 @@ export const InteractiveQuestionProvider = ({
         setIsFilterOpen,
         isSummarizeOpen,
         setIsSummarizeOpen,
+        isNotebookOpen,
+        setIsNotebookOpen,
       }}
     >
       {children}
