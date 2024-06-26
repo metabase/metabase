@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 import type { PopularItem, RecentItem, Dashboard } from "metabase-types/api";
 
 export function setupRecentViewsEndpoints(recentItems: RecentItem[]) {
-  fetchMock.get(url => url.endsWith("/api/activity/recents?context=views"), {
+  fetchMock.get(url => url.endsWith("/api/activity/recents?*"), {
     recents: recentItems,
   });
 }

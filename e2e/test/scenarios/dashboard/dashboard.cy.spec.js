@@ -1015,9 +1015,7 @@ describe("scenarios > dashboard", () => {
 
 describeWithSnowplow("scenarios > dashboard", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/activity/recents?context=views").as(
-      "recentViews",
-    );
+    cy.intercept("GET", "/api/activity/recents?*").as("recentViews");
     resetSnowplow();
     restore();
     cy.signInAsAdmin();
