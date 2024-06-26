@@ -53,18 +53,18 @@
 (defn unique-session-schema []
   (str (sql.tu.unique-prefix/unique-prefix) "schema"))
 
-(def db-connection-details
-  (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
-          :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-          :db                      (tx/db-test-env-var-or-throw :redshift :db)
-          :user                    (tx/db-test-env-var-or-throw :redshift :user)
-          :password                (tx/db-test-env-var-or-throw :redshift :password)
-          :schema-filters-type     "inclusion"
-          :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
+(defn db-connection-details []
+  {:host                    (tx/db-test-env-var-or-throw :redshift :host)
+   :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
+   :db                      (tx/db-test-env-var-or-throw :redshift :db)
+   :user                    (tx/db-test-env-var-or-throw :redshift :user)
+   :password                (tx/db-test-env-var-or-throw :redshift :password)
+   :schema-filters-type     "inclusion"
+   :schema-filters-patterns (str "spectrum," (unique-session-schema))})
 
 (defmethod tx/dbdef->connection-details :redshift
   [& _]
-  @db-connection-details)
+  (db-connection-details))
 
 (defmethod sql.tx/create-db-sql         :redshift [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :redshift [& _] nil)
@@ -183,7 +183,7 @@
   [driver]
   (sql-jdbc.execute/do-with-connection-with-options
    driver
-   (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
+   (sql-jdbc.conn/connection-details->spec driver (db-connection-details))
    {:write? true}
    (fn [conn]
      (delete-old-schemas! conn)
@@ -201,7 +201,7 @@
   [driver]
   (sql-jdbc.execute/do-with-connection-with-options
    driver
-   (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
+   (sql-jdbc.conn/connection-details->spec driver (db-connection-details))
    {:write? true}
    delete-session-schema!))
 

@@ -25,6 +25,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -206,7 +207,7 @@
 
 (defn- execute! [format-string & args]
   (let [sql  (apply format format-string args)
-        spec (sql-jdbc.conn/connection-details->spec :redshift @redshift.test/db-connection-details)]
+        spec (sql-jdbc.conn/connection-details->spec :redshift (redshift.test/db-connection-details))]
     (log/info (u/format-color 'blue "[redshift] %s" sql))
     (try
       (jdbc/execute! spec sql)
@@ -479,3 +480,101 @@
                        qual-tbl-partial-select-name
                        qual-tbl-partial-update-name
                        username)))))))))
+
+(defn- detect-canceled-queries-test-create-sleep-function!
+  "Create a redshift_test__sleep() function since Redshift doesn't have a pg_sleep() function"
+  []
+  (sql-jdbc.execute/do-with-connection-with-options
+   :redshift
+   (driver/with-driver :redshift (mt/db))
+   {:write? true}
+   (fn [^java.sql.Connection conn]
+     (let [sql (str/join \newline ["CREATE OR REPLACE FUNCTION redshift_test__sleep(seconds integer)"
+                                   "RETURNS integer immutable AS $$"
+                                   "  import time"
+                                   "  time.sleep(seconds)"
+                                   "  return 0"
+                                   "$$ LANGUAGE plpythonu;"])]
+       (log/infof "[redshift]\n%s" sql)
+       (next.jdbc/execute! conn [sql])))))
+
+(defn- detect-canceled-queries-test-start-long-running-query!
+  "Start a long-running query in a background thread."
+  []
+  (mt/test-driver :redshift
+    ;; unfortunately SELECT redshift_test__sleep() never gets marked as 'Running', it's always instantly 'Done' (not
+    ;; sure why)... Doing a DML query actually seems to make this get marked as 'Running'.
+    (let [sql (str/join \newline [(format "UPDATE \"%s\".\"test_data_users\"" (redshift.test/unique-session-schema))
+                                  "SET name = 'X'"
+                                  ;; this doesn't actually match any rows ever.
+                                  "WHERE id = 0 AND id = redshift_test__sleep(20);"])]
+      (future
+        (let [start-time-ms (System/currentTimeMillis)
+              result        (try
+                              (qp/process-query (mt/native-query {:query sql}))
+                              (catch Throwable e
+                                (log/errorf e "Error running sleep query: %s" (ex-message e))
+                                (ex-message e)))]
+          {:result      result
+           :duration-ms (- (System/currentTimeMillis) start-time-ms)})))))
+
+(defn detect-canceled-queries-test-kill-long-running-queries!
+  "Kill long-running queries created by [[detect-canceled-queries-test-start-long-running-query!]]. Returns set of
+  PIDs that were killed."
+  []
+  (sql-jdbc.execute/do-with-connection-with-options
+   :redshift
+   (driver/with-driver :redshift (mt/db))
+   {:write? false}
+   (fn [^java.sql.Connection conn]
+     (let [pids (into #{}
+                      (map :stv_recents/pid)
+                      (next.jdbc/plan
+                       conn
+                       [(str/join \newline ["SELECT pid"
+                                            "FROM stv_recents"
+                                            "WHERE"
+                                            "  status = 'Running'"
+                                            "  AND query LIKE '%UPDATE%redshift_test__sleep%'"
+                                            "  AND query NOT LIKE '%stv_recents%'"
+                                            (format "  AND query LIKE '%%%s%%';" (redshift.test/unique-session-schema))
+                                            ";"])]))]
+       (doseq [pid  pids
+               :let [sql (format "CANCEL %d 'Killed by detect-canceled-queries-test';" pid)]]
+         (log/infof "[Redshift] %s" sql)
+         (next.jdbc/execute! conn [sql]))
+       pids))))
+
+(deftest detect-canceled-queries-test
+  (mt/test-driver :redshift
+    (testing "If a query is canceled upstream, we should detect it (#28136)"
+      ;; first, create a sleep() function since Redshift doesn't have pg_sleep
+      (detect-canceled-queries-test-create-sleep-function!)
+      ;; start 5 queries on different threads that will sleep 20 seconds.
+      (let [num-queries  5
+            futures      (mapv
+                          (fn [_i]
+                            (detect-canceled-queries-test-start-long-running-query!))
+                          (range num-queries))]
+        ;; now attempt to cancel any of those queries we can using CANCEL statements. We might have to do this a few
+        ;; times if some of the queries in the background threads haven't shown up yet, so iterate up to 10 times until
+        ;; we kill SOMETHING.
+        (loop [max-iterations 10]
+          (when (pos? max-iterations)
+            (let [killed-pids (detect-canceled-queries-test-kill-long-running-queries!)]
+              (when (empty killed-pids)
+                (recur (long (dec max-iterations)))))))
+        ;; Now let's check the status of the last query and make sure it was killed before the entire 20 seconds was up
+        ;; or it otherwise timed out, and make sure the error was propagated. Why not check all of the queries?
+        ;; Sometimes the first one gets marked `DONE` right away, not sure why, but maybe because it's not waiting for
+        ;; any locks, and thus we can't kill it since it has no PID. Just make sure the last one which should hopefully
+        ;; always get marked `Running` gets killed.
+        (let [futur  (last futures)
+              result (u/deref-with-timeout futur (u/seconds->ms 15))]
+          (is (=? {:result      #".*\QERROR: Killed by detect-canceled-queries-test\E.*"
+                   ;; queries should get killed in under a second but use a long timeout in case CI is slow
+                   :duration-ms #(< % (u/seconds->ms 10))}
+                  result)))
+        ;; ok go ahead and kill any open queries that haven't been killed yet just to be safe
+        (doseq [futur futures]
+          (future-cancel futur))))))
