@@ -356,7 +356,7 @@ export const zoomedRowObjectId = handleActions(
 );
 
 // the cards that are actively being worked on
-export const cards = handleActions(
+export const card = handleActions(
   {
     [RESET_QB]: { next: (state, { payload }) => null },
     [INITIALIZE_QB]: {
@@ -403,7 +403,7 @@ export const cards = handleActions(
       }),
     },
   },
-  [],
+  null,
 );
 
 // a copy of the card being worked on at it's last known saved state.  if the card is NEW then this should be null.
@@ -553,25 +553,6 @@ export const currentState = handleActions(
     [SET_CURRENT_STATE]: { next: (state, { payload }) => payload },
   },
   null,
-);
-
-export const parentDashboard = handleActions(
-  {
-    [NAVIGATE_TO_NEW_CARD]: {
-      next: (state, { payload: { dashboardId } }) => ({
-        dashboardId,
-        isEditing: false,
-      }),
-    },
-    [EDIT_QUESTION]: {
-      next: (state, { payload: { dashboardId } }) => ({
-        dashboardId,
-        isEditing: true,
-      }),
-    },
-    [CLOSE_QB]: { next: () => DEFAULT_DASHBOARD_STATE },
-  },
-  DEFAULT_DASHBOARD_STATE,
 );
 
 export const visibleTimelineEventIds = handleActions(

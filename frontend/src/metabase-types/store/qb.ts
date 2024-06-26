@@ -50,19 +50,10 @@ export interface QueryBuilderDashboardState {
 }
 
 export interface QueryBuilderState {
+  queries: Record<string, QueryBuilderQueryState | null>;
+
   uiControls: QueryBuilderUIControls;
   loadingControls: QueryBuilderLoadingControls;
-  parentDashboard: QueryBuilderDashboardState;
-  queryStatus: QueryBuilderQueryStatus;
-  queryResults: Dataset[] | null;
-  queryStartTime: number | null;
-  cancelQueryDeferred: Promise<void> | null;
-
-  card: Card | null;
-  originalCard: Card | null;
-  lastRunCard: Card | null;
-
-  parameterValues: Record<string, ParameterValueOrArray>;
 
   zoomedRowObjectId: number | string | null;
   tableForeignKeyReferences: Record<number, ForeignKeyReference> | null;
@@ -76,4 +67,19 @@ export interface QueryBuilderState {
     cardId?: number;
     serializedCard: string;
   } | null;
+}
+
+export interface QueryBuilderQueryState {
+  parentDashboard: QueryBuilderDashboardState;
+
+  queryStatus: QueryBuilderQueryStatus;
+  queryResults: Dataset[] | null;
+  queryStartTime: number | null;
+  cancelQueryDeferred: Promise<void> | null;
+
+  card: Card | null;
+  originalCard: Card | null;
+  lastRunCard: Card | null;
+
+  parameterValues: Record<string, ParameterValueOrArray>;
 }

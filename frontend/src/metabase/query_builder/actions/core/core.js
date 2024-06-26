@@ -1,4 +1,4 @@
-import { createAction } from "redux-actions";
+import { createAction } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { fetchAlertsForQuestion } from "metabase/alert/alert";

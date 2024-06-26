@@ -336,6 +336,7 @@ export const getEditingParameter = createSelector(
 );
 
 const getCard = (state: State, { card }: { card: Card }) => card;
+
 const getDashCard = (state: State, { dashcard }: { dashcard: DashboardCard }) =>
   dashcard;
 

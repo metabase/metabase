@@ -48,21 +48,22 @@ import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { isNotNull } from "metabase/lib/types";
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
+import { State } from "metabase-types/store";
 
-export const getUiControls = state => state.qb.uiControls;
-export const getQueryStatus = state => state.qb.queryStatus;
-export const getLoadingControls = state => state.qb.loadingControls;
+export const getUiControls = (state: State) => state.qb.uiControls;
+export const getQueryStatus = (state: State) =>
+  state.qb.queries.latest.queryStatus;
+export const getLoadingControls = (state: State) => state.qb.loadingControls;
 
-export const getIsShowingTemplateTagsEditor = state =>
+export const getIsShowingTemplateTagsEditor = (state: State) =>
   getUiControls(state).isShowingTemplateTagsEditor;
-export const getIsShowingSnippetSidebar = state =>
-  getUiControls(state).isShowingSnippetSidebar;
-export const getIsShowingDataReference = state =>
+
+export const getIsShowingDataReference = (state: State) =>
   getUiControls(state).isShowingDataReference;
 
 // This selector can be called from public questions / dashboards, which do not
 // have state.qb
-export const getIsShowingRawTable = state =>
+export const getIsShowingRawTable = (state: State) =>
   !!state.qb?.uiControls.isShowingRawTable;
 
 const SIDEBARS = [
@@ -82,29 +83,32 @@ export const getIsAnySidebarOpen = createSelector([getUiControls], uiControls =>
   SIDEBARS.some(sidebar => uiControls[sidebar]),
 );
 
-export const getIsRunning = state => getUiControls(state).isRunning;
-export const getIsLoadingComplete = state =>
+export const getIsRunning = (state: State) => getUiControls(state).isRunning;
+
+export const getIsLoadingComplete = (state: State) =>
   getQueryStatus(state) === "complete";
 
-export const getCard = state => state.qb.card;
-export const getOriginalCard = state => state.qb.originalCard;
-export const getLastRunCard = state => state.qb.lastRunCard;
+export const getCard = (state: State) => state.qb.queries.latest.card;
+export const getOriginalCard = (state: State) =>
+  state.qb.queries.latest.originalCard;
+export const getLastRunCard = (state: State) =>
+  state.qb.queries.latest.lastRunCard;
 
-export const getParameterValues = state => state.qb.parameterValues;
-export const getParameterValuesSearchCache = state =>
-  state.qb.parameterValuesSearchCache;
+export const getParameterValues = (state: State) =>
+  state.qb.queries.latest.parameterValues;
 
-export const getMetadataDiff = state => state.qb.metadataDiff;
+export const getMetadataDiff = (state: State) => state.qb.metadataDiff;
 
-export const getEntities = state => state.entities;
+export const getEntities = (state: State) => state.entities;
 export const getVisibleTimelineEventIds = state =>
   state.qb.visibleTimelineEventIds;
 export const getSelectedTimelineEventIds = state =>
   state.qb.selectedTimelineEventIds;
 
-const getRawQueryResults = state => state.qb.queryResults;
+const getRawQueryResults = (state: State) =>
+  state.qb.queries.latest.queryResults;
 
-export const getIsBookmarked = (state, props) =>
+export const getIsBookmarked = (state: State, props) =>
   props.bookmarks.some(
     bookmark =>
       bookmark.type === "card" && bookmark.item_id === state.qb.card?.id,
@@ -1001,7 +1005,7 @@ export const getIsAdditionalInfoVisible = createSelector(
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );
 
-export const getCardAutocompleteResultsFn = state => {
+export const getCardAutocompleteResultsFn = (state: State) => {
   return function autocompleteResults(query) {
     const dbId = state.qb.card?.dataset_query?.database;
     if (!dbId) {
@@ -1016,7 +1020,7 @@ export const getCardAutocompleteResultsFn = state => {
   };
 };
 
-export const getAutocompleteResultsFn = state => {
+export const getAutocompleteResultsFn = (state: State) => {
   const matchStyle = getSetting(state, "native-query-autocomplete-match-style");
 
   if (matchStyle === "off") {
@@ -1048,16 +1052,16 @@ export const getDataReferenceStack = createSelector(
       : [],
 );
 
-export const getDashboardId = state => {
-  return state.qb.parentDashboard.dashboardId;
+export const getDashboardId = (state: State) => {
+  return state.qb.queries.latest.parentDashboard.dashboardId;
 };
 
-export const getIsEditingInDashboard = state => {
-  return state.qb.parentDashboard.isEditing;
+export const getIsEditingInDashboard = (state: State) => {
+  return state.qb.queries.latest.parentDashboard.isEditing;
 };
 
-export const getDashboard = state => {
-  return getDashboardById(state, getDashboardId(state));
+export const getDashboard = (state: State) => {
+  return getDashboardById(state, getDashboardId(state)!);
 };
 
 export const getTemplateTags = createSelector([getCard], card =>
@@ -1075,7 +1079,7 @@ export const getEmbeddingParameters = createSelector([getCard], card => {
 // Embeddings might be published without passing embedding_params to the server,
 // in which case it's an empty object. We should treat such situations with
 // caution, assuming that an absent parameter is "disabled".
-export function getEmbeddedParameterVisibility(state, slug) {
+export function getEmbeddedParameterVisibility(state: State, slug: string) {
   const card = getCard(state);
   if (!card?.enable_embedding) {
     return null;
@@ -1085,7 +1089,7 @@ export function getEmbeddedParameterVisibility(state, slug) {
   return embeddingParams[slug] ?? "disabled";
 }
 
-export const getSubmittableQuestion = (state, question) => {
+export const getSubmittableQuestion = (state: State, question: any) => {
   const series = getTransformedSeries(state);
   const resultsMetadata = getResultsMetadata(state);
   const isResultDirty = getIsResultDirty(state);
@@ -1113,8 +1117,8 @@ export const getSubmittableQuestion = (state, question) => {
   return submittableQuestion;
 };
 
-export const getIsNotebookNativePreviewShown = state =>
+export const getIsNotebookNativePreviewShown = (state: State) =>
   getSetting(state, "notebook-native-preview-shown");
 
-export const getNotebookNativePreviewSidebarWidth = state =>
+export const getNotebookNativePreviewSidebarWidth = (state: State) =>
   getSetting(state, "notebook-native-preview-sidebar-width");

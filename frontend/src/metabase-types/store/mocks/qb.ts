@@ -1,5 +1,6 @@
 import type {
   QueryBuilderDashboardState,
+  QueryBuilderQueryState,
   QueryBuilderState,
   QueryBuilderUIControls,
 } from "metabase-types/store";
@@ -41,13 +42,31 @@ export const createMockQueryBuilderDashboardState = (
 export const createMockQueryBuilderState = (
   opts?: Partial<QueryBuilderState>,
 ): QueryBuilderState => ({
+  queries: {},
   uiControls: createMockQueryBuilderUIControlsState(),
+
   loadingControls: {
     showLoadCompleteFavicon: false,
     documentTitle: "",
     timeoutId: "",
   },
-  parentDashboard: createMockQueryBuilderDashboardState(),
+
+  zoomedRowObjectId: null,
+  tableForeignKeyReferences: null,
+
+  selectedTimelineEventIds: [],
+
+  metadataDiff: {},
+
+  currentState: null,
+
+  ...opts,
+});
+
+export const createMockQueryBuilderQueryState = (
+  opts?: Partial<QueryBuilderQueryState>,
+): QueryBuilderQueryState => ({
+  parameterValues: {},
 
   queryStatus: "complete",
   queryResults: null,
@@ -58,16 +77,7 @@ export const createMockQueryBuilderState = (
   originalCard: null,
   lastRunCard: null,
 
-  parameterValues: {},
-
-  zoomedRowObjectId: null,
-  tableForeignKeyReferences: null,
-
-  selectedTimelineEventIds: [],
-
-  metadataDiff: {},
-
-  currentState: null,
+  parentDashboard: createMockQueryBuilderDashboardState(),
 
   ...opts,
 });
