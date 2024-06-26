@@ -37,7 +37,8 @@ import {
   tableInteractive,
 } from "e2e/support/helpers";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 describe("issue 32625, issue 31635", () => {
   const CC_NAME = "Is Promotion";
@@ -301,6 +302,34 @@ describe("issue 38354", { tags: "@external" }, () => {
       .findByText("There was a problem with your question")
       .should("not.exist");
     cy.get("[data-testid=cell-data]").should("contain", "37.65"); // assert visualization renders the data
+  });
+});
+
+describe("issue 30056", () => {
+  const questionDetails = {
+    query: {
+      "source-query": {
+        "source-table": PEOPLE_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", PEOPLE.LATITUDE, { "base-type": "type/Float" }],
+          ["field", PEOPLE.LONGITUDE, { "base-type": "type/Float" }],
+        ],
+      },
+      filter: [">", ["field", "count", { "base-type": "type/Integer" }], 2],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show table breadcrumbs for questions with post-aggregation filters (metabase#30056)", () => {
+    createQuestion(questionDetails, { visitQuestion: true });
+    // the name of the table is hidden after a few seconds with a CSS animation,
+    // so check for "exist" only
+    queryBuilderHeader().findByText("People").should("exist");
   });
 });
 
