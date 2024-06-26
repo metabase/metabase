@@ -68,10 +68,10 @@ export const EditableDescription = styled(EditableText)<{ hasError?: boolean }>`
   ${props =>
     props.hasError &&
     css`
-      border-color: var(--mb-color-error);
+      border-color: ${color("error")};
 
       &:hover {
-        border-color: var(--mb-color-error);
+        border-color: ${color("error")};
       }
     `}
 `;
