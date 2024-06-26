@@ -41,12 +41,25 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private max-field-name-length
+  "This tracks the size of the metabase_field.name field"
+  254)
+
+(def ^:private unique-field-name-buffer
+  "The number of characters to reserve for disambiguating column names"
+  ;; This corresponds to at most 4 digits, excluding the underscore, so 1,000 duplicates.
+  5)
+
+(def ^:private min-safe (fnil min Long/MAX_VALUE Long/MAX_VALUE))
+
 (defn- normalize-column-name
   [driver raw-name]
   (if (str/blank? raw-name)
     "unnamed_column"
     (u/slugify (str/trim raw-name)
-               {:max-length (driver/column-name-length-limit driver)})))
+               (let [column-limit (some-> driver driver/column-name-length-limit)
+                     max-len      (min-safe column-limit max-field-name-length)]
+                 {:max-length (- max-len unique-field-name-buffer)}))))
 
 (def auto-pk-column-name
   "The lower-case name of the auto-incrementing PK column. The actual name in the database could be in upper-case."
@@ -66,9 +79,8 @@
 
    Returns an ordered map of normalized-column-name -> type for the given CSV file. Supported types include `::int`,
    `::datetime`, etc. A column that is completely blank is assumed to be of type `::text`."
-  [settings normalized-header rows]
-  (let [unique-header       (map keyword (mbql.u/uniquify-names normalized-header))
-        column-count        (count normalized-header)
+  [settings unique-header rows]
+  (let [column-count        (count unique-header)
         initial-types       (repeat column-count nil)
         col-name+type-pairs (->> (upload-types/column-types-from-rows settings initial-types rows)
                                  (map vector unique-header))]
@@ -162,8 +174,10 @@
 
 (defn- auto-pk-column-indices
   "Returns the indices of columns that have the same normalized name as [[auto-pk-column-name]]"
-  [normalized-header]
-  (set (indices-where #(= auto-pk-column-name %) normalized-header)))
+  [header]
+  ;; We don't need to pass the driver, as we are comparing to auto-pk-column-name, which does not need to be truncated.
+  (let [driver nil]
+    (set (indices-where #(= auto-pk-column-name (normalize-column-name driver %)) header))))
 
 (defn- without-auto-pk-columns
   [header-and-rows]
@@ -233,6 +247,11 @@
   [driver db]
   (driver.u/supports? driver :upload-with-auto-pk db))
 
+(defn- derive-column-names [driver header]
+  (let [normalized-header (for [h header] (normalize-column-name driver h))
+        unique-header     (mbql.u/uniquify-names normalized-header)]
+    (map keyword unique-header)))
+
 (defn- create-from-csv!
   "Creates a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
@@ -244,8 +263,8 @@
                                 auto-pk?
                                 without-auto-pk-columns)
             settings          (upload-parsing/get-settings)
-            normalized-header (for [h header] (normalize-column-name driver h))
-            cols->upload-type (detect-schema settings normalized-header rows)
+            column-names      (derive-column-names driver header)
+            cols->upload-type (detect-schema settings column-names rows)
             col-definitions   (column-definitions driver (cond-> cols->upload-type
                                                            auto-pk?
                                                            columns-with-auto-pk))
@@ -577,7 +596,7 @@
               [header & rows]    (cond-> (parse reader)
                                    auto-pk?
                                    without-auto-pk-columns)
-              normed-name->field (m/index-by (comp (partial normalize-column-name driver ) :name)
+              normed-name->field (m/index-by #(normalize-column-name driver (:name %))
                                              (t2/select :model/Field :table_id (:id table) :active true))
               normalized-header  (for [h header] (normalize-column-name driver h))
               create-auto-pk?    (and
