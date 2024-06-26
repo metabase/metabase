@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useUnmount } from "react-use";
 
 import type { SdkClickActionPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
@@ -8,7 +9,7 @@ import {
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import CS from "metabase/css/core/index.css";
-import { NAVIGATE_TO_NEW_CARD } from "metabase/dashboard/actions";
+import { NAVIGATE_TO_NEW_CARD, reset } from "metabase/dashboard/actions";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
@@ -57,6 +58,10 @@ const InteractiveDashboardInner = ({
 
   const store = useStore();
   const [adhocQuestionUrl, setAdhocQuestionUrl] = useState<string | null>(null);
+
+  useUnmount(() => {
+    dispatch(reset()); // reset "isNavigatingBackToDashboard" state
+  });
 
   const handleNavigateToNewCardFromDashboard = ({
     nextCard,

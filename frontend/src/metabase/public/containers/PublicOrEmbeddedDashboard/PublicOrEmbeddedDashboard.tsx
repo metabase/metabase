@@ -11,7 +11,6 @@ import {
   initialize,
   setParameterValue,
   setParameterValueToDefault,
-  reset,
 } from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
@@ -58,7 +57,6 @@ const mapDispatchToProps = {
   setErrorPage,
   fetchDashboard,
   fetchDashboardCardData,
-  reset,
 };
 
 const connector = connect(mapStateToProps, mapDispatchToProps);
@@ -136,7 +134,6 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
 
   componentWillUnmount() {
     this.props.cancelFetchDashboardCardData();
-    this.props.reset();
   }
 
   async componentDidUpdate(prevProps: PublicOrEmbeddedDashboardProps) {
