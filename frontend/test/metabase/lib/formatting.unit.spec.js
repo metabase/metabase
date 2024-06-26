@@ -226,6 +226,13 @@ describe("formatting", () => {
   });
 
   describe("formatValue", () => {
+    it("should format decimals to numbers", () => {
+      const convertValue = formatNumber(24.0092, {
+        number_style: "decimal",
+        compact: false,
+      });
+      expect(convertValue).toEqual(24);
+    });
     it("should format numbers with null column", () => {
       expect(formatValue(12345)).toEqual("12345");
     });
@@ -239,6 +246,7 @@ describe("formatting", () => {
     it("should format zip codes without commas", () => {
       expect(
         formatValue(12345, {
+          compact: true,
           column: { base_type: TYPE.Number, semantic_type: TYPE.ZipCode },
         }),
       ).toEqual("12345");

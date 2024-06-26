@@ -2,6 +2,7 @@ import * as d3 from "d3";
 import Humanize from "humanize-plus";
 
 import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
+import { isCategory } from "../schema_metadata";
 
 const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
 
@@ -80,6 +81,8 @@ export function formatNumber(
     return formatNumberCompact(number, options);
   } else if (options.number_style === "scientific") {
     return formatNumberScientific(number, options);
+  } else if (options.number_style === "decimal" && !options.compact) {
+    return formatDecimalToNumber(number);
   } else {
     try {
       let nf;
@@ -250,6 +253,10 @@ function replaceNumberSeparators(formatted: any, separators: any) {
     /,|\./g,
     (separator: "." | ",") => separatorMap[separator],
   );
+}
+
+function formatDecimalToNumber(number: number) {
+  return Math.floor(number);
 }
 
 function formatNumberScientific(
