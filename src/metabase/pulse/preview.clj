@@ -8,8 +8,9 @@
    [hickory.core :as hik]
    [hickory.render :as hik.r]
    [hickory.zip :as hik.z]
+   [metabase.channel.shared :as channel.shared]
    [metabase.email.messages :as messages]
-   [metabase.pulse :as pulse]
+   [metabase.notification.execute :as notification.execute]
    [metabase.pulse.markdown :as markdown]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.image-bundle :as img]
@@ -55,7 +56,7 @@
             [:td {:style (style/style (merge table-style-map {:max-width "400px"}))}
              content])]
     (if card
-      (let [base-render (render/render-pulse-card :inline (pulse/defaulted-timezone card) card dashcard result)
+      (let [base-render (render/render-pulse-card :inline (channel.shared/defaulted-timezone card) card dashcard result)
             html-src    (-> base-render :content)
             img-src     (-> base-render
                             (png/render-html-to-png 1200)
@@ -78,7 +79,7 @@
          (markdown/process-markdown (:text dashboard-result) :html)])
        (cellfn nil)])))
 
-(def ^:private execute-dashboard #'pulse/execute-dashboard)
+(def ^:private execute-dashboard #'notification.execute/execute-dashboard)
 
 (defn render-dashboard-to-hiccup
   "Given a dashboard ID, renders all of the dashcards to hiccup datastructure."
