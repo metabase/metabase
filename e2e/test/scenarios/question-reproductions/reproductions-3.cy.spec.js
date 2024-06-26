@@ -34,6 +34,7 @@ import {
   queryBuilderFooter,
   enterCustomColumnDetails,
   addCustomColumn,
+  tableInteractive,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -588,6 +589,27 @@ function removeFilter() {
   cy.findByTestId("question-row-count").should("have.text", "Showing 2 rows");
 }
 
+describe("issue 33439", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show an error message when trying to use convertTimezone on an unsupported db (metabase#33439)", () => {
+    openOrdersTable({ mode: "notebook" });
+    addCustomColumn();
+    enterCustomColumnDetails({
+      formula:
+        'convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")',
+      name: "Date",
+    });
+    popover().within(() => {
+      cy.findByText("Unsupported function convert-timezone");
+      cy.button("Done").should("be.disabled");
+    });
+  });
+});
+
 describe("issue 42244", () => {
   const COLUMN_NAME = "Created At".repeat(5);
 
@@ -653,6 +675,51 @@ describe("issue 42957", () => {
       entityPickerModalTab("Models").click();
 
       cy.findByText("Collection without models").should("not.exist");
+    });
+  });
+});
+
+describe("issue 40064", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to edit a custom column with the same name as one of the columns used in the expression (metabase#40064)", () => {
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: {
+            Tax: ["*", ["field", ORDERS.TAX, { "base-type": "type/Float" }], 2],
+          },
+          limit: 1,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.log("check the initial expression value");
+    tableInteractive().findByText("4.14").should("be.visible");
+
+    cy.log("update the expression and check the value");
+    openNotebook();
+    getNotebookStep("expression").findByText("Tax").click();
+    enterCustomColumnDetails({ formula: "[Tax] * 3" });
+    popover().button("Update").click();
+    visualize();
+    tableInteractive().findByText("6.21").should("be.visible");
+
+    cy.log("rename the expression and make sure you cannot create a cycle");
+    openNotebook();
+    getNotebookStep("expression").findByText("Tax").click();
+    enterCustomColumnDetails({ formula: "[Tax] * 3", name: "Tax3" });
+    popover().button("Update").click();
+    getNotebookStep("expression").findByText("Tax3").click();
+    enterCustomColumnDetails({ formula: "[Tax3] * 3", name: "Tax3" });
+    popover().within(() => {
+      cy.findByText("Unknown Field: Tax3").should("be.visible");
+      cy.button("Update").should("be.disabled");
     });
   });
 });
@@ -878,6 +945,26 @@ describe("issue 44532", () => {
       cy.findByText("Gadget").should("not.exist");
       cy.findByText("Gizmo").should("not.exist");
       cy.findByText("Widget").should("not.exist");
+    });
+  });
+});
+
+describe("issue 33441", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show an error message for an incorrect date expression (metabase#33441)", () => {
+    openOrdersTable({ mode: "notebook" });
+    addCustomColumn();
+    enterCustomColumnDetails({
+      formula: 'datetimeDiff([Created At] , now, "days")',
+      name: "Date",
+    });
+    popover().within(() => {
+      cy.findByText("Invalid expression").should("be.visible");
+      cy.button("Done").should("be.disabled");
     });
   });
 });
