@@ -1,0 +1,4 @@
+.iconStyle {
+  color: var(--mb-color-text-white);
+  flex-shrink: 0;
+}
