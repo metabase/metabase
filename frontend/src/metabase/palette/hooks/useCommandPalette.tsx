@@ -23,7 +23,7 @@ import {
   getSettings,
 } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import type { IconName } from "metabase/ui";
+import { type IconName, Icon } from "metabase/ui";
 import type { RecentItem } from "metabase-types/api";
 
 import type { PaletteAction } from "../types";
@@ -297,9 +297,21 @@ export const useCommandPalette = ({
   );
 };
 
-const getSearchResultSubtext = (wrappedSearchResult: any) => {
+export const getSearchResultSubtext = (wrappedSearchResult: any) => {
   if (wrappedSearchResult.model === "indexed-entity") {
-    return t`a record in ${wrappedSearchResult.model_name}`;
+    return (
+      <>
+        {t`a record in`}{" "}
+        <Icon
+          name="model"
+          style={{
+            verticalAlign: "bottom",
+            marginLeft: "0.25rem",
+          }}
+        />
+        {`${wrappedSearchResult.model_name}`}
+      </>
+    );
   } else {
     return (
       wrappedSearchResult.getCollection().name ||
@@ -308,7 +320,7 @@ const getSearchResultSubtext = (wrappedSearchResult: any) => {
   }
 };
 
-const getRecentItemSubtext = (item: RecentItem) => {
+export const getRecentItemSubtext = (item: RecentItem) => {
   if (item.model === "table") {
     return item.database.name;
   } else if (item.parent_collection.id === null) {

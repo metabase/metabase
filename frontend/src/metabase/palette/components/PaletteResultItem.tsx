@@ -88,7 +88,10 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
               fz="0.75rem"
               lh="1rem"
               fw="normal"
-            >{`— ${subtext}`}</Text>
+            >
+              {`—`}
+              {subtext}
+            </Text>
           )}
         </Box>
         <Text
