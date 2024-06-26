@@ -581,7 +581,7 @@ export const getIsAdhocModelQuestion = createSelector(
 export const getIsDirty = createSelector(
   [getQuestion, getOriginalQuestion, getIsAdhocModelQuestion],
   (question, originalQuestion, isAdHocModelQuestion) => {
-    if (!question || isAdHocModelQuestion) {
+    if (!question || !originalQuestion || isAdHocModelQuestion) {
       return false;
     }
     return question.isDirtyComparedToWithoutParameters(originalQuestion);
@@ -591,7 +591,7 @@ export const getIsDirty = createSelector(
 export const getIsQueryDirty = createSelector(
   [getQuestion, getOriginalQuestion, getIsAdhocModelQuestion],
   (question, originalQuestion, isAdHocModelQuestion) => {
-    if (!question || isAdHocModelQuestion) {
+    if (!question || !originalQuestion || isAdHocModelQuestion) {
       return false;
     }
     return question.isQueryDirtyComparedTo(originalQuestion);
