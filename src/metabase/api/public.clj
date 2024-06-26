@@ -191,7 +191,6 @@
    (json/parse-string parameters keyword)
    :constraints nil
    :middleware {:process-viz-settings? true
-                :js-int-to-string?     false
                 :format-rows?          format_rows}))
 
 

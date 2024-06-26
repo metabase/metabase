@@ -183,8 +183,7 @@
                      [{:type "date/all-options"
                        :value "past2hours"
                        :target ["dimension" ["template-tag" "date"]]
-                       :id "2d7ce56a-2a66-5845-e9b9-e243c16965b8"}]
-                     :middleware {:js-int-to-string? true}}]
+                       :id "2d7ce56a-2a66-5845-e9b9-e243c16965b8"}]}]
           (is (= [["Quentin Sören" "2014-10-03T17:30:00Z"]]
                  (mt/rows (qp/process-query query)))))))))
 

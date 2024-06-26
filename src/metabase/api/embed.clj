@@ -88,7 +88,6 @@
    (dissoc (m/map-keys keyword query-params) :format_rows)
    :constraints nil
    :middleware {:process-viz-settings? true
-                :js-int-to-string?     false
                 :format-rows?          format_rows}))
 
 
@@ -242,7 +241,6 @@
     (m/map-keys keyword query-params)
     :constraints nil
     :middleware {:process-viz-settings? true
-                 :js-int-to-string?     false
                  :format-rows?          format_rows}))
 
 

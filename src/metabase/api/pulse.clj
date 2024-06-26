@@ -257,8 +257,7 @@
     (qp/process-query
      (qp/userland-query
       (assoc query
-             :middleware {:process-viz-settings? true
-                          :js-int-to-string?     false})
+             :middleware {:process-viz-settings? true})
       {:executed-by api/*current-user-id*
        :context     :pulse
        :card-id     card-id}))))

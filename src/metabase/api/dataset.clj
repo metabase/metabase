@@ -88,9 +88,7 @@
   [:as {{:keys [database] :as query} :body}]
   {database [:maybe :int]}
   (run-streaming-query
-   (-> query
-       (update-in [:middleware :js-int-to-string?] (fnil identity true))
-       qp/userland-query-with-default-constraints)))
+   (qp/userland-query-with-default-constraints query)))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
@@ -145,7 +143,7 @@
                                           (assoc :viz-settings viz-settings)
                                           (dissoc :constraints)
                                           (update :middleware #(-> %
-                                                                   (dissoc :add-default-userland-constraints? :js-int-to-string?)
+                                                                   (dissoc :add-default-userland-constraints?)
                                                                    (assoc :process-viz-settings? true
                                                                           :skip-results-metadata? true
                                                                           :format-rows? format_rows))))]
