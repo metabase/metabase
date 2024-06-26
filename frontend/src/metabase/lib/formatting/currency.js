@@ -2,12 +2,16 @@ import { currency } from "cljs/metabase.shared.util.currency";
 
 let currencyMapCache;
 
-export function getCurrencySymbol(currencyCode) {
+export function getCurrencySymbol(currencyCode, isNative = false) {
   if (!currencyMapCache) {
     // only turn the array into a map if we call this function
     currencyMapCache = Object.fromEntries(currency);
   }
-  return currencyMapCache[currencyCode]?.symbol || currencyCode || "$";
+  const currencySymbol = isNative
+    ? currencyMapCache[currencyCode]?.symbol_native
+    : currencyMapCache[currencyCode]?.symbol;
+
+  return currencySymbol || currencyCode || "$";
 }
 
 export const COMPACT_CURRENCY_OPTIONS = {
