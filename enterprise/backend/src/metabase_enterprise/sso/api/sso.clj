@@ -82,7 +82,7 @@
       ;; they will never hit "/handle_slo" so we must delete the session here:
       (t2/delete! :model/Session :id metabase-session-id)
       {:saml-logout-url
-       (when (and (sso-settings/saml-enabled)
+       (when (and (sso-settings/saml-slo-enabled)
                   (= sso_source "saml"))
          (saml/logout-redirect-location
           :idp-url (sso-settings/saml-identity-provider-uri)
@@ -96,7 +96,9 @@
   "Handles client confirmation of saml logout via slo"
   [:as req]
   (try
-    (sso.i/sso-handle-slo req)
+    (if (sso-settings/saml-slo-enabled)
+      (sso.i/sso-handle-slo req)
+      (throw (Exception. "SAML SLO is not enabled")))
     (catch Throwable e
       (log/error e "Error handling SLO")
       (sso-error-page e :out))))
