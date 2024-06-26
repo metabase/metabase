@@ -1162,7 +1162,7 @@ describe("issue 19894", () => {
 describe("issue 44637", () => {
   beforeEach(() => {
     restore();
-    cy.signInAsAdmin();
+    cy.signInAsNormalUser();
   });
 
   it("should not crash when rendering a line/bar chart with empty results (metabase#44637)", () => {
