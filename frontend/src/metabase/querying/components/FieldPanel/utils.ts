@@ -142,6 +142,7 @@ export function toggleColumnGroupInQuery(
   groupItem: ColumnGroupItem,
 ) {
   if (groupItem.isSelected) {
+    // always leave 1 column in the first group selected to prevent creating queries without columns
     return groupItem.columnItems
       .filter(columnItem => columnItem.isSelected && !columnItem.isDisabled)
       .filter((_, columnIndex) => !groupItem.isSourceGroup || columnIndex !== 0)
