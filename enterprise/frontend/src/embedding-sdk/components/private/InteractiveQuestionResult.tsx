@@ -1,18 +1,21 @@
 import cx from "classnames";
+import type { ReactElement, ReactNode } from "react";
 import { t } from "ttag";
 
 import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { QuestionBackButton } from "embedding-sdk/components/public/InteractiveQuestion/components/BackButton";
-import { Filter } from "embedding-sdk/components/public/InteractiveQuestion/components/Filter";
-import { FilterBar } from "embedding-sdk/components/public/InteractiveQuestion/components/FilterBar";
-import { FilterButton } from "embedding-sdk/components/public/InteractiveQuestion/components/FilterButton";
-import { QuestionResetButton } from "embedding-sdk/components/public/InteractiveQuestion/components/ResetButton";
-import { Summarize } from "embedding-sdk/components/public/InteractiveQuestion/components/Summarize";
-import { SummarizeButton } from "embedding-sdk/components/public/InteractiveQuestion/components/SummarizeButton";
-import { Title } from "embedding-sdk/components/public/InteractiveQuestion/components/Title";
+import {
+  QuestionBackButton,
+  FilterBar,
+  QuestionResetButton,
+  Title,
+  Filter,
+  FilterButton,
+  Summarize,
+  SummarizeButton,
+} from "embedding-sdk/components/public/InteractiveQuestion";
 import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Group, Stack } from "metabase/ui";
@@ -21,13 +24,13 @@ import { QuestionVisualization } from "../public/InteractiveQuestion/components"
 
 interface InteractiveQuestionResultProps {
   withTitle?: boolean;
-  customTitle?: React.ReactNode;
+  customTitle?: ReactNode;
   height?: string | number;
 }
 
 export const InteractiveQuestionResult = ({
   height,
-}: InteractiveQuestionResultProps): React.ReactElement => {
+}: InteractiveQuestionResultProps): ReactElement => {
   const {
     defaultHeight,
     isQueryRunning,

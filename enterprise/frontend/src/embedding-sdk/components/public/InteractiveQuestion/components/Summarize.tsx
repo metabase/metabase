@@ -16,7 +16,7 @@ export const Summarize = () => {
   );
 };
 
-export const SummarizeInner = ({
+const SummarizeInner = ({
   question,
   onQueryChange,
 }: {
