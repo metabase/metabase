@@ -3,6 +3,7 @@ import type { Query } from "history";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
+import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
   ParameterId,
@@ -33,19 +34,22 @@ export function getParameterValueFromQueryParams(
   return normalizeParameterValueForWidget(parsedValue, parameter);
 }
 
-function parseParameterValue(value: any, parameter: Parameter) {
+export function parseParameterValue(value: any, parameter: Parameter) {
+  const coercedValue =
+    Array.isArray(value) && !getIsMultiSelect(parameter) ? [value[0]] : value;
+
   // TODO this casting should be removed as we tidy up Parameter types
   const { fields } = parameter as FieldFilterUiParameter;
   if (Array.isArray(fields) && fields.length > 0) {
-    return parseParameterValueForFields(value, fields);
+    return parseParameterValueForFields(coercedValue, fields);
   }
 
   const type = getParameterType(parameter);
   if (type === "number") {
-    return parseParameterValueForNumber(value);
+    return parseParameterValueForNumber(coercedValue);
   }
 
-  return value;
+  return coercedValue;
 }
 
 function parseParameterValueForNumber(value: string | string[]) {
