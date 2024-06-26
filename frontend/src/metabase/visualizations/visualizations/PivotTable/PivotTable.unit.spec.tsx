@@ -79,6 +79,11 @@ const settings = {
 // 3 isn't a real column, it's a pivot-grouping
 const columnIndexes = [0, 1, 2, 4, 5];
 
+const TEST_CASES = [
+  { name: "dashboard", isDashboard: true },
+  { name: "query builder", isDashboard: false },
+];
+
 function setup(options?: any) {
   render(<PivotTableWrapper {...options} />);
 }
@@ -139,95 +144,107 @@ describe("Visualizations > PivotTable > PivotTable", () => {
     );
   });
 
-  it("should render pivot table wrapper", async () => {
-    setup();
-    expect(await screen.findByTestId("pivot-table")).toBeInTheDocument();
-  });
-
-  it("should render column names", () => {
-    setup();
-
-    // all column names except 3, the pivot grouping, should be in the document
-    columnIndexes.forEach(colIndex => {
-      expect(screen.getByText(cols[colIndex].display_name)).toBeInTheDocument();
-    });
-  });
-
-  it("should render column values", () => {
-    setup();
-
-    rows.forEach(rowData => {
-      columnIndexes.forEach(colIndex => {
-        expect(screen.getByTestId("pivot-table")).toHaveTextContent(
-          rowData[colIndex].toString(),
-        );
+  TEST_CASES.forEach(testCase => {
+    describe(` > ${testCase.name}`, () => {
+      it("should render pivot table wrapper", async () => {
+        setup({ isDashboard: testCase.isDashboard });
+        expect(await screen.findByTestId("pivot-table")).toBeInTheDocument();
       });
-    });
-  });
 
-  it("should collapse columns", () => {
-    const hiddenSettings = {
-      ...settings,
-      "pivot_table.collapsed_rows": {
-        rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
-        value: ["2"],
-      },
-    } as unknown as VisualizationSettings;
+      it("should render column names", () => {
+        setup({ isDashboard: testCase.isDashboard });
 
-    setup({ initialSettings: hiddenSettings });
+        // all column names except 3, the pivot grouping, should be in the document
+        columnIndexes.forEach(colIndex => {
+          expect(
+            screen.getByText(cols[colIndex].display_name),
+          ).toBeInTheDocument();
+        });
+      });
 
-    const COLLAPSED_COLUMN_INDEX = 1;
+      it("should render column values", () => {
+        setup({ isDashboard: testCase.isDashboard });
 
-    rows.forEach(row => {
-      const totalsElement = screen.getByText(
-        `Totals for ${row[COLLAPSED_COLUMN_INDEX]}`,
-      );
-      expect(totalsElement).toBeInTheDocument();
+        rows.forEach(rowData => {
+          columnIndexes.forEach(colIndex => {
+            expect(screen.getByTestId("pivot-table")).toHaveTextContent(
+              rowData[colIndex].toString(),
+            );
+          });
+        });
+      });
 
-      const totalsContainer = screen.getByTestId(
-        `${row[COLLAPSED_COLUMN_INDEX]}-toggle-button`,
-      );
+      it("should collapse columns", () => {
+        const hiddenSettings = {
+          ...settings,
+          "pivot_table.collapsed_rows": {
+            rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
+            value: ["2"],
+          },
+        } as unknown as VisualizationSettings;
 
-      expect(
-        within(totalsContainer).getByRole("img", {
-          name: /add/i,
-        }),
-      ).toBeInTheDocument();
-    });
-  });
+        setup({
+          initialSettings: hiddenSettings,
+          isDashboard: testCase.isDashboard,
+        });
 
-  it("expanding collapsed columns", async () => {
-    const hiddenSettings = {
-      ...settings,
-      "pivot_table.collapsed_rows": {
-        rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
-        value: ["2"],
-      },
-    } as unknown as VisualizationSettings;
+        const COLLAPSED_COLUMN_INDEX = 1;
 
-    setup({ initialSettings: hiddenSettings });
+        rows.forEach(row => {
+          const totalsElement = screen.getByText(
+            `Totals for ${row[COLLAPSED_COLUMN_INDEX]}`,
+          );
+          expect(totalsElement).toBeInTheDocument();
 
-    const COLLAPSED_COLUMN_INDEX = 1;
+          const totalsContainer = screen.getByTestId(
+            `${row[COLLAPSED_COLUMN_INDEX]}-toggle-button`,
+          );
 
-    const LAST_ROW = rows[3];
+          expect(
+            within(totalsContainer).getByRole("img", {
+              name: /add/i,
+            }),
+          ).toBeInTheDocument();
+        });
+      });
 
-    // Find and click the toggle button to expand the last row
-    // as it's the easiest to make assertions on
-    const toggleButton = screen.getByTestId(
-      `${LAST_ROW[COLLAPSED_COLUMN_INDEX]}-toggle-button`,
-    );
+      it("expanding collapsed columns", async () => {
+        const hiddenSettings = {
+          ...settings,
+          "pivot_table.collapsed_rows": {
+            rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
+            value: ["2"],
+          },
+        } as unknown as VisualizationSettings;
 
-    expect(
-      within(toggleButton).getByRole("img", { name: /add/i }),
-    ).toBeInTheDocument();
+        setup({
+          initialSettings: hiddenSettings,
+          isDashboard: testCase.isDashboard,
+        });
 
-    await userEvent.click(toggleButton);
+        const COLLAPSED_COLUMN_INDEX = 1;
 
-    //Ensure that collapsed data is now visible
-    columnIndexes.forEach(columnIndex => {
-      expect(
-        screen.getByText(LAST_ROW[columnIndex].toString()),
-      ).toBeInTheDocument();
+        const LAST_ROW = rows[3];
+
+        // Find and click the toggle button to expand the last row
+        // as it's the easiest to make assertions on
+        const toggleButton = screen.getByTestId(
+          `${LAST_ROW[COLLAPSED_COLUMN_INDEX]}-toggle-button`,
+        );
+
+        expect(
+          within(toggleButton).getByRole("img", { name: /add/i }),
+        ).toBeInTheDocument();
+
+        await userEvent.click(toggleButton);
+
+        //Ensure that collapsed data is now visible
+        columnIndexes.forEach(columnIndex => {
+          expect(
+            screen.getByText(LAST_ROW[columnIndex].toString()),
+          ).toBeInTheDocument();
+        });
+      });
     });
   });
 });

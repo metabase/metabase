@@ -20,3 +20,5 @@ export const LEFT_HEADER_LEFT_SPACING = 24;
 export const MAX_ROWS_TO_MEASURE = 100;
 
 export const RESIZE_HANDLE_WIDTH = 5;
+
+export const PIVOT_TABLE_BODY_LABEL = "pivot-table-body-grid";
