@@ -206,10 +206,6 @@
   [_ search-native-query]
   (searchable-columns "card" search-native-query))
 
-(defmethod searchable-columns "metric"
-  [_ search-native-query]
-  (searchable-columns "card" search-native-query))
-
 (defmethod searchable-columns "dashboard"
   [_ _]
   [:name
