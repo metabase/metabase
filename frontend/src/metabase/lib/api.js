@@ -1,10 +1,11 @@
 import EventEmitter from "events";
-import JSONBigInt from "json-bigint-native";
 import querystring from "querystring";
 
 import { isTest } from "metabase/env";
 import { isWithinIframe } from "metabase/lib/dom";
 import { delay } from "metabase/lib/promise";
+
+import { JSONBigInt } from "./json-big-int";
 
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
