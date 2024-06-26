@@ -575,7 +575,7 @@ describe("issue 36669", () => {
       startNewQuestion();
     });
 
-    modal().within(() => {
+    entityPickerModal().within(() => {
       cy.findByPlaceholderText("Search…").type("Orders 36669");
 
       cy.findByRole("tabpanel").findByText("Orders 36669").click();
