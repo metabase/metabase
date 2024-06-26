@@ -1062,19 +1062,18 @@
                                                                                         :min-duration-ms  0}))]
                             {:cached?  (boolean (:cached (:cache/details results)))
                              :num-rows (count (mt/rows results))}))]
-          (mt/with-temporary-setting-values [enable-query-caching true]
-            (testing "Make sure the underlying card for the GTAP returns cached results without sandboxing"
-              (mt/with-current-user nil
-                (testing "First run -- should not be cached"
-                  (is (= {:cached? false, :num-rows 5}
-                         (run-query))))
-                (testing "Should be cached by now"
-                  (is (= {:cached? true, :num-rows 5}
-                         (run-query))))))
-            (testing "Ok, now try to access the Table that is sandboxed by the cached Card"
-              ;; this should *NOT* be cached because we're generating a nested query with sandboxing in play.
-              (is (= {:cached? false, :num-rows 5}
-                     (run-query))))))))))
+          (testing "Make sure the underlying card for the GTAP returns cached results without sandboxing"
+            (mt/with-current-user nil
+              (testing "First run -- should not be cached"
+                (is (= {:cached? false, :num-rows 5}
+                       (run-query))))
+              (testing "Should be cached by now"
+                (is (= {:cached? true, :num-rows 5}
+                       (run-query))))))
+          (testing "Ok, now try to access the Table that is sandboxed by the cached Card"
+            ;; this should *NOT* be cached because we're generating a nested query with sandboxing in play.
+            (is (= {:cached? false, :num-rows 5}
+                   (run-query)))))))))
 
 (deftest persistence-disabled-when-sandboxed
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
