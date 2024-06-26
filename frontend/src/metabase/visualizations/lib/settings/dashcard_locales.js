@@ -724,6 +724,30 @@ const TITLE_LOCALES_BN = {
     'en' : 'Condition of Pre-Primary Rooms',
     'bn' : 'প্রাক-প্রাথমিক কক্ষের অবস্থা'
   },
+  'admin.dashboard.ppe.monitoring.school.visited.count' : {
+    'en' : 'School Inspection Completed',
+    'bn' : 'বিদ্যালয় পরিদর্শন হয়েছে'
+  },
+  'admin.dashboard.ppe.monitoring.school.not.visited.count' : {
+    'en' : 'School Inspection Pending',
+    'bn' : 'বিদ্যালয়ের পরিদর্শন বাকি'
+  },
+  'admin.dashboard.ppe.monitoring.school.status' : {
+    'en' : 'Statistics Based on Status of Schools',
+    'bn' : 'বিদ্যালয়সমূহের স্ট্যাটাস ভিত্তিক পরিসংখ্যান'
+  },
+  'admin.dashboard.ppe.teacher.gender.statistics' : {
+    'en' : 'Pre-Primary Teacher Gender Statistics',
+    'bn' : 'প্রাক-প্রাথমিক শিক্ষকের জেন্ডার পরিসংখ্যান'
+  },
+  'admin.dashboard.ppe.teacher.training.statistics' : {
+    'en' : 'Pre-Primary Teacher Training Statistics',
+    'bn' : 'প্রাক-প্রাথমিক শিক্ষকের প্রশিক্ষণ পরিসংখ্যান'
+  },
+  'admin.dashboard.ppe.teacher.statistics' : {
+    'en' : 'Pre-Primary Teacher Statistics',
+    'bn' : 'প্রাক-প্রাথমিক শিক্ষকের পরিসংখ্যান'
+  },
 }
 
 export function dashcard_locale_title (locale, title_key) {
