@@ -287,7 +287,7 @@
 (deftest supports?-failure-test
   (let [fake-test-db (mt/db)]
     (testing "supports? returns false when `driver/database-supports?` throws an exception"
-      (with-redefs [driver/database-supports? (fn [_ _ _] (throw (Exception. "test exception message")))]
+      (with-redefs [driver.u/supports? (fn [_ _ _] (throw (Exception. "test exception message")))]
         (let [db           (assoc fake-test-db :name (mt/random-name))
               log-messages (mt/with-log-messages-for-level [metabase.driver.util :error]
                              (is (false? (driver.u/supports? :test-driver :test-feature db))))]
