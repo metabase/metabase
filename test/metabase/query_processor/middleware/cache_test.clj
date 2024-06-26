@@ -92,8 +92,7 @@
 (defn do-with-mock-cache [f]
   (mt/with-open-channels [save-chan  (a/chan 10)
                           purge-chan (a/chan 10)]
-    (mt/with-temporary-setting-values [enable-query-caching  true
-                                       query-caching-max-ttl 60]
+    (mt/with-temporary-setting-values [query-caching-max-ttl 60]
       (binding [cache/*backend* (test-backend save-chan purge-chan)
                 *save-chan*     save-chan
                 *purge-chan*    purge-chan]
@@ -167,7 +166,11 @@
                                          nil              false}]
         (testing (format "cache strategy = %s" (pr-str cache-strategy))
           (is (= expected
-                 (boolean (#'cache/is-cacheable? {:cache-strategy cache-strategy})))))))))
+                 (boolean (#'cache/is-cacheable? {:cache-strategy cache-strategy}))))))
+      (testing "but enable-query-caching setting is still respected"
+        (mt/with-temporary-setting-values [enable-query-caching false]
+          (is (= false
+                 (boolean (#'cache/is-cacheable? {:cache-strategy (ttl-strategy)})))))))))
 
 (deftest empty-cache-test
   (testing "if there's nothing in the cache, cached results should *not* be returned"
