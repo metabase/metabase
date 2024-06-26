@@ -583,7 +583,7 @@ describe("issue 36669", () => {
 
     getNotebookStep("data").findByText("Orders 36669").click();
 
-    modal().within(() => {
+    entityPickerModal().within(() => {
       cy.findAllByRole("tab").contains("Tables").click();
 
       cy.log("verify Tables are listed");
