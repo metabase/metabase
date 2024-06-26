@@ -416,8 +416,8 @@
         (is (= [:and
                 [:or
                  [:like [:lower :action.name] "%foo%"]
-                 [:like [:lower :query_action.dataset_query] "%foo%"]
-                 [:like [:lower :action.description] "%foo%"]]
+                 [:like [:lower :action.description] "%foo%"]
+                 [:like [:lower :query_action.dataset_query] "%foo%"]]
                 [:= :action.archived false]]
                (:where (search.filter/build-filters
                         base-search-query
