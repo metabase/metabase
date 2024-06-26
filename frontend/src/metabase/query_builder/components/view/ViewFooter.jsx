@@ -114,7 +114,7 @@ const ViewFooter = ({
             <QuestionLastUpdated
               key="last-updated"
               className={cx(CS.hide, CS.smShow)}
-              result={result}
+              updatedAt={question.card().updated_at}
             />
           ),
           QueryDownloadWidget.shouldRender({ result }) && (
