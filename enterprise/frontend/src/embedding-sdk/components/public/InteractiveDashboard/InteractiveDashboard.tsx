@@ -15,6 +15,7 @@ import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
+import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import type { QuestionDashboardCard } from "metabase-types/api";
@@ -87,6 +88,12 @@ const InteractiveDashboardInner = ({
     }
   };
 
+  const handleNavigateBackToDashboard = () => {
+    dispatch(navigateBackToDashboard(dashboardId)); // set global state for cases when navigate back from question with empty results
+
+    setAdhocQuestionUrl(null);
+  };
+
   if (adhocQuestionUrl) {
     return (
       <InteractiveAdHocQuestion
@@ -95,7 +102,7 @@ const InteractiveDashboardInner = ({
         withTitle={withTitle}
         height={questionHeight}
         plugins={questionPlugins}
-        onNavigateBack={() => setAdhocQuestionUrl(null)}
+        onNavigateBack={handleNavigateBackToDashboard}
       />
     );
   }

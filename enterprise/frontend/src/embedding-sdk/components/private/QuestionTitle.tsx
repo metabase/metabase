@@ -3,7 +3,7 @@ import type React from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { QuestionDescription } from "metabase/query_builder/components/view/ViewHeader/components";
+import { AdHocQuestionDescription } from "metabase/query_builder/components/view/ViewHeader/components/AdHocQuestionDescription";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -23,10 +23,10 @@ export const QuestionTitle = ({
     <h2 className={cx(CS.h2, CS.textWrap)}>
       {isSaved ? (
         question.displayName()
-      ) : isNative ? (
-        t`New question`
+      ) : !isNative && AdHocQuestionDescription.shouldRender(question) ? (
+        <AdHocQuestionDescription question={question} />
       ) : (
-        <QuestionDescription question={question} />
+        t`New question`
       )}
     </h2>
   );

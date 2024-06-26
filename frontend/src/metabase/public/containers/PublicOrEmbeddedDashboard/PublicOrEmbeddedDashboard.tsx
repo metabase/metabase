@@ -11,12 +11,14 @@ import {
   initialize,
   setParameterValue,
   setParameterValueToDefault,
+  reset,
 } from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
 import {
   getDashboardComplete,
   getDraftParameterValues,
+  getIsNavigatingBackToDashboard,
   getParameters,
   getParameterValues,
   getSelectedTabId,
@@ -44,6 +46,7 @@ const mapStateToProps = (state: State) => {
     parameterValues: getParameterValues(state),
     draftParameterValues: getDraftParameterValues(state),
     selectedTabId: getSelectedTabId(state),
+    isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
   };
 };
 
@@ -55,6 +58,7 @@ const mapDispatchToProps = {
   setErrorPage,
   fetchDashboard,
   fetchDashboardCardData,
+  reset,
 };
 
 const connector = connect(mapStateToProps, mapDispatchToProps);
@@ -88,7 +92,7 @@ type PublicOrEmbeddedDashboardProps = OwnProps &
   EmbedDisplayParams;
 
 class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboardProps> {
-  _initialize = async (isForceUpdate?: boolean) => {
+  _initialize = async () => {
     const {
       initialize,
       fetchDashboard,
@@ -96,20 +100,24 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
       setErrorPage,
       parameterQueryParams,
       dashboardId,
+      isNavigatingBackToDashboard,
     } = this.props;
 
-    if (!this.props.dashboard || isForceUpdate) {
-      initialize();
+    const shouldReloadDashboardData = !isNavigatingBackToDashboard;
 
-      const result = await fetchDashboard({
-        dashId: String(dashboardId),
-        queryParams: parameterQueryParams,
-      });
+    initialize({ clearCache: shouldReloadDashboardData });
 
-      if (!isSuccessfulFetchDashboardResult(result)) {
-        setErrorPage(result.payload);
-        return;
-      }
+    const result = await fetchDashboard({
+      dashId: String(dashboardId),
+      queryParams: parameterQueryParams,
+      options: {
+        clearCache: shouldReloadDashboardData,
+      },
+    });
+
+    if (!isSuccessfulFetchDashboardResult(result)) {
+      setErrorPage(result.payload);
+      return;
     }
 
     try {
@@ -128,11 +136,12 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
 
   componentWillUnmount() {
     this.props.cancelFetchDashboardCardData();
+    this.props.reset();
   }
 
   async componentDidUpdate(prevProps: PublicOrEmbeddedDashboardProps) {
     if (this.props.dashboardId !== prevProps.dashboardId) {
-      return this._initialize(true);
+      return this._initialize();
     }
 
     if (!_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {

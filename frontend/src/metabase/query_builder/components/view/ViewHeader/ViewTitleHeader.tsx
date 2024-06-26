@@ -28,7 +28,6 @@ interface ViewTitleHeaderProps {
   isNavBarOpen: boolean;
 
   originalQuestion?: Question;
-  isNative?: boolean;
   isSummarized?: boolean;
 
   result: Dataset;
@@ -116,9 +115,9 @@ export function ViewTitleHeader({
 
   const query = question.query();
   const previousQuery = usePrevious(query);
+  const { isNative } = Lib.queryDisplayInfo(query);
 
   useEffect(() => {
-    const { isNative } = Lib.queryDisplayInfo(query);
     const isPreviousQuestionNative =
       previousQuery && Lib.queryDisplayInfo(previousQuery).isNative;
 
@@ -133,9 +132,15 @@ export function ViewTitleHeader({
     if (previousFiltersCount != null && filtersCount > previousFiltersCount) {
       expandFilters();
     }
-  }, [previousQuestion, question, expandFilters, previousQuery, query]);
+  }, [
+    previousQuestion,
+    question,
+    expandFilters,
+    previousQuery,
+    query,
+    isNative,
+  ]);
 
-  const { isNative } = Lib.queryDisplayInfo(query);
   const isSaved = question.isSaved();
   const isModelOrMetric =
     question.type() === "model" || question.type() === "metric";
