@@ -190,26 +190,35 @@ export const saveDataPermissions = createThunkAction(
     MetabaseAnalytics.trackStructEvent("Permissions", "save");
     const state = getState();
     const groupIds = Object.keys(state.entities.groups);
-    const { dataPermissions, dataPermissionsRevision } =
-      getState().admin.permissions;
+    const {
+      originalDataPermissions,
+      dataPermissions,
+      dataPermissionsRevision,
+    } = state.admin.permissions;
 
-    // catch edge case where user has deleted a group but has loaded the permissions graph
-    // with state for the now deleted group still in the graph
-    const groupDataPermissions = _.pick(dataPermissions, groupIds);
+    // find only the groupIds that have had some kind of modification made in their permissions graph
+    const diffGroupIds = groupIds.filter(groupId => {
+      return !_.isEqual(
+        dataPermissions[groupId],
+        originalDataPermissions[groupId],
+      );
+    });
+
+    const modifiedGroupDataPermissions = _.pick(dataPermissions, diffGroupIds);
 
     const extraData =
       PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.reduce(
         (data, selector) => {
           return {
             ...data,
-            ...selector(getState()),
+            ...selector(state, new Set(diffGroupIds)),
           };
         },
         {},
       );
 
     const permissionsGraph = {
-      groups: groupDataPermissions,
+      groups: modifiedGroupDataPermissions,
       revision: dataPermissionsRevision,
       ...extraData,
     };

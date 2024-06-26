@@ -86,12 +86,18 @@ if (hasPremiumFeature("sandboxes")) {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION[OPTION_SEGMENTED.value] =
     getEditSegmentedAccessPostAction;
 
-  PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(state => {
-    const sandboxes = getDraftPolicies(state);
-    return {
-      sandboxes,
-    };
-  });
+  PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(
+    (state, modifiedGroupIds) => {
+      const sandboxes = getDraftPolicies(state);
+      const modifiedGroupSandboxes = sandboxes.filter(sandbox =>
+        modifiedGroupIds.has(`${sandbox.group_id}`),
+      );
+
+      return {
+        sandboxes: modifiedGroupSandboxes,
+      };
+    },
+  );
 
   PLUGIN_DATA_PERMISSIONS.hasChanges.push(hasPolicyChanges);
   PLUGIN_REDUCERS.sandboxingPlugin = sandboxingReducer;

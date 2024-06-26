@@ -117,6 +117,7 @@ export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION = {
 export const PLUGIN_DATA_PERMISSIONS: {
   permissionsPayloadExtraSelectors: ((
     state: State,
+    modifiedGroupIds: Set<string>,
   ) => Record<string, unknown>)[];
   hasChanges: ((state: State) => boolean)[];
   shouldRestrictNativeQueryPermissions: (
