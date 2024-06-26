@@ -584,7 +584,7 @@ describe("issue 36669", () => {
     getNotebookStep("data").findByText("Orders 36669").click();
 
     entityPickerModal().within(() => {
-      cy.findAllByRole("tab").contains("Tables").click();
+      entityPickerModalTab("Tables").click();
 
       cy.log("verify Tables are listed");
       cy.findByRole("tabpanel").should("contain", "Orders");
