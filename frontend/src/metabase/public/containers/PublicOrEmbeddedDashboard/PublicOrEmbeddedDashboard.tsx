@@ -1,5 +1,5 @@
 import type { Query } from "history";
-import { type ComponentType, Component } from "react";
+import { Component } from "react";
 import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -13,7 +13,6 @@ import {
   setParameterValueToDefault,
 } from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
-import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
 import {
   getDashboardComplete,
   getDraftParameterValues,
@@ -29,10 +28,8 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
-import title from "metabase/hoc/Title";
-import { WithPublicDashboardEndpoints } from "metabase/public/containers/PublicOrEmbeddedDashboard/WithPublicDashboardEndpoints";
 import { setErrorPage } from "metabase/redux/app";
-import type { Dashboard, DashboardId } from "metabase-types/api";
+import type { DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
@@ -221,13 +218,3 @@ function isSuccessfulFetchDashboardResult(
 export const PublicOrEmbeddedDashboard = connector(
   PublicOrEmbeddedDashboardInner,
 );
-
-// PublicDashboardControlled used for embedding with location
-// Uses DashboardControls to handle display options, and uses WithPublicDashboardEndpoints to set endpoints for public/embed contexts
-export const PublicOrEmbeddedDashboardControlled = _.compose(
-  title(
-    ({ dashboard }: { dashboard: Dashboard }) => dashboard && dashboard.name,
-  ),
-  WithPublicDashboardEndpoints,
-  DashboardControls,
-)(PublicOrEmbeddedDashboard) as ComponentType<OwnProps>;

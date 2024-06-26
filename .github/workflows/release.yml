@@ -536,13 +536,16 @@ jobs:
       - uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-          script: |
+          script: | # js
+            const version = '${{ inputs.version }}';
+            const enterpriseVersion = version.replace(/^v0\./, "v1.");
+
             github.rest.repos.createDispatchEvent({
               owner: '${{ github.repository_owner }}',
               repo: '${{ vars.OPS_REPO }}',
               event_type: 'create-release-issues',
               client_payload: {
-                version: '${{ inputs.version }}'
+                version: enterpriseVersion,
               }
             });
 

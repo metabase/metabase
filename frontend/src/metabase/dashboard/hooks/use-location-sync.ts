@@ -4,28 +4,28 @@ import { replace } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { omit } from "underscore";
 
-import { DEFAULT_EMBED_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
+import { DEFAULT_DASHBOARD_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch } from "metabase/lib/redux";
 import { isNullOrUndefined } from "metabase/lib/types";
 
 type SYNCED_KEY = "refresh" | "fullscreen" | "theme";
 
-const DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS = {
-  theme: DEFAULT_EMBED_DISPLAY_OPTIONS.theme,
+const DEFAULT_SYNCED_DASHBOARD_OPTIONS = {
+  theme: DEFAULT_DASHBOARD_DISPLAY_OPTIONS.theme,
   fullscreen: false,
   refresh: null,
 } as const;
 
 const getDefaultDisplayOption = <
-  Value extends typeof DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS[Key],
+  Value extends typeof DEFAULT_SYNCED_DASHBOARD_OPTIONS[Key],
   Key extends SYNCED_KEY,
 >(
   key: Key,
-): Value => DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS[key] as Value;
+): Value => DEFAULT_SYNCED_DASHBOARD_OPTIONS[key] as Value;
 
 const isEmptyOrDefault = <
-  Value extends typeof DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS[Key],
+  Value extends typeof DEFAULT_SYNCED_DASHBOARD_OPTIONS[Key],
   Key extends SYNCED_KEY,
 >(
   value: Value,
@@ -33,7 +33,7 @@ const isEmptyOrDefault = <
 ) => isNullOrUndefined(value) || value === getDefaultDisplayOption(key);
 
 export const useLocationSync = <
-  Value extends typeof DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS[Key],
+  Value extends typeof DEFAULT_SYNCED_DASHBOARD_OPTIONS[Key],
   Key extends SYNCED_KEY = any,
 >({
   key,

@@ -1,14 +1,9 @@
 import { useMemo, useState } from "react";
-import { t } from "ttag";
 
-import {
-  FilterSearchInput,
-  TabContent,
-} from "metabase/querying/components/FilterContent";
-import { Button, Modal } from "metabase/ui";
+import { FilterContent } from "metabase/querying/components/FilterContent";
+import { Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { FilterEmptyState } from "./FilterEmptyState";
 import { ModalBody, ModalFooter, ModalHeader } from "./FilterModal.styled";
 import { SEARCH_KEY } from "./constants";
 import {
@@ -16,9 +11,11 @@ import {
   getGroupItems,
   hasFilters,
   removeFilters,
-} from "./utils/filters";
-import { getModalTitle, getModalWidth } from "./utils/modal";
-import { isSearchActive, searchGroupItems } from "./utils/search";
+  getModalTitle,
+  getModalWidth,
+  isSearchActive,
+  searchGroupItems,
+} from "./utils";
 
 export interface FilterModalProps {
   query: Lib.Query;
@@ -80,42 +77,28 @@ export function FilterModal({
       <Modal.Content>
         <ModalHeader p="lg">
           <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
-          <FilterSearchInput searchText={searchText} onChange={handleSearch} />
+          <FilterContent.Header value={searchText} onChange={handleSearch} />
           <Modal.CloseButton />
         </ModalHeader>
         <ModalBody p={0}>
-          {visibleItems.length > 0 ? (
-            <TabContent
-              query={query}
-              groupItems={visibleItems}
-              tab={tab}
-              version={version}
-              isSearching={isSearching}
-              onChange={handleChange}
-              onInput={handleInput}
-              onTabChange={setTab}
-            />
-          ) : (
-            <FilterEmptyState />
-          )}
+          <FilterContent.Body
+            groupItems={visibleItems}
+            query={query}
+            tab={tab}
+            version={version}
+            searching={isSearching}
+            onChange={handleChange}
+            onInput={handleInput}
+            onTabChange={setTab}
+          />
         </ModalBody>
         <ModalFooter p="md" direction="row" justify="space-between">
-          <Button
-            variant="subtle"
-            color="text-medium"
-            disabled={!canRemoveFilters}
-            onClick={handleReset}
-          >
-            {t`Clear all filters`}
-          </Button>
-          <Button
-            variant="filled"
-            disabled={!isChanged}
-            data-testid="apply-filters"
-            onClick={handleSubmit}
-          >
-            {t`Apply filters`}
-          </Button>
+          <FilterContent.Footer
+            canRemoveFilters={canRemoveFilters}
+            onClearFilters={handleReset}
+            isChanged={isChanged}
+            onApplyFilters={handleSubmit}
+          />
         </ModalFooter>
       </Modal.Content>
     </Modal.Root>

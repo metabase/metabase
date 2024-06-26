@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 import { t } from "ttag";
 
+import { PublicComponentStylesWrapper } from "embedding-sdk/components/private/PublicComponentStylesWrapper";
 import { SdkError } from "embedding-sdk/components/private/PublicComponentWrapper/SdkError";
 import { SdkLoader } from "embedding-sdk/components/private/PublicComponentWrapper/SdkLoader";
 import { useSdkSelector } from "embedding-sdk/store";
@@ -29,5 +30,7 @@ export const PublicComponentWrapper = ({
     return <SdkError message={loginStatus.error.message} />;
   }
 
-  return children;
+  return (
+    <PublicComponentStylesWrapper>{children}</PublicComponentStylesWrapper>
+  );
 };

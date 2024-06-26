@@ -1,7 +1,7 @@
 import {
   getParameterValueFromQueryParams,
   getParameterValuesByIdFromQueryParams,
-} from "./parameter-values";
+} from "./parameter-parsing";
 
 describe("parameters/utils/parameter-values", () => {
   let field1;

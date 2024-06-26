@@ -1,11 +1,11 @@
 import { renderWithProviders } from "__support__/ui";
-import { SdkContentWrapper } from "embedding-sdk/components/private/SdkContentWrapper";
+import { SdkGlobalStylesWrapper } from "embedding-sdk/components/private/SdkGlobalStylesWrapper";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
 
-describe("SdkContentWrapper", () => {
+describe("SdkGlobalStylesWrapper", () => {
   it("injects the font-face declaration when available", () => {
     const state = createMockState({
       settings: createMockSettingsState({
@@ -19,7 +19,9 @@ describe("SdkContentWrapper", () => {
       }),
     });
 
-    renderWithProviders(<SdkContentWrapper />, { storeInitialState: state });
+    renderWithProviders(<SdkGlobalStylesWrapper />, {
+      storeInitialState: state,
+    });
 
     const rules = Array.from(document.styleSheets).flatMap(sheet =>
       Array.from(sheet.cssRules || []),
