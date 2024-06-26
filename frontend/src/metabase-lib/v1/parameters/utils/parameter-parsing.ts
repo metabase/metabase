@@ -1,5 +1,6 @@
 import type { Query } from "history";
 
+import * as Lib from "metabase-lib";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
@@ -35,6 +36,12 @@ export function getParameterValueFromQueryParams(
 }
 
 export function parseParameterValue(value: any, parameter: Parameter) {
+  const type = getParameterType(parameter);
+  if (type === "temporal-unit") {
+    const availableUnits = Lib.availableTemporalUnits();
+    return availableUnits.some(unit => unit === value) ? value : null;
+  }
+
   const coercedValue =
     Array.isArray(value) && !getIsMultiSelect(parameter) ? [value[0]] : value;
 
@@ -44,7 +51,6 @@ export function parseParameterValue(value: any, parameter: Parameter) {
     return parseParameterValueForFields(coercedValue, fields);
   }
 
-  const type = getParameterType(parameter);
   if (type === "number") {
     return parseParameterValueForNumber(coercedValue);
   }

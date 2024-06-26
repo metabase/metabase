@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import d3 from "d3";
+import * as d3 from "d3";
 import { Component } from "react";
 import * as React from "react";
 import ReactDOM from "react-dom";
@@ -205,8 +205,8 @@ export default class Gauge extends Component {
     const segments = settings["gauge.segments"].filter(segmentIsValid);
 
     // value to angle in radians, clamped
-    const angle = d3.scale
-      .linear()
+    const angle = d3
+      .scaleLinear()
       .domain(range) // NOTE: confusing, but the "range" is the domain for the arc scale
       .range([
         ((ARC_DEGREES / 180) * -Math.PI) / 2,
@@ -356,7 +356,7 @@ const GaugeArc = ({
   onHoverChange,
   onVisualizationClick,
 }) => {
-  const arc = d3.svg
+  const arc = d3
     .arc()
     .outerRadius(OUTER_RADIUS)
     .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);

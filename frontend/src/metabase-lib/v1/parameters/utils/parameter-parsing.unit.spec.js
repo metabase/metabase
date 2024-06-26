@@ -3,7 +3,7 @@ import { createMockParameter } from "metabase-types/api/mocks";
 import {
   getParameterValueFromQueryParams,
   getParameterValuesByIdFromQueryParams,
-} from "./parameter-values";
+} from "./parameter-parsing";
 
 describe("parameters/utils/parameter-values", () => {
   let field1;
