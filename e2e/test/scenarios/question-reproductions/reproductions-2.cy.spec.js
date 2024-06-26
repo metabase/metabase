@@ -592,6 +592,52 @@ describe("issue 36669", () => {
   });
 });
 
+describe("issue 35290", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should render column settings when source query is a table joined on itself (metabase#35290)", () => {
+    const questionDetails = {
+      name: "Orders + Orders",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            "source-table": ORDERS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.ID, null],
+              ["field", ORDERS.ID, null],
+            ],
+            alias: "Orders",
+          },
+        ],
+        limit: 5,
+      },
+    };
+
+    createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
+      const questionDetails = {
+        name: "35290",
+        query: {
+          "source-table": `card__${questionId}`,
+        },
+      };
+
+      createQuestion(questionDetails, { visitQuestion: true });
+    });
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.findByTestId("chartsettings-sidebar")
+      // verify panel is shown
+      .should("contain", "Add or remove columns")
+      // verify column name is shown
+      .should("contain", "Created At");
+  });
+});
+
 function updateQuestion() {
   queryBuilderHeader().findByText("Save").click();
   cy.findByTestId("save-question-modal").within(modal => {
