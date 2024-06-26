@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import type { SdkClickActionPluginsConfig } from "embedding-sdk";
 
 import { InteractiveQuestionProvider } from "../public/InteractiveQuestion/context";
@@ -20,7 +22,10 @@ export const InteractiveAdHocQuestion = ({
   height,
   plugins,
 }: InteractiveAdHocQuestionProps) => {
-  const { location, params } = getQuestionParameters(questionPath);
+  const { location, params } = useMemo(
+    () => getQuestionParameters(questionPath),
+    [questionPath],
+  );
 
   return (
     <InteractiveQuestionProvider

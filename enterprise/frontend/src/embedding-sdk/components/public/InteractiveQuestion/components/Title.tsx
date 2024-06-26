@@ -7,6 +7,7 @@ export const Title = () => {
   const { customTitle, question, withTitle } = useInteractiveQuestionContext();
 
   return (
+    question &&
     withTitle &&
     (customTitle || (
       <h2 className={cx(CS.h2, CS.textWrap)}>{question.displayName()}</h2>
