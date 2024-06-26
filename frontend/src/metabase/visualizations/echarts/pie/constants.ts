@@ -9,6 +9,10 @@ export const DIMENSIONS = {
     borderProportion: 360, // 1 degree
     maxFontSize: 20,
     minFontSize: 14,
+    label: {
+      fontWeight: 700,
+      padding: 4,
+    },
   },
 };
 

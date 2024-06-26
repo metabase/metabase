@@ -1,15 +1,16 @@
 import type { RegisteredSeriesOption } from "echarts";
 import { t } from "ttag";
 
+import { DIMENSIONS } from "../constants";
+
 export const SUNBURST_SERIES_OPTION: RegisteredSeriesOption["sunburst"] = {
   type: "sunburst",
   sort: undefined,
   label: {
     rotate: 0,
-    minAngle: 15,
     overflow: "none",
-    fontSize: 20,
-    fontWeight: 700,
+    fontSize: 20, // placeholder for ts, it will be overriden later
+    fontWeight: DIMENSIONS.slice.label.fontWeight,
   },
   labelLayout: {
     hideOverlap: true,
