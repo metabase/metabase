@@ -1,5 +1,5 @@
 import Color from "color";
-import d3 from "d3";
+import type d3 from "d3";
 import type { EChartsOption } from "echarts";
 import cloneDeep from "lodash.clonedeep";
 
@@ -12,12 +12,12 @@ import type {
 
 import { DIMENSIONS } from "../constants";
 import type { PieChartFormatters } from "../format";
-import type { PieChartModel, PieSlice } from "../model/types";
+import type { PieChartModel, PieSlice, PieSliceData } from "../model/types";
 
 import { SUNBURST_SERIES_OPTION, TOTAL_GRAPHIC_OPTION } from "./constants";
 
-function getSliceByKey(key: PieSlice["key"], slices: PieSlice[]) {
-  const slice = slices.find(s => s.key === key);
+function getSliceByKey(key: PieSliceData["key"], slices: PieSlice[]) {
+  const slice = slices.find(s => s.data.key === key);
   if (!slice) {
     throw Error(
       `Could not find slice with key ${key} in slices: ${JSON.stringify(
@@ -58,7 +58,7 @@ function getRadiusOption(sideLength: number) {
 
 function getIsLabelVisible(
   label: string,
-  slice: d3.layout.pie.Arc<PieSlice>,
+  slice: d3.layout.pie.Arc<PieSliceData>,
   innerRadius: number,
   outerRadius: number,
   fontSize: number,
@@ -132,23 +132,16 @@ export function getPieChartOption(
     : undefined;
 
   // "Show percentages: On the chart" setting
-  const formatSlicePercent = (key: PieSlice["key"]) => {
+  const formatSlicePercent = (key: PieSliceData["key"]) => {
     if (settings["pie.percent_visibility"] !== "inside") {
       return " ";
     }
 
     return formatters.formatPercent(
-      getSliceByKey(key, chartModel.slices).normalizedPercentage,
+      getSliceByKey(key, chartModel.slices).data.normalizedPercentage,
       "chart",
     );
   };
-
-  // TODO move computed slices to chart model
-  const d3Pie = d3.layout
-    .pie<PieSlice>()
-    .sort(null)
-    .padAngle((Math.PI / 180) * 1)
-    .value(s => s.value);
 
   return {
     animation: false, // TODO when implementing the dynamic pie chart, use animations for opacity transitions, but disable initial animation
@@ -158,7 +151,7 @@ export function getPieChartOption(
     graphic: graphicOption,
     series: {
       ...seriesOption,
-      data: d3Pie(chartModel.slices).map(s => {
+      data: chartModel.slices.map(s => {
         const labelColor = getTextColorForBackground(
           s.data.color,
           renderingContext.getColor,

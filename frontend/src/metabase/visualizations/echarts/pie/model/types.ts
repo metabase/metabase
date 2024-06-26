@@ -5,7 +5,7 @@ export interface PieColumnDescriptors {
   dimensionDesc: ColumnDescriptor;
 }
 
-export interface PieSlice {
+export interface PieSliceData {
   key: string | number; // dimension value
   value: number; // size of the slice used for rendering
   tooltipDisplayValue: number; // real metric value of the slice displayed in tooltip
@@ -13,6 +13,8 @@ export interface PieSlice {
   rowIndex?: number;
   color: string;
 }
+
+export type PieSlice = d3.layout.pie.Arc<PieSliceData>;
 
 export interface PieChartModel {
   slices: PieSlice[];
