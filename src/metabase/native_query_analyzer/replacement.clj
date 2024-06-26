@@ -102,7 +102,7 @@
 
           ;; Plain variable
           ;; Note that the order of the clauses matters: `card-ref?` or `snippet?` could be true when is a `Param?`,
-          ;; so we need to handle those cases specially first and leave this as the the token fall-through
+          ;; so we need to handle those cases specially first and leave this as the token fall-through
           (params/Param? token)
           (let [sub (gen-variable-sentinel raw-query)]
             (recur rest
@@ -116,7 +116,7 @@
                    (add-tag substitutions sub token)))
 
           :else
-          ;; "this should never happen" but if it does we certainly want to know about it.
+          ;; "this should never happen" but if it does, we certainly want to know about it.
           (throw (ex-info "Unsupported token in native query" {:token token})))))))
 
 (defn- replace-all
@@ -146,8 +146,8 @@
   ([query renames]
    ;; Postgres is both popular and adheres closely to the standard SQL specifications.
    (replace-names :postgres query renames))
-  ;; Currently we take just the driver, but in future it may more sense to take the entire database entity, in order to
-  ;; match the actual configuration, reserved words for the given version, etc.
+  ;; Currently we take just the driver, but in future it may more sense to take the entire database entity, to match
+  ;; the actual configuration, reserved words for the given version, etc.
   ([driver query renames]
    (let [raw-query     (get-in query [:native :query])
          parsed-query  (params.parse/parse raw-query)
