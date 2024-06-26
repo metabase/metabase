@@ -1,4 +1,5 @@
 import Color from "color";
+import d3 from "d3";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -13,7 +14,11 @@ import type { RawSeries, RowValue } from "metabase-types/api";
 
 import { OTHER_SLICE_MIN_PERCENTAGE as MIN_SLICE_PERCENTAGE } from "../constants";
 
-import type { PieColumnDescriptors, PieChartModel, PieSlice } from "./types";
+import type {
+  PieColumnDescriptors,
+  PieChartModel,
+  PieSliceData,
+} from "./types";
 
 function getColDescs(
   rawSeries: RawSeries,
@@ -99,7 +104,7 @@ export function getPieChartModel(
   const colors = { ...defaultColors, ...settings["pie.colors"] };
 
   const [slices, others] = _.chain(rows)
-    .map((row, index): PieSlice => {
+    .map((row, index): PieSliceData => {
       const { dimensionValue, metricValue } = getRowValues(row, colDescs);
 
       // older viz settings can have hsl values that need to be converted since
@@ -153,8 +158,15 @@ export function getPieChartModel(
     }
   });
 
+  const d3Pie = d3.layout
+    .pie<PieSliceData>()
+    .sort(null)
+    // 1 degree in radians
+    .padAngle((Math.PI / 180) * 1)
+    .value(s => s.value);
+
   return {
-    slices,
+    slices: d3Pie(slices),
     total,
     colDescs,
   };

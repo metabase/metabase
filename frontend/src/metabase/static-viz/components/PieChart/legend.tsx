@@ -18,16 +18,18 @@ export function getPieChartLegend(
   } = calculateLegendRowsWithColumns({
     items: chartModel.slices.map(s => {
       const label =
-        s.key === "Other" ? s.key : formatters.formatDimension(s.key);
+        s.data.key === "Other"
+          ? s.data.key
+          : formatters.formatDimension(s.data.key);
 
       return {
         name: label,
         percent:
           settings["pie.percent_visibility"] === "legend"
-            ? formatters.formatPercent(s.normalizedPercentage, "legend")
+            ? formatters.formatPercent(s.data.normalizedPercentage, "legend")
             : undefined,
-        color: s.color,
-        key: String(s.key),
+        color: s.data.color,
+        key: String(s.data.key),
       };
     }),
     width: DIMENSIONS.maxSideLength,

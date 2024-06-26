@@ -48,7 +48,7 @@ export function getPieChartFormatters(
       number_style: "percent",
       majorWidth: 0,
       decimals: computeMaxDecimalsForValues(
-        chartModel.slices.map(s => s.normalizedPercentage),
+        chartModel.slices.map(s => s.data.normalizedPercentage),
         {
           style: "percent",
           maximumSignificantDigits: location === "legend" ? 3 : 2,
