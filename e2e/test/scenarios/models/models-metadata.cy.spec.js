@@ -25,7 +25,7 @@ import {
 
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
 
-const { ACCOUNTS, PEOPLE, PRODUCTS, PRODUCTS_ID, REVIEWS, ORDERS_ID, ORDERS } =
+const { PEOPLE, PRODUCTS, PRODUCTS_ID, REVIEWS, ORDERS_ID, ORDERS } =
   SAMPLE_DATABASE;
 
 describe("scenarios > models metadata", () => {
@@ -470,7 +470,7 @@ describe("scenarios > models metadata", () => {
     cy.get("@modelId").then(modelId => {
       setModelMetadata(modelId, (field, index) => ({
         ...field,
-        id: ACCOUNTS.ID,
+        id: ORDERS.ID,
         display_name: `ID${index + 1}`,
         semantic_type: "type/PK",
       }));
