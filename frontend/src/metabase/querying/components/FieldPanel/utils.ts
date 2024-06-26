@@ -19,17 +19,14 @@ function getColumnItems(
 ): ColumnItem[] {
   return Lib.getColumnsFromColumnGroup(group).map(column => {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
-    const isEditable =
-      !columnInfo.isAggregation &&
-      !columnInfo.isBreakout &&
-      !columnInfo.isCalculated;
-
     return {
       column,
       displayName: columnInfo.displayName,
       isSelected: columnInfo.selected ?? false,
-      isEditable,
-      isDisabled: !isEditable,
+      isDisabled:
+        columnInfo.isAggregation ||
+        columnInfo.isBreakout ||
+        columnInfo.isCalculated,
     };
   });
 }
@@ -55,7 +52,7 @@ function getGroupsWithColumns(
   });
 }
 
-function disableLastSelectedQueryColumn(
+function disableOnlySelectedQueryColumn(
   groupItems: ColumnGroupItem[],
 ): ColumnGroupItem[] {
   return groupItems.map(groupItem => {
@@ -65,7 +62,7 @@ function disableLastSelectedQueryColumn(
 
     const isOnlySelectedColumn =
       groupItem.columnItems.filter(
-        ({ isSelected, isEditable }) => isSelected && isEditable,
+        ({ isSelected, isDisabled }) => isSelected && !isDisabled,
       ).length === 1;
 
     return {
@@ -107,7 +104,7 @@ export function getColumnGroupItems(
 ): ColumnGroupItem[] {
   const columns = getColumns(query, stageIndex);
   const groupItems = getGroupsWithColumns(query, stageIndex, columns);
-  return deduplicateGroupNames(disableLastSelectedQueryColumn(groupItems));
+  return deduplicateGroupNames(disableOnlySelectedQueryColumn(groupItems));
 }
 
 export function searchColumnGroupItems(
@@ -146,7 +143,7 @@ export function toggleColumnGroupInQuery(
 ) {
   if (groupItem.isSelected) {
     return groupItem.columnItems
-      .filter(columnItem => columnItem.isSelected && columnItem.isEditable)
+      .filter(columnItem => columnItem.isSelected && !columnItem.isDisabled)
       .filter((_, columnIndex) => !groupItem.isSourceGroup || columnIndex !== 0)
       .reduce(
         (query, { column }) => Lib.removeField(query, stageIndex, column),
@@ -154,7 +151,7 @@ export function toggleColumnGroupInQuery(
       );
   } else {
     return groupItem.columnItems
-      .filter(columnItem => !columnItem.isSelected && columnItem.isEditable)
+      .filter(columnItem => !columnItem.isSelected && !columnItem.isDisabled)
       .reduce(
         (query, { column }) => Lib.addField(query, stageIndex, column),
         query,
