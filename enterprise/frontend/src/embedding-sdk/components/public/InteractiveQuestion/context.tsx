@@ -52,6 +52,8 @@ type InteractiveQuestionContextType = {
   onQueryChange: (query: MBLib.Query) => Promise<void>;
   isFilterOpen: boolean;
   setIsFilterOpen: (value: boolean) => void;
+  isSummarizeOpen: boolean;
+  setIsSummarizeOpen: (value: boolean) => void;
 };
 
 export const InteractiveQuestionContext = createContext<
@@ -91,6 +93,7 @@ export const InteractiveQuestionProvider = ({
   const dispatch = useDispatch();
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isSummarizeOpen, setIsSummarizeOpen] = useState(false);
 
   const globalPlugins = useSdkSelector(getPlugins);
   const question = useSelector(getQuestion);
@@ -174,6 +177,8 @@ export const InteractiveQuestionProvider = ({
         onQueryChange,
         isFilterOpen,
         setIsFilterOpen,
+        isSummarizeOpen,
+        setIsSummarizeOpen,
       }}
     >
       {children}

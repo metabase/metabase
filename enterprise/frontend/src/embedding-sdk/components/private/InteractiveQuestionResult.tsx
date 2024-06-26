@@ -10,6 +10,8 @@ import { Filter } from "embedding-sdk/components/public/InteractiveQuestion/comp
 import { FilterBar } from "embedding-sdk/components/public/InteractiveQuestion/components/FilterBar";
 import { FilterButton } from "embedding-sdk/components/public/InteractiveQuestion/components/FilterButton";
 import { QuestionResetButton } from "embedding-sdk/components/public/InteractiveQuestion/components/ResetButton";
+import { Summarize } from "embedding-sdk/components/public/InteractiveQuestion/components/Summarize";
+import { SummarizeButton } from "embedding-sdk/components/public/InteractiveQuestion/components/SummarizeButton";
 import { Title } from "embedding-sdk/components/public/InteractiveQuestion/components/Title";
 import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
@@ -36,6 +38,7 @@ export const InteractiveQuestionResult = ({
     queryResults,
     question,
     isFilterOpen,
+    isSummarizeOpen,
   } = useInteractiveQuestionContext();
 
   if (isQuestionLoading || isQueryRunning) {
@@ -50,6 +53,10 @@ export const InteractiveQuestionResult = ({
     return <Filter />;
   }
 
+  if (isSummarizeOpen) {
+    return <Summarize />;
+  }
+
   return (
     <Box
       className={cx(CS.flexFull, CS.fullWidth)}
@@ -62,6 +69,7 @@ export const InteractiveQuestionResult = ({
           <Title />
           <QuestionResetButton />
           <FilterButton />
+          <SummarizeButton />
         </Flex>
 
         <FilterBar />
