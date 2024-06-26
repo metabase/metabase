@@ -1,4 +1,4 @@
-import PropTypes from "prop-types";
+import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
@@ -10,30 +10,29 @@ import {
   StyledQuestionDataSource,
   ViewHeaderLeftSubHeading,
   ViewHeaderMainLeftContentContainer,
-} from "metabase/query_builder/components/view/ViewHeader/ViewHeader.styled";
+} from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import {
   HeadBreadcrumbs,
   QuestionDataSource,
 } from "metabase/query_builder/components/view/ViewHeader/components";
 import { HeaderCollectionBadge } from "metabase/query_builder/components/view/ViewHeader/components/HeaderCollectionBadge/HeaderCollectionBadge";
+import type Question from "metabase-lib/v1/Question";
 
-SavedQuestionLeftSide.propTypes = {
-  question: PropTypes.object.isRequired,
-  isObjectDetail: PropTypes.bool,
-  isAdditionalInfoVisible: PropTypes.bool,
-  isShowingQuestionDetailsSidebar: PropTypes.bool,
-  onOpenQuestionInfo: PropTypes.func.isRequired,
-  onSave: PropTypes.func,
-};
-export function SavedQuestionLeftSide(props) {
-  const {
-    question,
-    isObjectDetail,
-    isAdditionalInfoVisible,
-    onOpenQuestionInfo,
-    onSave,
-  } = props;
+interface SavedQuestionLeftSideProps {
+  question: Question;
+  isObjectDetail?: boolean;
+  isAdditionalInfoVisible?: boolean;
+  onOpenQuestionInfo: () => void;
+  onSave: (newQuestion: Question) => any;
+}
 
+export function SavedQuestionLeftSide({
+  question,
+  isObjectDetail,
+  isAdditionalInfoVisible,
+  onOpenQuestionInfo,
+  onSave,
+}: SavedQuestionLeftSideProps): React.JSX.Element {
   const [showSubHeader, setShowSubHeader] = useState(true);
 
   const hasLastEditInfo = question.lastEditInfo() != null;
@@ -41,7 +40,7 @@ export function SavedQuestionLeftSide(props) {
   const isModelOrMetric = type === "model" || type === "metric";
 
   const onHeaderChange = useCallback(
-    name => {
+    (name: string) => {
       if (name && name !== question.displayName()) {
         onSave(question.setDisplayName(name));
       }
@@ -50,7 +49,8 @@ export function SavedQuestionLeftSide(props) {
   );
 
   const renderDataSource =
-    QuestionDataSource.shouldRender(props) && type === "question";
+    QuestionDataSource.shouldRender({ question, isObjectDetail }) &&
+    type === "question";
   const renderLastEdit = hasLastEditInfo && isAdditionalInfoVisible;
 
   useEffect(() => {
@@ -92,13 +92,15 @@ export function SavedQuestionLeftSide(props) {
       </ViewHeaderMainLeftContentContainer>
       {isAdditionalInfoVisible && (
         <ViewHeaderLeftSubHeading>
-          {QuestionDataSource.shouldRender(props) && !isModelOrMetric && (
-            <StyledQuestionDataSource
-              question={question}
-              isObjectDetail={isObjectDetail}
-              subHead
-            />
-          )}
+          {QuestionDataSource.shouldRender({ question, isObjectDetail }) &&
+            !isModelOrMetric && (
+              <StyledQuestionDataSource
+                question={question}
+                isObjectDetail={isObjectDetail}
+                originalQuestion={undefined} // can be removed, needed for typings
+                subHead
+              />
+            )}
           {hasLastEditInfo && isAdditionalInfoVisible && (
             <StyledLastEditInfoLabel
               item={question.card()}
