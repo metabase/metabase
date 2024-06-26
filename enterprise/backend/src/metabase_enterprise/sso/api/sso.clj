@@ -38,7 +38,7 @@
       (throw e))))
 
 (mu/defn ^:private sso-error-page
-  [^Throwable e log-direction :- [:enum "in" "out"]]
+  [^Throwable e log-direction :- [:enum :in :out]]
   {:status  (get (ex-data e) :status-code 500)
    :headers {"Content-Type" "text/html"}
    :body    (stencil/render-file "metabase_enterprise/sandbox/api/error_page"
@@ -57,7 +57,7 @@
     (sso.i/sso-post req)
     (catch Throwable e
       (log/error e "Error logging in")
-      (sso-error-page e "in"))))
+      (sso-error-page e :in))))
 
 
 ;; ------------------------------ Single Logout aka SLO ------------------------------
@@ -99,6 +99,6 @@
     (sso.i/sso-handle-slo req)
     (catch Throwable e
       (log/error e "Error handling SLO")
-      (sso-error-page e "out"))))
+      (sso-error-page e :out))))
 
 (api/define-routes)
