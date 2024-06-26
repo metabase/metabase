@@ -87,7 +87,7 @@ type PublicOrEmbeddedDashboardProps = OwnProps &
   EmbedDisplayParams;
 
 class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboardProps> {
-  _initialize = async () => {
+  _initialize = async (isForceUpdate?: boolean) => {
     const {
       initialize,
       fetchDashboard,
@@ -98,7 +98,8 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
       isNavigatingBackToDashboard,
     } = this.props;
 
-    const shouldReloadDashboardData = !isNavigatingBackToDashboard;
+    const shouldReloadDashboardData =
+      !isNavigatingBackToDashboard || isForceUpdate;
 
     initialize({ clearCache: shouldReloadDashboardData });
 
@@ -135,7 +136,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
 
   async componentDidUpdate(prevProps: PublicOrEmbeddedDashboardProps) {
     if (this.props.dashboardId !== prevProps.dashboardId) {
-      return this._initialize();
+      return this._initialize(true);
     }
 
     if (!_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {
