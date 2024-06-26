@@ -35,6 +35,10 @@ import {
   enterCustomColumnDetails,
   addCustomColumn,
   tableInteractive,
+  createNativeQuestion,
+  queryBuilderMain,
+  leftSidebar,
+  assertQueryBuilderRowCount,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -1152,5 +1156,35 @@ describe("issue 19894", () => {
 
     popover().findByText("Category").should("be.visible");
     popover().findByText("Count").should("be.visible");
+  });
+});
+
+describe("issue 44637", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not crash when rendering a line/bar chart with empty results (metabase#44637)", () => {
+    createNativeQuestion(
+      {
+        native: {
+          query: "SELECT '2023-01-01'::date, 2 FROM people WHERE false",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    assertQueryBuilderRowCount(0);
+    queryBuilderMain().findByText("No results!").should("exist");
+    queryBuilderFooter().button("Visualization").click();
+    leftSidebar().icon("bar").click();
+    queryBuilderMain().within(() => {
+      cy.findByText("No results!").should("exist");
+      cy.findByText("Something's gone wrong").should("not.exist");
+    });
+
+    queryBuilderFooter().icon("calendar").click();
+    rightSidebar().findByText("Add an event");
   });
 });
