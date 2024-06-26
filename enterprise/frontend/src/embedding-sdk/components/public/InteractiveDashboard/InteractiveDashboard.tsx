@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useUnmount } from "react-use";
+import { useEffect, useState } from "react";
+import { usePrevious, useUnmount } from "react-use";
 
 import type { SdkClickActionPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
@@ -59,9 +59,18 @@ const InteractiveDashboardInner = ({
   const store = useStore();
   const [adhocQuestionUrl, setAdhocQuestionUrl] = useState<string | null>(null);
 
+  const previousDashboardId = usePrevious(dashboardId);
+
   useUnmount(() => {
     dispatch(reset()); // reset "isNavigatingBackToDashboard" state
   });
+
+  useEffect(() => {
+    if (dashboardId !== previousDashboardId) {
+      dispatch(reset()); // reset "isNavigatingBackToDashboard" state
+      setAdhocQuestionUrl(null);
+    }
+  }, [dashboardId, dispatch, previousDashboardId]);
 
   const handleNavigateToNewCardFromDashboard = ({
     nextCard,
