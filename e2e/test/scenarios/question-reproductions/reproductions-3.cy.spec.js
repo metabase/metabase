@@ -1154,3 +1154,27 @@ describe("issue 19894", () => {
     popover().findByText("Count").should("be.visible");
   });
 });
+
+describe("issue 38148", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it.skip("should be able to share or re-use the url of an in-progress question (metabase#38148)", () => {
+    startNewQuestion();
+
+    // Add some data to a question
+    entityPickerModal().within(() => {
+      cy.findByText("Tables").click();
+      cy.findByText("Products").click();
+    });
+
+    // Reloading is the same as copying url question
+    // and opening it in the same tab
+    cy.reload();
+
+    // data from the previous question should be visible
+    cy.findByTestId("data-step-cell").should("contain", "Products");
+  });
+});
