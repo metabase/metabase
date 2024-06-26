@@ -99,7 +99,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
     } = this.props;
 
     const shouldReloadDashboardData =
-      !isNavigatingBackToDashboard || isForceUpdate;
+      !isNavigatingBackToDashboard || !!isForceUpdate;
 
     initialize({ clearCache: shouldReloadDashboardData });
 
