@@ -112,6 +112,17 @@ const DashboardApp = (props: DashboardAppProps) => {
   const { dashboard, isRunning, isLoadingComplete, isEditing, isDirty, route } =
     props;
 
+  const {
+    documentTitle: _documentTitle,
+    pageFavicon: _pageFavicon,
+    isRunning: _isRunning,
+    isLoadingComplete: _isLoadingComplete,
+    children,
+    location,
+    ...dashboardProps
+  } = props;
+
+  const parameterQueryParams = location.query;
   const dashboardId = getDashboardId(props);
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
@@ -177,19 +188,9 @@ const DashboardApp = (props: DashboardAppProps) => {
     onTimeout,
   });
 
-  const {
-    documentTitle: _documentTitle,
-    pageFavicon: _pageFavicon,
-    isRunning: _isRunning,
-    isLoadingComplete: _isLoadingComplete,
-    children,
-    location,
-    ...dashboardProps
-  } = props;
-
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId: dashboardId,
-    parameterQueryParams: props.location.query,
+    parameterQueryParams,
   });
 
   const {
@@ -207,8 +208,6 @@ const DashboardApp = (props: DashboardAppProps) => {
     titled,
     font,
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
-
-  const parameterQueryParams = location.query;
 
   useSyncURLSlug({ location });
 
