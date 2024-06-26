@@ -46,6 +46,10 @@ Fetch a list of `Users` for admins or group managers.
 
 *  **`include_deactivated`** nullable value must be a valid boolean string ('true' or 'false').
 
+*  **`limit`** nullable value must be an integer greater than zero.
+
+*  **`offset`** nullable value must be an integer greater than zero.
+
 ## `GET /api/user/:id`
 
 Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager.
