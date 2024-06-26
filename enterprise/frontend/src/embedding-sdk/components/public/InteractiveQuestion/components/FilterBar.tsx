@@ -9,6 +9,7 @@ export const FilterBar = () => {
   const { question, uiControls } = useInteractiveQuestionContext();
 
   return (
+    question &&
     QuestionFiltersHeader.shouldRender({
       question,
       queryBuilderMode: uiControls.queryBuilderMode,
