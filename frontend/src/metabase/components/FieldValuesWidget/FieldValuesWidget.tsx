@@ -64,6 +64,8 @@ import {
   canUseDashboardEndpoints,
   canUseCardEndpoints,
   getTokenFieldPlaceholder,
+  getLabel,
+  getValue,
 } from "./utils";
 
 const MAX_SEARCH_RESULTS = 100;
@@ -370,6 +372,30 @@ export function FieldValuesWidgetInner({
     search.current(value);
   };
 
+  const fieldValues = useMemo(() => {
+    const configValues =
+      parameter?.values_source_config?.values?.filter(
+        (entry): entry is FieldValue =>
+          Boolean(entry) && typeof entry !== "string",
+      ) ?? [];
+
+    // Get the fetched values as well as the values from the parameter settings.
+    return options.concat(configValues);
+  }, [parameter?.values_source_config?.values, options]);
+
+  // Get the label/value options for the current values
+  // This is needed to show the correct display value for the current value in the MultiSelect
+  const valueOptions = useMemo(() => {
+    return value
+      .map(value => fieldValues.find(entry => getValue(entry) === value))
+      .filter((entry): entry is FieldValue => Boolean(entry));
+  }, [value, fieldValues]);
+
+  function customLabel(value: RowValue): string | undefined {
+    const option = fieldValues.find(entry => getValue(entry) === value);
+    return option && getLabel(option);
+  }
+
   if (!valueRenderer) {
     valueRenderer = (value: RowValue) =>
       renderValue({
@@ -378,12 +404,19 @@ export function FieldValuesWidgetInner({
         value,
         autoLoad: true,
         compact: false,
+        displayValue: customLabel(value),
       });
   }
 
   if (!optionRenderer) {
     optionRenderer = (option: FieldValue) =>
-      renderValue({ fields, formatOptions, value: option[0], autoLoad: false });
+      renderValue({
+        fields,
+        formatOptions,
+        value: getValue(option),
+        autoLoad: false,
+        displayValue: getLabel(option),
+      });
   }
 
   if (!layoutRenderer) {
@@ -438,7 +471,21 @@ export function FieldValuesWidgetInner({
     options,
   });
 
-  const parseFreeformValue = (value: string | number) => {
+  const valueForLabel = (label: string | number) => {
+    const option = fieldValues.find(option => {
+      const opt = getLabel(option) ?? getValue(option)?.toString();
+      return opt === label;
+    });
+
+    if (option) {
+      return getValue(option);
+    }
+
+    return label;
+  };
+
+  const parseFreeformValue = (labelOrValue: string | number) => {
+    const value = valueForLabel(labelOrValue);
     return isNumeric(fields[0], parameter)
       ? parseNumberValue(value)
       : parseStringValue(value);
@@ -457,10 +504,12 @@ export function FieldValuesWidgetInner({
     function (option: FieldValue): {
       label: string;
       value: string;
+      customLabel?: string;
     } {
-      const value = option[0];
+      const value = getValue(option);
       const column = fields[0];
       const label =
+        getLabel(option) ??
         formatValue(value, {
           ...formatOptions,
           column,
@@ -468,35 +517,40 @@ export function FieldValuesWidgetInner({
           jsx: false,
           maximumFractionDigits: 20,
           // we know it is string | number because we are passing jsx: false
-        })?.toString() ?? "<null>";
+        })?.toString() ??
+        "<null>";
 
-      return { value: value?.toString() ?? "", label };
+      return {
+        value: value?.toString() ?? "",
+        label,
+        customLabel: option[1],
+      };
     },
     [fields, formatOptions],
   );
 
   const CustomItemComponent = useMemo(
     () =>
-      forwardRef<HTMLDivElement, SelectItemProps>(function CustomItem(
-        props,
-        ref,
-      ) {
-        const customLabel =
-          props.value !== undefined &&
-          renderValue({
-            fields,
-            formatOptions,
-            value: props.value,
-          });
+      forwardRef<HTMLDivElement, SelectItemProps & { customLabel?: string }>(
+        function CustomItem(props, ref) {
+          const customLabel =
+            props.value &&
+            renderValue({
+              fields,
+              formatOptions,
+              value: props.value,
+              displayValue: props.customLabel,
+            });
 
-        return (
-          <ItemWrapper
-            ref={ref}
-            {...props}
-            label={customLabel ?? (props.label || "")}
-          />
-        );
-      }),
+          return (
+            <ItemWrapper
+              ref={ref}
+              {...props}
+              label={customLabel ?? (props.label || "")}
+            />
+          );
+        },
+      ),
     [fields, formatOptions],
   );
 
@@ -542,7 +596,7 @@ export function FieldValuesWidgetInner({
             value={value
               .map(value => value?.toString())
               .filter((v): v is string => v !== null && v !== undefined)}
-            data={options.map(renderStringOption)}
+            data={options.concat(valueOptions).map(renderStringOption)}
             placeholder={tokenFieldPlaceholder}
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
@@ -700,12 +754,14 @@ function renderValue({
   fields,
   formatOptions,
   value,
+  displayValue,
 }: {
   fields: Field[];
   formatOptions: Record<string, any>;
   value: RowValue;
   autoLoad?: boolean;
   compact?: boolean;
+  displayValue?: string;
 }) {
   return (
     <ValueComponent
@@ -713,6 +769,7 @@ function renderValue({
       column={fields[0]}
       maximumFractionDigits={20}
       remap={showRemapping(fields)}
+      displayValue={displayValue}
       {...formatOptions}
     />
   );

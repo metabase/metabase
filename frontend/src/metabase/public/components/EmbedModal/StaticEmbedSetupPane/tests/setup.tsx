@@ -2,6 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupParameterValuesEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type {
@@ -70,6 +71,11 @@ export async function setup(
     props: {},
   },
 ) {
+  setupParameterValuesEndpoints({
+    values: [],
+    has_more_values: false,
+  });
+
   const settings = mockSettings({
     "enable-embedding": true,
     "embedding-secret-key": "my_super_secret_key",

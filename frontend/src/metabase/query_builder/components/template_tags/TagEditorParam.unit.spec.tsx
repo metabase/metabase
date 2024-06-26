@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupDatabasesEndpoints,
+  setupParameterValuesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
@@ -51,6 +52,10 @@ const setup = ({ tag = createMockTemplateTag() }: SetupOpts = {}) => {
 
   setupDatabasesEndpoints([database]);
   setupSearchEndpoints([]);
+  setupParameterValuesEndpoints({
+    values: [],
+    has_more_values: false,
+  });
 
   const setTemplateTag = jest.fn();
   const setTemplateTagConfig = jest.fn();

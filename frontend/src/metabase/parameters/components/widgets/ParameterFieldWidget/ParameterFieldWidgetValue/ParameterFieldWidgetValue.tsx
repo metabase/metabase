@@ -9,12 +9,14 @@ import { normalizeValue } from "../normalizeValue";
 type ParameterFieldWidgetValueProps = {
   value: unknown;
   fields: Field[];
+  displayValue?: string;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ParameterFieldWidgetValue({
   value,
   fields,
+  displayValue,
 }: ParameterFieldWidgetValueProps) {
   const values = normalizeValue(value);
 
@@ -27,7 +29,12 @@ export default function ParameterFieldWidgetValue({
   return numberOfValues > 1 ? (
     <>{renderNumberOfSelections(numberOfValues)}</>
   ) : (
-    <Value remap={shouldRemap} value={values[0]} column={fields[0]} />
+    <Value
+      remap={shouldRemap}
+      value={values[0]}
+      column={fields[0]}
+      displayValue={displayValue}
+    />
   );
 }
 

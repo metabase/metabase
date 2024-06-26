@@ -15,6 +15,8 @@ const config = {
       "<rootDir>/frontend/test/__mocks__/svgMock.jsx",
     "csv-parse/browser/esm/sync":
       "<rootDir>/node_modules/csv-parse/dist/cjs/sync",
+    "csv-stringify/browser/esm/sync":
+      "<rootDir>/node_modules/csv-stringify/dist/cjs/sync",
   },
   transformIgnorePatterns: [
     "<rootDir>/node_modules/(?!(screenfull|echarts|zrender|rehype-external-links|hast.*|devlop|property-information|comma-separated-tokens|space-separated-tokens|vfile|vfile-message|html-void-elements|stringify-entities|character-entities-html4)/)",

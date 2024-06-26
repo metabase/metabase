@@ -57,13 +57,13 @@ export const AutoLoadRemappedValue = AutoLoadRemapped(RemappedValueContent);
 export const FieldRemappedValue = props => (
   <RemappedValueContent
     {...props}
-    displayValue={props.column.remappedValue(props.value)}
+    displayValue={props.displayValue ?? props.column.remappedValue(props.value)}
     displayColumn={props.column.remappedField()}
   />
 );
 
 const RemappedValue = ({ autoLoad = true, ...props }) =>
-  autoLoad ? (
+  autoLoad && !props.displayValue ? (
     <AutoLoadRemappedValue {...props} />
   ) : (
     <FieldRemappedValue {...props} />

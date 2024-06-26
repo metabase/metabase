@@ -18,6 +18,9 @@ import {
   setDropdownFilterType,
   getDashboardCard,
   filterWidget,
+  multiAutocompleteInput,
+  multiAutocompleteValue,
+  sidebar,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -189,7 +192,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
   });
 
-  describe("static list source", () => {
+  describe("static list source (dropdown)", () => {
     it("should be able to use a static list source", () => {
       cy.createQuestionAndDashboard({
         questionDetails: targetQuestion,
@@ -200,9 +203,12 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       editDashboard();
       setFilter("Text or Category", "Is");
       mapFilterToQuestion();
-      setFilterListSource({ values: ["Gadget", "Gizmo", "Widget"] });
+      setFilterListSource({
+        values: [["Gadget"], ["Gizmo", "Gizmo Label"], "Widget"],
+      });
       saveDashboard();
-      filterDashboard();
+      filterDashboard({ isLabeled: true });
+      filterWidget().findByText("Gizmo Label").should("be.visible");
     });
 
     it("should be able to use a static list source when embedded", () => {
@@ -214,7 +220,8 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         visitEmbeddedPage(getDashboardResource(card));
       });
 
-      filterDashboard();
+      filterDashboard({ isLabeled: true });
+      filterWidget().findByText("Gizmo Label").should("be.visible");
     });
 
     it("should be able to use a static list source when public", () => {
@@ -226,7 +233,54 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         visitPublicDashboard(card.dashboard_id);
       });
 
-      filterDashboard();
+      filterDashboard({ isLabeled: true });
+      filterWidget().findByText("Gizmo Label").should("be.visible");
+    });
+  });
+
+  describe("static list source (search)", () => {
+    it("should be able to use a static list source (search)", () => {
+      cy.createQuestionAndDashboard({
+        questionDetails: targetQuestion,
+      }).then(({ body: { dashboard_id } }) => {
+        visitDashboard(dashboard_id);
+      });
+
+      editDashboard();
+      setFilter("Text or Category", "Is");
+      mapFilterToQuestion();
+      sidebar().findByText("Search box").click();
+      setFilterListSource({
+        values: [["Gadget"], ["Gizmo", "Gizmo Label"], "Widget"],
+      });
+      saveDashboard();
+
+      setSearchFilter("Gizmo Label");
+    });
+
+    it("should be able to use a static list source when embedded", () => {
+      cy.createQuestionAndDashboard({
+        questionDetails: targetQuestion,
+        dashboardDetails: getListDashboard("search"),
+      }).then(({ body: card }) => {
+        cy.editDashboardCard(card, getParameterMapping(card));
+        visitEmbeddedPage(getDashboardResource(card));
+      });
+
+      setSearchFilter("Gizmo Label");
+      filterWidget().findByText("Gizmo Label").should("be.visible");
+    });
+
+    it("should be able to use a static list source when public", () => {
+      cy.createQuestionAndDashboard({
+        questionDetails: targetQuestion,
+        dashboardDetails: getListDashboard("search"),
+      }).then(({ body: card }) => {
+        cy.editDashboardCard(card, getParameterMapping(card));
+        visitPublicDashboard(card.dashboard_id);
+      });
+
+      setSearchFilter("Gizmo Label");
     });
   });
 
@@ -286,11 +340,17 @@ const mapFilterToQuestion = () => {
   popover().within(() => cy.findByText("Category").click());
 };
 
-const filterDashboard = ({ isField = false, isSandboxed = false } = {}) => {
+const filterDashboard = ({
+  isField = false,
+  isSandboxed = false,
+  isLabeled = false,
+} = {}) => {
   cy.findByText("Text").click();
 
   popover().within(() => {
-    cy.findByText("Gizmo").should("be.visible");
+    const GIZMO = isLabeled ? "Gizmo Label" : "Gizmo";
+
+    cy.findByText(GIZMO).should("be.visible");
     cy.findByText("Doohickey").should(isField ? "be.visible" : "not.exist");
     cy.findByText("Gadget").should(isSandboxed ? "not.exist" : "be.visible");
     cy.findByText("Widget").should(isSandboxed ? "not.exist" : "be.visible");
@@ -300,7 +360,7 @@ const filterDashboard = ({ isField = false, isSandboxed = false } = {}) => {
     cy.findByText("Widget").should(isSandboxed ? "not.exist" : "be.visible");
     cy.findByText("Doohickey").should(isField ? "be.visible" : "not.exist");
 
-    cy.findByText("Gizmo").click();
+    cy.findByText(GIZMO).click();
     cy.button("Add filter").click();
   });
 };
@@ -351,11 +411,12 @@ const getNativeDashboard = questionId => {
   });
 };
 
-const getListDashboard = () => {
+const getListDashboard = values_query_type => {
   return getTargetDashboard({
     values_source_type: "static-list",
+    values_query_type,
     values_source_config: {
-      values: ["Gadget", "Gizmo", "Widget"],
+      values: [["Gadget"], ["Gizmo", "Gizmo Label"], "Widget"],
     },
   });
 };
@@ -369,3 +430,18 @@ const getParameterMapping = ({ card_id }) => ({
     },
   ],
 });
+
+function setSearchFilter(label) {
+  filterWidget().click();
+  popover().within(() => {
+    multiAutocompleteInput().type(label);
+  });
+
+  popover().last().findByText(label).click();
+  popover().within(() => {
+    multiAutocompleteValue(0).should("be.visible").should("contain", label);
+    cy.button("Add filter").click();
+  });
+
+  filterWidget().findByText(label).should("be.visible");
+}
