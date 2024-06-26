@@ -17,32 +17,32 @@ export type SummarizeContentProps = {
   query: Lib.Query;
   aggregations: Lib.AggregationClause[];
   hasAggregations: boolean;
-  handleAddAggregations: (aggregations: Lib.Aggregable[]) => void;
-  handleUpdateAggregation: (
+  onAddAggregations: (aggregations: Lib.Aggregable[]) => void;
+  onUpdateAggregation: (
     aggregation: Lib.AggregationClause,
     nextAggregation: Lib.Aggregable,
   ) => void;
-  handleRemoveAggregation: (aggregation: Lib.AggregationClause) => void;
-  handleAddBreakout: (column: Lib.ColumnMetadata) => void;
-  handleUpdateBreakout: (
+  onRemoveAggregation: (aggregation: Lib.AggregationClause) => void;
+  onAddBreakout: (column: Lib.ColumnMetadata) => void;
+  onUpdateBreakout: (
     clause: Lib.BreakoutClause,
     column: Lib.ColumnMetadata,
   ) => void;
-  handleRemoveBreakout: (column: Lib.ColumnMetadata) => void;
-  handleReplaceBreakouts: (column: Lib.ColumnMetadata) => void;
+  onRemoveBreakout: (column: Lib.ColumnMetadata) => void;
+  onReplaceBreakouts: (column: Lib.ColumnMetadata) => void;
 };
 
 export const SummarizeContent = ({
   query,
   aggregations,
   hasAggregations,
-  handleAddAggregations,
-  handleUpdateAggregation,
-  handleRemoveAggregation,
-  handleAddBreakout,
-  handleUpdateBreakout,
-  handleRemoveBreakout,
-  handleReplaceBreakouts,
+  onAddAggregations,
+  onUpdateAggregation,
+  onRemoveAggregation,
+  onAddBreakout,
+  onUpdateBreakout,
+  onRemoveBreakout,
+  onReplaceBreakouts,
 }: SummarizeContentProps) => {
   return (
     <>
@@ -55,16 +55,16 @@ export const SummarizeContent = ({
             query={query}
             aggregation={aggregation}
             aggregationIndex={aggregationIndex}
-            onAdd={handleAddAggregations}
+            onAdd={onAddAggregations}
             onUpdate={nextAggregation =>
-              handleUpdateAggregation(aggregation, nextAggregation)
+              onUpdateAggregation(aggregation, nextAggregation)
             }
-            onRemove={() => handleRemoveAggregation(aggregation)}
+            onRemove={() => onRemoveAggregation(aggregation)}
           />
         ))}
         <AddAggregationButton
           query={query}
-          onAddAggregations={handleAddAggregations}
+          onAddAggregations={onAddAggregations}
         />
       </AggregationsContainer>
       {hasAggregations && (
@@ -72,10 +72,10 @@ export const SummarizeContent = ({
           <SectionTitle>{t`Group by`}</SectionTitle>
           <BreakoutColumnList
             query={query}
-            onAddBreakout={handleAddBreakout}
-            onUpdateBreakout={handleUpdateBreakout}
-            onRemoveBreakout={handleRemoveBreakout}
-            onReplaceBreakout={handleReplaceBreakouts}
+            onAddBreakout={onAddBreakout}
+            onUpdateBreakout={onUpdateBreakout}
+            onRemoveBreakout={onRemoveBreakout}
+            onReplaceBreakout={onReplaceBreakouts}
           />
         </ColumnListContainer>
       )}

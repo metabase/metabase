@@ -50,13 +50,13 @@ export function SummarizeSidebar({
         query={query}
         aggregations={aggregations}
         hasAggregations={hasAggregations}
-        handleAddAggregations={handleAddAggregations}
-        handleUpdateAggregation={handleUpdateAggregation}
-        handleRemoveAggregation={handleRemoveAggregation}
-        handleAddBreakout={handleAddBreakout}
-        handleUpdateBreakout={handleUpdateBreakout}
-        handleRemoveBreakout={handleRemoveBreakout}
-        handleReplaceBreakouts={handleReplaceBreakouts}
+        onAddAggregations={handleAddAggregations}
+        onUpdateAggregation={handleUpdateAggregation}
+        onRemoveAggregation={handleRemoveAggregation}
+        onAddBreakout={handleAddBreakout}
+        onUpdateBreakout={handleUpdateBreakout}
+        onRemoveBreakout={handleRemoveBreakout}
+        onReplaceBreakouts={handleReplaceBreakouts}
       />
     </SidebarView>
   );
