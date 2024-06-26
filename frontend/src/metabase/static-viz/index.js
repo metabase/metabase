@@ -39,7 +39,7 @@ export function RenderChart(rawSeries, dashcardSettings, colors) {
     formatValue: formatStaticValue,
     measureText: (text, style) =>
       measureTextWidth(text, style.size, style.weight),
-    measureTextHeight,
+    measureTextHeight: (_, style) => measureTextHeight(style.size),
     fontFamily: "Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif",
     theme: DEFAULT_VISUALIZATION_THEME,
   };
