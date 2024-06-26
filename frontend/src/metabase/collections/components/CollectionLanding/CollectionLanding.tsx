@@ -30,7 +30,13 @@ const CollectionLanding = ({
   useEffect(
     function redirectIfTrashCollection() {
       // redirect /collection/trash and /collection/<trash-collection-id> to /trash
-      if (slug === "trash" || trashCollection?.id === collectionId) {
+      const isTrashSlug = slug === "trash";
+      const isTrashCollectionId =
+        collectionId &&
+        trashCollection?.id &&
+        trashCollection.id === collectionId;
+
+      if (isTrashSlug || isTrashCollectionId) {
         dispatch(replace("/trash"));
       }
     },
