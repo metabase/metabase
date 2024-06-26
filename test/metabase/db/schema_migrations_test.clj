@@ -2004,8 +2004,8 @@
                (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))))))
 
 (deftest sandboxing-rollback-test
-  ;; TODO (noahmoss): uncomment when fixed on mysql
-  (mt/test-drivers [:postgres :h2 #_:mysql]
+  ;; Rollback tests flake on MySQL, so only run on Postgres/H2
+  (mt/test-drivers [:postgres :h2]
     (testing "Can we rollback to 49 when sandboxing is configured"
       (impl/test-migrations ["v50.2024-01-10T03:27:29" "v50.2024-06-20T13:21:30"] [migrate!]
         (let [db-id         (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "DB"
