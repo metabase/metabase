@@ -297,13 +297,17 @@
                            (= message (u/format-color 'red "Failed to check feature 'test-feature' for database '%s'" (:name db)))))
                     log-messages)))))
     (testing "supports? returns false when `driver/database-supports?` takes longer than the timeout"
-      (with-redefs [driver.u/supports?-timeout-ms 100
-                    driver/database-supports?     (fn [_ _ _] (Thread/sleep 200) true)]
-        (let [db           (assoc fake-test-db :name (mt/random-name))
-              log-messages (mt/with-log-messages-for-level [metabase.driver.util :error]
-                             (is (false? (driver.u/supports? :test-driver :test-feature db))))]
-          (is (some (fn [[level ^Throwable exception message]]
-                      (and (= level :error)
-                           (= (.getMessage exception) "Timed out after 100.0 ms")
-                           (= message (u/format-color 'red "Failed to check feature 'test-feature' for database '%s'" (:name db)))))
-                    log-messages)))))))
+      (let [db (assoc fake-test-db :name (mt/random-name))]
+        (with-redefs [driver.u/supports?-timeout-ms 100
+                      driver/database-supports?     (fn [_ _ _] (Thread/sleep 200) true)]
+          (let [log-messages (mt/with-log-messages-for-level [metabase.driver.util :error]
+                               (is (false? (driver.u/supports? :test-driver :test-feature db))))]
+            (is (some (fn [[level ^Throwable exception message]]
+                        (and (= level :error)
+                             (= (.getMessage exception) "Timed out after 100.0 ms")
+                             (= message (u/format-color 'red "Failed to check feature 'test-feature' for database '%s'" (:name db)))))
+                      log-messages))))
+        (testing "we memoize the results for the same database, so we don't log the error again"
+          (let [log-messages (mt/with-log-messages-for-level [metabase.driver.util :error]
+                               (is (false? (driver.u/supports? :test-driver :test-feature db))))]
+            (is (nil? log-messages))))))))
