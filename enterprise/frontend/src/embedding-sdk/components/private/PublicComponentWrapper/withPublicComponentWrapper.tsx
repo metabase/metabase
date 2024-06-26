@@ -1,8 +1,11 @@
-import { useEffect, useRef, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import { Provider } from "react-redux";
 
 import { sdkReducers, store, useSdkSelector } from "embedding-sdk/store";
-import { getSessionTokenState } from "embedding-sdk/store/selectors";
+import {
+  getIsLoggedIn,
+  getSessionTokenState,
+} from "embedding-sdk/store/selectors";
 import { getStore } from "metabase/store";
 
 import { PublicComponentWrapper } from "./PublicComponentWrapper";
@@ -14,16 +17,17 @@ export function withPublicComponentWrapper<P extends object>(
 ): React.FC<P> {
   const WithPublicComponentWrapper: React.FC<P> = props => {
     const token = useSdkSelector(getSessionTokenState);
+    const isLoggedIn = useSdkSelector(getIsLoggedIn);
 
-    const isolatedStore = useRef<Store>();
+    const [isolatedStore, setIsolatedStore] = useState<Store | null>(null);
 
-    // HACK: refresh the internal store when the token changes
+    // refresh the internal store when the token changes
     useEffect(() => {
-      isolatedStore.current = getStore(sdkReducers, null, store.getState());
-    }, [token]);
+      setIsolatedStore(getStore(sdkReducers, null, store.getState()));
+    }, [token, isLoggedIn]);
 
     return (
-      <Provider store={isolatedStore.current}>
+      <Provider store={isolatedStore}>
         <PublicComponentWrapper>
           <WrappedComponent {...props} />
         </PublicComponentWrapper>
