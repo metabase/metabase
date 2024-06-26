@@ -44,7 +44,7 @@
    :body    (stencil/render-file "metabase_enterprise/sandbox/api/error_page"
                                  (let [message    (.getMessage e)
                                        data       (u/pprint-to-str (ex-data e))]
-                                   {:logDirection   log-direction
+                                   {:logDirection   (name log-direction)
                                     :errorMessage   message
                                     :exceptionClass (.getName Exception)
                                     :additionalData data}))})
