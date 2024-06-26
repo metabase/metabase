@@ -159,7 +159,7 @@
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard-subscription] :- [:sequential SlackMessage]
   [_channel-type {:keys [payload context]} channel-ids]
-  (let [{dashsub :dashboard-subscription
+  (let [{dashsub :pulse
          dashboard :dashboard}           context]
     (for [channel-id channel-ids]
       {:channel-id  channel-id

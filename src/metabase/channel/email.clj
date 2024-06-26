@@ -90,7 +90,7 @@
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard-subscription] :- [:sequential EmailMessage]
   [_channel-details {:keys [payload context]} recipients]
-  (let [{dashsub :dashboard-subscription
+  (let [{dashsub   :pulse
          dashboard :dashboard}       context
         {:keys [user-emails
                 non-user-emails]} (recipients->emails recipients)
