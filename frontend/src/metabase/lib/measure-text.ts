@@ -29,3 +29,6 @@ export const measureText: TextMeasurer = (text: string, style: FontStyle) => {
 
 export const measureTextWidth = (text: string, style: FontStyle) =>
   measureText(text, style).width;
+
+export const measureTextHeight = (text: string, style: FontStyle) =>
+  measureText(text, style).height;

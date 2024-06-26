@@ -2,7 +2,10 @@ import type { ReactNode } from "react";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { IconName, IconProps } from "metabase/ui";
-import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
+import type {
+  TextHeightMeasurer,
+  TextWidthMeasurer,
+} from "metabase/visualizations/shared/types/measure-text";
 import type { ClickObject } from "metabase/visualizations/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Query from "metabase-lib/v1/queries/Query";
@@ -30,6 +33,7 @@ export interface RenderingContext {
   formatValue: Formatter;
 
   measureText: TextWidthMeasurer;
+  measureTextHeight: TextHeightMeasurer;
   fontFamily: string;
 
   theme: VisualizationTheme;

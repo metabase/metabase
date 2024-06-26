@@ -14,4 +14,9 @@ export type TextWidthMeasurer = (
   style: FontStyle,
 ) => TextSize["width"];
 
+export type TextHeightMeasurer = (
+  text: string,
+  style: FontStyle,
+) => TextSize["height"];
+
 export type TextMeasurer = (text: string, style: FontStyle) => TextSize;
