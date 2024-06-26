@@ -56,11 +56,14 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (defmulti ^:private notification->payload
-  :payload_type)
+  :notification_type)
+
+(defmulti ^:private notification->payload-info
+  :notification_type)
 
 (defmulti ^:private should-send-notification?
   "Returns true if given the pulse type and resultset a new notification (pulse or alert) should be sent"
-  :payload_type)
+  :notification_type)
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                           Alerts                                                ;;
@@ -68,15 +71,15 @@
 
 (def ^:private AlertPayload
   [:map {:closed true}
-   [:payload_type [:= :notification/alert]]
-   [:context      [:map
-                   [:card    :map]
-                   [:trigger :map]
-                   [:alert   :map]]]
-   [:payload      [:map
-                   [:type [:= :card]]
-                   [:card :map]
-                   [:result :map]]]])
+   [:notification_type [:= :notification/alert]]
+   [:context           [:map
+                        [:card    :map]
+                        [:trigger :map]
+                        [:alert   :map]]]
+   [:payload           [:map
+                        [:type [:= :card]]
+                        [:card :map]
+                        [:result :map]]]])
 
 (mu/defmethod notification->payload :notification/alert :- AlertPayload
   [notification :- Notification]
@@ -203,11 +206,12 @@
 (mu/defn send-notification!
   "Send the notification."
   ([notification :- Notification]
-   (send-notification!
-    notification
-    (notification->channel+recipients notification nil)))
-  ([notification channel+recipients]
-   (let [payload                (notification->payload notification)
+   (send-notification! notification nil))
+  ([notification pc-ids]
+   (let [channel+recipients     (notification->channel+recipients notification pc-ids)
+         ;; need to break this into another layer of notification-info so it supports sending notifications that don't
+         ;; exists
+         payload                (notification->payload notification)
          payload-type           (:payload_type payload)
          notification-info      (if (= :notification/alert payload-type)
                                   (get-in payload [:context :alert])
