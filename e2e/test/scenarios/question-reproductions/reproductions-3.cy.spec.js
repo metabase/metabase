@@ -36,6 +36,7 @@ import {
   addCustomColumn,
   tableInteractive,
   queryBuilderMain,
+  leftSidebar,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
@@ -1111,7 +1112,14 @@ describe("issue 44668", () => {
     openNotebook();
 
     cy.findAllByTestId("action-buttons").last().button("Custom column").click();
-    enterCustomColumnDetails({ formula: 'concat([Count], "")', name: "C2" });
+    enterCustomColumnDetails({
+      formula: 'concat("abc_", [Count])',
+      name: "Custom String",
+    });
+    popover().button("Done").click();
+
+    getNotebookStep("expression", { stage: 1 }).icon("add").click();
+    enterCustomColumnDetails({ formula: "[Count] * 2", name: "Custom Number" });
     popover().button("Done").click();
 
     visualize();
@@ -1126,13 +1134,42 @@ describe("issue 44668", () => {
       });
     });
 
-    // custom expression series
+    // Ensure custom columns weren't added as series automatically
+    queryBuilderMain().findByLabelText("Legend").should("not.exist");
+
+    cy.findByTestId("viz-settings-button").click();
+
+    // Ensure can use Custom Number as series
+    leftSidebar().findByText("Add another series").click();
     queryBuilderMain()
       .findByLabelText("Legend")
       .within(() => {
-        ["68", "56", "49", "20", "90"].forEach(state => {
-          cy.findByText(state).should("be.visible");
+        cy.findByText("Count").should("exist");
+        cy.findByText("Custom Number").should("exist");
+      });
+    leftSidebar().within(() => {
+      cy.findByText("Add another series").should("not.exist");
+      cy.findByText("Add series breakout").should("not.exist");
+      cy.findByTestId("remove-Custom Number").click();
+    });
+    queryBuilderMain().findByLabelText("Legend").should("not.exist");
+
+    leftSidebar().findByText("Add series breakout").click();
+    popover().within(() => {
+      cy.findByText("Count").should("exist");
+      cy.findByText("Custom Number").should("exist");
+      cy.findByText("Custom String").click();
+    });
+    queryBuilderMain()
+      .findByLabelText("Legend")
+      .within(() => {
+        ["68", "56", "49", "20", "90"].forEach(value => {
+          cy.findByText(`abc_${value}`).should("exist");
         });
       });
+    leftSidebar().within(() => {
+      cy.findByText("Add another series").should("not.exist");
+      cy.findByText("Add series breakout").should("not.exist");
+    });
   });
 });
