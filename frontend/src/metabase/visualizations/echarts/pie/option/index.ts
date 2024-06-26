@@ -77,14 +77,18 @@ function getIsLabelVisible(
 
   const maxLabelDimension = Math.min(innerRadiusArcDistance, donutWidth);
 
-  const labelWidth = renderingContext.measureText(label, {
+  const fontStyle = {
     size: fontSize,
     family: renderingContext.fontFamily,
     weight: DIMENSIONS.slice.label.fontWeight,
-  });
+  };
+  const labelWidth = renderingContext.measureText(label, fontStyle);
+  const labelHeight = renderingContext.measureTextHeight(label, fontStyle);
 
-  // TODO measure height
-  return labelWidth + DIMENSIONS.slice.label.padding <= maxLabelDimension;
+  return (
+    labelWidth + DIMENSIONS.slice.label.padding <= maxLabelDimension &&
+    labelHeight + DIMENSIONS.slice.label.padding <= maxLabelDimension
+  );
 }
 
 export function getPieChartOption(

@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { usePalette } from "metabase/hooks/use-palette";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
-import { measureTextWidth } from "metabase/lib/measure-text";
+import { measureTextWidth, measureTextHeight } from "metabase/lib/measure-text";
 import { useMantineTheme } from "metabase/ui";
 import { getVisualizationTheme } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
@@ -27,6 +27,7 @@ export const useBrowserRenderingContext = (
       getColor: name => color(name, palette),
       formatValue: (value, options) => String(formatValue(value, options)),
       measureText: measureTextWidth,
+      measureTextHeight,
       fontFamily: `${fontFamily}, Arial, sans-serif`,
       theme: style,
     };
