@@ -1,4 +1,4 @@
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context/context";
 import { FilterHeaderButton } from "metabase/query_builder/components/view/ViewHeader/components";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

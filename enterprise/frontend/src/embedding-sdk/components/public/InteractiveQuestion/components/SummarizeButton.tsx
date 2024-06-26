@@ -4,7 +4,7 @@ import CS from "metabase/css/core/index.css";
 import { QuestionSummarizeWidget } from "metabase/query_builder/components/view/ViewHeader/components";
 import * as Lib from "metabase-lib";
 
-import { useInteractiveQuestionContext } from "../context";
+import { useInteractiveQuestionContext } from "../context/context";
 
 export const SummarizeButton = () => {
   const { question, isSummarizeOpen, setIsSummarizeOpen } =

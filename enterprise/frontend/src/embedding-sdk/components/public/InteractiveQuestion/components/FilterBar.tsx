@@ -1,4 +1,4 @@
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context/context";
 import { useDispatch } from "metabase/lib/redux";
 import { updateQuestion } from "metabase/query_builder/actions";
 import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components";

@@ -1,6 +1,5 @@
 import {
   createContext,
-  type PropsWithChildren,
   useCallback,
   useContext,
   useEffect,
@@ -8,7 +7,10 @@ import {
 } from "react";
 import { useUnmount } from "react-use";
 
-import type { SdkPluginsConfig } from "embedding-sdk";
+import type {
+  InteractiveQuestionContextType,
+  InteractiveQuestionProviderProps,
+} from "embedding-sdk/components/public/InteractiveQuestion/context/types";
 import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
@@ -25,44 +27,32 @@ import {
   getQuestion,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import * as MBLib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type { Card, Dataset } from "metabase-types/api";
-import type { QueryBuilderUIControls } from "metabase-types/store";
-
-type InteractiveQuestionContextType = {
-  question: Question | undefined;
-  card: Card | null;
-  result: Dataset | null;
-  uiControls: QueryBuilderUIControls;
-  queryResults: Dataset[] | null;
-  plugins: SdkPluginsConfig | null;
-  mode: Mode | null | undefined;
-  defaultHeight?: number;
-  isQuestionLoading: boolean;
-  isQueryRunning: boolean;
-  resetQuestion: () => void;
-  onReset?: () => void;
-  onNavigateBack?: () => void;
-  withTitle?: boolean;
-  customTitle?: React.ReactNode;
-  withResetButton?: boolean;
-  onQueryChange: (query: MBLib.Query) => Promise<void>;
-  isFilterOpen: boolean;
-  setIsFilterOpen: (value: boolean) => void;
-  isSummarizeOpen: boolean;
-  setIsSummarizeOpen: (value: boolean) => void;
-  isNotebookOpen: boolean;
-  setIsNotebookOpen: (value: boolean) => void;
-};
 
 export const InteractiveQuestionContext = createContext<
   InteractiveQuestionContextType | undefined
 >(undefined);
 
 const returnNull = () => null;
+
+function useControlledState<T>(
+  initialState: T,
+  disabled: boolean = false,
+): [T, (value: T) => void] {
+  const [state, setState] = useState<T>(initialState);
+
+  const toggle = useCallback(
+    (value: T) => {
+      if (!disabled) {
+        setState(value);
+      }
+    },
+    [disabled],
+  );
+
+  return [state, toggle];
+}
 
 export const InteractiveQuestionProvider = ({
   children,
@@ -74,29 +64,22 @@ export const InteractiveQuestionProvider = ({
   withTitle = false,
   customTitle,
   withResetButton,
-}: PropsWithChildren<{
-  location: {
-    search?: string;
-    hash?: string;
-    pathname?: string;
-    query?: Record<string, unknown>;
-  };
-  params: {
-    slug?: string;
-  };
-  componentPlugins?: SdkPluginsConfig;
-  withResetButton?: boolean;
-  onReset?: () => void;
-  onNavigateBack?: () => void;
-
-  withTitle?: boolean;
-  customTitle?: React.ReactNode;
-}>) => {
+  isControlled = true,
+}: InteractiveQuestionProviderProps) => {
   const dispatch = useDispatch();
 
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [isSummarizeOpen, setIsSummarizeOpen] = useState(false);
-  const [isNotebookOpen, setIsNotebookOpen] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useControlledState(
+    !isControlled,
+    !isControlled,
+  );
+  const [isSummarizeOpen, setIsSummarizeOpen] = useControlledState(
+    !isControlled,
+    !isControlled,
+  );
+  const [isNotebookOpen, setIsNotebookOpen] = useControlledState(
+    !isControlled,
+    !isControlled,
+  );
 
   const globalPlugins = useSdkSelector(getPlugins);
   const question = useSelector(getQuestion);

@@ -1,5 +1,5 @@
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context/context";
 
 export const QuestionResetButton = () => {
   const { onReset, withResetButton } = useInteractiveQuestionContext();

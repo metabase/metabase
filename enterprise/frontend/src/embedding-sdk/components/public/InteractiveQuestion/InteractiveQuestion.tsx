@@ -1,19 +1,33 @@
-import { useMemo } from "react";
+import { type PropsWithChildren, useMemo } from "react";
 
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { InteractiveQuestionProvider } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { InteractiveQuestionProvider } from "embedding-sdk/components/public/InteractiveQuestion/context/context";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
 import type { CardId } from "metabase-types/api";
 
-interface InteractiveQuestionProps {
+import {
+  QuestionBackButton,
+  FilterBar,
+  QuestionResetButton,
+  Title,
+  Filter,
+  FilterButton,
+  Summarize,
+  SummarizeButton,
+  Notebook,
+  NotebookButton,
+  QuestionVisualization,
+} from "./components";
+
+type InteractiveQuestionProps = PropsWithChildren<{
   questionId: CardId;
   withResetButton?: boolean;
   withTitle?: boolean;
   customTitle?: React.ReactNode;
   plugins?: SdkClickActionPluginsConfig;
   height?: string | number;
-}
+}>;
 
 export const _InteractiveQuestion = ({
   questionId,
@@ -22,6 +36,7 @@ export const _InteractiveQuestion = ({
   customTitle,
   plugins,
   height,
+  children = null,
 }: InteractiveQuestionProps): JSX.Element | null => {
   const { location, params } = useMemo(
     () => getQuestionParameters(questionId),
@@ -36,14 +51,12 @@ export const _InteractiveQuestion = ({
       customTitle={customTitle}
       withResetButton={withResetButton}
       withTitle={withTitle}
+      isControlled={!children}
     >
-      <InteractiveQuestionResult height={height} />
+      {children ?? <InteractiveQuestionResult height={height} />}
     </InteractiveQuestionProvider>
   );
 };
-
-export const InteractiveQuestion =
-  withPublicComponentWrapper(_InteractiveQuestion);
 
 export const getQuestionParameters = (questionId: CardId) => {
   return {
@@ -57,3 +70,34 @@ export const getQuestionParameters = (questionId: CardId) => {
     },
   };
 };
+
+// Define the BackButton property on the InteractiveQuestion component
+const InteractiveQuestion = withPublicComponentWrapper(
+  _InteractiveQuestion,
+) as typeof _InteractiveQuestion & {
+  BackButton: typeof QuestionBackButton;
+  FilterBar: typeof FilterBar;
+  Filter: typeof Filter;
+  FilterButton: typeof FilterButton;
+  ResetButton: typeof QuestionResetButton;
+  Title: typeof Title;
+  Summarize: typeof Summarize;
+  SummarizeButton: typeof SummarizeButton;
+  Notebook: typeof Notebook;
+  NotebookButton: typeof NotebookButton;
+  QuestionVisualization: typeof QuestionVisualization;
+};
+
+InteractiveQuestion.BackButton = QuestionBackButton;
+InteractiveQuestion.FilterBar = FilterBar;
+InteractiveQuestion.Filter = Filter;
+InteractiveQuestion.FilterButton = FilterButton;
+InteractiveQuestion.ResetButton = QuestionResetButton;
+InteractiveQuestion.Title = Title;
+InteractiveQuestion.Summarize = Summarize;
+InteractiveQuestion.SummarizeButton = SummarizeButton;
+InteractiveQuestion.Notebook = Notebook;
+InteractiveQuestion.NotebookButton = NotebookButton;
+InteractiveQuestion.QuestionVisualization = QuestionVisualization;
+
+export { InteractiveQuestion };

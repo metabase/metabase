@@ -1,6 +1,11 @@
 import cx from "classnames";
+import { t } from "ttag";
 
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import {
+  SdkError,
+  SdkLoader,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
+import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context/context";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import { navigateToNewCardInsideQB } from "metabase/query_builder/actions";
@@ -9,8 +14,24 @@ import QueryVisualization from "metabase/query_builder/components/QueryVisualiza
 export const QuestionVisualization = () => {
   const dispatch = useDispatch();
 
-  const { card, isQueryRunning, mode, onNavigateBack, question, result } =
-    useInteractiveQuestionContext();
+  const {
+    card,
+    isQueryRunning,
+    mode,
+    onNavigateBack,
+    question,
+    result,
+    isQuestionLoading,
+    queryResults,
+  } = useInteractiveQuestionContext();
+
+  if (isQuestionLoading || isQueryRunning) {
+    return <SdkLoader />;
+  }
+
+  if (!question || !queryResults) {
+    return <SdkError message={t`Question not found`} />;
+  }
 
   return (
     <QueryVisualization

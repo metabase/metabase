@@ -18,7 +18,7 @@ import {
   Notebook,
   NotebookButton,
 } from "embedding-sdk/components/public/InteractiveQuestion";
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context/context";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Group, Stack } from "metabase/ui";
 

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context/context";
 import { Button, Icon, Tooltip } from "metabase/ui";
 
 const sizeOverrideStyles = {
