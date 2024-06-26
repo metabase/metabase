@@ -5,5 +5,5 @@ export * from "./ResetButton";
 export * from "./Title";
 export * from "./Filter";
 export * from "./FilterButton";
-export * from "./Summarize"
-export * from "./SummarizeButton"
+export * from "./Summarize";
+export * from "./SummarizeButton";
