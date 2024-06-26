@@ -16,7 +16,7 @@ export const FilterButton = () => {
   );
 };
 
-export const FilterButtonInner = ({
+const FilterButtonInner = ({
   question,
   setIsFilterOpen,
 }: {

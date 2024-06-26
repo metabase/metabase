@@ -24,7 +24,7 @@ export const Filter = () => {
   );
 };
 
-export const FilterInner = ({
+const FilterInner = ({
   question,
   onQueryChange,
   onClose,
