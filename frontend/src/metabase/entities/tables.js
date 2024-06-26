@@ -206,11 +206,7 @@ const Tables = createEntity({
           [tableId]: {
             ...table,
             original_fields: table.original_fields?.map(field => {
-              if (field.id === updatedField.id) {
-                return updatedField;
-              }
-
-              return field;
+              return field.id === updatedField.id ? updatedField : field;
             }),
           },
         };
