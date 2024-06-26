@@ -734,7 +734,7 @@ const TITLE_LOCALES_BN = {
   },
   'admin.dashboard.ppe.monitoring.school.status' : {
     'en' : 'Pre-Primary Classroom Status Statistics',
-    'bn' : 'প্রাক-প্রাথমিক শ্রেণীকক্ষের স্ট্যাটাসভিত্তিক পরিসংখ্যান'
+    'bn' : 'প্রাক-প্রাথমিক শ্রেণীকক্ষের স্ট্যাটাস ভিত্তিক পরিসংখ্যান'
   },
   'admin.dashboard.ppe.teacher.gender.statistics' : {
     'en' : 'Pre-Primary Teacher Gender Statistics',
