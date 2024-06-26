@@ -1,9 +1,6 @@
 import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  NO_COLLECTION_PERSONAL_COLLECTION_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { NO_COLLECTION_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   visualize,
@@ -849,32 +846,63 @@ describe("issue 44415", () => {
 });
 
 describe("issue 37374", () => {
+  const questionDetails = {
+    query: {
+      "source-table": PRODUCTS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+        ["field", PRODUCTS.VENDOR, { "base-type": "type/Text" }],
+      ],
+    },
+  };
+
   beforeEach(() => {
     restore();
+    cy.signInAsNormalUser();
+    createQuestion(questionDetails, { wrapId: true });
     cy.signIn("nodata");
   });
 
-  it("should not allow to re-run the query after changing the viz settings when there is no data access (metabase#37374)", () => {
-    visitQuestion(ORDERS_QUESTION_ID);
+  it("should allow to re-run the query after changing the viz type to pivot without data access (metabase#37374)", () => {
+    visitQuestion("@questionId");
 
     cy.log("run button is available for non-adhoc questions");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
     queryBuilderHeader()
       .findByTestId("run-button")
       .should("be.visible")
       .click();
     cy.wait("@cardQuery");
-    tableInteractive().findByText("Tax").should("be.visible");
+    tableInteractive().should("be.visible");
 
     cy.log(
-      "changing viz settings works but there is no run button for ad-hoc questions",
+      "changing the viz type to pivot table and rerunning the query works",
     );
-    cy.findByTestId("viz-settings-button").click();
-    cy.findByTestId("chart-settings-table-columns")
-      .findByTestId("Tax-hide-button")
+    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("chart-type-sidebar")
+      .findByTestId("Pivot Table-button")
       .click();
-    tableInteractive().findByText("Tax").should("not.exist");
-    queryBuilderHeader().findByTestId("run-button").should("not.exist");
+    cy.wait("@cardPivotQuery");
+    cy.findByTestId("pivot-table").should("be.visible");
+    queryBuilderHeader()
+      .findByTestId("run-button")
+      .should("be.visible")
+      .click();
+    cy.wait("@cardPivotQuery");
+    cy.findByTestId("pivot-table").should("be.visible");
+
+    cy.log("changing the viz type back to table and rerunning the query works");
+    cy.findByTestId("chart-type-sidebar").findByTestId("Table-button").click();
+    cy.wait("@cardQuery");
+    tableInteractive().should("be.visible");
+    queryBuilderHeader()
+      .findByTestId("run-button")
+      .should("be.visible")
+      .click();
+    cy.wait("@cardQuery");
+    tableInteractive().should("be.visible");
   });
 });
 
