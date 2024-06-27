@@ -195,7 +195,6 @@ const DashboardApp = (props: DashboardAppProps) => {
 
   const {
     hasNightModeToggle,
-    hideDownloadButton,
     hideParameters,
     isFullscreen,
     isNightMode,
@@ -204,9 +203,6 @@ const DashboardApp = (props: DashboardAppProps) => {
     onFullscreenChange,
     setRefreshElapsedHook,
     onRefreshPeriodChange,
-    theme,
-    titled,
-    font,
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
 
   useSyncURLSlug({ location });
@@ -229,10 +225,6 @@ const DashboardApp = (props: DashboardAppProps) => {
         onNightModeChange={onNightModeChange}
         onFullscreenChange={onFullscreenChange}
         onRefreshPeriodChange={onRefreshPeriodChange}
-        hideDownloadButton={hideDownloadButton}
-        theme={theme}
-        titled={titled}
-        font={font}
         parameterQueryParams={parameterQueryParams}
         {...dashboardProps}
       />
