@@ -39,7 +39,7 @@
                       (swap! used-names conj candidate)
                       candidate)))))))))))
 
-(defn- unique-alias-fn [max-length]
+(defn- unique-alias-with-max-length [max-length]
   (fn [base suffix]
     (let [suffix-len (inc (count (str suffix)))]
       (if (< (+ (count base) suffix-len) max-length)
@@ -54,5 +54,5 @@
   length will be exactly max-length.
   This function assumes that all names are already truncated to max-length."
   [max-length names]
-  (let [generator (unique-name-generator (unique-alias-fn max-length))]
+  (let [generator (unique-name-generator (unique-alias-with-max-length max-length))]
     (map generator names)))
