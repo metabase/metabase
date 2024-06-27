@@ -1,7 +1,6 @@
 (ns metabase.driver.redshift-test
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -490,11 +489,13 @@
    (driver/with-driver :redshift (mt/db))
    {:write? true}
    (fn [^java.sql.Connection conn]
+     ;; it should be fine if concurrently running jobs are using this function, replacing it while its in use doesn't
+     ;; seem to affect currently running queries and even if it did we're replacing it with the same thing
      (let [sql (str/join \newline ["CREATE OR REPLACE FUNCTION redshift_test__sleep(seconds integer)"
                                    "RETURNS integer immutable AS $$"
                                    "  import time"
                                    "  time.sleep(seconds)"
-                                   "  return 0"
+                                   "  return seconds"
                                    "$$ LANGUAGE plpythonu;"])]
        (log/infof "[redshift]\n%s" sql)
        (next.jdbc/execute! conn [sql])))))
@@ -567,7 +568,7 @@
           (when (and (< (count killed-pids) 4)
                      (pos? max-iterations))
             (let [newly-killed-pids (detect-canceled-queries-test-kill-long-running-queries!)]
-              (recur (set/union killed-pids newly-killed-pids)
+              (recur (into killed-pids newly-killed-pids)
                      (long (dec max-iterations))))))
         ;; Now let's check the status of the last query and make sure it was killed before the entire 20 seconds was up
         ;; or it otherwise timed out, and make sure the error was propagated. Why not check all of the queries?
