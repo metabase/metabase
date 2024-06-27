@@ -107,12 +107,12 @@
                     audit/default-audit-collection (constantly collection)]
         (testing "Updating permissions for the audit collection also updates audit DB permissions"
           ;; Audit DB starts with full data access but no query builder access
-          (is (= :unrestricted (data-perms/table-permission-for-groups group-id :perms/view-data database-id (:id view-table))))
-          (is (= :no (data-perms/table-permission-for-groups group-id :perms/create-queries database-id (:id view-table))))
+          (is (= :unrestricted (data-perms/table-permission-for-groups #{group-id} :perms/view-data database-id (:id view-table))))
+          (is (= :no (data-perms/table-permission-for-groups #{group-id} :perms/create-queries database-id (:id view-table))))
           ;; Granting access to the audit collection also grants query builder access to the DB
           (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :read))
-          (is (= :unrestricted (data-perms/table-permission-for-groups group-id :perms/view-data database-id (:id view-table))))
-          (is (= :query-builder (data-perms/table-permission-for-groups group-id :perms/create-queries database-id (:id view-table)))))
+          (is (= :unrestricted (data-perms/table-permission-for-groups #{group-id} :perms/view-data database-id (:id view-table))))
+          (is (= :query-builder (data-perms/table-permission-for-groups #{group-id} :perms/create-queries database-id (:id view-table)))))
         (testing "Unable to update instance analytics to writable"
           (is (thrown-with-msg?
                Exception
