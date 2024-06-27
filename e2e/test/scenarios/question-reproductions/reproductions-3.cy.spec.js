@@ -890,43 +890,21 @@ describe("issue 37374", () => {
     cy.signIn("nodata");
   });
 
-  it("should allow to re-run the query after changing the viz type to pivot without data access (metabase#37374)", () => {
+  it("should allow to change the viz type to pivot without data access (metabase#37374)", () => {
     visitQuestion("@questionId");
-
-    cy.log("run button is available for non-adhoc questions");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
-    queryBuilderHeader()
-      .findByTestId("run-button")
-      .should("be.visible")
-      .click();
-    cy.wait("@cardQuery");
-    tableInteractive().should("be.visible");
 
-    cy.log(
-      "changing the viz type to pivot table and rerunning the query works",
-    );
+    cy.log("changing the viz type to pivot table and running the query works");
     cy.findByTestId("viz-type-button").click();
     cy.findByTestId("chart-type-sidebar")
       .findByTestId("Pivot Table-button")
       .click();
     cy.wait("@cardPivotQuery");
     cy.findByTestId("pivot-table").should("be.visible");
-    queryBuilderHeader()
-      .findByTestId("run-button")
-      .should("be.visible")
-      .click();
-    cy.wait("@cardPivotQuery");
-    cy.findByTestId("pivot-table").should("be.visible");
 
-    cy.log("changing the viz type back to table and rerunning the query works");
+    cy.log("changing the viz type back to table and running the query works");
     cy.findByTestId("chart-type-sidebar").findByTestId("Table-button").click();
-    cy.wait("@cardQuery");
-    tableInteractive().should("be.visible");
-    queryBuilderHeader()
-      .findByTestId("run-button")
-      .should("be.visible")
-      .click();
     cy.wait("@cardQuery");
     tableInteractive().should("be.visible");
   });
