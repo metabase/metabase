@@ -346,7 +346,7 @@ describe("parameters/utils/parameter-values", () => {
           ]);
         });
 
-        it("should return undefined when list is not formatted properly", () => {
+        it("should return `null` when list is not formatted properly", () => {
           expect(runGetParameterValueFromQueryParams(",,,")).toEqual(null);
           expect(runGetParameterValueFromQueryParams(" ")).toEqual(null);
         });
