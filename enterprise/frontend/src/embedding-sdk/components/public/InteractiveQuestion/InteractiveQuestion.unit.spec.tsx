@@ -1,5 +1,4 @@
-import type { AnyAction, ThunkDispatch } from "@reduxjs/toolkit";
-import { within } from "@testing-library/react";
+import { waitForElementToBeRemoved, within } from "@testing-library/react";
 
 import {
   setupAlertsEndpoints,
@@ -22,6 +21,7 @@ import {
   clearQueryResult,
   runQuestionQuery,
 } from "metabase/query_builder/actions";
+import { getStore } from "metabase/store";
 import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
@@ -33,7 +33,6 @@ import {
   createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
 
 import {
   getQuestionParameters,
@@ -142,7 +141,10 @@ describe("InteractiveQuestion", () => {
 
     setup({ mocks });
 
-    await waitForLoaderToBeRemoved();
+    // Both loading indicators should be removed
+    await waitForElementToBeRemoved(() =>
+      screen.queryAllByTestId("loading-indicator"),
+    );
 
     const tables = screen.getAllByTestId("TableInteractive-root");
     const gridcells = screen.getAllByRole("gridcell");
@@ -160,7 +162,10 @@ describe("InteractiveQuestion", () => {
   });
 
   it("should render loading state when drilling down", async () => {
-    const { store } = setup();
+    // Spy on the store to be able to dispatch actions on the isolated Redux store of the interactive question
+    jest.spyOn(jest.requireActual("metabase/store"), "getStore");
+
+    setup();
 
     await waitForLoaderToBeRemoved();
 
@@ -169,24 +174,25 @@ describe("InteractiveQuestion", () => {
         TEST_COLUMN.display_name,
       ),
     ).toBeInTheDocument();
+
     expect(
       await within(screen.getByRole("gridcell")).findByText("Test Row"),
     ).toBeInTheDocument();
 
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+
     // Mimicking drilling down by rerunning the query again
-    const storeDispatch = store.dispatch as unknown as ThunkDispatch<
-      State,
-      void,
-      AnyAction
-    >;
+    const store: ReturnType<typeof getStore> = (getStore as jest.Mock).mock
+      .results[0].value;
+
     act(() => {
-      storeDispatch(clearQueryResult());
-      storeDispatch(runQuestionQuery());
+      store.dispatch(clearQueryResult());
+      store.dispatch(runQuestionQuery());
     });
 
     expect(screen.queryByText("Question not found")).not.toBeInTheDocument();
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+
     expect(
       within(await screen.findByRole("gridcell")).getByText("Test Row"),
     ).toBeInTheDocument();

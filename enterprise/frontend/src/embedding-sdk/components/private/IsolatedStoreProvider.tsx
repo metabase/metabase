@@ -1,10 +1,4 @@
-import {
-  type ComponentType,
-  type ReactNode,
-  type FC,
-  useState,
-  useEffect,
-} from "react";
+import { type ComponentType, type ReactNode, type FC, useMemo } from "react";
 import { Provider } from "react-redux";
 
 import { sdkReducers, useSdkSelector } from "embedding-sdk/store";
@@ -16,21 +10,21 @@ interface Props {
   children: ReactNode;
 }
 
-type Store = ReturnType<typeof getStore>;
-
 export const IsolatedStoreProvider = ({ children }: Props) => {
   const store = useStore();
   const loginStatus = useSdkSelector(getLoginStatus);
 
-  const [isolatedStore, setIsolatedStore] = useState<Store>();
+  // Capture the root store's initial state when the login status is successful.
+  const isolatedStore = useMemo(
+    () => {
+      if (loginStatus.status !== "success") {
+        return null;
+      }
 
-  useEffect(() => {
-    if (loginStatus.status === "success") {
-      const inheritedState = store.getState();
-
-      setIsolatedStore(getStore(sdkReducers, null, inheritedState));
-    }
-  }, [loginStatus, store]);
+      return getStore(sdkReducers, null, store.getState());
+    }, // eslint-disable-next-line react-hooks/exhaustive-deps
+    [loginStatus],
+  );
 
   if (!isolatedStore) {
     return children;
