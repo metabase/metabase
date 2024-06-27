@@ -1,5 +1,5 @@
 import type { EChartsType } from "echarts/core";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
@@ -14,28 +14,32 @@ import { useChartEvents } from "./use-chart-events";
 Object.assign(PieChart, PIE_CHART_DEFINITION);
 
 export function PieChart(props: VisualizationProps) {
+  const { fontFamily, rawSeries, settings } = props;
+
   const chartRef = useRef<EChartsType>();
   const [sideLength, setSideLength] = useState(0);
 
   const renderingContext = useBrowserRenderingContext({
-    fontFamily: props.fontFamily,
+    fontFamily,
   });
-  const chartModel = getPieChartModel(
-    props.rawSeries,
-    props.settings,
-    renderingContext,
+  const chartModel = useMemo(
+    () => getPieChartModel(rawSeries, settings, renderingContext),
+    [rawSeries, settings, renderingContext],
   );
-  const formatters = getPieChartFormatters(
-    chartModel,
-    props.settings,
-    renderingContext,
+  const formatters = useMemo(
+    () => getPieChartFormatters(chartModel, settings, renderingContext),
+    [chartModel, settings, renderingContext],
   );
-  const option = getPieChartOption(
-    chartModel,
-    formatters,
-    props.settings,
-    renderingContext,
-    sideLength,
+  const option = useMemo(
+    () =>
+      getPieChartOption(
+        chartModel,
+        formatters,
+        settings,
+        renderingContext,
+        sideLength,
+      ),
+    [chartModel, formatters, settings, renderingContext, sideLength],
   );
 
   const handleInit = useCallback((chart: EChartsType) => {
@@ -44,7 +48,7 @@ export function PieChart(props: VisualizationProps) {
 
   const handleResize = useCallback(
     (width: number, height: number) => setSideLength(Math.min(width, height)),
-    [setSideLength],
+    [],
   );
 
   const eventHandlers = useChartEvents(props, chartRef, chartModel, formatters);
