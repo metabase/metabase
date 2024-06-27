@@ -294,6 +294,29 @@ describe("parameters/utils/parameter-values", () => {
       );
     });
 
+    it.each([
+      { value: "", expectedValue: null },
+      { value: "abc", expectedValue: null },
+      { value: "123", expectedValue: [123] },
+      { value: "123abc", expectedValue: [123] },
+      { value: ["123"], expectedValue: [123] },
+      { value: ["123", "234"], expectedValue: [123, 234] },
+      { value: ["123", "abc"], expectedValue: null },
+      { value: ["123", "234abc"], expectedValue: [123, 234] },
+      { value: "123,234", expectedValue: ["123,234"] },
+      { value: "123,abc", expectedValue: null },
+      { value: "123,234abc", expectedValue: ["123,234"] },
+    ])(
+      "should parse number parameter value $value",
+      ({ value, expectedValue }) => {
+        const parameter = createMockParameter({ type: "number/=" });
+        const queryParams = { [parameter.slug]: value };
+        expect(
+          getParameterValueFromQueryParams(parameter, queryParams),
+        ).toEqual(expectedValue);
+      },
+    );
+
     describe("last used param value", () => {
       it("should use query parameter over last used param value", () => {
         expect(
@@ -349,16 +372,14 @@ describe("parameters/utils/parameter-values", () => {
           ]);
         });
 
-        it("should return undefined when list is not formatted properly", () => {
-          expect(runGetParameterValueFromQueryParams(",,,")).toEqual([
-            undefined,
-          ]);
-          expect(runGetParameterValueFromQueryParams(" ")).toEqual([undefined]);
+        it("should return `null` when list is not formatted properly", () => {
+          expect(runGetParameterValueFromQueryParams(",,,")).toEqual(null);
+          expect(runGetParameterValueFromQueryParams(" ")).toEqual(null);
         });
 
-        it("should return first parseable float if value includes non-numeric characters", () => {
-          expect(runGetParameterValueFromQueryParams("1,a,3,")).toEqual([1]);
-          expect(runGetParameterValueFromQueryParams("1a,b,3,")).toEqual([1]);
+        it("should return `null` if value includes non-numeric characters", () => {
+          expect(runGetParameterValueFromQueryParams("1,a,3,")).toEqual(null);
+          expect(runGetParameterValueFromQueryParams("1a,b,3,")).toEqual(null);
         });
       });
     });
