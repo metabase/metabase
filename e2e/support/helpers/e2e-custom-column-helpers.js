@@ -6,7 +6,7 @@ export function expressionEditorWidget() {
  * @param {Object} option
  * @param {string} option.formula
  * @param {string=} option.name
- * * @param {boolean} option.blur true by default. However, if you need to examine the popover in the test, it should be set to false so the popover is not dismissed
+ * @param {boolean} option.blur true by default. However, if you need to examine the popover in the test, it should be set to false so the popover is not dismissed
  */
 export function enterCustomColumnDetails({ formula, name }) {
   cy.get(".ace_text-input")
