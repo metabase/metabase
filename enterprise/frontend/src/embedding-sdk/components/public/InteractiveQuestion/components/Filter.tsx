@@ -1,6 +1,4 @@
-import {
-  useInteractiveQuestionData,
-} from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { useInteractiveQuestionData } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import { FilterContent } from "metabase/querying/components/FilterContent";
 import { useFilterContent } from "metabase/querying/components/FilterModal";
 import { Stack } from "metabase/ui";
