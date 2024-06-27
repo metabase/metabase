@@ -35,6 +35,10 @@ import {
   enterCustomColumnDetails,
   addCustomColumn,
   tableInteractive,
+  createNativeQuestion,
+  queryBuilderMain,
+  leftSidebar,
+  assertQueryBuilderRowCount,
   join,
 } from "e2e/support/helpers";
 
@@ -1240,5 +1244,124 @@ describe("issue 19894", () => {
 
     popover().findByText("Category").should("be.visible");
     popover().findByText("Count").should("be.visible");
+  });
+});
+
+describe("issue 44637", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not crash when rendering a line/bar chart with empty results (metabase#44637)", () => {
+    createNativeQuestion(
+      {
+        native: {
+          query: "SELECT '2023-01-01'::date, 2 FROM people WHERE false",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    assertQueryBuilderRowCount(0);
+    queryBuilderMain().findByText("No results!").should("exist");
+    queryBuilderFooter().button("Visualization").click();
+    leftSidebar().icon("bar").click();
+    queryBuilderMain().within(() => {
+      cy.findByText("No results!").should("exist");
+      cy.findByText("Something's gone wrong").should("not.exist");
+    });
+
+    queryBuilderFooter().icon("calendar").click();
+    rightSidebar().findByText("Add an event");
+  });
+});
+
+describe("issue 44668", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not drop graph.metrics after adding a new query stage (metabase#44668)", () => {
+    createQuestion(
+      {
+        display: "bar",
+        query: {
+          aggregation: [["count"]],
+          breakout: [["field", PEOPLE.STATE, { "base-type": "type/Text" }]],
+          "source-table": PEOPLE_ID,
+          limit: 5,
+        },
+        visualization_settings: {
+          "graph.metrics": ["count"],
+          "graph.dimensions": ["STATE"],
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    openNotebook();
+
+    cy.findAllByTestId("action-buttons").last().button("Custom column").click();
+    enterCustomColumnDetails({
+      formula: 'concat("abc_", [Count])',
+      name: "Custom String",
+    });
+    popover().button("Done").click();
+
+    getNotebookStep("expression", { stage: 1 }).icon("add").click();
+    enterCustomColumnDetails({ formula: "[Count] * 2", name: "Custom Number" });
+    popover().button("Done").click();
+
+    visualize();
+
+    echartsContainer().within(() => {
+      cy.findByText("State").should("be.visible"); // x-axis
+      cy.findByText("Count").should("be.visible"); // y-axis
+
+      // x-axis values
+      ["AK", "AL", "AR", "AZ", "CA"].forEach(state => {
+        cy.findByText(state).should("be.visible");
+      });
+    });
+
+    // Ensure custom columns weren't added as series automatically
+    queryBuilderMain().findByLabelText("Legend").should("not.exist");
+
+    cy.findByTestId("viz-settings-button").click();
+
+    // Ensure can use Custom Number as series
+    leftSidebar().findByText("Add another series").click();
+    queryBuilderMain()
+      .findByLabelText("Legend")
+      .within(() => {
+        cy.findByText("Count").should("exist");
+        cy.findByText("Custom Number").should("exist");
+      });
+    leftSidebar().within(() => {
+      cy.findByText("Add another series").should("not.exist");
+      cy.findByText("Add series breakout").should("not.exist");
+      cy.findByTestId("remove-Custom Number").click();
+    });
+    queryBuilderMain().findByLabelText("Legend").should("not.exist");
+
+    leftSidebar().findByText("Add series breakout").click();
+    popover().within(() => {
+      cy.findByText("Count").should("exist");
+      cy.findByText("Custom Number").should("exist");
+      cy.findByText("Custom String").click();
+    });
+    queryBuilderMain()
+      .findByLabelText("Legend")
+      .within(() => {
+        ["68", "56", "49", "20", "90"].forEach(value => {
+          cy.findByText(`abc_${value}`).should("exist");
+        });
+      });
+    leftSidebar().within(() => {
+      cy.findByText("Add another series").should("not.exist");
+      cy.findByText("Add series breakout").should("not.exist");
+    });
   });
 });
