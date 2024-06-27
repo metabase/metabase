@@ -11,6 +11,8 @@ import {
   goToTab,
   assertDashboardFixedWidth,
   assertDashboardFullWidth,
+  describeEE,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -260,5 +262,28 @@ describe("scenarios > public > dashboard", () => {
     cy.url().should("include", "text=002");
 
     filterWidget().findByText("002").should("be.visible");
+  });
+});
+
+describeEE("scenarios [EE] > public > dashboard", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    prepareDashboard();
+
+    setTokenFeatures("all");
+  });
+
+  it("should set the window title to `{dashboard name} · {application name}`", () => {
+    cy.request("PUT", "/api/setting/application-name", {
+      value: "Custom Application Name",
+    });
+
+    cy.get("@dashboardId").then(id => {
+      visitPublicDashboard(id);
+
+      cy.title().should("eq", "Test Dashboard · Custom Application Name");
+    });
   });
 });
