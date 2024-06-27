@@ -4,11 +4,18 @@ import CS from "metabase/css/core/index.css";
 import { QuestionSummarizeWidget } from "metabase/query_builder/components/view/ViewHeader/components";
 import * as Lib from "metabase-lib";
 
-import { useInteractiveQuestionContext } from "../context";
+import {
+  useInteractiveQuestionData,
+} from "../context";
 
-export const SummarizeButton = () => {
-  const { question, isSummarizeOpen, setIsSummarizeOpen } =
-    useInteractiveQuestionContext();
+export const SummarizeButton = ({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) => {
+  const { question } = useInteractiveQuestionData();
 
   let shouldShowButton = true;
   if (question) {
@@ -20,9 +27,9 @@ export const SummarizeButton = () => {
     shouldShowButton && (
       <QuestionSummarizeWidget
         className={cx(CS.hide, CS.smShow)}
-        isShowingSummarySidebar={isSummarizeOpen}
-        onEditSummary={() => setIsSummarizeOpen(true)}
-        onCloseSummary={() => setIsSummarizeOpen(false)}
+        isShowingSummarySidebar={isOpen}
+        onEditSummary={() => {}}
+        onCloseSummary={onClose}
       />
     )
   );

@@ -1,4 +1,4 @@
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { useInteractiveQuestionData } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import {
   SummarizeContent,
   useSummarizeQuery,
@@ -7,16 +7,15 @@ import { Button, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-export const Summarize = () => {
-  const { onQueryChange, question, setIsSummarizeOpen } =
-    useInteractiveQuestionContext();
+export const Summarize = ({ onClose }: { onClose: () => void }) => {
+  const { onQueryChange, question } = useInteractiveQuestionData();
 
   return (
     question && (
       <SummarizeInner
         question={question}
         onQueryChange={onQueryChange}
-        onClose={() => setIsSummarizeOpen(false)}
+        onClose={onClose}
       />
     )
   );

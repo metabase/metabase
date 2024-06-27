@@ -1,6 +1,9 @@
 import cx from "classnames";
 
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import {
+  useInteractiveQuestionContext,
+  useInteractiveQuestionData,
+} from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import { navigateToNewCardInsideQB } from "metabase/query_builder/actions";
@@ -9,8 +12,10 @@ import QueryVisualization from "metabase/query_builder/components/QueryVisualiza
 export const QuestionVisualization = () => {
   const dispatch = useDispatch();
 
-  const { card, isQueryRunning, mode, onNavigateBack, question, result } =
-    useInteractiveQuestionContext();
+  const { card, isQueryRunning, question, result } =
+    useInteractiveQuestionData();
+
+  const { mode, onNavigateBack } = useInteractiveQuestionContext();
 
   return (
     <QueryVisualization
