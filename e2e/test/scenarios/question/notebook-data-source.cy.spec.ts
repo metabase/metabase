@@ -5,8 +5,9 @@ import {
   ORDERS_MODEL_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import {
+  join,
+  type StructuredQuestionDetails,
   createQuestion,
   entityPickerModal,
   entityPickerModalItem,
@@ -151,7 +152,7 @@ describe("scenarios > notebook > data source", () => {
     });
 
     it(
-      "should correctly display a table from a multi-schema database (metabase#39807)",
+      "should correctly display a table from a multi-schema database (metabase#39807,metabase#11958)",
       { tags: "@external" },
       () => {
         const dialect = "postgres";
@@ -188,12 +189,36 @@ describe("scenarios > notebook > data source", () => {
           assertDataPickerEntitySelected(2, tableName);
 
           entityPickerModalTab("Recents").click();
-
           cy.contains("button", "Animals")
             .should("exist")
             .and("contain.text", tableName)
             .and("have.attr", "aria-selected", "true");
+
+          entityPickerModalTab("Tables").click();
+          cy.findByText(dbName).click();
+          cy.findByText(schemaName).click();
+          cy.findByText(tableName).click();
         });
+
+        cy.log("select a table from the second schema");
+        join();
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Tables").click();
+          cy.findByText("Public").click();
+          cy.findByText("Many Data Types").click();
+        });
+        popover().findByText("Name").click();
+        popover().findByText("Text").click();
+
+        cy.log("select a table from the third schema");
+        join();
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Tables").click();
+          cy.findByText("Domestic").click();
+          cy.findByText("Animals").click();
+        });
+        popover().findByText("Name").click();
+        popover().findByText("Name").click();
       },
     );
 
