@@ -24,7 +24,11 @@ import sandboxingReducer from "./actions";
 import { LoginAttributesWidget } from "./components/LoginAttributesWidget";
 import { getSandboxedTableWarningModal } from "./confirmations";
 import EditSandboxingModal from "./containers/EditSandboxingModal";
-import { getDraftPolicies, hasPolicyChanges } from "./selectors";
+import {
+  getGroupIdsOfModifiedPolices,
+  getDraftPolicies,
+  hasPolicyChanges,
+} from "./selectors";
 
 const OPTION_SEGMENTED = {
   label: t`Sandboxed`,
@@ -87,14 +91,14 @@ if (hasPremiumFeature("sandboxes")) {
     getEditSegmentedAccessPostAction;
 
   PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(
-    (state, modifiedGroupIds) => {
+    (state, data) => {
       const sandboxes = getDraftPolicies(state);
-      const modifiedGroupSandboxes = sandboxes.filter(sandbox =>
-        modifiedGroupIds.has(`${sandbox.group_id}`),
-      );
+      const modifiedGroupIds = getGroupIdsOfModifiedPolices(state);
 
       return {
-        sandboxes: modifiedGroupSandboxes,
+        ...data,
+        modifiedGroupIds: [...data.modifiedGroupIds, ...modifiedGroupIds],
+        sandboxes,
       };
     },
   );

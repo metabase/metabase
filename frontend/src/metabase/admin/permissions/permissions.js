@@ -31,6 +31,11 @@ import { CollectionsApi, PermissionsApi } from "metabase/services";
 import { trackPermissionChange } from "./analytics";
 import { DataPermissionType, DataPermission } from "./types";
 import { isDatabaseEntityId } from "./utils/data-entity-id";
+import {
+  getModifiedGroupIds,
+  getPermissionsUpdatesForGroupIds,
+  mergeGroupPermissionsUpdates,
+} from "./utils/graph/partial-updates";
 
 const INITIALIZE_DATA_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";
@@ -196,34 +201,33 @@ export const saveDataPermissions = createThunkAction(
       dataPermissionsRevision,
     } = state.admin.permissions;
 
-    // find only the groupIds that have had some kind of modification made in their permissions graph
-    const diffGroupIds = groupIds.filter(groupId => {
-      return !_.isEqual(
-        dataPermissions[groupId],
-        originalDataPermissions[groupId],
-      );
-    });
+    const {
+      modifiedGroupIds: advancedPermissionsModificedGroupIds,
+      ...advancedPermissionsState
+    } = PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.reduce(
+      (data, selector) => selector(state, data),
+      { modifiedGroupIds: [] },
+    );
 
-    const modifiedGroupDataPermissions = _.pick(dataPermissions, diffGroupIds);
+    const groupGraphModifiedGroupIds = getModifiedGroupIds(
+      groupIds,
+      dataPermissions,
+      originalDataPermissions,
+    );
 
-    const extraData =
-      PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.reduce(
-        (data, selector) => {
-          return {
-            ...data,
-            ...selector(state, new Set(diffGroupIds)),
-          };
-        },
-        {},
-      );
+    const modifiedGroupIds = _.uniq([
+      ...advancedPermissionsModificedGroupIds,
+      ...groupGraphModifiedGroupIds,
+    ]);
 
-    const permissionsGraph = {
-      groups: modifiedGroupDataPermissions,
-      revision: dataPermissionsRevision,
-      ...extraData,
-    };
+    const partialPermissionsGraph = getPermissionsUpdatesForGroupIds(
+      dataPermissions,
+      dataPermissionsRevision,
+      advancedPermissionsState,
+      modifiedGroupIds,
+    );
 
-    return await PermissionsApi.updateGraph(permissionsGraph);
+    return await PermissionsApi.updateGraph(partialPermissionsGraph);
   },
 );
 
@@ -297,7 +301,10 @@ const dataPermissions = handleActions(
     [LOAD_DATA_PERMISSIONS_FOR_DB]: {
       next: (state, { payload }) => merge(payload.groups, state),
     },
-    [SAVE_DATA_PERMISSIONS]: { next: (_state, { payload }) => payload.groups },
+    [SAVE_DATA_PERMISSIONS]: {
+      next: (state, { payload }) =>
+        mergeGroupPermissionsUpdates(state, payload.groups),
+    },
     [UPDATE_DATA_PERMISSION]: {
       next: (state, { payload }) => {
         if (payload == null) {
@@ -402,7 +409,8 @@ const originalDataPermissions = handleActions(
       next: (state, { payload }) => merge(payload.groups, state),
     },
     [SAVE_DATA_PERMISSIONS]: {
-      next: (_state, { payload }) => payload.groups,
+      next: (state, { payload }) =>
+        mergeGroupPermissionsUpdates(state, payload.groups),
     },
   },
   null,
@@ -461,7 +469,7 @@ const originalCollectionPermissions = handleActions(
       next: (_state, { payload }) => payload.groups,
     },
     [SAVE_COLLECTION_PERMISSIONS]: {
-      next: (_state, { payload }) => payload.groups,
+      next: (state, { payload }) => payload.groups,
     },
   },
   null,

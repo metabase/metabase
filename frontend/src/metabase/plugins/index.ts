@@ -118,7 +118,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
   permissionsPayloadExtraSelectors: ((
     state: State,
     modifiedGroupIds: Set<string>,
-  ) => Record<string, unknown>)[];
+  ) => Record<string, { group_id: string }>)[];
   hasChanges: ((state: State) => boolean)[];
   shouldRestrictNativeQueryPermissions: (
     permissions: GroupsPermissions,
