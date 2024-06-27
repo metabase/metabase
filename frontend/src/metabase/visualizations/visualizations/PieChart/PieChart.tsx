@@ -15,6 +15,7 @@ Object.assign(PieChart, PIE_CHART_DEFINITION);
 
 export function PieChart(props: VisualizationProps) {
   const { fontFamily, rawSeries, settings } = props;
+  const hoveredIndex = props.hovered?.index;
 
   const chartRef = useRef<EChartsType>();
   const [sideLength, setSideLength] = useState(0);
@@ -38,8 +39,16 @@ export function PieChart(props: VisualizationProps) {
         settings,
         renderingContext,
         sideLength,
+        hoveredIndex,
       ),
-    [chartModel, formatters, settings, renderingContext, sideLength],
+    [
+      chartModel,
+      formatters,
+      settings,
+      renderingContext,
+      sideLength,
+      hoveredIndex,
+    ],
   );
 
   const handleInit = useCallback((chart: EChartsType) => {

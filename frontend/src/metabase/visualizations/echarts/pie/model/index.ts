@@ -123,7 +123,7 @@ export function getPieChartModel(
       return {
         key,
         value: isNonPositive ? -1 * metricValue : metricValue,
-        tooltipDisplayValue: metricValue,
+        displayValue: metricValue,
         normalizedPercentage: metricValue / total, // slice percentage values are normalized to 0-1 scale
         rowIndex: index,
         color,
@@ -144,7 +144,7 @@ export function getPieChartModel(
     slices.push({
       key: t`Other`,
       value: otherTotal,
-      tooltipDisplayValue: otherTotal,
+      displayValue: otherTotal,
       normalizedPercentage: otherTotal / total,
       color: renderingContext.getColor("text-light"),
     });
