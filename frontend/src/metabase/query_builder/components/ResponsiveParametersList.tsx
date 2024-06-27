@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { useCallback, useState, useMemo } from "react";
 import { msgid, ngettext } from "ttag";
 
@@ -23,29 +24,60 @@ interface ResponsiveParametersListProps {
   enableParameterRequiredBehavior: boolean;
 }
 
-export const ResponsiveParametersList = ({
+export const ResponsiveParametersList: React.FC<
+  ResponsiveParametersListProps
+> = ({
   question,
   parameters,
   setParameterValue,
   setParameterIndex,
   setParameterValueToDefault,
   enableParameterRequiredBehavior,
-}: ResponsiveParametersListProps) => {
-  const [showParameterList, setShowParameterList] = useState(false);
-  const [showRequiredFilters, setShowRequiredFilters] = useState(false);
+}) => {
+  const [showParameterList, setShowParameterList] = useState<boolean>(false);
+  const [showRequiredFilters, setShowRequiredFilters] = useState<boolean>(true);
   const isSmallScreen = useIsSmallScreen();
 
+  const toggleVisibility = useCallback(
+    (setState: React.Dispatch<React.SetStateAction<boolean>>) => {
+      setState(show => !show);
+    },
+    [],
+  );
+
   const handleFilterButtonClick = useCallback(() => {
-    setShowParameterList(show => !show);
-  }, []);
+    toggleVisibility(setShowParameterList);
+  }, [toggleVisibility]);
 
   const handleCloseButtonClick = useCallback(() => {
     setShowParameterList(false);
   }, []);
 
   const handleToggleRequiredFilters = useCallback(() => {
-    setShowRequiredFilters(show => !show);
-  }, []);
+    toggleVisibility(setShowRequiredFilters);
+  }, [toggleVisibility]);
+
+  const getButtonText = useCallback(
+    (
+      count: number,
+      show: boolean,
+      singularText: string,
+      pluralText: string,
+    ) => {
+      return show
+        ? ngettext(
+            msgid`Hide ${count} ${singularText}`,
+            `Hide ${count} ${pluralText}`,
+            count,
+          )
+        : ngettext(
+            msgid`Show ${count} ${singularText}`,
+            `Show ${count} ${pluralText}`,
+            count,
+          );
+    },
+    [],
+  );
 
   const activeFilters = useMemo(() => {
     return parameters.filter(p => !!p.value).length;
@@ -54,6 +86,10 @@ export const ResponsiveParametersList = ({
   const requiredFilters = useMemo(() => {
     return parameters.filter(p => p.required).slice(0, 25);
   }, [parameters]);
+
+  const activeRequiredFilters = useMemo(() => {
+    return requiredFilters.filter(p => !!p.value).length;
+  }, [requiredFilters]);
 
   return (
     <ResponsiveParametersListRoot
@@ -67,23 +103,25 @@ export const ResponsiveParametersList = ({
           icon="filter"
           onClick={handleFilterButtonClick}
         >
-          {activeFilters > 0
-            ? ngettext(
-                msgid`${activeFilters} active filter`,
-                `${activeFilters} active filters`,
-                activeFilters,
-              )
-            : `Filters`}
+          {getButtonText(
+            activeFilters,
+            showParameterList,
+            "active filter",
+            "active filters",
+          )}
         </FilterButton>
         <Button
           borderless
           primary
-          icon={showRequiredFilters ? "chevronup" : "chevrondown"}
+          icon="filter"
           onClick={handleToggleRequiredFilters}
         >
-          {showRequiredFilters
-            ? "Hide Required Filters"
-            : "Show Required Filters"}
+          {getButtonText(
+            activeRequiredFilters,
+            showRequiredFilters,
+            "required filter",
+            "required filters",
+          )}
         </Button>
       </div>
       {showRequiredFilters && (
