@@ -7,7 +7,6 @@ import { InteractiveQuestionProvider } from "../public/InteractiveQuestion/conte
 import { InteractiveQuestionResult } from "./InteractiveQuestionResult";
 
 interface InteractiveAdHocQuestionProps {
-  isOpenedFromDashboard: boolean;
   questionPath: string; // route path to load a question, e.g. /question/140-best-selling-products - for saved, or /question/xxxxxxx for ad-hoc encoded question config
   onNavigateBack: () => void;
 
@@ -17,7 +16,6 @@ interface InteractiveAdHocQuestionProps {
 }
 
 export const InteractiveAdHocQuestion = ({
-  isOpenedFromDashboard,
   questionPath,
   onNavigateBack,
   withTitle = true,
@@ -39,7 +37,7 @@ export const InteractiveAdHocQuestion = ({
       withTitle={withTitle}
       withResetButton={true}
     >
-      <InteractiveQuestionResult height={height} isOpenedFromDashboard={isOpenedFromDashboard} />
+      <InteractiveQuestionResult height={height} />
     </InteractiveQuestionProvider>
   );
 };

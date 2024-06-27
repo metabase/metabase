@@ -23,13 +23,11 @@ import {
 import { Box, Group, Stack } from "metabase/ui";
 
 interface InteractiveQuestionResultProps {
-  isOpenedFromDashboard?: boolean;
   height?: string | number;
 }
 
 export const InteractiveQuestionResult = ({
   height,
-  isOpenedFromDashboard,
 }: InteractiveQuestionResultProps): React.ReactElement => {
   const dispatch = useDispatch();
 
@@ -66,7 +64,7 @@ export const InteractiveQuestionResult = ({
     >
       <Stack h="100%">
         <ViewHeaderContainer data-testid="qb-header" isNavBarOpen={false}>
-          {isOpenedFromDashboard && (
+          {onNavigateBack && (
             <DashboardBackButton noLink onClick={onNavigateBack} />
           )}
 
