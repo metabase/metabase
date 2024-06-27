@@ -21,7 +21,7 @@ import {
   useInteractiveQuestionData,
 } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Group, Stack } from "metabase/ui";
+import { Box, Button, Flex, Group, Stack } from "metabase/ui";
 
 interface InteractiveQuestionResultProps {
   height?: string | number;
@@ -46,7 +46,14 @@ export const InteractiveQuestionResult = ({
   }
 
   if (isFilterOpen) {
-    return <Filter />;
+    return (
+      <Stack>
+        <Button onClick={() => setIsFilterOpen(!isFilterOpen)}>
+          {t`Close`}
+        </Button>
+        <Filter />
+      </Stack>
+    );
   }
 
   return (
