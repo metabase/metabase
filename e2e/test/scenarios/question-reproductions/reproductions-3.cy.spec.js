@@ -996,11 +996,6 @@ describe("issue 43294", () => {
     createQuestion(questionDetails, { visitQuestion: true });
     queryBuilderFooter().findByLabelText("Switch to data").click();
 
-    cy.log("compare action");
-    cy.button("Add column").click();
-    popover().findByText("Compare “Count” to previous months").click();
-    popover().button("Done").click();
-
     cy.log("extract action");
     cy.button("Add column").click();
     popover().findByText("Extract part of column").click();
@@ -1012,6 +1007,10 @@ describe("issue 43294", () => {
     cy.log("combine action");
     cy.button("Add column").click();
     popover().findByText("Combine columns").click();
+    popover().findByText("First column").next().click();
+    popover().last().findByText("Count").click();
+    popover().findByText("Second column").next().click();
+    popover().last().findByText("Count").click();
     popover().button("Done").click();
 
     cy.log("check visualization");
