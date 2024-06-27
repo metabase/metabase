@@ -26,17 +26,21 @@
                        (conj excluded-group-ids group-id)
                        excluded-group-ids))
                    #{}
-                   group-id->sandboxes)]
-    (not (data-perms/groups-have-permission-for-table? (set/difference user-group-ids groups-to-exclude)
-                                                       :perms/view-data
-                                                       :unrestricted
-                                                       db_id
-                                                       table_id))))
+                   group-id->sandboxes)
+        groups-to-check (set/difference user-group-ids groups-to-exclude)]
+    (if (seq groups-to-check)
+      (not (data-perms/groups-have-permission-for-table? (set/difference user-group-ids groups-to-exclude)
+                                                         :perms/view-data
+                                                         :unrestricted
+                                                         db_id
+                                                         table_id))
+      true)))
 
 (defn enforced-sandboxes-for
-  "Given a user-id, return the sandboxes that should be enforced for the current user. A sandbox is not enforced if the
-  user is in a different permissions group that grants full access to the table."
-  [user-id]
+  "Given a user-id and optional set of table-ids, return the sandboxes that should be enforced for the current user on
+  any of the tables. A sandbox is not enforced if the user is in a different permissions group that grants full access
+  to the table."
+  [user-id & [table-ids]]
   (let [user-group-ids           (user/group-ids user-id)
         sandboxes-with-group-ids (t2/hydrate
                                   (t2/select :model/GroupTableAccessPolicy
@@ -44,7 +48,10 @@
                                                        [:s.*]]
                                               :from [[:permissions_group_membership :pgm]]
                                               :left-join [[:sandboxes :s] [:= :s.group_id :pgm.group_id]]
-                                              :where [:= :pgm.user_id user-id]})
+                                              :where [:and
+                                                      [:= :pgm.user_id user-id]
+                                                      (when table-ids
+                                                       [:in :s.table_id table-ids])]})
                                   :table)
         group-id->sandboxes (->> sandboxes-with-group-ids
                                  (group-by :group_id)
@@ -56,8 +63,8 @@
             (reduce set/union #{} (vals group-id->sandboxes)))))
 
 (defenterprise sandboxed-user?
-  "Returns true if the currently logged in user has segmented permissions. Throws an exception if no current user
-  is bound."
+  "Returns true if the currently logged in user has any enforced sandboxes. Throws an exception if no current user is
+  bound."
   :feature :sandboxes
   []
   (boolean
