@@ -221,7 +221,7 @@ describe("issue 19776", { tags: "@OSS" }, () => {
       openEllipsisMenuFor(modelName);
     });
     popover().contains("Archive").click();
-    cy.findByTestId("undo-list").findByText("Trashed model");
+    cy.findByTestId("undo-list").findByText("Archived model");
 
     cy.findByTestId("app-bar").button("New").click();
     popover().findByText("Question").click();
