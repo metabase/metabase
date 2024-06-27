@@ -7,7 +7,6 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-// import { useModelIndexesListQuery } from "metabase/common/hooks";
 import { useListModelIndexesQuery } from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
