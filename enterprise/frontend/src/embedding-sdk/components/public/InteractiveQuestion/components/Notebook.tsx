@@ -1,6 +1,4 @@
-import {
-  useInteractiveQuestionData,
-} from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { useInteractiveQuestionData } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   runQuestionQuery,
