@@ -455,7 +455,7 @@ describe.skip("issue 40635", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it("correctly displays questions' and model's column names (metabase#40635)", () => {
+  it("correctly displays question's and nested model's column names (metabase#40635)", () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
