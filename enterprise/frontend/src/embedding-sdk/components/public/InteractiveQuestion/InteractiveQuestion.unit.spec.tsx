@@ -135,7 +135,7 @@ describe("InteractiveQuestion", () => {
     const rows = ["A", "B"];
 
     const mocks = rows.map((row, id) => ({
-      card: createMockCard({ id }),
+      card: createMockCard({ id: id + 1 }),
       dataset: getMockDataset(row),
     }));
 
@@ -152,12 +152,12 @@ describe("InteractiveQuestion", () => {
     expect(tables).toHaveLength(rows.length);
     expect(gridcells).toHaveLength(rows.length);
 
-    for (let id = 0; id < rows.length; id++) {
+    for (let i = 0; i < rows.length; i++) {
       expect(
-        within(tables[id]).getByText(TEST_COLUMN.display_name),
+        within(tables[i]).getByText(TEST_COLUMN.display_name),
       ).toBeInTheDocument();
 
-      expect(within(gridcells[id]).getByText(rows[id])).toBeInTheDocument();
+      expect(within(gridcells[i]).getByText(rows[i])).toBeInTheDocument();
     }
   });
 
