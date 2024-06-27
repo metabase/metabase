@@ -57,9 +57,24 @@
       (png/render-html-to-png width)
       bytes->image))
 
+(deftest wrap-non-lato-characters-test
+  (testing "HTML Content inside tables with characters not supported by the Lato font are wrapped in a span."
+    (is (= [:td {:not-wrapped-in-here "안녕"}
+            [:span {:style "font-family: sans-serif;"} "안녕"]]
+           (#'png/wrap-non-lato-chars [:td {:not-here "안녕"} "안녕"])))
+    (is (= [:table
+            [:tr
+             [:td "this is all Lato-compatible, baby!"]
+             [:td [:span {:style "font-family: sans-serif;"} "What do you think about різні шрифти в одному документі?"]]]]
+           (#'png/wrap-non-lato-chars
+            [:table
+            [:tr
+             [:td "this is all Lato-compatible, baby!"]
+             [:td "What do you think about різні шрифти в одному документі?"]]])))))
+
 (deftest non-lato-characters-can-render-test
   (testing "Strings containing characters that are not included in the Lato font can still be rendered."
-    (let [content                       [:span (apply str ["안녕"])]
+    (let [content                       [:span "안녕"]
           ^BufferedImage broken-render  (render-without-wrapping content 200)
           ^BufferedImage working-render (render-with-wrapping content 200)]
       ;; The broken-render's width is around 17px. It is the width of 2 `[?]` charaters
