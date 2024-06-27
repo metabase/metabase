@@ -27,6 +27,7 @@
    [metabase.models.user :refer [User]]
    [metabase.plugins :as plugins]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.setup :as setup]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
@@ -88,10 +89,14 @@
    opts :- [:map
             [:backfill? {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
-   & {:keys [token-check?]
-      :or   {token-check? true}}]
+   & {:keys [token-check?
+             require-initialized-db?]
+      :or   {token-check? true
+             require-initialized-db? true}}]
   (plugins/load-plugins!)
   (mdb/setup-db!)
+  (when (and require-initialized-db? (not (setup/has-user-setup)))
+    (throw (ex-info "You cannot `import` into an empty database. Please set up Metabase normally, then retry." {})))
   (when token-check?
     (check-premium-token!))
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
