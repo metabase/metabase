@@ -30,9 +30,6 @@ import {
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import * as MBLib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type { Card, Dataset } from "metabase-types/api";
-import type { QueryBuilderUIControls } from "metabase-types/store";
 
 type InteractiveQuestionContextType = {
   plugins: SdkPluginsConfig | null;
@@ -170,8 +167,6 @@ export const InteractiveQuestionProvider = ({
     customTitle?: ReactNode;
   }
 >) => {
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-
   const { isQuestionLoading, resetQuestion } = useLoadQuestion({
     location: location,
     params: params,
