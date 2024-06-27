@@ -1,5 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
+import { normalize } from "normalizr";
 
+import { FieldSchema } from "metabase/schema";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
 import Field from "metabase-lib/v1/metadata/Field";
@@ -152,11 +154,10 @@ export const getMetadata: (
       segment.table = hydrateSegmentTable(segment, metadata);
     });
     Object.values(metadata.fields).forEach(field => {
-      field.table = hydrateFieldTable(field, metadata);
-      field.target = hydrateFieldTarget(field, metadata);
-      field.name_field = hydrateNameField(field, metadata);
-      field.values = getFieldValues(field);
-      field.remapping = new Map(getRemappings(field));
+      hydrateField(field, metadata);
+    });
+    Object.values(metadata.tables).forEach(table => {
+      table.fields?.forEach(field => hydrateField(field, metadata));
     });
 
     return metadata;
@@ -305,9 +306,27 @@ function hydrateTableSchema(
   return metadata.schema(schemaId) ?? undefined;
 }
 
-function hydrateTableFields(table: Table, metadata: Metadata): Field[] {
-  const fieldIds = table.getPlainObject().fields ?? [];
-  return fieldIds.map(id => metadata.field(id)).filter(isNotNull);
+function hydrateTableFields(entityTable: Table, metadata: Metadata): Field[] {
+  const apiTable = entityTable.getPlainObject();
+
+  if (!apiTable.original_fields) {
+    const fieldIds = apiTable.fields ?? [];
+    return fieldIds.map(id => metadata.field(id)).filter(isNotNull);
+  }
+
+  return apiTable.original_fields.map(apiField => {
+    const { entities, result } = normalize(apiField, FieldSchema);
+    const normalizedField = entities.fields?.[result];
+    return createField(normalizedField, metadata);
+  });
+}
+
+function hydrateField(field: Field, metadata: Metadata) {
+  field.table = hydrateFieldTable(field, metadata);
+  field.target = hydrateFieldTarget(field, metadata);
+  field.name_field = hydrateNameField(field, metadata);
+  field.values = getFieldValues(field);
+  field.remapping = new Map(getRemappings(field));
 }
 
 function hydrateTableForeignKeys(
