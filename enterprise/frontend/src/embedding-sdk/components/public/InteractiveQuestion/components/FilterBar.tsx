@@ -8,18 +8,23 @@ export const FilterBar = () => {
 
   const { question, uiControls } = useInteractiveQuestionContext();
 
-  return (
+  const shouldRender =
     question &&
     QuestionFiltersHeader.shouldRender({
       question,
       queryBuilderMode: uiControls.queryBuilderMode,
       isObjectDetail: false,
-    }) && (
-      <QuestionFiltersHeader
-        expanded
-        question={question}
-        updateQuestion={(...args) => dispatch(updateQuestion(...args))}
-      />
-    )
+    });
+
+  if (!shouldRender) {
+    return null;
+  }
+
+  return (
+    <QuestionFiltersHeader
+      expanded
+      question={question}
+      updateQuestion={(...args) => dispatch(updateQuestion(...args))}
+    />
   );
 };
