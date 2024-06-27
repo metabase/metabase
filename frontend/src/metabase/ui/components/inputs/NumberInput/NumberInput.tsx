@@ -1,8 +1,18 @@
-import type { NumberInputProps } from "@mantine/core";
+import type { NumberInputProps as MantineNumberInputProps } from "@mantine/core";
 import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { forwardRef, useLayoutEffect, useState } from "react";
 
+import { formatNumber, parseNumber } from "metabase/ui/utils/numbers";
+import type { NumericValue } from "metabase-types/api/number";
+
 import { TextInput } from "../TextInput";
+
+interface NumberInputProps
+  extends Omit<MantineNumberInputProps, "value" | "defaultValue" | "onChange"> {
+  value?: NumericValue | "";
+  defaultValue?: NumericValue | "";
+  onChange?: (value: NumericValue) => void;
+}
 
 export const NumberInput = forwardRef(function NumberInput(
   {
@@ -15,14 +25,16 @@ export const NumberInput = forwardRef(function NumberInput(
   }: NumberInputProps,
   ref: Ref<HTMLInputElement>,
 ) {
-  const [inputValue, setInputValue] = useState(formatValue(defaultValue ?? ""));
+  const [inputValue, setInputValue] = useState(
+    formatNumber(defaultValue ?? ""),
+  );
   const [isFocused, setIsFocused] = useState(false);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newInputValue = event.target.value;
     setInputValue(newInputValue);
 
-    const newValue = parseValue(newInputValue);
+    const newValue = parseNumber(newInputValue);
     onChange?.(newValue);
   };
 
@@ -38,7 +50,7 @@ export const NumberInput = forwardRef(function NumberInput(
 
   useLayoutEffect(() => {
     if (!isFocused) {
-      setInputValue(formatValue(value ?? parseValue(inputValue)));
+      setInputValue(formatNumber(value ?? parseNumber(inputValue)));
     }
   }, [value, inputValue, isFocused]);
 
@@ -53,12 +65,3 @@ export const NumberInput = forwardRef(function NumberInput(
     />
   );
 });
-
-function parseValue(value: string) {
-  const number = parseFloat(value);
-  return Number.isNaN(number) ? "" : number;
-}
-
-function formatValue(value: number | "") {
-  return String(value);
-}

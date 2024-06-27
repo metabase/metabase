@@ -6,7 +6,9 @@ import { t } from "ttag";
 import { useGetFieldValuesQuery } from "metabase/api";
 import { checkNotNull } from "metabase/lib/types";
 import { Center, Loader } from "metabase/ui";
+import { parseNumber } from "metabase/ui/utils/numbers";
 import * as Lib from "metabase-lib";
+import type { NumericValue } from "metabase-types/api/number";
 
 import { ListValuePicker } from "./ListValuePicker";
 import { SearchValuePicker } from "./SearchValuePicker";
@@ -135,10 +137,13 @@ export function NumberFilterValuePicker({
   values,
   onChange,
   ...props
-}: FilterValuePickerProps<number>) {
+}: FilterValuePickerProps<NumericValue>) {
   const shouldCreate = (query: string, values: string[]) => {
-    const number = parseFloat(query);
-    return isFinite(number) && !values.includes(query);
+    const number = parseNumber(query);
+    return (
+      (typeof number === "bigint" || isFinite(number)) &&
+      !values.includes(query)
+    );
   };
 
   return (
@@ -148,7 +153,7 @@ export function NumberFilterValuePicker({
       values={values.map(value => String(value))}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter a number`}
       shouldCreate={shouldCreate}
-      onChange={newValue => onChange(newValue.map(value => parseFloat(value)))}
+      onChange={newValue => onChange(newValue.map(parseNumber))}
     />
   );
 }

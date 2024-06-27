@@ -10,6 +10,7 @@ import {
   TextInput,
 } from "metabase/ui";
 import type { SmartScalarComparisonStaticNumber } from "metabase-types/api";
+import type { NumericValue } from "metabase-types/api/number";
 
 import { COMPARISON_TYPES } from "../constants";
 
@@ -27,7 +28,7 @@ export function StaticNumberForm({
   onBack,
 }: StaticNumberFormProps) {
   const [label, setLabel] = useState(comparison?.label || "");
-  const [value, setValue] = useState(comparison?.value || 0);
+  const [value, setValue] = useState<NumericValue>(comparison?.value || 0);
 
   const canSubmit = label.length > 0;
 
@@ -35,7 +36,7 @@ export function StaticNumberForm({
     setLabel(e.target.value);
   };
 
-  const handleChangeValue = (nextValue: number | "") => {
+  const handleChangeValue = (nextValue: NumericValue | "") => {
     setValue(nextValue || 0);
   };
 

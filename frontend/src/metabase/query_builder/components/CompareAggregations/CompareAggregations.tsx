@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { Box, Button, Flex, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import type { NumericValue } from "metabase-types/api/number";
 
 import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
 
@@ -39,7 +40,7 @@ export const CompareAggregations = ({
   const [aggregation, setAggregation] = useState<
     Lib.AggregationClause | Lib.ExpressionClause | undefined
   >(hasManyAggregations ? undefined : aggregations[0]);
-  const [offset, setOffset] = useState<number | "">(DEFAULT_OFFSET);
+  const [offset, setOffset] = useState<NumericValue | "">(DEFAULT_OFFSET);
   const [columns, setColumns] = useState<ColumnType[]>(DEFAULT_COLUMNS);
   const width = aggregation ? STEP_2_WIDTH : STEP_1_WIDTH;
 

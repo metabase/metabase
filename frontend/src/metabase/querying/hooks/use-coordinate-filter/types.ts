@@ -1,4 +1,5 @@
 import type { FilterOperatorOption } from "metabase/querying/utils/filters";
+import type { NumericValue } from "metabase-types/api/number";
 
 type CoordinatePickerOperator =
   | "="
@@ -16,4 +17,4 @@ export interface OperatorOption
   hasMultipleValues?: boolean;
 }
 
-export type NumberValue = number | "";
+export type NumberValue = NumericValue | "";

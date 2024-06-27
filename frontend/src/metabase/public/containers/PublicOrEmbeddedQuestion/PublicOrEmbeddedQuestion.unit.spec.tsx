@@ -41,7 +41,9 @@ const VisualizationMock = ({
     <div>
       <div>
         {rows[0].map((value, i) => (
-          <span key={i}>{value}</span>
+          <span key={i}>
+            <>{value}</>
+          </span>
         ))}
       </div>
       <div data-testid="settings">

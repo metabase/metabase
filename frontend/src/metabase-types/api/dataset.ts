@@ -4,12 +4,13 @@ import type { Card } from "./card";
 import type { DatabaseId } from "./database";
 import type { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
 import type { Insight } from "./insight";
+import type { NumericValue } from "./number";
 import type { ParameterOptions } from "./parameters";
 import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import type { TableId } from "./table";
 
-export type RowValue = string | number | null | boolean;
+export type RowValue = string | NumericValue | null | boolean;
 export type RowValues = RowValue[];
 
 export type BinningMetadata = {

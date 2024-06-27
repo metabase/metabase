@@ -4,6 +4,7 @@ import { forwardRef, useCallback } from "react";
 
 import type { NumberInputProps } from "metabase/ui";
 import { NumberInput } from "metabase/ui";
+import type { NumericValue } from "metabase-types/api/number";
 
 export interface FormNumberInputProps
   extends Omit<NumberInputProps, "value" | "error"> {
@@ -19,7 +20,7 @@ export const FormNumberInput = forwardRef(function FormNumberInput(
     useField(name);
 
   const handleChange = useCallback(
-    (newValue: number | "") => {
+    (newValue: NumericValue | "") => {
       if (newValue === "") {
         setValue(nullable ? null : undefined);
       } else {

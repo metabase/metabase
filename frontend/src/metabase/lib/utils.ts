@@ -1,3 +1,4 @@
+import cloneDeep from "lodash.clonedeep";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -72,8 +73,7 @@ export function propertiesEqual(
 }
 
 export function copy(a: unknown) {
-  // FIXME: ugghhhhhhhhh
-  return JSON.parse(JSON.stringify(a));
+  return cloneDeep(a);
 }
 
 /**

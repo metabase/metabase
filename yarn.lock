@@ -15336,6 +15336,11 @@ jsesc@~0.5.0:
   resolved "https://registry.yarnpkg.com/jsesc/-/jsesc-0.5.0.tgz#e7dee66e35d6fc16f710fe91d5cf69f70f08911d"
   integrity sha1-597mbjXW/Bb3EP6R1c9p9w8IkR0=
 
+json-bigint-native@^1.2.0:
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/json-bigint-native/-/json-bigint-native-1.2.0.tgz#69c05d5681989cdeb29c709f77962d9ed2523e9d"
+  integrity sha512-qC9EtJsyULhbwC2KEYoR8sRsC+PH7VwwPdxU6+CZTZxMtM23zlxCfhIa+6Sn74FQ4VqDqWUaHaBeU0bMUTU9jQ==
+
 json-buffer@3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/json-buffer/-/json-buffer-3.0.0.tgz#5b1f397afc75d677bde8bcfc0e47e1f9a3d9a898"
@@ -15880,6 +15885,11 @@ lodash._topath@^3.0.0:
   integrity sha1-PsXiYGAU9MuX91X+aRTt2L/ADqw=
   dependencies:
     lodash.isarray "^3.0.0"
+
+lodash.clonedeep@^4.5.0:
+  version "4.5.0"
+  resolved "https://registry.yarnpkg.com/lodash.clonedeep/-/lodash.clonedeep-4.5.0.tgz#e23f3f9c4f8fbdde872529c1071857a086e5ccef"
+  integrity sha512-H5ZhCF25riFd9uB5UCkVKo61m3S/xZk1x4wA6yp/L3RFP6Z/eHH1ymQcGLo7J3GMPfm0V/7m1tryHuGVxpqEBQ==
 
 lodash.debounce@^4.0.8:
   version "4.0.8"

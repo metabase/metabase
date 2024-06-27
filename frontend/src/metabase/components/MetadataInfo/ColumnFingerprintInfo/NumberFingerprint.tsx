@@ -1,6 +1,8 @@
 import { t } from "ttag";
 
+import { isFloat } from "metabase/lib/number";
 import type * as Lib from "metabase-lib";
+import type { NumericValue } from "metabase-types/api/number";
 
 import { Table } from "../MetadataInfo.styled";
 
@@ -48,10 +50,14 @@ export function NumberFingerprint({
  * @param num - a number value from the type/Number fingerprint; might not be a number
  * @returns - a tuple, [isFormattedNumber, formattedNumber]
  */
-function roundNumber(num: number | null | undefined): [boolean, string] {
+function roundNumber(num: NumericValue | null | undefined): [boolean, string] {
   if (num == null) {
     return [false, ""];
   }
 
-  return [true, Number.isInteger(num) ? num.toString() : num.toFixed(2)];
+  if (isFloat(num)) {
+    return [true, num.toFixed(2)];
+  }
+
+  return [true, num.toString()];
 }

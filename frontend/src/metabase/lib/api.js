@@ -1,4 +1,5 @@
 import EventEmitter from "events";
+import JSONBigInt from "json-bigint-native";
 import querystring from "querystring";
 
 import { isTest } from "metabase/env";
@@ -119,7 +120,7 @@ export class Api extends EventEmitter {
         if (options.hasBody) {
           body = options.formData
             ? rawData.formData
-            : JSON.stringify(
+            : JSONBigInt.stringify(
                 options.bodyParamName != null
                   ? data[options.bodyParamName]
                   : data,
@@ -209,7 +210,7 @@ export class Api extends EventEmitter {
           let body = xhr.responseText;
           if (options.json) {
             try {
-              body = JSON.parse(body);
+              body = JSONBigInt.parse(body);
             } catch (e) {}
           }
           let status = xhr.status;
@@ -270,7 +271,7 @@ export class Api extends EventEmitter {
         return response.text().then(body => {
           if (options.json) {
             try {
-              body = JSON.parse(body);
+              body = JSONBigInt.parse(body);
             } catch (e) {}
           }
 

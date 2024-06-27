@@ -7,6 +7,7 @@ import type { NumberValue } from "metabase/querying/hooks/use-number-filter";
 import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
 import { Box, Flex, NumberInput, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type { NumericValue } from "metabase-types/api/number";
 
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
@@ -151,13 +152,13 @@ function NumberValueInput({
           value={values[0]}
           placeholder={t`Min`}
           autoFocus
-          onChange={(newValue: number) => onChange([newValue, values[1]])}
+          onChange={(newValue: NumericValue) => onChange([newValue, values[1]])}
         />
         <Text mx="sm">{t`and`}</Text>
         <NumberInput
           value={values[1]}
           placeholder={t`Max`}
-          onChange={(newValue: number) => onChange([values[0], newValue])}
+          onChange={(newValue: NumericValue) => onChange([values[0], newValue])}
         />
       </Flex>
     );

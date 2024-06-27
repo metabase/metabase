@@ -1,3 +1,5 @@
+import JSONBigInt from "json-bigint-native";
+
 import Questions from "metabase/entities/questions";
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import { equals } from "metabase/lib/utils";
@@ -66,7 +68,7 @@ export function isEqualCard(card1, card2) {
 
 // TODO Atte Keinänen 5/31/17 Deprecated, we should move tests to Questions.spec.js
 export function serializeCardForUrl(card) {
-  return utf8_to_b64url(JSON.stringify(getCleanCard(card)));
+  return utf8_to_b64url(JSONBigInt.stringify(getCleanCard(card)));
 }
 
 export function deserializeCardFromUrl(serialized) {

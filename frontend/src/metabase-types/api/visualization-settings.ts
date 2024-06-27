@@ -1,3 +1,5 @@
+import type { NumericValue } from "./number";
+
 // SmartScalar (Trend Chart)
 export type SmartScalarComparisonType =
   | "anotherColumn"
@@ -21,7 +23,7 @@ export interface SmartScalarComparisonAnotherColumn
 export interface SmartScalarComparisonPeriodsAgo
   extends BaseSmartScalarComparison {
   type: "periodsAgo";
-  value: number;
+  value: NumericValue;
 }
 
 export interface SmartScalarComparisonPreviousPeriod
@@ -37,7 +39,7 @@ export interface SmartScalarComparisonPreviousValue
 export interface SmartScalarComparisonStaticNumber
   extends BaseSmartScalarComparison {
   type: "staticNumber";
-  value: number;
+  value: NumericValue;
   label: string;
 }
 
