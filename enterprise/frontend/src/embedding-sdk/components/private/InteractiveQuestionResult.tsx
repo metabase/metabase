@@ -1,80 +1,58 @@
 import cx from "classnames";
-import type React from "react";
-import { useUnmount } from "react-use";
 import { t } from "ttag";
 
-import type { SdkClickActionPluginsConfig } from "embedding-sdk";
 import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { QuestionTitle } from "embedding-sdk/components/private/QuestionTitle";
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
-import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
-import { useSdkSelector } from "embedding-sdk/store";
-import { getPlugins } from "embedding-sdk/store/selectors";
+import {
+  useInteractiveQuestionContext,
+  useInteractiveQuestionData,
+} from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import {
   navigateToNewCardInsideQB,
-  resetQB,
   updateQuestion,
 } from "metabase/query_builder/actions";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import { ViewHeaderContainer } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import {
-  DashboardBackButton,
   QuestionFiltersHeader,
+  DashboardBackButton,
 } from "metabase/query_builder/components/view/ViewHeader/components";
-import {
-  getCard,
-  getFirstQueryResult,
-  getQueryResults,
-  getQuestion,
-  getUiControls,
-} from "metabase/query_builder/selectors";
 import { Box, Group, Stack } from "metabase/ui";
-import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-
-const returnNull = () => null;
 
 interface InteractiveQuestionResultProps {
-  isQuestionLoading: boolean;
-  onNavigateBack: () => void;
-  withResetButton?: boolean;
-  onResetButtonClick: () => void;
-  withTitle?: boolean;
-  customTitle?: React.ReactNode;
-  isOpenedFromDashboard?: boolean;
-
   height?: string | number;
-  componentPlugins?: SdkClickActionPluginsConfig;
 }
 
 export const InteractiveQuestionResult = ({
-  isQuestionLoading,
-  componentPlugins,
-  onNavigateBack,
   height,
-  withResetButton,
-  onResetButtonClick,
-  withTitle,
-  customTitle,
-  isOpenedFromDashboard = false,
 }: InteractiveQuestionResultProps): React.ReactElement => {
   const dispatch = useDispatch();
 
-  const globalPlugins = useSdkSelector(getPlugins);
-  const question = useSelector(getQuestion);
-  const card = useSelector(getCard);
-  const result = useSelector(getFirstQueryResult);
-  const uiControls = useSelector(getUiControls);
-  const queryResults = useSelector(getQueryResults);
-  const { isRunning: isQueryRunning } = uiControls;
+  const {
+    isQuestionLoading,
+    mode,
+    onReset,
+    onNavigateBack,
+    withResetButton,
+    withTitle,
+    customTitle,
+  } = useInteractiveQuestionContext();
 
-  useUnmount(() => {
-    dispatch(resetQB());
-  });
+  const {
+    card,
+    defaultHeight,
+    isQueryRunning,
+    queryResults,
+    question,
+    result,
+    uiControls,
+  } = useInteractiveQuestionData();
 
   if (isQuestionLoading || isQueryRunning) {
     return <SdkLoader />;
@@ -84,13 +62,6 @@ export const InteractiveQuestionResult = ({
     return <SdkError message={t`Question not found`} />;
   }
 
-  const defaultHeight = card ? getDefaultVizHeight(card.display) : undefined;
-
-  const plugins = componentPlugins || globalPlugins;
-  const mode = question && getEmbeddingMode(question, plugins || undefined);
-
-  question.alertType = returnNull; // FIXME: this removes "You can also get an alert when there are some results." feature for question
-
   return (
     <Box
       className={cx(CS.flexFull, CS.fullWidth)}
@@ -99,13 +70,13 @@ export const InteractiveQuestionResult = ({
     >
       <Stack h="100%">
         <ViewHeaderContainer data-testid="qb-header" isNavBarOpen={false}>
-          {isOpenedFromDashboard && (
+          {onNavigateBack && (
             <DashboardBackButton noLink onClick={onNavigateBack} />
           )}
 
           {withTitle && (customTitle || <QuestionTitle question={question} />)}
 
-          {withResetButton && <ResetButton onClick={onResetButtonClick} />}
+          {withResetButton && onReset && <ResetButton onClick={onReset} />}
         </ViewHeaderContainer>
 
         {QuestionFiltersHeader.shouldRender({

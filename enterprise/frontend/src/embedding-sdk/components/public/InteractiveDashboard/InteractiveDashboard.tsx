@@ -111,7 +111,6 @@ const InteractiveDashboardInner = ({
   if (adhocQuestionUrl) {
     return (
       <InteractiveAdHocQuestion
-        isOpenedFromDashboard
         questionPath={adhocQuestionUrl}
         withTitle={withTitle}
         height={questionHeight}
