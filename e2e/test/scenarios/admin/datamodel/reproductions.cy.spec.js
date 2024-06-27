@@ -125,7 +125,11 @@ describe("issue 15542", () => {
 
   function openOrdersTable() {
     // Navigate without reloading the page
-    navigationSidebar().findByText("Databases").click({ force: true });
+    navigationSidebar().findByText("Databases").click({
+      // force the click because the sidebar might be closed but
+      // that is not what we are testing here.
+      force: true,
+    });
 
     cy.findByText("Sample Database").click();
     cy.findByText("Orders").click();
