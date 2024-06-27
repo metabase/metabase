@@ -30,9 +30,10 @@ function getSliceByKey(key: PieSliceData["key"], slices: PieSlice[]) {
 }
 
 function getTotalGraphicOption(
-  total: number,
+  chartModel: PieChartModel,
   formatMetric: Formatter,
   renderingContext: RenderingContext,
+  hoveredIndex?: number,
 ) {
   const graphicOption = cloneDeep(TOTAL_GRAPHIC_OPTION);
 
@@ -40,7 +41,11 @@ function getTotalGraphicOption(
     child.style.fontFamily = renderingContext.fontFamily;
   });
 
-  graphicOption.children[0].style.text = formatMetric(total);
+  graphicOption.children[0].style.text = formatMetric(
+    hoveredIndex
+      ? chartModel.slices[hoveredIndex].data.displayValue // TODO rename to remove tooltip
+      : chartModel.total,
+  );
   graphicOption.children[0].style.fill = renderingContext.getColor("text-dark");
 
   graphicOption.children[1].style.fill =
@@ -97,6 +102,7 @@ export function getPieChartOption(
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
   sideLength: number,
+  hoveredIndex?: number,
 ): EChartsOption {
   // Sizing
   const seriesOption = cloneDeep(SUNBURST_SERIES_OPTION); // deep clone to avoid sharing assigned with other instances
@@ -125,9 +131,10 @@ export function getPieChartOption(
   // "Show total" setting
   const graphicOption = settings["pie.show_total"]
     ? getTotalGraphicOption(
-        chartModel.total,
+        chartModel,
         formatters.formatMetric,
         renderingContext,
+        hoveredIndex,
       )
     : undefined;
 

@@ -19,7 +19,7 @@ export const getTooltipModel = (
 ): StackedTooltipModel => {
   const rows = chartModel.slices.map(slice => ({
     name: formatters.formatDimension(slice.data.key),
-    value: slice.data.tooltipDisplayValue,
+    value: slice.data.displayValue,
     color: slice.data.color,
     formatter: formatters.formatMetric,
   }));
