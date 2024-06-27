@@ -1,5 +1,8 @@
 import type { SpecificDatePickerValue } from "../../types";
-import { SimpleDateRangePicker } from "../DateRangePicker";
+import {
+  type DateRangePickerValue,
+  SimpleDateRangePicker,
+} from "../DateRangePicker";
 import {
   SimpleSingleDatePicker,
   type SingleDatePickerValue,
@@ -19,14 +22,16 @@ export function SimpleSpecificDatePicker({
     onChange(setDateTime(value, date, hasTime));
   };
 
-  const handleDateRangeChange = (dates: [Date, Date], hasTime: boolean) => {
-    onChange(setDateTimeRange(value, dates, hasTime));
+  const handleDateRangeChange = ({
+    dateRange,
+    hasTime,
+  }: DateRangePickerValue) => {
+    onChange(setDateTimeRange(value, dateRange, hasTime));
   };
 
   return isDateRange(value.values) ? (
     <SimpleDateRangePicker
-      value={value.values}
-      hasTime={value.hasTime}
+      value={{ dateRange: value.values, hasTime: value.hasTime }}
       onChange={handleDateRangeChange}
     />
   ) : (
