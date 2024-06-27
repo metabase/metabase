@@ -99,6 +99,7 @@ function syncGraphMetricSettings(
     return settings;
   }
 
+  const allColumnNames = new Set(cols.map(column => column.name));
   const metricColumnNames = new Set(
     cols
       .filter(column => column.source === "aggregation")
@@ -113,7 +114,7 @@ function syncGraphMetricSettings(
     [...metricColumnNames].filter(name => !prevMetricColumnNames.has(name)),
   );
   const removedMetricColumnNames = new Set(
-    [...prevMetricColumnNames].filter(name => !metricColumnNames.has(name)),
+    [...prevMetricColumnNames].filter(name => !allColumnNames.has(name)),
   );
   if (
     addedMetricColumnNames.size === 0 &&
