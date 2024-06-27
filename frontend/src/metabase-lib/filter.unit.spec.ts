@@ -800,6 +800,7 @@ describe("filter", () => {
               operator,
               column,
               values,
+              hasTime: false,
             }),
           );
 
@@ -822,6 +823,7 @@ describe("filter", () => {
             operator: "between",
             column,
             values,
+            hasTime: false,
           }),
         );
 
@@ -847,6 +849,7 @@ describe("filter", () => {
                 findTemporalBucket(query, column, "Day"),
               ),
               values,
+              hasTime: false,
             }),
           );
 
@@ -871,6 +874,7 @@ describe("filter", () => {
               findTemporalBucket(query, column, "Hour"),
             ),
             values,
+            hasTime: false,
           }),
         );
 
@@ -893,6 +897,7 @@ describe("filter", () => {
               operator,
               column,
               values,
+              hasTime: true,
             }),
           );
 
@@ -914,6 +919,7 @@ describe("filter", () => {
             operator: "between",
             column,
             values,
+            hasTime: true,
           }),
         );
 
@@ -1009,6 +1015,7 @@ describe("filter", () => {
             operator: "=",
             column: findColumn(query, tableName, "PRICE"),
             values: [new Date(2020, 1, 1)],
+            hasTime: false,
           }),
         );
 

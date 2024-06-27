@@ -17,6 +17,7 @@ function createDateFilter(query: Lib.Query) {
     operator: "=",
     column: findDateColumn(query),
     values: [new Date(2020, 0, 10)],
+    hasTime: false,
   });
 }
 
