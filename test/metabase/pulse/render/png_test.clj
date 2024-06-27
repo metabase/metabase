@@ -65,12 +65,12 @@
     (is (= [:table
             [:tr
              [:td "this is all Lato-compatible, baby!"]
-             [:td [:span {:style "font-family: sans-serif;"} "What do you think about різні шрифти в одному документі?"]]]]
+             [:td [:span {:style "font-family: sans-serif;"} "This part's English. This part is 英語ではありません"]]]]
            (#'png/wrap-non-lato-chars
             [:table
-            [:tr
-             [:td "this is all Lato-compatible, baby!"]
-             [:td "What do you think about різні шрифти в одному документі?"]]])))))
+             [:tr
+              [:td "this is all Lato-compatible, baby!"]
+              [:td "This part's English. This part is 英語ではありません"]]])))))
 
 (deftest non-lato-characters-can-render-test
   (testing "Strings containing characters that are not included in the Lato font can still be rendered."
