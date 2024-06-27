@@ -16,6 +16,8 @@ import {
   FilterButton,
   Summarize,
   SummarizeButton,
+  Notebook,
+  NotebookButton,
   QuestionVisualization,
 } from "embedding-sdk/components/public/InteractiveQuestion";
 import {
@@ -34,6 +36,7 @@ export const InteractiveQuestionResult = ({
 }: InteractiveQuestionResultProps): ReactElement => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSummarizeOpen, setIsSummarizeOpen] = useState(false);
+  const [isNotebookOpen, setIsNotebookOpen] = useState(false);
 
   const { isQuestionLoading } = useInteractiveQuestionContext();
 
@@ -63,6 +66,10 @@ export const InteractiveQuestionResult = ({
     return <Summarize onClose={() => setIsSummarizeOpen(false)} />;
   }
 
+  if (isNotebookOpen) {
+    return <Notebook onClick={() => setIsNotebookOpen(!isNotebookOpen)} />;
+  }
+
   return (
     <Box
       className={cx(CS.flexFull, CS.fullWidth)}
@@ -78,6 +85,10 @@ export const InteractiveQuestionResult = ({
           <SummarizeButton
             isOpen={isSummarizeOpen}
             onClose={() => setIsSummarizeOpen(false)}
+          />
+          <NotebookButton
+            isOpen={isNotebookOpen}
+            onClose={() => setIsNotebookOpen(false)}
           />
         </Flex>
 
