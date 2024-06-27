@@ -1998,20 +1998,26 @@
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
-       (let [long-string (str (str/join (repeat 1000 "really_")) "long")]
+       (let [long-string (str (str/join (repeat 1000 "really_")) "long")
+             header      (str (str "a_" long-string ",")
+                              (str "b_" long-string ",")
+                              (str "b_" long-string "_with_a"))]
          (with-upload-table!
            [table (create-from-csv-and-sync-with-defaults!
-                   :file (csv-file-with [(str (str "a_" long-string ",")
-                                              (str "b_" long-string ",")
-                                              (str "b_" long-string "_with_a"))
+                   :file (csv-file-with [header
                                          "a,b1,b2"]))]
            (testing "Table and Fields exist after sync"
              (testing "Check the data was uploaded into the table correctly"
                (let [column-names (column-names-for-table table)]
-                 (is (=  @#'upload/auto-pk-column-name (first column-names)))
-                 (is (= 4 (count (distinct column-names))))
-                 (is (= 1 (count (filter #(str/starts-with? % "a_") column-names))))
-                 (is (= 2 (count (filter #(str/starts-with? % "b_") column-names)))))))))))))
+                 (testing "We preserve names where possible"
+                   (let [header-names (->> (str/split header #",")
+                                           (map (partial #'upload/normalize-column-name driver/*driver*)))]
+                     (is (every? (set column-names) header-names))))
+                 (testing "We preserve prefixes where_possible"
+                   (is (= {"_mb_row_" 1
+                           "a_really" 1
+                           "b_really" 2}
+                          (frequencies (map #(subs % 0 8) column-names))))))))))))))
 
 (deftest append-with-really-long-names
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
