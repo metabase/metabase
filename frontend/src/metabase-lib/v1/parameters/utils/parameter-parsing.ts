@@ -68,7 +68,11 @@ function parseParameterValueForNumber(value: string | string[]) {
 
   if (splitValues.length > 1) {
     const numbers = splitValues.map(number => parseFloat(number));
-    return numbers.every(number => !isNaN(number)) ? numbers : null;
+    if (numbers.every(number => !isNaN(number))) {
+      return numbers.join(",");
+    }
+
+    return null;
   }
 
   const number = parseFloat(value);
