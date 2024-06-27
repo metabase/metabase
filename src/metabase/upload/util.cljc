@@ -50,8 +50,8 @@
 
 (defn uniquify-names
   "Add numeric suffixes were necessary to ensure that every element of the `names` seq is unique.
-  Where the suffix would cause the name to exceed max-length characters, first truncate it further
-  such that the length will be exactly max-length.
+  Where the suffix would cause the name to exceed max-length characters, first truncate it further, such that the final
+  length will be exactly max-length.
   This function assumes that all names are already truncated to max-length."
   [max-length names]
   (let [generator (unique-name-generator (unique-alias-fn max-length))]
