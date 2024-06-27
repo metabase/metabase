@@ -1,29 +1,25 @@
 import cx from "classnames";
+import type { ReactElement } from "react";
 import { t } from "ttag";
 
 import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { QuestionTitle } from "embedding-sdk/components/private/QuestionTitle";
-import { ResetButton } from "embedding-sdk/components/private/ResetButton";
+import {
+  BackButton,
+  FilterBar,
+  QuestionResetButton,
+  Title,
+} from "embedding-sdk/components/public/InteractiveQuestion";
 import {
   useInteractiveQuestionContext,
   useInteractiveQuestionData,
 } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
-import {
-  navigateToNewCardInsideQB,
-  updateQuestion,
-} from "metabase/query_builder/actions";
-import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import { ViewHeaderContainer } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
-import {
-  QuestionFiltersHeader,
-  DashboardBackButton,
-} from "metabase/query_builder/components/view/ViewHeader/components";
-import { Box, Group, Stack } from "metabase/ui";
+import { Box, Flex, Group, Stack } from "metabase/ui";
+
+import { QuestionVisualization } from "../public/InteractiveQuestion/components";
 
 interface InteractiveQuestionResultProps {
   height?: string | number;
@@ -31,28 +27,11 @@ interface InteractiveQuestionResultProps {
 
 export const InteractiveQuestionResult = ({
   height,
-}: InteractiveQuestionResultProps): React.ReactElement => {
-  const dispatch = useDispatch();
+}: InteractiveQuestionResultProps): ReactElement => {
+  const { isQuestionLoading } = useInteractiveQuestionContext();
 
-  const {
-    isQuestionLoading,
-    mode,
-    onReset,
-    onNavigateBack,
-    withResetButton,
-    withTitle,
-    customTitle,
-  } = useInteractiveQuestionContext();
-
-  const {
-    card,
-    defaultHeight,
-    isQueryRunning,
-    queryResults,
-    question,
-    result,
-    uiControls,
-  } = useInteractiveQuestionData();
+  const { defaultHeight, isQueryRunning, queryResults, question } =
+    useInteractiveQuestionData();
 
   if (isQuestionLoading || isQueryRunning) {
     return <SdkLoader />;
@@ -69,45 +48,15 @@ export const InteractiveQuestionResult = ({
       bg="var(--mb-color-bg-question)"
     >
       <Stack h="100%">
-        <ViewHeaderContainer data-testid="qb-header" isNavBarOpen={false}>
-          {onNavigateBack && (
-            <DashboardBackButton noLink onClick={onNavigateBack} />
-          )}
+        <Flex direction="row" gap="md" px="md" align="center">
+          <BackButton />
+          <Title />
+          <QuestionResetButton />
+        </Flex>
 
-          {withTitle && (customTitle || <QuestionTitle question={question} />)}
-
-          {withResetButton && onReset && <ResetButton onClick={onReset} />}
-        </ViewHeaderContainer>
-
-        {QuestionFiltersHeader.shouldRender({
-          question,
-          queryBuilderMode: uiControls.queryBuilderMode,
-          isObjectDetail: false,
-        }) && (
-          <QuestionFiltersHeader
-            expanded
-            question={question}
-            updateQuestion={(...args) => dispatch(updateQuestion(...args))}
-          />
-        )}
-
+        <FilterBar />
         <Group h="100%" pos="relative" align="flex-start">
-          <QueryVisualization
-            className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
-            question={question}
-            rawSeries={[{ card, data: result && result.data }]}
-            isRunning={isQueryRunning}
-            isObjectDetail={false}
-            isResultDirty={false}
-            isNativeEditorOpen={false}
-            result={result}
-            noHeader
-            mode={mode}
-            navigateToNewCardInsideQB={(props: any) => {
-              dispatch(navigateToNewCardInsideQB(props));
-            }}
-            onNavigateBack={onNavigateBack}
-          />
+          <QuestionVisualization />
         </Group>
       </Stack>
     </Box>
