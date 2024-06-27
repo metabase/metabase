@@ -8,6 +8,7 @@ import { getQueryResults } from "metabase/query_builder/selectors";
 import { InteractiveQuestionResult } from "./InteractiveQuestionResult";
 
 interface InteractiveAdHocQuestionProps {
+  isOpenedFromDashboard: boolean;
   questionPath: string; // route path to load a question, e.g. /question/140-best-selling-products - for saved, or /question/xxxxxxx for ad-hoc encoded question config
   onNavigateBack: () => void;
 
@@ -17,6 +18,7 @@ interface InteractiveAdHocQuestionProps {
 }
 
 export const InteractiveAdHocQuestion = ({
+  isOpenedFromDashboard,
   questionPath,
   onNavigateBack,
   withTitle = true,
@@ -56,11 +58,12 @@ export const InteractiveAdHocQuestion = ({
 
   return (
     <InteractiveQuestionResult
+      isOpenedFromDashboard={isOpenedFromDashboard}
       isQuestionLoading={isQuestionLoading}
       onNavigateBack={onNavigateBack}
       height={height}
       componentPlugins={plugins}
-      withResetButton
+      withResetButton={!isOpenedFromDashboard}
       onResetButtonClick={onNavigateBack}
       withTitle={withTitle}
     />
