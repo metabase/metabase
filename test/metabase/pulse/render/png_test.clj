@@ -1,7 +1,14 @@
 (ns metabase.pulse.render.png-test
   (:require
    [clojure.test :refer :all]
-   [metabase.pulse.render.png :as png]))
+   [hiccup.core :as hiccup]
+   [metabase.pulse.render.png :as png]
+   [metabase.pulse.render.style :as style])
+  (:import
+   (java.awt Font GraphicsEnvironment)
+   (java.awt.image BufferedImage)
+   (java.io ByteArrayInputStream)
+   (javax.imageio ImageIO)))
 
 (set! *warn-on-reflection* true)
 
@@ -13,14 +20,49 @@
 
 (deftest table-width-test
   (testing "The PNG of a table should be cropped to the width of its content"
-    (let [^java.awt.image.BufferedImage png (@#'png/render-to-png test-table-html-1 1200)]
+    (let [^BufferedImage png (#'png/render-to-png test-table-html-1 1200)]
       ;; Check that width is within a range, since actual rendered result can very slightly by environment
       (is (< 140 (.getWidth png) 210))))
   (testing "The PNG of a table should not clip any of its content"
-    (let [^java.awt.image.BufferedImage png (@#'png/render-to-png test-table-html-2 1200)]
+    (let [^BufferedImage png (#'png/render-to-png test-table-html-2 1200)]
       (is (< 320 (.getWidth png) 360)))))
 
 (deftest installed-fonts-test
   (testing "Are the correct fonts available for rendering?"
-    (is (= []
-           (mapv #(.getName %) (.getAllFonts (java.awt.GraphicsEnvironment/getLocalGraphicsEnvironment)))))))
+    (is (contains?
+         (into #{} (map #(.getName ^Font %)) (.getAllFonts (GraphicsEnvironment/getLocalGraphicsEnvironment)))
+         "Lato Regular"))))
+
+(defn- bytes->image
+  [bytes]
+  (let [input-stream (ByteArrayInputStream. bytes)]
+    (ImageIO/read input-stream)))
+
+(defn- render-without-wrapping
+  [content width]
+  (-> [:html
+       [:body {:style (style/style
+                       {:font-family      "Lato, 'Helvetica Neue', 'Lucida Grande', sans-serif"
+                        :margin           0
+                        :padding          0
+                        :background-color :white})}
+                                 content]]
+      hiccup/html
+      (#'png/render-to-png width)))
+
+(defn- render-with-wrapping
+  [content width]
+  (-> {:content     content
+       :attachments {}}
+      (png/render-html-to-png width)
+      bytes->image))
+
+(deftest non-lato-characters-can-render-test
+  (testing "Strings containing characters that are not included in the Lato font can still be rendered."
+    (let [content                       [:span (apply str ["안녕"])]
+          ^BufferedImage broken-render  (render-without-wrapping content 200)
+          ^BufferedImage working-render (render-with-wrapping content 200)]
+      ;; The broken-render's width is around 17px. It is the width of 2 `[?]` charaters
+      ;; We assert that the working render is wider based on the assumption (verified manually by
+      ;; actually looking at the rendered images) that the correctly rendered glyphs are wider.
+      (is (< (.getWidth broken-render) (.getWidth working-render))))))
