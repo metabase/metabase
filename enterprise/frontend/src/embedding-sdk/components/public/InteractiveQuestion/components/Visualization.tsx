@@ -5,7 +5,10 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context/context";
+import {
+  useInteractiveQuestionContext,
+  useInteractiveQuestionData,
+} from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import { navigateToNewCardInsideQB } from "metabase/query_builder/actions";
@@ -14,16 +17,11 @@ import QueryVisualization from "metabase/query_builder/components/QueryVisualiza
 export const QuestionVisualization = () => {
   const dispatch = useDispatch();
 
-  const {
-    card,
-    isQueryRunning,
-    mode,
-    onNavigateBack,
-    question,
-    result,
-    isQuestionLoading,
-    queryResults,
-  } = useInteractiveQuestionContext();
+  const { card, isQueryRunning, queryResults, question, result } =
+    useInteractiveQuestionData();
+
+  const { mode, isQuestionLoading, onNavigateBack } = useInteractiveQuestionContext();
+  
 
   if (isQuestionLoading || isQueryRunning) {
     return <SdkLoader />;

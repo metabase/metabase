@@ -1,4 +1,6 @@
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context/context";
+import {
+  useInteractiveQuestionData,
+} from "embedding-sdk/components/public/InteractiveQuestion/context";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   runQuestionQuery,
@@ -13,8 +15,8 @@ import {
 import { getSetting } from "metabase/selectors/settings";
 import type Question from "metabase-lib/v1/Question";
 
-export const Notebook = () => {
-  const { question, setIsNotebookOpen } = useInteractiveQuestionContext();
+export const Notebook = ({ onClick }: { onClick: () => void }) => {
+  const { question } = useInteractiveQuestionData();
 
   const isDirty = useSelector(getIsDirty);
   const isRunnable = useSelector(getIsRunnable);
@@ -38,7 +40,7 @@ export const Notebook = () => {
           dispatch(updateQuestion(question))
         }
         runQuestionQuery={() => dispatch(runQuestionQuery())}
-        setQueryBuilderMode={() => setIsNotebookOpen(false)}
+        setQueryBuilderMode={onClick}
         hasVisualizeButton={true}
       />
     )

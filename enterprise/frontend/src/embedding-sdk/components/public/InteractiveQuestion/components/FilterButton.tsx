@@ -1,34 +1,25 @@
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context/context";
+import { useInteractiveQuestionData } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import { FilterHeaderButton } from "metabase/query_builder/components/view/ViewHeader/components";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-export const FilterButton = () => {
-  const { question, setIsFilterOpen } = useInteractiveQuestionContext();
+export const FilterButton = ({ onClick }: { onClick: () => void }) => {
+  const { question } = useInteractiveQuestionData();
 
   return (
-    question && (
-      <FilterButtonInner
-        question={question}
-        setIsFilterOpen={setIsFilterOpen}
-      />
-    )
+    question && <FilterButtonInner question={question} onClick={onClick} />
   );
 };
 
 const FilterButtonInner = ({
   question,
-  setIsFilterOpen,
+  onClick,
 }: {
   question: Question;
-  setIsFilterOpen: (value: boolean) => void;
+  onClick: () => void;
 }) => {
   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
   const isFilterable = !isNative && isEditable && !question.isArchived();
 
-  return (
-    isFilterable && (
-      <FilterHeaderButton onOpenModal={() => setIsFilterOpen(true)} />
-    )
-  );
+  return isFilterable && <FilterHeaderButton onOpenModal={onClick} />;
 };

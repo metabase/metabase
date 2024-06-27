@@ -1,9 +1,14 @@
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context/context";
+import { useInteractiveQuestionData } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import { QuestionNotebookButton } from "metabase/query_builder/components/view/ViewHeader/components";
 
-export const NotebookButton = () => {
-  const { question, isNotebookOpen, setIsNotebookOpen } =
-    useInteractiveQuestionContext();
+export const NotebookButton = ({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) => {
+  const { question } = useInteractiveQuestionData();
   return (
     question &&
     QuestionNotebookButton.shouldRender({
@@ -11,10 +16,8 @@ export const NotebookButton = () => {
       isActionListVisible: true,
     }) && (
       <QuestionNotebookButton
-        isShowingNotebook={isNotebookOpen}
-        setQueryBuilderMode={() => {
-          setIsNotebookOpen(!isNotebookOpen);
-        }}
+        isShowingNotebook={isOpen}
+        setQueryBuilderMode={onClose}
       />
     )
   );

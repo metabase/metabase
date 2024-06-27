@@ -58,6 +58,8 @@
          ;; if the changelog has filter by dbms, remove the ones that doens't apply for the current db-type
          (remove (fn [{{:keys [dbms]} :changeSet}] (and (not (str/blank? dbms))
                                                         (not (str/includes? dbms (name db-type))))))
+         ;; remove ignored changeSets
+         (remove #(get-in % [:changeSet :ignore]))
          (map #(str (get-in % [:changeSet :id])))
          (remove str/blank?))))
 
