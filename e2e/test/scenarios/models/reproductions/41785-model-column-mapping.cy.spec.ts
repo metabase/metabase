@@ -37,7 +37,7 @@ describe("issue 41785", () => {
     cy.button("Save").click();
     modal().button("Save").click();
 
-    cy.findByTestId("loading-indicator").should("exist");
+    cy.findAllByTestId("cell-data").should("contain", "37.65");
     cy.findByTestId("loading-indicator").should("not.exist");
 
     cy.findByTestId("viz-settings-button").click();
