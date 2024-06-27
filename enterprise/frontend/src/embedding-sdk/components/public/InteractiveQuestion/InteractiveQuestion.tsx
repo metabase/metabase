@@ -51,7 +51,6 @@ export const _InteractiveQuestion = ({
       customTitle={customTitle}
       withResetButton={withResetButton}
       withTitle={withTitle}
-      isControlled={!children}
     >
       {children ?? <InteractiveQuestionResult height={height} />}
     </InteractiveQuestionProvider>

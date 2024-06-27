@@ -20,8 +20,8 @@ export const QuestionVisualization = () => {
   const { card, isQueryRunning, queryResults, question, result } =
     useInteractiveQuestionData();
 
-  const { mode, isQuestionLoading, onNavigateBack } = useInteractiveQuestionContext();
-  
+  const { mode, isQuestionLoading, onNavigateBack } =
+    useInteractiveQuestionContext();
 
   if (isQuestionLoading || isQueryRunning) {
     return <SdkLoader />;
