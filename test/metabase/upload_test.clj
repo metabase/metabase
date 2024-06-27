@@ -822,11 +822,11 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     ;; There aren't any officially supported databases yet that don't support `:upload-with-auto-pk`
     ;; So we'll fake it here to test it for 3rd party drivers
-    (let [original-database-supports?-fn driver.u/supports?]
+    (let [original-supports?-fn driver.u/supports?]
       (with-redefs [driver.u/supports? (fn [driver feature db]
                                          (if (= feature :upload-with-auto-pk)
                                            false
-                                           (original-database-supports?-fn driver feature db)))]
+                                           (original-supports?-fn driver feature db)))]
         (with-mysql-local-infile-on-and-off
           (testing "Upload a CSV file with column names that are reserved by the DB, NOT ignoring them"
             (testing "A single column whose name normalizes to _mb_row_id"
