@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePrevious, useUnmount } from "react-use";
 
 import type { SdkClickActionPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
@@ -8,12 +9,14 @@ import {
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import CS from "metabase/css/core/index.css";
+import { NAVIGATE_TO_NEW_CARD, reset } from "metabase/dashboard/actions";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
-import { useStore } from "metabase/lib/redux";
+import { useDispatch, useStore } from "metabase/lib/redux";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
+import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import type { QuestionDashboardCard } from "metabase-types/api";
@@ -49,13 +52,26 @@ const InteractiveDashboardInner = ({
     hiddenParameters,
     initialParameterValues,
   });
-
+  const dispatch = useDispatch();
   const { theme } = useEmbedTheme();
 
   const { font } = useEmbedFont();
 
   const store = useStore();
   const [adhocQuestionUrl, setAdhocQuestionUrl] = useState<string | null>(null);
+
+  const previousDashboardId = usePrevious(dashboardId);
+
+  useUnmount(() => {
+    dispatch(reset()); // reset "isNavigatingBackToDashboard" state
+  });
+
+  useEffect(() => {
+    if (dashboardId !== previousDashboardId) {
+      dispatch(reset()); // reset "isNavigatingBackToDashboard" state
+      setAdhocQuestionUrl(null);
+    }
+  }, [dashboardId, dispatch, previousDashboardId]);
 
   const handleNavigateToNewCardFromDashboard = ({
     nextCard,
@@ -80,19 +96,28 @@ const InteractiveDashboardInner = ({
       });
 
       if (url) {
+        dispatch({ type: NAVIGATE_TO_NEW_CARD, payload: { dashboardId } });
+
         setAdhocQuestionUrl(url);
       }
     }
   };
 
+  const handleNavigateBackToDashboard = () => {
+    dispatch(navigateBackToDashboard(dashboardId)); // set global state for cases when navigate back from question with empty results
+
+    setAdhocQuestionUrl(null);
+  };
+
   if (adhocQuestionUrl) {
     return (
       <InteractiveAdHocQuestion
+        isOpenedFromDashboard
         questionPath={adhocQuestionUrl}
         withTitle={withTitle}
         height={questionHeight}
         plugins={questionPlugins}
-        onNavigateBack={() => setAdhocQuestionUrl(null)}
+        onNavigateBack={handleNavigateBackToDashboard}
       />
     );
   }
