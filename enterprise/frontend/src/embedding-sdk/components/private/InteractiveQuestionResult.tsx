@@ -31,12 +31,42 @@ interface InteractiveQuestionResultProps {
   height?: string | number;
 }
 
+type QuestionView = "notebook" | "filter" | "summarize" | "visualization";
+
+const ResultView = ({
+  questionView,
+  setQuestionView,
+}: {
+  questionView: QuestionView;
+  setQuestionView: (questionView: QuestionView) => void;
+}) => {
+  if (questionView === "filter") {
+    return (
+      <Stack>
+        <Button onClick={() => setQuestionView("visualization")}>
+          {t`Close`}
+        </Button>
+        <Filter />
+      </Stack>
+    );
+  }
+
+  if (questionView === "summarize") {
+    return <Summarize onClose={() => setQuestionView("visualization")} />;
+  }
+
+  if (questionView === "notebook") {
+    return <Notebook onClick={() => setQuestionView("visualization")} />;
+  }
+
+  return <QuestionVisualization />;
+};
+
 export const InteractiveQuestionResult = ({
   height,
 }: InteractiveQuestionResultProps): ReactElement => {
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [isSummarizeOpen, setIsSummarizeOpen] = useState(false);
-  const [isNotebookOpen, setIsNotebookOpen] = useState(false);
+  const [questionView, setQuestionView] =
+    useState<QuestionView>("visualization");
 
   const { isQuestionLoading } = useInteractiveQuestionContext();
 
@@ -51,25 +81,6 @@ export const InteractiveQuestionResult = ({
     return <SdkError message={t`Question not found`} />;
   }
 
-  if (isFilterOpen) {
-    return (
-      <Stack>
-        <Button onClick={() => setIsFilterOpen(!isFilterOpen)}>
-          {t`Close`}
-        </Button>
-        <Filter />
-      </Stack>
-    );
-  }
-
-  if (isSummarizeOpen) {
-    return <Summarize onClose={() => setIsSummarizeOpen(false)} />;
-  }
-
-  if (isNotebookOpen) {
-    return <Notebook onClick={() => setIsNotebookOpen(!isNotebookOpen)} />;
-  }
-
   return (
     <Box
       className={cx(CS.flexFull, CS.fullWidth)}
@@ -81,21 +92,24 @@ export const InteractiveQuestionResult = ({
           <BackButton />
           <Title />
           <QuestionResetButton />
-          <FilterButton onClick={() => setIsFilterOpen(!isFilterOpen)} />
+          <FilterButton onClick={() => setQuestionView("filter")} />
           <SummarizeButton
-            isOpen={isSummarizeOpen}
-            onClose={() => setIsSummarizeOpen(false)}
+            isOpen={questionView === "summarize"}
+            onClose={() => setQuestionView("visualization")}
           />
           <NotebookButton
-            isOpen={isNotebookOpen}
-            onClose={() => setIsNotebookOpen(false)}
+            isOpen={questionView === "notebook"}
+            onClose={() => setQuestionView("visualization")}
           />
         </Flex>
 
         <FilterBar />
 
         <Group h="100%" pos="relative" align="flex-start">
-          <QuestionVisualization />
+          <ResultView
+            questionView={questionView}
+            setQuestionView={setQuestionView}
+          />
         </Group>
       </Stack>
     </Box>
