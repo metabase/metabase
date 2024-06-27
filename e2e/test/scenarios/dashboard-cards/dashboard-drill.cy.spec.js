@@ -314,7 +314,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.get("fieldset").should("contain", "Aaron Hand");
 
       cy.location("pathname").should("eq", `/dashboard/${dashboardId}`);
-      cy.location("search").should("eq", "?my_param=Aaron%20Hand");
+      cy.location("search").should("eq", "?my_param=Aaron+Hand");
     });
   });
 
