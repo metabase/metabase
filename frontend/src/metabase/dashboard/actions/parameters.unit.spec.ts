@@ -1,3 +1,5 @@
+import type { Store } from "@reduxjs/toolkit";
+
 import { getStore } from "__support__/entities-store";
 import { getParameters } from "metabase/dashboard/selectors";
 import { mainReducers } from "metabase/reducers-main";
@@ -16,7 +18,7 @@ import {
 } from "./parameters";
 
 function setup({ routing, ...initialState }: State) {
-  return getStore(mainReducers, initialState);
+  return getStore(mainReducers, initialState) as Store<State, any>;
 }
 
 describe("setParameterIsMultiSelect", () => {
