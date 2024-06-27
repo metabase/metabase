@@ -23,6 +23,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -80,7 +81,7 @@
                                       [id (u.date/format-sql (t/local-date-time (u.date/parse s))) cnt])
 
                                     (or (= timezone :utc)
-                                        (not (driver/database-supports? driver/*driver* :set-timezone (mt/db))))
+                                        (not (driver.u/supports? driver/*driver* :set-timezone (mt/db))))
                                     utc-results
 
                                     :else

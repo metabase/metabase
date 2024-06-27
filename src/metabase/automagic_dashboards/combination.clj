@@ -25,7 +25,7 @@
     [metabase.automagic-dashboards.schema :as ads]
     [metabase.automagic-dashboards.util :as magic.util]
     [metabase.automagic-dashboards.visualization-macros :as visualization]
-    [metabase.driver :as driver]
+    [metabase.driver.util :as driver.u]
     [metabase.models.interface :as mi]
     [metabase.query-processor.util :as qp.util]
     [metabase.util :as u]
@@ -164,7 +164,7 @@
   [{:keys [base_type db fingerprint aggregation]}]
   (or (nil? aggregation)
       (not (isa? base_type :type/Number))
-      (and (driver/database-supports? (:engine db) :binning db)
+      (and (driver.u/supports? (:engine db) :binning db)
            (-> fingerprint :type :type/Number :min))))
 
 (defn- valid-bindings? [{:keys [root]} satisfied-dimensions bindings]

@@ -17,7 +17,7 @@
     (when (and (not= :redshift driver)
                ;; redshift does support table-privileges, but we don't want to sync it now because table privileges are
                ;; meant to enhance action features, but redshift does not support actions for now, so we skip it here.
-               (driver/database-supports? driver :table-privileges database))
+               (driver.u/supports? driver :table-privileges database))
       (let [rows               (driver/current-user-table-privileges driver database)
             schema+table->id   (t2/select-fn->pk (fn [t] {:schema (:schema t), :table (:name t)}) :model/Table :db_id (:id database))
             rows-with-table-id (keep (fn [row]

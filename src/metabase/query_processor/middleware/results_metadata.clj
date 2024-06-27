@@ -4,6 +4,7 @@
    as a checksum in the API response."
   (:require
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
@@ -30,7 +31,7 @@
     ;; if its DB doesn't support nested queries in the first place
     (when (and metadata
                driver/*driver*
-               (driver/database-supports? driver/*driver* :nested-queries (lib.metadata/database (qp.store/metadata-provider)))
+               (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database (qp.store/metadata-provider)))
                card-id
                (not source-card-id))
       (t2/update! :model/Card card-id {:result_metadata metadata}))

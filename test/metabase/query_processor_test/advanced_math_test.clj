@@ -81,7 +81,7 @@
                (ffirst
                 (mt/formatted-rows [1.0]
                   (mt/process-query query))))))))
-  (when (driver/database-supports? driver/*driver* :expression-aggregations (mt/db))
+  (when (driver.u/supports? driver/*driver* :expression-aggregations (mt/db))
     (testing "Inside an expression aggregation"
       (let [query (mt/mbql-query venues
                     {:aggregation [[:+ agg 1]]})]

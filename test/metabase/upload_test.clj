@@ -537,17 +537,17 @@
 
 (defn- columns-with-auto-pk [columns]
   (cond-> columns
-    (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
     (#'upload/columns-with-auto-pk)))
 
 (defn- header-with-auto-pk [header]
   (cond->> header
-    (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
     (cons @#'upload/auto-pk-column-name)))
 
 (defn- rows-with-auto-pk [rows]
   (cond->> rows
-    (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
     (map-indexed (fn [i row] (cons (inc i) row)))))
 
 (defn- column-position [table column-name]
@@ -575,7 +575,7 @@
                               ["number" {:base_type :type/Float}]
                               ["date" {:base_type :type/Date}]
                               ["datetime" {:base_type :type/DateTime}]]
-                      (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
+                      (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
                       (cons ["_mb_row_id" {:semantic_type     :type/PK
                                            :base_type         :type/BigInteger}]))
                     (->> (t2/select :model/Field :table_id (:id table))
@@ -822,11 +822,11 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     ;; There aren't any officially supported databases yet that don't support `:upload-with-auto-pk`
     ;; So we'll fake it here to test it for 3rd party drivers
-    (let [original-database-supports?-fn driver/database-supports?]
-      (with-redefs [driver/database-supports? (fn [driver feature db]
-                                                (if (= feature :upload-with-auto-pk)
-                                                  false
-                                                  (original-database-supports?-fn driver feature db)))]
+    (let [original-database-supports?-fn driver.u/supports?]
+      (with-redefs [driver.u/supports? (fn [driver feature db]
+                                         (if (= feature :upload-with-auto-pk)
+                                           false
+                                           (original-database-supports?-fn driver feature db)))]
         (with-mysql-local-infile-on-and-off
           (testing "Upload a CSV file with column names that are reserved by the DB, NOT ignoring them"
             (testing "A single column whose name normalizes to _mb_row_id"
@@ -1072,7 +1072,7 @@
 (deftest create-csv-upload!-table-prefix-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "Happy path with table prefix, and without schema"
-      (if (driver/database-supports? driver/*driver* :schemas (mt/db))
+      (if (driver.u/supports? driver/*driver* :schemas (mt/db))
         (is (thrown-with-msg?
               java.lang.Exception
               #"^A schema has not been set."
@@ -1135,7 +1135,7 @@
               #"^The uploads database does not exist\.$"
               (upload-example-csv! :db-id Integer/MAX_VALUE, :schema-name "public", :table-prefix "uploaded_magic_"))))
       (testing "Uploads must be supported"
-        (with-redefs [driver/database-supports? (constantly false)]
+        (with-redefs [driver.u/supports? (constantly false)]
           (is (thrown-with-msg?
                 java.lang.Exception
                 #"^Uploads are not supported on Postgres databases\."
@@ -1281,7 +1281,7 @@
               :data    {:status-code 422}}
              (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
     (testing "Uploads must be supported"
-      (with-redefs [driver/database-supports? (constantly false)]
+      (with-redefs [driver.u/supports? (constantly false)]
         (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
                 :data    {:status-code 422}}
                (catch-ex-info (append-csv-with-defaults!))))))))
@@ -1320,7 +1320,7 @@
       (testing "Append should fail if there are extra or missing columns in the CSV file"
         (doseq [[csv-rows error-message]
                 {["_mb_row_id,id,name,extra column one,EXTRA COLUMN TWO"]
-                 (if (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
+                 (if (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
                    (trim-lines "The CSV file contains extra columns that are not in the table:
                                 - extra_column_two
                                 - extra_column_one")
@@ -1650,7 +1650,7 @@
         ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
         ;; inserted rows are rolled back
         (binding [driver/*insert-chunk-rows* 1]
-          (doseq [auto-pk-column? (if (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
+          (doseq [auto-pk-column? (if (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
                                     [true false]
                                     [false])]
             (testing (str "\nFor a table that has " (if auto-pk-column? "an" " no") " automatically generated PK already")

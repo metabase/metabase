@@ -39,7 +39,6 @@
   * In general the methods in these namespaces return the number of rows updated; these numbers are summed and used
     for logging purposes by higher-level sync logic."
   (:require
-   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -114,7 +113,7 @@
                            [:total-fields   ms/IntGreaterThanOrEqualToZero]]]
   "Sync the Fields in the Metabase application database for all the Tables in a `database`."
   [database :- i/DatabaseInstance]
-  (if (driver/database-supports? (driver.u/database->driver database) :describe-fields database)
+  (if (driver.u/supports? (driver.u/database->driver database) :describe-fields database)
     (sync-fields-for-db! database)
     (->> (sync-util/db->sync-tables database)
          (map (partial sync-fields-for-table! database))

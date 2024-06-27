@@ -27,7 +27,7 @@
   "Get more detailed information about a `table` belonging to `database`. Includes information about the Fields."
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
-  (if (driver/database-supports? (driver.u/database->driver database) :describe-fields database)
+  (if (driver.u/supports? (driver.u/database->driver database) :describe-fields database)
     (set (fields-metadata database :table-names [(:name table)] :schema-names [(:schema table)]))
     (:fields (driver/describe-table (driver.u/database->driver database) database table))))
 
@@ -44,8 +44,8 @@
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
   (let [driver (driver.u/database->driver database)]
-    (when (driver/database-supports? driver :foreign-keys database)
-      (if (driver/database-supports? driver :describe-fks database)
+    (when (driver.u/supports? driver :foreign-keys database)
+      (if (driver.u/supports? driver :describe-fks database)
         (vec (driver/describe-fks driver database :table-names [(:name table)] :schema-names [(:schema table)]))
         #_{:clj-kondo/ignore [:deprecated-var]}
         (vec (for [x (driver/describe-table-fks driver database table)]
@@ -61,7 +61,7 @@
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
   (let [driver (driver.u/database->driver database)]
-    (when (driver/database-supports? driver :nested-field-columns database)
+    (when (driver.u/supports? driver :nested-field-columns database)
       (sql-jdbc.sync/describe-nested-field-columns driver database table))))
 
 (mu/defn index-metadata :- [:maybe i/TableIndexMetadata]

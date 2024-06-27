@@ -99,7 +99,7 @@
   (mt/test-drivers #{:sqlite}
     (testing "Updating database-enable-actions to true should fail if the engine doesn't support actions"
       (t2.with-temp/with-temp [Database database {:engine :sqlite}]
-        (is (= false (driver/database-supports? :sqlite :actions database)))
+        (is (= false (driver.u/supports? :sqlite :actions database)))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"The database does not support actions."
