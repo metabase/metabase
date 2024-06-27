@@ -453,11 +453,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("@targetDashboardId").then(targetDashboardId => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
-          expect(search).to.equal(
-            `?tab=${TAB_SLUG_MAP[SECOND_TAB.name]}&${
-              DASHBOARD_FILTER_TEXT.slug
-            }=${POINT_COUNT}`,
-          );
+
+          const tabParam = `tab=${TAB_SLUG_MAP[SECOND_TAB.name]}`;
+          const textFilterParam = `${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`;
+          expect(search).to.equal(`?${textFilterParam}&${tabParam}`);
         });
       });
     });

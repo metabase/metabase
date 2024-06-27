@@ -555,7 +555,7 @@ describe("issues 15119 and 16112", () => {
     cy.button("Add filter").click();
 
     cy.findByTestId("dashcard-container").should("contain", "adam");
-    cy.location("search").should("eq", "?reviewer=adam&rating=");
+    cy.location("search").should("eq", "?rating=&reviewer=adam");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ratingFilter.name).click();
@@ -565,7 +565,7 @@ describe("issues 15119 and 16112", () => {
 
     cy.findByTestId("dashcard-container").should("contain", "adam");
     cy.findByTestId("dashcard-container").should("contain", "5");
-    cy.location("search").should("eq", "?reviewer=adam&rating=5");
+    cy.location("search").should("eq", "?rating=5&reviewer=adam");
   });
 });
 
