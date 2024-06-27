@@ -167,6 +167,18 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
                (setting/get-value-of-type :boolean :saml-enabled)
                false)))
 
+(defsetting saml-slo-enabled
+  (deferred-tru "Is SAML Single Log Out enabled?")
+  :type    :boolean
+  :default false
+  :feature :sso-saml
+  :audit   :getter
+  :export? false
+  :getter  (fn []
+             (if (saml-enabled)
+               (setting/get-value-of-type :boolean :saml-slo-enabled)
+               false)))
+
 (defsetting jwt-identity-provider-uri
   (deferred-tru "URL of JWT based login page")
   :feature :sso-jwt
