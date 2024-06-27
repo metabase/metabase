@@ -1,4 +1,5 @@
-import { useState } from "react";
+import type { EChartsType } from "echarts/core";
+import { useCallback, useRef, useState } from "react";
 
 import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
@@ -8,10 +9,12 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { ChartRenderer } from "./PieChart.styled";
 import { PIE_CHART_DEFINITION } from "./chart-definition";
+import { useChartEvents } from "./use-chart-events";
 
 Object.assign(PieChart, PIE_CHART_DEFINITION);
 
 export function PieChart(props: VisualizationProps) {
+  const chartRef = useRef<EChartsType>();
   const [sideLength, setSideLength] = useState(0);
 
   const renderingContext = useBrowserRenderingContext({
@@ -35,12 +38,25 @@ export function PieChart(props: VisualizationProps) {
     sideLength,
   );
 
+  const handleInit = useCallback((chart: EChartsType) => {
+    chartRef.current = chart;
+  }, []);
+
+  const handleResize = useCallback(
+    (width: number, height: number) => setSideLength(Math.min(width, height)),
+    [setSideLength],
+  );
+
+  const eventHandlers = useChartEvents(props, chartRef, chartModel, formatters);
+
   return (
     <ChartRenderer
       option={option}
       width={"auto"}
       height={"auto"}
-      onResize={(width, height) => setSideLength(Math.min(width, height))}
+      onInit={handleInit}
+      onResize={handleResize}
+      eventHandlers={eventHandlers}
       style={null}
     />
   );
