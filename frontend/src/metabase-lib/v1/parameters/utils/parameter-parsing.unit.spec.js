@@ -351,7 +351,7 @@ describe("parameters/utils/parameter-values", () => {
           expect(runGetParameterValueFromQueryParams(" ")).toEqual(null);
         });
 
-        it("should return first parseable float if value includes non-numeric characters", () => {
+        it("should return `null` if value includes non-numeric characters", () => {
           expect(runGetParameterValueFromQueryParams("1,a,3,")).toEqual(null);
           expect(runGetParameterValueFromQueryParams("1a,b,3,")).toEqual(null);
         });
