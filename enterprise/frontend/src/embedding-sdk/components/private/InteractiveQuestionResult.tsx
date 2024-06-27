@@ -14,6 +14,8 @@ import {
   Title,
   Filter,
   FilterButton,
+  Summarize,
+  SummarizeButton,
   QuestionVisualization,
 } from "embedding-sdk/components/public/InteractiveQuestion";
 import {
@@ -31,6 +33,7 @@ export const InteractiveQuestionResult = ({
   height,
 }: InteractiveQuestionResultProps): ReactElement => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isSummarizeOpen, setIsSummarizeOpen] = useState(false);
 
   const { isQuestionLoading } = useInteractiveQuestionContext();
 
@@ -56,6 +59,10 @@ export const InteractiveQuestionResult = ({
     );
   }
 
+  if (isSummarizeOpen) {
+    return <Summarize onClose={() => setIsSummarizeOpen(false)} />;
+  }
+
   return (
     <Box
       className={cx(CS.flexFull, CS.fullWidth)}
@@ -68,6 +75,10 @@ export const InteractiveQuestionResult = ({
           <Title />
           <QuestionResetButton />
           <FilterButton onClick={() => setIsFilterOpen(!isFilterOpen)} />
+          <SummarizeButton
+            isOpen={isSummarizeOpen}
+            onClose={() => setIsSummarizeOpen(false)}
+          />
         </Flex>
 
         <FilterBar />
