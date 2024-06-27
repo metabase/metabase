@@ -138,18 +138,18 @@
                                        (when (and (= :field tag)
                                                   (string? id-or-name))
                                          [id-or-name clause])))
-                               breakout)]
-      (update inner-query :order-by
-              (partial reduce (fn [acc [dir [tag id-or-name] :as order-by]]
-                                (conj acc (or (and (= :field tag)
-                                                   (integer? id-or-name)
-                                                   (let [name ((some-fn :lib/desired-column-alias :name)
-                                                               (lib.metadata/field (qp.store/metadata-provider)
-                                                                                   id-or-name))]
-                                                     (when-some [breakout (name->breakout name)]
-                                                       [dir breakout])))
-                                              order-by)))
-                       [])))))
+                               breakout)
+          ref->maybe-field-name (fn [[tag id-or-name]]
+                                  (when (and (= :field tag)
+                                             (integer? id-or-name))
+                                    ((some-fn :lib/desired-column-alias :name)
+                                     (lib.metadata/field (qp.store/metadata-provider)
+                                                         id-or-name))))
+          maybe-convert-order-by-ref (fn [[dir ref :as order-by-elm]]
+                                       (if-some [breakout (-> ref ref->maybe-field-name name->breakout)]
+                                         [dir breakout]
+                                         order-by-elm))]
+      (update inner-query :order-by (partial mapv maybe-convert-order-by-ref)))))
 
 (mu/defn ^:private add-implicit-breakout-order-by :- mbql.s/MBQLQuery
   "Fields specified in `breakout` should add an implicit ascending `order-by` subclause *unless* that Field is already
