@@ -150,12 +150,17 @@ Stop your Metabase and use the current, upgraded Metabase JAR (not the Metabase 
 java -jar metabase.jar migrate down
 ```
 
-If you're running Docker, the command would be:
+If you're running Docker, use the command `"migrate down"` (with the quotes around `"migrate down"`), and include the connection details for your application database, for example:
 
 ```
-docker run --rm metabase/metabase "migrate down"
+docker run
+  -e "MB_DB_TYPE=postgres" \
+  -e "MB_DB_DBNAME=metabaseappdb" \
+  -e "MB_DB_PORT=5432" \
+  -e "MB_DB_USER=name" \
+  -e "MB_DB_PASS=password" \
+  -e "MB_DB_HOST=my-database-host" \
+--rm metabase/metabase "migrate down"
 ```
-
-Note the quotes around `"migrate down"` for the Docker command.
 
 Once the migration process completes, start up Metabase using the JAR or Docker image for the version you want to run.
