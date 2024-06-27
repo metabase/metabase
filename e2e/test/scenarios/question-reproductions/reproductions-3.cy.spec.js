@@ -42,9 +42,10 @@ import {
   visitDashboard,
   getDashboardCard,
   testTooltipPairs,
+  join,
 } from "e2e/support/helpers";
 
-const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
 
 describe("issue 32625, issue 31635", () => {
@@ -309,6 +310,34 @@ describe("issue 38354", { tags: "@external" }, () => {
       .findByText("There was a problem with your question")
       .should("not.exist");
     cy.get("[data-testid=cell-data]").should("contain", "37.65"); // assert visualization renders the data
+  });
+});
+
+describe("issue 30056", () => {
+  const questionDetails = {
+    query: {
+      "source-query": {
+        "source-table": PEOPLE_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", PEOPLE.LATITUDE, { "base-type": "type/Float" }],
+          ["field", PEOPLE.LONGITUDE, { "base-type": "type/Float" }],
+        ],
+      },
+      filter: [">", ["field", "count", { "base-type": "type/Integer" }], 2],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show table breadcrumbs for questions with post-aggregation filters (metabase#30056)", () => {
+    createQuestion(questionDetails, { visitQuestion: true });
+    // the name of the table is hidden after a few seconds with a CSS animation,
+    // so check for "exist" only
+    queryBuilderHeader().findByText("People").should("exist");
   });
 });
 
@@ -780,6 +809,92 @@ describe.skip("issue 10493", () => {
       cy.findByText("Quantity").should("exist");
       cy.findByText("25").should("exist");
       cy.findByText("75").should("exist");
+    });
+  });
+});
+
+describe("issue 32020", () => {
+  const question1Details = {
+    name: "Q1",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["sum", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }]],
+      ],
+      breakout: [
+        ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+      ],
+    },
+  };
+
+  const question2Details = {
+    name: "Q2",
+    query: {
+      "source-table": PEOPLE_ID,
+      aggregation: [
+        ["max", ["field", PEOPLE.LONGITUDE, { "base-type": "type/Float" }]],
+      ],
+      breakout: [
+        ["field", PEOPLE.ID, { "base-type": "type/BigInteger" }],
+        [
+          "field",
+          PEOPLE.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    createQuestion(question1Details);
+    createQuestion(question2Details);
+  });
+
+  it("should be possible to use aggregation columns from source and joined questions in aggregation (metabase#32020)", () => {
+    startNewQuestion();
+
+    cy.log("create joined question manually");
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText(question1Details.name).click();
+    });
+    join();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText(question2Details.name).click();
+    });
+    popover().findByText("ID").click();
+    popover().findByText("ID").click();
+
+    cy.log("aggregation column from the source question");
+    getNotebookStep("summarize")
+      .findByText(/Pick the metric/)
+      .click();
+    popover().within(() => {
+      cy.findByText("Sum of ...").click();
+      cy.findByText("Sum of Total").click();
+    });
+
+    cy.log("aggregation column from the joined question");
+    getNotebookStep("summarize").icon("add").click();
+    popover().within(() => {
+      cy.findByText("Sum of ...").click();
+      cy.findByText(question2Details.name).click();
+      cy.findByText("Max of Longitude").click();
+    });
+
+    cy.log("visualize and check results");
+    visualize();
+    tableInteractive().within(() => {
+      cy.findByText("Sum of Sum of Total").should("be.visible");
+      cy.findByText("Sum of Q2 → Max").should("be.visible");
     });
   });
 });
