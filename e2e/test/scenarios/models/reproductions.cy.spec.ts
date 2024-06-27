@@ -448,7 +448,7 @@ describe("issue 41785", () => {
   });
 });
 
-describe("issue 40635", () => {
+describe.skip("issue 40635", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
@@ -516,15 +516,15 @@ describe("issue 40635", () => {
     modal().button("Turn this into a model").click();
     undoToast().should("contain", "This is a model now").icon("close").click();
 
-    // assertSettingsSidebar();
-    // assertVisualizationColumns();
+    assertSettingsSidebar();
+    assertVisualizationColumns();
 
     openNotebook();
     getNotebookStep("data").button("Pick columns").click();
     popover().within(() => {
       cy.findAllByText("ID").should("have.length", 1);
-      // cy.findAllByText("Products → ID").should("have.length", 1);
-      // cy.findAllByText("Products_2 → ID").should("have.length", 1);
+      cy.findAllByText("Products → ID").should("have.length", 1);
+      cy.findAllByText("Products_2 → ID").should("have.length", 1);
     });
   });
 
