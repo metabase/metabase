@@ -6,7 +6,6 @@ import {
   restore,
   hovercard,
   createNativeQuestion,
-  tableHeaderClick,
   openNotebook,
   enterCustomColumnDetails,
   visualize,
@@ -90,16 +89,13 @@ describe("issue 29943", () => {
 
     assertColumnSelected(0, "ID");
 
-    getHeaderCell(1, "Custom");
-    tableHeaderClick("Custom");
+    getHeaderCell(1, "Custom").click();
     assertColumnSelected(1, "Custom");
 
-    getHeaderCell(2, "Total");
-    tableHeaderClick("Total");
+    getHeaderCell(2, "Total").click();
     assertColumnSelected(2, "Total");
 
-    getHeaderCell(0, "ID");
-    tableHeaderClick("ID");
+    getHeaderCell(0, "ID").click();
     assertColumnSelected(0, "ID");
   });
 });
@@ -204,10 +200,10 @@ describe("issues 25884 and 34349", () => {
 
     cy.findByLabelText("Description").should("have.text", ID_DESCRIPTION);
 
-    tableHeaderClick("Country");
+    cy.findAllByTestId("header-cell").contains("Country").click();
     cy.findByLabelText("Description").should("have.text", "");
 
-    tableHeaderClick("ID");
+    cy.findAllByTestId("header-cell").contains("ID").click();
     cy.findByLabelText("Description").should("have.text", ID_DESCRIPTION);
   });
 });
