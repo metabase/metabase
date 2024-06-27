@@ -2,7 +2,7 @@
 /*eslint no-use-before-define: "error"*/
 
 import { createSelector } from "@reduxjs/toolkit";
-import d3 from "d3";
+import * as d3 from "d3";
 import { getIn, merge, updateIn } from "icepick";
 import _ from "underscore";
 
@@ -821,7 +821,14 @@ const getTimeseriesDataInterval = createSelector(
 
 export const getTimeseriesXDomain = createSelector(
   [getIsTimeseries, getTimeseriesXValues],
-  (isTimeseries, xValues) => xValues && isTimeseries && d3.extent(xValues),
+  (isTimeseries, xValues) => {
+    return (
+      isTimeseries &&
+      Array.isArray(xValues) &&
+      xValues.length > 0 &&
+      d3.extent(xValues)
+    );
+  },
 );
 
 export const getFetchedTimelines = createSelector([getEntities], entities => {

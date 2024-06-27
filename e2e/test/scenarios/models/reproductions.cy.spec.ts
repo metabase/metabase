@@ -1,16 +1,22 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  createNativeQuestion,
   createQuestion,
+  enterCustomColumnDetails,
+  entityPickerModal,
+  entityPickerModalTab,
+  hovercard,
+  join,
+  modal,
+  openNotebook,
   openQuestionActions,
   popover,
+  queryBuilderMain,
   restore,
-  hovercard,
-  createNativeQuestion,
-  tableHeaderClick,
-  openNotebook,
-  enterCustomColumnDetails,
-  visualize,
   saveQuestion,
+  startNewModel,
+  tableHeaderClick,
+  visualize,
 } from "e2e/support/helpers";
 import type { FieldReference } from "metabase-types/api";
 
@@ -387,5 +393,54 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
     cy.findAllByTestId("header-cell")
       .filter(":contains('Count')")
       .should("have.length", 3);
+  });
+});
+
+describe("issue 41785", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("does not break the question when removing column with the same mapping as another column (metabase#41785)", () => {
+    // it's important to create the model through UI to reproduce this issue
+    startNewModel();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    join();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    popover().findByText("ID").click();
+    popover().findByText("ID").click();
+
+    cy.findByTestId("run-button").click();
+    cy.wait("@dataset");
+
+    cy.button("Save").click();
+    modal().button("Save").click();
+
+    cy.findByTestId("loading-indicator").should("exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.findAllByText("Tax").should("have.length", 1);
+      cy.findAllByText("Orders → Tax").should("have.length", 1);
+
+      cy.findByRole("button", { name: "Add or remove columns" }).click();
+      cy.findAllByText("Tax").should("have.length", 1);
+      cy.findAllByText("Orders → Tax").should("have.length", 1).click();
+    });
+
+    cy.wait("@dataset");
+
+    queryBuilderMain()
+      .findByText("There was a problem with your question")
+      .should("not.exist");
   });
 });

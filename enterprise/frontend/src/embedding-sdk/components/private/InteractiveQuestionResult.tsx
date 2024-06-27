@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type React from "react";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
 
@@ -7,6 +8,7 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { QuestionTitle } from "embedding-sdk/components/private/QuestionTitle";
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
 import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import { useSdkSelector } from "embedding-sdk/store";
@@ -19,7 +21,11 @@ import {
   updateQuestion,
 } from "metabase/query_builder/actions";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components";
+import { ViewHeaderContainer } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
+import {
+  DashboardBackButton,
+  QuestionFiltersHeader,
+} from "metabase/query_builder/components/view/ViewHeader/components";
 import {
   getCard,
   getFirstQueryResult,
@@ -27,7 +33,7 @@ import {
   getQuestion,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { Box, Flex, Group, Stack } from "metabase/ui";
+import { Box, Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 
 const returnNull = () => null;
@@ -39,6 +45,7 @@ interface InteractiveQuestionResultProps {
   onResetButtonClick: () => void;
   withTitle?: boolean;
   customTitle?: React.ReactNode;
+  isOpenedFromDashboard?: boolean;
 
   height?: string | number;
   componentPlugins?: SdkClickActionPluginsConfig;
@@ -53,6 +60,7 @@ export const InteractiveQuestionResult = ({
   onResetButtonClick,
   withTitle,
   customTitle,
+  isOpenedFromDashboard = false,
 }: InteractiveQuestionResultProps): React.ReactElement => {
   const dispatch = useDispatch();
 
@@ -62,7 +70,6 @@ export const InteractiveQuestionResult = ({
   const result = useSelector(getFirstQueryResult);
   const uiControls = useSelector(getUiControls);
   const queryResults = useSelector(getQueryResults);
-
   const { isRunning: isQueryRunning } = uiControls;
 
   useUnmount(() => {
@@ -91,16 +98,15 @@ export const InteractiveQuestionResult = ({
       bg="var(--mb-color-bg-question)"
     >
       <Stack h="100%">
-        <Flex direction="row" gap="md" px="md" align="center">
-          {withTitle &&
-            (customTitle || (
-              <h2 className={cx(CS.h2, CS.textWrap)}>
-                {question.displayName()}
-              </h2>
-            ))}
+        <ViewHeaderContainer data-testid="qb-header" isNavBarOpen={false}>
+          {isOpenedFromDashboard && (
+            <DashboardBackButton noLink onClick={onNavigateBack} />
+          )}
+
+          {withTitle && (customTitle || <QuestionTitle question={question} />)}
 
           {withResetButton && <ResetButton onClick={onResetButtonClick} />}
-        </Flex>
+        </ViewHeaderContainer>
 
         {QuestionFiltersHeader.shouldRender({
           question,
@@ -113,6 +119,7 @@ export const InteractiveQuestionResult = ({
             updateQuestion={(...args) => dispatch(updateQuestion(...args))}
           />
         )}
+
         <Group h="100%" pos="relative" align="flex-start">
           <QueryVisualization
             className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
