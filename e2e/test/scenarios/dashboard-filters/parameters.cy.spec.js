@@ -488,7 +488,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.location("search").should(
       "eq",
-      "?title=Awesome%20Concrete%20Shoes&category=Widget&vendor=McClure-Lockman",
+      "?category=Widget&title=Awesome+Concrete+Shoes&vendor=McClure-Lockman",
     );
     cy.findAllByTestId("table-row").should("have.length", 1);
 
@@ -501,7 +501,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.location("search").should(
       "eq",
-      "?title=Awesome%20Concrete%20Shoes&category=Widget&vendor=McClure-Lockman",
+      "?category=Widget&title=Awesome+Concrete+Shoes&vendor=McClure-Lockman",
     );
     cy.findAllByTestId("table-row").should("have.length", 1);
   });
