@@ -5,6 +5,7 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { QuestionTitle } from "embedding-sdk/components/private/QuestionTitle";
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
 import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
@@ -14,17 +15,21 @@ import {
   updateQuestion,
 } from "metabase/query_builder/actions";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components";
-import { Box, Flex, Group, Stack } from "metabase/ui";
+import { ViewHeaderContainer } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
+import {
+  QuestionFiltersHeader,
+  DashboardBackButton,
+} from "metabase/query_builder/components/view/ViewHeader/components";
+import { Box, Group, Stack } from "metabase/ui";
 
 interface InteractiveQuestionResultProps {
-  withTitle?: boolean;
-  customTitle?: React.ReactNode;
+  isOpenedFromDashboard?: boolean;
   height?: string | number;
 }
 
 export const InteractiveQuestionResult = ({
   height,
+  isOpenedFromDashboard,
 }: InteractiveQuestionResultProps): React.ReactElement => {
   const dispatch = useDispatch();
 
@@ -60,16 +65,15 @@ export const InteractiveQuestionResult = ({
       bg="var(--mb-color-bg-question)"
     >
       <Stack h="100%">
-        <Flex direction="row" gap="md" px="md" align="center">
-          {withTitle &&
-            (customTitle || (
-              <h2 className={cx(CS.h2, CS.textWrap)}>
-                {question.displayName()}
-              </h2>
-            ))}
+        <ViewHeaderContainer data-testid="qb-header" isNavBarOpen={false}>
+          {isOpenedFromDashboard && (
+            <DashboardBackButton noLink onClick={onNavigateBack} />
+          )}
 
-          {withResetButton && <ResetButton onClick={() => onReset?.()} />}
-        </Flex>
+          {withTitle && (customTitle || <QuestionTitle question={question} />)}
+
+          {withResetButton && onReset && <ResetButton onClick={onReset} />}
+        </ViewHeaderContainer>
 
         {QuestionFiltersHeader.shouldRender({
           question,
@@ -82,6 +86,7 @@ export const InteractiveQuestionResult = ({
             updateQuestion={(...args) => dispatch(updateQuestion(...args))}
           />
         )}
+
         <Group h="100%" pos="relative" align="flex-start">
           <QueryVisualization
             className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
