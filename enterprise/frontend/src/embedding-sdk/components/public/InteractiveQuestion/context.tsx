@@ -149,7 +149,7 @@ export const InteractiveQuestionProvider = ({
         isQueryRunning,
         resetQuestion,
         onReset: onReset || resetQuestion,
-        onNavigateBack: onNavigateBack || resetQuestion,
+        onNavigateBack,
         withTitle,
         customTitle,
         withResetButton: hasQuestionChanges && withResetButton,

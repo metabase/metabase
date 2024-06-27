@@ -19,8 +19,6 @@ import { Box, Flex, Group, Stack } from "metabase/ui";
 import { QuestionVisualization } from "../public/InteractiveQuestion/components";
 
 interface InteractiveQuestionResultProps {
-  withTitle?: boolean;
-  customTitle?: ReactNode;
   height?: string | number;
 }
 

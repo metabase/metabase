@@ -3,5 +3,6 @@ import { useInteractiveQuestionContext } from "embedding-sdk/components/public/I
 
 export const QuestionResetButton = () => {
   const { onReset, withResetButton } = useInteractiveQuestionContext();
-  return withResetButton && <ResetButton onClick={() => onReset?.()} />;
+
+  return withResetButton && onReset && <ResetButton onClick={onReset} />;
 };

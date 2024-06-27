@@ -1,7 +1,5 @@
-import cx from "classnames";
-
+import { QuestionTitle } from "embedding-sdk/components/private/QuestionTitle";
 import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
-import CS from "metabase/css/core/index.css";
 
 export const Title = () => {
   const { customTitle, question, withTitle } = useInteractiveQuestionContext();
@@ -9,8 +7,6 @@ export const Title = () => {
   return (
     question &&
     withTitle &&
-    (customTitle || (
-      <h2 className={cx(CS.h2, CS.textWrap)}>{question.displayName()}</h2>
-    ))
+    (customTitle || <QuestionTitle question={question} />)
   );
 };
