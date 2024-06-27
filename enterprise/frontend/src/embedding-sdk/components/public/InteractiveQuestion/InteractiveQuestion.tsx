@@ -7,7 +7,7 @@ import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
 import type { CardId } from "metabase-types/api";
 
 import {
-  QuestionBackButton,
+  BackButton,
   FilterBar,
   QuestionResetButton,
   Title,
@@ -74,7 +74,7 @@ export const getQuestionParameters = (questionId: CardId) => {
 const InteractiveQuestion = withPublicComponentWrapper(
   _InteractiveQuestion,
 ) as typeof _InteractiveQuestion & {
-  BackButton: typeof QuestionBackButton;
+  BackButton: typeof BackButton;
   FilterBar: typeof FilterBar;
   Filter: typeof Filter;
   FilterButton: typeof FilterButton;
@@ -87,7 +87,7 @@ const InteractiveQuestion = withPublicComponentWrapper(
   QuestionVisualization: typeof QuestionVisualization;
 };
 
-InteractiveQuestion.BackButton = QuestionBackButton;
+InteractiveQuestion.BackButton = BackButton;
 InteractiveQuestion.FilterBar = FilterBar;
 InteractiveQuestion.Filter = Filter;
 InteractiveQuestion.FilterButton = FilterButton;
