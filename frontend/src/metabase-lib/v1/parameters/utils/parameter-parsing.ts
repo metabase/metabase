@@ -4,6 +4,7 @@ import * as Lib from "metabase-lib";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
+import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
   ParameterId,
@@ -41,41 +42,45 @@ export function parseParameterValue(value: any, parameter: Parameter) {
     return availableUnits.some(unit => unit === value) ? value : null;
   }
 
+  const coercedValue =
+    Array.isArray(value) && !getIsMultiSelect(parameter) ? [value[0]] : value;
+
   // TODO this casting should be removed as we tidy up Parameter types
   const { fields } = parameter as FieldFilterUiParameter;
   if (Array.isArray(fields) && fields.length > 0) {
-    return parseParameterValueForFields(value, fields);
+    return parseParameterValueForFields(coercedValue, fields);
   }
 
   if (type === "number") {
-    return parseParameterValueForNumber(value);
+    return parseParameterValueForNumber(coercedValue);
   }
 
-  return value;
+  return coercedValue;
 }
 
 function parseParameterValueForNumber(value: string | string[]) {
   if (Array.isArray(value)) {
-    return value.map(number => parseFloat(number));
+    const numbers = value.map(number => parseFloat(number));
+    return numbers.every(number => !isNaN(number)) ? numbers : null;
   }
 
   // something like "1,2,3",  "1, 2,  3", ",,,1,2, 3"
   const splitValues = value.split(",").filter(item => item.trim() !== "");
-
   if (splitValues.length === 0) {
-    return;
+    return null;
   }
 
-  const isNumberList =
-    splitValues.length > 1 &&
-    splitValues.every(item => !isNaN(parseFloat(item)));
+  if (splitValues.length > 1) {
+    const numbers = splitValues.map(number => parseFloat(number));
+    if (numbers.every(number => !isNaN(number))) {
+      return numbers.join(",");
+    }
 
-  if (isNumberList) {
-    // "1, 2,    3" will be tranformed into "1,2,3" for later use
-    return splitValues.map(item => parseFloat(item)).join(",");
+    return null;
   }
 
-  return parseFloat(value);
+  const number = parseFloat(value);
+  return isNaN(number) ? null : number;
 }
 
 function parseParameterValueForFields(
@@ -104,6 +109,7 @@ function normalizeParameterValueForWidget(
 ) {
   const fieldType = getParameterType(parameter);
   if (
+    value != null &&
     fieldType !== "date" &&
     fieldType !== "temporal-unit" &&
     !Array.isArray(value)
