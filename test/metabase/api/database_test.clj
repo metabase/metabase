@@ -1040,7 +1040,7 @@
 (deftest databases-list-include-saved-questions-tables-test-6
   (testing "GET /api/database?saved=true&include=tables"
     (testing "should work when there are no DBs that support nested queries"
-      (with-redefs [driver/database-supports? (constantly false)]
+      (with-redefs [driver.u/supports? (constantly false)]
         (is (nil? (fetch-virtual-database)))))))
 
 (deftest databases-list-include-saved-questions-tables-test-7
