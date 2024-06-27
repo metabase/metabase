@@ -32,6 +32,7 @@ export const ResponsiveParametersList = ({
   enableParameterRequiredBehavior,
 }: ResponsiveParametersListProps) => {
   const [showParameterList, setShowParameterList] = useState(false);
+  const [showRequiredFilters, setShowRequiredFilters] = useState(false);
   const isSmallScreen = useIsSmallScreen();
 
   const handleFilterButtonClick = useCallback(() => {
@@ -42,8 +43,16 @@ export const ResponsiveParametersList = ({
     setShowParameterList(false);
   }, []);
 
+  const handleToggleRequiredFilters = useCallback(() => {
+    setShowRequiredFilters(show => !show);
+  }, []);
+
   const activeFilters = useMemo(() => {
     return parameters.filter(p => !!p.value).length;
+  }, [parameters]);
+
+  const requiredFilters = useMemo(() => {
+    return parameters.filter(p => p.required).slice(0, 25);
   }, [parameters]);
 
   return (
@@ -51,20 +60,46 @@ export const ResponsiveParametersList = ({
       isSmallScreen={isSmallScreen}
       isShowingMobile={showParameterList}
     >
-      <FilterButton
-        borderless
-        primary
-        icon="filter"
-        onClick={handleFilterButtonClick}
-      >
-        {activeFilters > 0
-          ? ngettext(
-              msgid`${activeFilters} active filter`,
-              `${activeFilters} active filters`,
-              activeFilters,
-            )
-          : `Filters`}
-      </FilterButton>
+      <div style={{ display: "flex", alignItems: "center" }}>
+        <FilterButton
+          borderless
+          primary
+          icon="filter"
+          onClick={handleFilterButtonClick}
+        >
+          {activeFilters > 0
+            ? ngettext(
+                msgid`${activeFilters} active filter`,
+                `${activeFilters} active filters`,
+                activeFilters,
+              )
+            : `Filters`}
+        </FilterButton>
+        <Button
+          borderless
+          primary
+          icon={showRequiredFilters ? "chevronup" : "chevrondown"}
+          onClick={handleToggleRequiredFilters}
+        >
+          {showRequiredFilters
+            ? "Hide Required Filters"
+            : "Show Required Filters"}
+        </Button>
+      </div>
+      {showRequiredFilters && (
+        <div>
+          <StyledParametersList
+            question={question}
+            parameters={requiredFilters}
+            setParameterValue={setParameterValue}
+            setParameterIndex={setParameterIndex}
+            setParameterValueToDefault={setParameterValueToDefault}
+            enableParameterRequiredBehavior={enableParameterRequiredBehavior}
+            isEditing
+            commitImmediately
+          />
+        </div>
+      )}
       {(isSmallScreen || showParameterList) && (
         <ParametersListContainer
           isSmallScreen={isSmallScreen}
