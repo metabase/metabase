@@ -111,9 +111,9 @@ export const runQuestionQuery = ({
         question.id() == null
       : true;
 
-    const isQueryDirty =
-      originalQuestion != null &&
-      question.isQueryDirtyComparedTo(originalQuestion);
+    const isQueryDirty = originalQuestion
+      ? question.isQueryDirtyComparedTo(originalQuestion)
+      : true;
 
     if (shouldUpdateUrl) {
       const isAdHocModelOrMetric =
