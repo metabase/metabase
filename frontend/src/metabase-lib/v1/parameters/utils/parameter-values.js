@@ -145,3 +145,7 @@ export function getParameterValuesBySlug(parameters, parameterValuesById) {
     ]),
   );
 }
+
+export function getIsMultiSelect(parameter) {
+  return parameter.isMultiSelect ?? true;
+}
