@@ -3289,6 +3289,7 @@ describe("issue 34955", () => {
     });
   });
 
+  // TODO: Once the issue is fixed, merge into a single repro to avoid unnecessary overhead!
   it.skip("should connect specific date filter (`On`) to the temporal custom column (metabase#34955-2)", () => {
     cy.get("@dashboardId").then(dashboard_id => {
       // Apply filter through URL to prevent the typing flakes
