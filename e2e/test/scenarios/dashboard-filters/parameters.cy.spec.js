@@ -205,7 +205,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.location("search").should(
       "eq",
-      `?${startsWith.slug}=G&${endsWith.slug}=`,
+      `?${endsWith.slug}=&${startsWith.slug}=G`,
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65").should("not.exist");
@@ -223,7 +223,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.location("search").should(
       "eq",
-      `?${startsWith.slug}=G&${endsWith.slug}=zmo`,
+      `?${endsWith.slug}=zmo&${startsWith.slug}=G`,
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("52.72").should("not.exist");
