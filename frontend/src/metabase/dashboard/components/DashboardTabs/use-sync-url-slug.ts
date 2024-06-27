@@ -1,12 +1,17 @@
 import type { Location } from "history";
-import { useEffect, useState } from "react";
-import { push, replace } from "react-router-redux";
+import { useEffect } from "react";
+import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
 import { getIdFromSlug, initTabs, selectTab } from "metabase/dashboard/actions";
-import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
+import {
+  getDashboard,
+  getSelectedTabId,
+  getTabs,
+} from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import type { SelectedTabId } from "metabase-types/store";
 
 export function parseSlug({ location }: { location: Location }) {
@@ -34,29 +39,24 @@ function useUpdateURLSlug({ location }: { location: Location }) {
   const dispatch = useDispatch();
 
   return {
-    updateURLSlug: ({
-      slug,
-      shouldReplace = false,
-    }: {
-      slug: string;
-      shouldReplace?: boolean;
-    }) => {
-      const updater = shouldReplace ? replace : push;
-
+    updateURLSlug: ({ slug }: { slug: string }) => {
       const newQuery = slug
         ? { ...location.query, tab: slug }
         : _.omit(location.query, "tab");
-      dispatch(updater({ ...location, query: newQuery }));
+
+      if (slug !== location?.query?.slug) {
+        dispatch(push({ ...location, query: newQuery }));
+      }
     },
   };
 }
 
 export function useSyncURLSlug({ location }: { location: Location }) {
-  const [tabInitialized, setTabInitialized] = useState(false);
-
   const slug = parseSlug({ location });
   const tabs = useSelector(getTabs);
   const selectedTabId = useSelector(getSelectedTabId);
+
+  const dashboardId = useSelector(state => getDashboard(state)?.id);
 
   const prevSlug = usePrevious(slug);
   const prevTabs = usePrevious(tabs);
@@ -68,6 +68,16 @@ export function useSyncURLSlug({ location }: { location: Location }) {
   useEffect(() => {
     if (!tabs || tabs.length === 0) {
       return;
+    }
+
+    const isDashboardUrl = location.pathname.includes("/dashboard/");
+    if (isDashboardUrl) {
+      const dashboardSlug = location.pathname.replace("/dashboard/", "");
+      const dashboardUrlId = Urls.extractEntityId(dashboardSlug);
+      const isNavigationInProgress = dashboardId !== dashboardUrlId;
+      if (isNavigationInProgress) {
+        return;
+      }
     }
 
     const tabFromSlug = tabs.find(t => t.id === getIdFromSlug(slug));
@@ -90,7 +100,7 @@ export function useSyncURLSlug({ location }: { location: Location }) {
       return;
     }
 
-    const slugChanged = slug && slug !== prevSlug;
+    const slugChanged = slug && prevSlug && slug !== prevSlug;
     if (slugChanged) {
       dispatch(initTabs({ slug }));
       const slugId = getIdFromSlug(slug);
@@ -98,19 +108,26 @@ export function useSyncURLSlug({ location }: { location: Location }) {
       const isValidSlug = !!tabs.find(t => t.id === slugId);
       if (hasTabs && !isValidSlug) {
         const [tab] = tabs;
-        updateURLSlug({ slug: getSlug({ tabId: tab.id, name: tab.name }) });
+        updateURLSlug({
+          slug: getSlug({ tabId: tab.id, name: tab.name }),
+        });
       }
       return;
     }
+
+    const prevTab = prevTabs?.find(t => t.id === prevSelectedTabId);
+
+    let tab = tabs?.find(t => t.id === selectedTabId);
+    if (!tab && selectedTabId > 0 && prevSelectedTabId < 0) {
+      tab = prevTab;
+    }
+
+    const tabRenamed = tab && prevTab && tab.name !== prevTab.name;
 
     const tabSelected =
       typeof selectedTabId === "number" &&
       typeof prevSelectedTabId === "number" &&
       selectedTabId !== prevSelectedTabId;
-
-    const tab = tabs?.find(t => t.id === selectedTabId);
-    const prevTab = prevTabs?.find(t => t.id === selectedTabId);
-    const tabRenamed = tab && prevTab && tab.name !== prevTab.name;
 
     const penultimateTabDeleted = tabs.length === 1 && prevTabs?.length === 2;
 
@@ -118,21 +135,13 @@ export function useSyncURLSlug({ location }: { location: Location }) {
       const newSlug =
         tabs.length <= 1
           ? ""
-          : getSlug({
-              tabId: selectedTabId,
-              name: tabs.find(t => t.id === selectedTabId)?.name,
-            });
-      updateURLSlug({
-        slug: newSlug,
-        shouldReplace: !tabInitialized,
-      });
+          : getSlug({ tabId: selectedTabId, name: tab?.name });
 
-      if (newSlug) {
-        setTabInitialized(true);
-      }
+      updateURLSlug({ slug: newSlug });
     }
   }, [
-    tabInitialized,
+    location,
+    dashboardId,
     slug,
     selectedTabId,
     tabs,

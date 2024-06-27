@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { withRouter, type WithRouterProps } from "react-router";
+import _ from "underscore";
 
 import { useSyncedQueryString } from "metabase/hooks/use-synced-query-string";
 import type { ParametersListProps } from "metabase/parameters/components/ParametersList/types";
@@ -6,11 +8,12 @@ import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/param
 
 import { ParametersList } from "./ParametersList";
 
-export const SyncedParametersList = ({
+const _SyncedParametersList = ({
   parameters,
   editingParameter,
   question,
   dashboard,
+  location,
 
   className,
   hideParameters,
@@ -25,13 +28,13 @@ export const SyncedParametersList = ({
   setEditingParameter,
   setParameterValueToDefault,
   enableParameterRequiredBehavior,
-}: ParametersListProps) => {
+}: ParametersListProps & WithRouterProps) => {
   const queryParams = useMemo(
     () => getParameterValuesBySlug(parameters),
     [parameters],
   );
 
-  useSyncedQueryString(queryParams);
+  useSyncedQueryString(queryParams, location);
 
   return (
     <ParametersList
@@ -53,3 +56,7 @@ export const SyncedParametersList = ({
     />
   );
 };
+
+export const SyncedParametersList = withRouter<ParametersListProps>(
+  _SyncedParametersList,
+);
