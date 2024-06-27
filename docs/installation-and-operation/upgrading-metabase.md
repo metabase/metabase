@@ -144,7 +144,7 @@ But if you've made changes to your application database since upgrading that you
 
 ### Using the migrate down command
 
-Stop your Metabase and use the current, upgraded Metabase JAR (not the Metabase JAR you want to roll back to) to complete the rollback with the `migrate down` command. Make sure to include the connection details for your application database, for example:
+Stop your Metabase and use the current, upgraded Metabase JAR (not the Metabase JAR you want to roll back to) to complete the rollback with the `migrate down` command. Make sure that the connection details for your application database are set in the environment variables, for example:
 
 ```
 export MB_DB_TYPE=postgres
