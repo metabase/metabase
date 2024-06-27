@@ -3,11 +3,11 @@
   namespace is to:
 
   1. Translate Metabase-isms into generic SQL that Macaw can understand.
-  2. Contain Metabase-specific business logic.
+  2. Encapsulate Metabase-specific business logic.
 
   The primary way of interacting with parsed queries is through their associated QueryFields (see model
   file). QueryFields are maintained through the `update-query-fields-for-card!` function. This is invoked as part of
-  the lifecycle of a card (see Card model).
+  the lifecycle of a card (see the Card model).
 
   Query rewriting happens with the `replace-names` function."
   (:require
@@ -72,10 +72,10 @@
   [field value]
   (if-let [f (quote->stripper (first value))]
     [:= field (f value)]
-    ;; Technically speaking this is not correct for all databases.
+    ;; Technically speaking, this is not correct for all databases.
     ;;
-    ;; For example Oracle treats non-quoted identifiers as uppercase, but still expects a case-sensitive match.
-    ;; Similarly, Postgres treat all non-quoted identifiers as lowercase, and again expects an exact match.
+    ;; For example, Oracle treats non-quoted identifiers as uppercase, but still expects a case-sensitive match.
+    ;; Similarly, Postgres treats all non-quoted identifiers as lowercase, and again expects an exact match.
     ;; H2 on the other hand will choose whether to cast it to uppercase or lowercase based on a system variable... T_T
     ;;
     ;; MySQL, by contrast, is truly case-insensitive, and as the lowest common denominator it's what we cater for.
@@ -150,7 +150,7 @@
   (let [db-id        (:database query)
         macaw-opts   (nqa.impl/macaw-options driver)
         sql-string   (:query (nqa.sub/replace-tags query))
-        parsed-query (macaw/query->components (macaw/parsed-query sql-string) macaw-opts)
+        parsed-query (macaw/query->components (macaw/parsed-query sql-string macaw-opts) macaw-opts)
         direct-ids   (direct-field-ids-for-query parsed-query db-id)
         indirect-ids (set/difference
                       (indirect-field-ids-for-query parsed-query db-id)

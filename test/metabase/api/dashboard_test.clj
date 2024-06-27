@@ -769,7 +769,7 @@
                                             :creator_id    (mt/user->id :rasta)
                                             :collection    false
                                             :collection_id true
-                                            :view_count    1})
+                                            :view_count    0})
                  (dashboard-response (t2/select-one Dashboard :id dashboard-id)))))
 
         (testing "No-op PUT: Do not return 500"

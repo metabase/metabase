@@ -10297,13 +10297,13 @@ ecdsa-sig-formatter@1.0.11:
   dependencies:
     safe-buffer "^5.0.1"
 
-echarts@^5.5.0:
-  version "5.5.0"
-  resolved "https://registry.yarnpkg.com/echarts/-/echarts-5.5.0.tgz#c13945a7f3acdd67c134d8a9ac67e917830113ac"
-  integrity sha512-rNYnNCzqDAPCr4m/fqyUFv7fD9qIsd50S6GDFgO1DxZhncCsNsG7IfUlAlvZe5oSEQxtsjnHiUuppzccry93Xw==
+echarts@^5.5.1-rc.1:
+  version "5.5.1-rc.1"
+  resolved "https://registry.yarnpkg.com/echarts/-/echarts-5.5.1-rc.1.tgz#2fb9ab08b3021a60ff9e3c1d5ec08d7406e68b10"
+  integrity sha512-x+IwxSpVOhlSovphKE8j7KiqkPOGxy1fEGNFHKE9rhgVyHu3dpPv2i5yf7dYXrqaSDcq/wA9VRGJLboxWtEPGA==
   dependencies:
     tslib "2.3.0"
-    zrender "5.5.0"
+    zrender "5.6.0"
 
 ee-first@1.1.1:
   version "1.1.1"
@@ -24410,10 +24410,10 @@ yup@^0.32.11:
     property-expr "^2.0.4"
     toposort "^2.0.2"
 
-zrender@5.5.0:
-  version "5.5.0"
-  resolved "https://registry.yarnpkg.com/zrender/-/zrender-5.5.0.tgz#54d0d6c4eda81a96d9f60a9cd74dc48ea026bc1e"
-  integrity sha512-O3MilSi/9mwoovx77m6ROZM7sXShR/O/JIanvzTwjN3FORfLSr81PsUGd7jlaYOeds9d8tw82oP44+3YucVo+w==
+zrender@5.6.0:
+  version "5.6.0"
+  resolved "https://registry.yarnpkg.com/zrender/-/zrender-5.6.0.tgz#01325b0bb38332dd5e87a8dbee7336cafc0f4a5b"
+  integrity sha512-uzgraf4njmmHAbEUxMJ8Oxg+P3fT04O+9p7gY+wJRVxo8Ge+KmYv0WJev945EH4wFuc4OY2NLXz46FZrWS9xJg==
   dependencies:
     tslib "2.3.0"
 
