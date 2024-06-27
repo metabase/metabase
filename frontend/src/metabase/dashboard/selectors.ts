@@ -8,6 +8,7 @@ import {
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import * as Urls from "metabase/lib/urls";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
@@ -496,6 +497,23 @@ export const getSelectedTabId = createSelector(
 );
 
 export function getInitialSelectedTabId(dashboard: Dashboard | StoreDashboard) {
+  // TODO handle site-url setting
+  const isDashboardUrl =
+    window.location.pathname.includes("/dashboard/") &&
+    Urls.extractEntityId(
+      window.location.pathname.replace("/dashboard/", ""),
+    ) === dashboard.id;
+
+  if (isDashboardUrl) {
+    const searchParams = new URLSearchParams(window.location.search);
+    const tabParam = searchParams.get("tab");
+    const tabId = tabParam ? parseInt(tabParam, 10) : null;
+    const hasTab = dashboard.tabs?.find?.(tab => tab.id === tabId);
+    if (hasTab) {
+      return tabId;
+    }
+  }
+
   return dashboard.tabs?.[0]?.id || null;
 }
 

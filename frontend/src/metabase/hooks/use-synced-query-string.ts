@@ -1,9 +1,20 @@
+import type { Location } from "history";
 import { useEffect } from "react";
+import { replace } from "react-router-redux";
+import { usePrevious } from "react-use";
+import _ from "underscore";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import { buildSearchString } from "metabase/lib/urls";
+import { useDispatch } from "metabase/lib/redux";
 
-export function useSyncedQueryString(object: Record<string, any>) {
+export function useSyncedQueryString(
+  object: Record<string, any>,
+  location: Location,
+) {
+  const dispatch = useDispatch();
+
+  const previousObject = usePrevious(object);
+
   useEffect(() => {
     /**
      * We don't want to sync the query string to the URL because when previewing,
@@ -14,39 +25,32 @@ export function useSyncedQueryString(object: Record<string, any>) {
     if (IS_EMBED_PREVIEW) {
       return;
     }
-    const searchString = buildSearchString({
-      object,
-      filterFn: containsAllowedParams,
-    });
 
-    if (searchString !== window.location.search) {
-      history.replaceState(
-        null,
-        document.title,
-        window.location.pathname + searchString + window.location.hash,
-      );
+    if (_.isEqual(previousObject, object)) {
+      return;
     }
 
-    return () => {
-      // Remove every previously-synced keys from the query string when the component is unmounted.
-      // This is a workaround to clear the parameter list state when [SyncedParametersList] unmounts.
-      const searchString = buildSearchString({
-        filterFn: key => !(key in object),
-      });
+    const currentQuery = location?.query ?? {};
 
-      if (searchString !== window.location.search) {
-        history.replaceState(
-          null,
-          document.title,
-          window.location.pathname + searchString + window.location.hash,
-        );
-      }
-    };
-  }, [object]);
+    const currentUrlParametersObject = _.pick(
+      currentQuery,
+      ...Object.keys(object),
+    );
+    const nextUrlParametersObject = toLocationQuery(object);
+
+    if (!_.isEqual(currentUrlParametersObject, nextUrlParametersObject)) {
+      const otherUrlParameters = _.pick(
+        currentQuery,
+        ...QUERY_PARAMS_ALLOW_LIST,
+      );
+      const nextQuery = { ...otherUrlParameters, ...nextUrlParametersObject };
+      dispatch(replace({ ...location, query: nextQuery }));
+    }
+  }, [object, previousObject, location, dispatch]);
 }
 
 const QUERY_PARAMS_ALLOW_LIST = ["objectId", "tab"];
 
-const containsAllowedParams = (objectKey: string) => {
-  return QUERY_PARAMS_ALLOW_LIST.includes(objectKey);
-};
+function toLocationQuery(object: Record<string, any>) {
+  return _.mapObject(object, value => (value == null ? "" : value));
+}
