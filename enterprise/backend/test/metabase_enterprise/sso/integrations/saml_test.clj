@@ -682,7 +682,7 @@
                                    (saml/str->base64 default-redirect-uri))
                                   ;; Client sends their session cookie during the SLO request redirect from the IDP.
                                   (assoc-in [:request-options :cookies mw.session/metabase-session-cookie :value] session-id))
-                  response    (client/client-real-response :post 302 "/auth/sso/handle_slo" req-options)]
+                  response    (client-full-response :post 302 "/auth/sso/handle_slo" req-options)]
               (is (str/blank? (get-in response [:cookies mw.session/metabase-session-cookie :value]))
                   "After a successful log-out, you don't have a session")
               (is (not (t2/exists? :model/Session :id session-id))
@@ -701,7 +701,7 @@
                                    (saml/str->base64 default-redirect-uri))
                                   ;; Client sends their session cookie during the SLO request redirect from the IDP.
                                   (assoc-in [:request-options :cookies mw.session/metabase-session-cookie :value] session-id))
-                  response    (client/client-real-response :post 403 "/auth/sso/handle_slo" req-options)]
+                  response    (client-full-response :post 403 "/auth/sso/handle_slo" req-options)]
               (is (str/blank? (get-in response [:cookies mw.session/metabase-session-cookie :value]))
                   "After a successful log-out, you don't have a session")
               (is (t2/exists? :model/Session :id session-id)
