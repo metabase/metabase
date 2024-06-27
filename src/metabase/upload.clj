@@ -14,7 +14,6 @@
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.models :refer [Database]]
    [metabase.models.card :as card]
@@ -31,6 +30,7 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.types :as upload-types]
+   [metabase.upload.util :as upload.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -45,21 +45,18 @@
   "This tracks the size of the metabase_field.name field"
   254)
 
-(def ^:private unique-field-name-buffer
-  "The number of characters to reserve for disambiguating column names"
-  ;; This corresponds to at most 4 digits, excluding the underscore, so 1,000 duplicates.
-  5)
-
 (def ^:private min-safe (fnil min Long/MAX_VALUE Long/MAX_VALUE))
+
+(defn- max-column-length [driver]
+  (let [column-limit (some-> driver driver/column-name-length-limit)]
+    (min-safe column-limit max-field-name-length)))
 
 (defn- normalize-column-name
   [driver raw-name]
   (if (str/blank? raw-name)
     "unnamed_column"
     (u/slugify (str/trim raw-name)
-               (let [column-limit (some-> driver driver/column-name-length-limit)
-                     max-len      (min-safe column-limit max-field-name-length)]
-                 {:max-length (- max-len unique-field-name-buffer)}))))
+               {:max-length (max-column-length driver)})))
 
 (def auto-pk-column-name
   "The lower-case name of the auto-incrementing PK column. The actual name in the database could be in upper-case."
@@ -249,7 +246,8 @@
 
 (defn- derive-column-names [driver header]
   (let [normalized-header (for [h header] (normalize-column-name driver h))
-        unique-header     (mbql.u/uniquify-names normalized-header)]
+        max-length        (max-column-length driver)
+        unique-header     (upload.u/uniquify-names max-length normalized-header)]
     (map keyword unique-header)))
 
 (defn- create-from-csv!
