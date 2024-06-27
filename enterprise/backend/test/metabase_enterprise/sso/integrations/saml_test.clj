@@ -688,7 +688,7 @@
               (is (not (t2/exists? :model/Session :id session-id))
                   "After a successful log-out, the session is deleted"))))))))
 
-(deftest logout-should-delete-session-test-slo-disabled
+(deftest logout-should-not-delete-session-test-slo-disabled
   (testing "Successful SAML SLO logouts should not delete the user's session, when not saml-slo-enabled."
     (mt/with-temporary-setting-values [saml-slo-enabled false]
       (let [session-id (str (random-uuid))]
