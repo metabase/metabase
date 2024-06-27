@@ -171,6 +171,7 @@
   ([& {:as opts}
     :- [:map
         [:group-id {:optional true} [:maybe pos-int?]]
+        [:group-ids {:optional true} [:maybe [:sequential pos-int?]]]
         [:db-id {:optional true} [:maybe pos-int?]]
         [:audit? {:optional true} [:maybe :boolean]]
         [:perm-type {:optional true} [:maybe data-perms/PermissionType]]]]
@@ -425,7 +426,8 @@
   "Takes an API-style perms graph and sets the permissions in the database accordingly. Additionally validates the revision number,
    logs the changes, and ensures impersonations and sandboxes are consistent."
   ([new-graph :- api.permission-graph/StrictData]
-   (let [old-graph (api-graph)
+   (let [group-ids (-> new-graph :groups keys)
+         old-graph (api-graph {:group-ids group-ids})
          [old new] (data/diff (:groups old-graph) (:groups new-graph))
          old       (or old {})
          new       (or new {})]
