@@ -98,7 +98,8 @@
   (try
     (if (sso-settings/saml-slo-enabled)
       (sso.i/sso-handle-slo req)
-      (throw (Exception. "SAML SLO is not enabled")))
+      (throw (ex-info "SAML Single Logout is not enabled, request forbidden."
+                      {:status-code 403})))
     (catch Throwable e
       (log/error e "Error handling SLO")
       (sso-error-page e :out))))
