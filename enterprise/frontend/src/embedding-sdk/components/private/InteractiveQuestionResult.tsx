@@ -7,7 +7,10 @@ import {
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { QuestionTitle } from "embedding-sdk/components/private/QuestionTitle";
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import {
+  useInteractiveQuestionContext,
+  useInteractiveQuestionData,
+} from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import {
@@ -32,21 +35,24 @@ export const InteractiveQuestionResult = ({
   const dispatch = useDispatch();
 
   const {
-    card,
-    defaultHeight,
-    isQueryRunning,
     isQuestionLoading,
     mode,
-    queryResults,
-    question,
-    result,
-    uiControls,
     onReset,
     onNavigateBack,
     withResetButton,
     withTitle,
     customTitle,
   } = useInteractiveQuestionContext();
+
+  const {
+    card,
+    defaultHeight,
+    isQueryRunning,
+    queryResults,
+    question,
+    result,
+    uiControls,
+  } = useInteractiveQuestionData();
 
   if (isQuestionLoading || isQueryRunning) {
     return <SdkLoader />;
