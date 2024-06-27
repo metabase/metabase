@@ -13,9 +13,9 @@ import Dashboards from "metabase/entities/dashboards";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
 import { createAsyncThunk } from "metabase/lib/redux";
-import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { addFields, addParamValues } from "metabase/redux/metadata";
 import { AutoApi, DashboardApi, EmbedApi, PublicApi } from "metabase/services";
+import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import type { DashboardCard, DashboardId } from "metabase-types/api";
 
 // normalizr schemas

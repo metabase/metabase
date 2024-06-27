@@ -1,10 +1,11 @@
-import d3 from "d3";
+import * as d3 from "d3";
 import Humanize from "humanize-plus";
 
 import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
 
 const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
-const FIXED_NUMBER_FORMATTER = d3.format(",.f");
+
+const FIXED_NUMBER_FORMATTER = d3.format(",.0f");
 const PRECISION_NUMBER_FORMATTER = d3.format(".2f");
 
 interface FormatNumberOptionsType {
@@ -141,7 +142,7 @@ export function formatNumber(
       // fall back to old, less capable formatter
       // NOTE: does not handle things like currency, percent
       return FIXED_NUMBER_FORMATTER(
-        d3.round(number, options.maximumFractionDigits),
+        roundFloat(number, options.maximumFractionDigits),
       );
     }
   }
@@ -256,7 +257,7 @@ function formatNumberScientific(
   options: FormatNumberOptionsType,
 ) {
   if (options.maximumFractionDigits) {
-    value = d3.round(value, options.maximumFractionDigits);
+    value = roundFloat(value, options.maximumFractionDigits);
   }
   const exp = replaceNumberSeparators(
     value.toExponential(options.minimumFractionDigits),
@@ -272,4 +273,16 @@ function formatNumberScientific(
   } else {
     return exp;
   }
+}
+
+/**
+ * Rounds a floating-point number to the specified number of decimal places.
+ */
+export function roundFloat(
+  value: number,
+  decimalPlaces: number = DEFAULT_NUMBER_OPTIONS.maximumFractionDigits,
+) {
+  const factor = Math.pow(10, decimalPlaces);
+
+  return Math.round(value * factor) / factor;
 }

@@ -1,5 +1,5 @@
 import type { Query } from "history";
-import { type ComponentType, Component } from "react";
+import { Component } from "react";
 import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -13,10 +13,10 @@ import {
   setParameterValueToDefault,
 } from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
-import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
 import {
   getDashboardComplete,
   getDraftParameterValues,
+  getIsNavigatingBackToDashboard,
   getParameters,
   getParameterValues,
   getSelectedTabId,
@@ -28,10 +28,8 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
-import title from "metabase/hoc/Title";
-import { WithPublicDashboardEndpoints } from "metabase/public/containers/PublicOrEmbeddedDashboard/WithPublicDashboardEndpoints";
 import { setErrorPage } from "metabase/redux/app";
-import type { Dashboard, DashboardId } from "metabase-types/api";
+import type { DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
@@ -44,6 +42,7 @@ const mapStateToProps = (state: State) => {
     parameterValues: getParameterValues(state),
     draftParameterValues: getDraftParameterValues(state),
     selectedTabId: getSelectedTabId(state),
+    isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
   };
 };
 
@@ -88,7 +87,7 @@ type PublicOrEmbeddedDashboardProps = OwnProps &
   EmbedDisplayParams;
 
 class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboardProps> {
-  _initialize = async () => {
+  _initialize = async (isForceUpdate?: boolean) => {
     const {
       initialize,
       fetchDashboard,
@@ -96,13 +95,20 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
       setErrorPage,
       parameterQueryParams,
       dashboardId,
+      isNavigatingBackToDashboard,
     } = this.props;
 
-    initialize();
+    const shouldReloadDashboardData =
+      !isNavigatingBackToDashboard || !!isForceUpdate;
+
+    initialize({ clearCache: shouldReloadDashboardData });
 
     const result = await fetchDashboard({
       dashId: String(dashboardId),
       queryParams: parameterQueryParams,
+      options: {
+        clearCache: shouldReloadDashboardData,
+      },
     });
 
     if (!isSuccessfulFetchDashboardResult(result)) {
@@ -130,7 +136,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
 
   async componentDidUpdate(prevProps: PublicOrEmbeddedDashboardProps) {
     if (this.props.dashboardId !== prevProps.dashboardId) {
-      return this._initialize();
+      return this._initialize(true);
     }
 
     if (!_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {
@@ -213,13 +219,3 @@ function isSuccessfulFetchDashboardResult(
 export const PublicOrEmbeddedDashboard = connector(
   PublicOrEmbeddedDashboardInner,
 );
-
-// PublicDashboardControlled used for embedding with location
-// Uses DashboardControls to handle display options, and uses WithPublicDashboardEndpoints to set endpoints for public/embed contexts
-export const PublicOrEmbeddedDashboardControlled = _.compose(
-  title(
-    ({ dashboard }: { dashboard: Dashboard }) => dashboard && dashboard.name,
-  ),
-  WithPublicDashboardEndpoints,
-  DashboardControls,
-)(PublicOrEmbeddedDashboard) as ComponentType<OwnProps>;
