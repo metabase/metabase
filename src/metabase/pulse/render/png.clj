@@ -74,24 +74,20 @@
           (.getSubimage image 0 0 content-width (.getHeight image))
           image)))))
 
-(defn- get-supported-glyphs
-  "Get a list of the unicode chars supported by the font `font-name`, if it can be found."
-  [font-name]
-  (style/register-fonts-if-needed!)
-  (let [env (GraphicsEnvironment/getLocalGraphicsEnvironment)
+(defn- font-can-fully-render?
+  [^Font font s]
+  (neg? (.canDisplayUpTo font s)))
+
+(def ^:private lato
+  (let [lato-names #{"Lato Regular" "Lato-Regular" "lato" "lato-regular"}
+        env (GraphicsEnvironment/getLocalGraphicsEnvironment)
         fonts (.getAllFonts env)
-        font ^Font (some #(when (= font-name (.getName ^Font %)) %) fonts)]
-    (when font
-      (let [char-range (range 0x0000 0xFFFF)]
-        (filter #(let [code (int %)]
-                   (.canDisplay font code)) char-range)))))
+        font ^Font (some #(when (lato-names (.getName ^Font %)) %) fonts)]
+    font))
 
-(def ^:private lato-supported-chars
-  (into #{} (map char) (get-supported-glyphs "Lato Regular")))
-
-#_
-(def ^:private non-latin-regex
-  (re-pattern "[^A-Za-z0-9!@#$%^&*()_+\\-=\\[\\]{}|;:'\",.<>?/`~\\s\\t\\n\\r]"))
+(defn- lato-can-render?
+  [s]
+  (font-can-fully-render? lato s))
 
 (defn- wrap-non-lato-chars
   "Wrap characters not supported by the installed Lato font in a span so that we can explicitly set the font to sans-serif.
@@ -108,8 +104,7 @@
   (let [transformable-els            #{:div :span :td :th :tr :table :p :tbody :thead}
         string-wrapper (fn [part]
                          (if (and (string? part)
-                                  (not (every? #(contains? lato-supported-chars %) part))
-                                  #_(re-find non-latin-regex part))
+                                  (not (lato-can-render? part)))
                            [:span {:style (style/style {:font-family "sans-serif"})} part]
                            part))]
     (walk/postwalk

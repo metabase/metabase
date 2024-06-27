@@ -61,15 +61,17 @@
   (testing "HTML Content inside tables with characters not supported by the Lato font are wrapped in a span."
     (is (= [:td {:not-wrapped-in-here "안녕"}
             [:span {:style "font-family: sans-serif;"} "안녕"]]
-           (#'png/wrap-non-lato-chars [:td {:not-here "안녕"} "안녕"])))
+           (#'png/wrap-non-lato-chars [:td {:not-wrapped-in-here "안녕"} "안녕"])))
     (is (= [:table
             [:tr
              [:td "this is all Lato-compatible, baby!"]
+             [:td "What do you think about різні шрифти в одному документі?"]
              [:td [:span {:style "font-family: sans-serif;"} "This part's English. This part is 英語ではありません"]]]]
            (#'png/wrap-non-lato-chars
             [:table
              [:tr
               [:td "this is all Lato-compatible, baby!"]
+              [:td "What do you think about різні шрифти в одному документі?"]
               [:td "This part's English. This part is 英語ではありません"]]])))))
 
 (deftest non-lato-characters-can-render-test
