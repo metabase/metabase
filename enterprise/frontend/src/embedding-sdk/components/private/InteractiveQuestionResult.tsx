@@ -7,12 +7,15 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
-  QuestionBackButton,
+  BackButton,
   FilterBar,
   QuestionResetButton,
   Title,
 } from "embedding-sdk/components/public/InteractiveQuestion";
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import {
+  useInteractiveQuestionContext,
+  useInteractiveQuestionData,
+} from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Group, Stack } from "metabase/ui";
 
@@ -25,13 +28,10 @@ interface InteractiveQuestionResultProps {
 export const InteractiveQuestionResult = ({
   height,
 }: InteractiveQuestionResultProps): ReactElement => {
-  const {
-    defaultHeight,
-    isQueryRunning,
-    isQuestionLoading,
-    queryResults,
-    question,
-  } = useInteractiveQuestionContext();
+  const { isQuestionLoading } = useInteractiveQuestionContext();
+
+  const { defaultHeight, isQueryRunning, queryResults, question } =
+    useInteractiveQuestionData();
 
   if (isQuestionLoading || isQueryRunning) {
     return <SdkLoader />;
@@ -49,7 +49,7 @@ export const InteractiveQuestionResult = ({
     >
       <Stack h="100%">
         <Flex direction="row" gap="md" px="md" align="center">
-          <QuestionBackButton />
+          <BackButton />
           <Title />
           <QuestionResetButton />
         </Flex>
