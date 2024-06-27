@@ -220,7 +220,7 @@ describe("issue 19776", { tags: "@OSS" }, () => {
     cy.findByTestId("collection-table").within(() => {
       openEllipsisMenuFor(modelName);
     });
-    popover().contains("Move to trash").click();
+    popover().contains("Archive").click();
     cy.findByTestId("undo-list").findByText("Trashed model");
 
     cy.findByTestId("app-bar").button("New").click();
@@ -1366,7 +1366,7 @@ describe("issue 31663", () => {
 
     main().findByText("Orders Model").click();
     cy.wait("@dataset");
-    cy.findByLabelText("Move, trash, and more...").click();
+    cy.findByLabelText("Move, archive, and more...").click();
     popover().findByText("Edit metadata").click();
 
     cy.findByTestId("TableInteractive-root").findByText("Product ID").click();
