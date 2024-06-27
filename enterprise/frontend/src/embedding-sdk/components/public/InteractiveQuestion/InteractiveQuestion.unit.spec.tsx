@@ -22,6 +22,7 @@ import {
   clearQueryResult,
   runQuestionQuery,
 } from "metabase/query_builder/actions";
+import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -50,51 +51,62 @@ const TEST_COLUMN = createMockColumn({
   display_name: "Test Column",
   name: "Test Column",
 });
-const TEST_DATASET = createMockDataset({
-  data: createMockDatasetData({
-    cols: [TEST_COLUMN],
-    rows: [["Test Row"]],
-  }),
-});
+
+function getMockDataset(row: string) {
+  return createMockDataset({
+    data: createMockDatasetData({
+      cols: [TEST_COLUMN],
+      rows: [[row]],
+    }),
+  });
+}
 
 const setup = ({
   isValidCard = true,
+  mocks = [{ card: createMockCard(), dataset: getMockDataset("Test Row") }],
 }: {
   isValidCard?: boolean;
+  mocks?: { card: Card; dataset: Dataset }[];
 } = {}) => {
   const { state } = setupSdkState({
     currentUser: TEST_USER,
   });
 
-  const TEST_CARD = createMockCard();
-  if (isValidCard) {
-    setupCardEndpoints(TEST_CARD);
-    setupCardQueryMetadataEndpoint(
-      TEST_CARD,
-      createMockCardQueryMetadata({
-        databases: [TEST_DB],
-      }),
-    );
-  } else {
-    setupUnauthorizedCardEndpoints(TEST_CARD);
-  }
-  setupAlertsEndpoints(TEST_CARD, []);
-  setupDatabaseEndpoints(TEST_DB);
+  for (const mock of mocks) {
+    const { card, dataset } = mock;
 
+    if (isValidCard) {
+      setupCardEndpoints(card);
+      setupCardQueryMetadataEndpoint(
+        card,
+        createMockCardQueryMetadata({ databases: [TEST_DB] }),
+      );
+    } else {
+      setupUnauthorizedCardEndpoints(card);
+    }
+
+    setupAlertsEndpoints(card, []);
+    setupCardQueryEndpoints(card, dataset);
+  }
+
+  setupDatabaseEndpoints(TEST_DB);
   setupTableEndpoints(TEST_TABLE);
 
-  setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
-
-  return renderWithProviders(
-    <InteractiveQuestion questionId={TEST_CARD.id} />,
-    {
-      mode: "sdk",
-      sdkConfig: createMockConfig({
-        jwtProviderUri: "http://TEST_URI/sso/metabase",
-      }),
-      storeInitialState: state,
-    },
+  const children = (
+    <div>
+      {mocks.map(mock => (
+        <InteractiveQuestion key={mock.card.id} questionId={mock.card.id} />
+      ))}
+    </div>
   );
+
+  return renderWithProviders(children, {
+    mode: "sdk",
+    sdkConfig: createMockConfig({
+      jwtProviderUri: "http://TEST_URI/sso/metabase",
+    }),
+    storeInitialState: state,
+  });
 };
 
 describe("InteractiveQuestion", () => {
@@ -114,9 +126,37 @@ describe("InteractiveQuestion", () => {
         TEST_COLUMN.display_name,
       ),
     ).toBeInTheDocument();
+
     expect(
       within(screen.getByRole("gridcell")).getByText("Test Row"),
     ).toBeInTheDocument();
+  });
+
+  it("can render multiple valid questions", async () => {
+    const rows = ["A", "B"];
+
+    const mocks = rows.map((row, id) => ({
+      card: createMockCard({ id }),
+      dataset: getMockDataset(row),
+    }));
+
+    setup({ mocks });
+
+    await waitForLoaderToBeRemoved();
+
+    const tables = screen.getAllByTestId("TableInteractive-root");
+    const gridcells = screen.getAllByRole("gridcell");
+
+    expect(tables).toHaveLength(rows.length);
+    expect(gridcells).toHaveLength(rows.length);
+
+    for (let id = 0; id < rows.length; id++) {
+      expect(
+        within(tables[id]).getByText(TEST_COLUMN.display_name),
+      ).toBeInTheDocument();
+
+      expect(within(gridcells[id]).getByText(rows[id])).toBeInTheDocument();
+    }
   });
 
   it("should render loading state when drilling down", async () => {
