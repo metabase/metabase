@@ -2,7 +2,7 @@
 
 (defn unique-name-generator
   "A fork of [[mbql.u/unique-name-generator]] which accounts for collisions when names are truncated.
-  There is due to a limitation where it does not play well with truncation, see the tests for this function.
+  There is due to a limitation where the original does not work properly with truncation, as shown in this fn's tests.
   This may be a bit slower, and it's a breaking change as far as what ids look like, hence it's a fork."
   [unique-alias-fn]
   (let [id+original->unique (atom {})   ; map of [id original-alias] -> unique-alias
@@ -23,18 +23,18 @@
           (do (swap! id+original->unique assoc [id original] original)
               original)
           ;; If it's already used, find a unique suffix for it.
-          (loop [counter 2]
-            ;; Bail out if we're caught in an infinite loop.
-            ;; Note: This detection mechanism probably has false positives, but it's better than nothing for now.
-            (if (> counter (inc (count @used-names)))
-              (throw (ex-info "Entered" {:counter        counter
-                                         :original       original
-                                         :last-candidate (unique-alias-fn original (dec counter))}))
-              ;; Attempt to generate a unique name.
-              (let [candidate (unique-alias-fn original counter)]
+          (loop [counter        2
+                 prev-candidate nil]
+            ;; Attempt to generate a unique name.
+            (let [candidate (unique-alias-fn original counter)]
+              ;; Bail out if a faulty alias function is about to cause an infinite loop.
+              (if (= prev-candidate candidate)
+                (throw (ex-info "Entered" {:counter        counter
+                                           :original       original
+                                           :last-candidate (unique-alias-fn original (dec counter))}))
                 (if (get @used-names candidate)
                   ;; If it was not unique, try incrementing the counter.
-                  (recur (inc counter))
+                  (recur (inc counter) candidate)
                   (do (swap! id+original->unique assoc [id original] candidate)
                       (swap! used-names conj candidate)
                       candidate)))))))))))

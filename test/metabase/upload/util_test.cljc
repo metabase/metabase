@@ -17,6 +17,7 @@
         (is (thrown-with-msg? #?(:clj AssertionError :cljs js/Error)
                               #"unique-alias-fn must return a different string than its input. Input: \"ab_2\""
                               (mapv mbql-generator original)))))
+
     (testing "With our adjustments, it works a treat"
       (let [uniquified (upload.u/uniquify-names max-len original)]
         (is (= uniquified (distinct uniquified)))
