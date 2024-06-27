@@ -12,7 +12,7 @@ import {
 import { NUMBER, STRING, PRIMARY_KEY } from "metabase-lib/v1/types/constants";
 import type { Parameter, ParameterMappingOptions } from "metabase-types/api";
 
-import { getIsMultiSelect } from "../../../../metabase/parameters/utils/dashboards";
+import { getIsMultiSelect } from "./parameter-values";
 
 type OperatorType = "date" | "number" | "string";
 export type ParameterSectionId =

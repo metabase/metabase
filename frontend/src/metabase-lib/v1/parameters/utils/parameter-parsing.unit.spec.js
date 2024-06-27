@@ -1,3 +1,5 @@
+import { createMockParameter } from "metabase-types/api/mocks";
+
 import {
   getParameterValueFromQueryParams,
   getParameterValuesByIdFromQueryParams,
@@ -94,6 +96,32 @@ describe("parameters/utils/parameter-values", () => {
       expect(getParameterValueFromQueryParams(parameter3, queryParams)).toBe(
         "parameter3 default value",
       );
+    });
+
+    it("should only allow multiple values for parameters by default", () => {
+      const parameter = createMockParameter();
+      const queryParams = { [parameter.slug]: ["ab", "cd"] };
+      expect(getParameterValueFromQueryParams(parameter, queryParams)).toEqual([
+        "ab",
+        "cd",
+      ]);
+    });
+
+    it("should only allow 1 value for single-value parameters", () => {
+      const parameter = createMockParameter({ isMultiSelect: false });
+      const queryParams = { [parameter.slug]: ["ab", "cd"] };
+      expect(getParameterValueFromQueryParams(parameter, queryParams)).toEqual([
+        "ab",
+      ]);
+    });
+
+    it("should only allow multiple values for multi-value parameters", () => {
+      const parameter = createMockParameter({ isMultiSelect: true });
+      const queryParams = { [parameter.slug]: ["ab", "cd"] };
+      expect(getParameterValueFromQueryParams(parameter, queryParams)).toEqual([
+        "ab",
+        "cd",
+      ]);
     });
 
     it("should return null when the parameter is not in queryParams and has no default", () => {
