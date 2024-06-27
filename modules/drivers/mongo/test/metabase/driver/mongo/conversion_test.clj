@@ -31,9 +31,9 @@
   (testing "Bson Decimal128 zero is converted to BigDecimal zero"
     (is (= {"negativeZero" 0M}
            (mongo.conversion/from-document
-            (org.bson.Document. "negativeZero" (org.bson.types.Decimal128/parse "-0"))
+            (org.bson.Document. "negativeZero" org.bson.types.Decimal128/NEGATIVE_ZERO)
             nil)))
     (is (= {"positiveZero" 0M}
            (mongo.conversion/from-document
-            (org.bson.Document. "positiveZero" (org.bson.types.Decimal128/parse "+0"))
+            (org.bson.Document. "positiveZero" org.bson.types.Decimal128/POSITIVE_ZERO)
             nil)))))
