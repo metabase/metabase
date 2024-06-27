@@ -42,12 +42,12 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private max-field-name-length
-  "This tracks the size of the metabase_field.name field"
+  "This tracks the size of the metabase_field.name field, in bytes."
   254)
 
 (def ^:private min-safe (fnil min Long/MAX_VALUE Long/MAX_VALUE))
 
-(defn- max-column-length [driver]
+(defn- max-column-bytes [driver]
   (let [column-limit (some-> driver driver/column-name-length-limit)]
     (min-safe column-limit max-field-name-length)))
 
@@ -56,7 +56,8 @@
   (if (str/blank? raw-name)
     "unnamed_column"
     (u/slugify (str/trim raw-name)
-               {:max-length (max-column-length driver)})))
+               ;; since slugified names contain only ASCII characters, we can conflate bytes and length here.
+               {:max-length (max-column-bytes driver)})))
 
 (def auto-pk-column-name
   "The lower-case name of the auto-incrementing PK column. The actual name in the database could be in upper-case."
@@ -107,6 +108,8 @@
   [driver table-name]
   (let [time-format                 "_yyyyMMddHHmmss"
         slugified-name               (or (u/slugify table-name) "")
+        ;; since both the time-format and the slugified-name contain only ASCII characters, we can behave as if
+        ;; [[driver/table-name-length-limit]] were defining a length in characters.
         max-length                  (- (driver/table-name-length-limit driver) (count time-format))
         acceptable-length           (min (count slugified-name) max-length)
         truncated-name-without-time (subs slugified-name 0 acceptable-length)]
@@ -246,7 +249,8 @@
 
 (defn- derive-column-names [driver header]
   (let [normalized-header (for [h header] (normalize-column-name driver h))
-        max-length        (max-column-length driver)
+        ;; since normalized names contain only ASCII characters, we can conflate bytes and length here.
+        max-length        (max-column-bytes driver)
         unique-header     (upload.u/uniquify-names max-length normalized-header)]
     (map keyword unique-header)))
 
