@@ -156,13 +156,15 @@ describe("scenarios > notebook > data source", () => {
       { tags: "@external" },
       () => {
         const dialect = "postgres";
-        const TEST_TABLE = "multi_schema";
+        const testTable1 = "multi_schema";
+        const testTable2 = "many_data_types";
 
         const dbName = "Writable Postgres12";
         const schemaName = "Wild";
         const tableName = "Animals";
 
-        resetTestTable({ type: dialect, table: TEST_TABLE });
+        resetTestTable({ type: dialect, table: testTable1 });
+        resetTestTable({ type: dialect, table: testTable2 });
         restore(`${dialect}-writable`);
 
         cy.signInAsAdmin();
