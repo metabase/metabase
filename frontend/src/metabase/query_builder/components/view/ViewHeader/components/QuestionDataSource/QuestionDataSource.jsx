@@ -37,7 +37,7 @@ function isMaybeBasedOnDataset(question) {
 export function QuestionDataSource({
   question,
   originalQuestion,
-  subHead,
+  subHead = false,
   ...props
 }) {
   if (!question) {

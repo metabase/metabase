@@ -1,5 +1,6 @@
 import cx from "classnames";
-import type { ReactElement, ReactNode } from "react";
+import type { ReactElement } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -7,7 +8,7 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
-  QuestionBackButton,
+  BackButton,
   FilterBar,
   QuestionResetButton,
   Title,
@@ -15,31 +16,29 @@ import {
   FilterButton,
   Summarize,
   SummarizeButton,
+  QuestionVisualization,
 } from "embedding-sdk/components/public/InteractiveQuestion";
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import {
+  useInteractiveQuestionContext,
+  useInteractiveQuestionData,
+} from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Group, Stack } from "metabase/ui";
-
-import { QuestionVisualization } from "../public/InteractiveQuestion/components";
+import { Box, Button, Flex, Group, Stack } from "metabase/ui";
 
 interface InteractiveQuestionResultProps {
-  withTitle?: boolean;
-  customTitle?: ReactNode;
   height?: string | number;
 }
 
 export const InteractiveQuestionResult = ({
   height,
 }: InteractiveQuestionResultProps): ReactElement => {
-  const {
-    defaultHeight,
-    isQueryRunning,
-    isQuestionLoading,
-    queryResults,
-    question,
-    isFilterOpen,
-    isSummarizeOpen,
-  } = useInteractiveQuestionContext();
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isSummarizeOpen, setIsSummarizeOpen] = useState(false);
+
+  const { isQuestionLoading } = useInteractiveQuestionContext();
+
+  const { defaultHeight, isQueryRunning, queryResults, question } =
+    useInteractiveQuestionData();
 
   if (isQuestionLoading || isQueryRunning) {
     return <SdkLoader />;
@@ -50,11 +49,18 @@ export const InteractiveQuestionResult = ({
   }
 
   if (isFilterOpen) {
-    return <Filter />;
+    return (
+      <Stack>
+        <Button onClick={() => setIsFilterOpen(!isFilterOpen)}>
+          {t`Close`}
+        </Button>
+        <Filter />
+      </Stack>
+    );
   }
 
   if (isSummarizeOpen) {
-    return <Summarize />;
+    return <Summarize onClose={() => setIsSummarizeOpen(false)} />;
   }
 
   return (
@@ -65,11 +71,14 @@ export const InteractiveQuestionResult = ({
     >
       <Stack h="100%">
         <Flex direction="row" gap="md" px="md" align="center">
-          <QuestionBackButton />
+          <BackButton />
           <Title />
           <QuestionResetButton />
-          <FilterButton />
-          <SummarizeButton />
+          <FilterButton onClick={() => setIsFilterOpen(!isFilterOpen)} />
+          <SummarizeButton
+            isOpen={isSummarizeOpen}
+            onClose={() => setIsSummarizeOpen(false)}
+          />
         </Flex>
 
         <FilterBar />

@@ -133,8 +133,9 @@
   "Calls detect-schema on rows from a CSV file. `rows` is a vector of strings"
   [rows]
   (with-open [reader (io/reader (csv-file-with rows))]
-    (let [[header & rows] (csv/read-csv reader)]
-      (#'upload/detect-schema (upload-parsing/get-settings) header rows))))
+    (let [[header & rows] (csv/read-csv reader)
+          column-names (#'upload/derive-column-names nil header)]
+      (#'upload/detect-schema (upload-parsing/get-settings) column-names rows))))
 
 (deftest ^:parallel detect-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -726,11 +727,11 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     ;; There aren't any officially supported databases yet that don't support `:upload-with-auto-pk`
     ;; So we'll fake it here to test it for 3rd party drivers
-    (let [original-database-supports?-fn driver/database-supports?]
-      (with-redefs [driver/database-supports? (fn [driver feature db]
-                                                (if (= feature :upload-with-auto-pk)
-                                                  false
-                                                  (original-database-supports?-fn driver feature db)))]
+    (let [original-supports?-fn driver.u/supports?]
+      (with-redefs [driver.u/supports? (fn [driver feature db]
+                                         (if (= feature :upload-with-auto-pk)
+                                           false
+                                           (original-supports?-fn driver feature db)))]
         (with-mysql-local-infile-on-and-off
           (testing "Upload a CSV file with column names that are reserved by the DB, NOT ignoring them"
             (testing "A single column whose name normalizes to _mb_row_id"
@@ -1021,7 +1022,7 @@
               #"^The uploads database does not exist\.$"
               (upload-example-csv! :db-id Integer/MAX_VALUE, :schema-name "public", :table-prefix "uploaded_magic_"))))
       (testing "Uploads must be supported"
-        (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
+        (mt/with-dynamic-redefs [driver.u/supports? (constantly false)]
           (is (thrown-with-msg?
                 java.lang.Exception
                 #"^Uploads are not supported on \w+ databases\."
@@ -1188,7 +1189,7 @@
                       :data    {:status-code 422}}
                      (catch-ex-info (update-csv-with-defaults! action :file (csv-file-with []))))))
             (testing "Uploads must be supported"
-              (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
+              (mt/with-dynamic-redefs [driver.u/supports? (constantly false)]
                 (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
                         :data    {:status-code 422}}
                        (catch-ex-info (update-csv-with-defaults! action))))))))))))
@@ -1992,3 +1993,69 @@
             (is (= [false] (mapv :active (t2/select :model/Table :id (:id table)))))
             (testing "We do not clean up any of the child resources synchronously (yet?)"
               (is (seq (t2/select :model/Field :table_id (:id table)))))))))))
+
+(deftest create-csv-from-really-long-names
+  (testing "Upload a CSV file with unique column names that get sanitized to the same string"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+       (let [long-string (str (str/join (repeat 1000 "really_")) "long")]
+         (with-upload-table!
+           [table (create-from-csv-and-sync-with-defaults!
+                   :file (csv-file-with [(str (str "a_" long-string ",")
+                                              (str "b_" long-string ",")
+                                              (str "b_" long-string "_with_a"))
+                                         "a,b1,b2"]))]
+           (testing "Table and Fields exist after sync"
+             (testing "Check the data was uploaded into the table correctly"
+               (let [column-names (column-names-for-table table)]
+                 (is (=  @#'upload/auto-pk-column-name (first column-names)))
+                 (is (= 4 (count (distinct column-names))))
+                 (is (= 1 (count (filter #(str/starts-with? % "a_") column-names))))
+                 (is (= 2 (count (filter #(str/starts-with? % "b_") column-names)))))))))))))
+
+(deftest append-with-really-long-names
+  (testing "Upload a CSV file with unique column names that get sanitized to the same string"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+       (let [long-string  (str (str/join (repeat 1000 "really_")) "long")
+             header       (str (str "a_" long-string ",")
+                               (str "b_" long-string))
+             original-row "a,b"
+             appended-row "A,B"]
+         (with-upload-table!
+           [table (create-from-csv-and-sync-with-defaults!
+                   :file (csv-file-with [header original-row]))]
+           (let [csv-rows [header appended-row]
+                 file     (csv-file-with csv-rows (mt/random-name))]
+             (is (= {:row-count 1}
+                    (update-csv! ::upload/append {:file file, :table-id (:id table)})))
+             (testing "Check the data was appended into the table"
+               (is (= (map second (rows-with-auto-pk
+                                   [(csv/read-csv original-row)
+                                    (csv/read-csv appended-row)]))
+                      (map rest (rows-for-table table)))))
+             (io/delete-file file))))))))
+
+(deftest append-with-really-long-names-that-duplicate
+  (testing "Upload a CSV file with unique column names that get sanitized to the same string"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+       (let [long-string  (str (str/join (repeat 1000 "really_")) "long")
+             header       (str (str "a_" long-string ",")
+                               (str "b_" long-string ",")
+                               (str "b_" long-string "_with_a"))
+             original-row "a,b1,b2"
+             appended-row "A,B1,B2"]
+         (with-upload-table!
+           [table (create-from-csv-and-sync-with-defaults!
+                   :file (csv-file-with [header original-row]))]
+           (let [csv-rows [header appended-row]
+                 file     (csv-file-with csv-rows (mt/random-name))]
+             ;; TODO: we should be able to make this work with smarter truncation
+             (is (= {:message "The CSV file contains duplicate column names."
+                     :data    {:status-code 422}}
+                    (catch-ex-info (update-csv! ::upload/append {:file file, :table-id (:id table)}))))
+             (testing "Check the data was not uploaded into the table"
+               (is (= (map second (rows-with-auto-pk [(csv/read-csv original-row)]))
+                      (map rest (rows-for-table table)))))
+             (io/delete-file file))))))))
