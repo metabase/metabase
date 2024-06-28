@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactElement } from "react";
+import type { ReactElement, type ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -20,15 +20,16 @@ import {
   NotebookButton,
   QuestionVisualization,
 } from "embedding-sdk/components/public/InteractiveQuestion";
-import {
-  useInteractiveQuestionContext,
-  useInteractiveQuestionData,
-} from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { useInteractiveQuestionData } from "embedding-sdk/components/public/InteractiveQuestion/hooks/use-interactive-question-data";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Flex, Group, Stack } from "metabase/ui";
 
 interface InteractiveQuestionResultProps {
   height?: string | number;
+  withResetButton?: boolean;
+  withTitle?: boolean;
+  customTitle?: ReactNode;
 }
 
 type QuestionView = "notebook" | "filter" | "summarize" | "visualization";
@@ -40,23 +41,33 @@ const ResultView = ({
   questionView: QuestionView;
   setQuestionView: (questionView: QuestionView) => void;
 }) => {
+  const returnToVisualization = () => {
+    setQuestionView("visualization");
+  };
+
   if (questionView === "filter") {
     return (
       <Stack>
-        <Button onClick={() => setQuestionView("visualization")}>
-          {t`Close`}
-        </Button>
-        <Filter />
+        <Button onClick={returnToVisualization}>{t`Close`}</Button>
+        <Filter
+          onApply={returnToVisualization}
+          onClear={returnToVisualization}
+        />
       </Stack>
     );
   }
 
   if (questionView === "summarize") {
-    return <Summarize onClose={() => setQuestionView("visualization")} />;
+    return (
+      <Summarize
+        onApply={returnToVisualization}
+        onClose={returnToVisualization}
+      />
+    );
   }
 
   if (questionView === "notebook") {
-    return <Notebook onClick={() => setQuestionView("visualization")} />;
+    return <Notebook onApply={returnToVisualization} />;
   }
 
   return <QuestionVisualization />;
@@ -64,6 +75,9 @@ const ResultView = ({
 
 export const InteractiveQuestionResult = ({
   height,
+  withTitle = false,
+  customTitle,
+  withResetButton,
 }: InteractiveQuestionResultProps): ReactElement => {
   const [questionView, setQuestionView] =
     useState<QuestionView>("visualization");
@@ -90,8 +104,8 @@ export const InteractiveQuestionResult = ({
       <Stack h="100%">
         <Flex direction="row" gap="md" px="md" align="center">
           <BackButton />
-          <Title />
-          <QuestionResetButton />
+          {withTitle && (customTitle ?? <Title />)}
+          {withResetButton && <QuestionResetButton />}
           <FilterButton onClick={() => setQuestionView("filter")} />
           <SummarizeButton
             isOpen={questionView === "summarize"}
@@ -100,7 +114,11 @@ export const InteractiveQuestionResult = ({
           />
           <NotebookButton
             isOpen={questionView === "notebook"}
-            onClick={() => setQuestionView("notebook")}
+            onClick={() =>
+              setQuestionView(
+                questionView === "notebook" ? "visualization" : "notebook",
+              )
+            }
           />
         </Flex>
 

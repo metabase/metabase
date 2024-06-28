@@ -1,5 +1,6 @@
-import { useInteractiveQuestionData } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import { QuestionNotebookButton } from "metabase/query_builder/components/view/ViewHeader/components";
+
+import { useInteractiveQuestionData } from "../hooks";
 
 export const NotebookButton = ({
   isOpen,

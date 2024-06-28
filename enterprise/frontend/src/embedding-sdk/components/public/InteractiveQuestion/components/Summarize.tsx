@@ -1,4 +1,5 @@
-import { useInteractiveQuestionData } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { useState } from "react";
+
 import {
   SummarizeContent,
   useSummarizeQuery,
@@ -7,16 +8,36 @@ import { Button, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-export const Summarize = ({ onClose }: { onClose: () => void }) => {
+import { useInteractiveQuestionData } from "../hooks";
+
+export const Summarize = ({
+  onApply = () => {},
+  onClose,
+}: {
+  onApply?: () => void;
+  onClose?: () => void;
+}) => {
   const { onQueryChange, question } = useInteractiveQuestionData();
+
+  const [query, setQuery] = useState<Lib.Query>();
+
+  const onApplyFilter = () => {
+    if (query) {
+      onQueryChange(query);
+      onApply();
+    }
+  };
 
   return (
     question && (
-      <SummarizeInner
-        question={question}
-        onQueryChange={onQueryChange}
-        onClose={onClose}
-      />
+      <Stack>
+        <SummarizeInner
+          question={question}
+          onQueryChange={setQuery}
+          onClose={onClose}
+        />
+        <Button onClick={onApplyFilter}>Apply</Button>
+      </Stack>
     )
   );
 };
@@ -28,7 +49,7 @@ const SummarizeInner = ({
 }: {
   question: Question;
   onQueryChange: (query: Lib.Query) => void;
-  onClose: () => void;
+  onClose?: () => void;
 }) => {
   const {
     aggregations,
