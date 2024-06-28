@@ -6495,6 +6495,75 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
+      id: v49.2024-06-27T13:52:51
+      author: calherries
+      comment: Add metabase_field.is_defective_duplicate
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: is_defective_duplicate
+                  type: boolean
+                  remarks: "Indicates whether column is a defective duplicate field that should never have been created."
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+
+  - changeSet:
+      id: v49.2024-06-27T13:52:52
+      author: calherries
+      comment: Drop the fk_field_parent_ref_field_id constraint
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE metabase_field DROP FOREIGN KEY fk_field_parent_ref_field_id;
+      rollback: # TODO
+
+  - changeSet:
+      id: v49.2024-06-27T13:52:53
+      author: calherries
+      comment: Populate metabase_field.is_defective_duplicate
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE metabase_field ADD COLUMN unique_name_filter INTEGER GENERATED ALWAYS AS (
+                  IF(is_defective_duplicate = TRUE, NULL, IFNULL(parent_id, 0))
+              ) STORED;
+              CREATE UNIQUE INDEX idx_unique_field_name ON metabase_field (name, table_id, unique_name_filter);
+
+              WITH duplicates AS (
+                  SELECT table_id, name
+                  FROM metabase_field
+                  WHERE parent_id IS NULL
+                  GROUP BY table_id, name
+                  HAVING COUNT(*) > 1
+              ),
+              ranked_duplicates AS (
+                  SELECT
+                      mf.id,
+                      mf.table_id,
+                      mf.name,
+                      mf.nfc_path,
+                      ROW_NUMBER() OVER (PARTITION BY mf.table_id, mf.name ORDER BY mf.created_at) AS rn
+                  FROM metabase_field mf
+                  JOIN duplicates d ON mf.table_id = d.table_id AND mf.name = d.name
+                  WHERE mf.parent_id IS NULL
+              )
+              UPDATE metabase_field mf
+              LEFT JOIN ranked_duplicates rd ON mf.id = rd.id
+              SET mf.is_defective_duplicate =
+                  CASE
+                      WHEN rd.id IS NULL THEN FALSE
+                      WHEN rd.rn = 1 AND rd.nfc_path IS NULL THEN FALSE
+                      ELSE TRUE
+                  END;
+      # TODO: h2
+      rollback: # TODO
+
+  - changeSet:
       id: v50.2024-01-04T13:52:51
       author: noahmoss
       comment: Data permissions table
