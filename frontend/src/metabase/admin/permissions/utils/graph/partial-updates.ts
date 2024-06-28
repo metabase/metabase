@@ -1,15 +1,23 @@
 import _ from "underscore";
 
-import type { GroupPermissions } from "metabase-types/api";
+import type { GroupsPermissions } from "metabase-types/api";
+
+type AdvancedPermissions = Record<
+  string,
+  { group_id: number; [key: string]: unknown }[] | undefined
+>;
+
+interface AdvancedPermissionsData {
+  modifiedGroupIds: string[];
+  permissions: AdvancedPermissions;
+}
 
 // utils for dealing with partial graph updates
 
-// access
-
-export function getModifiedGroupIds(
+function getModifiedGroupIdsInGraph(
   groupIds: string[],
-  originalDataPermissions: GroupPermissions,
-  newDataPermissions: GroupPermissions,
+  originalDataPermissions: GroupsPermissions,
+  newDataPermissions: GroupsPermissions,
 ) {
   // find only the groupIds that have had some kind of modification made in their permissions graph
   return groupIds.filter(groupId => {
@@ -20,37 +28,54 @@ export function getModifiedGroupIds(
   });
 }
 
-function getModifiedGroupItems(
-  items: { group_id: number }[],
-  groupIds: Set<string>,
+function getModifiedAdvancedPermissions(
+  advancedPermissions: AdvancedPermissions,
+  modifiedGroupIds: string[],
 ) {
-  return items.filter(item => groupIds.has(`${item.group_id}`));
-}
+  const groupIds = new Set(modifiedGroupIds);
 
-export function getPermissionsUpdatesForGroupIds(
-  dataPermissions: GroupPermissions,
-  dataPermissionsRevision: number,
-  advancedPermissionsData: Record<string, { group_id: number }[]>,
-  groupIds: string[],
-) {
-  const groupIdsSet = new Set(groupIds);
-
-  const filterAdvancedPermissionsData = Object.fromEntries(
-    Object.entries(advancedPermissionsData).map(([key, value]) => {
-      return [key, getModifiedGroupItems(value, groupIdsSet)];
+  return Object.fromEntries(
+    Object.entries(advancedPermissions).map(([key, items]) => {
+      const modified = (items || []).filter(item =>
+        groupIds.has(`${item.group_id}`),
+      );
+      return [key, modified];
     }),
   );
+}
+
+// select only the parts of the permission graph that contain some kind of edit
+// currently only selects values based on some kind of modification happening anywhere
+// in the graph for a particular group
+export function getModifiedPermissionsGraphParts(
+  allGroupIds: string[],
+  dataPermissions: GroupsPermissions,
+  originalDataPermissions: GroupsPermissions,
+  advancedPermissionsData: AdvancedPermissionsData,
+  dataPermissionsRevision: number,
+) {
+  const modifiedGroupIds = _.uniq([
+    ...getModifiedGroupIdsInGraph(
+      allGroupIds,
+      originalDataPermissions,
+      dataPermissions,
+    ),
+    ...advancedPermissionsData.modifiedGroupIds,
+  ]);
 
   return {
-    groups: _.pick(dataPermissions, groupIds),
+    groups: _.pick(dataPermissions, modifiedGroupIds),
     revision: dataPermissionsRevision,
-    ...filterAdvancedPermissionsData,
+    ...getModifiedAdvancedPermissions(
+      advancedPermissionsData.permissions,
+      modifiedGroupIds,
+    ),
   };
 }
 
-export function mergeGroupPermissionsUpdates(
-  originalDataPermissions: GroupPermissions | null | undefined,
-  newDataPermissions: GroupPermissions,
+export function mergeGroupsPermissionsUpdates(
+  originalDataPermissions: GroupsPermissions | null | undefined,
+  newDataPermissions: GroupsPermissions,
 ) {
   if (!originalDataPermissions) {
     return newDataPermissions;

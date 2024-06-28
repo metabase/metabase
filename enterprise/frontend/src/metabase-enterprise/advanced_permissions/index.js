@@ -125,12 +125,7 @@ if (hasPremiumFeature("advanced_permissions")) {
     (state, data) => {
       const impersonations = getImpersonations(state);
       const impersonationGroupIds = impersonations.map(i => `${i.group_id}`);
-
-      return {
-        ...data,
-        modifiedGroupIds: [...data.modifiedGroupIds, ...impersonationGroupIds],
-        impersonations,
-      };
+      return [{ impersonations }, impersonationGroupIds];
     },
   );
 

@@ -94,12 +94,7 @@ if (hasPremiumFeature("sandboxes")) {
     (state, data) => {
       const sandboxes = getDraftPolicies(state);
       const modifiedGroupIds = getGroupIdsOfModifiedPolices(state);
-
-      return {
-        ...data,
-        modifiedGroupIds: [...data.modifiedGroupIds, ...modifiedGroupIds],
-        sandboxes,
-      };
+      return [{ sandboxes }, modifiedGroupIds];
     },
   );
 
