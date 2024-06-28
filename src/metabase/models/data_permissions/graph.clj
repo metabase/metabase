@@ -135,13 +135,14 @@
 (defn- add-admin-perms-to-permissions-graph
   "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it.
   For every db in the incoming graph, adds on admin permissions."
-  [api-graph {:keys [db-id group-id audit?]}]
+  [api-graph {:keys [db-id group-ids group-id audit?]}]
   (let [admin-group-id (u/the-id (perms-group/admin))
         db-ids         (if db-id [db-id] (t2/select-pks-vec :model/Database
                                                             {:where [:and
                                                                      (when-not audit? [:not= :id audit/audit-db-id])]}))]
-    (if (and group-id (not= group-id admin-group-id))
-      ;; Don't add admin perms when we're fetching the perms for a specific non-admin group
+    ;; Don't add admin perms when we're fetching the perms for a specific non-admin group or set of groups
+    (if (not (or (= group-id admin-group-id)
+                 (contains? (set group-ids) admin-group-id)))
       api-graph
       (reduce (fn [api-graph db-id]
                 (assoc-in api-graph [admin-group-id db-id] admin-perms))
