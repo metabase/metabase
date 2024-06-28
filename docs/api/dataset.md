@@ -76,6 +76,16 @@ Generate a pivoted dataset for an ad-hoc query.
 
 -  **`query`**
 
+## `POST /api/dataset/query_metadata`
+
+Get all of the required query metadata for an ad-hoc query.
+
+### PARAMS:
+
+-  **`database`** value must be an integer greater than zero.
+
+-  **`query`**
+
 ---
 
 [<< Back to API index](../api-documentation.md)
