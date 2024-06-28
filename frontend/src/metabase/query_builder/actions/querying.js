@@ -106,9 +106,13 @@ export const runQuestionQuery = ({
       : getQuestion(getState());
     const originalQuestion = getOriginalQuestion(getState());
 
-    const cardIsDirty = originalQuestion
+    const isCardDirty = originalQuestion
       ? question.isDirtyComparedToWithoutParameters(originalQuestion) ||
         question.id() == null
+      : true;
+
+    const isQueryDirty = originalQuestion
+      ? question.isQueryDirtyComparedTo(originalQuestion)
       : true;
 
     if (shouldUpdateUrl) {
@@ -116,7 +120,7 @@ export const runQuestionQuery = ({
         question.type() === "model" &&
         isAdHocModelQuestion(question, originalQuestion);
 
-      dispatch(updateUrl(question, { dirty: !isAdHocModel && cardIsDirty }));
+      dispatch(updateUrl(question, { dirty: !isAdHocModel && isCardDirty }));
     }
 
     const startTime = new Date();
@@ -127,7 +131,7 @@ export const runQuestionQuery = ({
     apiRunQuestionQuery(question, {
       cancelDeferred: cancelQueryDeferred,
       ignoreCache: ignoreCache,
-      isDirty: cardIsDirty,
+      isDirty: isQueryDirty,
     })
       .then(queryResults => {
         queryTimer(duration =>
