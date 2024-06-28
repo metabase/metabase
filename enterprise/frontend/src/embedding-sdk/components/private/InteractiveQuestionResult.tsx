@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactElement, type ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -21,9 +21,10 @@ import {
   QuestionVisualization,
 } from "embedding-sdk/components/public/InteractiveQuestion";
 import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
-import { useInteractiveQuestionData } from "embedding-sdk/components/public/InteractiveQuestion/hooks/use-interactive-question-data";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Flex, Group, Stack } from "metabase/ui";
+
+import { useInteractiveQuestionData } from "../public/InteractiveQuestion/hooks";
 
 interface InteractiveQuestionResultProps {
   height?: string | number;

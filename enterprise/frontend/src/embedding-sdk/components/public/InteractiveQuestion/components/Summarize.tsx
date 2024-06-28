@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   SummarizeContent,
@@ -12,31 +12,21 @@ import { useInteractiveQuestionData } from "../hooks";
 
 export const Summarize = ({
   onApply = () => {},
-  onClose,
+  onClose = () => {},
 }: {
   onApply?: () => void;
   onClose?: () => void;
 }) => {
-  const { onQueryChange, question } = useInteractiveQuestionData();
-
-  const [query, setQuery] = useState<Lib.Query>();
-
-  const onApplyFilter = () => {
-    if (query) {
-      onQueryChange(query);
-      onApply();
-    }
-  };
+  const { question } = useInteractiveQuestionData();
 
   return (
     question && (
       <Stack>
         <SummarizeInner
           question={question}
-          onQueryChange={setQuery}
+          onApply={onApply}
           onClose={onClose}
         />
-        <Button onClick={onApplyFilter}>Apply</Button>
       </Stack>
     )
   );
@@ -44,13 +34,34 @@ export const Summarize = ({
 
 const SummarizeInner = ({
   question,
-  onQueryChange,
+  onApply,
   onClose,
 }: {
   question: Question;
-  onQueryChange: (query: Lib.Query) => void;
-  onClose?: () => void;
+  onApply: () => void;
+  onClose: () => void;
 }) => {
+  const { onQueryChange } = useInteractiveQuestionData();
+
+  // save initial question in case we close without making changes
+  const initialQuestion = useRef(question.query());
+
+  const [currentQuery, setCurrentQuery] = useState<Lib.Query>(question.query());
+
+  const onApplyFilter = () => {
+    if (query) {
+      onQueryChange(currentQuery);
+      onApply();
+    }
+  };
+
+  const onCloseFilter = () => {
+    if (initialQuestion.current) {
+      onQueryChange(initialQuestion.current);
+    }
+    onClose();
+  };
+
   const {
     aggregations,
     handleAddAggregations,
@@ -62,11 +73,11 @@ const SummarizeInner = ({
     handleUpdateBreakout,
     hasAggregations,
     query,
-  } = useSummarizeQuery(question.query(), onQueryChange);
+  } = useSummarizeQuery(currentQuery, setCurrentQuery);
 
   return (
     <Stack>
-      <Button onClick={onClose}>Close</Button>
+      <Button onClick={onCloseFilter}>Close</Button>
       <SummarizeContent
         query={query}
         aggregations={aggregations}
@@ -79,6 +90,7 @@ const SummarizeInner = ({
         onRemoveBreakout={handleRemoveBreakout}
         onReplaceBreakouts={handleReplaceBreakouts}
       />
+      <Button onClick={onApplyFilter}>Apply</Button>
     </Stack>
   );
 };
