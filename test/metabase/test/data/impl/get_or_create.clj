@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.models :refer [Database Field Table]]
@@ -147,6 +148,42 @@
   (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/create-queries :query-builder-and-native)
   (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/download-results :one-million-rows))
 
+;; TODO: Rewrite following to readable form!
+(defn dbdef->fk-field-infos
+  [dbdef db]
+  (let [table-field-fk (loop [[table-def & table-defs] (:table-definitions dbdef)
+                              result []]
+                         (if (nil? table-def)
+                           result
+                           (recur table-defs
+                                  (into result
+                                        (comp (filter (comp some? :fk))
+                                              (map #(vector (:table-name table-def)
+                                                            (:field-name %)
+                                                            (name (:fk %)))))
+                                        (:field-definitions table-def)))))
+        tables (t2/select :model/Table :db_id (:id db))
+        fields (t2/select :model/Field {:where [:in :table_id (map :id tables)]})
+        table-id->table (m/index-by :id tables)
+        table-name->field-name->field (-> (group-by :table_id fields)
+                                          (update-keys (comp :name table-id->table))
+                                          (update-vals (partial m/index-by :name)))
+        table-name->pk-field (-> (group-by :table_id fields)
+                                 (update-keys (comp :name table-id->table))
+                                 (update-vals (partial some #(when (= (:semantic_type %) :type/PK) %))))]
+    (map (fn [[table-name field-name target-table-name]]
+           {:id (get-in table-name->field-name->field [table-name field-name :id])
+            :fk-target-field-id (get-in table-name->pk-field [target-table-name :id])})
+         table-field-fk)))
+
+(defn- add-foreign-keys!
+  "This is necessary for implicit joins tests to work."
+  [dbdef db]
+  (let [fk-field-infos (dbdef->fk-field-infos dbdef db)]
+    (doseq [{:keys [id fk-target-field-id]} fk-field-infos]
+      (t2/update! :model/Field :id id {:semantic_type :type/FK
+                                       :fk_target_field_id fk-target-field-id}))))
+
 (defn- create-database! [driver {:keys [database-name], :as database-definition}]
   {:pre [(seq database-name)]}
   (try
@@ -165,7 +202,7 @@
                                                                       :details connection-details})))]
       (sync-newly-created-database! driver database-definition connection-details db)
       (set-test-db-permissions! (u/the-id db))
-      (tx/post-sync-hook! driver database-definition db)
+      (add-foreign-keys! database-definition db)
       ;; make sure we're returing an up-to-date copy of the DB
       (t2/select-one Database :id (u/the-id db)))
     (catch Throwable e
