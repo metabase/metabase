@@ -37,6 +37,7 @@ describe("SimpleSpecificDatePicker", () => {
       type: "specific",
       operator: "=",
       values: [new Date(2015, 1, 15)],
+      hasTime: false,
     });
   });
 });

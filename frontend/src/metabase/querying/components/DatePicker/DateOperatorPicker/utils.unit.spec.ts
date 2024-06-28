@@ -92,6 +92,7 @@ describe("setOptionType", () => {
           type: "specific",
           operator: "=",
           values: [TODAY],
+          hasTime: false,
         });
       },
     );
@@ -138,6 +139,7 @@ describe("setOptionType", () => {
           type: "specific",
           operator: ">",
           values: [TODAY],
+          hasTime: false,
         });
       },
     );
@@ -184,6 +186,7 @@ describe("setOptionType", () => {
           type: "specific",
           operator: "<",
           values: [TODAY],
+          hasTime: false,
         });
       },
     );
@@ -230,6 +233,7 @@ describe("setOptionType", () => {
           type: "specific",
           operator: "between",
           values: [PAST_30DAYS, TODAY],
+          hasTime: false,
         });
       },
     );
