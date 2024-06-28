@@ -221,7 +221,7 @@
       ;; Add foreign key relationships to app db as per dataset definition. _Only_ in case dbms in use does not support
       ;; :foreign-keys feature. In case it does, sync should be able to infer foreign keys. This is required eg. for
       ;; testing implicit joins.
-      (when-not (driver/database-supports? driver/*driver* :foreign-keys nil)
+      (when-not (driver/database-supports? driver :foreign-keys nil)
         (add-foreign-keys! database-definition db))
       ;; make sure we're returing an up-to-date copy of the DB
       (t2/select-one Database :id (u/the-id db)))
