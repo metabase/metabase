@@ -3196,3 +3196,119 @@ describe("issue 44790", () => {
     getDashboardCard().should("contain", "borer-hudson@yahoo.com");
   });
 });
+
+describe("issue 34955", () => {
+  const ccName = "Custom Created At";
+
+  const questionDetails = {
+    name: "34955",
+    query: {
+      "source-table": ORDERS_ID,
+      expressions: {
+        [ccName]: [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime" },
+        ],
+      },
+      fields: [
+        [
+          "field",
+          ORDERS.ID,
+          {
+            "base-type": "type/BigInteger",
+          },
+        ],
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "base-type": "type/DateTime",
+          },
+        ],
+        [
+          "expression",
+          ccName,
+          {
+            "base-type": "type/DateTime",
+          },
+        ],
+      ],
+      limit: 2,
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    cy.createQuestionAndDashboard({
+      questionDetails,
+      cardDetails: {
+        size_x: 16,
+        size_y: 8,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      cy.wrap(dashboard_id).as("dashboardId");
+
+      visitDashboard(dashboard_id);
+      editDashboard();
+
+      setFilter("Time", "Single Date", "On");
+      connectFilterToColumn(ccName);
+
+      setFilter("Time", "Date Range", "Between");
+      connectFilterToColumn(ccName);
+
+      saveDashboard();
+
+      cy.findAllByTestId("column-header")
+        .eq(-2)
+        .should("have.text", "Created At");
+      cy.findAllByTestId("column-header").eq(-1).should("have.text", ccName);
+      cy.findAllByTestId("cell-data")
+        .filter(":contains(May 15, 2024, 8:04 AM)")
+        .should("have.length", 2);
+    });
+  });
+
+  it("should connect specific date filter (`Between`) to the temporal custom column (metabase#34955-1)", () => {
+    cy.get("@dashboardId").then(dashboard_id => {
+      // Apply filter through URL to prevent the typing flakes
+      cy.visit(`/dashboard/${dashboard_id}?on=&between=2024-01-01~2024-03-01`);
+      cy.findAllByTestId("field-set-content")
+        .last()
+        .should("contain", "January 1, 2024 - March 1, 2024");
+
+      cy.findAllByTestId("cell-data")
+        .filter(":contains(January 1, 2024, 7:26 AM)")
+        .should("have.length", 2);
+    });
+  });
+
+  // TODO: Once the issue is fixed, merge into a single repro to avoid unnecessary overhead!
+  it.skip("should connect specific date filter (`On`) to the temporal custom column (metabase#34955-2)", () => {
+    cy.get("@dashboardId").then(dashboard_id => {
+      // Apply filter through URL to prevent the typing flakes
+      cy.visit(`/dashboard/${dashboard_id}?on=2024-01-01&between=`);
+      cy.findAllByTestId("field-set-content")
+        .first()
+        .should("contain", "January 1, 2024");
+
+      cy.findAllByTestId("cell-data")
+        .filter(":contains(January 1, 2024, 7:26 AM)")
+        .should("have.length", 2);
+    });
+  });
+
+  function connectFilterToColumn(column) {
+    getDashboardCard().within(() => {
+      cy.findByText("Column to filter on");
+      cy.findByText("Select…").click();
+    });
+
+    popover().within(() => {
+      cy.findByText(column).click();
+    });
+  }
+});
