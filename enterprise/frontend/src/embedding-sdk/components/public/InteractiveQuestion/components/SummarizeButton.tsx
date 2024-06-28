@@ -8,9 +8,11 @@ import { useInteractiveQuestionData } from "../context";
 
 export const SummarizeButton = ({
   isOpen,
+  onOpen,
   onClose,
 }: {
   isOpen: boolean;
+  onOpen: () => void;
   onClose: () => void;
 }) => {
   const { question } = useInteractiveQuestionData();
@@ -26,7 +28,7 @@ export const SummarizeButton = ({
       <QuestionSummarizeWidget
         className={cx(CS.hide, CS.smShow)}
         isShowingSummarySidebar={isOpen}
-        onEditSummary={() => {}}
+        onEditSummary={onOpen}
         onCloseSummary={onClose}
       />
     )
