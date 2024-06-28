@@ -21,7 +21,6 @@
    [metabase.shared.util.namespaces :as u.ns]
    [metabase.util.format :as u.format]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
    [net.cgrand.macrovich :as macros]
    [weavejester.dependency :as dep])
@@ -991,22 +990,20 @@
                          m))]
      (with-meta ret (meta m)))))
 
-(mu/defn string-byte-count :- [:int {:min 0}]
+(defn string-byte-count
   "Number of bytes in a string using UTF-8 encoding."
-  [s :- :string]
+  [s]
   #?(:clj (count (.getBytes (str s) "UTF-8"))
      :cljs (.. (js/TextEncoder.) (encode s) -length)))
 
 #?(:clj
-   (mu/defn ^:private string-character-at :- [:string {:min 0, :max 1}]
-     [s :- :string
-      i :- [:int {:min 0}]]
+   (defn ^:private string-character-at
+     [s i]
      (str (.charAt ^String s i))))
 
-(mu/defn truncate-string-to-byte-count :- :string
+(defn truncate-string-to-byte-count
   "Truncate string `s` to `max-length-bytes` UTF-8 bytes (as opposed to truncating to some number of *characters*)."
-  [s                :- :string
-   max-length-bytes :- [:int {:min 1}]]
+  [s max-length-bytes]
   #?(:clj
      (loop [i 0, cumulative-byte-count 0]
        (cond
