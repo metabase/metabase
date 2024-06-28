@@ -186,9 +186,8 @@
           :in   `(let [~field ~(keyword (str "$$" (name field)))]
                    ~@body)}})
 
-;; TODO: Docstring!
 (defn- adjust-with-alias
-  "Adjust `field-name` if field comes from join."
+  "Adjust `field-name` for fields coming from joins. For use in `->[lr]value` for `:field` and `:metadata/column`."
   [field-name join-field source-alias]
   (cond->> (or source-alias field-name)
     join-field (str join-field \.)))
