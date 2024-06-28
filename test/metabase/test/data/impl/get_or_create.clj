@@ -167,22 +167,22 @@
   "Generate `fk-field-infos` structure. It is a seq of maps of 2 keys: :id and :fk-target-field-id. Existing database,
   tables and fields in app db are examined to get the required info."
   [dbdef db]
-  (let [table-field-fk (preprocess-dbdef-for-fks dbdef)
-        tables (t2/select :model/Table :db_id (:id db))
-        fields (t2/select :model/Field {:where [:in :table_id (map :id tables)]})
-        table-id->table (m/index-by :id tables)
-        table-name->field-name->field (-> (group-by :table_id fields)
-                                          (update-keys (comp :name table-id->table))
-                                          (update-vals (partial m/index-by :name)))
-        table-name->pk-field (into {}
-                                   (comp (filter #(= (:semantic_type %) :type/PK))
-                                         (map #(vector (-> % :table_id table-id->table :name)
-                                                       %)))
-                                   fields)]
-    (map (fn [[table-name field-name target-table-name]]
-           {:id (get-in table-name->field-name->field [table-name field-name :id])
-            :fk-target-field-id (get-in table-name->pk-field [target-table-name :id])})
-         table-field-fk)))
+  (when-some [table-field-fk (not-empty (preprocess-dbdef-for-fks dbdef))]
+    (let [tables (t2/select :model/Table :db_id (:id db))
+          fields (t2/select :model/Field {:where [:in :table_id (map :id tables)]})
+          table-id->table (m/index-by :id tables)
+          table-name->field-name->field (-> (group-by :table_id fields)
+                                            (update-keys (comp :name table-id->table))
+                                            (update-vals (partial m/index-by :name)))
+          table-name->pk-field (into {}
+                                     (comp (filter #(= (:semantic_type %) :type/PK))
+                                           (map #(vector (-> % :table_id table-id->table :name)
+                                                         %)))
+                                     fields)]
+      (map (fn [[table-name field-name target-table-name]]
+             {:id (get-in table-name->field-name->field [table-name field-name :id])
+              :fk-target-field-id (get-in table-name->pk-field [target-table-name :id])})
+           table-field-fk))))
 
 (defn- add-foreign-keys!
   "Add foreign key relationships to app db. To be used with dbmses that do not support `:foreign-keys`.
