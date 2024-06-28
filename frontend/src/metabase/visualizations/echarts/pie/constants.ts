@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 export const DIMENSIONS = {
   maxSideLength: 550,
   padding: {
@@ -19,3 +21,5 @@ export const DIMENSIONS = {
 export const SLICE_THRESHOLD = 0.025; // approx 1 degree in percentage
 
 export const OTHER_SLICE_MIN_PERCENTAGE = 0.005;
+
+export const OTHER_SLICE_KEY = t`Other`;

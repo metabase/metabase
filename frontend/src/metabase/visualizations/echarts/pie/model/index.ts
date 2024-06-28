@@ -1,6 +1,5 @@
 import Color from "color";
 import d3 from "d3";
-import { t } from "ttag";
 import _ from "underscore";
 
 import { findWithIndex } from "metabase/lib/arrays";
@@ -12,7 +11,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { RawSeries, RowValue } from "metabase-types/api";
 
-import { OTHER_SLICE_MIN_PERCENTAGE as MIN_SLICE_PERCENTAGE } from "../constants";
+import { OTHER_SLICE_MIN_PERCENTAGE, OTHER_SLICE_KEY } from "../constants";
 
 import type {
   PieColumnDescriptors,
@@ -142,7 +141,7 @@ export function getPieChartModel(
   const otherTotal = others.reduce((currTotal, o) => currTotal + o.value, 0);
   if (otherTotal > 0) {
     slices.push({
-      key: t`Other`,
+      key: OTHER_SLICE_KEY,
       value: otherTotal,
       displayValue: otherTotal,
       normalizedPercentage: otherTotal / total,
@@ -153,11 +152,13 @@ export function getPieChartModel(
   slices.forEach(slice => {
     // We increase the size of small slices, otherwise they will not be visible
     // in echarts due to the border rendering over the tiny slice
-    if (slice.normalizedPercentage < MIN_SLICE_PERCENTAGE) {
-      slice.value = total * MIN_SLICE_PERCENTAGE;
+    if (slice.normalizedPercentage < OTHER_SLICE_MIN_PERCENTAGE) {
+      slice.value = total * OTHER_SLICE_MIN_PERCENTAGE;
     }
   });
 
+  // We need d3 slices for the label formatter, to determine if we should the
+  // percent label on the chart for a specific slice
   const d3Pie = d3.layout
     .pie<PieSliceData>()
     .sort(null)
@@ -167,6 +168,7 @@ export function getPieChartModel(
 
   return {
     slices: d3Pie(slices),
+    otherSlices: d3Pie(others),
     total,
     colDescs,
   };

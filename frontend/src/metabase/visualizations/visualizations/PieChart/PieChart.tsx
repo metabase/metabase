@@ -60,7 +60,7 @@ export function PieChart(props: VisualizationProps) {
     [],
   );
 
-  const eventHandlers = useChartEvents(props, chartRef, chartModel, formatters);
+  const eventHandlers = useChartEvents(props, chartModel, formatters);
 
   return (
     <ChartRenderer
