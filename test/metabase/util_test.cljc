@@ -2,15 +2,15 @@
   "Tests for functions in `metabase.util`."
   (:require
    #?@(:clj [[metabase.test :as mt]])
+   [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [flatland.ordered.map :refer [ordered-map]]
-   #_:clj-kondo/ignore
    [malli.generator :as mg]
    [metabase.util :as u])
-  #?(:clj (:import [java.time Month DayOfWeek])))
+  #?(:clj (:import [java.time DayOfWeek Month])))
 
 #?(:clj (set! *warn-on-reflection* true))
 
@@ -529,3 +529,39 @@
                     (u/case-enum Month/JANUARY
                       Month/JANUARY    1
                       DayOfWeek/SUNDAY 2))))))
+
+(deftest ^:parallel truncate-string-to-byte-count-test
+  (letfn [(truncate-string-to-byte-count [s byte-length]
+            (let [truncated (#'u/truncate-string-to-byte-count s byte-length)]
+              (is (<= (#'u/string-byte-count truncated) byte-length))
+              (is (str/starts-with? s truncated))
+              truncated))]
+    (doseq [[s max-length->expected] {"12345"
+                                      {1  "1"
+                                       2  "12"
+                                       3  "123"
+                                       4  "1234"
+                                       5  "12345"
+                                       6  "12345"
+                                       10 "12345"}
+
+                                      "가나다라"
+                                      {1  ""
+                                       2  ""
+                                       3  "가"
+                                       4  "가"
+                                       5  "가"
+                                       6  "가나"
+                                       7  "가나"
+                                       8  "가나"
+                                       9  "가나다"
+                                       10 "가나다"
+                                       11 "가나다"
+                                       12 "가나다라"
+                                       13 "가나다라"
+                                       15 "가나다라"
+                                       20 "가나다라"}}
+            [max-length expected] max-length->expected]
+      (testing (pr-str (list `lib.util/truncate-string-to-byte-count s max-length))
+        (is (= expected
+               (truncate-string-to-byte-count s max-length)))))))

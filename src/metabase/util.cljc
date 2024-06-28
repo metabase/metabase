@@ -1,6 +1,14 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
   (:require
+   #?@(:clj  ([clojure.math.numeric-tower :as math]
+              [me.flowthing.pp :as pp]
+              [metabase.config :as config]
+              #_{:clj-kondo/ignore [:discouraged-namespace]}
+              [metabase.util.jvm :as u.jvm]
+              [metabase.util.string :as u.str]
+              [potemkin :as p]
+              [ring.util.codec :as codec]))
    [camel-snake-kebab.internals.macros :as csk.macros]
    [clojure.data :refer [diff]]
    [clojure.pprint :as pprint]
@@ -13,17 +21,10 @@
    [metabase.shared.util.namespaces :as u.ns]
    [metabase.util.format :as u.format]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
    [net.cgrand.macrovich :as macros]
-   [weavejester.dependency :as dep]
-   #?@(:clj  ([clojure.math.numeric-tower :as math]
-              [me.flowthing.pp :as pp]
-              [metabase.config :as config]
-              #_{:clj-kondo/ignore [:discouraged-namespace]}
-              [metabase.util.jvm :as u.jvm]
-              [metabase.util.string :as u.str]
-              [potemkin :as p]
-              [ring.util.codec :as codec])))
+   [weavejester.dependency :as dep])
   #?(:clj (:import
            (clojure.lang Reflector)
            (java.text Normalizer Normalizer$Form)
@@ -989,3 +990,35 @@
                          (transient {})
                          m))]
      (with-meta ret (meta m)))))
+
+(mu/defn string-byte-count :- [:int {:min 0}]
+  "Number of bytes in a string using UTF-8 encoding."
+  [s :- :string]
+  #?(:clj (count (.getBytes (str s) "UTF-8"))
+     :cljs (.. (js/TextEncoder.) (encode s) -length)))
+
+#?(:clj
+   (mu/defn ^:private string-character-at :- [:string {:min 0, :max 1}]
+     [s :- :string
+      i :- [:int {:min 0}]]
+     (str (.charAt ^String s i))))
+
+(mu/defn truncate-string-to-byte-count :- :string
+  "Truncate string `s` to `max-length-bytes` UTF-8 bytes (as opposed to truncating to some number of *characters*)."
+  [s                :- :string
+   max-length-bytes :- [:int {:min 1}]]
+  #?(:clj
+     (loop [i 0, cumulative-byte-count 0]
+       (cond
+         (= cumulative-byte-count max-length-bytes) (subs s 0 i)
+         (> cumulative-byte-count max-length-bytes) (subs s 0 (dec i))
+         (>= i (count s))                           s
+         :else                                      (recur (inc i)
+                                                           (long (+
+                                                                  cumulative-byte-count
+                                                                  (string-byte-count (string-character-at s i)))))))
+
+     :cljs
+     (let [buf (js/Uint8Array. max-length-bytes)
+           result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}
+       (subs s 0 (.-read result)))))

@@ -366,6 +366,27 @@
      (mt/with-model-cleanup [:model/Table]
        (do-with-upload-table! ~create-table-expr (fn [~table-binding] ~@body)))))
 
+(deftest create-from-csv-display-name-test
+  (testing "The display name should be the file name prefix, but the table name is slugified"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (let [csv-file-prefix "出色的"]
+        (with-redefs [upload/strictly-monotonic-now (constantly #t "2024-06-28T00:00:00")]
+          (with-upload-table!
+            [table (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
+            (is (=? {:display_name "出色的"
+                     :name         "%E5%87%BA%E8%89%B2%E7%9A%84_20240628000000"}
+                    table)))))))
+  (testing "The display name should be truncated to 254 bytes with UTF-8 encoding"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (let [long-csv-file-prefix     (apply str (repeat 1000 "出"))
+            char-size                (count (.getBytes "出" "UTF-8"))
+            expected-number-of-chars (quot 254 char-size)]
+        (with-redefs [upload/strictly-monotonic-now (constantly #t "2024-06-28T00:00:00")]
+          (with-upload-table!
+            [table (card->table (upload-example-csv! :csv-file-prefix long-csv-file-prefix))]
+            (is (=? {:display_name (apply str (repeat expected-number-of-chars "出"))}
+                    table))))))))
+
 (deftest create-from-csv-table-name-test
   (testing "Can upload two files with the same name"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -375,11 +396,15 @@
           (with-upload-table!
             [table-2 (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
             (mt/with-current-user (mt/user->id :crowberto)
+              (testing "both tables have the same display name"
+                (is (= "Some File Prefix"
+                       (:display_name table-1)
+                       (:display_name table-2))
               (testing "tables are different between the two uploads"
                 (is (some? (:id table-1)))
                 (is (some? (:id table-2)))
                 (is (not= (:id table-1)
-                          (:id table-2)))))))))))
+                          (:id table-2)))))))))))))
 
 (defn- query [db-id source-table]
   (qp/process-query {:database db-id
