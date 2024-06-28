@@ -15,8 +15,7 @@ import { STAGE_INDEX } from "./use-summarize-query";
 
 export type SummarizeContentProps = {
   query: Lib.Query;
-  aggregations: Lib.AggregationClause[];
-  hasAggregations: boolean;
+  stageIndex: number;
   onAddAggregations: (aggregations: Lib.Aggregable[]) => void;
   onUpdateAggregation: (
     aggregation: Lib.AggregationClause,
@@ -34,8 +33,7 @@ export type SummarizeContentProps = {
 
 export const SummarizeContent = ({
   query,
-  aggregations,
-  hasAggregations,
+  stageIndex,
   onAddAggregations,
   onUpdateAggregation,
   onRemoveAggregation,
@@ -44,6 +42,11 @@ export const SummarizeContent = ({
   onRemoveBreakout,
   onReplaceBreakouts,
 }: SummarizeContentProps) => {
+  const aggregations = Lib.aggregations(query, stageIndex);
+  const breakouts = Lib.breakouts(query, stageIndex);
+  const hasAggregations = aggregations.length > 0;
+  const hasBreakouts = breakouts.length > 0;
+
   return (
     <>
       <AggregationsContainer>
@@ -53,6 +56,7 @@ export const SummarizeContent = ({
               Lib.displayInfo(query, STAGE_INDEX, aggregation).longDisplayName
             }
             query={query}
+            stageIndex={stageIndex}
             aggregation={aggregation}
             aggregationIndex={aggregationIndex}
             onAdd={onAddAggregations}
@@ -67,11 +71,13 @@ export const SummarizeContent = ({
           onAddAggregations={onAddAggregations}
         />
       </AggregationsContainer>
-      {hasAggregations && (
+      {(hasAggregations || hasBreakouts) && (
         <ColumnListContainer>
           <SectionTitle>{t`Group by`}</SectionTitle>
           <BreakoutColumnList
             query={query}
+            stageIndex={stageIndex}
+            breakouts={breakouts}
             onAddBreakout={onAddBreakout}
             onUpdateBreakout={onUpdateBreakout}
             onRemoveBreakout={onRemoveBreakout}

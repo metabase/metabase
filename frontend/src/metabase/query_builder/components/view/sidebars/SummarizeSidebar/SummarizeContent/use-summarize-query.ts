@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import * as Lib from "metabase-lib";
 
 export const STAGE_INDEX = -1;
+
 export const useSummarizeQuery = (
   initialQuery: Lib.Query,
   onQueryChange: (query: Lib.Query) => void,
@@ -14,9 +15,6 @@ export const useSummarizeQuery = (
     () => getQuery(initialQuery, isDefaultAggregationRemoved),
     [initialQuery, isDefaultAggregationRemoved],
   );
-
-  const aggregations = Lib.aggregations(query, STAGE_INDEX);
-  const hasAggregations = aggregations.length > 0;
 
   const handleAddAggregations = useCallback(
     (aggregations: Lib.Aggregable[]) => {
@@ -92,8 +90,7 @@ export const useSummarizeQuery = (
   );
   return {
     query,
-    aggregations,
-    hasAggregations,
+    stageIndex: STAGE_INDEX,
     handleAddAggregations,
     handleUpdateAggregation,
     handleRemoveAggregation,

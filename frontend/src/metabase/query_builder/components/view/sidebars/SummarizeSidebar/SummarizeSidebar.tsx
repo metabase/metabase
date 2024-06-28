@@ -23,8 +23,7 @@ export function SummarizeSidebar({
 }: SummarizeSidebarProps) {
   const {
     query,
-    aggregations,
-    hasAggregations,
+    stageIndex,
     handleAddAggregations,
     handleUpdateAggregation,
     handleRemoveAggregation,
@@ -48,8 +47,7 @@ export function SummarizeSidebar({
     >
       <SummarizeContent
         query={query}
-        aggregations={aggregations}
-        hasAggregations={hasAggregations}
+        stageIndex={stageIndex}
         onAddAggregations={handleAddAggregations}
         onUpdateAggregation={handleUpdateAggregation}
         onRemoveAggregation={handleRemoveAggregation}

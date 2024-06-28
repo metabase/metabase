@@ -31,7 +31,8 @@ const SummarizeInner = ({
   onClose: () => void;
 }) => {
   const {
-    aggregations,
+    query,
+    stageIndex,
     handleAddAggregations,
     handleAddBreakout,
     handleRemoveAggregation,
@@ -39,8 +40,6 @@ const SummarizeInner = ({
     handleReplaceBreakouts,
     handleUpdateAggregation,
     handleUpdateBreakout,
-    hasAggregations,
-    query,
   } = useSummarizeQuery(question.query(), onQueryChange);
 
   return (
@@ -48,8 +47,7 @@ const SummarizeInner = ({
       <Button onClick={onClose}>Close</Button>
       <SummarizeContent
         query={query}
-        aggregations={aggregations}
-        hasAggregations={hasAggregations}
+        stageIndex={stageIndex}
         onAddAggregations={handleAddAggregations}
         onUpdateAggregation={handleUpdateAggregation}
         onRemoveAggregation={handleRemoveAggregation}
