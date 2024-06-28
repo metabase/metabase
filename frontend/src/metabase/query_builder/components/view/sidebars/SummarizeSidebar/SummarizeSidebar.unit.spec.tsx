@@ -179,13 +179,6 @@ describe("SummarizeSidebar", () => {
     );
   });
 
-  it("shouldn't list breakout columns without an aggregation", async () => {
-    await setup({ withDefaultAggregation: false });
-
-    expect(screen.queryByText("Group by")).not.toBeInTheDocument();
-    expect(screen.queryAllByTestId("dimension-list-item").length).toBe(0);
-  });
-
   it("should allow searching breakout columns", async () => {
     await setup();
 
@@ -315,7 +308,22 @@ describe("SummarizeSidebar", () => {
     expect(breakout2.displayName).toBe("Quantity: Auto binned");
   });
 
-  it("should list breakouts if there are available but all aggregations are removed", async () => {
+  it("should list breakouts if there are initially available and a custom aggregation is removed", async () => {
+    await setup({ card: createSummarizedCard() });
+
+    await userEvent.click(
+      within(screen.getByLabelText("Max of Quantity")).getByLabelText(/close/),
+    );
+    expect(screen.queryByLabelText(/Max of Quantity/)).not.toBeInTheDocument();
+    expect(screen.getByText("Group by")).toBeInTheDocument();
+    expect(screen.getByLabelText("Product → Category")).toBeInTheDocument();
+    expect(screen.getByLabelText("Product → Category")).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("should list breakouts if there are added after the sidebar is opened and the default aggregation is removed", async () => {
     await setup();
 
     await userEvent.click(screen.getByText("Category"));
