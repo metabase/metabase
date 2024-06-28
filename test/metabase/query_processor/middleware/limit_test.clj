@@ -2,6 +2,7 @@
   "Tests for the `:limit` clause and `:max-results` constraints."
   (:require
    [clojure.test :refer :all]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -33,6 +34,17 @@
                                             :query {}})]
       (is (= query
              (limit/add-default-limit query))))))
+
+(deftest ^:parallel csv-max-results-test
+         (testing "Apply `absolute-max-results` limit in the :csv-download case"
+                  (let [query {:type :query
+                               :query {}
+                               :info {:context :csv-download}}]
+                       (is (= {:type  :query
+                               :query {:limit (public-settings/row-limit-csv)
+                                       ::limit/original-limit nil}
+                               :info {:context :csv-download}}
+                              (limit/add-default-limit query))))))
 
 (deftest max-results-constraint-test
   (testing "Apply an arbitrary max-results on the query and ensure our results size is appropriately constrained"

@@ -926,3 +926,13 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    false
   :default    true
   :type       :boolean)
+
+
+;; This is normally set via the env var `MB_ROW_LIMIT_CSV`
+(defsetting row-limit-csv
+  "CSV export row limit."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :default    10000000
+  :doc "CSV export row limit.")
