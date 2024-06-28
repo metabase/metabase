@@ -1,12 +1,17 @@
 (ns dev.migrate
   (:gen-class)
   (:require
+   [clojure.string :as str]
    [metabase.db :as mdb]
    [metabase.db.liquibase :as liquibase]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
-   (liquibase Liquibase)))
+   (liquibase Contexts Liquibase RuntimeEnvironment)
+   (liquibase.changelog ChangeLogIterator)
+   (liquibase.changelog.filter ChangeSetFilter)
+   (liquibase.sqlgenerator SqlGeneratorFactory)
+   (liquibase.changelog.visitor ListVisitor)))
 
 (set! *warn-on-reflection* true)
 
@@ -101,3 +106,29 @@
 
       (throw (ex-info "Invalid command" {:command cmd
                                          :args    args})))))
+
+
+(defn- change->sql
+  [change sql-generator-factory database]
+  (str/join "\n" (for [stmt (.generateStatements change database)
+                       sql (.generateSql ^SqlGeneratorFactory sql-generator-factory stmt database)]
+                  (.toString sql))))
+
+(defn migration-sql-by-id
+  "Get the sql statements for a specific migration ID.
+    (migration-sql-by-id \"v51.2024-06-12T18:53:02\")
+    ;; =>
+      {:forward \"DROP INDEX public.idx_user_id_device_id;\",
+       :rollback \"CREATE INDEX idx_user_id_device_id ON public.login_history(session_id, device_id);\"}"
+  [id]
+  (t2/with-connection [conn]
+    (liquibase/with-liquibase [^Liquibase liquibase conn]
+      (let [database            (.getDatabase liquibase)
+            change-log-iterator (ChangeLogIterator. (.getDatabaseChangeLog liquibase) (into-array ChangeSetFilter []))
+            list-visistor      (ListVisitor.)
+            runtime-env    (RuntimeEnvironment. database (Contexts.) nil)
+            _ (.run change-log-iterator list-visistor runtime-env)
+            change-set (first (filter #(= id (.getId %))(.getSeenChangeSets list-visistor)))
+            sql-generator-factory (SqlGeneratorFactory/getInstance)]
+        {:forward (str/join "\n" (map #(change->sql % sql-generator-factory database) (.getChanges change-set)))
+         :rollback (str/join "\n" (map #(change->sql % sql-generator-factory database) (.getChanges (.getRollback change-set))))}))))
