@@ -8,12 +8,21 @@ export const useSummarizeQuery = (
   initialQuery: Lib.Query,
   onQueryChange: (query: Lib.Query) => void,
 ) => {
-  const [isDefaultAggregationRemoved, setDefaultAggregationRemoved] =
-    useState(false);
+  const [hasDefaultAggregation, setHasDefaultAggregation] = useState(() =>
+    canAddDefaultAggregation(initialQuery),
+  );
 
   const query = useMemo(
-    () => getQuery(initialQuery, isDefaultAggregationRemoved),
-    [initialQuery, isDefaultAggregationRemoved],
+    () => getQuery(initialQuery, hasDefaultAggregation),
+    [initialQuery, hasDefaultAggregation],
+  );
+
+  const handleChange = useCallback(
+    (query: Lib.Query) => {
+      setHasDefaultAggregation(false);
+      onQueryChange(query);
+    },
+    [onQueryChange],
   );
 
   const handleAddAggregations = useCallback(
@@ -22,9 +31,9 @@ export const useSummarizeQuery = (
         (query, aggregation) => Lib.aggregate(query, STAGE_INDEX, aggregation),
         query,
       );
-      onQueryChange(nextQuery);
+      handleChange(nextQuery);
     },
-    [query, onQueryChange],
+    [query, handleChange],
   );
 
   const handleUpdateAggregation = useCallback(
@@ -35,37 +44,33 @@ export const useSummarizeQuery = (
         aggregation,
         nextAggregation,
       );
-      onQueryChange(nextQuery);
+      handleChange(nextQuery);
     },
-    [query, onQueryChange],
+    [query, handleChange],
   );
 
   const handleRemoveAggregation = useCallback(
     (aggregation: Lib.AggregationClause) => {
       const nextQuery = Lib.removeClause(query, STAGE_INDEX, aggregation);
-      const nextAggregations = Lib.aggregations(nextQuery, STAGE_INDEX);
-      if (nextAggregations.length === 0) {
-        setDefaultAggregationRemoved(true);
-      }
-      onQueryChange(nextQuery);
+      handleChange(nextQuery);
     },
-    [query, onQueryChange],
+    [query, handleChange],
   );
 
   const handleAddBreakout = useCallback(
     (column: Lib.ColumnMetadata) => {
       const nextQuery = Lib.breakout(query, STAGE_INDEX, column);
-      onQueryChange(nextQuery);
+      handleChange(nextQuery);
     },
-    [query, onQueryChange],
+    [query, handleChange],
   );
 
   const handleUpdateBreakout = useCallback(
     (clause: Lib.BreakoutClause, column: Lib.ColumnMetadata) => {
       const nextQuery = Lib.replaceClause(query, STAGE_INDEX, clause, column);
-      onQueryChange(nextQuery);
+      handleChange(nextQuery);
     },
-    [query, onQueryChange],
+    [query, handleChange],
   );
 
   const handleRemoveBreakout = useCallback(
@@ -75,18 +80,18 @@ export const useSummarizeQuery = (
         const breakouts = Lib.breakouts(query, STAGE_INDEX);
         const clause = breakouts[breakoutPosition];
         const nextQuery = Lib.removeClause(query, STAGE_INDEX, clause);
-        onQueryChange(nextQuery);
+        handleChange(nextQuery);
       }
     },
-    [query, onQueryChange],
+    [query, handleChange],
   );
 
   const handleReplaceBreakouts = useCallback(
     (column: Lib.ColumnMetadata) => {
       const nextQuery = Lib.replaceBreakouts(query, STAGE_INDEX, column);
-      onQueryChange(nextQuery);
+      handleChange(nextQuery);
     },
-    [query, onQueryChange],
+    [query, handleChange],
   );
   return {
     query,
@@ -101,17 +106,15 @@ export const useSummarizeQuery = (
   };
 };
 
-function getQuery(query: Lib.Query, isDefaultAggregationRemoved: boolean) {
+function canAddDefaultAggregation(query: Lib.Query) {
   const hasAggregations = Lib.aggregations(query, STAGE_INDEX).length > 0;
+  const hasBreakouts = Lib.breakouts(query, STAGE_INDEX).length > 0;
 
-  const shouldAddDefaultAggregation =
-    !hasAggregations &&
-    !Lib.isMetricBased(query, STAGE_INDEX) &&
-    !isDefaultAggregationRemoved;
+  return (
+    !hasAggregations && !hasBreakouts && !Lib.isMetricBased(query, STAGE_INDEX)
+  );
+}
 
-  if (!shouldAddDefaultAggregation) {
-    return query;
-  }
-
-  return Lib.aggregateByCount(query);
+function getQuery(query: Lib.Query, hasDefaultAggregation: boolean) {
+  return hasDefaultAggregation ? Lib.aggregateByCount(query) : query;
 }
