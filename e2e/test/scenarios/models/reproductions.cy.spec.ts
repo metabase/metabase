@@ -5,17 +5,24 @@ import {
   enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalTab,
+  getNotebookStep,
   hovercard,
   join,
+  mapColumnTo,
   modal,
+  openColumnOptions,
   openNotebook,
   openQuestionActions,
   popover,
   queryBuilderMain,
+  renameColumn,
   restore,
+  saveMetadataChanges,
   saveQuestion,
   startNewModel,
+  startNewQuestion,
   tableHeaderClick,
+  undoToast,
   visualize,
 } from "e2e/support/helpers";
 import type { FieldReference } from "metabase-types/api";
@@ -443,4 +450,163 @@ describe("issue 41785", () => {
       .findByText("There was a problem with your question")
       .should("not.exist");
   });
+});
+
+describe.skip("issue 40635", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("correctly displays question's and nested model's column names (metabase#40635)", () => {
+    startNewQuestion();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+
+    getNotebookStep("data").button("Pick columns").click();
+    popover().findByText("Select none").click();
+
+    join();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
+
+    getNotebookStep("join", { stage: 0, index: 0 })
+      .button("Pick columns")
+      .click();
+    popover().within(() => {
+      cy.findByText("Select none").click();
+      cy.findByText("ID").click();
+    });
+
+    join();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
+
+    getNotebookStep("join", { stage: 0, index: 1 })
+      .button("Pick columns")
+      .click();
+    popover().within(() => {
+      cy.findByText("Select none").click();
+      cy.findByText("ID").click();
+    });
+
+    getNotebookStep("join", { stage: 0, index: 1 })
+      .findByText("Product ID")
+      .click();
+    popover().findByText("User ID").click();
+
+    visualize();
+    assertSettingsSidebar();
+    assertVisualizationColumns();
+
+    cy.button("Save").click();
+    modal().button("Save").click();
+    modal().findByText("Not now").click();
+
+    assertSettingsSidebar();
+    assertVisualizationColumns();
+
+    openQuestionActions();
+    popover().findByTextEnsureVisible("Turn into a model").click();
+    modal().button("Turn this into a model").click();
+    undoToast().should("contain", "This is a model now").icon("close").click();
+
+    assertSettingsSidebar();
+    assertVisualizationColumns();
+
+    openNotebook();
+    getNotebookStep("data").button("Pick columns").click();
+    popover().within(() => {
+      cy.findAllByText("ID").should("have.length", 1);
+      cy.findAllByText("Products → ID").should("have.length", 1);
+      cy.findAllByText("Products_2 → ID").should("have.length", 1);
+    });
+  });
+
+  function assertVisualizationColumns() {
+    cy.findAllByTestId("header-cell").should("contain", "ID");
+    cy.findAllByTestId("header-cell").should("contain", "Products → ID");
+    cy.findAllByTestId("header-cell").should("contain", "Products_2 → ID");
+  }
+
+  function assertSettingsSidebar() {
+    cy.findByTestId("viz-settings-button").click();
+
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.findAllByText("ID").should("have.length", 1);
+      cy.findAllByText("Products → ID").should("have.length", 1);
+      cy.findAllByText("Products_2 → ID").should("have.length", 1);
+
+      cy.findByRole("button", { name: "Add or remove columns" }).click();
+      cy.findAllByText("ID").should("have.length", 4);
+      cy.findAllByText("Products").should("have.length", 1);
+      cy.findAllByText("Products 2").should("have.length", 1);
+    });
+
+    cy.button("Done").click();
+  }
+});
+
+describe("issue 33427", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("does not confuse the names of various native model columns mapped to the same database field (metabase#33427)", () => {
+    createNativeQuestion(
+      {
+        type: "model",
+        native: {
+          query: `
+            select o.ID, p1.title as created_by, p2.title as updated_by
+            from ORDERS o
+            join PRODUCTS p1 on p1.ID = o.PRODUCT_ID
+            join PRODUCTS p2 on p2.ID = o.USER_ID;
+        `,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    assertColumnHeaders();
+
+    cy.findByLabelText("Move, trash, and more...").click();
+    popover().findByText("Edit metadata").click();
+
+    openColumnOptions("CREATED_BY");
+    mapColumnTo({ table: "Products", column: "Title" });
+    renameColumn("Title", "CREATED_BY");
+
+    openColumnOptions("UPDATED_BY");
+    mapColumnTo({ table: "Products", column: "Title" });
+    renameColumn("Title", "UPDATED_BY");
+
+    assertColumnHeaders();
+    saveMetadataChanges();
+
+    assertColumnHeaders();
+
+    openNotebook();
+    getNotebookStep("data").button("Pick columns").click();
+    popover().within(() => {
+      cy.findByText("CREATED_BY").should("be.visible");
+      cy.findByText("UPDATED_BY").should("be.visible");
+    });
+  });
+
+  function assertColumnHeaders() {
+    cy.findAllByTestId("header-cell")
+      .should("contain", "CREATED_BY")
+      .and("contain", "UPDATED_BY");
+  }
 });
