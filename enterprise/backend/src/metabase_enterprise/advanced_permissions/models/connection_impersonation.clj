@@ -28,7 +28,7 @@
                                    {:where [:and
                                             (when db-id [:= :db_id db-id])
                                             (when group-id [:= :group_id group-id])
-                                            (when group-id [:in :group_id group-ids])
+                                            (when group-ids [:in :group_id group-ids])
                                             (when-not audit-db? [:not [:= :db_id audit/audit-db-id]])]})]
      (reduce (fn [acc {:keys [db_id group_id]}]
                 (assoc-in acc [group_id db_id :view-data] :impersonated))
