@@ -1139,6 +1139,7 @@ describe("issue 39448", () => {
   });
 });
 
+// See TODO inside this test when unskipping
 describe.skip("issue 27521", () => {
   beforeEach(() => {
     restore();
@@ -1229,6 +1230,9 @@ describe.skip("issue 27521", () => {
       cy.findByRole("button", { name: "Add or remove columns" }).click();
       cy.findAllByText("ID").should("have.length", 2);
       cy.findAllByText("Orders → ID").should("have.length", 1);
+
+      // TODO: add assertions for what happens when toggling all the columns here
+      // See https://github.com/metabase/metabase/issues/27521#issuecomment-1948658757
     });
   });
 
