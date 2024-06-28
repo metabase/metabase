@@ -7917,6 +7917,14 @@ databaseChangeLog:
                   defaultValue: null
 
   - changeSet:
+      id: v50.2024-06-28T12:35:50
+      author: piranha
+      comment: 'Clean databasechangelog table of migration that was once deleted'
+      changes:
+        - sql: "DELETE FROM ${databasechangelog.name} WHERE id = 'v50.2024-04-12T12:33:09'"
+      rollback: # nothing to do here
+
+  - changeSet:
       id: v51.2024-05-13T15:30:57
       author: metamben
       comment: Backup of dataset_query rewritten by the metrics v2 migration
@@ -8013,6 +8021,8 @@ databaseChangeLog:
 #    - If you still need to, make sure it works when Metabase is encrypted. Fields like `metabase_database.details`
 #      or `setting.value` can be encrypted, so you need to decrypt them in your migration. See #42617, #44048.
 #    - Prefer SQL migrations over custom migrations.
+#    - Still, make sure your migration is backward compatible: it might not be possible to add a constraint back
+#      if you are dropping it in a migration.
 #    - Postgres, MySQL and H2 have their differences. Make sure your migration works for all.
 #    - Custom migrations and their tests demand a high level of reliability. They should only use code from the standard library.
 #      Requiring code from the Metabase codebase is a bad idea because it can change and break your migration.
