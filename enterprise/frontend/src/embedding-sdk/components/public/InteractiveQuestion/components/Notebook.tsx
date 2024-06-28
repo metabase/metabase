@@ -14,7 +14,9 @@ import type Question from "metabase-lib/v1/Question";
 
 import { useInteractiveQuestionData } from "../hooks";
 
-export const Notebook = ({ onApply = () => {} }: { onApply?: () => void }) => {
+type NotebookProps = { onApply?: () => void };
+
+export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
   const { question } = useInteractiveQuestionData();
 
   const isDirty = useSelector(getIsDirty);

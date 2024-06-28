@@ -5,31 +5,22 @@ import type Question from "metabase-lib/v1/Question";
 
 import { useInteractiveQuestionData } from "../hooks";
 
-export const Filter = ({
-  onApply = () => {},
-  onClear = () => {},
-}: {
-  onApply?: () => void;
-  onClear?: () => void;
-}) => {
+type FilterProps = {
+  onClose: () => void;
+};
+
+export const Filter = ({ onClose = () => {} }: Partial<FilterProps>) => {
   const { question } = useInteractiveQuestionData();
 
-  return (
-    question && (
-      <FilterInner question={question} onApply={onApply} onClear={onClear} />
-    )
-  );
+  return question && <FilterInner question={question} onClose={onClose} />;
 };
 
 const FilterInner = ({
   question,
-  onApply,
-  onClear,
+  onClose,
 }: {
   question: Question;
-  onApply: () => void;
-  onClear: () => void;
-}) => {
+} & FilterProps) => {
   const { onQueryChange } = useInteractiveQuestionData();
 
   const {
@@ -51,12 +42,12 @@ const FilterInner = ({
 
   const onApplyFilters = () => {
     handleSubmit();
-    onApply();
+    onClose();
   };
 
   const onClearFilters = () => {
     handleReset();
-    onClear();
+    onClose();
   };
 
   return (
