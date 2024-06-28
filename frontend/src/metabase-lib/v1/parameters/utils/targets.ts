@@ -57,6 +57,10 @@ export function getParameterTargetField(
 
   // native queries
   if (isTemplateTagReference(fieldRef)) {
+    if (!Lib.queryDisplayInfo(question.query()).isNative) {
+      return null;
+    }
+
     const dimension = TemplateTagDimension.parseMBQL(
       fieldRef,
       metadata,
