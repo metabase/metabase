@@ -32,24 +32,18 @@ export function useSyncedQueryString(
 
     const currentQuery = location?.query ?? {};
 
-    const currentUrlParametersObject = _.pick(
-      currentQuery,
-      ...Object.keys(object),
-    );
-    const nextUrlParametersObject = toLocationQuery(object);
+    const nextQueryParams = toLocationQuery(object);
+    const currentQueryParams = _.omit(currentQuery, ...QUERY_PARAMS_ALLOW_LIST);
 
-    if (!_.isEqual(currentUrlParametersObject, nextUrlParametersObject)) {
-      const otherUrlParameters = _.pick(
-        currentQuery,
-        ...QUERY_PARAMS_ALLOW_LIST,
-      );
-      const nextQuery = { ...otherUrlParameters, ...nextUrlParametersObject };
+    if (!_.isEqual(nextQueryParams, currentQueryParams)) {
+      const otherQueryParams = _.pick(currentQuery, ...QUERY_PARAMS_ALLOW_LIST);
+      const nextQuery = { ...otherQueryParams, ...nextQueryParams };
       dispatch(replace({ ...location, query: nextQuery }));
     }
   }, [object, previousObject, location, dispatch]);
 }
 
-const QUERY_PARAMS_ALLOW_LIST = ["objectId", "tab"];
+const QUERY_PARAMS_ALLOW_LIST = ["objectId"];
 
 function toLocationQuery(object: Record<string, any>) {
   return _.mapObject(object, value => (value == null ? "" : value));

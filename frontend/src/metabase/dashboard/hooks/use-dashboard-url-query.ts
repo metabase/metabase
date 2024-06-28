@@ -6,22 +6,36 @@ import { useSelector } from "metabase/lib/redux";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { getSlug } from "../components/DashboardTabs/use-sync-url-slug";
-import { getValuePopulatedParameters, getSelectedTab } from "../selectors";
+import {
+  getValuePopulatedParameters,
+  getSelectedTab,
+  getTabs,
+} from "../selectors";
 
 export function useDashboardUrlQuery(location: Location) {
   const parameters = useSelector(getValuePopulatedParameters);
+
+  const tabs = useSelector(getTabs);
   const selectedTab = useSelector(getSelectedTab);
 
-  const queryParameters = useMemo(() => {
-    const queryParameters = getParameterValuesBySlug(parameters);
-    if (selectedTab) {
-      queryParameters.tab = getSlug({
+  const parameterValuesBySlug = useMemo(
+    () => getParameterValuesBySlug(parameters),
+    [parameters],
+  );
+
+  const queryParams = useMemo(() => {
+    const queryParams = { ...parameterValuesBySlug };
+
+    const hasRealSelectedTab = selectedTab && selectedTab.id > 0;
+    if (hasRealSelectedTab && tabs.length > 1) {
+      queryParams.tab = getSlug({
         tabId: selectedTab.id,
         name: selectedTab.name,
       });
     }
-    return queryParameters;
-  }, [parameters, selectedTab]);
 
-  useSyncedQueryString(queryParameters, location);
+    return queryParams;
+  }, [parameterValuesBySlug, tabs, selectedTab]);
+
+  useSyncedQueryString(queryParams, location);
 }
