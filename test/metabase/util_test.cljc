@@ -1,14 +1,14 @@
 (ns ^:mb/once metabase.util-test
   "Tests for functions in `metabase.util`."
   (:require
-   #?@(:clj [[metabase.test :as mt]])
+   #?@(:clj [[metabase.test :as mt]
+             [malli.generator :as mg]])
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [flatland.ordered.map :refer [ordered-map]]
-   [malli.generator :as mg]
    [metabase.util :as u])
   #?(:clj (:import [java.time DayOfWeek Month])))
 
