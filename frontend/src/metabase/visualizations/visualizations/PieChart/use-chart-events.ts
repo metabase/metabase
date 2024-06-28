@@ -1,7 +1,7 @@
-import type { EChartsType } from "echarts/core";
-import { type MutableRefObject, useMemo } from "react";
+import { useMemo } from "react";
 import _ from "underscore";
 
+import { OTHER_SLICE_KEY } from "metabase/visualizations/echarts/pie/constants";
 import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/types";
 import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
@@ -12,21 +12,27 @@ import type {
 } from "metabase/visualizations/types";
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
 
-export const getTooltipModel = (
-  hoveredIndex: number | null,
+const getTooltipModel = (
+  hoveredIndex: number,
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
 ): StackedTooltipModel => {
-  const rows = chartModel.slices.map(slice => ({
-    name: formatters.formatDimension(slice.data.key),
-    value: slice.data.displayValue,
-    color: slice.data.color,
-    formatter: formatters.formatMetric,
-  }));
+  const hoveredOther =
+    chartModel.slices[hoveredIndex].data.key === OTHER_SLICE_KEY &&
+    chartModel.otherSlices.length > 1;
+
+  const rows = (hoveredOther ? chartModel.otherSlices : chartModel.slices).map(
+    slice => ({
+      name: formatters.formatDimension(slice.data.key),
+      value: slice.data.displayValue,
+      color: hoveredOther ? undefined : slice.data.color,
+      formatter: formatters.formatMetric,
+    }),
+  );
 
   const [headerRows, bodyRows] = _.partition(
     rows,
-    (_, index) => index === hoveredIndex,
+    (_, index) => index === (hoveredOther ? null : hoveredIndex),
   );
 
   return {
@@ -50,48 +56,24 @@ function getHoverData(
   }
   const index = event.dataIndex - 1;
 
-  const slice = chartModel.slices[index];
-  if (!slice) {
-    // TODO check for `.noHover`
+  const indexOutOfBounds = chartModel.slices[index] == null;
+  if (indexOutOfBounds) {
     return null;
   }
-
-  // TODO handle other slice
-  // if (slice.data.key === "Other" && others.length > 1) {
-  //   return {
-  //     index,
-  //     event: event && event.nativeEvent,
-  //     stackedTooltipModel: getTooltipModel(
-  //       others.map(o => ({
-  //         ...o,
-  //         key: formatDimension(o.key, false),
-  //         value: o.displayValue,
-  //         color: undefined,
-  //       })),
-  //       null,
-  //       getFriendlyName(cols[dimensionIndex]),
-  //       formatDimension,
-  //       formatMetric,
-  //       total,
-  //     ),
-  //   };
-  // }
 
   return {
     index,
     event: event.event.event,
-    stackedTooltipModel: getTooltipModel(index, chartModel, formatters), // TODO grandTotal
+    stackedTooltipModel: getTooltipModel(index, chartModel, formatters),
   };
 }
 
 export function useChartEvents(
   props: VisualizationProps,
-  chartRef: MutableRefObject<EChartsType | undefined>,
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
 ) {
   const { onHoverChange } = props;
-  // useEffect(function handleHoverStates() {}, [props.hovered]);
 
   const eventHandlers: EChartsEventHandler[] = useMemo(
     () => [

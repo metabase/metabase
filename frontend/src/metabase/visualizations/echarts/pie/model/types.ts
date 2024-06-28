@@ -18,6 +18,7 @@ export type PieSlice = d3.layout.pie.Arc<PieSliceData>;
 
 export interface PieChartModel {
   slices: PieSlice[];
+  otherSlices: PieSlice[];
   total: number;
   colDescs: PieColumnDescriptors;
 }
