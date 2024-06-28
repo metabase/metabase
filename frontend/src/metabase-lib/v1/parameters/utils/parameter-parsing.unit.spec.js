@@ -1,7 +1,9 @@
+import { createMockParameter } from "metabase-types/api/mocks";
+
 import {
   getParameterValueFromQueryParams,
   getParameterValuesByIdFromQueryParams,
-} from "./parameter-values";
+} from "./parameter-parsing";
 
 describe("parameters/utils/parameter-values", () => {
   let field1;
@@ -94,6 +96,32 @@ describe("parameters/utils/parameter-values", () => {
       expect(getParameterValueFromQueryParams(parameter3, queryParams)).toBe(
         "parameter3 default value",
       );
+    });
+
+    it("should only allow multiple values for parameters by default", () => {
+      const parameter = createMockParameter();
+      const queryParams = { [parameter.slug]: ["ab", "cd"] };
+      expect(getParameterValueFromQueryParams(parameter, queryParams)).toEqual([
+        "ab",
+        "cd",
+      ]);
+    });
+
+    it("should only allow 1 value for single-value parameters", () => {
+      const parameter = createMockParameter({ isMultiSelect: false });
+      const queryParams = { [parameter.slug]: ["ab", "cd"] };
+      expect(getParameterValueFromQueryParams(parameter, queryParams)).toEqual([
+        "ab",
+      ]);
+    });
+
+    it("should only allow multiple values for multi-value parameters", () => {
+      const parameter = createMockParameter({ isMultiSelect: true });
+      const queryParams = { [parameter.slug]: ["ab", "cd"] };
+      expect(getParameterValueFromQueryParams(parameter, queryParams)).toEqual([
+        "ab",
+        "cd",
+      ]);
     });
 
     it("should return null when the parameter is not in queryParams and has no default", () => {
@@ -266,6 +294,29 @@ describe("parameters/utils/parameter-values", () => {
       );
     });
 
+    it.each([
+      { value: "", expectedValue: null },
+      { value: "abc", expectedValue: null },
+      { value: "123", expectedValue: [123] },
+      { value: "123abc", expectedValue: [123] },
+      { value: ["123"], expectedValue: [123] },
+      { value: ["123", "234"], expectedValue: [123, 234] },
+      { value: ["123", "abc"], expectedValue: null },
+      { value: ["123", "234abc"], expectedValue: [123, 234] },
+      { value: "123,234", expectedValue: ["123,234"] },
+      { value: "123,abc", expectedValue: null },
+      { value: "123,234abc", expectedValue: ["123,234"] },
+    ])(
+      "should parse number parameter value $value",
+      ({ value, expectedValue }) => {
+        const parameter = createMockParameter({ type: "number/=" });
+        const queryParams = { [parameter.slug]: value };
+        expect(
+          getParameterValueFromQueryParams(parameter, queryParams),
+        ).toEqual(expectedValue);
+      },
+    );
+
     describe("last used param value", () => {
       it("should use query parameter over last used param value", () => {
         expect(
@@ -321,16 +372,14 @@ describe("parameters/utils/parameter-values", () => {
           ]);
         });
 
-        it("should return undefined when list is not formatted properly", () => {
-          expect(runGetParameterValueFromQueryParams(",,,")).toEqual([
-            undefined,
-          ]);
-          expect(runGetParameterValueFromQueryParams(" ")).toEqual([undefined]);
+        it("should return `null` when list is not formatted properly", () => {
+          expect(runGetParameterValueFromQueryParams(",,,")).toEqual(null);
+          expect(runGetParameterValueFromQueryParams(" ")).toEqual(null);
         });
 
-        it("should return first parseable float if value includes non-numeric characters", () => {
-          expect(runGetParameterValueFromQueryParams("1,a,3,")).toEqual([1]);
-          expect(runGetParameterValueFromQueryParams("1a,b,3,")).toEqual([1]);
+        it("should return `null` if value includes non-numeric characters", () => {
+          expect(runGetParameterValueFromQueryParams("1,a,3,")).toEqual(null);
+          expect(runGetParameterValueFromQueryParams("1a,b,3,")).toEqual(null);
         });
       });
     });

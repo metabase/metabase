@@ -16,9 +16,9 @@ import {
   setParameterName as setParamName,
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
-import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { buildTemporalUnitOption } from "metabase-lib/v1/parameters/utils/operators";
+import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import {
   isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
@@ -482,6 +482,12 @@ export const setParameterIsMultiSelect = createThunkAction(
     updateParameter(dispatch, getState, parameterId, parameter => ({
       ...parameter,
       isMultiSelect: isMultiSelect,
+      default:
+        !isMultiSelect &&
+        Array.isArray(parameter.default) &&
+        parameter.default.length > 1
+          ? [parameter.default[0]]
+          : parameter.default,
     }));
 
     return { id: parameterId, isMultiSelect };

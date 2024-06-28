@@ -3113,3 +3113,205 @@ describe("44266", () => {
     });
   });
 });
+
+describe("issue 44790", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should handle string values passed to number and id filters (metabase#44790)", () => {
+    const idFilter = {
+      id: "92eb69ea",
+      name: "ID",
+      sectionId: "id",
+      slug: "id",
+      type: "id",
+    };
+
+    const numberFilter = {
+      id: "10c0d4ba",
+      name: "Equal to",
+      slug: "equal_to",
+      type: "number/=",
+      sectionId: "number",
+    };
+
+    const peopleQuestionDetails = {
+      query: { "source-table": PEOPLE_ID, limit: 5 },
+    };
+
+    cy.createDashboardWithQuestions({
+      dashboardDetails: {
+        parameters: [idFilter, numberFilter],
+      },
+      questions: [peopleQuestionDetails],
+    }).then(({ dashboard, questions: cards }) => {
+      const [peopleCard] = cards;
+
+      cy.wrap(dashboard.id).as("dashboardId");
+
+      updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [
+          {
+            card_id: peopleCard.id,
+            parameter_mappings: [
+              {
+                parameter_id: idFilter.id,
+                card_id: peopleCard.id,
+                target: ["dimension", ["field", PEOPLE.ID, null]],
+              },
+              {
+                parameter_id: numberFilter.id,
+                card_id: peopleCard.id,
+                target: ["dimension", ["field", PEOPLE.LATITUDE, null]],
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    cy.log(
+      "wrong value for id filter should be handled and card should not hang",
+    );
+
+    visitDashboard("@dashboardId", {
+      params: {
+        [idFilter.slug]: "{{test}}",
+      },
+    });
+
+    getDashboardCard().should(
+      "contain",
+      "There was a problem displaying this chart.",
+    );
+
+    cy.log("wrong value for number filter should be ignored");
+    visitDashboard("@dashboardId", {
+      params: {
+        [numberFilter.slug]: "{{test}}",
+        [idFilter.slug]: "1",
+      },
+    });
+
+    getDashboardCard().should("contain", "borer-hudson@yahoo.com");
+  });
+});
+
+describe("issue 34955", () => {
+  const ccName = "Custom Created At";
+
+  const questionDetails = {
+    name: "34955",
+    query: {
+      "source-table": ORDERS_ID,
+      expressions: {
+        [ccName]: [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime" },
+        ],
+      },
+      fields: [
+        [
+          "field",
+          ORDERS.ID,
+          {
+            "base-type": "type/BigInteger",
+          },
+        ],
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "base-type": "type/DateTime",
+          },
+        ],
+        [
+          "expression",
+          ccName,
+          {
+            "base-type": "type/DateTime",
+          },
+        ],
+      ],
+      limit: 2,
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    cy.createQuestionAndDashboard({
+      questionDetails,
+      cardDetails: {
+        size_x: 16,
+        size_y: 8,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      cy.wrap(dashboard_id).as("dashboardId");
+
+      visitDashboard(dashboard_id);
+      editDashboard();
+
+      setFilter("Time", "Single Date", "On");
+      connectFilterToColumn(ccName);
+
+      setFilter("Time", "Date Range", "Between");
+      connectFilterToColumn(ccName);
+
+      saveDashboard();
+
+      cy.findAllByTestId("column-header")
+        .eq(-2)
+        .should("have.text", "Created At");
+      cy.findAllByTestId("column-header").eq(-1).should("have.text", ccName);
+      cy.findAllByTestId("cell-data")
+        .filter(":contains(May 15, 2024, 8:04 AM)")
+        .should("have.length", 2);
+    });
+  });
+
+  it("should connect specific date filter (`Between`) to the temporal custom column (metabase#34955-1)", () => {
+    cy.get("@dashboardId").then(dashboard_id => {
+      // Apply filter through URL to prevent the typing flakes
+      cy.visit(`/dashboard/${dashboard_id}?on=&between=2024-01-01~2024-03-01`);
+      cy.findAllByTestId("field-set-content")
+        .last()
+        .should("contain", "January 1, 2024 - March 1, 2024");
+
+      cy.findAllByTestId("cell-data")
+        .filter(":contains(January 1, 2024, 7:26 AM)")
+        .should("have.length", 2);
+    });
+  });
+
+  // TODO: Once the issue is fixed, merge into a single repro to avoid unnecessary overhead!
+  it.skip("should connect specific date filter (`On`) to the temporal custom column (metabase#34955-2)", () => {
+    cy.get("@dashboardId").then(dashboard_id => {
+      // Apply filter through URL to prevent the typing flakes
+      cy.visit(`/dashboard/${dashboard_id}?on=2024-01-01&between=`);
+      cy.findAllByTestId("field-set-content")
+        .first()
+        .should("contain", "January 1, 2024");
+
+      cy.findAllByTestId("cell-data")
+        .filter(":contains(January 1, 2024, 7:26 AM)")
+        .should("have.length", 2);
+    });
+  });
+
+  function connectFilterToColumn(column) {
+    getDashboardCard().within(() => {
+      cy.findByText("Column to filter on");
+      cy.findByText("Select…").click();
+    });
+
+    popover().within(() => {
+      cy.findByText(column).click();
+    });
+  }
+});

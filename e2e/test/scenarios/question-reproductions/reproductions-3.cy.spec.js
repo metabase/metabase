@@ -35,9 +35,15 @@ import {
   enterCustomColumnDetails,
   addCustomColumn,
   tableInteractive,
+  createNativeQuestion,
+  queryBuilderMain,
+  leftSidebar,
+  assertQueryBuilderRowCount,
+  join,
 } from "e2e/support/helpers";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 describe("issue 32625, issue 31635", () => {
   const CC_NAME = "Is Promotion";
@@ -301,6 +307,34 @@ describe("issue 38354", { tags: "@external" }, () => {
       .findByText("There was a problem with your question")
       .should("not.exist");
     cy.get("[data-testid=cell-data]").should("contain", "37.65"); // assert visualization renders the data
+  });
+});
+
+describe("issue 30056", () => {
+  const questionDetails = {
+    query: {
+      "source-query": {
+        "source-table": PEOPLE_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", PEOPLE.LATITUDE, { "base-type": "type/Float" }],
+          ["field", PEOPLE.LONGITUDE, { "base-type": "type/Float" }],
+        ],
+      },
+      filter: [">", ["field", "count", { "base-type": "type/Integer" }], 2],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show table breadcrumbs for questions with post-aggregation filters (metabase#30056)", () => {
+    createQuestion(questionDetails, { visitQuestion: true });
+    // the name of the table is hidden after a few seconds with a CSS animation,
+    // so check for "exist" only
+    queryBuilderHeader().findByText("People").should("exist");
   });
 });
 
@@ -776,6 +810,92 @@ describe.skip("issue 10493", () => {
   });
 });
 
+describe("issue 32020", () => {
+  const question1Details = {
+    name: "Q1",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["sum", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }]],
+      ],
+      breakout: [
+        ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+      ],
+    },
+  };
+
+  const question2Details = {
+    name: "Q2",
+    query: {
+      "source-table": PEOPLE_ID,
+      aggregation: [
+        ["max", ["field", PEOPLE.LONGITUDE, { "base-type": "type/Float" }]],
+      ],
+      breakout: [
+        ["field", PEOPLE.ID, { "base-type": "type/BigInteger" }],
+        [
+          "field",
+          PEOPLE.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    createQuestion(question1Details);
+    createQuestion(question2Details);
+  });
+
+  it("should be possible to use aggregation columns from source and joined questions in aggregation (metabase#32020)", () => {
+    startNewQuestion();
+
+    cy.log("create joined question manually");
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText(question1Details.name).click();
+    });
+    join();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText(question2Details.name).click();
+    });
+    popover().findByText("ID").click();
+    popover().findByText("ID").click();
+
+    cy.log("aggregation column from the source question");
+    getNotebookStep("summarize")
+      .findByText(/Pick the metric/)
+      .click();
+    popover().within(() => {
+      cy.findByText("Sum of ...").click();
+      cy.findByText("Sum of Total").click();
+    });
+
+    cy.log("aggregation column from the joined question");
+    getNotebookStep("summarize").icon("add").click();
+    popover().within(() => {
+      cy.findByText("Sum of ...").click();
+      cy.findByText(question2Details.name).click();
+      cy.findByText("Max of Longitude").click();
+    });
+
+    cy.log("visualize and check results");
+    visualize();
+    tableInteractive().within(() => {
+      cy.findByText("Sum of Sum of Total").should("be.visible");
+      cy.findByText("Sum of Q2 → Max").should("be.visible");
+    });
+  });
+});
+
 describe("issue 44071", () => {
   const questionDetails = {
     name: "Test",
@@ -1078,6 +1198,198 @@ describe("issue 40399", () => {
 
       cy.findByTestId("preview-root").findAllByText("Gizmo").should("exist");
       cy.findByTestId("preview-root").findAllByText("Widget").should("exist");
+    });
+  });
+});
+
+describe("issue 19894", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show all columns when using the join column selecter (metabase#19894)", () => {
+    createQuestion(
+      {
+        name: "Q1",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        },
+      },
+      {
+        wrapId: true,
+      },
+    );
+
+    createQuestion({
+      name: "Q2",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["sum", ["field", PRODUCTS.PRICE, null]]],
+        breakout: [["field", PRODUCTS.CATEGORY, null]],
+      },
+    });
+
+    createQuestion({
+      name: "Q3",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["avg", ["field", PRODUCTS.RATING, null]]],
+        breakout: [["field", PRODUCTS.CATEGORY, null]],
+      },
+    });
+
+    startNewQuestion();
+
+    modal().findByText("Saved questions").click();
+    modal().findByText("Q1").click();
+
+    cy.button("Join data").click();
+
+    modal().findByText("Saved questions").click();
+    modal().findByText("Q2").click();
+
+    popover().findByText("Category").click();
+    popover().findByText("Category").click();
+
+    cy.button("Join data").click();
+
+    modal().findByText("Saved questions").click();
+    modal().findByText("Q3").click();
+
+    popover().findByText("Category").should("be.visible");
+    popover().findByText("Count").should("be.visible");
+
+    popover().findByText("Q1").click();
+    popover().findByText("Q2").click();
+
+    popover().findByText("Category").should("be.visible");
+    popover().findByText("Sum of Price").should("be.visible");
+
+    popover().findByText("Q1").click();
+
+    popover().findByText("Category").should("be.visible");
+    popover().findByText("Count").should("be.visible");
+  });
+});
+
+describe("issue 44637", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not crash when rendering a line/bar chart with empty results (metabase#44637)", () => {
+    createNativeQuestion(
+      {
+        native: {
+          query: "SELECT '2023-01-01'::date, 2 FROM people WHERE false",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    assertQueryBuilderRowCount(0);
+    queryBuilderMain().findByText("No results!").should("exist");
+    queryBuilderFooter().button("Visualization").click();
+    leftSidebar().icon("bar").click();
+    queryBuilderMain().within(() => {
+      cy.findByText("No results!").should("exist");
+      cy.findByText("Something's gone wrong").should("not.exist");
+    });
+
+    queryBuilderFooter().icon("calendar").click();
+    rightSidebar().findByText("Add an event");
+  });
+});
+
+describe("issue 44668", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not drop graph.metrics after adding a new query stage (metabase#44668)", () => {
+    createQuestion(
+      {
+        display: "bar",
+        query: {
+          aggregation: [["count"]],
+          breakout: [["field", PEOPLE.STATE, { "base-type": "type/Text" }]],
+          "source-table": PEOPLE_ID,
+          limit: 5,
+        },
+        visualization_settings: {
+          "graph.metrics": ["count"],
+          "graph.dimensions": ["STATE"],
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    openNotebook();
+
+    cy.findAllByTestId("action-buttons").last().button("Custom column").click();
+    enterCustomColumnDetails({
+      formula: 'concat("abc_", [Count])',
+      name: "Custom String",
+    });
+    popover().button("Done").click();
+
+    getNotebookStep("expression", { stage: 1 }).icon("add").click();
+    enterCustomColumnDetails({ formula: "[Count] * 2", name: "Custom Number" });
+    popover().button("Done").click();
+
+    visualize();
+
+    echartsContainer().within(() => {
+      cy.findByText("State").should("be.visible"); // x-axis
+      cy.findByText("Count").should("be.visible"); // y-axis
+
+      // x-axis values
+      ["AK", "AL", "AR", "AZ", "CA"].forEach(state => {
+        cy.findByText(state).should("be.visible");
+      });
+    });
+
+    // Ensure custom columns weren't added as series automatically
+    queryBuilderMain().findByLabelText("Legend").should("not.exist");
+
+    cy.findByTestId("viz-settings-button").click();
+
+    // Ensure can use Custom Number as series
+    leftSidebar().findByText("Add another series").click();
+    queryBuilderMain()
+      .findByLabelText("Legend")
+      .within(() => {
+        cy.findByText("Count").should("exist");
+        cy.findByText("Custom Number").should("exist");
+      });
+    leftSidebar().within(() => {
+      cy.findByText("Add another series").should("not.exist");
+      cy.findByText("Add series breakout").should("not.exist");
+      cy.findByTestId("remove-Custom Number").click();
+    });
+    queryBuilderMain().findByLabelText("Legend").should("not.exist");
+
+    leftSidebar().findByText("Add series breakout").click();
+    popover().within(() => {
+      cy.findByText("Count").should("exist");
+      cy.findByText("Custom Number").should("exist");
+      cy.findByText("Custom String").click();
+    });
+    queryBuilderMain()
+      .findByLabelText("Legend")
+      .within(() => {
+        ["68", "56", "49", "20", "90"].forEach(value => {
+          cy.findByText(`abc_${value}`).should("exist");
+        });
+      });
+    leftSidebar().within(() => {
+      cy.findByText("Add another series").should("not.exist");
+      cy.findByText("Add series breakout").should("not.exist");
     });
   });
 });

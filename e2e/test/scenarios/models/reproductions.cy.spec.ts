@@ -1,16 +1,25 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  createNativeQuestion,
   createQuestion,
+  enterCustomColumnDetails,
+  entityPickerModal,
+  entityPickerModalTab,
+  getNotebookStep,
+  hovercard,
+  join,
+  modal,
+  openNotebook,
   openQuestionActions,
   popover,
+  queryBuilderMain,
   restore,
-  hovercard,
-  createNativeQuestion,
-  tableHeaderClick,
-  openNotebook,
-  enterCustomColumnDetails,
-  visualize,
   saveQuestion,
+  startNewModel,
+  startNewQuestion,
+  tableHeaderClick,
+  undoToast,
+  visualize,
 } from "e2e/support/helpers";
 import type { FieldReference } from "metabase-types/api";
 
@@ -388,4 +397,157 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
       .filter(":contains('Count')")
       .should("have.length", 3);
   });
+});
+
+describe("issue 41785", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("does not break the question when removing column with the same mapping as another column (metabase#41785)", () => {
+    // it's important to create the model through UI to reproduce this issue
+    startNewModel();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    join();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    popover().findByText("ID").click();
+    popover().findByText("ID").click();
+
+    cy.findByTestId("run-button").click();
+    cy.wait("@dataset");
+
+    cy.button("Save").click();
+    modal().button("Save").click();
+
+    cy.findByTestId("loading-indicator").should("exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.findAllByText("Tax").should("have.length", 1);
+      cy.findAllByText("Orders → Tax").should("have.length", 1);
+
+      cy.findByRole("button", { name: "Add or remove columns" }).click();
+      cy.findAllByText("Tax").should("have.length", 1);
+      cy.findAllByText("Orders → Tax").should("have.length", 1).click();
+    });
+
+    cy.wait("@dataset");
+
+    queryBuilderMain()
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+  });
+});
+
+describe.skip("issue 40635", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("correctly displays question's and nested model's column names (metabase#40635)", () => {
+    startNewQuestion();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+
+    getNotebookStep("data").button("Pick columns").click();
+    popover().findByText("Select none").click();
+
+    join();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
+
+    getNotebookStep("join", { stage: 0, index: 0 })
+      .button("Pick columns")
+      .click();
+    popover().within(() => {
+      cy.findByText("Select none").click();
+      cy.findByText("ID").click();
+    });
+
+    join();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
+
+    getNotebookStep("join", { stage: 0, index: 1 })
+      .button("Pick columns")
+      .click();
+    popover().within(() => {
+      cy.findByText("Select none").click();
+      cy.findByText("ID").click();
+    });
+
+    getNotebookStep("join", { stage: 0, index: 1 })
+      .findByText("Product ID")
+      .click();
+    popover().findByText("User ID").click();
+
+    visualize();
+    assertSettingsSidebar();
+    assertVisualizationColumns();
+
+    cy.button("Save").click();
+    modal().button("Save").click();
+    modal().findByText("Not now").click();
+
+    assertSettingsSidebar();
+    assertVisualizationColumns();
+
+    openQuestionActions();
+    popover().findByTextEnsureVisible("Turn into a model").click();
+    modal().button("Turn this into a model").click();
+    undoToast().should("contain", "This is a model now").icon("close").click();
+
+    assertSettingsSidebar();
+    assertVisualizationColumns();
+
+    openNotebook();
+    getNotebookStep("data").button("Pick columns").click();
+    popover().within(() => {
+      cy.findAllByText("ID").should("have.length", 1);
+      cy.findAllByText("Products → ID").should("have.length", 1);
+      cy.findAllByText("Products_2 → ID").should("have.length", 1);
+    });
+  });
+
+  function assertVisualizationColumns() {
+    cy.findAllByTestId("header-cell").should("contain", "ID");
+    cy.findAllByTestId("header-cell").should("contain", "Products → ID");
+    cy.findAllByTestId("header-cell").should("contain", "Products_2 → ID");
+  }
+
+  function assertSettingsSidebar() {
+    cy.findByTestId("viz-settings-button").click();
+
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.findAllByText("ID").should("have.length", 1);
+      cy.findAllByText("Products → ID").should("have.length", 1);
+      cy.findAllByText("Products_2 → ID").should("have.length", 1);
+
+      cy.findByRole("button", { name: "Add or remove columns" }).click();
+      cy.findAllByText("ID").should("have.length", 4);
+      cy.findAllByText("Products").should("have.length", 1);
+      cy.findAllByText("Products 2").should("have.length", 1);
+    });
+
+    cy.button("Done").click();
+  }
 });

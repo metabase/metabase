@@ -21,7 +21,6 @@ import {
   resyncDatabase,
   saveQuestion,
   onlyOnOSS,
-  onlyOnEE,
   startNewQuestion,
   shouldDisplayTabs,
   tabsShouldBe,
@@ -73,34 +72,6 @@ describe("scenarios > notebook > data source", () => {
         });
       },
     );
-
-    it.skip("should display tables from the only existing database by default on an enterprise instance without token activation (metabase#40223)", () => {
-      onlyOnEE();
-      cy.visit("/");
-      cy.findByTestId("app-bar").findByText("New").click();
-      popover().findByTextEnsureVisible("Question").click();
-      cy.findByTestId("data-step-cell").should(
-        "have.text",
-        "Pick your starting data",
-      );
-
-      entityPickerModal().within(() => {
-        cy.log("Should not have Recents tab");
-        cy.findAllByRole("tab").should("have.length", 0);
-
-        entityPickerModalLevel(0).should("not.exist");
-        entityPickerModalLevel(1).should("not.exist");
-        entityPickerModalLevel(2).get("[data-index]").should("have.length", 8);
-        assertDataPickerEntityNotSelected(2, "Accounts");
-        assertDataPickerEntityNotSelected(2, "Analytic Events");
-        assertDataPickerEntityNotSelected(2, "Feedback");
-        assertDataPickerEntityNotSelected(2, "Invoices");
-        assertDataPickerEntityNotSelected(2, "Orders");
-        assertDataPickerEntityNotSelected(2, "People");
-        assertDataPickerEntityNotSelected(2, "Products");
-        assertDataPickerEntityNotSelected(2, "Reviews");
-      });
-    });
 
     it("should not show saved questions if only models exist (metabase#25142)", () => {
       createQuestion({

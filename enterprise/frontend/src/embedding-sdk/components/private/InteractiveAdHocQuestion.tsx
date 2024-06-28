@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 import type { SdkClickActionPluginsConfig } from "embedding-sdk";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { initializeQBRaw } from "metabase/query_builder/actions";
-import { getQueryResults } from "metabase/query_builder/selectors";
+
+import { InteractiveQuestionProvider } from "../public/InteractiveQuestion/context";
 
 import { InteractiveQuestionResult } from "./InteractiveQuestionResult";
 
@@ -23,47 +22,22 @@ export const InteractiveAdHocQuestion = ({
   height,
   plugins,
 }: InteractiveAdHocQuestionProps) => {
-  const dispatch = useDispatch();
-
-  const queryResults = useSelector(getQueryResults);
-
-  const [isQuestionLoading, setIsQuestionLoading] = useState(true);
-
-  const loadQuestion = async (
-    dispatch: ReturnType<typeof useDispatch>,
-    questionUrl: string,
-  ) => {
-    setIsQuestionLoading(true);
-
-    const { location, params } = getQuestionParameters(questionUrl);
-    try {
-      await dispatch(initializeQBRaw(location, params));
-    } catch (e) {
-      console.error(`Failed to get question`, e);
-      setIsQuestionLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadQuestion(dispatch, questionPath);
-  }, [dispatch, questionPath]);
-
-  useEffect(() => {
-    if (queryResults) {
-      setIsQuestionLoading(false);
-    }
-  }, [queryResults]);
+  const { location, params } = useMemo(
+    () => getQuestionParameters(questionPath),
+    [questionPath],
+  );
 
   return (
-    <InteractiveQuestionResult
-      isQuestionLoading={isQuestionLoading}
-      onNavigateBack={onNavigateBack}
-      height={height}
+    <InteractiveQuestionProvider
+      location={location}
+      params={params}
       componentPlugins={plugins}
-      withResetButton
-      onResetButtonClick={onNavigateBack}
+      onNavigateBack={onNavigateBack}
       withTitle={withTitle}
-    />
+      withResetButton={true}
+    >
+      <InteractiveQuestionResult height={height} />
+    </InteractiveQuestionProvider>
   );
 };
 
