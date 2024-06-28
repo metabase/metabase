@@ -2031,27 +2031,30 @@
             (testing "We do not clean up any of the child resources synchronously (yet?)"
               (is (seq (t2/select :model/Field :table_id (:id table)))))))))))
 
-(deftest create-csv-from-really-long-names-test
+(deftest create-csv-from-really-long-names
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
-       (let [long-string (str (str/join (repeat 1000 "really_")) "long")]
-         ;; See https://github.com/metabase/metabase/issues/44725#issuecomment-2195780743 for context on why we have
-         ;; modified the test for now.
+       (let [long-string (str (str/join (repeat 1000 "really_")) "long")
+             header      (str (str "a_" long-string ",")
+                              (str "b_" long-string ",")
+                              (str "b_" long-string "_with_a"))]
          (with-upload-table!
            [table (create-from-csv-and-sync-with-defaults!
-                   :file (csv-file-with [(str (str "a_" long-string ",")
-                                              #_(str "b_" long-string ",")
-                                              (str "b_" long-string "_with_a"))
-                                         #_"a,b1,b2"
-                                         "a,b"]))]
+                   :file (csv-file-with [header
+                                         "a,b1,b2"]))]
            (testing "Table and Fields exist after sync"
              (testing "Check the data was uploaded into the table correctly"
                (let [column-names (column-names-for-table table)]
-                 (is (=  @#'upload/auto-pk-column-name (first column-names)))
-                 (is (= #_4 3 (count (distinct column-names))))
-                 (is (= 1 (count (filter #(str/starts-with? % "a_") column-names))))
-                 (is (= #_2 1 (count (filter #(str/starts-with? % "b_") column-names)))))))))))))
+                 (testing "We preserve names where possible"
+                   (let [header-names (->> (str/split header #",")
+                                           (map (partial #'upload/normalize-column-name driver/*driver*)))]
+                     (is (every? (set column-names) header-names))))
+                 (testing "We preserve prefixes where_possible"
+                   (is (= {"_mb_row_" 1
+                           "a_really" 1
+                           "b_really" 2}
+                          (frequencies (map #(subs % 0 8) column-names))))))))))))))
 
 (deftest append-with-really-long-names
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
@@ -2076,9 +2079,7 @@
                       (map rest (rows-for-table table)))))
              (io/delete-file file))))))))
 
-;; For now we have chosen not to support this edge case,
-;; See https://github.com/metabase/metabase/issues/44725#issuecomment-2195780743 for more context
-#_(deftest append-with-really-long-names-that-duplicate-test
+(deftest append-with-really-long-names-that-duplicate
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
