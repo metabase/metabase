@@ -432,6 +432,38 @@
               (is (= #{"CreateTimestamp" "Timestamp"} (bindset (mt/id :orders :created_at))))
               (is (= "CreateTimestamp" (boundval (mt/id :orders :created_at)))))))))))
 
+(deftest ensure-field-dimension-bindings-test-3
+  (testing "A model that breaksout by non-source-table fields should not provide dimensions."
+    (mt/dataset test-data
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (let [source-query {:database (mt/id)
+                            :type     :query
+                            :query    (mt/$ids
+                                        {:source-table $$orders
+                                         :joins        [{:fields       [$people.state
+                                                                        $people.longitude
+                                                                        $people.latitude]
+                                                         :source-table $$people
+                                                         :condition    [:= $orders.user_id $people.id]}
+                                                        {:fields       [$products.price]
+                                                         :source-table $$products
+                                                         :condition    [:= $orders.product_id $products.id]}]
+                                         :breakout     [$products.category $people.state]})}]
+          (mt/with-temp [Collection {collection-id :id} {}
+                         Card       card                {:table_id        (mt/id :products)
+                                                         :collection_id   collection-id
+                                                         :dataset_query   source-query
+                                                         :result_metadata (mt/with-test-user
+                                                                            :rasta
+                                                                            (result-metadata-for-query
+                                                                             source-query))
+                                                         :type            :model}]
+            (let [root               (#'magic/->root card)
+                  {:keys [dimensions] :as _template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
+                  base-context       (#'magic/make-base-context root)
+                  candidate-bindings (#'interesting/candidate-bindings base-context dimensions)]
+              (is (= {} candidate-bindings)))))))))
+
 (deftest field-candidate-matching-test
   (testing "Simple dimensions with only a tablespec can be matched directly against fields."
     (mt/dataset test-data
