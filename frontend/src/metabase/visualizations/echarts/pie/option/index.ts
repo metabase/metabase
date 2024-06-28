@@ -6,11 +6,10 @@ import cloneDeep from "lodash.clonedeep";
 import { getTextColorForBackground } from "metabase/lib/colors";
 import type {
   ComputedVisualizationSettings,
-  Formatter,
   RenderingContext,
 } from "metabase/visualizations/types";
 
-import { DIMENSIONS } from "../constants";
+import { DIMENSIONS, TOTAL_TEXT } from "../constants";
 import type { PieChartFormatters } from "../format";
 import type { PieChartModel, PieSlice, PieSliceData } from "../model/types";
 
@@ -31,7 +30,7 @@ function getSliceByKey(key: PieSliceData["key"], slices: PieSlice[]) {
 
 function getTotalGraphicOption(
   chartModel: PieChartModel,
-  formatMetric: Formatter,
+  formatters: PieChartFormatters,
   renderingContext: RenderingContext,
   hoveredIndex?: number,
 ) {
@@ -41,13 +40,19 @@ function getTotalGraphicOption(
     child.style.fontFamily = renderingContext.fontFamily;
   });
 
-  graphicOption.children[0].style.text = formatMetric(
-    hoveredIndex
+  graphicOption.children[0].style.text = formatters.formatMetric(
+    hoveredIndex != null
       ? chartModel.slices[hoveredIndex].data.displayValue
       : chartModel.total,
   );
   graphicOption.children[0].style.fill = renderingContext.getColor("text-dark");
 
+  graphicOption.children[1].style.text =
+    hoveredIndex != null
+      ? formatters
+          .formatDimension(chartModel.slices[hoveredIndex].data.key)
+          .toUpperCase()
+      : TOTAL_TEXT;
   graphicOption.children[1].style.fill =
     renderingContext.getColor("text-light");
 
@@ -132,7 +137,7 @@ export function getPieChartOption(
   const graphicOption = settings["pie.show_total"]
     ? getTotalGraphicOption(
         chartModel,
-        formatters.formatMetric,
+        formatters,
         renderingContext,
         hoveredIndex,
       )
