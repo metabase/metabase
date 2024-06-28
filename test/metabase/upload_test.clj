@@ -383,14 +383,18 @@
               (test-names-match table "出色的")
               (is (= "%E5%87%BA%E8%89%B2%E7%9A%84_20240628000000"
                      (:name table)))))))
-      (testing "The display name should be truncated to 254 bytes with UTF-8 encoding"
+      (testing "The names should be truncated to the right size"
         ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
-        (let [long-csv-file-prefix     (apply str (repeat 1000 "出"))
-              char-size                (count (.getBytes "出" "UTF-8"))
-              expected-number-of-chars (quot 254 char-size)]
-          (with-redefs [upload/strictly-monotonic-now (constantly #t "2024-06-28T00:00:00")]
+        (doseq [c ["a" "出"]]
+          (let [long-csv-file-prefix     (apply str (repeat 1000 c))
+                char-size                (count (.getBytes c "UTF-8"))]
             (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix long-csv-file-prefix))]
-              (test-names-match table (repeat expected-number-of-chars "出")))))))))
+              (testing "The card name should be truncated to 254 bytes with UTF-8 encoding"
+                (is (= (str/capitalize (apply str (repeat (quot 254 char-size) c)))
+                       (:name (table->card table)))))
+              (testing "The display name should be truncated to 256 bytes with UTF-8 encoding"
+                (is (= (str/capitalize (apply str (repeat (quot 256 char-size) c)))
+                       (:display_name table)))))))))))
 
 (deftest create-from-csv-table-name-test
   (testing "Can upload two files with the same name"

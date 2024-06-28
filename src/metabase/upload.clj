@@ -42,21 +42,22 @@
 (set! *warn-on-reflection* true)
 
 ;; TODO: move these to a more appropriate namespace if they need to be reused
-(defmulti ^:private max-bytes
+(defmulti max-bytes
   "This tracks the size of various text fields in bytes."
-  (fn [model _column-name] model))
+  {:arglists '([model column])}
+  (fn [model _column] model))
 
-(defmethod max-bytes :model/Table [_ column-name]
-  (case column-name
-    :display_name 254
+(defmethod max-bytes :model/Table [_ column]
+  (case column
+    :display_name 256
+    :name 256))
+
+(defmethod max-bytes :model/Field [_ column]
+  (case column
     :name 254))
 
-(defmethod max-bytes :model/Field [_ column-name]
-  (case column-name
-    :name 254))
-
-(defmethod max-bytes :model/Card  [_ column-name]
-  (case column-name
+(defmethod max-bytes :model/Card  [_ column]
+  (case column
     :name 254))
 
 (def ^:private min-safe (fnil min Long/MAX_VALUE Long/MAX_VALUE))

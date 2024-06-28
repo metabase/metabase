@@ -112,7 +112,7 @@
            :schema                  (:schema table)
            :description             (:description table)
            :database_require_filter (:database_require_filter table)
-           :display_name            (or (:display_name table) (humanization/name->human-readable-name table))
+           :display_name            (or (:display_name table) (humanization/name->human-readable-name (:name table)))
            :name                    (:name table)})))
 
 (defn create-or-reactivate-table!
