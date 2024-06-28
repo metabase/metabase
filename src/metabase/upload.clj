@@ -56,6 +56,7 @@
   (if (str/blank? raw-name)
     "unnamed_column"
     (u/slugify (str/trim raw-name)
+               ;; since normalized names contain only ASCII characters, we can conflate bytes and length here.
                {:max-length (max-column-bytes driver)})))
 
 (def auto-pk-column-name
