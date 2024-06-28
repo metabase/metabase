@@ -12,9 +12,13 @@ import {
   sidebar,
   entityPickerModal,
   modal,
+  openNavigationSidebar,
   navigationSidebar,
   restore,
   entityPickerModalTab,
+  visitCollection,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 describe("scenarios > collections > trash", () => {
@@ -514,7 +518,7 @@ describe("scenarios > collections > trash", () => {
     ).as("question");
 
     cy.get("@question").then(question => {
-      cy.visit(`/question/${question.id}-question-a`);
+      visitQuestion(question.id);
       // should not have disabled actions in top navbar
       cy.findAllByTestId("qb-header-action-panel").within(() => {
         cy.findByText("Filter").should("not.exist");
@@ -533,7 +537,7 @@ describe("scenarios > collections > trash", () => {
     });
 
     cy.get("@dashboard").then(dashboard => {
-      cy.visit(`/dashboard/${dashboard.id}-dashboard-a`);
+      visitDashboard(dashboard.id);
 
       cy.findAllByTestId("dashboard-header").within(() => {
         cy.icon("pencil").should("not.exist");
@@ -589,7 +593,7 @@ describe("scenarios > collections > trash", () => {
     cy.signInAsNormalUser();
 
     cy.get("@collection").then(collection => {
-      cy.visit(`/collection/${collection.id}-collection-a`);
+      visitCollection(collection.id);
       archiveBanner().findByText("Restore").should("not.exist");
       archiveBanner().findByText("Move").should("not.exist");
       archiveBanner().findByText("Delete permanently").should("not.exist");
@@ -637,9 +641,54 @@ describe("scenarios > collections > trash", () => {
       cy.findByText(CURATEABLE_NAME).should("be.visible");
     });
   });
-});
 
-describe("Restoring items", () => {});
+  it("should highlight the trash in the navbar when viewing root trash collection or an entity in the trash", () => {
+    createCollection({ name: "Collection A" }, true).as("collection");
+    createDashboard({ name: "Dashboard A" }, true).as("dashboard");
+    createNativeQuestion(
+      {
+        name: "Question A",
+        native: { query: "select 1;" },
+      },
+      true,
+    ).as("question");
+
+    cy.log("Make sure trash is selected for root trash collection");
+    cy.visit("/trash");
+    assertTrashSelectinInNavigationSidebar();
+
+    cy.log("Make sure trash is selected for a trashed collection");
+    cy.get("@collection").then(collection => {
+      cy.intercept("GET", `/api/collection/${collection.id}`).as(
+        "getCollection",
+      );
+      visitCollection(collection.id);
+      cy.wait("@getCollection");
+      assertTrashSelectinInNavigationSidebar();
+    });
+
+    cy.log("Make sure trash is selected for a trashed dashboard");
+    cy.get("@dashboard").then(dashboard => {
+      cy.intercept("GET", `/api/dashboard/${dashboard.id}`).as("getDashboard");
+      visitDashboard(dashboard.id);
+      cy.wait("@getDashboard");
+      openNavigationSidebar();
+      assertTrashSelectinInNavigationSidebar();
+    });
+
+    cy.log("Make sure trash is selected for a trashed question");
+    cy.get("@question").then(question => {
+      cy.log(question.id);
+      cy.intercept("POST", `/api/card/${question.id}/query`).as(
+        "getQuestionResult",
+      );
+      visitQuestion(question.id);
+      cy.wait("@getQuestionResult");
+      openNavigationSidebar();
+      assertTrashSelectinInNavigationSidebar();
+    });
+  });
+});
 
 function toggleEllipsisMenuFor(item) {
   collectionTable().within(() => {
@@ -718,6 +767,14 @@ function selectItem(name) {
   cy.findByText(name)
     .closest("tr")
     .within(() => cy.findByRole("checkbox").click());
+}
+
+function assertTrashSelectinInNavigationSidebar() {
+  navigationSidebar().within(() => {
+    cy.findByText("Trash")
+      .parents("li")
+      .should("have.attr", "aria-selected", "true");
+  });
 }
 
 function ensureBookmarkVisible(bookmark) {

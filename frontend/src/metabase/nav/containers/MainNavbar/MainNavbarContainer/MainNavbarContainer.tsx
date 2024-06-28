@@ -113,6 +113,7 @@ function MainNavbarContainer({
     if (trashCollection) {
       const trash: CollectionTreeItem = {
         ...trashCollection,
+        id: "trash",
         icon: getCollectionIcon(trashCollection),
         children: [],
       };
