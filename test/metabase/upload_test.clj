@@ -1037,7 +1037,8 @@
           _                    (t2/update! :model/Database db-id {:is_on_demand false
                                                                   :is_full_sync false})]
       (try
-        (with-redefs [;; do away with the `future` invocation since we don't want race conditions in a test
+        (with-redefs [driver.u/supports? (constantly true)
+                      ;; do away with the `future` invocation since we don't want race conditions in a test
                       future-call (fn [thunk]
                                     (swap! in-future? (constantly true))
                                     (thunk))]
