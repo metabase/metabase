@@ -529,9 +529,13 @@ describe.skip("issue 40635", () => {
   });
 
   function assertVisualizationColumns() {
-    cy.findAllByTestId("header-cell").should("contain", "ID");
-    cy.findAllByTestId("header-cell").should("contain", "Products → ID");
-    cy.findAllByTestId("header-cell").should("contain", "Products_2 → ID");
+    assertTableHeader(0, "ID");
+    assertTableHeader(1, "Products → ID");
+    assertTableHeader(2, "Products_2 → ID");
+  }
+
+  function assertTableHeader(index: number, name: string) {
+    cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
   }
 
   function assertSettingsSidebar() {
