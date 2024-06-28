@@ -367,7 +367,14 @@
        (do-with-upload-table! ~create-table-expr (fn [~table-binding] ~@body)))))
 
 (deftest create-from-csv-display-name-test
-  (testing "The display name should be the file name prefix, but the table name is slugified"
+  (testing "The display name is humanized from the CSV file name"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (let [csv-file-prefix "some_FILE-prefix"]
+        (with-upload-table!
+          [table (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
+          (is (= "Some File Prefix"
+                 (:display_name table)))))))
+  (testing "Unicode characters are preserved in the display name, even when the table name is slugified"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (let [csv-file-prefix "出色的"]
         (with-redefs [upload/strictly-monotonic-now (constantly #t "2024-06-28T00:00:00")]
