@@ -41,25 +41,23 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private max-field-name-length
-  "This tracks the size of the metabase_field.name field"
+(def ^:private max-field-name-bytes
+  "This tracks the size of the metabase_field.name field, in bytes."
   254)
 
-(def ^:private unique-field-name-buffer
-  "The number of characters to reserve for disambiguating column names"
-  ;; This corresponds to at most 4 digits, excluding the underscore, so 1,000 duplicates.
-  5)
-
 (def ^:private min-safe (fnil min Long/MAX_VALUE Long/MAX_VALUE))
+
+(defn- max-column-bytes [driver]
+  (let [column-limit (some-> driver driver/column-name-length-limit)]
+    (min-safe column-limit max-field-name-bytes)))
 
 (defn- normalize-column-name
   [driver raw-name]
   (if (str/blank? raw-name)
     "unnamed_column"
     (u/slugify (str/trim raw-name)
-               (let [column-limit (some-> driver driver/column-name-length-limit)
-                     max-len      (min-safe column-limit max-field-name-length)]
-                 {:max-length (- max-len unique-field-name-buffer)}))))
+               ;; since slugified names contain only ASCII characters, we can conflate bytes and length here.
+               {:max-length (max-column-bytes driver)})))
 
 (def auto-pk-column-name
   "The lower-case name of the auto-incrementing PK column. The actual name in the database could be in upper-case."
@@ -110,6 +108,8 @@
   [driver table-name]
   (let [time-format                 "_yyyyMMddHHmmss"
         slugified-name               (or (u/slugify table-name) "")
+        ;; since both the time-format and the slugified-name contain only ASCII characters, we can behave as if
+        ;; [[driver/table-name-length-limit]] were defining a length in characters.
         max-length                  (- (driver/table-name-length-limit driver) (count time-format))
         acceptable-length           (min (count slugified-name) max-length)
         truncated-name-without-time (subs slugified-name 0 acceptable-length)]
