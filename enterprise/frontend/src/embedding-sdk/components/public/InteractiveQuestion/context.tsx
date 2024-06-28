@@ -15,7 +15,11 @@ import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { initializeQBRaw, resetQB } from "metabase/query_builder/actions";
+import {
+  initializeQBRaw,
+  resetQB,
+  updateQuestion,
+} from "metabase/query_builder/actions";
 import {
   getCard,
   getFirstQueryResult,
@@ -25,6 +29,7 @@ import {
 } from "metabase/query_builder/selectors";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import type * as Lib from "metabase-lib";
 
 type InteractiveQuestionContextType = {
   plugins: SdkPluginsConfig | null;
@@ -52,6 +57,8 @@ export const InteractiveQuestionContext = createContext<
 const returnNull = () => null;
 
 export const useInteractiveQuestionData = () => {
+  const dispatch = useDispatch();
+
   const question = useSelector(getQuestion);
   const card = useSelector(getCard);
   const result = useSelector(getFirstQueryResult);
@@ -69,6 +76,13 @@ export const useInteractiveQuestionData = () => {
     question.alertType = returnNull; // FIXME: this removes "You can also get an alert when there are some results." feature for question
   }
 
+  const onQueryChange = async (query: Lib.Query) => {
+    if (question) {
+      const nextQuestion = question.setQuery(query);
+      await dispatch(updateQuestion(nextQuestion, { run: true }));
+    }
+  };
+
   return {
     question,
     card,
@@ -78,6 +92,7 @@ export const useInteractiveQuestionData = () => {
     isQueryRunning,
     hasQuestionChanges,
     defaultHeight,
+    onQueryChange,
   };
 };
 
