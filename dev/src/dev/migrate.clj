@@ -107,12 +107,14 @@
       (throw (ex-info "Invalid command" {:command cmd
                                          :args    args})))))
 
-
 (defn- change->sql
   [change sql-generator-factory database]
-  (str/join "\n" (for [stmt (.generateStatements change database)
-                       sql (.generateSql ^SqlGeneratorFactory sql-generator-factory stmt database)]
-                  (.toString sql))))
+  {:forward (str/join "\n" (for [stmt (.generateStatements change database)
+                                 sql (.generateSql ^SqlGeneratorFactory sql-generator-factory stmt database)]
+                             (.toString sql)))
+   :rollback (str/join "\n" (for [stmt (.generateRollbackStatements change database)
+                                  sql (.generateSql ^SqlGeneratorFactory sql-generator-factory stmt database)]
+                              (.toString sql)))})
 
 (defn migration-sql-by-id
   "Get the sql statements for a specific migration ID.
@@ -125,10 +127,14 @@
     (liquibase/with-liquibase [^Liquibase liquibase conn]
       (let [database            (.getDatabase liquibase)
             change-log-iterator (ChangeLogIterator. (.getDatabaseChangeLog liquibase) (into-array ChangeSetFilter []))
-            list-visistor      (ListVisitor.)
-            runtime-env    (RuntimeEnvironment. database (Contexts.) nil)
-            _ (.run change-log-iterator list-visistor runtime-env)
-            change-set (first (filter #(= id (.getId %))(.getSeenChangeSets list-visistor)))
+            list-visistor       (ListVisitor.)
+            runtime-env         (RuntimeEnvironment. database (Contexts.) nil)
+            _                   (.run change-log-iterator list-visistor runtime-env)
+            change-set          (first (filter #(= id (.getId %))(.getSeenChangeSets list-visistor)))
             sql-generator-factory (SqlGeneratorFactory/getInstance)]
-        {:forward (str/join "\n" (map #(change->sql % sql-generator-factory database) (.getChanges change-set)))
-         :rollback (str/join "\n" (map #(change->sql % sql-generator-factory database) (.getChanges (.getRollback change-set))))}))))
+        (reduce (fn [acc data]
+                  ;; merge all changes in one change set into one single :forward and :rollback
+                  (merge-with (fn [x y]
+                                (str x "\n" y)) acc data))
+                {}
+                (map #(change->sql % sql-generator-factory database) (.getChanges change-set)))))))
