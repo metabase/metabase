@@ -243,7 +243,10 @@ describe("issue 12720", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findAllByTestId("dashcard-container").contains(title).click();
 
-    cy.location("search").should("contain", dashboardFilter.default);
+    const expectedSearchParams = new URLSearchParams({
+      filter: dashboardFilter.default,
+    }).toString();
+    cy.location("search").should("contain", expectedSearchParams);
     filterWidget().contains("After January 1, 2026");
   }
   // After January 1st, 2026
