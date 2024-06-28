@@ -1323,10 +1323,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("@targetDashboardId").then(targetDashboardId => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+
+          const tabParam = `tab=${TAB_SLUG_MAP[SECOND_TAB.name]}`;
+          const textFilterParam = `${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`;
+          const timeFilterParam = `${DASHBOARD_FILTER_TIME.slug}=`;
           expect(search).to.equal(
-            `?tab=${TAB_SLUG_MAP[SECOND_TAB.name]}&${
-              DASHBOARD_FILTER_TEXT.slug
-            }=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=`,
+            `?${textFilterParam}&${timeFilterParam}&${tabParam}`,
           );
         });
       });
@@ -1866,7 +1868,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.location().should(({ pathname, search }) => {
         expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
         expect(search).to.equal(
-          `?tab=${TAB_SLUG_MAP[TAB_2.name]}&${DASHBOARD_FILTER_TEXT.slug}=${1}`,
+          `?${DASHBOARD_FILTER_TEXT.slug}=1&tab=${TAB_SLUG_MAP[TAB_2.name]}`,
         );
       });
     });
