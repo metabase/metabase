@@ -105,6 +105,12 @@ Visualizations created with SQL do not have [drill-through][drill-through] capab
 
 See [Caching question policies](../../configuring-metabase/caching.md#question-caching-policy).
 
+## Avoid question marks in SQL code
+
+Including question marks `?` in SQL (either in the query or in column names or aliases) can make some of your queries fail.
+
+Avoid including `?` in column names or aliases. If you're using the `?` JSON operator in PostgreSQL, you can use `??` instead.
+
 ## Learn more
 
 - [Best practices for writing SQL queries](https://www.metabase.com/learn/sql-questions/sql-best-practices.html)

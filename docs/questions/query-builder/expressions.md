@@ -12,13 +12,15 @@ You can also skip to the [complete list of expressions][expression-list].
 
 ## Custom expressions to create filters, metrics, and custom columns
 
-To use custom expression, create a __Custom Column__ (where the custom expression is used as a Field Formula to calculate values for the new column), or click on __Filter__ or __Summarize__ and select __Custom Expression__.
+To use custom expression, create a **Custom Column** (where the custom expression is used as a Field Formula to calculate values for the new column), or click on **Filter** or **Summarize** and select **Custom Expression**.
 
 When using the query builder, you can use expressions to create new:
 
 - **Custom columns**. You could use `= [Subtotal] / [Quantity]` to create a new column, which you could name "Item price".
 - **Filters**. The expression `= contains([comment], "Metabase")` would filter for rows where the `comment` field contained the word "Metabase".
 - **Summaries**. Also known as metrics or aggregations. `= Share([Total] > 50)` would return the percentage of orders with totals greater than 50 dollars.
+
+> Metabase currently does not support using question marks `?` in custom expression names.
 
 This page covers the basics of expressions. You can check out a [full list of expressions][expression-list] in Metabase, or walk through a tutorial that shows you how you can use [custom expressions in the notebook editor][custom-expressions].
 
