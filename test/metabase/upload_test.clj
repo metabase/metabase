@@ -386,8 +386,8 @@
       (testing "The names should be truncated to the right size"
         ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
         (doseq [c ["a" "出"]]
-          (let [long-csv-file-prefix     (apply str (repeat 1000 c))
-                char-size                (count (.getBytes c "UTF-8"))]
+          (let [long-csv-file-prefix (apply str (repeat 1000 c))
+                char-size            (count (.getBytes c "UTF-8"))]
             (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix long-csv-file-prefix))]
               (testing "The card name should be truncated to 254 bytes with UTF-8 encoding"
                 (is (= (str/capitalize (apply str (repeat (quot 254 char-size) c)))
