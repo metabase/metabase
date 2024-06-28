@@ -367,31 +367,26 @@
        (do-with-upload-table! ~create-table-expr (fn [~table-binding] ~@body)))))
 
 (deftest create-from-csv-display-name-test
-  (testing "The display name is humanized from the CSV file name"
-    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "The display name is humanized from the CSV file name"
       (let [csv-file-prefix "some_FILE-prefix"]
-        (with-upload-table!
-          [table (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
+        (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
           (is (= "Some File Prefix"
-                 (:display_name table)))))))
-  (testing "Unicode characters are preserved in the display name, even when the table name is slugified"
-    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+                 (:display_name table))))))
+    (testing "Unicode characters are preserved in the display name, even when the table name is slugified"
       (let [csv-file-prefix "出色的"]
         (with-redefs [upload/strictly-monotonic-now (constantly #t "2024-06-28T00:00:00")]
-          (with-upload-table!
-            [table (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
+          (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
             (is (=? {:display_name "出色的"
                      :name         "%E5%87%BA%E8%89%B2%E7%9A%84_20240628000000"}
-                    table)))))))
-  (testing "The display name should be truncated to 254 bytes with UTF-8 encoding"
-    ;; we can assume app DBs use UTF-8 encoding. see #11753
-    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+                    table))))))
+    (testing "The display name should be truncated to 254 bytes with UTF-8 encoding"
+      ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
       (let [long-csv-file-prefix     (apply str (repeat 1000 "出"))
             char-size                (count (.getBytes "出" "UTF-8"))
             expected-number-of-chars (quot 254 char-size)]
         (with-redefs [upload/strictly-monotonic-now (constantly #t "2024-06-28T00:00:00")]
-          (with-upload-table!
-            [table (card->table (upload-example-csv! :csv-file-prefix long-csv-file-prefix))]
+          (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix long-csv-file-prefix))]
             (is (=? {:display_name (apply str (repeat expected-number-of-chars "出"))}
                     table))))))))
 
