@@ -215,19 +215,31 @@
    critical metabase features that use this check."
   5000)
 
-(def ^{:arglists '([driver feature database])} supports?
+(def ^:dynamic *memoize-supports?*
+  "If true, [[supports?]] is memoized for the application DB. Memoization is disabled in dev and test mode by default to avoid
+   accidental coupling between tests."
+  (not (or config/is-test? config/is-dev?)))
+
+(def ^:private supports?*
+  (fn [driver feature database]
+    (try
+      (u/with-timeout supports?-timeout-ms
+        (driver/database-supports? driver feature database))
+      (catch Throwable e
+        (log/error e (u/format-color 'red "Failed to check feature '%s' for database '%s'" (name feature) (:name database)))
+        false))))
+
+(def ^:private memoized-supports?*
+  (mdb/memoize-for-application-db supports?*))
+
+(defn supports?
   "A defensive wrapper around [[database-supports?]]. It adds logging, caching, and error handling to avoid crashing the app
    if this method takes a long time to execute or throws an exception. This is useful because `supports?` is used in so many
    critical places in the app, and we don't want a single driver to crash the app if it throws an exception, or delay the user
    if it takes a long time to execute."
-  (mdb/memoize-for-application-db ; memoize because this can be called in a tight loop, and will only change if the database changes versions
-   (fn [driver feature database]
-     (try
-       (u/with-timeout supports?-timeout-ms
-         (driver/database-supports? driver feature database))
-       (catch Throwable e
-         (log/error e (u/format-color 'red "Failed to check feature '%s' for database '%s'" (name feature) (:name database)))
-         false)))))
+  [driver feature database]
+  (let [f (if *memoize-supports?* memoized-supports?* supports?*)]
+    (f driver feature database)))
 
 (defn features
   "Return a set of all features supported by `driver` with respect to `database`."
