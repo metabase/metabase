@@ -33,10 +33,12 @@ export const InteractiveAdHocQuestion = ({
       params={params}
       componentPlugins={plugins}
       onNavigateBack={onNavigateBack}
-      withTitle={withTitle}
-      withResetButton={true}
     >
-      <InteractiveQuestionResult height={height} />
+      <InteractiveQuestionResult
+        height={height}
+        withTitle={withTitle}
+        withResetButton={true}
+      />
     </InteractiveQuestionProvider>
   );
 };

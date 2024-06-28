@@ -1,27 +1,37 @@
-import { useInteractiveQuestionData } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import { FilterContent } from "metabase/querying/components/FilterContent";
 import { useFilterContent } from "metabase/querying/components/FilterModal";
-import { Stack } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import { Group, Stack } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
-export const Filter = () => {
-  const { question, onQueryChange } = useInteractiveQuestionData();
+import { useInteractiveQuestionData } from "../hooks";
+
+export const Filter = ({
+  onApply = () => {},
+  onClear = () => {},
+}: {
+  onApply?: () => void;
+  onClear?: () => void;
+}) => {
+  const { question } = useInteractiveQuestionData();
 
   return (
     question && (
-      <FilterInner question={question} onQueryChange={onQueryChange} />
+      <FilterInner question={question} onApply={onApply} onClear={onClear} />
     )
   );
 };
 
 const FilterInner = ({
   question,
-  onQueryChange,
+  onApply,
+  onClear,
 }: {
   question: Question;
-  onQueryChange: (query: Lib.Query) => void;
+  onApply: () => void;
+  onClear: () => void;
 }) => {
+  const { onQueryChange } = useInteractiveQuestionData();
+
   const {
     query,
     version,
@@ -41,6 +51,12 @@ const FilterInner = ({
 
   const onApplyFilters = () => {
     handleSubmit();
+    onApply();
+  };
+
+  const onClearFilters = () => {
+    handleReset();
+    onClear();
   };
 
   return (
@@ -56,12 +72,14 @@ const FilterInner = ({
         onInput={handleInput}
         onTabChange={setTab}
       />
-      <FilterContent.Footer
-        canRemoveFilters={canRemoveFilters}
-        onClearFilters={handleReset}
-        isChanged={isChanged}
-        onApplyFilters={onApplyFilters}
-      />
+      <Group>
+        <FilterContent.Footer
+          canRemoveFilters={canRemoveFilters}
+          onClearFilters={onClearFilters}
+          isChanged={isChanged}
+          onApplyFilters={onApplyFilters}
+        />
+      </Group>
     </Stack>
   );
 };
