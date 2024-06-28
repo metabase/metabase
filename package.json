@@ -52,7 +52,7 @@
     "hast-util-from-html": "^2.0.1",
     "hast-util-to-html": "^9.0.0",
     "history": "3",
-    "html2canvas": "^1.4.1",
+    "html2canvas-pro": "^1.5.0",
     "humanize-plus": "^1.8.1",
     "icepick": "2.4.0",
     "iframe-resizer": "^4.3.2",
