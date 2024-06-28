@@ -36,7 +36,7 @@
                     :limit       10}))))))))
 
 (deftest ^:parallel filter-by-fk-field-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Test that we can filter on an FK field"
       (mt/dataset tupac-sightings
         ;; Number of Tupac sightings in the Expa office (he was spotted here 60 times)
@@ -47,7 +47,7 @@
                     :filter      [:= $category_id->categories.id 8]}))))))))
 
 (deftest ^:parallel fk-field-in-fields-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Check that we can include an FK field in `:fields`"
       (mt/dataset tupac-sightings
         ;; THE 10 MOST RECENT TUPAC SIGHTINGS (!) (What he was doing when we saw him, sighting ID)
@@ -68,7 +68,7 @@
                     :limit    10}))))))))
 
 (deftest ^:parallel join-multiple-tables-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing (str "1. Check that we can order by Foreign Keys (this query targets sightings and orders by cities.name "
                   "and categories.name)"
                   "\n"
@@ -98,8 +98,8 @@
                     (mt/format-rows-by [int int int]))))))))
 
 (deftest ^:parallel feature-check-test
-  (mt/test-drivers (mt/normal-drivers-without-feature :foreign-keys)
-    (testing "Check that trying to use a Foreign Key fails for Mongo and other DBs"
+  (mt/test-drivers (mt/normal-drivers-without-feature :left-join)
+    (testing "Check that trying to use a Foreign Key fails for drivers without :left-join feature"
       (is
        (thrown-with-msg?
         clojure.lang.ExceptionInfo
@@ -112,18 +112,20 @@
              :limit    10})))))))
 
 (deftest ^:parallel field-refs-test
-  (testing "Implicit joins should come back with `:fk->` field refs"
-    (is (= (mt/$ids venues $category_id->categories.name)
-           (-> (mt/cols
-                (mt/run-mbql-query venues
-                  {:fields   [$category_id->categories.name]
-                   :order-by [[:asc $id]]
-                   :limit    1}))
-               first
-               :field_ref)))))
+  (mt/test-drivers
+   (mt/normal-drivers-with-feature :left-join)
+   (testing "Implicit joins should come back with `:fk->` field refs"
+     (is (= (mt/$ids venues $category_id->categories.name)
+            (-> (mt/cols
+                 (mt/run-mbql-query venues
+                                    {:fields   [$category_id->categories.name]
+                                     :order-by [[:asc $id]]
+                                     :limit    1}))
+                first
+                :field_ref))))))
 
 (deftest ^:parallel multiple-joins-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we join against the same table twice (multiple fks to a single table?)"
       (mt/dataset avian-singles
         ;; Query should look something like:
@@ -148,7 +150,7 @@
                     :filter      [:= $receiver_id->users.name "Rasta Toucan"]}))))))))
 
 (deftest ^:parallel implicit-joins-with-expressions-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :expressions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
     (testing "Should be able to run query with multiple implicit joins and breakouts"
       (mt/dataset test-data
         (let [query (mt/mbql-query orders
@@ -172,41 +174,47 @@
                                       (qp/process-query query))))))))))
 
 (deftest ^:parallel test-23293
-  (testing "Implicit joins in multiple levels of a query should work ok (#23293)"
-    (mt/dataset test-data
-      (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                        (lib.tu/mock-metadata-provider
-                                         {:cards [{:id            1
-                                                   :name          "Card 1"
-                                                   :database-id   (mt/id)
-                                                   :dataset-query (mt/mbql-query orders
-                                                                    {:fields
-                                                                     [$id
-                                                                      $user_id
-                                                                      $subtotal
-                                                                      $tax
-                                                                      $total
-                                                                      $discount
-                                                                      $created_at
-                                                                      $quantity
-                                                                      $orders.product_id->products.category]})}]})
-                                        (lib.metadata.jvm/application-database-metadata-provider (mt/id)))
+  (mt/test-drivers
+   (mt/normal-drivers-with-feature :left-join)
+   (testing "Implicit joins in multiple levels of a query should work ok (#23293)"
+     (mt/dataset
+      test-data
+      (qp.store/with-metadata-provider
+        (lib/composed-metadata-provider
+         (lib.tu/mock-metadata-provider
+          {:cards [{:id            1
+                    :name          "Card 1"
+                    :database-id   (mt/id)
+                    :dataset-query (mt/mbql-query orders
+                                                  {:fields
+                                                   [$id
+                                                    $user_id
+                                                    $subtotal
+                                                    $tax
+                                                    $total
+                                                    $discount
+                                                    $created_at
+                                                    $quantity
+                                                    $orders.product_id->products.category]})}]})
+         (lib.metadata.jvm/application-database-metadata-provider (mt/id)))
         (is (= [["Doohickey" 3976]]
                (mt/rows
                 (qp/process-query
-                 (mt/mbql-query nil
-                   {:source-table "card__1"
-                    :breakout     [$orders.product_id->products.category]
-                    :aggregation  [[:count]]
-                    :limit        1})))))
+                 (mt/mbql-query
+                  nil
+                  {:source-table "card__1"
+                   :breakout     [$orders.product_id->products.category]
+                   :aggregation  [[:count]]
+                   :limit        1})))))
         (testing "Should still work if the query is has refs generated by MLv2 that have extra keys"
           (is (= [["Doohickey" 3976]]
                  (mt/rows
                   (qp/process-query
-                   (mt/mbql-query nil
-                     {:source-table "card__1"
-                      :breakout     [[:field
-                                      (mt/id :products :category)
-                                      {:source-field (mt/id :orders :product_id), :base-type :type/Integer}]]
-                      :aggregation  [[:count]]
-                      :limit        1}))))))))))
+                   (mt/mbql-query
+                    nil
+                    {:source-table "card__1"
+                     :breakout     [[:field
+                                     (mt/id :products :category)
+                                     {:source-field (mt/id :orders :product_id), :base-type :type/Integer}]]
+                     :aggregation  [[:count]]
+                     :limit        1})))))))))))
