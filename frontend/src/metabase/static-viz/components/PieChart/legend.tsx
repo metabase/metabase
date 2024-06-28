@@ -1,4 +1,7 @@
-import { DIMENSIONS } from "metabase/visualizations/echarts/pie/constants";
+import {
+  DIMENSIONS,
+  OTHER_SLICE_KEY,
+} from "metabase/visualizations/echarts/pie/constants";
 import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/types";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -18,7 +21,7 @@ export function getPieChartLegend(
   } = calculateLegendRowsWithColumns({
     items: chartModel.slices.map(s => {
       const label =
-        s.data.key === "Other"
+        s.data.key === OTHER_SLICE_KEY
           ? s.data.key
           : formatters.formatDimension(s.data.key);
 
