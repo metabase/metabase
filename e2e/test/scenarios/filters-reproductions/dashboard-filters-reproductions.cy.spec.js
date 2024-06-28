@@ -3110,3 +3110,89 @@ describe("44266", () => {
     });
   });
 });
+
+describe("issue 44790", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should handle string values passed to number and id filters (metabase#44790)", () => {
+    const idFilter = {
+      id: "92eb69ea",
+      name: "ID",
+      sectionId: "id",
+      slug: "id",
+      type: "id",
+    };
+
+    const numberFilter = {
+      id: "10c0d4ba",
+      name: "Equal to",
+      slug: "equal_to",
+      type: "number/=",
+      sectionId: "number",
+    };
+
+    const peopleQuestionDetails = {
+      query: { "source-table": PEOPLE_ID, limit: 5 },
+    };
+
+    cy.createDashboardWithQuestions({
+      dashboardDetails: {
+        parameters: [idFilter, numberFilter],
+      },
+      questions: [peopleQuestionDetails],
+    }).then(({ dashboard, questions: cards }) => {
+      const [peopleCard] = cards;
+
+      cy.wrap(dashboard.id).as("dashboardId");
+
+      updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [
+          {
+            card_id: peopleCard.id,
+            parameter_mappings: [
+              {
+                parameter_id: idFilter.id,
+                card_id: peopleCard.id,
+                target: ["dimension", ["field", PEOPLE.ID, null]],
+              },
+              {
+                parameter_id: numberFilter.id,
+                card_id: peopleCard.id,
+                target: ["dimension", ["field", PEOPLE.LATITUDE, null]],
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    cy.log(
+      "wrong value for id filter should be handled and card should not hang",
+    );
+
+    visitDashboard("@dashboardId", {
+      params: {
+        [idFilter.slug]: "{{test}}",
+      },
+    });
+
+    getDashboardCard().should(
+      "contain",
+      "There was a problem displaying this chart.",
+    );
+
+    cy.log("wrong value for number filter should be ignored");
+    visitDashboard("@dashboardId", {
+      params: {
+        [numberFilter.slug]: "{{test}}",
+        [idFilter.slug]: "1",
+      },
+    });
+
+    getDashboardCard().should("contain", "borer-hudson@yahoo.com");
+  });
+});
