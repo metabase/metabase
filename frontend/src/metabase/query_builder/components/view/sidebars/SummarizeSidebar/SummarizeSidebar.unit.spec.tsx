@@ -9,14 +9,14 @@ import Question from "metabase-lib/v1/Question";
 import type { Card, UnsavedCard } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
+  createAdHocCard,
+  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   PEOPLE_ID,
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
-  createAdHocCard,
-  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import {
   createMockQueryBuilderState,
@@ -313,6 +313,33 @@ describe("SummarizeSidebar", () => {
     const [breakout1, breakout2] = getNextBreakouts();
     expect(breakout1.displayName).toBe("Category");
     expect(breakout2.displayName).toBe("Quantity: Auto binned");
+  });
+
+  it("should list breakouts if there are available but all aggregations are removed", async () => {
+    await setup();
+
+    await userEvent.click(screen.getByText("Category"));
+    expect(screen.getByLabelText("Category")).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
+    await userEvent.click(
+      within(screen.getByLabelText("Count")).getByLabelText(/close/),
+    );
+    expect(screen.queryByLabelText(/Count/)).not.toBeInTheDocument();
+    expect(screen.getByText("Group by")).toBeInTheDocument();
+    expect(screen.getByLabelText("Category")).toBeInTheDocument();
+    expect(screen.getByLabelText("Category")).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
+    await userEvent.click(
+      within(screen.getByLabelText("Category")).getByLabelText(/close/),
+    );
+    expect(screen.queryByText("Group by")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Category")).not.toBeInTheDocument();
   });
 
   it("should allow picking a temporal bucket for breakout columns", async () => {
