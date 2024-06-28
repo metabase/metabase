@@ -49,12 +49,14 @@ export const _InteractiveQuestion = ({
       params={params}
       componentPlugins={plugins}
     >
-        {children ?? <InteractiveQuestionResult
-            height={height}
-            customTitle={customTitle}
-            withResetButton={withResetButton}
-            withTitle={withTitle}
-        />}
+      {children ?? (
+        <InteractiveQuestionResult
+          height={height}
+          customTitle={customTitle}
+          withResetButton={withResetButton}
+          withTitle={withTitle}
+        />
+      )}
     </InteractiveQuestionProvider>
   );
 };

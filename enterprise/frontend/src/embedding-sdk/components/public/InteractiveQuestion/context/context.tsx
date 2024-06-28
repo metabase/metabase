@@ -12,10 +12,10 @@ import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 
 import {
+  type UseLoadQuestionParams,
   useInteractiveQuestionData,
   useLoadQuestion,
-  type UseLoadQuestionParams,
-} from "./hooks";
+} from "../hooks";
 
 type InteractiveQuestionContextType = {
   plugins: SdkPluginsConfig | null;
