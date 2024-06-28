@@ -29,7 +29,7 @@ import { useInteractiveQuestionData } from "../public/InteractiveQuestion/hooks"
 interface InteractiveQuestionResultProps {
   height?: string | number;
   withResetButton?: boolean;
-  withTitle?: boolean;
+  withTitle: boolean;
   customTitle?: ReactNode;
 }
 
@@ -50,21 +50,13 @@ const ResultView = ({
     return (
       <Stack>
         <Button onClick={returnToVisualization}>{t`Close`}</Button>
-        <Filter
-          onApply={returnToVisualization}
-          onClear={returnToVisualization}
-        />
+        <Filter onClose={returnToVisualization} />
       </Stack>
     );
   }
 
   if (questionView === "summarize") {
-    return (
-      <Summarize
-        onApply={returnToVisualization}
-        onClose={returnToVisualization}
-      />
-    );
+    return <Summarize onClose={returnToVisualization} />;
   }
 
   if (questionView === "notebook") {
@@ -76,7 +68,7 @@ const ResultView = ({
 
 export const InteractiveQuestionResult = ({
   height,
-  withTitle = false,
+  withTitle,
   customTitle,
   withResetButton,
 }: InteractiveQuestionResultProps): ReactElement => {

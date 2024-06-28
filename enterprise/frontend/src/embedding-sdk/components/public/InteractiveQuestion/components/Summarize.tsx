@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { t } from "ttag";
 
 import {
   SummarizeContent,
@@ -10,37 +11,22 @@ import type Question from "metabase-lib/v1/Question";
 
 import { useInteractiveQuestionData } from "../hooks";
 
-export const Summarize = ({
-  onApply = () => {},
-  onClose = () => {},
-}: {
-  onApply?: () => void;
-  onClose?: () => void;
-}) => {
+type SummarizeProps = {
+  onClose: () => void;
+};
+
+export const Summarize = ({ onClose = () => {} }: Partial<SummarizeProps>) => {
   const { question } = useInteractiveQuestionData();
 
-  return (
-    question && (
-      <Stack>
-        <SummarizeInner
-          question={question}
-          onApply={onApply}
-          onClose={onClose}
-        />
-      </Stack>
-    )
-  );
+  return question && <SummarizeInner question={question} onClose={onClose} />;
 };
 
 const SummarizeInner = ({
   question,
-  onApply,
   onClose,
 }: {
   question: Question;
-  onApply: () => void;
-  onClose: () => void;
-}) => {
+} & SummarizeProps) => {
   const { onQueryChange } = useInteractiveQuestionData();
 
   // save initial question in case we close without making changes
@@ -51,7 +37,7 @@ const SummarizeInner = ({
   const onApplyFilter = () => {
     if (query) {
       onQueryChange(currentQuery);
-      onApply();
+      onClose();
     }
   };
 
@@ -77,7 +63,7 @@ const SummarizeInner = ({
 
   return (
     <Stack>
-      <Button onClick={onCloseFilter}>Close</Button>
+      <Button onClick={onCloseFilter}>{t`Close`}</Button>
       <SummarizeContent
         query={query}
         aggregations={aggregations}
@@ -90,7 +76,7 @@ const SummarizeInner = ({
         onRemoveBreakout={handleRemoveBreakout}
         onReplaceBreakouts={handleReplaceBreakouts}
       />
-      <Button onClick={onApplyFilter}>Apply</Button>
+      <Button onClick={onApplyFilter}>{t`Apply`}</Button>
     </Stack>
   );
 };

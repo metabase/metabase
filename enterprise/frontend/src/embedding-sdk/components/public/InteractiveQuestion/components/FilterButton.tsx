@@ -4,7 +4,9 @@ import type Question from "metabase-lib/v1/Question";
 
 import { useInteractiveQuestionData } from "../hooks";
 
-export const FilterButton = ({ onClick }: { onClick: () => void }) => {
+type FilterButtonProps = { onClick: () => void };
+
+export const FilterButton = ({ onClick }: FilterButtonProps) => {
   const { question } = useInteractiveQuestionData();
 
   return (
@@ -17,8 +19,7 @@ const FilterButtonInner = ({
   onClick,
 }: {
   question: Question;
-  onClick: () => void;
-}) => {
+} & FilterButtonProps) => {
   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
   const isFilterable = !isNative && isEditable && !question.isArchived();
 
