@@ -1,6 +1,8 @@
 import type { EChartsType } from "echarts/core";
 import { useCallback, useMemo, useRef, useState } from "react";
 
+import ChartWithLegend from "metabase/visualizations/components/ChartWithLegend";
+import { OTHER_SLICE_KEY } from "metabase/visualizations/echarts/pie/constants";
 import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
 import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
@@ -9,7 +11,7 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { ChartRenderer } from "./PieChart.styled";
 import { PIE_CHART_DEFINITION } from "./chart-definition";
-import { useChartEvents } from "./use-chart-events";
+import { getTooltipModel, useChartEvents } from "./use-chart-events";
 
 Object.assign(PieChart, PIE_CHART_DEFINITION);
 
@@ -60,21 +62,64 @@ export function PieChart(props: VisualizationProps) {
     [],
   );
 
-  const eventHandlers = useChartEvents(props, chartModel, formatters);
+  const eventHandlers = useChartEvents(props, chartRef, chartModel, formatters);
+
+  const legendTitles = chartModel.slices.map(s => {
+    const label =
+      s.data.key === OTHER_SLICE_KEY
+        ? s.data.key
+        : formatters.formatDimension(s.data.key);
+
+    const percent =
+      settings["pie.percent_visibility"] === "legend"
+        ? formatters.formatPercent(s.data.normalizedPercentage, "legend")
+        : undefined;
+
+    return [label, percent];
+  });
+
+  const legendColors = chartModel.slices.map(s => s.data.color);
+
+  const showLegend = settings["pie.show_legend"];
+
+  const onHoverChange = (hoverData: any) =>
+    props.onHoverChange(
+      hoverData && {
+        ...hoverData,
+        stackedTooltipModel: getTooltipModel(
+          hoverData.index,
+          chartModel,
+          formatters,
+        ),
+      },
+    );
 
   return (
-    <ChartRenderer
-      option={option}
-      width={"auto"}
-      height={"auto"}
-      onInit={handleInit}
-      onResize={handleResize}
-      eventHandlers={eventHandlers}
-      // By default this is `true` for other charts, however for the pie chart
-      // we need it to be `false`, otherwise echarts will bug out and be stuck
-      // in emphasis state after hovering a slice
-      notMerge={false}
-      style={null}
-    />
+    // @ts-expect-error - `ChartWithLegend` has bad types due to it being in js
+    // and due to using a HoC
+    <ChartWithLegend
+      legendTitles={legendTitles}
+      legendColors={legendColors}
+      showLegend={showLegend}
+      onHoverChange={onHoverChange}
+      className={props.className}
+      gridSize={props.gridSize}
+      hovered={props.hovered}
+      isDashboard={props.isDashboard}
+    >
+      <ChartRenderer
+        option={option}
+        width={"auto"}
+        height={"auto"}
+        onInit={handleInit}
+        onResize={handleResize}
+        eventHandlers={eventHandlers}
+        // By default this is `true` for other charts, however for the pie chart
+        // we need it to be `false`, otherwise echarts will bug out and be stuck
+        // in emphasis state after hovering a slice
+        notMerge={false}
+        style={null}
+      />
+    </ChartWithLegend>
   );
 }

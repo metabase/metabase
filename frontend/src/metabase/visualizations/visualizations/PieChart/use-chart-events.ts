@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import type { EChartsType } from "echarts/core";
+import { type MutableRefObject, useEffect, useMemo } from "react";
 import _ from "underscore";
 
 import { OTHER_SLICE_KEY } from "metabase/visualizations/echarts/pie/constants";
@@ -12,7 +13,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
 
-const getTooltipModel = (
+export const getTooltipModel = (
   hoveredIndex: number,
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
@@ -46,6 +47,9 @@ const getTooltipModel = (
   };
 };
 
+const dataIndexToHoveredIndex = (index: number) => index - 1;
+const hoveredIndexToDataIndex = (index: number) => index + 1;
+
 function getHoverData(
   event: EChartsSeriesMouseEvent,
   chartModel: PieChartModel,
@@ -54,7 +58,7 @@ function getHoverData(
   if (event.dataIndex == null) {
     return null;
   }
-  const index = event.dataIndex - 1;
+  const index = dataIndexToHoveredIndex(event.dataIndex);
 
   const indexOutOfBounds = chartModel.slices[index] == null;
   if (indexOutOfBounds) {
@@ -70,10 +74,36 @@ function getHoverData(
 
 export function useChartEvents(
   props: VisualizationProps,
+  chartRef: MutableRefObject<EChartsType | undefined>,
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
 ) {
   const { onHoverChange } = props;
+  const hoveredIndex = props.hovered?.index;
+  const chart = chartRef?.current;
+
+  useEffect(
+    function higlightChartOnLegendHover() {
+      if (chart == null || hoveredIndex == null) {
+        return;
+      }
+
+      chart.dispatchAction({
+        type: "highlight",
+        dataIndex: hoveredIndexToDataIndex(hoveredIndex),
+        seriesIndex: 0,
+      });
+
+      return () => {
+        chart.dispatchAction({
+          type: "downplay",
+          dataIndex: hoveredIndexToDataIndex(hoveredIndex),
+          seriesIndex: 0,
+        });
+      };
+    },
+    [chart, hoveredIndex],
+  );
 
   const eventHandlers: EChartsEventHandler[] = useMemo(
     () => [
