@@ -70,6 +70,10 @@ export function PieChart(props: VisualizationProps) {
       onInit={handleInit}
       onResize={handleResize}
       eventHandlers={eventHandlers}
+      // By default this is `true` for other charts, however for the pie chart
+      // we need it to be `false`, otherwise echarts will bug out and be stuck
+      // in emphasis state after hovering a slice
+      notMerge={false}
       style={null}
     />
   );

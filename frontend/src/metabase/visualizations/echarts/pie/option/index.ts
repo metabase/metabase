@@ -43,7 +43,7 @@ function getTotalGraphicOption(
 
   graphicOption.children[0].style.text = formatMetric(
     hoveredIndex
-      ? chartModel.slices[hoveredIndex].data.displayValue // TODO rename to remove tooltip
+      ? chartModel.slices[hoveredIndex].data.displayValue
       : chartModel.total,
   );
   graphicOption.children[0].style.fill = renderingContext.getColor("text-dark");
@@ -105,7 +105,7 @@ export function getPieChartOption(
   hoveredIndex?: number,
 ): EChartsOption {
   // Sizing
-  const seriesOption = cloneDeep(SUNBURST_SERIES_OPTION); // deep clone to avoid sharing assigned with other instances
+  const seriesOption = cloneDeep(SUNBURST_SERIES_OPTION); // deep clone to avoid sharing assigned properties with other instances
   if (!seriesOption.label) {
     throw Error(`"seriesOption.label" is undefined`);
   }
