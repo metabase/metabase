@@ -1,27 +1,28 @@
-import { useInteractiveQuestionData } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import { FilterContent } from "metabase/querying/components/FilterContent";
 import { useFilterContent } from "metabase/querying/components/FilterModal";
-import { Stack } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import { Group, Stack } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
-export const Filter = () => {
-  const { question, onQueryChange } = useInteractiveQuestionData();
+import { useInteractiveQuestionData } from "../hooks";
 
-  return (
-    question && (
-      <FilterInner question={question} onQueryChange={onQueryChange} />
-    )
-  );
+type FilterProps = {
+  onClose: () => void;
+};
+
+export const Filter = ({ onClose = () => {} }: Partial<FilterProps>) => {
+  const { question } = useInteractiveQuestionData();
+
+  return question && <FilterInner question={question} onClose={onClose} />;
 };
 
 const FilterInner = ({
   question,
-  onQueryChange,
+  onClose,
 }: {
   question: Question;
-  onQueryChange: (query: Lib.Query) => void;
-}) => {
+} & FilterProps) => {
+  const { onQueryChange } = useInteractiveQuestionData();
+
   const {
     query,
     version,
@@ -41,6 +42,12 @@ const FilterInner = ({
 
   const onApplyFilters = () => {
     handleSubmit();
+    onClose();
+  };
+
+  const onClearFilters = () => {
+    handleReset();
+    onClose();
   };
 
   return (
@@ -56,12 +63,14 @@ const FilterInner = ({
         onInput={handleInput}
         onTabChange={setTab}
       />
-      <FilterContent.Footer
-        canRemoveFilters={canRemoveFilters}
-        onClearFilters={handleReset}
-        isChanged={isChanged}
-        onApplyFilters={onApplyFilters}
-      />
+      <Group>
+        <FilterContent.Footer
+          canRemoveFilters={canRemoveFilters}
+          onClearFilters={onClearFilters}
+          isChanged={isChanged}
+          onApplyFilters={onApplyFilters}
+        />
+      </Group>
     </Stack>
   );
 };

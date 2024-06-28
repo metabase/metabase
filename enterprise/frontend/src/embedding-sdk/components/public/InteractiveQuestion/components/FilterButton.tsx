@@ -1,9 +1,12 @@
-import { useInteractiveQuestionData } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import { FilterHeaderButton } from "metabase/query_builder/components/view/ViewHeader/components";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-export const FilterButton = ({ onClick }: { onClick: () => void }) => {
+import { useInteractiveQuestionData } from "../hooks";
+
+type FilterButtonProps = { onClick: () => void };
+
+export const FilterButton = ({ onClick }: FilterButtonProps) => {
   const { question } = useInteractiveQuestionData();
 
   return (
@@ -16,8 +19,7 @@ const FilterButtonInner = ({
   onClick,
 }: {
   question: Question;
-  onClick: () => void;
-}) => {
+} & FilterButtonProps) => {
   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
   const isFilterable = !isNative && isEditable && !question.isArchived();
 

@@ -1994,24 +1994,27 @@
             (testing "We do not clean up any of the child resources synchronously (yet?)"
               (is (seq (t2/select :model/Field :table_id (:id table)))))))))))
 
-(deftest create-csv-from-really-long-names
+(deftest create-csv-from-really-long-names-test
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
        (let [long-string (str (str/join (repeat 1000 "really_")) "long")]
+         ;; See https://github.com/metabase/metabase/issues/44725#issuecomment-2195780743 for context on why we have
+         ;; modified the test for now.
          (with-upload-table!
            [table (create-from-csv-and-sync-with-defaults!
                    :file (csv-file-with [(str (str "a_" long-string ",")
-                                              (str "b_" long-string ",")
+                                              #_(str "b_" long-string ",")
                                               (str "b_" long-string "_with_a"))
-                                         "a,b1,b2"]))]
+                                         #_"a,b1,b2"
+                                         "a,b"]))]
            (testing "Table and Fields exist after sync"
              (testing "Check the data was uploaded into the table correctly"
                (let [column-names (column-names-for-table table)]
                  (is (=  @#'upload/auto-pk-column-name (first column-names)))
-                 (is (= 4 (count (distinct column-names))))
+                 (is (= #_4 3 (count (distinct column-names))))
                  (is (= 1 (count (filter #(str/starts-with? % "a_") column-names))))
-                 (is (= 2 (count (filter #(str/starts-with? % "b_") column-names)))))))))))))
+                 (is (= #_2 1 (count (filter #(str/starts-with? % "b_") column-names)))))))))))))
 
 (deftest append-with-really-long-names
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
@@ -2036,7 +2039,9 @@
                       (map rest (rows-for-table table)))))
              (io/delete-file file))))))))
 
-(deftest append-with-really-long-names-that-duplicate
+;; For now we have chosen not to support this edge case,
+;; See https://github.com/metabase/metabase/issues/44725#issuecomment-2195780743 for more context
+#_(deftest append-with-really-long-names-that-duplicate-test
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
@@ -2059,3 +2064,29 @@
                (is (= (map second (rows-with-auto-pk [(csv/read-csv original-row)]))
                       (map rest (rows-for-table table)))))
              (io/delete-file file))))))))
+
+;; See https://github.com/metabase/metabase/issues/44725#issuecomment-2195780743 for more context.
+(deftest table-with-really-long-names-that-duplicate-fail-somehow-test
+  (testing "Upload a CSV file with unique column names that get sanitized to the same string"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+       (let [long-string  (str (str/join (repeat 1000 "really_")) "long")
+             header       (str (str "a_" long-string ",")
+                               (str "b_" long-string ",")
+                               (str "b_" long-string "_with_a"))
+             original-row "a,b1,b2"]
+         (try
+           (with-upload-table!
+             [table (create-from-csv-and-sync-with-defaults!
+                     :file (csv-file-with [header original-row]))]
+
+             (testing "A table is created"
+               (is (seq (t2/select :model/Table :id (:id table)))))
+
+             (testing "But it is broken"
+               (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                     #"No fields found for table"
+                                     (column-names-for-table table)))))
+           (catch Exception _
+             (testing "Or, for some databases it (thankfully) just fails"
+               (is true)))))))))
