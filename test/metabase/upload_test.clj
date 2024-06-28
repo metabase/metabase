@@ -2065,3 +2065,11 @@
                (is (= (map second (rows-with-auto-pk [(csv/read-csv original-row)]))
                       (map rest (rows-for-table table)))))
              (io/delete-file file))))))))
+
+(driver/register! ::short-column-test-driver)
+(defmethod driver/column-name-length-limit ::short-column-test-driver [_] 10)
+
+(deftest unique-long-column-names-test
+  (let [original ["abcdefghijk" "abcdefghijklm" "abcdefgh_2_etc" "abcdefgh_3_xyz"]
+        expected [:abcdefghij   :a_c1819420     :abcdefgh_2      :abcdefgh_3]]
+    (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))))
