@@ -229,6 +229,7 @@
                                      metabase.shared.util.internal.time-common
                                      metabase.shared.util.namespaces
                                      metabase.shared.util.time}                                     ; TODO -- consolidate these into a real API namespace.
+    metabase.stale                 #{metabase.stale}
     metabase.sync                  #{metabase.sync
                                      metabase.sync.analyze
                                      metabase.sync.concurrent
@@ -300,6 +301,9 @@
     metabase.server                :any
     metabase.setup                 :any
     metabase.shared                :any
+    metabase.stale                 #{metabase.public-settings
+                                     metabase.embed
+                                     metabase.util}
     metabase.sync                  :any
     metabase.task                  :any
     metabase.troubleshooting       :any
