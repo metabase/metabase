@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import { getObjectKeys } from "metabase/lib/objects";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
