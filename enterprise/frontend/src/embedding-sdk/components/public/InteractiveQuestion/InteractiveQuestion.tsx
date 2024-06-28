@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useMemo } from "react";
 
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withIsolatedStore } from "embedding-sdk/components/private/IsolatedStoreProvider";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { InteractiveQuestionProvider } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { initializeQBRaw } from "metabase/query_builder/actions";
-import { getCard, getQueryResults } from "metabase/query_builder/selectors";
 import type { CardId } from "metabase-types/api";
 
 interface InteractiveQuestionProps {
@@ -26,56 +24,22 @@ export const _InteractiveQuestion = ({
   plugins,
   height,
 }: InteractiveQuestionProps): JSX.Element | null => {
-  const dispatch = useDispatch();
-
-  const card = useSelector(getCard);
-  const queryResults = useSelector(getQueryResults);
-
-  const hasQuestionChanges =
-    card && (!card.id || card.id !== card.original_card_id);
-
-  const [isQuestionLoading, setIsQuestionLoading] = useState(true);
-
-  const loadQuestion = async (
-    dispatch: ReturnType<typeof useDispatch>,
-    questionId: CardId,
-  ) => {
-    setIsQuestionLoading(true);
-
-    const { location, params } = getQuestionParameters(questionId);
-    try {
-      await dispatch(initializeQBRaw(location, params));
-    } catch (e) {
-      console.error(`Failed to get question`, e);
-      setIsQuestionLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadQuestion(dispatch, questionId);
-  }, [dispatch, questionId]);
-
-  const handleQuestionReset = useCallback(() => {
-    loadQuestion(dispatch, questionId);
-  }, [dispatch, questionId]);
-
-  useEffect(() => {
-    if (queryResults) {
-      setIsQuestionLoading(false);
-    }
-  }, [queryResults]);
+  const { location, params } = useMemo(
+    () => getQuestionParameters(questionId),
+    [questionId],
+  );
 
   return (
-    <InteractiveQuestionResult
-      isQuestionLoading={isQuestionLoading}
-      onNavigateBack={handleQuestionReset}
-      height={height}
+    <InteractiveQuestionProvider
+      location={location}
+      params={params}
       componentPlugins={plugins}
-      withResetButton={hasQuestionChanges && withResetButton}
-      onResetButtonClick={handleQuestionReset}
-      withTitle={withTitle}
       customTitle={customTitle}
-    />
+      withResetButton={withResetButton}
+      withTitle={withTitle}
+    >
+      <InteractiveQuestionResult height={height} />
+    </InteractiveQuestionProvider>
   );
 };
 
