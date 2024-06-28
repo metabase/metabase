@@ -3,10 +3,10 @@ import { QuestionNotebookButton } from "metabase/query_builder/components/view/V
 
 export const NotebookButton = ({
   isOpen,
-  onClose,
+  onClick,
 }: {
   isOpen: boolean;
-  onClose: () => void;
+  onClick: () => void;
 }) => {
   const { question } = useInteractiveQuestionData();
   return (
@@ -17,7 +17,7 @@ export const NotebookButton = ({
     }) && (
       <QuestionNotebookButton
         isShowingNotebook={isOpen}
-        setQueryBuilderMode={onClose}
+        setQueryBuilderMode={onClick}
       />
     )
   );

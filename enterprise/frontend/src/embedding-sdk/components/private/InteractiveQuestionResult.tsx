@@ -95,11 +95,12 @@ export const InteractiveQuestionResult = ({
           <FilterButton onClick={() => setQuestionView("filter")} />
           <SummarizeButton
             isOpen={questionView === "summarize"}
+            onOpen={() => setQuestionView("summarize")}
             onClose={() => setQuestionView("visualization")}
           />
           <NotebookButton
             isOpen={questionView === "notebook"}
-            onClose={() => setQuestionView("visualization")}
+            onClick={() => setQuestionView("notebook")}
           />
         </Flex>
 

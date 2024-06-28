@@ -29,7 +29,7 @@ import {
 } from "metabase/query_builder/selectors";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import * as MBLib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 type InteractiveQuestionContextType = {
   plugins: SdkPluginsConfig | null;
@@ -76,10 +76,9 @@ export const useInteractiveQuestionData = () => {
     question.alertType = returnNull; // FIXME: this removes "You can also get an alert when there are some results." feature for question
   }
 
-  const onQueryChange = async (query: MBLib.Query) => {
+  const onQueryChange = async (query: Lib.Query) => {
     if (question) {
-      const nextLegacyQuery = MBLib.toLegacyQuery(query);
-      const nextQuestion = question.setDatasetQuery(nextLegacyQuery);
+      const nextQuestion = question.setQuery(query);
       await dispatch(updateQuestion(nextQuestion, { run: true }));
     }
   };
