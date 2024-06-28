@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
+import { withIsolatedStore } from "embedding-sdk/components/private/IsolatedStoreProvider";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { initializeQBRaw } from "metabase/query_builder/actions";
 import { getCard, getQueryResults } from "metabase/query_builder/selectors";
 import type { CardId } from "metabase-types/api";
-import { withIsolatedStore } from "embedding-sdk/components/private/IsolatedStoreProvider";
 
 interface InteractiveQuestionProps {
   questionId: CardId;
