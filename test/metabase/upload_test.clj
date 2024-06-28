@@ -2103,28 +2103,10 @@
                       (map rest (rows-for-table table)))))
              (io/delete-file file))))))))
 
-;; See https://github.com/metabase/metabase/issues/44725#issuecomment-2195780743 for more context.
-(deftest table-with-really-long-names-that-duplicate-fail-somehow-test
-  (testing "Upload a CSV file with unique column names that get sanitized to the same string"
-    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-      (with-mysql-local-infile-on-and-off
-       (let [long-string  (str (str/join (repeat 1000 "really_")) "long")
-             header       (str (str "a_" long-string ",")
-                               (str "b_" long-string ",")
-                               (str "b_" long-string "_with_a"))
-             original-row "a,b1,b2"]
-         (try
-           (with-upload-table!
-             [table (create-from-csv-and-sync-with-defaults!
-                     :file (csv-file-with [header original-row]))]
+(driver/register! ::short-column-test-driver)
+(defmethod driver/column-name-length-limit ::short-column-test-driver [_] 10)
 
-             (testing "A table is created"
-               (is (seq (t2/select :model/Table :id (:id table)))))
-
-             (testing "But it is broken"
-               (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                     #"No fields found for table"
-                                     (column-names-for-table table)))))
-           (catch Exception _
-             (testing "Or, for some databases it (thankfully) just fails"
-               (is true)))))))))
+(deftest unique-long-column-names-test
+  (let [original ["abcdefghijk" "abcdefghijklm" "abcdefgh_2_etc" "abcdefgh_3_xyz"]
+        expected [:abcdefghij   :a_c1819420     :abcdefgh_2      :abcdefgh_3]]
+    (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))))
