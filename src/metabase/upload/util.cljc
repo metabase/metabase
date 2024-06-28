@@ -4,8 +4,9 @@
   "A fork of [[mbql.u/unique-name-generator]] which accounts for collisions when names are truncated.
   There is due to a limitation where the original does not work properly with truncation, as shown in this fn's tests.
   This may be a bit slower, and it's a breaking change as far as what ids look like, hence it's a fork."
-  [unique-alias-fn]
-  (let [id+original->unique (atom {})   ; map of [id original-alias] -> unique-alias
+  [original-names unique-alias-fn]
+  (let [original-name?      (set original-names)
+        id+original->unique (atom {})                       ; map of [id original-alias] -> unique-alias
         used-names          (atom #{})]
     (fn generate-name
       ([an-alias]
@@ -32,7 +33,7 @@
                 (throw (ex-info "Entered" {:counter        counter
                                            :original       original
                                            :last-candidate (unique-alias-fn original (dec counter))}))
-                (if (get @used-names candidate)
+                (if (or (original-name? candidate) (get @used-names candidate))
                   ;; If it was not unique, try incrementing the counter.
                   (recur (inc counter) candidate)
                   (do (swap! id+original->unique assoc [id original] candidate)
@@ -40,13 +41,13 @@
                       candidate)))))))))))
 
 (defn- unique-alias-with-max-length [max-length]
-  (fn [base suffix]
-    (let [suffix-len (inc (count (str suffix)))]
+  (fn [base counter]
+    (let [suffix-len (inc (count (str counter)))]
       (if (< (+ (count base) suffix-len) max-length)
-        (str base "_" suffix)
+        (str base "_" counter)
         (str (subs base 0 (- max-length suffix-len))
              "_"
-             suffix)))))
+             counter)))))
 
 (defn uniquify-names
   "Add numeric suffixes were necessary to ensure that every element of the `names` seq is unique.
@@ -54,5 +55,6 @@
   length will be exactly max-length.
   This function assumes that all names are already truncated to max-length."
   [max-length names]
-  (let [generator (unique-name-generator (unique-alias-with-max-length max-length))]
+  (let [alias-fn  (unique-alias-with-max-length max-length)
+        generator (unique-name-generator names alias-fn)]
     (map generator names)))
