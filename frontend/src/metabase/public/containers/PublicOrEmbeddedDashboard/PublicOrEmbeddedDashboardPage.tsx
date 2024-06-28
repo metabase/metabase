@@ -1,10 +1,10 @@
 import type { WithRouterProps } from "react-router";
 
-import { useSyncURLSlug } from "metabase/dashboard/components/DashboardTabs/use-sync-url-slug";
 import {
   useDashboardUrlParams,
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
+import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { getDashboardComplete } from "metabase/dashboard/selectors";
 import { SetTitle } from "metabase/hoc/Title";
 import { useSelector } from "metabase/lib/redux";
@@ -23,6 +23,8 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
     parameterQueryParams,
   });
 
+  useDashboardUrlQuery(location);
+
   const {
     bordered,
     hasNightModeToggle,
@@ -39,8 +41,6 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
     titled,
     font,
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
-
-  useSyncURLSlug({ location });
 
   const dashboard = useSelector(getDashboardComplete);
 

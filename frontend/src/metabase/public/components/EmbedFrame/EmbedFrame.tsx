@@ -110,9 +110,10 @@ export const EmbedFrame = ({
     state => !getSetting(state, "hide-embed-branding?"),
   );
 
-  const ParametersListComponent = isEmbeddingSdk
-    ? ParametersList
-    : SyncedParametersList;
+  const ParametersListComponent = getParametersListComponent({
+    isEmbeddingSdk,
+    isDashboard: !!dashboard,
+  });
 
   const [hasFrameScroll, setHasFrameScroll] = useState(!isEmbeddingSdk);
 
@@ -258,4 +259,18 @@ function isParametersWidgetContainersSticky(parameterCount: number) {
   // Sticky header with more than 5 parameters
   // takes too much space on small screens
   return parameterCount <= 5;
+}
+
+function getParametersListComponent({
+  isEmbeddingSdk,
+  isDashboard,
+}: {
+  isEmbeddingSdk: boolean;
+  isDashboard: boolean;
+}) {
+  if (isDashboard) {
+    // Dashboards manage parameters themselves
+    return ParametersList;
+  }
+  return isEmbeddingSdk ? ParametersList : SyncedParametersList;
 }
