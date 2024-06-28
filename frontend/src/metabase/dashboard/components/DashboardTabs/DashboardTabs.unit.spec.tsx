@@ -5,6 +5,7 @@ import { Link, Route, withRouter } from "react-router";
 import { renderWithProviders, screen } from "__support__/ui";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/core/components/TabButton";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
+import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
 import type { DashboardTab } from "metabase-types/api";
@@ -37,6 +38,7 @@ function setup({
   const RoutedDashboardComponent = withRouter(
     ({ location }: { location: Location }) => {
       const { selectedTabId } = useDashboardTabs({ dashboardId: 1 });
+      useDashboardUrlQuery(location);
       return (
         <>
           <DashboardTabs dashboardId={1} isEditing={isEditing} />
