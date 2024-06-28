@@ -12,7 +12,6 @@ import _ from "underscore";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import CS from "metabase/css/core/index.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
-import { useSyncURLSlug } from "metabase/dashboard/components/DashboardTabs/use-sync-url-slug";
 import {
   useDashboardUrlParams,
   useRefreshDashboard,
@@ -204,8 +203,6 @@ const DashboardApp = (props: DashboardAppProps) => {
     setRefreshElapsedHook,
     onRefreshPeriodChange,
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
-
-  useSyncURLSlug({ location });
 
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>

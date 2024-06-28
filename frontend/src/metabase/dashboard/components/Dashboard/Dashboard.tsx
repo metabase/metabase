@@ -15,6 +15,7 @@ import {
   moveDashboardToCollection,
 } from "metabase/dashboard/actions";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
+import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import type {
   DashboardDisplayOptionControls,
   FetchDashboardResult,
@@ -199,6 +200,8 @@ function Dashboard(props: DashboardProps) {
     parameterQueryParams,
     location,
   } = props;
+
+  useDashboardUrlQuery(location);
 
   const dispatch = useDispatch();
 

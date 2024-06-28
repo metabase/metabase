@@ -13,7 +13,7 @@ import type { DashboardState, State } from "metabase-types/store";
 import { DashboardTabs } from "./DashboardTabs";
 import { TEST_DASHBOARD_STATE } from "./test-utils";
 import { useDashboardTabs } from "./use-dashboard-tabs";
-import { getSlug, useSyncURLSlug } from "./use-sync-url-slug";
+import { getSlug } from "./use-sync-url-slug";
 
 function setup({
   tabs,
@@ -37,8 +37,6 @@ function setup({
   const RoutedDashboardComponent = withRouter(
     ({ location }: { location: Location }) => {
       const { selectedTabId } = useDashboardTabs({ dashboardId: 1 });
-      useSyncURLSlug({ location });
-
       return (
         <>
           <DashboardTabs dashboardId={1} isEditing={isEditing} />
