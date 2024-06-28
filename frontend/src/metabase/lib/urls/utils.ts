@@ -19,12 +19,12 @@ export function extractQueryParams(query: Record<string, unknown>) {
 }
 
 export function getEncodedUrlSearchParams(query: Record<string, unknown>) {
-  return extractQueryParams(query)
-    .map(([key, value]) => {
+  return new URLSearchParams(
+    extractQueryParams(query).map(([key, value]) => {
       if (value == null) {
-        return `${key}=`;
+        return [key, ""];
       }
-      return `${key}=${encodeURIComponent(value)}`;
-    })
-    .join("&");
+      return [key, value];
+    }),
+  );
 }
