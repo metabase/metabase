@@ -377,6 +377,7 @@
                      :name         "%E5%87%BA%E8%89%B2%E7%9A%84_20240628000000"}
                     table)))))))
   (testing "The display name should be truncated to 254 bytes with UTF-8 encoding"
+    ;; we can assume app DBs use UTF-8 encoding. see #11753
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (let [long-csv-file-prefix     (apply str (repeat 1000 "出"))
             char-size                (count (.getBytes "出" "UTF-8"))
