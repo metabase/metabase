@@ -120,24 +120,11 @@ export const EmbedFrame = ({
 
   const [hasFrameScroll, setHasFrameScroll] = useState(!isEmbeddingSdk);
 
-  const [hasInnerScroll, setHasInnerScroll] = useState(
-    document.documentElement.scrollTop > 0,
-  );
-
   useMount(() => {
     initializeIframeResizer(() => setHasFrameScroll(false));
   });
 
   const [isFilterSticky, intersectionObserverTargetRef] = useIsFiltersSticky();
-  useEffect(() => {
-    const handleScroll = () => {
-      setHasInnerScroll(document.documentElement.scrollTop > 0);
-    };
-
-    document.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => document.removeEventListener("scroll", handleScroll);
-  }, []);
 
   const hideParameters = [hide_parameters, hiddenParameterSlugs]
     .filter(Boolean)
@@ -215,7 +202,6 @@ export const EmbedFrame = ({
         {hasVisibleParameters && (
           <ParametersWidgetContainer
             embedFrameTheme={theme}
-            hasScroll={hasInnerScroll}
             canSticky={canParameterPanelSticky}
             isSticky={isFilterSticky}
             data-testid="dashboard-parameters-widget-container"

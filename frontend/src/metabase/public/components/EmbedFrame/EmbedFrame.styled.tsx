@@ -137,7 +137,6 @@ function getParameterPanelBorderColor(theme?: DisplayTheme) {
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   embedFrameTheme?: DisplayTheme;
-  hasScroll: boolean;
   canSticky: boolean;
   isSticky: boolean;
 }>`
