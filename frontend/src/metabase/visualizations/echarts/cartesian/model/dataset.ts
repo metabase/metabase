@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import { getObjectKeys } from "metabase/lib/objects";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
@@ -93,6 +94,11 @@ export const getDatasetKey = (
   return `${datasetKey}:${breakoutValue}`;
 };
 
+interface DatasetColumnInfo {
+  column: DatasetColumn;
+  isMetric: boolean;
+}
+
 /**
  * Aggregates metric column values in a datum for a given row.
  * When a breakoutIndex is specified it aggregates metrics per breakout value.
@@ -106,14 +112,14 @@ export const getDatasetKey = (
  */
 const aggregateColumnValuesForDatum = (
   datum: Record<DataKey, RowValue>,
-  columns: DatasetColumn[],
+  columns: DatasetColumnInfo[],
   row: RowValue[],
   cardId: number,
   dimensionIndex: number,
   breakoutIndex: number | undefined,
   showWarning?: ShowWarning,
 ): void => {
-  columns.forEach((column, columnIndex) => {
+  columns.forEach(({ column, isMetric }, columnIndex) => {
     const rowValue = row[columnIndex];
     const isDimensionColumn = columnIndex === dimensionIndex;
 
@@ -123,9 +129,11 @@ const aggregateColumnValuesForDatum = (
         : getDatasetKey(column, cardId, row[breakoutIndex]);
 
     // The dimension values should not be aggregated, only metrics
-    if (isMetric(column) && !isDimensionColumn) {
+    if (isMetric && !isDimensionColumn) {
       if (seriesKey in datum) {
-        showWarning?.(unaggregatedDataWarning(columns[dimensionIndex]).text);
+        showWarning?.(
+          unaggregatedDataWarning(columns[dimensionIndex].column).text,
+        );
       }
 
       datum[seriesKey] = sumMetric(datum[seriesKey], rowValue);
@@ -159,11 +167,15 @@ export const getJoinedCardsDataset = (
       card,
       data: { rows, cols },
     } = cardSeries;
-    const columns = cardsColumns[index];
+    const datasetColumns = cols.map(column => ({
+      column,
+      isMetric: isMetric(column),
+    }));
+    const chartColumns = cardsColumns[index];
 
-    const dimensionIndex = columns.dimension.index;
+    const dimensionIndex = chartColumns.dimension.index;
     const breakoutIndex =
-      "breakout" in columns ? columns.breakout.index : undefined;
+      "breakout" in chartColumns ? chartColumns.breakout.index : undefined;
 
     for (const row of rows) {
       const dimensionValue = row[dimensionIndex];
@@ -179,7 +191,7 @@ export const getJoinedCardsDataset = (
 
       aggregateColumnValuesForDatum(
         datum,
-        cols,
+        datasetColumns,
         row,
         card.id,
         dimensionIndex,
@@ -633,10 +645,18 @@ export function scaleDataset(
   seriesModels: SeriesModel[],
   settings: ComputedVisualizationSettings,
 ): ChartDataset {
+  const scalingByDataKey: Record<DataKey, number> = {};
+  for (const seriesModel of seriesModels) {
+    scalingByDataKey[seriesModel.dataKey] = getColumnScaling(
+      seriesModel.column,
+      settings,
+    );
+  }
+
   const transformFn = (datum: Datum) => {
     const transformedRecord = { ...datum };
     for (const seriesModel of seriesModels) {
-      const scale = getColumnScaling(seriesModel.column, settings);
+      const scale = scalingByDataKey[seriesModel.dataKey];
 
       const key = seriesModel.dataKey;
       if (key in datum) {
