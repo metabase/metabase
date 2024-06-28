@@ -148,36 +148,52 @@
   (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/create-queries :query-builder-and-native)
   (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/download-results :one-million-rows))
 
-;; TODO: Rewrite following to readable form!
-(defn dbdef->fk-field-infos
+(defn- preprocess-dbdef-for-fks
+  "Return vector of form [[table-name field-name fk-table-name]...]"
+  [dbdef]
+  (loop [[table-def & table-defs] (:table-definitions dbdef)
+         result []]
+    (if (nil? table-def)
+      result
+      (recur table-defs
+             (into result
+                   (comp (filter (comp some? :fk))
+                         (map #(vector (:table-name table-def)
+                                       (:field-name %)
+                                       (name (:fk %)))))
+                   (:field-definitions table-def))))))
+
+(defn- dbdef->fk-field-infos
+  "Generate `fk-field-infos` structure. It is a seq of maps of 2 keys: :id and :fk-target-field-id. Existing database,
+  tables and fields in app db are examined to get the required info."
   [dbdef db]
-  (let [table-field-fk (loop [[table-def & table-defs] (:table-definitions dbdef)
-                              result []]
-                         (if (nil? table-def)
-                           result
-                           (recur table-defs
-                                  (into result
-                                        (comp (filter (comp some? :fk))
-                                              (map #(vector (:table-name table-def)
-                                                            (:field-name %)
-                                                            (name (:fk %)))))
-                                        (:field-definitions table-def)))))
+  (let [table-field-fk (preprocess-dbdef-for-fks dbdef)
         tables (t2/select :model/Table :db_id (:id db))
         fields (t2/select :model/Field {:where [:in :table_id (map :id tables)]})
         table-id->table (m/index-by :id tables)
         table-name->field-name->field (-> (group-by :table_id fields)
                                           (update-keys (comp :name table-id->table))
                                           (update-vals (partial m/index-by :name)))
-        table-name->pk-field (-> (group-by :table_id fields)
-                                 (update-keys (comp :name table-id->table))
-                                 (update-vals (partial some #(when (= (:semantic_type %) :type/PK) %))))]
+        table-name->pk-field (into {}
+                                   (comp (filter #(= (:semantic_type %) :type/PK))
+                                         (map #(vector (-> % :table_id table-id->table :name)
+                                                       %)))
+                                   fields)]
     (map (fn [[table-name field-name target-table-name]]
            {:id (get-in table-name->field-name->field [table-name field-name :id])
             :fk-target-field-id (get-in table-name->pk-field [target-table-name :id])})
          table-field-fk)))
 
 (defn- add-foreign-keys!
-  "This is necessary for implicit joins tests to work."
+  "Add foreign key relationships to app db. To be used with dbmses that do not support `:foreign-keys`.
+
+  `:foreign-keys` driver feature signals that underlying dbms _is capable of reporting_ some columns as having foregin
+  key relationship to other columns. If that's the case, sync infers those relationships.
+
+  However, users can freely define those relationships also for dbmses that do not support that (eg. Mongo).
+
+  This function simulates user added fks, based on dataset definition. Therefore enabling tests for eg. implicit joins
+  to work."
   [dbdef db]
   (let [fk-field-infos (dbdef->fk-field-infos dbdef db)]
     (doseq [{:keys [id fk-target-field-id]} fk-field-infos]
