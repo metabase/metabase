@@ -40,6 +40,7 @@ import {
   leftSidebar,
   assertQueryBuilderRowCount,
   join,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -393,6 +394,44 @@ describe("issue 39102", () => {
       cy.findByText("Count").should("be.visible");
       cy.findByText("4").should("be.visible");
     });
+  });
+});
+
+describe("issue 13814", () => {
+  const questionDetails = {
+    display: "scalar",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["count", ["field", ORDERS.TAX, { "base-type": "type/Float" }]],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should support specifying a field in 'count' MBQL clause even if the UI doesn't support it (metabase#13814)", () => {
+    cy.log("verify that the API supports saving this MBQL");
+    createQuestion(questionDetails).then(({ body: card }) =>
+      visitQuestion(card.id),
+    );
+
+    cy.log("verify that the query is executed correctly");
+    cy.findByTestId("scalar-value").findByText("18,760").should("be.visible");
+
+    cy.log(
+      "verify that the clause is displayed correctly and won't crash if updated",
+    );
+    openNotebook();
+    getNotebookStep("summarize")
+      .findByText("Count of Tax")
+      .should("be.visible")
+      .click();
+    popover().findByText("Count of rows").click();
+    getNotebookStep("summarize").findByText("Count").should("be.visible");
   });
 });
 
