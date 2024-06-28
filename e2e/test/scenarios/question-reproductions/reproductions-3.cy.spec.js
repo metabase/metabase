@@ -39,6 +39,9 @@ import {
   queryBuilderMain,
   leftSidebar,
   assertQueryBuilderRowCount,
+  visitDashboard,
+  getDashboardCard,
+  testTooltipPairs,
   join,
 } from "e2e/support/helpers";
 
@@ -1090,6 +1093,56 @@ describe("issue 33441", () => {
       cy.findByText("Invalid expression").should("be.visible");
       cy.button("Done").should("be.disabled");
     });
+  });
+});
+
+describe("issue 31960", () => {
+  const questionDetails = {
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+    },
+    display: "line",
+    visualization_settings: {
+      "graph.metrics": ["count"],
+      "graph.dimensions": ["CREATED_AT"],
+    },
+  };
+
+  // the dot that corresponds to July 10–16, 2022
+  const dotIndex = 10;
+  const rowCount = 11;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should apply a date range filter for a query broken out by week (metabase#31960)", () => {
+    cy.createDashboardWithQuestions({ questions: [questionDetails] }).then(
+      ({ dashboard }) => {
+        visitDashboard(dashboard.id);
+      },
+    );
+
+    getDashboardCard().within(() => {
+      cartesianChartCircle().eq(dotIndex).realHover();
+    });
+    testTooltipPairs([
+      ["Created At:", "July 10–16, 2022"],
+      ["Count:", String(rowCount)],
+      ["Compared to previous week", "+10%"],
+    ]);
+    getDashboardCard().within(() => {
+      cartesianChartCircle().eq(dotIndex).click({ force: true });
+    });
+
+    popover().findByText("See these Orders").click();
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is Jul 10–16, 2022")
+      .should("be.visible");
+    assertQueryBuilderRowCount(rowCount);
   });
 });
 
