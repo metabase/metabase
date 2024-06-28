@@ -5751,6 +5751,9 @@ databaseChangeLog:
       id: v49.2024-03-26T20:27:58
       author: noahmoss
       comment: Added 0.46.0 - Delete the truncate audit log task (renamed to truncate audit tables)
+      # Apparently this migration can hang when connection pool is small (#44528). It's also not needed
+      # as of v50 due to #42383 so let's skip it.
+      ignore: true
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.DeleteTruncateAuditLogTask"

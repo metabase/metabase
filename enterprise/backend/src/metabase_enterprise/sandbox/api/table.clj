@@ -31,10 +31,7 @@
   "Returns true if the user has sandboxed permissions. If a sandbox policy exists, it overrides existing permission on
   the table."
   [table :- (ms/InstanceOf Table)]
-  (contains? (->> (sandbox.api.util/enforced-sandboxes-for api/*current-user-id*)
-                  (map :table_id)
-                  set)
-             (u/the-id table)))
+  (boolean (seq (sandbox.api.util/enforced-sandboxes-for api/*current-user-id* #{(:id table)}))))
 
 (mu/defn ^:private query->fields-ids :- [:maybe [:sequential :int]]
   [{{{:keys [fields]} :query} :dataset_query} :- [:maybe :map]]

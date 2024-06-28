@@ -30,7 +30,7 @@ interface SetupOptions {
   props?: Partial<StaticDashboardProps>;
 }
 
-const setup = (options: SetupOptions = {}) => {
+const setup = async (options: SetupOptions = {}) => {
   const { props } = options;
 
   const database = createSampleDatabase();
@@ -95,18 +95,20 @@ const setup = (options: SetupOptions = {}) => {
       storeInitialState: state,
     },
   );
+
+  expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
 };
 
 describe("StaticDashboard", () => {
   it("shows a dashboard card question title by default", async () => {
-    setup();
-    expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
-    expect(await screen.findByText("Here is a card title")).toBeInTheDocument();
+    await setup();
+
+    expect(screen.getByText("Here is a card title")).toBeInTheDocument();
   });
 
   it("hides the dashboard card question title when withCardTitle is false", async () => {
-    setup({ props: { withCardTitle: false } });
-    expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
+    await setup({ props: { withCardTitle: false } });
+
     expect(screen.queryByText("Here is a card title")).not.toBeInTheDocument();
   });
 });

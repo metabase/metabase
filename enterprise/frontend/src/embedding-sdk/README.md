@@ -599,8 +599,10 @@ return (
 
 # Known limitations
 
-- The Metabase Embedding SDK only supports React on SPA Webpack applications. Applications built with Vite aren't currently supported. We aim to add support for other platforms in the near future.
-- Authorized Origins setting only supports 1 origin for CORS at the moment. We are working on supporting multiple origins in the near future.
+- The Metabase Embedding SDK does not support server-side rendering (SSR) at the moment.
+  - If you are using a framework with SSR support such as Next.js or Remix, you have to ensure that the SDK components are rendered on the client side.
+  - For example, you can apply the `"use client"` directive on Next.js or use the `remix-utils/ClientOnly` component on Remix.
+
 # Feedback
 
 For issues and feedback, there are two options:
