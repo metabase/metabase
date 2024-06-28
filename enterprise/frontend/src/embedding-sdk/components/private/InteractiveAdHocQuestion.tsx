@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import type { SdkClickActionPluginsConfig } from "embedding-sdk";
 
-import { InteractiveQuestionProvider } from "../public/InteractiveQuestion/context/context";
+import { InteractiveQuestionProvider } from "../public/InteractiveQuestion/context";
 
 import { InteractiveQuestionResult } from "./InteractiveQuestionResult";
 

@@ -15,7 +15,7 @@ import {
   type UseLoadQuestionParams,
   useInteractiveQuestionData,
   useLoadQuestion,
-} from "../hooks";
+} from "./hooks";
 
 type InteractiveQuestionContextType = {
   plugins: SdkPluginsConfig | null;
