@@ -1,13 +1,12 @@
 import cx from "classnames";
 
-import {
-  useInteractiveQuestionContext,
-  useInteractiveQuestionData,
-} from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import { navigateToNewCardInsideQB } from "metabase/query_builder/actions";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
+
+import { useInteractiveQuestionContext } from "../context";
+import { useInteractiveQuestionData } from "../hooks";
 
 export const QuestionVisualization = () => {
   const dispatch = useDispatch();
