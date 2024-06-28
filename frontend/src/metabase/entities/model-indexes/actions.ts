@@ -29,7 +29,7 @@ const filterForRefAndShouldIndex = (
 };
 
 export const updateModelIndexes =
-  (model: Question) => async (dispatch: Dispatch, getState: any) => {
+  (model: Question) => async (dispatch: Dispatch) => {
     const fields = model.getResultMetadata();
 
     const fieldsWithIndexFlags = fields.filter(filterForRefAndShouldIndex);
@@ -38,8 +38,9 @@ export const updateModelIndexes =
       return;
     }
 
-    const existingIndexes: ModelIndex[] =
-      listModelIndexes.select({ model_id: model.id() })(getState()).data ?? [];
+    const { data: existingIndexes = [] } = await (dispatch(
+      listModelIndexes.initiate({ model_id: model.id() }),
+    ) as Promise<{ data: ModelIndex[] }>);
 
     const newFieldsToIndex = getFieldsToIndex(
       fieldsWithIndexFlags,
