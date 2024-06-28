@@ -2031,7 +2031,7 @@
             (testing "We do not clean up any of the child resources synchronously (yet?)"
               (is (seq (t2/select :model/Field :table_id (:id table)))))))))))
 
-(deftest create-csv-from-really-long-names
+(deftest create-csv-from-really-long-names-test
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
@@ -2056,7 +2056,7 @@
                            "b_really" 2}
                           (frequencies (map #(subs % 0 8) column-names))))))))))))))
 
-(deftest append-with-really-long-names
+(deftest append-with-really-long-names-test
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
@@ -2079,7 +2079,7 @@
                       (map rest (rows-for-table table)))))
              (io/delete-file file))))))))
 
-(deftest append-with-really-long-names-that-duplicate
+(deftest append-with-really-long-names-that-duplicate-test
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
