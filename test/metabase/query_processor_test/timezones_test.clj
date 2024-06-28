@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
@@ -260,7 +261,7 @@
   (mt/dataset all-dates-leap-year
     (mt/test-drivers (set-timezone-drivers)
       (let [extract-units (cond-> (disj u.date/extract-units :day-of-year)
-                            (not (driver/database-supports? driver/*driver* ::extract-week-of-year-us (mt/db)))
+                            (not (driver.u/supports? driver/*driver* ::extract-week-of-year-us (mt/db)))
                             (disj :week-of-year))
             ;; :week-of-year-instance is the behavior of u.date/extract (based on public-settings start-of-week)
             extract-translate {:year :year-of-era :week-of-year :week-of-year-us}

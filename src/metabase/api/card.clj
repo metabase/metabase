@@ -10,7 +10,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
-   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -743,13 +743,11 @@
   (api/let-404 [{:keys [database_id] :as card} (t2/select-one Card :id card-id)]
     (let [database (t2/select-one Database :id database_id)]
       (api/write-check database)
-      (when-not (driver/database-supports? (:engine database)
-                                           :persist-models database)
+      (when-not (driver.u/supports? (:engine database) :persist-models database)
         (throw (ex-info (tru "Database does not support persisting")
                         {:status-code 400
                          :database    (:name database)})))
-      (when-not (driver/database-supports? (:engine database)
-                                           :persist-models-enabled database)
+      (when-not (driver.u/supports? (:engine database) :persist-models-enabled database)
         (throw (ex-info (tru "Persisting models not enabled for database")
                         {:status-code 400
                          :database    (:name database)})))
