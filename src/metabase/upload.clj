@@ -41,15 +41,29 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private max-field-name-bytes
-  "This tracks the size of the metabase_field.name field, in bytes."
-  254)
+;; TODO: move these to a more appropriate namespace if they need to be reused
+(defmulti ^:private max-bytes
+  "This tracks the size of various text fields in bytes."
+  (fn [model _column-name] model))
+
+(defmethod max-bytes :model/Table [_ column-name]
+  (case column-name
+    :display_name 254
+    :name 254))
+
+(defmethod max-bytes :model/Field [_ column-name]
+  (case column-name
+    :name 254))
+
+(defmethod max-bytes :model/Card  [_ column-name]
+  (case column-name
+    :name 254))
 
 (def ^:private min-safe (fnil min Long/MAX_VALUE Long/MAX_VALUE))
 
 (defn- max-column-bytes [driver]
   (let [column-limit (some-> driver driver/column-name-length-limit)]
-    (min-safe column-limit max-field-name-bytes)))
+    (min-safe column-limit (max-bytes :model/Field :name))))
 
 (defn- normalize-column-name
   [driver raw-name]
@@ -110,7 +124,9 @@
         slugified-name               (or (u/slugify table-name) "")
         ;; since both the time-format and the slugified-name contain only ASCII characters, we can behave as if
         ;; [[driver/table-name-length-limit]] were defining a length in characters.
-        max-length                  (- (driver/table-name-length-limit driver) (count time-format))
+        max-length                  (- (min-safe (driver/table-name-length-limit driver)
+                                                 (max-bytes :model/Table :name))
+                                       (count time-format))
         acceptable-length           (min (count slugified-name) max-length)
         truncated-name-without-time (subs slugified-name 0 acceptable-length)]
     (str truncated-name-without-time
@@ -448,8 +464,9 @@
       (let [timer             (start-timer)
             filename-prefix   (or (second (re-matches #"(.*)\.(csv|tsv)$" filename))
                                   filename)
-            display-name      (humanization/name->human-readable-name filename-prefix)
-            display-name      (u/truncate-string-to-byte-count display-name max-field-name-length)
+            humanized-name    (humanization/name->human-readable-name filename-prefix)
+            display-name      (u/truncate-string-to-byte-count humanized-name (max-bytes :model/Table :display_name))
+            card-name         (u/truncate-string-to-byte-count humanized-name (max-bytes :model/Card :name))
             driver            (driver.u/database->driver database)
             table-name        (->> (str table-prefix display-name)
                                    (unique-table-name driver)
@@ -468,7 +485,7 @@
                                                          :query    {:source-table (:id table)}
                                                          :type     :query}
                                 :display                :table
-                                :name                   display-name
+                                :name                   card-name
                                 :visualization_settings {}}
                                @api/*current-user*)
             upload-seconds    (/ (since-ms timer) 1e3)
