@@ -78,16 +78,20 @@
   [^Font font s]
   (neg? (.canDisplayUpTo font s)))
 
-(def ^:private lato
-  (let [lato-names #{"Lato Regular" "Lato-Regular" "lato" "lato-regular"}
-        env (GraphicsEnvironment/getLocalGraphicsEnvironment)
-        fonts (.getAllFonts env)
-        font ^Font (some #(when (lato-names (.getName ^Font %)) %) fonts)]
-    font))
+(def ^:private get-lato
+  (letfn [(get-lato* []
+            (let [lato-names #{"Lato Regular" "Lato-Regular" "lato" "lato-regular"}
+                  env        (GraphicsEnvironment/getLocalGraphicsEnvironment)
+                  fonts      (.getAllFonts env)
+                  font       ^Font (some #(when (lato-names (.getName ^Font %)) %) fonts)]
+              font))]
+    (memoize get-lato*)))
 
 (defn- lato-can-render?
   [s]
-  (font-can-fully-render? lato s))
+  (let [lato (get-lato)]
+    (when lato
+      (font-can-fully-render? lato s))))
 
 (defn- wrap-non-lato-chars
   "Wrap characters not supported by the installed Lato font in a span so that we can explicitly set the font to sans-serif.
@@ -101,12 +105,12 @@
   If a given string, inside a `transformable-element` contains any character that isn't Lato-compatible, replace the entire string.
   This is done to make the string as consistent as possible (no mixing fonts in a single string)."
   [content]
-  (let [transformable-els            #{:div :span :td :th :tr :table :p :tbody :thead}
-        string-wrapper (fn [part]
-                         (if (and (string? part)
-                                  (not (lato-can-render? part)))
-                           [:span {:style (style/style {:font-family "sans-serif"})} part]
-                           part))]
+  (let [transformable-els #{:div :span :td :th :tr :table :p :tbody :thead}
+        string-wrapper    (fn [part]
+                            (if (and (string? part)
+                                     (not (lato-can-render? part)))
+                              [:span {:style (style/style {:font-family "sans-serif"})} part]
+                              part))]
     (walk/postwalk
      (fn [form]
        (if (and
