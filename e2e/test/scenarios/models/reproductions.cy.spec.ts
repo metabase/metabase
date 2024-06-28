@@ -607,6 +607,6 @@ describe("issue 33427", () => {
   function assertColumnHeaders() {
     cy.findAllByTestId("header-cell")
       .should("contain", "CREATED_BY")
-      .should("contain", "UPDATED_BY");
+      .and("contain", "UPDATED_BY");
   }
 });
