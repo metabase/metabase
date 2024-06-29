@@ -387,7 +387,7 @@
         ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
         (let [max-bytes 50]
           (with-redefs [; redef this because the UNIX filename limit is 255 bytes, so we can't test it in CI
-                        upload/max-bytes (constantly 50)]
+                        upload/max-bytes (constantly max-bytes)]
             (doseq [c ["a" "出"]]
               (let [long-csv-file-prefix (apply str (repeat (inc max-bytes) c))
                     char-size            (count (.getBytes c "UTF-8"))]
