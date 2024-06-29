@@ -385,16 +385,19 @@
                      (:name table)))))))
       (testing "The names should be truncated to the right size"
         ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
-        (doseq [c ["a" "出"]]
-          (let [long-csv-file-prefix (apply str (repeat 300 c))
-                char-size            (count (.getBytes c "UTF-8"))]
-            (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix long-csv-file-prefix))]
-              (testing "The card name should be truncated to 254 bytes with UTF-8 encoding"
-                (is (= (str/capitalize (apply str (repeat (quot 254 char-size) c)))
-                       (:name (table->card table)))))
-              (testing "The display name should be truncated to 256 bytes with UTF-8 encoding"
-                (is (= (str/capitalize (apply str (repeat (quot 256 char-size) c)))
-                       (:display_name table)))))))))))
+        (let [max-bytes 50]
+          (with-redefs [; redef this because the UNIX filename limit is 255 bytes, so we can't test it in CI
+                        upload/max-bytes (constantly 50)]
+            (doseq [c ["a" "出"]]
+              (let [long-csv-file-prefix (apply str (repeat (inc max-bytes) c))
+                    char-size            (count (.getBytes c "UTF-8"))]
+                (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix long-csv-file-prefix))]
+                  (testing "The card name should be truncated to max bytes with UTF-8 encoding"
+                    (is (= (str/capitalize (apply str (repeat (quot max-bytes char-size) c)))
+                           (:name (table->card table)))))
+                  (testing "The display name should be truncated to the max bytes with UTF-8 encoding"
+                    (is (= (str/capitalize (apply str (repeat (quot max-bytes char-size) c)))
+                           (:display_name table)))))))))))))
 
 (deftest create-from-csv-table-name-test
   (testing "Can upload two files with the same name"
