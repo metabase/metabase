@@ -6524,29 +6524,49 @@ databaseChangeLog:
                       mf.id,
                       mf.table_id,
                       mf.name,
+                      mf.parent_id,
+                      mf.active,
                       mf.nfc_path,
-                      ROW_NUMBER() OVER (PARTITION BY mf.table_id, mf.name ORDER BY mf.created_at) AS rn
+                      mf.created_at,
+                      ROW_NUMBER() OVER (
+                          PARTITION BY mf.table_id, mf.name, mf.parent_id
+                          ORDER BY
+                              CASE WHEN mf.active THEN 0 ELSE 1 END,
+                              CASE WHEN mf.nfc_path IS NULL THEN 0 ELSE 1 END,
+                              mf.created_at
+                      ) AS rn
                   FROM metabase_field mf
-                  JOIN (
-                      SELECT table_id, name
-                      FROM metabase_field
-                      WHERE parent_id IS NULL
-                      GROUP BY table_id, name
-                      HAVING COUNT(*) > 1
-                  ) d ON mf.table_id = d.table_id AND mf.name = d.name
-                  WHERE mf.parent_id IS NULL
-              ) rd ON mf.id = rd.id
+              ) x ON mf.id = x.id
               SET mf.is_defective_duplicate =
                   CASE
-                      WHEN rd.id IS NULL THEN FALSE
-                      WHEN rd.rn = 1 AND rd.nfc_path IS NULL THEN FALSE
-                      ELSE TRUE
+                      WHEN x.rn > 1 THEN TRUE
+                      ELSE FALSE
                   END;
-      # TODO: h2
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE metabase_field mf
+              SET is_defective_duplicate = TRUE
+              WHERE mf.id IN (
+                  SELECT id
+                  FROM (
+                      SELECT
+                          mf.id,
+                          ROW_NUMBER() OVER (
+                              PARTITION BY mf.table_id, mf.name, mf.parent_id
+                              ORDER BY
+                                  CASE WHEN mf.active THEN 0 ELSE 1 END,
+                                  CASE WHEN mf.nfc_path IS NULL THEN 0 ELSE 1 END,
+                                  mf.created_at
+                          ) AS rn
+                      FROM metabase_field mf
+                  ) x
+                  WHERE x.rn > 1
+              )
       rollback: # TODO
 
   #
-  # Expand unique constraints for (Field name + table_id + parent_id) to is_defective_column
+  # Expand unique constraints for (Field name + table_id + parent_id) to exclude fields where is_defective_column=TRUE
   #
   # Constraints with NULL values won't work if the data warehouse DB in question doesn't use schemas (e.g. MySQL or MongoDB). It
   # will work for other data warehouse types.
@@ -6599,7 +6619,7 @@ databaseChangeLog:
                   AND "is_defective_duplicate" = FALSE;
       rollback: # TODO
 
-  # TODO:
+  # TODO: add constraints for MySQL
   # - changeSet:
   #     id: v49.2024-06-28T14:52:54
   #     author: calherries
