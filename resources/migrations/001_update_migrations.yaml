@@ -6504,7 +6504,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: is_defective_duplicate
-                  type: boolean
+                  type: ${boolean.type}
                   remarks: "Indicates whether column is a defective duplicate field that should never have been created."
                   constraints:
                     nullable: false
