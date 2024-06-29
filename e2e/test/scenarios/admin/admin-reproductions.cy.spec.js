@@ -87,6 +87,11 @@ describe("issue 41765", { tags: ["@external"] }, () => {
     });
   });
 
+  function enterAdmin() {
+    appBar().icon("gear").click();
+    popover().findByText("Admin settings").click();
+  }
+
   function exitAdmin() {
     appBar().findByText("Exit admin").click();
   }
@@ -116,9 +121,10 @@ describe("issue 41765", { tags: ["@external"] }, () => {
     getNotebookStep("data").button("Pick columns").click();
     popover().findByText(COLUMN_DISPLAY_NAME).should("not.exist");
 
-    // It's ok to navigate here since we are not testing the cache at this point
-    cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
+    enterAdmin();
 
+    appBar().findByText("Databases").click();
+    cy.findAllByRole("link").contains(WRITABLE_DB_DISPLAY_NAME).click();
     cy.button("Sync database schema now").click();
 
     exitAdmin();
