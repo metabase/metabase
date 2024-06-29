@@ -6511,29 +6511,13 @@ databaseChangeLog:
                   defaultValue: false
 
   - changeSet:
-      id: v49.2024-06-27T13:52:52
-      author: calherries
-      comment: Drop the fk_field_parent_ref_field_id constraint
-      changes:
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              ALTER TABLE metabase_field DROP FOREIGN KEY fk_field_parent_ref_field_id;
-      rollback: # TODO
-
-  - changeSet:
-      id: v49.2024-06-27T13:52:53
+      id: v49.2024-06-27T13:52:56
       author: calherries
       comment: Populate metabase_field.is_defective_duplicate
       changes:
         - sql:
             dbms: mysql,mariadb
             sql: >-
-              ALTER TABLE metabase_field ADD COLUMN unique_name_filter INTEGER GENERATED ALWAYS AS (
-                  IF(is_defective_duplicate = TRUE, NULL, IFNULL(parent_id, 0))
-              ) STORED;
-              CREATE UNIQUE INDEX idx_unique_field_name ON metabase_field (name, table_id, unique_name_filter);
-
               UPDATE metabase_field mf
               LEFT JOIN (
                   SELECT
@@ -6560,6 +6544,85 @@ databaseChangeLog:
                   END;
       # TODO: h2
       rollback: # TODO
+
+  #
+  # Expand unique constraints for (Field name + table_id + parent_id) to is_defective_column
+  #
+  # Constraints with NULL values won't work if the data warehouse DB in question doesn't use schemas (e.g. MySQL or MongoDB). It
+  # will work for other data warehouse types.
+  #
+  # Luckily Postgres (but not H2 or MySQL) supports constraints that only apply to columns matching conditions, so we can
+  # add additional constraints to properly handle those cases.
+  - changeSet:
+      id: v49.2024-06-27T13:52:57
+      author: calherries
+      comment: Add a unique constraint on metabase_field (table_id, parent_id, name) WHERE is_defective_duplicate = FALSE
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: >-
+                      SELECT COUNT(*)
+                      FROM (
+                          SELECT COUNT(*)
+                          FROM `metabase_field`
+                          WHERE `is_defective_duplicate`
+                          GROUP BY `table_id`, `parent_id`, `name`
+                          HAVING COUNT(*) > 1
+                      ) t1
+            - and:
+                - dbms:
+                    type: h2,postgresql
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: >-
+                      SELECT COUNT(*)
+                      FROM (
+                          SELECT COUNT(*)
+                          FROM metabase_field
+                          WHERE is_defective_duplicate
+                          GROUP BY table_id, parent_id, name
+                          HAVING COUNT(*) > 1
+                      ) t1
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name_2col;
+              CREATE UNIQUE INDEX idx_uniq_field_table_id_parent_id_name_2col
+                ON "metabase_field" ("table_id", "name")
+                WHERE "parent_id" IS NULL
+                  AND "is_defective_duplicate" = FALSE;
+
+  # TODO:
+  # - changeSet:
+  #     id: v49.2024-06-28T14:52:54
+  #     author: calherries
+  #     comment: Add unique_name_filter column to metabase_field
+  #     changes:
+  #       - sql:
+  #           dbms: mysql,mariadb
+  #           sql: >-
+  #             ALTER TABLE metabase_field ADD COLUMN unique_name_filter INTEGER GENERATED ALWAYS AS (
+  #                 IF(is_defective_duplicate = TRUE, NULL, IFNULL(parent_id, 0))
+  #             ) STORED;
+  #     rollback: # TODO
+
+  # - changeSet:
+  #     id: v49.2024-06-27T13:52:55
+  #     author: calherries
+  #     comment: Add a unique constraint on metabase_field (table_id, name) WHERE is_defective_duplicate = FALSE
+  #     changes:
+  #       - addUniqueConstraint:
+  #           remarks: idx_unique_field_name
+  #           tableName: metabase_field
+  #           constraintName: idx_unique_field_name
+  #           columnNames: name, table_id, unique_name_filter
+  #     rollback:
 
   - changeSet:
       id: v50.2024-01-04T13:52:51
