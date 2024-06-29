@@ -6534,14 +6534,8 @@ databaseChangeLog:
               ) STORED;
               CREATE UNIQUE INDEX idx_unique_field_name ON metabase_field (name, table_id, unique_name_filter);
 
-              WITH duplicates AS (
-                  SELECT table_id, name
-                  FROM metabase_field
-                  WHERE parent_id IS NULL
-                  GROUP BY table_id, name
-                  HAVING COUNT(*) > 1
-              ),
-              ranked_duplicates AS (
+              UPDATE metabase_field mf
+              LEFT JOIN (
                   SELECT
                       mf.id,
                       mf.table_id,
@@ -6549,11 +6543,15 @@ databaseChangeLog:
                       mf.nfc_path,
                       ROW_NUMBER() OVER (PARTITION BY mf.table_id, mf.name ORDER BY mf.created_at) AS rn
                   FROM metabase_field mf
-                  JOIN duplicates d ON mf.table_id = d.table_id AND mf.name = d.name
+                  JOIN (
+                      SELECT table_id, name
+                      FROM metabase_field
+                      WHERE parent_id IS NULL
+                      GROUP BY table_id, name
+                      HAVING COUNT(*) > 1
+                  ) d ON mf.table_id = d.table_id AND mf.name = d.name
                   WHERE mf.parent_id IS NULL
-              )
-              UPDATE metabase_field mf
-              LEFT JOIN ranked_duplicates rd ON mf.id = rd.id
+              ) rd ON mf.id = rd.id
               SET mf.is_defective_duplicate =
                   CASE
                       WHEN rd.id IS NULL THEN FALSE
