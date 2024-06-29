@@ -6597,6 +6597,7 @@ databaseChangeLog:
                 ON "metabase_field" ("table_id", "name")
                 WHERE "parent_id" IS NULL
                   AND "is_defective_duplicate" = FALSE;
+      rollback: # TODO
 
   # TODO:
   # - changeSet:
