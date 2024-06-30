@@ -705,16 +705,16 @@ const TITLE_LOCALES_BN = {
     'bn' : 'সম্পন্ন প্রশিক্ষণ সমূহের সার্টিফিকেট অর্জন ভিত্তিক প্রশিক্ষণার্থীর পরিসংখ্যান'
   },
   'admin.dashboard.ppe.total.school' : {
-    'en' : 'Total Pre-primary School',
+    'en' : 'Total Pre-Primary School',
     'bn' : 'মোট প্রাক-প্রাথমিক বিদ্যালয়'
   },
   'admin.dashboard.ppe.four.plus.school' : {
-    'en' : 'Total 4+ School',
-    'bn' : 'মোট ৪+ বিদ্যালয়'
+    'en' : 'Total Pre-Primary 4+ School',
+    'bn' : 'মোট প্রাক-প্রাথমিক ৪+ বিদ্যালয়'
   },
   'admin.dashboard.ppe.five.plus.school' : {
-    'en' : 'Total 5+ School',
-    'bn' : 'মোট ৫+ বিদ্যালয়'
+    'en' : 'Total Pre-Primary 5+ School',
+    'bn' : 'মোট প্রাক-প্রাথমিক ৫+ বিদ্যালয়'
   },
   'admin.dashboard.ppe.dedicated.classroom.school' : {
     'en' : 'Pre-primary specific Schools with classrooms',
@@ -723,6 +723,10 @@ const TITLE_LOCALES_BN = {
   'admin.dashboard.ppe.school.classroom.condition.wise' : {
     'en' : 'Condition of Pre-Primary Rooms',
     'bn' : 'প্রাক-প্রাথমিক কক্ষের অবস্থা'
+  },
+  'admin.dashboard.ppe.school.type' : {
+    'en' : 'Type of School',
+    'bn' : 'বিদ্যালয়ের ধরণ'
   },
   'admin.dashboard.ppe.monitoring.school.visited.count' : {
     'en' : 'School Inspection Completed',
@@ -747,6 +751,34 @@ const TITLE_LOCALES_BN = {
   'admin.dashboard.ppe.teacher.statistics' : {
     'en' : 'Pre-Primary Teacher Statistics',
     'bn' : 'প্রাক-প্রাথমিক শিক্ষকের পরিসংখ্যান'
+  },
+  'admin.dashboard.ppe.total.student.count' : {
+    'en' : 'Total Pre-Primary Student',
+    'bn' : 'মোট প্রাক-প্রাথমিক শিক্ষার্থী'
+  },
+  'admin.dashboard.ppe.four.plus.student.count' : {
+    'en' : 'Total Pre-Primary 4+ Student',
+    'bn' : 'মোট প্রাক-প্রাথমিক ৪+ শিক্ষার্থী'
+  },
+  'admin.dashboard.ppe.five.plus.student.count' : {
+    'en' : 'Total Pre-Primary 5+ Student',
+    'bn' : 'মোট প্রাক-প্রাথমিক ৫+ শিক্ষার্থী'
+  },
+  'admin.dashboard.ppe.student.gender.statistics' : {
+    'en' : 'Gender Statistics',
+    'bn' : 'জেন্ডারের পরিসংখ্যান'
+  },
+  'admin.dashboard.ppe.student.ethnicity.statistics' : {
+    'en' : 'Ethnicity Statistics',
+    'bn' : 'জাতিগত গোষ্ঠীর পরিসংখ্যান'
+  },
+  'admin.dashboard.ppe.student.special.need.statistics' : {
+    'en' : 'Special Need Students Statistics',
+    'bn' : 'বিশেষ চাহিদা সম্পন্ন ছাত্র ছাত্রীর পরিসংখ্যান'
+  },
+  'admin.dashboard.ppe.to.class.one.admission.statistics' : {
+    'en' : 'Pre-Primary 5+ to Class One Admission Statistics',
+    'bn' : 'প্রাক-প্রাথমিক ৫+ থেকে প্রথম শ্রেণিতে ভর্তির পরিসংখ্যান'
   },
 }
 
