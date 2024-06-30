@@ -777,8 +777,8 @@ const TITLE_LOCALES_BN = {
     'bn' : 'বিশেষ চাহিদা সম্পন্ন ছাত্র ছাত্রীর পরিসংখ্যান'
   },
   'admin.dashboard.ppe.to.class.one.admission.statistics' : {
-    'en' : 'Pre-Primary to Class One Admission Statistics',
-    'bn' : 'প্রাক-প্রাথমিক থেকে প্রথম শ্রেণিতে ভর্তির পরিসংখ্যান'
+    'en' : 'Pre-Primary 5+ to Class One Admission Statistics',
+    'bn' : 'প্রাক-প্রাথমিক ৫+ থেকে প্রথম শ্রেণিতে ভর্তির পরিসংখ্যান'
   },
 }
 
