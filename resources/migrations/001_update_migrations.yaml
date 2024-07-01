@@ -7564,6 +7564,7 @@ databaseChangeLog:
             tableName: task_history
             columnDataType: ${timestamp_type}
             columnName: ended_at
+      rollback: # we can't reliably add back the constraint while downgrading
 
   - changeSet:
       id: v50.2024-05-08T09:00:04
@@ -7574,6 +7575,7 @@ databaseChangeLog:
             tableName: task_history
             columnDataType: int
             columnName: duration
+      rollback: # we can't reliably add back the constraint while downgrading
 
   - changeSet:
       id: v50.2024-05-08T09:00:05

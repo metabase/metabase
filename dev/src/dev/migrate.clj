@@ -42,7 +42,7 @@
                       :where  [:> :orderexecuted {:select   [:orderexecuted]
                                                   :from     [:databasechangelog]
                                                   :where    [:like :id (format "%s%%" id)]
-                                                  :order-by [:orderexecuted :desc]
+                                                  :order-by [[:orderexecuted :desc]]
                                                   :limit    1}]
                       :limit 1})
        :count
