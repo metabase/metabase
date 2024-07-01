@@ -8,20 +8,19 @@ on:
         description: 'Metabase version (e.g. v0.46.3)'
         type: string
         required: true
-  pull_request: # for testing
 
 jobs:
   preview-release-notes:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     steps:
-    # - name: Fail early on the incorrect version format
-    #   if: ${{ !(startsWith(inputs.version,'v0.') || startsWith(inputs.version,'v1.')) }}
-    #   run: |
-    #     echo "The version format is invalid!"
-    #     echo "It must start with either 'v0.' or 'v1.'."
-    #     echo "Please, try again."
-    #     exit 1
+    - name: Fail early on the incorrect version format
+      if: ${{ !(startsWith(inputs.version,'v0.') || startsWith(inputs.version,'v1.')) }}
+      run: |
+        echo "The version format is invalid!"
+        echo "It must start with either 'v0.' or 'v1.'."
+        echo "Please, try again."
+        exit 1
     - uses: actions/checkout@v4
       with:
         sparse-checkout: release
@@ -46,8 +45,6 @@ jobs:
             owner: context.repo.owner,
             repo: context.repo.repo,
           });
-
-          console.log(notes);
 
           fs.writeFileSync(`release-notes-preview-${version}.md`, notes);
     - name: Upload Release Notes
