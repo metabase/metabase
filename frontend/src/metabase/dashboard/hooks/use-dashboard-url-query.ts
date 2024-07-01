@@ -1,10 +1,11 @@
 import type { Location } from "history";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { useSyncedQueryString } from "metabase/hooks/use-synced-query-string";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
+import { selectTab } from "../actions";
 import { getSlug } from "../components/DashboardTabs/use-sync-url-slug";
 import {
   getValuePopulatedParameters,
@@ -17,6 +18,8 @@ export function useDashboardUrlQuery(location: Location) {
 
   const tabs = useSelector(getTabs);
   const selectedTab = useSelector(getSelectedTab);
+
+  const dispatch = useDispatch();
 
   const parameterValuesBySlug = useMemo(
     () => getParameterValuesBySlug(parameters),
@@ -38,4 +41,29 @@ export function useDashboardUrlQuery(location: Location) {
   }, [parameterValuesBySlug, tabs, selectedTab]);
 
   useSyncedQueryString(queryParams, location);
+
+  useEffect(() => {
+    if (!selectedTab || !tabs.length) {
+      return;
+    }
+
+    // Handles cases when the slug is changed, but redux state is not
+    // (example: navigating to a previous tab using browser's back button)
+    const slugTabId = parseTabId(location);
+    if (slugTabId && selectedTab.id !== slugTabId) {
+      const tab = tabs.find(tab => tab.id === slugTabId);
+      if (tab) {
+        dispatch(selectTab({ tabId: slugTabId }));
+      }
+    }
+  }, [selectedTab, tabs, location, dispatch]);
+}
+
+function parseTabId(location: Location) {
+  const slug = location.query?.tab;
+  if (typeof slug === "string" && slug.length > 0) {
+    const id = parseInt(slug, 10);
+    return Number.isSafeInteger(id) ? id : null;
+  }
+  return null;
 }
