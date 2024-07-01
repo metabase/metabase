@@ -81,9 +81,14 @@ export const useLocationSync = <
 
       const hash = stringifyHashOptions(updatedOptions);
       const hashString = hash ? `#${hash}` : "";
-      const nextLocation = `${location.pathname}${location.search}${hashString}`;
 
-      dispatch(replace(nextLocation));
+      dispatch(
+        replace({
+          ...location,
+          query: {},
+          hash: hashString ? "#" + hashString : "",
+        }),
+      );
     }
   }, [
     dispatch,
