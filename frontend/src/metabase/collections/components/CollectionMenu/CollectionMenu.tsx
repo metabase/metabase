@@ -1,9 +1,11 @@
 import { t } from "ttag";
 
+import { useListCollectionItemsQuery } from "metabase/api";
 import {
   isInstanceAnalyticsCustomCollection,
   isRootPersonalCollection,
   isRootCollection,
+  isTrashedCollection,
 } from "metabase/collections/utils";
 import EntityMenu from "metabase/components/EntityMenu";
 import * as Urls from "metabase/lib/urls";
@@ -23,13 +25,27 @@ export const CollectionMenu = ({
   isPersonalCollectionChild,
   onUpdateCollection,
 }: CollectionMenuProps): JSX.Element | null => {
+  // we don't want any of the items, we just want to know how many there are in the collection
+  const query = useListCollectionItemsQuery({ id: collection.id, limit: 0 });
+  const collectionItemCount = query.data?.total ?? 0;
+
   const items = [];
   const url = Urls.collection(collection);
   const isRoot = isRootCollection(collection);
   const isPersonal = isRootPersonalCollection(collection);
   const isInstanceAnalyticsCustom =
     isInstanceAnalyticsCustomCollection(collection);
+  const isEmptyCollection = collectionItemCount === 0;
+  const isTrashed = isTrashedCollection(collection);
+
   const canWrite = collection.can_write;
+  const canMove =
+    !isRoot && !isPersonal && canWrite && !isInstanceAnalyticsCustom;
+  const canCleanUp =
+    PLUGIN_COLLECTIONS.canCleanUp &&
+    !isEmptyCollection &&
+    !isInstanceAnalyticsCustom &&
+    !isTrashed;
 
   if (isAdmin && !isRoot && canWrite) {
     items.push(
@@ -48,13 +64,23 @@ export const CollectionMenu = ({
     });
   }
 
-  if (!isRoot && !isPersonal && canWrite && !isInstanceAnalyticsCustom) {
+  if (canMove) {
     items.push({
       title: t`Move`,
       icon: "move",
       link: `${url}/move`,
     });
+  }
 
+  if (canCleanUp) {
+    items.push({
+      title: t`Clean things up`,
+      icon: "archive",
+      link: `${url}/cleanup`,
+    });
+  }
+
+  if (canMove) {
     items.push({
       title: t`Move to trash`,
       icon: "trash",
@@ -62,16 +88,16 @@ export const CollectionMenu = ({
     });
   }
 
-  if (items.length > 0) {
-    return (
-      <EntityMenu
-        items={items}
-        triggerIcon="ellipsis"
-        tooltip={t`Move, trash, and more...`}
-        tooltipPlacement="bottom"
-      />
-    );
-  } else {
+  if (items.length === 0) {
     return null;
   }
+
+  return (
+    <EntityMenu
+      items={items}
+      triggerIcon="ellipsis"
+      tooltip={t`Move, trash, and more...`}
+      tooltipPlacement="bottom"
+    />
+  );
 };

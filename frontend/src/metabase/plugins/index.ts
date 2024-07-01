@@ -274,6 +274,8 @@ export const PLUGIN_COLLECTIONS = {
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
   ) => items as Item[],
+  canCleanUp: false,
+  CLEAN_UP_ROUTE: null,
 };
 
 export type CollectionAuthorityLevelIcon = ComponentType<

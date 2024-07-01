@@ -35,17 +35,19 @@ import {
 
 type HeaderProps = Omit<SortableColumnHeaderProps, "name">;
 
-const ItemLinkComponent = ({
+const ItemNameComponent = ({
   onClick,
   item,
   children,
+  isLink = true,
 }: PropsWithChildren<{
   item: CollectionItem;
   onClick?: (item: CollectionItem) => void;
+  isLink?: boolean;
 }>) => {
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
 
-  if (isEmbeddingSdk) {
+  if (!isLink || isEmbeddingSdk) {
     return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
   }
   return (
@@ -153,36 +155,36 @@ export const Columns = {
       item,
       testIdPrefix = "table",
       includeDescription = true,
+      isLink = true,
       onClick,
     }: {
       item: CollectionItem;
       testIdPrefix?: string;
       includeDescription?: boolean;
+      isLink?: boolean;
       onClick?: (item: CollectionItem) => void;
-    }) => {
-      return (
-        <ItemNameCell data-testid={`${testIdPrefix}-name`}>
-          <ItemLinkComponent onClick={onClick} item={item}>
-            <EntityItem.Name name={item.name} variant="list" />
-            <PLUGIN_MODERATION.ModerationStatusIcon
+    }) => (
+      <ItemNameCell data-testid={`${testIdPrefix}-name`}>
+        <ItemNameComponent isLink={isLink} onClick={onClick} item={item}>
+          <EntityItem.Name name={item.name} variant="list" />
+          <PLUGIN_MODERATION.ModerationStatusIcon
+            size={16}
+            status={item.moderated_status}
+          />
+          {item.description && includeDescription && (
+            <DescriptionIcon
+              name="info"
               size={16}
-              status={item.moderated_status}
+              tooltip={
+                <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
+                  {item.description}
+                </Markdown>
+              }
             />
-            {item.description && includeDescription && (
-              <DescriptionIcon
-                name="info"
-                size={16}
-                tooltip={
-                  <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
-                    {item.description}
-                  </Markdown>
-                }
-              />
-            )}
-          </ItemLinkComponent>
-        </ItemNameCell>
-      );
-    },
+          )}
+        </ItemNameComponent>
+      </ItemNameCell>
+    ),
   },
   LastEditedBy: {
     Col: () => (
