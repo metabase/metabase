@@ -453,7 +453,7 @@ export const lastRunCard = handleActions(
   null,
 );
 
-function mergeMetadatWithQueryResults(queryResults, metadata) {
+function mergeMetadataWithQueryResults(queryResults, metadata) {
   const [result] = queryResults;
   const { columns } = metadata;
   return [
@@ -475,7 +475,7 @@ export const queryResults = handleActions(
     [QUERY_COMPLETED]: {
       next: (state, { payload: { queryResults, modelMetadata } }) => {
         return modelMetadata
-          ? mergeMetadatWithQueryResults(queryResults, modelMetadata)
+          ? mergeMetadataWithQueryResults(queryResults, modelMetadata)
           : queryResults;
       },
     },
@@ -484,7 +484,7 @@ export const queryResults = handleActions(
     },
     [SET_RESULTS_METADATA]: {
       next: (state, { payload: results_metadata }) => {
-        return mergeMetadatWithQueryResults(state, results_metadata);
+        return mergeMetadataWithQueryResults(state, results_metadata);
       },
     },
     [CLEAR_QUERY_RESULT]: { next: (state, { payload }) => null },
@@ -498,12 +498,10 @@ export const metadataDiff = handleActions(
     [API_UPDATE_QUESTION]: { next: () => ({}) },
     [SET_METADATA_DIFF]: {
       next: (state, { payload }) => {
-        const { field_ref, changes } = payload;
+        const { name, changes } = payload;
         return {
           ...state,
-          [field_ref]: state[field_ref]
-            ? merge(state[field_ref], changes)
-            : changes,
+          [name]: state[name] ? merge(state[name], changes) : changes,
         };
       },
     },

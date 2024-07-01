@@ -7,7 +7,6 @@ import Questions from "metabase/entities/questions";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
-import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 
 import { getOriginalCard, getQuestion, getResultsMetadata } from "../selectors";
 
@@ -87,13 +86,13 @@ export const SET_METADATA_DIFF = "metabase/qb/SET_METADATA_DIFF";
 export const setMetadataDiff = createAction(SET_METADATA_DIFF);
 
 export const setFieldMetadata =
-  ({ field_ref, changes }) =>
+  ({ name, changes }) =>
   (dispatch, getState) => {
     const question = getQuestion(getState());
     const resultsMetadata = getResultsMetadata(getState());
 
     const nextColumnMetadata = resultsMetadata.columns.map(fieldMetadata => {
-      const isTargetField = isSameField(field_ref, fieldMetadata.field_ref);
+      const isTargetField = fieldMetadata.name === name;
       return isTargetField ? merge(fieldMetadata, changes) : fieldMetadata;
     });
 
@@ -105,7 +104,7 @@ export const setFieldMetadata =
     const nextQuestion = question.setResultsMetadata(nextResultsMetadata);
 
     dispatch(updateQuestion(nextQuestion));
-    dispatch(setMetadataDiff({ field_ref, changes }));
+    dispatch(setMetadataDiff({ name, changes }));
     dispatch(setResultsMetadata(nextResultsMetadata));
   };
 

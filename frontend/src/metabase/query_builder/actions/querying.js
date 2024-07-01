@@ -11,7 +11,6 @@ import { getSensibleDisplays } from "metabase/visualizations";
 import { syncVizSettingsWithSeries } from "metabase/visualizations/lib/sync-settings";
 import * as Lib from "metabase-lib";
 import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
-import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 
 import {
   getCard,
@@ -243,11 +242,12 @@ function preserveModelMetadata(queryResults, originalModel) {
 }
 
 function mergeQueryMetadataWithModelMetadata(queryMetadata, modelMetadata) {
-  return queryMetadata.map((queryCol, index) => {
-    const modelCol = modelMetadata.find(modelCol => {
-      return isSameField(modelCol.field_ref, queryCol.field_ref);
-    });
+  const modelMetadataByName = Object.fromEntries(
+    modelMetadata.map(column => [column.name, column]),
+  );
 
+  return queryMetadata.map(queryCol => {
+    const modelCol = modelMetadataByName[queryCol.name];
     if (modelCol) {
       return modelCol;
     }

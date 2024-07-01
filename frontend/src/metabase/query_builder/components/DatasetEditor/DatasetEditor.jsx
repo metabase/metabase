@@ -29,6 +29,7 @@ import {
   getDatasetEditorTab,
   getIsResultDirty,
   getResultsMetadata,
+  getVisualizationSettings,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -38,7 +39,6 @@ import {
   checkCanBeModel,
   getSortedModelFields,
 } from "metabase-lib/v1/metadata/utils/models";
-import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 
 import {
   DatasetEditBar,
@@ -58,6 +58,7 @@ import { EDITOR_TAB_INDEXES } from "./constants";
 
 const propTypes = {
   question: PropTypes.object.isRequired,
+  visualizationSettings: PropTypes.object,
   datasetEditorTab: PropTypes.oneOf(["query", "metadata"]).isRequired,
   metadata: PropTypes.object,
   resultsMetadata: PropTypes.shape({ columns: PropTypes.array }),
@@ -93,6 +94,7 @@ const TABLE_HEADER_HEIGHT = 45;
 function mapStateToProps(state) {
   return {
     metadata: getMetadata(state),
+    visualizationSettings: getVisualizationSettings(state),
     datasetEditorTab: getDatasetEditorTab(state),
     isMetadataDirty: isResultsMetadataDirty(state),
     resultsMetadata: getResultsMetadata(state),
@@ -195,6 +197,7 @@ const FIELDS = [
 function DatasetEditor(props) {
   const {
     question,
+    visualizationSettings,
     datasetEditorTab,
     result,
     resultsMetadata,
@@ -220,8 +223,12 @@ function DatasetEditor(props) {
   const isDirty = isModelQueryDirty || isMetadataDirty;
   const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
   const fields = useMemo(
-    () => getSortedModelFields(question, resultsMetadata?.columns),
-    [question, resultsMetadata],
+    () =>
+      getSortedModelFields(
+        resultsMetadata?.columns ?? [],
+        visualizationSettings,
+      ),
+    [resultsMetadata, visualizationSettings],
   );
 
   const { data: modelIndexes } = useModelIndexesListQuery({
@@ -248,34 +255,23 @@ function DatasetEditor(props) {
     isEditingQuery ? initialEditorHeight : 0,
   );
 
-  const [focusedFieldRef, setFocusedFieldRef] = useState();
+  const [focusedFieldName, setFocusedFieldName] = useState();
 
   const focusedFieldIndex = useMemo(() => {
-    if (!focusedFieldRef) {
+    if (!focusedFieldName) {
       return -1;
     }
-    return fields.findIndex(field =>
-      isSameField(focusedFieldRef, field.field_ref),
-    );
-  }, [focusedFieldRef, fields]);
+    return fields.findIndex(field => field.name === focusedFieldName);
+  }, [focusedFieldName, fields]);
 
   const previousFocusedFieldIndex = usePrevious(focusedFieldIndex);
 
-  const focusedField = useMemo(() => {
-    const field = fields[focusedFieldIndex];
-    if (field) {
-      const fieldMetadata = metadata?.field?.(field.id, field.table_id);
-      return {
-        ...fieldMetadata,
-        ...field,
-      };
-    }
-  }, [focusedFieldIndex, fields, metadata]);
+  const focusedField = fields[focusedFieldIndex];
 
   const focusFirstField = useCallback(() => {
     const [firstField] = fields;
-    setFocusedFieldRef(firstField?.field_ref);
-  }, [fields, setFocusedFieldRef]);
+    setFocusedFieldName(firstField?.name);
+  }, [fields, setFocusedFieldName]);
 
   useEffect(() => {
     // Focused field has to be set once the query is completed and the result is rendered
@@ -284,7 +280,7 @@ function DatasetEditor(props) {
     if (!focusedField && hasQueryResults && !result.error) {
       focusFirstField();
     }
-  }, [result, focusedFieldRef, fields, focusFirstField, focusedField]);
+  }, [result, focusedFieldName, fields, focusFirstField, focusedField]);
 
   const inheritMappedFieldProperties = useCallback(
     changes => {
@@ -297,17 +293,17 @@ function DatasetEditor(props) {
 
   const onFieldMetadataChange = useCallback(
     values => {
-      setFieldMetadata({ field_ref: focusedFieldRef, changes: values });
+      setFieldMetadata({ name: focusedFieldName, changes: values });
     },
-    [focusedFieldRef, setFieldMetadata],
+    [focusedFieldName, setFieldMetadata],
   );
 
   const onMappedDatabaseColumnChange = useCallback(
     value => {
       const changes = inheritMappedFieldProperties({ id: value });
-      setFieldMetadata({ field_ref: focusedFieldRef, changes });
+      setFieldMetadata({ name: focusedFieldName, changes });
     },
-    [focusedFieldRef, setFieldMetadata, inheritMappedFieldProperties],
+    [focusedFieldName, setFieldMetadata, inheritMappedFieldProperties],
   );
 
   const [isTabHintVisible, { turnOn: showTabHint, turnOff: hideTabHint }] =
@@ -382,9 +378,9 @@ function DatasetEditor(props) {
 
   const handleColumnSelect = useCallback(
     column => {
-      setFocusedFieldRef(column.field_ref);
+      setFocusedFieldName(column.name);
     },
-    [setFocusedFieldRef],
+    [setFocusedFieldName],
   );
 
   const handleTableElementClick = useCallback(
@@ -393,10 +389,10 @@ function DatasetEditor(props) {
         clickedObject?.column && Object.keys(clickedObject)?.length === 1;
 
       if (isColumnClick) {
-        setFocusedFieldRef(clickedObject.column.field_ref);
+        setFocusedFieldName(clickedObject.column.name);
       }
     },
-    [setFocusedFieldRef],
+    [setFocusedFieldName],
   );
 
   // This value together with focusedFieldIndex is used to

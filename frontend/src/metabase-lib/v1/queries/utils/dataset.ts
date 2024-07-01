@@ -21,7 +21,7 @@ export function getColumnSettingKey(
 }
 
 export function findColumnIndexesForColumnSettings(
-  columns: DatasetColumn[],
+  columns: Pick<DatasetColumn, "name" | "field_ref">[],
   columnSettings: TableColumnOrderSetting[],
 ) {
   const columnIndexByKey = new Map(
@@ -34,7 +34,7 @@ export function findColumnIndexesForColumnSettings(
 }
 
 export function findColumnSettingIndexesForColumns(
-  columns: DatasetColumn[],
+  columns: Pick<DatasetColumn, "name" | "field_ref">[],
   columnSettings: TableColumnOrderSetting[],
 ) {
   const columnSettingIndexByKey = new Map(
