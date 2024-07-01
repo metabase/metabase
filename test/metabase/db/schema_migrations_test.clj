@@ -2185,3 +2185,68 @@
                      #{i} ;; => I is the last archived subtree. It's a grandchild of G, but H isn't archived.
                      #{b h}} ;; => not archived at all, `archive_operation_id` is nil
                    (set (vals archive-operation-id->collection-ids))))))))))
+
+;; Test cases
+;; 1. active is 1st preference: active and not nfc_path IS NULL and later created_at is preferred over not active and nfc_path IS NULL and earlier created_at
+;; 2. nfc_path IS NULL is 2nd preference: both active, and nfc_path IS NULL is preferred over not nfc_path IS NULL
+;; 3. created_at is 3rd preference: both active, and nfc_path IS NULL, but earlier created_at is preferred over later created_at
+
+(deftest populate-is-defective-duplicate-test
+  (testing "Migration v49.2024-06-27T13:52:56"
+    (impl/test-migrations ["v49.2024-06-27T13:52:56"] [migrate!]
+      (let [db-id (t2/insert-returning-pk! (t2/table-name Database)
+                                           {:details   "{}"
+                                            :created_at    :%now
+                                            :updated_at    :%now
+                                            :engine    "h2"
+                                            :is_sample false
+                                            :name      "populate-is-defective-duplicate-test-db"})
+            table! (fn []
+                     (t2/insert-returning-instance! (t2/table-name Table)
+                                                    {:db_id      db-id
+                                                     :name       (mt/random-name)
+                                                     :created_at :%now
+                                                     :updated_at :%now
+                                                     :active     true}))
+            field! (fn [table values]
+                     (t2/insert-returning-instance! (t2/table-name Field)
+                                                    (merge {:table_id      (:id table)
+                                                            :base_type     "type/Text"
+                                                            :database_type "TEXT"
+                                                            :created_at    :%now
+                                                            :updated_at    :%now}
+                                                           values)))
+            earlier #inst "2023-01-01"
+            later   #inst "2024-01-01"
+            assert-defective-cases (fn [field->defective?]
+                                     (doseq [[field-before defective?] field->defective?]
+                                       (let [field-after (t2/select-one (t2/table-name Field) :id (:id field-before))]
+                                         (is (= defective? (:is_defective_duplicate field-after))))))
+            ; 1.
+            table-1          (table!)
+            active-cases     {; field                                                                               ; defective?
+                              (field! table-1 {:name "F1", :active true,  :nfc_path "NOT NULL", :created_at later})   false
+                              (field! table-1 {:name "F1", :active false, :nfc_path nil,        :created_at earlier}) true}
+            ; 2.
+            table-2          (table!)
+            nfc-path-cases   {(field! table-2 {:name "F2", :active true, :nfc_path nil,        :created_at later})   false
+                              (field! table-2 {:name "F2", :active true, :nfc_path "NOT NULL", :created_at earlier}) true}
+            ; 3.
+            table-3          (table!)
+            created-at-cases {(field! table-3 {:name "F3", :active true, :nfc_path nil, :created_at earlier}) false
+                              (field! table-3 {:name "F3", :active true, :nfc_path nil, :created_at later})   true}
+            ; 4.
+            table-4          (table!)
+            many-cases       {(field! table-4 {:name "F4", :active true,  :nfc_path nil,        :created_at earlier}) false
+                              (field! table-4 {:name "F4", :active false, :nfc_path nil,        :created_at later})   true
+                              (field! table-4 {:name "F4", :active false, :nfc_path "NOT NULL", :created_at earlier}) true
+                              (field! table-4 {:name "F4", :active false, :nfc_path "NOT NULL", :created_at later})   true}]
+        (migrate!)
+        (testing "1. Active is 1st preference"
+          (assert-defective-cases active-cases))
+        (testing "2. NULL nfc_path is 2nd preference"
+          (assert-defective-cases nfc-path-cases))
+        (testing "3. Earlier created_at is 3rd preference"
+          (assert-defective-cases created-at-cases))
+        (testing "4. More than two fields can be defective"
+          (assert-defective-cases many-cases))))))
