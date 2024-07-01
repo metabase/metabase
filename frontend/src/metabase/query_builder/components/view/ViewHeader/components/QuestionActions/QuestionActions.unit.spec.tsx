@@ -9,7 +9,7 @@ import {
 } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
-import type { Card, Database } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockNativeCard,
@@ -40,13 +40,13 @@ const ICON_CASES = ICON_CASES_CARDS.flatMap(card =>
 
 interface SetupOpts {
   card: Card;
-  databases?: Database[];
+  hasDataPermissions?: boolean;
 }
 
-function setup({ card, databases = [createSampleDatabase()] }: SetupOpts) {
+function setup({ card, hasDataPermissions = true }: SetupOpts) {
   const state = createMockState({
     entities: createMockEntitiesState({
-      databases,
+      databases: hasDataPermissions ? [createSampleDatabase()] : [],
       tables: [createMockTable({ id: `card__${card.id}` })],
       questions: [card],
     }),
@@ -123,7 +123,7 @@ describe("QuestionActions", () => {
           type: "model",
           can_write: true,
         }),
-        databases: [],
+        hasDataPermissions: false,
       });
 
       await userEvent.click(getIcon("ellipsis"));
@@ -203,7 +203,7 @@ describe("QuestionActions", () => {
           type: "question",
           can_write: true,
         }),
-        databases: [],
+        hasDataPermissions: false,
       });
 
       await userEvent.click(getIcon("ellipsis"));
@@ -218,7 +218,7 @@ describe("QuestionActions", () => {
           type: "model",
           can_write: true,
         }),
-        databases: [],
+        hasDataPermissions: false,
       });
 
       await userEvent.click(getIcon("ellipsis"));
@@ -236,7 +236,7 @@ describe("QuestionActions", () => {
         type: "model",
         can_write: false,
       }),
-      databases: [],
+      hasDataPermissions: false,
     });
 
     expect(getIcon("info")).toBeInTheDocument();
