@@ -1,5 +1,6 @@
 (ns metabase.models.collection.graph-test
   (:require
+   [clojure.math.combinatorics :as math.combo]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
@@ -435,3 +436,32 @@
     (with-n-temp-users-with-personal-collections 2000
       (is (>= (t2/count Collection :personal_owner_id [:not= nil]) 2000))
       (is (map? (graph/graph))))))
+
+(defn- quickset-coll-perm! [group-id perm-type collection-id]
+  (let [perm-setter (case perm-type
+                      :none perms/revoke-collection-permissions!
+                      :write perms/grant-collection-readwrite-permissions!
+                      :read perms/grant-collection-read-permissions!)]
+    (perms/revoke-collection-permissions! group-id collection-id)
+    (perm-setter group-id collection-id)))
+
+(deftest descendant-perms-test
+  (testing "Collections with descendants should have their permissions correctly reflected in the graph under :descendant-perms"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (t2.with-temp/with-temp [:model/Collection {coll-id-a :id} {:name "great grandparent coll"}
+                               :model/Collection {coll-id-b :id} {:name "grandparent coll" :location (collection/location-path coll-id-a)}
+                               :model/Collection {coll-id-c :id} {:name "parent coll" :location (collection/location-path coll-id-a coll-id-b) :authority_level :official}
+                               :model/Collection {coll-id-d :id} {:name "child coll" :location (collection/location-path coll-id-a coll-id-b coll-id-c)}]
+        (let [admin-group-id (:id (perms-group/admin))
+              group-id (:id (perms-group/all-users))
+              all-perm-combos (mapv vec (apply math.combo/cartesian-product (repeat 4 [:none :read :write])))]
+          (doseq [[a-perm b-perm c-perm d-perm] all-perm-combos]
+            (testing (format "\nSetting Permissions: A: %s -> B: %s -> C: %s -> D: %s" a-perm b-perm c-perm d-perm)
+              (doseq [[cid p] [[coll-id-a a-perm] [coll-id-b b-perm] [coll-id-c c-perm] [coll-id-d d-perm]]]
+                (quickset-coll-perm! group-id p cid))
+              (is (= {group-id {coll-id-a (#'graph/sort-child-perms
+                                           ;; children only, not a-perm:
+                                           [b-perm c-perm d-perm])}}
+                     (-> (graph/graph-for-coll-id coll-id-a)
+                         :descendant-perms
+                         (dissoc admin-group-id)))))))))))

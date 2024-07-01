@@ -1166,7 +1166,7 @@
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------
 
 ;;; Return the required set of permissions to `read-or-write` `collection-or-id`.
-(defmethod mi/perms-objects-set Collection
+(defmethod mi/perms-objects-set :model/Collection
   [collection-or-id read-or-write]
   (let [collection (if (integer? collection-or-id)
                      (t2/select-one [Collection :id :namespace] :id (collection-or-id))
