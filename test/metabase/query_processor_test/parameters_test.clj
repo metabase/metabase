@@ -577,13 +577,15 @@
                            (when (string? form)
                              (is (not (re-find #"SELECT" form))))
                            form)
-                         data)))))))
-            (testing (str "If we have permissions for Card 2's Collection (but not Card 1's) we should be able to"
-                          " run a native query referencing Card 2, even tho it references Card 1 (#15131)")
-              (perms/grant-collection-read-permissions! (perms-group/all-users) collection-2-id)
-              (mt/with-test-user :rasta
-                (is (= [[1 "Red Medicine"]
-                        [2 "Stout Burgers & Beers"]]
-                       (mt/formatted-rows
-                        [int str]
-                        (qp/process-query query))))))))))))
+                         data)))))
+                (testing (str "If we have permissions for Card 2's Collection (but not Card 1's) we should be able to"
+                              " run a native query referencing Card 2, even tho it references Card 1 (#15131)")
+                  (perms/grant-collection-read-permissions! (perms-group/all-users) collection-2-id)
+                  ;; need to call [[mt/with-test-user]] again so [[metabase.api.common/*current-user-permissions-set*]]
+                  ;; gets rebound with the updated permissions. This will be fixed in #45001
+                  (mt/with-test-user :rasta
+                    (is (= [[1 "Red Medicine"]
+                            [2 "Stout Burgers & Beers"]]
+                           (mt/formatted-rows
+                            [int str]
+                            (qp/process-query query))))))))))))))
