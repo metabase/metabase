@@ -1537,12 +1537,7 @@ describe(
     });
 
     it("should be impossible to join with a table or question which is not in the same database (metabase#38989)", () => {
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
-        cy.findByText("Sample Database").click();
-        cy.findByText("Orders").click();
-      });
+      openOrdersTable({ mode: "notebook" });
 
       cy.button("Visualize").click();
       saveQuestion();
