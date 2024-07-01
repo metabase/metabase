@@ -8,6 +8,7 @@ import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/ty
 import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import type {
+  ClickObject,
   StackedTooltipModel,
   VisualizationProps,
 } from "metabase/visualizations/types";
@@ -72,13 +73,61 @@ function getHoverData(
   };
 }
 
+function handleClick(
+  event: EChartsSeriesMouseEvent,
+  dataProp: VisualizationProps["data"],
+  settings: VisualizationProps["settings"],
+  visualizationIsClickable: VisualizationProps["visualizationIsClickable"],
+  onVisualizationClick: VisualizationProps["onVisualizationClick"],
+  chartModel: PieChartModel,
+) {
+  if (!event.dataIndex) {
+    return;
+  }
+  const slice = chartModel.slices[dataIndexToHoveredIndex(event.dataIndex)];
+  const data =
+    slice.data.rowIndex != null
+      ? dataProp.rows[slice.data.rowIndex].map((value, index) => ({
+          value,
+          col: dataProp.cols[index],
+        }))
+      : undefined;
+
+  const clickObject: ClickObject = {
+    value: slice.data.value,
+    column: chartModel.colDescs.metricDesc.column,
+    data,
+    dimensions: [
+      {
+        value: slice.data.key,
+        column: chartModel.colDescs.dimensionDesc.column,
+      },
+    ],
+    settings,
+    event: event.event.event,
+  };
+
+  if (
+    visualizationIsClickable(clickObject) &&
+    slice.data.key !== OTHER_SLICE_KEY
+  ) {
+    onVisualizationClick(clickObject);
+  }
+}
+
 export function useChartEvents(
   props: VisualizationProps,
   chartRef: MutableRefObject<EChartsType | undefined>,
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
 ) {
-  const { onHoverChange } = props;
+  const {
+    onHoverChange,
+    data,
+    settings,
+    visualizationIsClickable,
+    onVisualizationClick,
+  } = props;
   const hoveredIndex = props.hovered?.index;
   const chart = chartRef?.current;
 
@@ -121,8 +170,30 @@ export function useChartEvents(
           onHoverChange?.(getHoverData(event, chartModel, formatters));
         },
       },
+      {
+        eventName: "click",
+        query: "series",
+        handler: (event: EChartsSeriesMouseEvent) => {
+          handleClick(
+            event,
+            data,
+            settings,
+            visualizationIsClickable,
+            onVisualizationClick,
+            chartModel,
+          );
+        },
+      },
     ],
-    [onHoverChange, chartModel, formatters],
+    [
+      onHoverChange,
+      data,
+      settings,
+      visualizationIsClickable,
+      onVisualizationClick,
+      chartModel,
+      formatters,
+    ],
   );
 
   return eventHandlers;
