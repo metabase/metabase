@@ -28,6 +28,8 @@ import {
   visitModel,
   visitQuestion,
   visualize,
+  openOrdersTable,
+  queryBuilderMain,
 } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 
@@ -390,6 +392,29 @@ describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
       entityPickerModalTab("Models").should("be.visible");
       entityPickerModalTab("Saved questions").should("not.exist");
     });
+  });
+});
+
+describe("issue 34350", { tags: "@external" }, () => {
+  beforeEach(() => {
+    restore("postgres-writable");
+    cy.signInAsNormalUser();
+  });
+
+  it("works after changing question's source table to a one from a different database (metabase#34350)", () => {
+    openOrdersTable({ mode: "notebook" });
+    openDataSelector();
+    entityPickerModal().within(() => {
+      cy.findByText("Writable Postgres12").click();
+      cy.findByText("Scoreboard Actions").click();
+    });
+
+    visualize();
+
+    queryBuilderMain()
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+    cy.findAllByTestId("cell-data").should("contain", "Amorous Aardvarks");
   });
 });
 
