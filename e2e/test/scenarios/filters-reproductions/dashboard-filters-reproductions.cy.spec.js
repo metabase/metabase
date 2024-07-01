@@ -1,5 +1,6 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -3441,7 +3442,7 @@ describe.skip("issue 35954", () => {
     cache_ttl: null,
     type: "question",
     dataset_query: {
-      database: 1,
+      database: SAMPLE_DB_ID,
       type: "native",
       native: {
         "template-tags": {
