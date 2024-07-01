@@ -2211,6 +2211,7 @@
             field! (fn [table values]
                      (t2/insert-returning-instance! (t2/table-name Field)
                                                     (merge {:table_id      (:id table)
+                                                            :parent_id     nil
                                                             :base_type     "type/Text"
                                                             :database_type "TEXT"
                                                             :created_at    :%now
@@ -2218,35 +2219,47 @@
                                                            values)))
             earlier #inst "2023-01-01"
             later   #inst "2024-01-01"
+            ; 1.
+            table-1 (table!)
+            cases-1 {; field                                                                                 ; is_defective_duplicate
+                     (field! table-1 {:name "F1", :active true,  :nfc_path "NOT NULL", :created_at later})   false
+                     (field! table-1 {:name "F1", :active false, :nfc_path nil,        :created_at earlier}) true}
+            ; 2.
+            table-2 (table!)
+            cases-2 {(field! table-2 {:name "F2", :active true,  :nfc_path nil,        :created_at later})   false
+                     (field! table-2 {:name "F2", :active true,  :nfc_path "NOT NULL", :created_at earlier}) true}
+            ; 3.
+            table-3 (table!)
+            cases-3 {(field! table-3 {:name "F3", :active true,  :nfc_path nil,        :created_at earlier}) false
+                     (field! table-3 {:name "F3", :active true,  :nfc_path nil,        :created_at later})   true}
+            ; 4.
+            table-4 (table!)
+            cases-4 {(field! table-4 {:name "F4", :active true,  :nfc_path nil,        :created_at earlier}) false
+                     (field! table-4 {:name "F4", :active false, :nfc_path nil,        :created_at later})   true
+                     (field! table-4 {:name "F4", :active false, :nfc_path "NOT NULL", :created_at earlier}) true
+                     (field! table-4 {:name "F4", :active false, :nfc_path "NOT NULL", :created_at later})   true}
+            ; 5.
+            table-5 (table!)
+            field-no-parent-1   (field! table-5 {:name "F5", :active true,  :parent_id nil})
+            field-no-parent-2   (field! table-5 {:name "F5", :active false, :parent_id nil})
+            field-with-parent-1 (field! table-5 {:name "F5", :active true,  :parent_id (:id field-no-parent-1)})
+            field-with-parent-2 (field! table-5 {:name "F5", :active true,  :parent_id (:id field-no-parent-2)})
+            cases-5 {field-no-parent-1 false
+                     field-no-parent-2 true
+                     field-with-parent-1 false
+                     field-with-parent-2 false}
             assert-defective-cases (fn [field->defective?]
                                      (doseq [[field-before defective?] field->defective?]
                                        (let [field-after (t2/select-one (t2/table-name Field) :id (:id field-before))]
-                                         (is (= defective? (:is_defective_duplicate field-after))))))
-            ; 1.
-            table-1          (table!)
-            active-cases     {; field                                                                               ; defective?
-                              (field! table-1 {:name "F1", :active true,  :nfc_path "NOT NULL", :created_at later})   false
-                              (field! table-1 {:name "F1", :active false, :nfc_path nil,        :created_at earlier}) true}
-            ; 2.
-            table-2          (table!)
-            nfc-path-cases   {(field! table-2 {:name "F2", :active true, :nfc_path nil,        :created_at later})   false
-                              (field! table-2 {:name "F2", :active true, :nfc_path "NOT NULL", :created_at earlier}) true}
-            ; 3.
-            table-3          (table!)
-            created-at-cases {(field! table-3 {:name "F3", :active true, :nfc_path nil, :created_at earlier}) false
-                              (field! table-3 {:name "F3", :active true, :nfc_path nil, :created_at later})   true}
-            ; 4.
-            table-4          (table!)
-            many-cases       {(field! table-4 {:name "F4", :active true,  :nfc_path nil,        :created_at earlier}) false
-                              (field! table-4 {:name "F4", :active false, :nfc_path nil,        :created_at later})   true
-                              (field! table-4 {:name "F4", :active false, :nfc_path "NOT NULL", :created_at earlier}) true
-                              (field! table-4 {:name "F4", :active false, :nfc_path "NOT NULL", :created_at later})   true}]
+                                         (is (= defective? (:is_defective_duplicate field-after))))))]
         (migrate!)
         (testing "1. Active is 1st preference"
-          (assert-defective-cases active-cases))
+          (assert-defective-cases cases-1))
         (testing "2. NULL nfc_path is 2nd preference"
-          (assert-defective-cases nfc-path-cases))
+          (assert-defective-cases cases-2))
         (testing "3. Earlier created_at is 3rd preference"
-          (assert-defective-cases created-at-cases))
+          (assert-defective-cases cases-3))
         (testing "4. More than two fields can be defective"
-          (assert-defective-cases many-cases))))))
+          (assert-defective-cases cases-4))
+        (testing "5. Fields with different parent_id's are not defective duplicates"
+          (assert-defective-cases cases-5))))))

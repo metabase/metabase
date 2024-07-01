@@ -6515,6 +6515,8 @@ databaseChangeLog:
       author: calherries
       comment: Populate metabase_field.is_defective_duplicate
       changes:
+        # No migration is needed for Postgres because the idx_uniq_field_table_id_parent_id_name
+        # and idx_uniq_field_table_id_parent_id_name_2col constraints mean defective duplicates cannot exist
         - sql:
             dbms: mysql,mariadb
             sql: >-
@@ -6563,7 +6565,7 @@ databaseChangeLog:
                   ) x
                   WHERE x.rn > 1
               )
-      rollback: # TODO
+      rollback: # No rollback since is_defective_duplicate does not exist before 49
 
   #
   # Expand unique constraints for (Field name + table_id + parent_id) to exclude fields where is_defective_column=TRUE
@@ -6629,7 +6631,7 @@ databaseChangeLog:
   #           dbms: mysql,mariadb
   #           sql: >-
   #             ALTER TABLE metabase_field ADD COLUMN unique_name_filter INTEGER GENERATED ALWAYS AS (
-  #                 IF(is_defective_duplicate = TRUE, NULL, IFNULL(parent_id, 0))
+  #                 IF(is_defective_duplicate = TRUE, NUL IFNULL(parent_id, 0))
   #             ) STORED;
   #     rollback: # TODO
 
