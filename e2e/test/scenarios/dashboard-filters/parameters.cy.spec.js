@@ -205,7 +205,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.location("search").should(
       "eq",
-      `?${endsWith.slug}=&${startsWith.slug}=G`,
+      `?${startsWith.slug}=G&${endsWith.slug}=`,
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65").should("not.exist");
@@ -223,7 +223,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.location("search").should(
       "eq",
-      `?${endsWith.slug}=zmo&${startsWith.slug}=G`,
+      `?${startsWith.slug}=G&${endsWith.slug}=zmo`,
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("52.72").should("not.exist");
@@ -488,7 +488,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.location("search").should(
       "eq",
-      "?category=Widget&title=Awesome+Concrete+Shoes&vendor=McClure-Lockman",
+      "?title=Awesome%20Concrete%20Shoes&category=Widget&vendor=McClure-Lockman",
     );
     cy.findAllByTestId("table-row").should("have.length", 1);
 
@@ -501,7 +501,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.location("search").should(
       "eq",
-      "?category=Widget&title=Awesome+Concrete+Shoes&vendor=McClure-Lockman",
+      "?title=Awesome%20Concrete%20Shoes&category=Widget&vendor=McClure-Lockman",
     );
     cy.findAllByTestId("table-row").should("have.length", 1);
   });

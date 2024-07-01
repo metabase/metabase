@@ -243,10 +243,7 @@ describe("issue 12720", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findAllByTestId("dashcard-container").contains(title).click();
 
-    const expectedSearchParams = new URLSearchParams({
-      filter: dashboardFilter.default,
-    }).toString();
-    cy.location("search").should("contain", expectedSearchParams);
+    cy.location("search").should("contain", dashboardFilter.default);
     filterWidget().contains("After January 1, 2026");
   }
   // After January 1st, 2026
@@ -558,7 +555,7 @@ describe("issues 15119 and 16112", () => {
     cy.button("Add filter").click();
 
     cy.findByTestId("dashcard-container").should("contain", "adam");
-    cy.location("search").should("eq", "?rating=&reviewer=adam");
+    cy.location("search").should("eq", "?reviewer=adam&rating=");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ratingFilter.name).click();
@@ -568,7 +565,7 @@ describe("issues 15119 and 16112", () => {
 
     cy.findByTestId("dashcard-container").should("contain", "adam");
     cy.findByTestId("dashcard-container").should("contain", "5");
-    cy.location("search").should("eq", "?rating=5&reviewer=adam");
+    cy.location("search").should("eq", "?reviewer=adam&rating=5");
   });
 });
 

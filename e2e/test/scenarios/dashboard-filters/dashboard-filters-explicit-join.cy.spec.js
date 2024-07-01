@@ -88,7 +88,7 @@ describe("scenarios > dashboard > filters", () => {
 
     cy.location("search").should(
       "eq",
-      "?text=Awesome+Concrete+Shoes&text=Awesome+Iron+Hat",
+      "?text=Awesome%20Concrete%20Shoes&text=Awesome%20Iron%20Hat",
     );
 
     filterWidget().contains("2 selections");

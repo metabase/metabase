@@ -253,7 +253,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       // Filter widget must be visible
       filterWidget().contains("Name");
       // Its default value must be in the URL
-      cy.location("search").should("contain", "name=Ferne+Rosenbaum");
+      cy.location("search").should("contain", "name=Ferne%20Rosenbaum");
       // And the default should be applied giving us only 1 result
       cy.findByTestId("scalar-value").invoke("text").should("eq", "1");
     });

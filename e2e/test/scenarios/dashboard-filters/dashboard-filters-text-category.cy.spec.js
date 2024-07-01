@@ -167,7 +167,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     saveDashboard();
     waitDashboardCardQuery();
 
-    cy.location("search").should("eq", "?id=&text=Organic");
+    cy.location("search").should("eq", "?text=Organic&id=");
     cy.findByTestId("dashcard").contains("39.58");
 
     // This part reproduces metabase#13960
@@ -175,19 +175,19 @@ describe("scenarios > dashboard > filters > text/category", () => {
     cy.get("fieldset .Icon-close").click();
     waitDashboardCardQuery();
 
-    cy.location("search").should("eq", "?id=&text=");
+    cy.location("search").should("eq", "?text=&id=");
 
     filterWidget().contains("ID").click();
     cy.findByPlaceholderText("Enter an ID").type("4{enter}").blur();
     cy.button("Add filter").click();
     waitDashboardCardQuery();
 
-    cy.location("search").should("eq", "?id=4&text=");
+    cy.location("search").should("eq", "?text=&id=4");
 
     cy.reload();
     waitDashboardCardQuery();
 
-    cy.location("search").should("eq", "?id=4&text=");
+    cy.location("search").should("eq", "?text=&id=4");
     filterWidget().contains("Text");
     filterWidget().contains("Arnold Adams");
   });
