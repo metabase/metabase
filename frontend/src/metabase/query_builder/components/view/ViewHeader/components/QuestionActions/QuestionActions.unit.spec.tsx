@@ -167,7 +167,7 @@ describe("QuestionActions", () => {
       ).toBeInTheDocument();
     });
 
-    it("should not allow turn into a model without write collection permissions", async () => {
+    it("should not allow to turn into a model without write collection permissions", async () => {
       setup({
         card: createMockCard({
           type: "question",
@@ -181,7 +181,7 @@ describe("QuestionActions", () => {
       expect(screen.queryByText("Turn int a model")).not.toBeInTheDocument();
     });
 
-    it("should not allow turn into a question without write collection permissions", async () => {
+    it("should not allow to turn into a question without write collection permissions", async () => {
       setup({
         card: createMockCard({
           type: "model",
