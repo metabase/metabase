@@ -1524,3 +1524,61 @@ describe("issue 44668", () => {
     });
   });
 });
+
+describe(
+  "issue 38989",
+  {
+    tags: ["@external"],
+  },
+  () => {
+    beforeEach(() => {
+      restore("postgres-writable");
+      cy.signInAsAdmin();
+    });
+
+    it("should be impossible to join with a table or question which is not in the same database (metabase#38989)", () => {
+      startNewQuestion();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Sample Database").click();
+        cy.findByText("Orders").click();
+      });
+
+      cy.button("Visualize").click();
+      cy.button("Save").click();
+      modal().button("Save").click();
+
+      cy.wait(300);
+      modal().button("Not now").click();
+
+      startNewQuestion();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Writable Postgres12").click();
+        cy.findByText("Scoreboard Actions").click();
+      });
+
+      join();
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Recents").click();
+        cy.findByText("Orders").click();
+      });
+
+      popover().findByText("ID").click();
+      popover().findByText("ID").click();
+
+      visualize();
+
+      cy.findByTestId("query-builder-main")
+        .findByText("Show error details")
+        .click();
+
+      cy.findByTestId("query-builder-main")
+        .findByText(
+          /either it does not exist, or it belongs to a different Database/,
+        )
+        .should("exist");
+    });
+  },
+);
