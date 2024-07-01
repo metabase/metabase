@@ -5,131 +5,64 @@ import type { GroupsPermissions } from "metabase-types/api";
 import { DataPermission, DataPermissionValue } from "../../types";
 
 import {
-  getModifiedPermissionsGraphParts,
+  getModifiedGroupsPermissionsGraphParts,
   mergeGroupsPermissionsUpdates,
 } from "./partial-updates";
 
-describe("getModifiedPermissionsGraphParts", () => {
-  const simpleUpdate = getModifiedPermissionsGraphParts(
-    ["1", "2"],
-    {
-      "1": {
-        "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
-      },
-      "2": { "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.NO } },
-    },
-    {
-      "1": {
-        "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
-      },
-      "2": {
-        "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
-      },
-    },
-    { modifiedGroupIds: [], permissions: {} },
-    2,
-  );
-
-  it("should include groups that have had data permission updated", async () => {
-    expect(simpleUpdate).toEqual({
-      groups: {
+describe("getModifiedGroupsPermissionsGraphParts", () => {
+  it("should only include groups that have had data permission updated", async () => {
+    const simpleUpdate = getModifiedGroupsPermissionsGraphParts(
+      {
+        "1": {
+          "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
+        },
         "2": { "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.NO } },
       },
-      revision: 2,
-    });
-  });
-
-  it("should not include groups that have not been altered", async () => {
-    expect(simpleUpdate.groups).not.toHaveProperty("1");
-  });
-
-  // partially apply arguments for terser testing below
-  const advancedGetModifiedPermissionsGraphParts = _.partial(
-    getModifiedPermissionsGraphParts,
-    ["1", "2"],
-    {
-      "1": {
-        "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
-      },
-      "2": {
-        "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
-      },
-    },
-    {
-      "1": {
-        "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
-      },
-      "2": {
-        "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
-      },
-    },
-  );
-
-  it("should include groups that have had an advanced permission added", async () => {
-    expect(
-      advancedGetModifiedPermissionsGraphParts(
-        {
-          modifiedGroupIds: ["1"],
-          permissions: {
-            testAdvancedPermission: [{ group_id: 1 }],
-          },
-        },
-        2,
-      ),
-    ).toEqual({
-      groups: {
+      {
         "1": {
           "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
         },
-      },
-      revision: 2,
-      testAdvancedPermission: [{ group_id: 1 }],
-    });
-  });
-
-  it("should include groups that have had an advanced permission updated", async () => {
-    expect(
-      advancedGetModifiedPermissionsGraphParts(
-        {
-          modifiedGroupIds: ["1"],
-          permissions: {
-            testAdvancedPermission: [{ group_id: 1, some_attribute: 1 }],
-          },
-        },
-        2,
-      ),
-    ).toEqual({
-      groups: {
-        "1": {
+        "2": {
           "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
         },
       },
-      revision: 2,
-      testAdvancedPermission: [{ group_id: 1, some_attribute: 1 }],
+      ["1", "2"],
+      [],
+    );
+
+    // should not contain group that had not been modified
+    expect(simpleUpdate).not.toHaveProperty("1");
+    expect(simpleUpdate).toEqual({
+      "2": { "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.NO } },
     });
   });
 
-  it("should include groups that have had an advanced permission removed", async () => {
-    expect(
-      advancedGetModifiedPermissionsGraphParts(
-        {
-          modifiedGroupIds: ["1"],
-          permissions: {
-            testAdvancedPermission: [],
-          },
-        },
-        2,
-      ),
-    ).toEqual({
-      groups: {
+  it("should include groups that have been externally modified", async () => {
+    const externalUpdate = getModifiedGroupsPermissionsGraphParts(
+      {
         "1": {
-          "1": {
-            [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED,
-          },
+          "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
+        },
+        "2": {
+          "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
         },
       },
-      revision: 2,
-      testAdvancedPermission: [],
+      {
+        "1": {
+          "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
+        },
+        "2": {
+          "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
+        },
+      },
+      ["1", "2"],
+      ["1"],
+    );
+
+    expect(externalUpdate).toEqual({
+      "1": {
+        "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
+      },
     });
   });
 });

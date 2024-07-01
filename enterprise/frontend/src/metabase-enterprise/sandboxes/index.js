@@ -1,5 +1,6 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import {
@@ -24,11 +25,7 @@ import sandboxingReducer from "./actions";
 import { LoginAttributesWidget } from "./components/LoginAttributesWidget";
 import { getSandboxedTableWarningModal } from "./confirmations";
 import EditSandboxingModal from "./containers/EditSandboxingModal";
-import {
-  getGroupIdsOfModifiedPolices,
-  getDraftPolicies,
-  hasPolicyChanges,
-} from "./selectors";
+import { getDraftPolicies, hasPolicyChanges } from "./selectors";
 
 const OPTION_SEGMENTED = {
   label: t`Sandboxed`,
@@ -90,13 +87,11 @@ if (hasPremiumFeature("sandboxes")) {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION[OPTION_SEGMENTED.value] =
     getEditSegmentedAccessPostAction;
 
-  PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(
-    (state, data) => {
-      const sandboxes = getDraftPolicies(state);
-      const modifiedGroupIds = getGroupIdsOfModifiedPolices(state);
-      return [{ sandboxes }, modifiedGroupIds];
-    },
-  );
+  PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(state => {
+    const sandboxes = getDraftPolicies(state);
+    const modifiedGroupIds = _.uniq(sandboxes.map(sb => sb.group_id));
+    return [{ sandboxes }, modifiedGroupIds];
+  });
 
   PLUGIN_DATA_PERMISSIONS.hasChanges.push(hasPolicyChanges);
   PLUGIN_REDUCERS.sandboxingPlugin = sandboxingReducer;

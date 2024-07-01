@@ -32,7 +32,7 @@ import { trackPermissionChange } from "./analytics";
 import { DataPermissionType, DataPermission } from "./types";
 import { isDatabaseEntityId } from "./utils/data-entity-id";
 import {
-  getModifiedPermissionsGraphParts,
+  getModifiedGroupsPermissionsGraphParts,
   mergeGroupsPermissionsUpdates,
 } from "./utils/graph/partial-updates";
 
@@ -212,15 +212,18 @@ export const saveDataPermissions = createThunkAction(
         { modifiedGroupIds: [], permissions: {} },
       );
 
-    const partialPermissionsGraph = getModifiedPermissionsGraphParts(
-      allGroupIds,
+    const modifiedGroups = getModifiedGroupsPermissionsGraphParts(
       dataPermissions,
       originalDataPermissions,
-      advancedPermissions,
-      dataPermissionsRevision,
+      allGroupIds,
+      advancedPermissions.modifiedGroupIds,
     );
 
-    return await PermissionsApi.updateGraph(partialPermissionsGraph);
+    return await PermissionsApi.updateGraph({
+      groups: modifiedGroups,
+      revision: dataPermissionsRevision,
+      ...advancedPermissions.permissions,
+    });
   },
 );
 
