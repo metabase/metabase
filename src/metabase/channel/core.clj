@@ -13,6 +13,19 @@
 ;;                                      Channels methods                                           ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
+(defmulti can-connect?
+  "Check whether we can connect to a `channel` with `detail`.
+
+  Returns `true` if we can connect to the channel.
+  Otherwise returns false or an errors map in which the key is the details key and value is the error message.
+  E.g:
+    (can-connect? :slack {:token \"invalid\"})
+    ;; => {:errors {:token \"Invalid token\"}}"
+  {:added    "0.51.0"
+   :arglists '([channel-type details])}
+  (fn [channel-type _details]
+    channel-type))
+
 (defmulti render-notification
   "Given a notification content, return a sequence of channel-specific messages.
 
