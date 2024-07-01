@@ -19,7 +19,6 @@ import {
   getIsRunning,
   getOriginalQuestion,
   getOriginalQuestionWithParameterValues,
-  getQueryBuilderMode,
   getQueryResults,
   getQuestion,
   getTimeoutId,
@@ -208,53 +207,16 @@ export const queryCompleted = (question, queryResults) => {
 
     const card = question.card();
 
-    const isEditingModel = getQueryBuilderMode(getState()) === "dataset";
-    const isEditingSavedModel = isEditingModel && !!originalQuestion;
-    const modelMetadata = isEditingSavedModel
-      ? preserveModelMetadata(queryResults, originalQuestion)
-      : undefined;
-
     dispatch({
       type: QUERY_COMPLETED,
       payload: {
         card,
         queryResults,
-        modelMetadata,
       },
     });
     dispatch(loadCompleteUIControls());
   };
 };
-
-function preserveModelMetadata(queryResults, originalModel) {
-  const [{ data }] = queryResults;
-  const queryMetadata = data?.results_metadata?.columns || [];
-  const modelMetadata = originalModel.getResultMetadata();
-
-  const mergedMetadata = mergeQueryMetadataWithModelMetadata(
-    queryMetadata,
-    modelMetadata,
-  );
-
-  return {
-    columns: mergedMetadata,
-  };
-}
-
-function mergeQueryMetadataWithModelMetadata(queryMetadata, modelMetadata) {
-  const modelMetadataByName = Object.fromEntries(
-    modelMetadata.map(column => [column.name, column]),
-  );
-
-  return queryMetadata.map(queryCol => {
-    const modelCol = modelMetadataByName[queryCol.name];
-    if (modelCol) {
-      return modelCol;
-    }
-
-    return queryCol;
-  });
-}
 
 export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
 export const queryErrored = createThunkAction(
