@@ -1525,51 +1525,50 @@ describe("issue 44668", () => {
   });
 });
 
-describe(
-  "issue 38989",
-  {
-    tags: ["@external"],
-  },
-  () => {
-    beforeEach(() => {
-      restore("postgres-writable");
-      cy.signInAsAdmin();
-    });
+describe("issue 38989", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
 
-    it("should be impossible to join with a table or question which is not in the same database (metabase#38989)", () => {
-      openOrdersTable({ mode: "notebook" });
+  it("should be impossible to join with a table or question which is not in the same database (metabase#38989)", () => {
+    createQuestion(
+      {
+        query: {
+          "source-table": PEOPLE_ID,
+          fields: [
+            ["field", PEOPLE.ID, { "base-type": "type/Number" }],
+            ["field", PEOPLE.EMAIL, { "base-type": "type/Text" }],
+          ],
+          joins: [
+            {
+              fields: "all",
+              alias: "Orders",
+              // This is not a valid table ID in the Sample Database
+              "source-table": 123,
+              strategy: "left-join",
+              condition: [
+                "=",
+                ["field", PEOPLE.ID, null],
+                ["field", ORDERS.USER_ID, { "join-alias": "Orders" }],
+              ],
+            },
+          ],
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
 
-      cy.button("Visualize").click();
-      saveQuestion();
+    cy.findByTestId("query-builder-main")
+      .findByText("Show error details")
+      .click();
 
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
-        cy.findByText("Writable Postgres12").click();
-        cy.findByText("Scoreboard Actions").click();
-      });
-
-      join();
-
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Recents").click();
-        cy.findByText("Orders").click();
-      });
-
-      popover().findByText("ID").click();
-      popover().findByText("ID").click();
-
-      visualize();
-
-      cy.findByTestId("query-builder-main")
-        .findByText("Show error details")
-        .click();
-
-      cy.findByTestId("query-builder-main")
-        .findByText(
-          /either it does not exist, or it belongs to a different Database/,
-        )
-        .should("exist");
-    });
-  },
-);
+    cy.findByTestId("query-builder-main")
+      .findByText(
+        /either it does not exist, or it belongs to a different Database/,
+      )
+      .should("exist");
+  });
+});
