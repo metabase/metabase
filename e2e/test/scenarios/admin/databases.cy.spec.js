@@ -16,7 +16,10 @@ import {
   setTokenFeatures,
   modal,
 } from "e2e/support/helpers";
-import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
+import {
+  createMetric,
+  createSegment,
+} from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 import { visitDatabase } from "./helpers/e2e-database-helpers";
 
@@ -668,11 +671,11 @@ describe("scenarios > admin > databases > sample database", () => {
     });
 
     // metric
-    cy.createQuestion({
+    createMetric({
       name: "Revenue",
       description: "Sum of orders subtotal",
-      type: "metric",
-      query: {
+      table_id: ORDERS_ID,
+      definition: {
         "source-table": ORDERS_ID,
         aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
       },
