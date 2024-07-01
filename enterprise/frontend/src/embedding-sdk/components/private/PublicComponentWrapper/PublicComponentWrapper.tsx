@@ -14,7 +14,7 @@ export const PublicComponentWrapper = ({
 }) => {
   const loginStatus = useSdkSelector(getLoginStatus);
 
-  let content;
+  let content = children;
 
   if (loginStatus.status === "uninitialized") {
     content = <div>{t`Initializing…`}</div>;
@@ -32,9 +32,5 @@ export const PublicComponentWrapper = ({
     content = <SdkError message={loginStatus.error.message} />;
   }
 
-  return (
-    <PublicComponentStylesWrapper>
-      {content || children}
-    </PublicComponentStylesWrapper>
-  );
+  return <PublicComponentStylesWrapper>{content}</PublicComponentStylesWrapper>;
 };

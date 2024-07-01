@@ -4,23 +4,23 @@ import { useSdkSelector } from "embedding-sdk/store";
 import { getErrorComponent } from "embedding-sdk/store/selectors";
 import { Center } from "metabase/ui";
 
-export type SdkErrorProps = { message: string; className?: string };
+export type SdkErrorProps = { message: string };
 
-export const SdkError = ({ message, className }: SdkErrorProps) => {
+export const SdkError = ({ message }: SdkErrorProps) => {
   const CustomError = useSdkSelector(getErrorComponent);
 
-  if (CustomError) {
-    return <CustomError message={message} />;
-  }
+  const ErrorMessageComponent = CustomError || DefaultErrorMessage;
 
   return (
-    <Center className={className} h="100%" w="100%" mx="auto">
-      {CustomError || (
-        <div>
-          <div>{t`Error`}</div>
-          <div>{message}</div>
-        </div>
-      )}
+    <Center h="100%" w="100%" mx="auto">
+      <ErrorMessageComponent message={message} />
     </Center>
   );
 };
+
+const DefaultErrorMessage = ({ message }: { message: string }) => (
+  <div>
+    <div>{t`Error`}</div>
+    <div>{message}</div>
+  </div>
+);
