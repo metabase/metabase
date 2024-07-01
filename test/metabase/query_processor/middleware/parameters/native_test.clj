@@ -8,7 +8,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(deftest include-card-parameters-test
+(deftest ^:parallel include-card-parameters-test
   (testing "Expanding a Card reference in a native query should include its parameters (#12236)"
     (mt/dataset test-data
       (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query orders
