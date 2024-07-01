@@ -141,13 +141,16 @@
                                                             {:where [:and
                                                                      (when-not audit? [:not= :id audit/audit-db-id])]}))]
     ;; Don't add admin perms when we're fetching the perms for a specific non-admin group or set of groups
-    (if (not (or (= group-id admin-group-id)
-                 (contains? (set group-ids) admin-group-id)))
-      api-graph
+    (if (or (= group-id admin-group-id)
+            (contains? (set group-ids) admin-group-id)
+            ;; If we're not filtering on specific group IDs, always include the admin group
+            (and (nil? group-id)
+                 (nil? (seq group-ids))))
       (reduce (fn [api-graph db-id]
                 (assoc-in api-graph [admin-group-id db-id] admin-perms))
               api-graph
-              db-ids))))
+              db-ids)
+      api-graph)))
 
 (defn remove-empty-vals
   "Recursively walks a nested map from bottom-up, removing keys with nil or empty map values."
