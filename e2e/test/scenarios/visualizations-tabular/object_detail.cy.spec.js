@@ -318,7 +318,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       .findByTextEnsureVisible("Rustic Paper Wallet")
       .click();
 
-    cy.location("search").should("eq", "?objectId=Rustic+Paper+Wallet");
+    cy.location("search").should("eq", "?objectId=Rustic%20Paper%20Wallet");
     cy.findByTestId("object-detail").contains("Rustic Paper Wallet");
   });
 

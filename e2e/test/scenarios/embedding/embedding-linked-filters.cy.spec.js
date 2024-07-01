@@ -76,7 +76,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         cy.button("Add filter").click();
       });
 
-      cy.location("search").should("eq", "?city=&state=AK");
+      cy.location("search").should("eq", "?state=AK&city=");
 
       echartsContainer()
         .get("text")
@@ -108,7 +108,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           cy.button("Add filter").click();
         });
 
-      cy.location("search").should("eq", "?city=Anchorage&state=AK");
+      cy.location("search").should("eq", "?state=AK&city=Anchorage");
 
       chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
@@ -155,7 +155,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       cy.button("Apply").should("be.visible").click();
       cy.button("Apply").should("not.exist");
 
-      cy.location("search").should("eq", "?city=&state=AK");
+      cy.location("search").should("eq", "?state=AK&city=");
 
       echartsContainer()
         .get("text")
@@ -190,7 +190,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       cy.button("Apply").should("be.visible").click();
       cy.button("Apply").should("not.exist");
 
-      cy.location("search").should("eq", "?city=Anchorage&state=AK");
+      cy.location("search").should("eq", "?state=AK&city=Anchorage");
 
       chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
@@ -239,7 +239,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           cy.button("Add filter").click();
         });
 
-      cy.location("search").should("eq", "?city=Anchorage&state=AK");
+      cy.location("search").should("eq", "?state=AK&city=Anchorage");
 
       chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
@@ -287,7 +287,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           cy.button("Add filter").click();
         });
 
-      cy.location("search").should("eq", "?city=Anchorage&state=AK");
+      cy.location("search").should("eq", "?state=AK&city=Anchorage");
 
       chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
@@ -367,7 +367,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       });
 
       // ID filter already comes with the default value
-      cy.location("search").should("eq", "?category=&id_filter=1");
+      cy.location("search").should("eq", "?id_filter=1&category=");
 
       // But it should still be editable, and that's why we see two filter widgets
       filterWidget().should("have.length", 2).contains("Category").click();
@@ -380,7 +380,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         cy.button("Add filter").click();
       });
 
-      cy.location("search").should("eq", "?category=Gizmo&id_filter=1");
+      cy.location("search").should("eq", "?id_filter=1&category=Gizmo");
 
       cy.findByTestId("table-row")
         .should("have.length", 1)
@@ -410,7 +410,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           cy.button("Add filter").click();
         });
 
-        cy.location("search").should("eq", "?category=Doohickey&id_filter=4");
+        cy.location("search").should("eq", "?id_filter=4&category=Doohickey");
 
         cy.findByTestId("table-row")
           .should("have.length", 1)
@@ -419,7 +419,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         cy.log("Make sure we can set multiple values");
         cy.window().then(
           win =>
-            (win.location.search = "?category=Widget&id_filter=4&id_filter=29"),
+            (win.location.search = "?id_filter=4&id_filter=29&category=Widget"),
         );
 
         filterWidget()

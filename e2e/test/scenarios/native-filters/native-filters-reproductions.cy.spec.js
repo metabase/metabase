@@ -74,7 +74,7 @@ describe("issue 11480", () => {
     // Mark field as required and add a default text value.
     SQLFilter.toggleRequired();
     SQLFilter.setDefaultValue("some text");
-    cy.location("search").should("eq", "?x=some+text");
+    cy.location("search").should("eq", "?x=some%20text");
 
     // Run the query and see an error.
     SQLFilter.runQuery();
