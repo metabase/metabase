@@ -22,7 +22,7 @@ export const setEditingDashboard = (dashboard: Dashboard | null) => {
   return (dispatch: Dispatch, getState: GetState) => {
     if (dashboard === null) {
       const location = getLocation(getState());
-      const locationWithoutEditHash = { ...location, hash: "" };
+      const locationWithoutEditHash = `${location.pathname}${location.search}`;
 
       dispatch(push(locationWithoutEditHash));
     }

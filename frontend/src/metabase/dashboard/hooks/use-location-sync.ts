@@ -79,14 +79,11 @@ export const useLocationSync = <
             [key]: latestValue,
           };
 
-      const hashString = stringifyHashOptions(updatedOptions);
+      const hash = stringifyHashOptions(updatedOptions);
+      const hashString = hash ? `#${hash}` : "";
+      const nextLocation = `${location.pathname}${location.search}${hashString}`;
 
-      dispatch(
-        replace({
-          ...location,
-          hash: hashString ? "#" + hashString : "",
-        }),
-      );
+      dispatch(replace(nextLocation));
     }
   }, [
     dispatch,
