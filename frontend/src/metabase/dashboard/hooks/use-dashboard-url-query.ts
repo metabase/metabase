@@ -1,5 +1,6 @@
 import type { Location } from "history";
 import { useEffect, useMemo } from "react";
+import type { InjectedRouter } from "react-router";
 
 import { useSyncedQueryString } from "metabase/hooks/use-synced-query-string";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -13,7 +14,10 @@ import {
   getTabs,
 } from "../selectors";
 
-export function useDashboardUrlQuery(location: Location) {
+export function useDashboardUrlQuery(
+  router: InjectedRouter,
+  location: Location,
+) {
   const parameters = useSelector(getValuePopulatedParameters);
 
   const tabs = useSelector(getTabs);
@@ -43,20 +47,23 @@ export function useDashboardUrlQuery(location: Location) {
   useSyncedQueryString(queryParams, location);
 
   useEffect(() => {
-    if (!selectedTab || !tabs.length) {
-      return;
-    }
-
-    // Handles cases when the slug is changed, but redux state is not
-    // (example: navigating to a previous tab using browser's back button)
-    const slugTabId = parseTabId(location);
-    if (slugTabId && selectedTab.id !== slugTabId) {
-      const tab = tabs.find(tab => tab.id === slugTabId);
-      if (tab) {
-        dispatch(selectTab({ tabId: slugTabId }));
+    // @ts-expect-error missing type declaration
+    const unsubscribe = router.listen(nextLocation => {
+      const isSamePath = nextLocation.pathname === location.pathname;
+      if (!isSamePath) {
+        return;
       }
-    }
-  }, [selectedTab, tabs, location, dispatch]);
+
+      const currentTabId = parseTabId(location);
+      const nextTabId = parseTabId(nextLocation);
+
+      if (nextTabId && currentTabId !== nextTabId) {
+        dispatch(selectTab({ tabId: nextTabId }));
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router, location, selectedTab, dispatch]);
 }
 
 function parseTabId(location: Location) {
