@@ -61,7 +61,7 @@
   (let [token    (premium-features/premium-embedding-token)
         email    (t2/select-one-fn :email :model/User :id api/*current-user-id*)
         language (i18n/user-locale-string)]
-    (if (str/starts-with? token "airgap_")
+    (if (and token (str/starts-with? token "airgap_"))
       (billing-status)
       (fetch-billing-status* token email language))))
 
