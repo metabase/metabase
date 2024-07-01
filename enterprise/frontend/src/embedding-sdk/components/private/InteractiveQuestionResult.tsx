@@ -19,7 +19,7 @@ import {
   Notebook,
   NotebookButton,
   QuestionVisualization,
-} from "embedding-sdk/components/public/InteractiveQuestion";
+} from "embedding-sdk/components/public/InteractiveQuestion/components";
 import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Flex, Group, Stack } from "metabase/ui";

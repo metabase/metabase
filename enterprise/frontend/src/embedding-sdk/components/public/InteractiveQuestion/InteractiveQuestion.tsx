@@ -2,7 +2,6 @@ import { type PropsWithChildren, useMemo } from "react";
 
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { InteractiveQuestionProvider } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
 import type { CardId } from "metabase-types/api";
 
@@ -19,6 +18,7 @@ import {
   NotebookButton,
   QuestionVisualization,
 } from "./components";
+import { InteractiveQuestionProvider } from "./context";
 
 type InteractiveQuestionProps = PropsWithChildren<{
   questionId: CardId;
@@ -74,7 +74,6 @@ export const getQuestionParameters = (questionId: CardId) => {
   };
 };
 
-// Define the BackButton property on the InteractiveQuestion component
 const InteractiveQuestion = withPublicComponentWrapper(
   _InteractiveQuestion,
 ) as typeof _InteractiveQuestion & {
