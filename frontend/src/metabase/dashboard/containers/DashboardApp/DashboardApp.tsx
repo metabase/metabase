@@ -14,6 +14,7 @@ import CS from "metabase/css/core/index.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import {
   useDashboardUrlParams,
+  useDashboardUrlQuery,
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
 import favicon from "metabase/hoc/Favicon";
@@ -108,8 +109,15 @@ type ReduxProps = ConnectedProps<typeof connector>;
 type DashboardAppProps = OwnProps & ReduxProps & WithRouterProps;
 
 const DashboardApp = (props: DashboardAppProps) => {
-  const { dashboard, isRunning, isLoadingComplete, isEditing, isDirty, route } =
-    props;
+  const {
+    dashboard,
+    isRunning,
+    isLoadingComplete,
+    isEditing,
+    isDirty,
+    route,
+    router,
+  } = props;
 
   const {
     documentTitle: _documentTitle,
@@ -203,6 +211,8 @@ const DashboardApp = (props: DashboardAppProps) => {
     setRefreshElapsedHook,
     onRefreshPeriodChange,
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
+
+  useDashboardUrlQuery(router, location);
 
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>

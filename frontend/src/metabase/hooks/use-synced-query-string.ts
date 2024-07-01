@@ -1,4 +1,5 @@
 import type { Location } from "history";
+import qs from "querystring";
 import { useEffect } from "react";
 import { push, replace } from "react-router-redux";
 import { usePrevious } from "react-use";
@@ -38,11 +39,15 @@ export function useSyncedQueryString(
     if (!_.isEqual(nextQueryParams, currentQueryParams)) {
       const otherQueryParams = _.pick(currentQuery, ...QUERY_PARAMS_ALLOW_LIST);
       const nextQuery = { ...otherQueryParams, ...nextQueryParams };
+      const nextSearch =
+        Object.keys(nextQuery).length > 0 ? `?${qs.stringify(nextQuery)}` : "";
+      const nextLocation = location.pathname + nextSearch + location.hash;
+
       const isDashboardTabChange =
         object && previousObject?.tab && object.tab !== previousObject.tab;
 
       const action = isDashboardTabChange ? push : replace;
-      dispatch(action({ ...location, query: nextQuery }));
+      dispatch(action(nextLocation));
     }
   }, [object, previousObject, location, dispatch]);
 }

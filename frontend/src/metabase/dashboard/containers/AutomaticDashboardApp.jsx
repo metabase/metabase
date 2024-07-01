@@ -122,7 +122,10 @@ class AutomaticDashboardAppInner extends Component {
           "AutomaticDashboard--withSidebar": hasSidebar,
         })}
       >
-        <AutomaticDashboardQueryParamsSync location={this.props.location} />
+        <AutomaticDashboardQueryParamsSync
+          router={this.props.router}
+          location={this.props.location}
+        />
         <div className="" style={{ marginRight: hasSidebar ? 346 : undefined }}>
           {isHeaderVisible && (
             <div
@@ -304,7 +307,7 @@ const SuggestionsSidebar = ({ related }) => (
 
 // Workaround until AutomaticDashboardApp is refactored to be a function component
 // (or even better, merged/generalized with DashboardApp)
-const AutomaticDashboardQueryParamsSync = ({ location }) => {
-  useDashboardUrlQuery(location);
+const AutomaticDashboardQueryParamsSync = ({ router, location }) => {
+  useDashboardUrlQuery(router, location);
   return null;
 };

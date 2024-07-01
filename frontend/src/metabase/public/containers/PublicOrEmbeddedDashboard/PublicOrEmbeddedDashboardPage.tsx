@@ -13,7 +13,7 @@ import { PublicOrEmbeddedDashboard } from "./PublicOrEmbeddedDashboard";
 import { usePublicDashboardEndpoints } from "./WithPublicDashboardEndpoints";
 
 export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
-  const { location } = props;
+  const { location, router } = props;
   const parameterQueryParams = props.location.query;
 
   const { dashboardId } = usePublicDashboardEndpoints(props);
@@ -23,7 +23,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
     parameterQueryParams,
   });
 
-  useDashboardUrlQuery(location);
+  useDashboardUrlQuery(router, location);
 
   const {
     bordered,
