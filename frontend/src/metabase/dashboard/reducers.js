@@ -7,6 +7,7 @@ import _ from "underscore";
 import Actions from "metabase/entities/actions";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
+import Revisions from "metabase/entities/revisions";
 import { handleActions, combineReducers } from "metabase/lib/redux";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
 
@@ -328,6 +329,10 @@ const dashcardData = handleActions(
     },
     [Questions.actionTypes.UPDATE]: (state, { payload: { object: card } }) =>
       _.mapObject(state, dashboardData => dissoc(dashboardData, card.id)),
+    [Revisions.actionTypes.REVERT]: (state, { payload: revision }) =>
+      _.mapObject(state, dashboardData =>
+        dissoc(dashboardData, revision.model_id),
+      ),
   },
   INITIAL_DASHBOARD_STATE.dashcardData,
 );

@@ -3424,7 +3424,7 @@ describe("issue 35852", () => {
   }
 });
 
-describe.skip("issue 35954", () => {
+describe("issue 35954", () => {
   const questionDetails = {
     name: "35954",
     query: {
@@ -3566,7 +3566,7 @@ describe.skip("issue 35954", () => {
     // The filter widget will still have the number 3 applied as the filter,
     // but that shouldn't affect our results since the filter is disconnected.
     cy.findAllByTestId("cell-data")
-      .should("contain", "jesus")
+      .should("contain", "christ")
       .and("contain", "xavier")
       .and("not.contain", "kale");
 
@@ -3577,8 +3577,8 @@ describe.skip("issue 35954", () => {
       "Make sure the UI shows the filter is not connected to the GUI card",
     );
     editDashboard();
-    // I couldn't find a better way to select this :(
-    cy.findByTestId("fixed-width-filters").icon("gear");
+
+    cy.findByTestId("fixed-width-filters").icon("gear").click();
     getDashboardCard().should("contain", "Unknown Field");
   });
 });
