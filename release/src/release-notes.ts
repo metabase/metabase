@@ -39,6 +39,8 @@ SHA-256 checksum for the {{version}} JAR:
 
 **Already Fixed**
 
+Issues that we have recently confirmed to have been fixed at some point in the past.
+
 {{already-fixed}}
 
 **Under the Hood**

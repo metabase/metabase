@@ -57,7 +57,7 @@ describe("Release Notes", () => {
 
       expect(notes).toContain("**Enhancements**\n\n- Feature Issue (#2)");
       expect(notes).toContain("**Bug fixes**\n\n- Bug Issue (#1)");
-      expect(notes).toContain("**Already Fixed**\n\n- Issue Already Fixed (#3)");
+      expect(notes).toContain("**Already Fixed**\n\nIssues that we have recently confirmed to have been fixed at some point in the past.\n\n- Issue Already Fixed (#3)");
       expect(notes).toContain("**Under the Hood**\n\n- Issue That Users Don't Care About (#4)");
 
       expect(notes).toContain("metabase/metabase:v0.2.3");
@@ -66,7 +66,7 @@ describe("Release Notes", () => {
       );
     });
 
-    it.only("should generate enterprise release notes", () => {
+    it("should generate enterprise release notes", () => {
       const notes = generateReleaseNotes({
         version: "v1.2.3",
         checksum: "1234567890abcdef",
@@ -78,7 +78,7 @@ describe("Release Notes", () => {
 
       expect(notes).toContain("**Enhancements**\n\n- Feature Issue (#2)");
       expect(notes).toContain("**Bug fixes**\n\n- Bug Issue (#1)");
-      expect(notes).toContain("**Already Fixed**\n\n- Issue Already Fixed (#3)");
+      expect(notes).toContain("**Already Fixed**\n\nIssues that we have recently confirmed to have been fixed at some point in the past.\n\n- Issue Already Fixed (#3)");;
       expect(notes).toContain("**Under the Hood**\n\n- Issue That Users Don't Care About (#4)");
 
       expect(notes).toContain("metabase/metabase-enterprise:v1.2.3");
