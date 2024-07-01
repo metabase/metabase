@@ -88,6 +88,8 @@ sources: &sources
   - *frontend_sources
   - *backend_sources
 
+
+
 e2e_ci: &e2e_ci
   - ".github/actions/build-e2e-matrix/**"
   - ".github/actions/prepare-frontend/**"
@@ -97,6 +99,7 @@ e2e_ci: &e2e_ci
   - ".github/actions/prepare-cypress/**"
   - ".github/actions/run-snowplow-micro/**"
   - ".github/workflows/e2e-tests.yml"
+  - ".github/workflows/e2e-cross-version.yml"
 
 e2e_specs: &e2e_specs
   - "**/*.cy.*.js"
@@ -105,11 +108,15 @@ e2e_specs: &e2e_specs
   - "e2e/support/**"
   - "e2e/snapshot*/**"
 
+e2e_cross_version: &e2e_cross_version
+  - "e2e/test/scenarios/cross-version/**"
+
 e2e_all:
   - *default
   - *e2e_ci
   - *sources
   - *e2e_specs
+  - *e2e_cross_version
 
 snowplow:
   - ".github/workflows/snowplow.yml"
