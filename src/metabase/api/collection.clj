@@ -1258,7 +1258,7 @@
    skip_graph [:maybe ms/BooleanValue]
    namespace  [:maybe ms/NonBlankString]}
   (api/check-superuser)
-  (->> (dissoc body :namespace)
+  (->> (dissoc body :namespace :skip_graph)
        decode-graph
        (graph/update-graph! namespace))
    (when-not skip_graph
