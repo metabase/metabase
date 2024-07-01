@@ -417,8 +417,8 @@ describe("issue 28106", () => {
           .findByTestId("scroll-container")
           .as("schemasList");
 
-        // the list is virtualized and the scrollbar height changes during scrolling
-        // that's why we need to scroll twice and wait between the scrollings
+        // the list is virtualized and the scrollbar height changes during scrolling (metabase#44966)
+        // that's why we need to scroll twice and wait
         cy.get("@schemasList").scrollTo("bottom");
         cy.wait(100);
         cy.get("@schemasList").scrollTo("bottom");
