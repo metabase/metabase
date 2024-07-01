@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import type { Location } from "history";
-import { Link, Route, withRouter } from "react-router";
+import { type InjectedRouter, Link, Route, withRouter } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/core/components/TabButton";
@@ -38,7 +38,7 @@ function setup({
   const RoutedDashboardComponent = withRouter(
     ({ location }: { location: Location }) => {
       const { selectedTabId } = useDashboardTabs({ dashboardId: 1 });
-      useDashboardUrlQuery(location);
+      useDashboardUrlQuery(createMockRouter(), location);
       return (
         <>
           <DashboardTabs dashboardId={1} isEditing={isEditing} />
@@ -142,6 +142,22 @@ async function duplicateTab(num: number) {
 
 async function findSlug({ tabId, name }: { tabId: number; name: string }) {
   return screen.findByText(new RegExp(getSlug({ tabId, name })));
+}
+
+function createMockRouter(): InjectedRouter {
+  return {
+    push: jest.fn(),
+    replace: jest.fn(),
+    go: jest.fn(),
+    goBack: jest.fn(),
+    goForward: jest.fn(),
+    setRouteLeaveHook: jest.fn(),
+    createPath: jest.fn(),
+    createHref: jest.fn(),
+    isActive: jest.fn(),
+    // @ts-expect-error missing type definition
+    listen: jest.fn().mockReturnValue(jest.fn()),
+  };
 }
 
 describe("DashboardTabs", () => {
