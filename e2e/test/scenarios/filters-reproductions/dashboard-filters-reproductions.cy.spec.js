@@ -2589,6 +2589,7 @@ describe("issue 42829", () => {
     drillAndVerifyResults();
   });
 
+  // param_fields is null for public dashboards, should be fixed on the BE
   it.skip("should be able to get field values coming from a sql model-based question in a public dashboard (metabase#42829)", () => {
     cy.get("@dashboardId").then(dashboardId =>
       visitPublicDashboard(dashboardId),
@@ -2596,6 +2597,7 @@ describe("issue 42829", () => {
     filterAndVerifyResults();
   });
 
+  // param_fields is null for embedded dashboards, should be fixed on the BE
   it.skip("should be able to get field values coming from a sql model-based question in a embedded dashboard (metabase#42829)", () => {
     cy.get("@dashboardId").then(dashboardId =>
       visitEmbeddedPage({
