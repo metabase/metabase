@@ -38,6 +38,7 @@ import {
   visitPublicDashboard,
   setModelMetadata,
   tableHeaderClick,
+  questionInfoButton,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -3306,17 +3307,6 @@ describe("issue 34955", () => {
         .should("have.length", 2);
     });
   });
-
-  function connectFilterToColumn(column) {
-    getDashboardCard().within(() => {
-      cy.findByText("Column to filter on");
-      cy.findByText("Select…").click();
-    });
-
-    popover().within(() => {
-      cy.findByText(column).click();
-    });
-  }
 });
 
 describe("issue 35852", () => {
@@ -3432,3 +3422,173 @@ describe("issue 35852", () => {
     });
   }
 });
+
+describe.skip("issue 35954", () => {
+  const questionDetails = {
+    name: "35954",
+    query: {
+      "source-table": REVIEWS_ID,
+      limit: 2,
+    },
+  };
+
+  const dashboardDetails = {
+    name: "35954D",
+  };
+
+  const updatedQuestionDetails = {
+    name: "35954",
+    cache_ttl: null,
+    type: "question",
+    dataset_query: {
+      database: 1,
+      type: "native",
+      native: {
+        "template-tags": {
+          RATING: {
+            type: "dimension",
+            name: "RATING",
+            id: "017b9185-c7cc-41ec-ba17-b8b21af879cc",
+            "display-name": "SQL Filter",
+            default: null,
+            dimension: ["field", REVIEWS.RATING, null],
+            "widget-type": "number/=",
+            options: null,
+          },
+        },
+        collection: "REVIEWS",
+        query: "SELECT * FROM REVIEWS WHERE {{RATING}} LIMIT 2",
+      },
+    },
+    display: "table",
+    description: null,
+    visualization_settings: {
+      "table.pivot_column": "PRODUCT_ID",
+      "table.cell_column": "RATING",
+    },
+    parameters: [
+      {
+        id: "017b9185-c7cc-41ec-ba17-b8b21af879cc",
+        type: "number/=",
+        target: ["dimension", ["template-tag", "RATING"]],
+        name: "Dashboard Parameter",
+        slug: "RATING",
+      },
+    ],
+    parameter_mappings: [],
+    archived: false,
+    enable_embedding: false,
+    embedding_params: null,
+    collection_id: null,
+    collection_position: null,
+    collection_preview: true,
+    result_metadata: null,
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    cy.createQuestionAndDashboard({
+      questionDetails,
+      cardDetails: {
+        size_x: 16,
+        size_y: 8,
+      },
+      dashboardDetails,
+    }).then(({ body: { dashboard_id, card_id } }) => {
+      cy.wrap(card_id).as("questionId");
+      cy.wrap(dashboard_id).as("dashboardId");
+
+      cy.request("PUT", `/api/card/${card_id}`, updatedQuestionDetails);
+
+      visitDashboard(dashboard_id);
+    });
+  });
+
+  it("should not break the UI when the dashboard filter loses connection (metabase#35954)", () => {
+    editDashboard();
+    cy.log("Add the number filter");
+    setFilter("Number");
+    connectFilterToColumn("SQL Filter");
+    saveDashboard();
+
+    cy.log("Give it a value and make sure that the filer applies");
+    filterWidget().click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").type(3).blur();
+      cy.button("Add filter").click();
+    });
+    cy.findAllByTestId("cell-data")
+      .should("contain", "kale")
+      .and("contain", "pete")
+      .and("not.contain", "xavier");
+
+    cy.log("Drill down to the question from the dashboard");
+    cy.findByTestId("legend-caption-title").click();
+    cy.get("@questionId").then(id => {
+      cy.location("pathname").should(
+        "eq",
+        `/question/${id}-${questionDetails.name}`,
+      );
+      cy.location("search").should("eq", "?RATING=3");
+    });
+
+    cy.log("Revert the question to its original (GUI) version");
+    cy.intercept("POST", "/api/revision/revert").as("revertQuestion");
+    questionInfoButton().click();
+    cy.findByTestId("saved-question-history-list")
+      .find("li")
+      .filter(":contains(You created this)")
+      .findByTestId("question-revert-button")
+      .click();
+    cy.wait("@revertQuestion");
+    // Mid-test assertions to root out the flakiness
+    cy.findByTestId("saved-question-history-list").should(
+      "contain",
+      "You edited this",
+    );
+    cy.findByTestId("saved-question-history-list")
+      .findAllByTestId("question-revert-button")
+      .should("have.length", 2);
+
+    cy.findByLabelText(`Back to ${dashboardDetails.name}`).click();
+
+    cy.get("@dashboardId").then(id => {
+      cy.location("pathname").should(
+        "eq",
+        `/dashboard/${id}-${dashboardDetails.name.toLowerCase()}`,
+      );
+    });
+
+    cy.log("Make sure the disconnected filter doesn't break UI");
+    // The filter widget will still have the number 3 applied as the filter,
+    // but that shouldn't affect our results since the filter is disconnected.
+    cy.findAllByTestId("cell-data")
+      .should("contain", "jesus")
+      .and("contain", "xavier")
+      .and("not.contain", "kale");
+
+    // Reloading the dashboard breaks the filter in the original issue
+    cy.reload();
+
+    cy.log(
+      "Make sure the UI shows the filter is not connected to the GUI card",
+    );
+    editDashboard();
+    // I couldn't find a better way to select this :(
+    cy.findByTestId("fixed-width-filters").icon("gear");
+    getDashboardCard().should("contain", "Unknown Field");
+  });
+});
+
+function connectFilterToColumn(column) {
+  getDashboardCard().within(() => {
+    cy.findByText("Column to filter on");
+    cy.findByText("Select…").click();
+  });
+
+  popover().within(() => {
+    cy.findByText(column).click();
+  });
+}
