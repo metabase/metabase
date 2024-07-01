@@ -5,6 +5,7 @@ import { DIMENSIONS, TOTAL_TEXT } from "../constants";
 export const SUNBURST_SERIES_OPTION: RegisteredSeriesOption["sunburst"] = {
   type: "sunburst",
   sort: undefined,
+  nodeClick: false,
   label: {
     rotate: 0,
     overflow: "none",
