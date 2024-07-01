@@ -412,10 +412,8 @@ describe("issue 28106", () => {
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
         cy.findByText("Writable Postgres12").click();
-        cy.findByText("Schema B").should("exist");
-        const schemaListLevel = 1;
 
-        entityPickerModalLevel(schemaListLevel)
+        entityPickerModalLevel(1)
           .findByTestId("scroll-container")
           .as("schemasList");
 
@@ -426,7 +424,7 @@ describe("issue 28106", () => {
         cy.get("@schemasList").scrollTo("bottom");
 
         // assert scrolling worked and the last item is visible
-        entityPickerModalItem(schemaListLevel, "Public").should("be.visible");
+        entityPickerModalItem(1, "Public").should("be.visible");
 
         // simulate scrolling up using mouse wheel 3 times
         cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
@@ -434,6 +432,7 @@ describe("issue 28106", () => {
         cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
         cy.wait(100);
         cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
+        cy.wait(100);
 
         // assert first item does not exist - this means the list has not been scrolled to the top
         cy.findByText("Domestic").should("not.exist");
