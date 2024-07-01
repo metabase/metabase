@@ -2,7 +2,6 @@ import type { EChartsType } from "echarts/core";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import ChartWithLegend from "metabase/visualizations/components/ChartWithLegend";
-import { OTHER_SLICE_KEY } from "metabase/visualizations/echarts/pie/constants";
 import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
 import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
@@ -65,10 +64,9 @@ export function PieChart(props: VisualizationProps) {
   const eventHandlers = useChartEvents(props, chartRef, chartModel, formatters);
 
   const legendTitles = chartModel.slices.map(s => {
-    const label =
-      s.data.key === OTHER_SLICE_KEY
-        ? s.data.key
-        : formatters.formatDimension(s.data.key);
+    const label = s.data.isOther
+      ? s.data.key
+      : formatters.formatDimension(s.data.key);
 
     const percent =
       settings["pie.percent_visibility"] === "legend"

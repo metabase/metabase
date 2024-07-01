@@ -20,10 +20,9 @@ export function getPieChartLegend(
     items,
   } = calculateLegendRowsWithColumns({
     items: chartModel.slices.map(s => {
-      const label =
-        s.data.key === OTHER_SLICE_KEY
-          ? s.data.key
-          : formatters.formatDimension(s.data.key);
+      const label = s.data.isOther
+        ? OTHER_SLICE_KEY // need to use this instead of `s.data.key` to ensure type is string
+        : formatters.formatDimension(s.data.key);
 
       return {
         name: label,
