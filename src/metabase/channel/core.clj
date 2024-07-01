@@ -26,9 +26,9 @@
 (defmulti send!
   "Send a message to a channel."
   {:added    "0.51.0"
-   :arglists '([channel-type message])}
-  (fn [channel-type _message]
-    channel-type))
+   :arglists '([channel message])}
+  (fn [channel _message]
+    (:type channel)))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                             Utils                                               ;;
