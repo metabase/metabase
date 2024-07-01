@@ -11,12 +11,12 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { selectTab } from "../actions";
-import { getSlug } from "../components/DashboardTabs/use-sync-url-slug";
 import {
   getValuePopulatedParameters,
   getSelectedTab,
   getTabs,
 } from "../selectors";
+import { createTabSlug } from "../utils";
 
 export function useDashboardUrlQuery(
   router: InjectedRouter,
@@ -39,10 +39,7 @@ export function useDashboardUrlQuery(
 
     const hasRealSelectedTab = selectedTab && selectedTab.id > 0;
     if (hasRealSelectedTab && tabs.length > 1) {
-      queryParams.tab = getSlug({
-        tabId: selectedTab.id,
-        name: selectedTab.name,
-      });
+      queryParams.tab = createTabSlug(selectedTab);
     }
 
     return queryParams;

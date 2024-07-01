@@ -7,6 +7,7 @@ import { INPUT_WRAPPER_TEST_ID } from "metabase/core/components/TabButton";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
+import { createTabSlug } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
 import type { DashboardTab } from "metabase-types/api";
 import type { DashboardState, State } from "metabase-types/store";
@@ -14,7 +15,6 @@ import type { DashboardState, State } from "metabase-types/store";
 import { DashboardTabs } from "./DashboardTabs";
 import { TEST_DASHBOARD_STATE } from "./test-utils";
 import { useDashboardTabs } from "./use-dashboard-tabs";
-import { getSlug } from "./use-sync-url-slug";
 
 function setup({
   tabs,
@@ -141,7 +141,7 @@ async function duplicateTab(num: number) {
 }
 
 async function findSlug({ tabId, name }: { tabId: number; name: string }) {
-  return screen.findByText(new RegExp(getSlug({ tabId, name })));
+  return screen.findByText(new RegExp(createTabSlug({ id: tabId, name })));
 }
 
 function createMockRouter(): InjectedRouter {
@@ -207,7 +207,7 @@ describe("DashboardTabs", () => {
       it("should automatically select the tab in the slug if valid", async () => {
         setup({
           isEditing: false,
-          slug: getSlug({ tabId: 2, name: "Tab 2" }),
+          slug: createTabSlug({ id: 2, name: "Tab 2" }),
         });
 
         expect(await selectTab(2)).toHaveAttribute("aria-selected", "true");
@@ -220,7 +220,7 @@ describe("DashboardTabs", () => {
       it("should automatically select the first tab if slug is invalid", async () => {
         setup({
           isEditing: false,
-          slug: getSlug({ tabId: 99, name: "A bad slug" }),
+          slug: createTabSlug({ id: 99, name: "A bad slug" }),
         });
 
         expect(queryTab(1)).toHaveAttribute("aria-selected", "true");
