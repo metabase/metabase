@@ -15,7 +15,7 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { ParameterValue, RowValue } from "metabase-types/api";
 
-type FormattedParameterValueProps = {
+export type FormattedParameterValueProps = {
   parameter: UiParameter;
   value: string | number | number[];
   placeholder?: string;
