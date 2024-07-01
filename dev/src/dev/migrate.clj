@@ -107,14 +107,16 @@
       (throw (ex-info "Invalid command" {:command cmd
                                          :args    args})))))
 
+(defn- stmts-to-sql
+  [stmts sql-generator-factory database]
+  (str/join "\n" (for [stmt stmts
+                       sql (.generateSql ^SqlGeneratorFactory sql-generator-factory stmt database)]
+                   (.toString sql))))
+
 (defn- change->sql
   [change sql-generator-factory database]
-  {:forward (str/join "\n" (for [stmt (.generateStatements change database)
-                                 sql (.generateSql ^SqlGeneratorFactory sql-generator-factory stmt database)]
-                             (.toString sql)))
-   :rollback (str/join "\n" (for [stmt (.generateRollbackStatements change database)
-                                  sql (.generateSql ^SqlGeneratorFactory sql-generator-factory stmt database)]
-                              (.toString sql)))})
+  {:forward  (stmts-to-sql (.generateStatements change database) sql-generator-factory database)
+   :rollback (stmts-to-sql (.generateRollbackStatements change database) sql-generator-factory database)})
 
 (defn migration-sql-by-id
   "Get the sql statements for a specific migration ID.
