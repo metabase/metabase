@@ -958,13 +958,13 @@
   nil)
 
 (defmulti table-name-length-limit
-  "Return the maximum number of characters allowed in a table name, or `nil` if there is no limit."
+  "Return the maximum number of bytes allowed in a table name, or `nil` if there is no limit."
   {:changelog-test/ignore true, :added "0.47.0", :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmulti column-name-length-limit
-  "Return the maximum number of characters allowed in a column name, or `nil` if there is no limit."
+  "Return the maximum number of bytes allowed in a column name, or `nil` if there is no limit."
   {:changelog-test/ignore true, :added "0.49.19", :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
