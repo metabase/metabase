@@ -28,7 +28,6 @@ import {
   echartsContainer,
   visitQuestion,
   visitQuestionAdhoc,
-  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -987,7 +986,9 @@ describe("scenarios > admin > localization", () => {
     visitQuestion(ORDERS_QUESTION_ID);
 
     // create a date filter and set it to the 'On' view to see a specific date
-    tableHeaderClick("Created At");
+    cy.findByTestId("TableInteractive-root")
+      .findByTextEnsureVisible("Created At")
+      .click();
 
     popover().within(() => {
       cy.findByText("Filter by this column").click();
