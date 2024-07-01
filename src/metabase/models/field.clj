@@ -127,6 +127,10 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
+(t2/define-after-select :model/Field
+  [field]
+  (dissoc field :is_defective_duplicate))
+
 (t2/define-before-insert :model/Field
   [field]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
