@@ -112,10 +112,7 @@ jobs:
         with:
           script: | # js
             const FAILED_RUN_URL = "${{ github.event.schedule.html_url }}";
-            const FAILED_RUN_NAME = "${{ github.event.schedule.name }}";
-            const BREAKING_COMMIT = "${{ github.event.schedule.head_sha }}";
-            const AUTHOR = process.env.AUTHOR_NAME;
-            const BRANCH = process.env.BRANCH_NAME;
+            const COMMIT_SHA = "${{ github.sha }}";
 
             // notify slack of failure
             const { WebClient } = require('@slack/web-api');
@@ -130,7 +127,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": `:broken_heart:   Cross-version tests are failing on ${BRANCH}`,
+                    "text": `:broken_heart:   Cross-version tests are failing`,
                     "emoji": true,
                   }
                 },
@@ -142,7 +139,7 @@ jobs:
                     "type": "section",
                     "text": {
                       "type": "mrkdwn",
-                      "text": `Commit <https://github.com/metabase/metabase/commit/${BREAKING_COMMIT}|${BREAKING_COMMIT.slice(0,7)}> has failing <${FAILED_RUN_URL}|${FAILED_RUN_NAME}> tests on the <https://github.com/metabase/metabase/commits/${BRANCH}|\`${BRANCH}\`> branch.`
+                      "text": `See <${FAILED_RUN_URL}|failing run details>.`
                     }
                   },
                 ]
