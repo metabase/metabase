@@ -226,7 +226,7 @@ function DatasetEditor(props) {
     () =>
       getSortedModelFields(
         resultsMetadata?.columns ?? [],
-        visualizationSettings,
+        visualizationSettings ?? {},
       ),
     [resultsMetadata, visualizationSettings],
   );
