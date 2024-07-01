@@ -1208,6 +1208,13 @@
   (api/check-superuser)
   (graph/graph namespace))
 
+(api/defendpoint GET "/graph/collection/:collection-id"
+  "Fetch a graph of all Permissions for collection-id `collection-id`."
+  [collection-id]
+  {collection-id [:or ms/PositiveInt [:= :root]]}
+  (api/check-superuser)
+  (graph/graph-for-coll-id collection-id))
+
 (def CollectionID "an id for a [[Collection]]."
   [pos-int? {:title "Collection ID"}])
 
@@ -1246,13 +1253,16 @@
 (api/defendpoint PUT "/graph"
   "Do a batch update of Collections Permissions by passing in a modified graph.
   Will overwrite parts of the graph that are present in the request, and leave the rest unchanged."
-  [:as {{:keys [namespace], :as body} :body}]
+  [:as {{:keys [namespace], :as body} :body,
+        {skip_graph :skip-graph} :params}]
   {body      :map
-   namespace [:maybe ms/NonBlankString]}
+   skip_graph [:maybe ms/BooleanValue]
+   namespace  [:maybe ms/NonBlankString]}
   (api/check-superuser)
   (->> (dissoc body :namespace)
        decode-graph
        (graph/update-graph! namespace))
-  (graph/graph namespace))
+   (when-not skip_graph
+    (graph/graph namespace)))
 
 (api/define-routes)
