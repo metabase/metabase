@@ -366,6 +366,39 @@
      (mt/with-model-cleanup [:model/Table]
        (do-with-upload-table! ~create-table-expr (fn [~table-binding] ~@body)))))
 
+(deftest create-from-csv-display-name-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (let [test-names-match (fn [table expected]
+                             (is (= expected
+                                    (:display_name table)
+                                    (:name (table->card table)))))]
+      (testing "The table's display name and model's name is humanized from the CSV file name"
+        (let [csv-file-prefix "some_FILE-prefix"]
+          (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
+            (test-names-match table "Some File Prefix"))))
+      (testing "Unicode characters are preserved in the display name, even when the table name is slugified"
+        (let [csv-file-prefix "出色的"]
+          (with-redefs [upload/strictly-monotonic-now (constantly #t "2024-06-28T00:00:00")]
+            (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
+              (test-names-match table "出色的")
+              (is (= (ddl.i/format-name driver/*driver* "%e5%87%ba%e8%89%b2%e7%9a%84_20240628000000")
+                     (:name table)))))))
+      (testing "The names should be truncated to the right size"
+        ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
+        (let [max-bytes 50]
+          (with-redefs [; redef this because the UNIX filename limit is 255 bytes, so we can't test it in CI
+                        upload/max-bytes (constantly max-bytes)]
+            (doseq [c ["a" "出"]]
+              (let [long-csv-file-prefix (apply str (repeat (inc max-bytes) c))
+                    char-size            (count (.getBytes c "UTF-8"))]
+                (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix long-csv-file-prefix))]
+                  (testing "The card name should be truncated to max bytes with UTF-8 encoding"
+                    (is (= (str/capitalize (apply str (repeat (quot max-bytes char-size) c)))
+                           (:name (table->card table)))))
+                  (testing "The display name should be truncated to the max bytes with UTF-8 encoding"
+                    (is (= (str/capitalize (apply str (repeat (quot max-bytes char-size) c)))
+                           (:display_name table)))))))))))))
+
 (deftest create-from-csv-table-name-test
   (testing "Can upload two files with the same name"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -375,11 +408,15 @@
           (with-upload-table!
             [table-2 (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
             (mt/with-current-user (mt/user->id :crowberto)
+              (testing "both tables have the same display name"
+                (is (= "Some File Prefix"
+                       (:display_name table-1)
+                       (:display_name table-2))
               (testing "tables are different between the two uploads"
                 (is (some? (:id table-1)))
                 (is (some? (:id table-2)))
                 (is (not= (:id table-1)
-                          (:id table-2)))))))))))
+                          (:id table-2)))))))))))))
 
 (defn- query [db-id source-table]
   (qp/process-query {:database db-id
