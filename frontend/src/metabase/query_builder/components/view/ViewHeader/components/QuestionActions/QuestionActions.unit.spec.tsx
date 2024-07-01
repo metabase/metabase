@@ -170,7 +170,7 @@ describe("QuestionActions", () => {
     it("should not allow turn into a model without write collection permissions", async () => {
       setup({
         card: createMockCard({
-          type: "model",
+          type: "question",
           can_write: false,
         }),
       });
@@ -200,7 +200,7 @@ describe("QuestionActions", () => {
     it("should not allow to turn into a model without data permissions", async () => {
       setup({
         card: createMockCard({
-          type: "model",
+          type: "question",
           can_write: true,
         }),
         databases: [],
@@ -215,7 +215,7 @@ describe("QuestionActions", () => {
     it("should not allow to turn into a question without data permissions", async () => {
       setup({
         card: createMockCard({
-          type: "question",
+          type: "model",
           can_write: true,
         }),
         databases: [],
