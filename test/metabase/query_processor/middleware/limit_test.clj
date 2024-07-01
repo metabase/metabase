@@ -36,15 +36,27 @@
              (limit/add-default-limit query))))))
 
 (deftest ^:parallel csv-max-results-test
-         (testing "Apply `absolute-max-results` limit in the :csv-download case"
-                  (let [query {:type :query
-                               :query {}
-                               :info {:context :csv-download}}]
-                       (is (= {:type  :query
-                               :query {:limit (public-settings/row-limit-csv)
-                                       ::limit/original-limit nil}
-                               :info {:context :csv-download}}
-                              (limit/add-default-limit query))))))
+  (testing "Apply `absolute-max-results` limit in the :csv-download case"
+    (let [query {:type :query
+                 :query {}
+                 :info {:context :csv-download}}]
+      (is (= {:type  :query
+              :query {:limit (public-settings/row-limit-csv)
+                      ::limit/original-limit nil}
+              :info {:context :csv-download}}
+              (limit/add-default-limit query))))))
+
+(deftest csv-custom-limit-test
+  (testing "Apply custom csv row limit in the :csv-download case"
+    (mt/with-temp-env-var-value! [mb-row-limit-csv 1000]
+      (let [query {:type :query
+                   :query {}
+                   :info {:context :csv-download}}]
+        (is (= {:type  :query
+                :query {:limit 1000
+                ::limit/original-limit nil}
+                :info {:context :csv-download}}
+                (limit/add-default-limit query)))))))
 
 (deftest max-results-constraint-test
   (testing "Apply an arbitrary max-results on the query and ensure our results size is appropriately constrained"
