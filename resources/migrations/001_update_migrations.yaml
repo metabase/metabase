@@ -8000,6 +8000,54 @@ databaseChangeLog:
             tableName: login_history
             indexName: idx_user_id_device_id
 
+  - changeSet:
+      id: v51.2024-07-01T10:00:00
+      author: qnkhuat
+      comment: Create channel table
+      changes:
+        - createTable:
+            tableName: channel
+            remarks: Channel configurations
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  remarks: channel name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  remarks: Channel type
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  remarks: Channel details, used to store authentication information or channel-specific settings
+                  type: ${text.type}
+                  defaultValue: '{}'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: Timestamp when the channel was inserted
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: Timestamp when the channel was updated
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
