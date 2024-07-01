@@ -5,7 +5,6 @@ import {
   assertQueryBuilderRowCount,
   popover,
   restore,
-  modal,
   selectSavedQuestionsToJoin,
   startNewQuestion,
   visualize,
@@ -27,6 +26,7 @@ import {
   echartsContainer,
   join,
   newButton,
+  saveQuestion,
 } from "e2e/support/helpers";
 
 const {
@@ -1181,10 +1181,7 @@ describe.skip("issue 27521", () => {
     assertTableHeader(0, "ID");
     assertTableHeader(1, "Orders → ID");
 
-    cy.button("Save").click();
-    cy.findByLabelText("Name").clear().type("Q1");
-    modal().button("Save").click();
-    modal().findByText("Not now").click();
+    saveQuestion("Q1");
 
     assertTableHeader(0, "ID");
     assertTableHeader(1, "Orders → ID");
