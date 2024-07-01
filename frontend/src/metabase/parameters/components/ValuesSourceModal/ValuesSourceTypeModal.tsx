@@ -434,7 +434,7 @@ function ModelHint() {
       <ExternalLink href={href}>{text}</ExternalLink>
     </strong>
   ) : (
-    text
+    <strong>{text}</strong>
   );
 
   return (
