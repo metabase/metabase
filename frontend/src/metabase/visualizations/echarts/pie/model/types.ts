@@ -12,6 +12,8 @@ export interface PieSliceData {
   normalizedPercentage: number;
   color: string;
   isOther: boolean;
+  noHover: boolean;
+  includeInLegend: boolean;
   rowIndex?: number;
 }
 

@@ -63,20 +63,24 @@ export function PieChart(props: VisualizationProps) {
 
   const eventHandlers = useChartEvents(props, chartRef, chartModel, formatters);
 
-  const legendTitles = chartModel.slices.map(s => {
-    const label = s.data.isOther
-      ? s.data.key
-      : formatters.formatDimension(s.data.key);
+  const legendTitles = chartModel.slices
+    .filter(s => s.data.includeInLegend)
+    .map(s => {
+      const label = s.data.isOther
+        ? s.data.key
+        : formatters.formatDimension(s.data.key);
 
-    const percent =
-      settings["pie.percent_visibility"] === "legend"
-        ? formatters.formatPercent(s.data.normalizedPercentage, "legend")
-        : undefined;
+      const percent =
+        settings["pie.percent_visibility"] === "legend"
+          ? formatters.formatPercent(s.data.normalizedPercentage, "legend")
+          : undefined;
 
-    return [label, percent];
-  });
+      return [label, percent];
+    });
 
-  const legendColors = chartModel.slices.map(s => s.data.color);
+  const legendColors = chartModel.slices
+    .filter(s => s.data.includeInLegend)
+    .map(s => s.data.color);
 
   const showLegend = settings["pie.show_legend"];
 

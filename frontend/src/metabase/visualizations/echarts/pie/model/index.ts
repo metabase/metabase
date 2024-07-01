@@ -127,6 +127,8 @@ export function getPieChartModel(
         rowIndex: index,
         color,
         isOther: false,
+        noHover: false,
+        includeInLegend: true,
       };
     })
     .filter(slice => isNonPositive || slice.value >= 0)
@@ -148,6 +150,8 @@ export function getPieChartModel(
       normalizedPercentage: otherTotal / total,
       color: renderingContext.getColor("text-light"),
       isOther: true,
+      noHover: false,
+      includeInLegend: true,
     });
   }
 
@@ -158,6 +162,20 @@ export function getPieChartModel(
       slice.value = total * OTHER_SLICE_MIN_PERCENTAGE;
     }
   });
+
+  // If there are no non-zero slices, we'll display a single "other" slice
+  if (slices.length === 0) {
+    slices.push({
+      key: OTHER_SLICE_KEY,
+      value: 1,
+      displayValue: 0,
+      normalizedPercentage: 0,
+      color: renderingContext.getColor("text-light"),
+      isOther: true,
+      noHover: true,
+      includeInLegend: false,
+    });
+  }
 
   // We need d3 slices for the label formatter, to determine if we should the
   // percent label on the chart for a specific slice
