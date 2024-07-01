@@ -1,4 +1,6 @@
+import { isNotNull } from "metabase/lib/types";
 import type { TransformSeries } from "metabase/visualizations/components/TransformedVisualization";
+import type { RowValue } from "metabase-types/api";
 
 export const funnelToBarTransform: TransformSeries = (
   rawSeries,
@@ -18,7 +20,21 @@ export const funnelToBarTransform: TransformSeries = (
     col => col.name === settings["funnel.metric"],
   );
 
-  return rows.map(row => {
+  const rowByDimensionValue = rows.reduce((acc, row) => {
+    acc.set(row[dimensionIndex], row);
+    return acc;
+  }, new Map<RowValue, RowValue[]>());
+  const rowsOrder = settings["funnel.rows"];
+  const orderedRows =
+    Array.isArray(rowsOrder) && rowsOrder.length > 0
+      ? rowsOrder
+          .map(rowOrder =>
+            rowOrder.enabled ? rowByDimensionValue.get(rowOrder.key) : null,
+          )
+          .filter(isNotNull)
+      : rows;
+
+  return orderedRows.map(row => {
     const name = renderingContext.formatValue(row[dimensionIndex], {
       column: cols[dimensionIndex],
     });
