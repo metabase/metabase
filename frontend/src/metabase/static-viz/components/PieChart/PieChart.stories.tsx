@@ -258,3 +258,10 @@ PercentagesOnChartBooleanDimensionCrashes44085.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const AllZeroMetric44847 = Template.bind({});
+AllZeroMetric44847.args = {
+  rawSeries: data.allZeroMetric44847 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
