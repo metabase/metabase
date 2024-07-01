@@ -18,6 +18,7 @@ const { PEOPLE_ID, PEOPLE, REVIEWS, REVIEWS_ID, ORDERS, ORDERS_ID } =
 
 describe("issue 17768", () => {
   beforeEach(() => {
+    // FIXME this line is just a test to trigger diff
     restore();
     cy.signInAsAdmin();
 
