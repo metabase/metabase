@@ -85,8 +85,8 @@
 (defn do-with-captured-channel-send-messages!
   [thunk]
   (let [channel-messages (atom nil)]
-    (with-redefs [channel/send! (fn [channel-type message]
-                                  (swap! channel-messages update channel-type conj message))]
+    (with-redefs [channel/send! (fn [channel message]
+                                  (swap! channel-messages update (:type channel) conj message))]
       (thunk)
       @channel-messages)))
 
