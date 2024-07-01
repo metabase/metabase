@@ -14,14 +14,6 @@ summary: |
   `:snippet` namespace, ('Snippet folders' in the UI). These namespaces are independent hierarchies. To use these
   endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g., `?namespace=snippet`).
 
-## `DELETE /api/collection/:id`
-
-Delete a collection entirely.
-
-### PARAMS:
-
--  **`id`** value must be an integer greater than zero.
-
 ## `GET /api/collection/`
 
 Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -146,10 +138,6 @@ Fetch the root Collection's timelines.
 -  **`include`** nullable must equal events.
 
 -  **`archived`** nullable boolean.
-
-## `GET /api/collection/trash`
-
-Fetch the trash collection, as in `/api/collection/:trash-id`.
 
 ## `GET /api/collection/tree`
 

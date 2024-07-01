@@ -55,8 +55,6 @@ Search for items in Metabase.
 
 -  **`last_edited_at`** nullable value must be a non-blank string.
 
--  **`context`** nullable enum of search-bar, search-app, command-palette.
-
 -  **`model_ancestors`** nullable boolean.
 
 ## `GET /api/search/models`
