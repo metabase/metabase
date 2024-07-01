@@ -2,14 +2,31 @@ name: E2E Cross-version Tests
 
 on:
   schedule:
-    - cron: '0 9 * * 0'
-  pull_request: # just for testing
-    types: [opened, synchronize]
+    - cron: '0 9 * * 1-5'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
-  cross-version-testing:
+  files-changed:
+    name: Check which files changed
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 3
+    outputs:
+      e2e_cross_version: ${{ steps.changes.outputs.e2e_cross_version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  cross-version-testing:
+    needs: files-changed
+    if: ${{ needs.files-changed.outputs.e2e_cross_version == 'true' || github.event_name == 'schedule'}}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
     strategy:
       matrix:
         version: [
@@ -99,9 +116,10 @@ jobs:
         if-no-files-found: ignore
   notify-on-failure:
     needs: cross-version-testing
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    if: ${{ always() && contains(needs.*.result, 'failure') && github.ref_name == 'master' }}
     name: Cross-version test failure
     runs-on: ubuntu-22.04
+    timeout-minutes: 5
     steps:
       - uses: actions/setup-node@v4
         with:
