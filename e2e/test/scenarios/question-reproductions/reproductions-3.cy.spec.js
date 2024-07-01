@@ -1524,3 +1524,46 @@ describe("issue 44668", () => {
     });
   });
 });
+
+// TODO: unskip when metabase#44974 is fixed
+describe.skip(
+  "issue 44974",
+  {
+    tags: ["@external"],
+  },
+  () => {
+    beforeEach(() => {
+      restore("postgres-writable");
+      cy.signInAsAdmin();
+    });
+    it("should not be possible to join with a table or question which is not in the same database (metabase#44974)", () => {
+      startNewQuestion();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Sample Database").click();
+        cy.findByText("Orders").click();
+      });
+
+      cy.button("Visualize").click();
+      cy.button("Save").click();
+      modal().button("Save").click();
+
+      cy.wait(300);
+      modal().button("Not now").click();
+
+      startNewQuestion();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Writable Postgres12").click();
+        cy.findByText("Scoreboard Actions").click();
+      });
+
+      join();
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Recents").click();
+        cy.findByText("Orders").should("not.exist");
+      });
+    });
+  },
+);
