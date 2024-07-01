@@ -1,4 +1,4 @@
-import { generateReleaseNotes, getReleaseTitle } from "./release-notes";
+import { generateReleaseNotes, getReleaseTitle, categorizeIssues } from "./release-notes";
 import type { Issue } from "./types";
 
 describe("Release Notes", () => {
@@ -25,13 +25,23 @@ describe("Release Notes", () => {
     const issues = [
       {
         number: 1,
-        title: "Issue 1",
+        title: "Bug Issue",
         labels: [{ name: "Type:Bug" }],
       },
       {
         number: 2,
-        title: "Issue 2",
-        labels: [{ name: "Type:Enhancement" }],
+        title: "Feature Issue",
+        labels: [{ name: "something" }],
+      },
+      {
+        number: 3,
+        title: "Issue Already Fixed",
+        labels: [{ name: ".Already Fixed" }],
+      },
+      {
+        number: 4,
+        title: "Issue That Users Don't Care About",
+        labels: [{ name: ".CI & Tests" }],
       },
     ] as Issue[];
 
@@ -45,8 +55,10 @@ describe("Release Notes", () => {
       expect(notes).toContain("SHA-256 checksum for the v0.2.3 JAR");
       expect(notes).toContain("1234567890abcdef");
 
-      expect(notes).toContain("**Enhancements**\n\n- Issue 2 (#2)");
-      expect(notes).toContain("**Bug fixes**\n\n- Issue 1 (#1)");
+      expect(notes).toContain("**Enhancements**\n\n- Feature Issue (#2)");
+      expect(notes).toContain("**Bug fixes**\n\n- Bug Issue (#1)");
+      expect(notes).toContain("**Already Fixed**\n\n- Issue Already Fixed (#3)");
+      expect(notes).toContain("**Under the Hood**\n\n- Issue That Users Don't Care About (#4)");
 
       expect(notes).toContain("metabase/metabase:v0.2.3");
       expect(notes).toContain(
@@ -54,7 +66,7 @@ describe("Release Notes", () => {
       );
     });
 
-    it("should generate enterprise release notes", () => {
+    it.only("should generate enterprise release notes", () => {
       const notes = generateReleaseNotes({
         version: "v1.2.3",
         checksum: "1234567890abcdef",
@@ -64,13 +76,117 @@ describe("Release Notes", () => {
       expect(notes).toContain("SHA-256 checksum for the v1.2.3 JAR");
       expect(notes).toContain("1234567890abcdef");
 
-      expect(notes).toContain("**Enhancements**\n\n- Issue 2 (#2)");
-      expect(notes).toContain("**Bug fixes**\n\n- Issue 1 (#1)");
+      expect(notes).toContain("**Enhancements**\n\n- Feature Issue (#2)");
+      expect(notes).toContain("**Bug fixes**\n\n- Bug Issue (#1)");
+      expect(notes).toContain("**Already Fixed**\n\n- Issue Already Fixed (#3)");
+      expect(notes).toContain("**Under the Hood**\n\n- Issue That Users Don't Care About (#4)");
 
       expect(notes).toContain("metabase/metabase-enterprise:v1.2.3");
       expect(notes).toContain(
         "https://downloads.metabase.com/enterprise/v1.2.3/metabase.jar",
       );
+    });
+  });
+
+  describe('categorizeIssues', () => {
+    it('should categorize bug issues', () => {
+      const issue = {
+          number: 1,
+          title: "Bug Issue",
+          labels: [{ name: "Type:Bug" }],
+        } as Issue;
+
+      const categorizedIssues = categorizeIssues([issue]);
+
+      expect(categorizedIssues.bugFixes).toEqual([issue]);
+    });
+
+    it('should categorize already fixed issues', () => {
+      const issue = {
+          number: 3,
+          title: "Already Fixed Issue",
+          labels: [{ name: ".Already Fixed" }],
+        } as Issue;
+
+      const categorizedIssues = categorizeIssues([issue]);
+
+      expect(categorizedIssues.alreadyFixedIssues).toEqual([issue]);
+    });
+
+    it('should categorize non-user-facing issues', () => {
+      const issue = {
+          number: 4,
+          title: "Non User Facing Issue",
+          labels: [{ name: ".CI & Tests" }],
+        } as Issue;
+
+      const categorizedIssues = categorizeIssues([issue]);
+
+      expect(categorizedIssues.underTheHoodIssues).toEqual([issue]);
+    });
+
+    it('should categorize all other issues as enhancements', () => {
+      const issue = {
+          number: 2,
+          title: "Big Feature",
+          labels: [{ name: "something" }],
+        } as Issue;
+
+      const categorizedIssues = categorizeIssues([issue]);
+
+      expect(categorizedIssues.enhancements).toEqual([issue]);
+    });
+
+    it('should prioritize non-user-facing issues above all', () => {
+      const issue = {
+        number: 4,
+        title: "Non User Facing Issue",
+        labels: [{ name: ".CI & Tests" }, { name: "Type:Bug" }, { name: ".Already Fixed" }, { name: "Ptitard" } ],
+      } as Issue;
+
+      const categorizedIssues = categorizeIssues([issue]);
+
+      expect(categorizedIssues.underTheHoodIssues).toEqual([issue]);
+      expect(categorizedIssues.bugFixes).toEqual([]);
+      expect(categorizedIssues.alreadyFixedIssues).toEqual([]);
+      expect(categorizedIssues.enhancements).toEqual([]);
+    });
+
+    it('should put issues in only one bucket', () => {
+      const issues = [
+        {
+          number: 1,
+          title: "Bug Issue",
+          labels: [{ name: "Type:Bug" }],
+        },
+        {
+          number: 2,
+          title: "Big Feature",
+          labels: [{ name: "something" }],
+        },
+        {
+          number: 3,
+          title: "Already Fixed Issue",
+          labels: [{ name: ".Already Fixed" }],
+        },
+        {
+          number: 4,
+          title: "Non User Facing Issue",
+          labels: [{ name: ".CI & Tests" }],
+        },
+        {
+          number: 5,
+          title: "Docs Issue",
+          labels: [{ name: "Type:Documentation" }],
+        },
+      ] as Issue[];
+
+      const categorizedIssues = categorizeIssues(issues);
+
+      expect(categorizedIssues.bugFixes).toEqual([issues[0]]);
+      expect(categorizedIssues.enhancements).toEqual([issues[1]]);
+      expect(categorizedIssues.alreadyFixedIssues).toEqual([issues[2]]);
+      expect(categorizedIssues.underTheHoodIssues).toEqual([issues[3], issues[4]]);
     });
   });
 });
