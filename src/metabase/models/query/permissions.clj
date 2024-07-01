@@ -4,6 +4,7 @@
   as a Card. Saved Cards are subject to the permissions of the Collection to which they belong."
   (:require
    [clojure.set :as set]
+   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
@@ -45,17 +46,17 @@
 ;; Is calculating permissions for queries complicated? Some would say so. Refer to this handy flow chart to see how
 ;; things get calculated.
 ;;
-;;                                  perms-set
-;;                                      |
-;;                                      |
-;;                                      |
-;;               native query? <--------+---------> mbql query?
-;;                     ↓                                     ↓
-;;    {:perms/create-queries :query-builder-and-native}  legacy-mbql-required-perms
-;;                                                           |
-;;                                  no source card  <--------+------> has source card
-;;                                          ↓                            ↓
-;;                    {:perms/view-data {table-id :unrestricted}}  source-card-read-perms
+;;                         perms-set
+;;                             |
+;;                             |
+;;                             |
+;;      native query? <--------+---------> mbql query?
+;;            ↓                                     ↓
+;;    native-query-perms              legacy-mbql-required-perms
+;;                                                  |
+;;                         no source card  <--------+------> has source card
+;;                                 ↓                            ↓
+;;           {:perms/view-data {table-id :unrestricted}}  source-card-read-perms
 ;;
 
 (mu/defn query->source-table-ids :- [:set [:or [:= ::native] ::lib.schema.id/table]]
@@ -103,6 +104,30 @@
   (binding [api/*current-user-id* nil]
     ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query)))
 
+(defn- referenced-card-ids
+  "Return the union of all the `::referenced-card-ids` sets anywhere in the query."
+  [query]
+  (let [all-ids (atom #{})]
+    (walk/postwalk
+     (fn [form]
+       (when (map? form)
+         (when-let [ids (not-empty (::referenced-card-ids form))]
+           (swap! all-ids set/union ids)))
+       form)
+     query)
+    (not-empty @all-ids)))
+
+(defn- native-query-perms
+  [query]
+  (merge
+   {:perms/create-queries :query-builder-and-native
+    :perms/view-data      :unrestricted}
+   (when-let [card-ids (referenced-card-ids query)]
+     {:paths (into #{}
+                   (mapcat (fn [card-id]
+                             (mi/perms-objects-set (card-instance card-id) :read)))
+                   card-ids)})))
+
 (defn- legacy-mbql-required-perms
   [query {:keys [throw-exceptions? already-preprocessed?]}]
   (try
@@ -117,7 +142,7 @@
               table-ids           (filter integer? table-ids-or-native)
               native?             (.contains ^clojure.lang.PersistentVector table-ids-or-native ::native)]
           (merge
-           {:perms/view-data :unrestricted}
+           (native-query-perms query)
            (when (seq table-ids)
              {:perms/create-queries (zipmap table-ids (repeat :query-builder))})
            (when native?
@@ -151,8 +176,7 @@
     {}
     (let [query-type (lib/normalized-query-type query)]
       (case query-type
-        :native     {:perms/create-queries :query-builder-and-native
-                     :perms/view-data :unrestricted}
+        :native     (native-query-perms query)
         :query      (legacy-mbql-required-perms query perms-opts)
         :mbql/query (pmbql-required-perms query perms-opts)
         (throw (ex-info (tru "Invalid query type: {0}" query-type)

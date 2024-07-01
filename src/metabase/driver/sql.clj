@@ -1,6 +1,7 @@
 (ns metabase.driver.sql
   "Shared code for all drivers that use SQL under the hood."
   (:require
+   [clojure.set :as set]
    [metabase.driver :as driver]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.common.parameters.values :as params.values]
@@ -56,12 +57,15 @@
 
 (mu/defmethod driver/substitute-native-parameters :sql
   [_driver {:keys [query] :as inner-query} :- [:and [:map-of :keyword :any] [:map {:query ::lib.schema.common/non-blank-string}]]]
-  (let [[query params] (-> query
-                           params.parse/parse
-                           (sql.params.substitute/substitute (params.values/query->params-map inner-query)))]
-    (assoc inner-query
-           :query query
-           :params params)))
+  (let [params-map          (params.values/query->params-map inner-query)
+        referenced-card-ids (params.values/referenced-card-ids params-map)
+        [query params]      (-> query
+                                params.parse/parse
+                                (sql.params.substitute/substitute params-map))]
+    (-> inner-query
+        (assoc :query query
+               :params params)
+        (update :metabase.models.query.permissions/referenced-card-ids set/union referenced-card-ids))))
 
 ;; `:sql` drivers almost certainly don't need to override this method, and instead can implement
 ;; `unprepare/unprepare-value` for specific classes, or, in extreme cases, `unprepare/unprepare` itself.

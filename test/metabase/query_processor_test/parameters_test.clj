@@ -4,11 +4,14 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.native :as lib-native]
    [metabase.models :refer [Card]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
@@ -509,3 +512,77 @@
                              :target [:variable [:template-tag "n"]]
                              :slug "n"
                              :value "30"}]}))))))
+
+(deftest sql-permissions-but-no-card-permissions-template-tag-test
+  (testing "If we have full SQL perms for a DW but no Card perms we shouldn't be able to include it with a ref or template tag"
+    (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries :native-parameter-card-reference)
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {collection-1-id :id} {}
+                       :model/Collection {collection-2-id :id} {}
+
+                       :model/Card
+                       {card-1-id :id}
+                       {:collection_id collection-1-id
+                        :dataset_query (mt/mbql-query venues {:fields   [$id $name]
+                                                              :order-by [[:asc $id]]
+                                                              :limit    2})}
+
+                       :model/Card
+                       {card-2-id :id, :as card-2}
+                       {:collection_id collection-2-id
+                        :dataset_query (mt/native-query
+                                         {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
+                                          :template-tags {"card" {:name         "card"
+                                                                  :display-name "card"
+                                                                  :type         :card
+                                                                  :card-id      card-1-id}}})}]
+          (testing (format "\nCollection 1 ID = %d, Card 1 ID = %d; Collection 2 ID = %d, Card 2 ID = %d"
+                           collection-1-id card-1-id collection-2-id card-2-id)
+            (mt/with-test-user :rasta
+              (testing "Sanity check: shouldn't be able to run Card as MBQL query"
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"You do not have permissions to view Card \d+"
+                     (qp/process-query {:database (mt/id), :type :query, :query {:source-table (format "card__%d" card-2-id)}}))))
+              (testing "Sanity check: SHOULD be able to run a native query"
+                (testing (str "COMPILED = \n" (u/pprint-to-str (qp.compile/compile (:dataset_query card-2))))
+                  (is (= [[1 "Red Medicine"]
+                          [2 "Stout Burgers & Beers"]]
+                         (mt/formatted-rows
+                          [int str]
+                          (qp/process-query {:database (mt/id)
+                                             :type     :native
+                                             :native   (dissoc (qp.compile/compile (:dataset_query card-2))
+                                                               :metabase.models.query.permissions/referenced-card-ids)}))))))
+              (let [query (mt/native-query
+                            {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
+                             :template-tags {"card" {:name         "card"
+                                                     :display-name "card"
+                                                     :type         :card
+                                                     :card-id      card-2-id}}})]
+                (testing "SHOULD NOT be able to run native query with Card ID template tag"
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"\QYou do not have permissions to run this query.\E"
+                       (qp/process-query query))))
+                (testing "Exception should NOT include the compiled native query"
+                  (try
+                    (qp/process-query query)
+                    (is (not ::here?)
+                        "Should never get here, query should throw an Exception")
+                    (catch Throwable e
+                      (doseq [data (keep ex-data (u/full-exception-chain e))]
+                        (walk/postwalk
+                         (fn [form]
+                           (when (string? form)
+                             (is (not (re-find #"SELECT" form))))
+                           form)
+                         data)))))
+                (testing (str "If we have permissions for Card 2's Collection (but not Card 1's) we should be able to"
+                              " run a native query referencing Card 2, even tho it references Card 1 (#15131)")
+                  (perms/grant-collection-read-permissions! (perms-group/all-users) collection-2-id)
+                  (is (= [[1 "Red Medicine"]
+                          [2 "Stout Burgers & Beers"]]
+                         (mt/formatted-rows
+                          [int str]
+                          (qp/process-query query)))))))))))))

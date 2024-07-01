@@ -344,3 +344,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod session-schema :sql/test-extensions [_] nil)
+
+(defmethod tx/native-query-with-card-template-tag :sql
+  [_driver card-template-tag-name]
+  (format "SELECT * FROM {{%s}}" card-template-tag-name))

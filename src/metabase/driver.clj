@@ -515,6 +515,16 @@
     ;; subselects in SQL queries.
     :nested-queries
 
+    ;; Does this driver support native template tag parameters of type `:card`, e.g. in a native query like
+    ;;
+    ;;    SELECT * FROM {{card}}
+    ;;
+    ;; do we support substituting `{{card}}` with another compiled (nested) query?
+    ;;
+    ;; By default, this is true for drivers that support `:native-parameters` and `:nested-queries`, but drivers can opt
+    ;; out if they do not support Card ID template tag parameters.
+    :native-parameter-card-reference
+
     ;; Does the driver support persisting models
     :persist-models
     ;; Is persisting enabled?
@@ -663,6 +673,13 @@
                               :fingerprint                            true
                               :upload-with-auto-pk                    true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
+
+;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND
+;;; `:nested-queries`.
+(defmethod database-supports? [::driver :native-parameter-card-reference]
+  [driver _feature database]
+  (and (database-supports? driver :native-parameters database)
+       (database-supports? driver :nested-queries database)))
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for
