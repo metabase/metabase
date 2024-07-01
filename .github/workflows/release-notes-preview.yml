@@ -37,7 +37,7 @@ jobs:
           const { getChangelog } = require('${{ github.workspace }}/release/dist/index.cjs');
           const fs = require('fs');
 
-          const version = '${{ inputs.version }}' || 'v0.50.9';
+          const version = '${{ inputs.version }}';
 
           const notes = await getChangelog({
             version,
@@ -53,6 +53,3 @@ jobs:
         name: release-notes-preview-${{inputs.version}}.md
         path: |
           ${{ github.workspace }}/release-notes-preview-*.md
-
-
-
