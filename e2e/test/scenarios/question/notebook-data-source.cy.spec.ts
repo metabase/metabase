@@ -393,6 +393,58 @@ describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
   });
 });
 
+describe("issue 28106", () => {
+  beforeEach(() => {
+    const dialect = "postgres";
+
+    resetTestTable({ type: dialect, table: "many_schemas" });
+    restore(`${dialect}-writable`);
+    cy.signInAsAdmin();
+
+    resyncDatabase({ dbId: WRITABLE_DB_ID });
+  });
+
+  it(
+    "should not jump to the top of schema list when scrolling (metabase#28106)",
+    { tags: "@external" },
+    () => {
+      startNewQuestion();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Writable Postgres12").click();
+        cy.findByText("Schema B").should("exist");
+        const schemaListLevel = 1;
+
+        entityPickerModalLevel(schemaListLevel)
+          .findByTestId("scroll-container")
+          .as("schemasList");
+
+        // the list is virtualized and the scrollbar height changes during scrolling
+        // that's why we need to scroll twice and wait between the scrollings
+        cy.get("@schemasList").scrollTo("bottom");
+        cy.wait(100);
+        cy.get("@schemasList").scrollTo("bottom");
+
+        // assert scrolling worked and the last item is visible
+        entityPickerModalItem(schemaListLevel, "Public").should("be.visible");
+
+        // simulate scrolling up using mouse wheel 3 times
+        cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
+        cy.wait(100);
+        cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
+        cy.wait(100);
+        cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
+
+        // assert first item does not exist - this means the list has not been scrolled to the top
+        cy.findByText("Domestic").should("not.exist");
+        cy.get("@schemasList").should(([$element]) => {
+          expect($element.scrollTop).to.be.greaterThan(0);
+        });
+      });
+    },
+  );
+});
+
 function moveToCollection(collection: string) {
   cy.intercept("GET", "/api/collection/tree**").as("updateCollectionTree");
 
