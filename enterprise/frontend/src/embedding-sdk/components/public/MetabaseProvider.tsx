@@ -4,6 +4,7 @@ import { Provider } from "react-redux";
 
 import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
+import { DEFAULT_FONT } from "embedding-sdk/config";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import { store } from "embedding-sdk/store";
 import {
@@ -33,15 +34,13 @@ const MetabaseProviderInternal = ({
   pluginsConfig,
   theme,
 }: MetabaseProviderProps): JSX.Element => {
+  const { fontFamily = DEFAULT_FONT } = theme ?? {};
+
   useEffect(() => {
-    if (theme?.fontFamily) {
-      store.dispatch(
-        setOptions({
-          font: theme.fontFamily,
-        }),
-      );
+    if (fontFamily) {
+      store.dispatch(setOptions({ font: fontFamily }));
     }
-  }, [theme?.fontFamily]);
+  }, [fontFamily]);
 
   useEffect(() => {
     store.dispatch(setPlugins(pluginsConfig || null));
