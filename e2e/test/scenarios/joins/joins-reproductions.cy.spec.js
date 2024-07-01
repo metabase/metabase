@@ -24,6 +24,9 @@ import {
   visitDashboard,
   chartPathWithFillColor,
   echartsContainer,
+  join,
+  newButton,
+  saveQuestion,
 } from "e2e/support/helpers";
 
 const {
@@ -1134,4 +1137,99 @@ describe("issue 39448", () => {
       cy.findByLabelText("Change operator").should("have.text", "=");
     });
   });
+});
+
+// See TODO inside this test when unskipping
+describe.skip("issue 27521", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("correctly displays joined question's column names (metabase#27521)", () => {
+    cy.visit("/");
+
+    cy.log("Create Q1");
+    openOrdersTable({ mode: "notebook" });
+
+    getNotebookStep("data").button("Pick columns").click();
+    popover().findByText("Select none").click();
+
+    join();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+
+    popover().findByText("ID").click();
+    popover().findByText("ID").click();
+
+    getNotebookStep("join", { stage: 0, index: 0 })
+      .button("Pick columns")
+      .click();
+    popover().within(() => {
+      cy.findByText("Select none").click();
+      cy.findByText("ID").click();
+    });
+
+    visualize();
+    assertTableHeader(0, "ID");
+    assertTableHeader(1, "Orders → ID");
+
+    saveQuestion("Q1");
+
+    assertTableHeader(0, "ID");
+    assertTableHeader(1, "Orders → ID");
+
+    cy.log("Create second question (Products + Q1)");
+    newButton("Question").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("People").click();
+    });
+
+    getNotebookStep("data").button("Pick columns").click();
+    popover().findByText("Select none").click();
+
+    join();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText("Q1").click();
+    });
+
+    popover().findByText("ID").click();
+    popover().findByText("Orders → ID").should("be.visible").click();
+    getNotebookStep("join")
+      .findByLabelText("Right column")
+      .findByText("Orders → ID")
+      .should("be.visible")
+      .click();
+    popover().findByText("ID").should("be.visible").click();
+
+    visualize();
+
+    assertTableHeader(0, "ID");
+    assertTableHeader(1, "Q1 → ID");
+    assertTableHeader(2, "Q1 → Orders → ID");
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.findAllByText("ID").should("have.length", 1);
+      cy.findAllByText("Q1 → ID").should("have.length", 1);
+      cy.findAllByText("Q1 → Orders → ID").should("have.length", 1);
+
+      cy.findByRole("button", { name: "Add or remove columns" }).click();
+      cy.findAllByText("ID").should("have.length", 2);
+      cy.findAllByText("Orders → ID").should("have.length", 1);
+
+      // TODO: add assertions for what happens when toggling all the columns here
+      // See https://github.com/metabase/metabase/issues/27521#issuecomment-1948658757
+    });
+  });
+
+  function assertTableHeader(index, name) {
+    cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
+  }
 });

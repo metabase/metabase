@@ -39,7 +39,11 @@ import {
   queryBuilderMain,
   leftSidebar,
   assertQueryBuilderRowCount,
+  visitDashboard,
+  getDashboardCard,
+  testTooltipPairs,
   join,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -393,6 +397,44 @@ describe("issue 39102", () => {
       cy.findByText("Count").should("be.visible");
       cy.findByText("4").should("be.visible");
     });
+  });
+});
+
+describe("issue 13814", () => {
+  const questionDetails = {
+    display: "scalar",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["count", ["field", ORDERS.TAX, { "base-type": "type/Float" }]],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should support specifying a field in 'count' MBQL clause even if the UI doesn't support it (metabase#13814)", () => {
+    cy.log("verify that the API supports saving this MBQL");
+    createQuestion(questionDetails).then(({ body: card }) =>
+      visitQuestion(card.id),
+    );
+
+    cy.log("verify that the query is executed correctly");
+    cy.findByTestId("scalar-value").findByText("18,760").should("be.visible");
+
+    cy.log(
+      "verify that the clause is displayed correctly and won't crash if updated",
+    );
+    openNotebook();
+    getNotebookStep("summarize")
+      .findByText("Count of Tax")
+      .should("be.visible")
+      .click();
+    popover().findByText("Count of rows").click();
+    getNotebookStep("summarize").findByText("Count").should("be.visible");
   });
 });
 
@@ -985,6 +1027,45 @@ describe("issue 44415", () => {
   });
 });
 
+describe("issue 37374", () => {
+  const questionDetails = {
+    query: {
+      "source-table": PRODUCTS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+        ["field", PRODUCTS.VENDOR, { "base-type": "type/Text" }],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    createQuestion(questionDetails, { wrapId: true });
+    cy.signIn("nodata");
+  });
+
+  it("should allow to change the viz type to pivot without data access (metabase#37374)", () => {
+    visitQuestion("@questionId");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
+
+    cy.log("changing the viz type to pivot table and running the query works");
+    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("chart-type-sidebar")
+      .findByTestId("Pivot Table-button")
+      .click();
+    cy.wait("@cardPivotQuery");
+    cy.findByTestId("pivot-table").should("be.visible");
+
+    cy.log("changing the viz type back to table and running the query works");
+    cy.findByTestId("chart-type-sidebar").findByTestId("Table-button").click();
+    cy.wait("@cardQuery");
+    tableInteractive().should("be.visible");
+  });
+});
+
 describe("issue 44532", () => {
   beforeEach(() => {
     restore();
@@ -1086,6 +1167,56 @@ describe("issue 33441", () => {
       cy.findByText("Invalid expression").should("be.visible");
       cy.button("Done").should("be.disabled");
     });
+  });
+});
+
+describe("issue 31960", () => {
+  const questionDetails = {
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+    },
+    display: "line",
+    visualization_settings: {
+      "graph.metrics": ["count"],
+      "graph.dimensions": ["CREATED_AT"],
+    },
+  };
+
+  // the dot that corresponds to July 10–16, 2022
+  const dotIndex = 10;
+  const rowCount = 11;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should apply a date range filter for a query broken out by week (metabase#31960)", () => {
+    cy.createDashboardWithQuestions({ questions: [questionDetails] }).then(
+      ({ dashboard }) => {
+        visitDashboard(dashboard.id);
+      },
+    );
+
+    getDashboardCard().within(() => {
+      cartesianChartCircle().eq(dotIndex).realHover();
+    });
+    testTooltipPairs([
+      ["Created At:", "July 10–16, 2022"],
+      ["Count:", String(rowCount)],
+      ["Compared to previous week", "+10%"],
+    ]);
+    getDashboardCard().within(() => {
+      cartesianChartCircle().eq(dotIndex).click({ force: true });
+    });
+
+    popover().findByText("See these Orders").click();
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is Jul 10–16, 2022")
+      .should("be.visible");
+    assertQueryBuilderRowCount(rowCount);
   });
 });
 

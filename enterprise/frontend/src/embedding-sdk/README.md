@@ -255,6 +255,63 @@ const questionId = 1; // This is the question ID you want to embed
 
 ```
 
+#### _Customizing Interactive Questions_
+
+By default, the Metabase Embedding SDK provides a default layout for interactive questions that allows you to view your
+questions, apply filters and aggregations, and access functionality within the notebook editor. However, we also know
+that there's no such thing as a one-size-fits-all when it comes to style, usage, and all of the other variables that
+make your application unique. Therefore, we've added the ability to customize the layout of interactive questions.
+
+
+Using the `InteractiveQuestion` with its default layout looks like this:
+
+```jsx
+<InteractiveQuestion questionId={95} />
+```
+
+To customize the layout, use namespaced components within the `InteractiveQuestion`. For example:
+
+```jsx
+<InteractiveQuestion questionId={95}>
+  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ display: 'grid', placeItems: 'center' }}>
+      <InteractiveQuestion.Title />
+      <InteractiveQuestion.ResetButton />
+    </div>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', overflow: "hidden" }}>
+      <div style={{ width: '100%' }}>
+        <InteractiveQuestion.QuestionVisualization />
+      </div>
+      <div style={{ display: 'flex', flex: 1, overflow: "scroll" }}>
+        <InteractiveQuestion.Summarize />
+      </div>
+    </div>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <InteractiveQuestion.Filter />
+    </div>
+  </div>
+</InteractiveQuestion>
+```
+
+#### _Available Components_
+
+These components are available via the `InteractiveQuestion` namespace (i.e. `<InteractiveQuestion.ComponentName />`)
+
+| Component               | Info                                                                                                                         |
+|-------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| `BackButton`            | The back button, which provides `back` functionality for the InteractiveDashboard                                            |
+| `FilterBar`             | The row of badges that contains the current filters that are applied to the question                                         |
+| `Filter`                | The Filter pane containing all possible filters                                                                              |
+| `FilterButton`          | The button used in the default layout to open the Filter pane. You can replace this button with your own implementation.     |
+| `ResetButton`           | The button used to reset the question after the question has been modified with filters/aggregations/etc                     |
+| `Title`                 | The question's title                                                                                                         |
+| `Summarize`             | The Summarize pane containing all possible aggregations                                                                      |
+| `SummarizeButton`       | The button used in the default layout to open the Summarize pane. You can replace this button with your own implementation.  |
+| `Notebook`              | The Notebook editor that allows for more filter, aggregation, and custom steps                                               |
+| `NotebookButton`        | The button used in the default layout to open the Notebook editor. You can replace this button with your own implementation. |
+| `QuestionVisualization` | The chart visualization for the question                                                                                     |
+
+
 ### Embedding a static dashboard
 
 After the SDK is configured, you can embed your dashboard using the `StaticDashboard` component.

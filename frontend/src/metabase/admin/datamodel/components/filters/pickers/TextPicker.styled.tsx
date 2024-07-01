@@ -1,6 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import AutosizeTextarea from "react-textarea-autosize";
+
+import { Textarea } from "metabase/ui";
 
 export interface TextPickerInputProps {
   hasInvalidValues: boolean;
@@ -20,7 +21,7 @@ export interface TextPickerAreaProps {
   hasInvalidValues: boolean;
 }
 
-export const TextPickerArea = styled(AutosizeTextarea)<TextPickerAreaProps>`
+export const TextPickerArea = styled(Textarea)<TextPickerAreaProps>`
   border-color: var(--mb-color-filter);
 
   ${({ hasInvalidValues }) =>

@@ -196,6 +196,7 @@ const RowChartView = <TDatum,>({
           label={yLabel ?? ""}
           labelProps={{
             fill: theme.axis.label.color,
+            fontFamily: theme.dataLabels.family,
             fontSize: theme.axis.label.size,
             fontWeight: theme.axis.label.weight,
             textAnchor: "middle",
@@ -212,6 +213,7 @@ const RowChartView = <TDatum,>({
           tickStroke={theme.axis.color}
           tickLabelProps={() => ({
             fill: theme.axis.ticks.color,
+            fontFamily: theme.dataLabels.family,
             fontSize: theme.axis.ticks.size,
             fontWeight: theme.axis.ticks.weight,
             textAnchor: "end",
@@ -222,6 +224,7 @@ const RowChartView = <TDatum,>({
           label={xLabel ?? ""}
           labelProps={{
             fill: theme.axis.label.color,
+            fontFamily: theme.dataLabels.family,
             fontSize: theme.axis.label.size,
             fontWeight: theme.axis.label.weight,
             textAnchor: "middle",
@@ -237,6 +240,7 @@ const RowChartView = <TDatum,>({
           tickStroke={theme.axis.color}
           tickLabelProps={() => ({
             fill: theme.axis.ticks.color,
+            fontFamily: theme.dataLabels.family,
             fontSize: theme.axis.ticks.size,
             fontWeight: theme.axis.ticks.weight,
             textAnchor: "middle",
