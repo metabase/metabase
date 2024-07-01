@@ -1,8 +1,12 @@
 import type { Location } from "history";
+import qs from "querystring";
 import { useEffect, useMemo } from "react";
 import type { InjectedRouter } from "react-router";
+import { push, replace } from "react-router-redux";
+import { usePrevious } from "react-use";
+import _ from "underscore";
 
-import { useSyncedQueryString } from "metabase/hooks/use-synced-query-string";
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
@@ -44,7 +48,44 @@ export function useDashboardUrlQuery(
     return queryParams;
   }, [parameterValuesBySlug, tabs, selectedTab]);
 
-  useSyncedQueryString(queryParams, location);
+  const previousQueryParams = usePrevious(queryParams);
+
+  useEffect(() => {
+    /**
+     * We don't want to sync the query string to the URL because when previewing,
+     * this changes the URL of the iframe by appending the query string to the src.
+     * This causes the iframe to reload when changing the preview hash from appearance
+     * settings because now the base URL (including the query string) is different.
+     */
+    if (IS_EMBED_PREVIEW) {
+      return;
+    }
+
+    if (_.isEqual(previousQueryParams, queryParams)) {
+      return;
+    }
+
+    const currentQuery = location?.query ?? {};
+
+    const nextQueryParams = toLocationQuery(queryParams);
+    const currentQueryParams = _.omit(currentQuery, ...QUERY_PARAMS_ALLOW_LIST);
+
+    if (!_.isEqual(nextQueryParams, currentQueryParams)) {
+      const otherQueryParams = _.pick(currentQuery, ...QUERY_PARAMS_ALLOW_LIST);
+      const nextQuery = { ...otherQueryParams, ...nextQueryParams };
+      const nextSearch =
+        Object.keys(nextQuery).length > 0 ? `?${qs.stringify(nextQuery)}` : "";
+      const nextLocation = location.pathname + nextSearch + location.hash;
+
+      const isDashboardTabChange =
+        queryParams &&
+        previousQueryParams?.tab &&
+        queryParams.tab !== previousQueryParams.tab;
+
+      const action = isDashboardTabChange ? push : replace;
+      dispatch(action(nextLocation));
+    }
+  }, [queryParams, previousQueryParams, location, dispatch]);
 
   useEffect(() => {
     // @ts-expect-error missing type declaration
@@ -66,6 +107,8 @@ export function useDashboardUrlQuery(
   }, [router, location, selectedTab, dispatch]);
 }
 
+const QUERY_PARAMS_ALLOW_LIST = ["objectId"];
+
 function parseTabId(location: Location) {
   const slug = location.query?.tab;
   if (typeof slug === "string" && slug.length > 0) {
@@ -73,4 +116,8 @@ function parseTabId(location: Location) {
     return Number.isSafeInteger(id) ? id : null;
   }
   return null;
+}
+
+function toLocationQuery(object: Record<string, any>) {
+  return _.mapObject(object, value => (value == null ? "" : value));
 }
