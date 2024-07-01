@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import { useGetParameterValuesQuery } from "metabase/api";
 import ParameterFieldWidgetValue from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
@@ -30,7 +28,7 @@ function FormattedParameterValue({
 }: FormattedParameterValueProps) {
   const hasMultipleValues = Array.isArray(value) && value.length !== 1;
 
-  const { data, isLoading } = useGetParameterValuesQuery(
+  const { data, isLoading, isError } = useGetParameterValuesQuery(
     {
       parameter: normalizeParameter(parameter),
       field_ids: getNonVirtualFields(parameter).map(field => Number(field.id)),
@@ -44,8 +42,8 @@ function FormattedParameterValue({
     },
   );
 
-  if (isLoading) {
-    return <span>{t`Loading…`}</span>;
+  if (isLoading || isError) {
+    // fall back to just rendering the value.
   }
 
   if (parameterHasNoDisplayValue(value)) {
