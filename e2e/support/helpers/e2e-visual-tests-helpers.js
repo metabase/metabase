@@ -113,3 +113,9 @@ export function testStackedTooltipRows(rows = []) {
 export function pieSlices() {
   return echartsContainer().find("path[stroke-linejoin='bevel']");
 }
+
+export function pieSliceWithColor(color) {
+  return echartsContainer().find(
+    `path[stroke-linejoin='bevel'][fill='${color}']`,
+  );
+}
