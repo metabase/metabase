@@ -1,4 +1,6 @@
-import { useInteractiveQuestionData } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { useRef, useState } from "react";
+import { t } from "ttag";
+
 import {
   SummarizeContent,
   useSummarizeQuery,
@@ -7,29 +9,45 @@ import { Button, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-export const Summarize = ({ onClose }: { onClose: () => void }) => {
-  const { onQueryChange, question } = useInteractiveQuestionData();
+import { useInteractiveQuestionData } from "../hooks";
 
-  return (
-    question && (
-      <SummarizeInner
-        question={question}
-        onQueryChange={onQueryChange}
-        onClose={onClose}
-      />
-    )
-  );
+type SummarizeProps = {
+  onClose: () => void;
+};
+
+export const Summarize = ({ onClose = () => {} }: Partial<SummarizeProps>) => {
+  const { question } = useInteractiveQuestionData();
+
+  return question && <SummarizeInner question={question} onClose={onClose} />;
 };
 
 const SummarizeInner = ({
   question,
-  onQueryChange,
   onClose,
 }: {
   question: Question;
-  onQueryChange: (query: Lib.Query) => void;
-  onClose: () => void;
-}) => {
+} & SummarizeProps) => {
+  const { onQueryChange } = useInteractiveQuestionData();
+
+  // save initial question in case we close without making changes
+  const initialQuestion = useRef(question.query());
+
+  const [currentQuery, setCurrentQuery] = useState<Lib.Query>(question.query());
+
+  const onApplyFilter = () => {
+    if (query) {
+      onQueryChange(currentQuery);
+      onClose();
+    }
+  };
+
+  const onCloseFilter = () => {
+    if (initialQuestion.current) {
+      onQueryChange(initialQuestion.current);
+    }
+    onClose();
+  };
+
   const {
     aggregations,
     handleAddAggregations,
@@ -41,11 +59,11 @@ const SummarizeInner = ({
     handleUpdateBreakout,
     hasAggregations,
     query,
-  } = useSummarizeQuery(question.query(), onQueryChange);
+  } = useSummarizeQuery(currentQuery, setCurrentQuery);
 
   return (
     <Stack>
-      <Button onClick={onClose}>Close</Button>
+      <Button onClick={onCloseFilter}>{t`Close`}</Button>
       <SummarizeContent
         query={query}
         aggregations={aggregations}
@@ -58,6 +76,7 @@ const SummarizeInner = ({
         onRemoveBreakout={handleRemoveBreakout}
         onReplaceBreakouts={handleReplaceBreakouts}
       />
+      <Button onClick={onApplyFilter}>{t`Apply`}</Button>
     </Stack>
   );
 };
