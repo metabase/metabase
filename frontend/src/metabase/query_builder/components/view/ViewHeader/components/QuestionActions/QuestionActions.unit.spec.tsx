@@ -84,34 +84,150 @@ describe("QuestionActions", () => {
     },
   );
 
-  it("should allow to edit the model only with write permissions", async () => {
-    setup({
-      card: createMockCard({
-        type: "model",
-        can_write: true,
-      }),
+  describe("model query & metadata", () => {
+    it("should allow to edit the model with write data & collection permissions", async () => {
+      setup({
+        card: createMockCard({
+          type: "model",
+          can_write: true,
+        }),
+      });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await screen.findByRole("dialog");
+
+      expect(screen.getByText("Edit query definition")).toBeInTheDocument();
+      expect(screen.getByText("Edit metadata")).toBeInTheDocument();
     });
 
-    await userEvent.click(getIcon("ellipsis"));
-    await screen.findByRole("dialog");
+    it("should not allow to edit the model without write collection permissions", async () => {
+      setup({
+        card: createMockCard({
+          type: "model",
+          can_write: false,
+        }),
+      });
 
-    expect(screen.getByText("Edit query definition")).toBeInTheDocument();
-    expect(screen.getByText("Edit metadata")).toBeInTheDocument();
+      await userEvent.click(getIcon("ellipsis"));
+      await screen.findByRole("dialog");
+
+      expect(
+        screen.queryByText("Edit query definition"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
+    });
+
+    it("should not allow to edit the model without data permissions", async () => {
+      setup({
+        card: createMockCard({
+          type: "model",
+          can_write: true,
+        }),
+        databases: [],
+      });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await screen.findByRole("dialog");
+
+      expect(
+        screen.queryByText("Edit query definition"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
+    });
   });
 
-  it("should not allow to edit the model without write permissions", async () => {
-    setup({
-      card: createMockCard({
-        type: "model",
-        can_write: false,
-      }),
+  describe("turning into a model or question", () => {
+    it("should allow to turn into a model with write data & collection permissions", async () => {
+      setup({
+        card: createMockCard({
+          type: "question",
+          can_write: true,
+        }),
+      });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await screen.findByRole("dialog");
+
+      expect(screen.getByText("Turn into a model")).toBeInTheDocument();
     });
 
-    await userEvent.click(getIcon("ellipsis"));
-    await screen.findByRole("dialog");
+    it("should allow to turn into a question with write data & collection permissions", async () => {
+      setup({
+        card: createMockCard({
+          type: "model",
+          can_write: true,
+        }),
+      });
 
-    expect(screen.queryByText("Edit query definition")).not.toBeInTheDocument();
-    expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
+      await userEvent.click(getIcon("ellipsis"));
+      await screen.findByRole("dialog");
+
+      expect(
+        screen.getByText("Turn back to saved question"),
+      ).toBeInTheDocument();
+    });
+
+    it("should not allow turn into a model without write collection permissions", async () => {
+      setup({
+        card: createMockCard({
+          type: "model",
+          can_write: false,
+        }),
+      });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await screen.findByRole("dialog");
+
+      expect(screen.queryByText("Turn int a model")).not.toBeInTheDocument();
+    });
+
+    it("should not allow turn into a question without write collection permissions", async () => {
+      setup({
+        card: createMockCard({
+          type: "model",
+          can_write: false,
+        }),
+      });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await screen.findByRole("dialog");
+
+      expect(
+        screen.queryByText("Turn back to saved question"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not allow to turn into a model without data permissions", async () => {
+      setup({
+        card: createMockCard({
+          type: "model",
+          can_write: true,
+        }),
+        databases: [],
+      });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await screen.findByRole("dialog");
+
+      expect(screen.queryByText("Turn into a model")).not.toBeInTheDocument();
+    });
+
+    it("should not allow to turn into a question without data permissions", async () => {
+      setup({
+        card: createMockCard({
+          type: "question",
+          can_write: true,
+        }),
+        databases: [],
+      });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await screen.findByRole("dialog");
+
+      expect(
+        screen.queryByText("Turn back to saved question"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("should not render the menu when there are no menu items", () => {
