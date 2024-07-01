@@ -136,7 +136,6 @@ jobs:
             const { WebClient } = require('@slack/web-api');
             const slack = new WebClient('${{ secrets.SLACK_BOT_TOKEN }}');
 
-            /* FIXME test code
             await slack.chat.postMessage({
               channel: 'engineering-ci',
               text: 'Cross-version Tests Have Failed',
@@ -163,4 +162,3 @@ jobs:
                 ]
               }]
             });
-            */
