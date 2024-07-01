@@ -91,7 +91,7 @@ export function renderWithProviders(
   }
 
   // We need to call `useRouterHistory` to ensure the history has a `query` object,
-  // since some components and hooks like `use-sync-url-slug` rely on it to read/write query params.
+  // since some components and hooks rely on it to read/write query params.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const browserHistory = useRouterHistory(createMemoryHistory)({
     entries: [initialRoute],
