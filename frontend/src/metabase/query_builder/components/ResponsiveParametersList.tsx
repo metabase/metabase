@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import { useCallback, useState, useMemo } from "react";
-import { msgid, ngettext } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
@@ -57,27 +56,9 @@ export const ResponsiveParametersList: React.FC<
     toggleVisibility(setShowRequiredFilters);
   }, [toggleVisibility]);
 
-  const getButtonText = useCallback(
-    (
-      count: number,
-      show: boolean,
-      singularText: string,
-      pluralText: string,
-    ) => {
-      return show
-        ? ngettext(
-            msgid`Hide ${count} ${singularText}`,
-            `Hide ${count} ${pluralText}`,
-            count,
-          )
-        : ngettext(
-            msgid`Show ${count} ${singularText}`,
-            `Show ${count} ${pluralText}`,
-            count,
-          );
-    },
-    [],
-  );
+  const getButtonText = useCallback((count: number) => {
+    return count.toString();
+  }, []);
 
   const activeFilters = useMemo(() => {
     return parameters.filter(p => !!p.value).length;
@@ -96,36 +77,30 @@ export const ResponsiveParametersList: React.FC<
       isSmallScreen={isSmallScreen}
       isShowingMobile={showParameterList}
     >
-      <div style={{ display: "flex", alignItems: "center" }}>
+      <div
+        style={{ display: "flex", alignItems: "center", marginBottom: "10px" }}
+      >
         <FilterButton
           borderless
           primary
+          tooltip="filters"
           icon="filter"
           onClick={handleFilterButtonClick}
         >
-          {getButtonText(
-            activeFilters,
-            showParameterList,
-            "active filter",
-            "active filters",
-          )}
+          {getButtonText(activeFilters)}
         </FilterButton>
-        <Button
+        <FilterButton
           borderless
           primary
-          icon="filter"
+          tooltip="required filters"
+          icon={showRequiredFilters ? "lock" : "chevron-down"}
           onClick={handleToggleRequiredFilters}
         >
-          {getButtonText(
-            activeRequiredFilters,
-            showRequiredFilters,
-            "required filter",
-            "required filters",
-          )}
-        </Button>
+          {getButtonText(activeRequiredFilters)}
+        </FilterButton>
       </div>
       {showRequiredFilters && (
-        <div>
+        <div style={{ marginBottom: "20px" }}>
           <StyledParametersList
             question={question}
             parameters={requiredFilters}
