@@ -39,7 +39,6 @@ import {
   setModelMetadata,
   tableHeaderClick,
 } from "e2e/support/helpers";
-import { dashboard } from "metabase/lib/urls";
 import {
   createMockDashboardCard,
   createMockParameter,
@@ -2512,18 +2511,23 @@ describe("issue 42829", () => {
         ["distinct", ["field", "STATE", { "base-type": "type/Text" }]],
       ],
     },
+    display: "scalar",
   });
 
-  const parameterDetails = createMockParameter({
+  const parameterDetails = {
     name: "State",
     slug: "state",
     id: "5aefc725",
     type: "string/=",
     sectionId: "location",
-  });
+  };
 
   const dashboardDetails = {
     parameters: [parameterDetails],
+    enable_embedding: true,
+    embedding_params: {
+      [parameterDetails.slug]: "enabled",
+    },
   };
 
   const getParameterMapping = questionId => ({
@@ -2532,7 +2536,7 @@ describe("issue 42829", () => {
     target: ["dimension", ["field", "STATE", { "base-type": "type/Text" }]],
   });
 
-  function applyFilterAndVerifyResults() {
+  function filterAndVerifyResults() {
     filterWidget().click();
     popover().within(() => {
       cy.findByText("AK").click();
@@ -2542,11 +2546,19 @@ describe("issue 42829", () => {
     getDashboardCard().findByTestId("scalar-value").should("have.text", "2");
   }
 
+  function drillAndVerifyResults() {
+    getDashboardCard().findByText("SQL model-based question").click();
+    cy.findByTestId("qb-filters-panel").findByText("State is 2 selections");
+    cy.findByTestId("scalar-value").should("have.text", "2");
+  }
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
     createNativeQuestion(modelDetails).then(({ body: model }) => {
+      // populate result_metadata
+      cy.request("POST", `/api/card/${model.id}/query`);
       setModelMetadata(model.id, field => {
         if (field.display_name === "STATE") {
           return { ...field, ...stateFieldDetails };
@@ -2566,14 +2578,32 @@ describe("issue 42829", () => {
             },
           ],
         });
+        cy.wrap(dashboard.id).as("dashboardId");
       });
-      cy.wrap(dashboard.id).as("dashboardId");
     });
   });
 
   it("should be able to get field values coming from a sql model-based question in a regular dashboard (metabase#42829)", () => {
     visitDashboard("@dashboardId");
-    applyFilterAndVerifyResults();
+    filterAndVerifyResults();
+    drillAndVerifyResults();
+  });
+
+  it.skip("should be able to get field values coming from a sql model-based question in a public dashboard (metabase#42829)", () => {
+    cy.get("@dashboardId").then(dashboardId =>
+      visitPublicDashboard(dashboardId),
+    );
+    filterAndVerifyResults();
+  });
+
+  it.skip("should be able to get field values coming from a sql model-based question in a embedded dashboard (metabase#42829)", () => {
+    cy.get("@dashboardId").then(dashboardId =>
+      visitEmbeddedPage({
+        resource: { dashboard: dashboardId },
+        params: {},
+      }),
+    );
+    filterAndVerifyResults();
   });
 });
 
