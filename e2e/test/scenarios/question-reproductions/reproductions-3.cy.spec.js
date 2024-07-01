@@ -1545,11 +1545,7 @@ describe(
       });
 
       cy.button("Visualize").click();
-      cy.button("Save").click();
-      modal().button("Save").click();
-
-      cy.wait(300);
-      modal().button("Not now").click();
+      saveQuestion();
 
       startNewQuestion();
       entityPickerModal().within(() => {
