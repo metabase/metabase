@@ -149,6 +149,7 @@ describe("DateFilterEditor", () => {
           operator: "=",
           column,
           values: [new Date(2020, 1, 15)],
+          hasTime: false,
         }),
       );
       const { getNextFilterName } = setup({
