@@ -39,6 +39,7 @@ import {
   setModelMetadata,
   tableHeaderClick,
 } from "e2e/support/helpers";
+import { dashboard } from "metabase/lib/urls";
 import {
   createMockDashboardCard,
   createMockParameter,
@@ -2484,6 +2485,95 @@ describe("issue 43154", () => {
 
   it("should be able to see field values with a model-based question with aggregation (metabase#43154)", () => {
     verifyNestedFilter(questionWithAggregationDetails);
+  });
+});
+
+describe("issue 42829", () => {
+  const modelDetails = {
+    name: "SQL model",
+    type: "model",
+    native: {
+      query: "SELECT * FROM PEOPLE",
+    },
+  };
+
+  const stateFieldDetails = {
+    id: PEOPLE.STATE,
+    display_name: "State",
+    semantic_type: "type/State",
+  };
+
+  const getQuestionDetails = modelId => ({
+    name: "SQL model-based question",
+    type: "question",
+    query: {
+      "source-table": `card__${modelId}`,
+      aggregation: [
+        ["distinct", ["field", "STATE", { "base-type": "type/Text" }]],
+      ],
+    },
+  });
+
+  const parameterDetails = createMockParameter({
+    name: "State",
+    slug: "state",
+    id: "5aefc725",
+    type: "string/=",
+    sectionId: "location",
+  });
+
+  const dashboardDetails = {
+    parameters: [parameterDetails],
+  };
+
+  const getParameterMapping = questionId => ({
+    parameter_id: parameterDetails.id,
+    card_id: questionId,
+    target: ["dimension", ["field", "STATE", { "base-type": "type/Text" }]],
+  });
+
+  function applyFilterAndVerifyResults() {
+    filterWidget().click();
+    popover().within(() => {
+      cy.findByText("AK").click();
+      cy.findByText("AR").click();
+      cy.button("Add filter").click();
+    });
+    getDashboardCard().findByTestId("scalar-value").should("have.text", "2");
+  }
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createNativeQuestion(modelDetails).then(({ body: model }) => {
+      setModelMetadata(model.id, field => {
+        if (field.display_name === "STATE") {
+          return { ...field, ...stateFieldDetails };
+        }
+        return field;
+      });
+      cy.createDashboardWithQuestions({
+        dashboardDetails,
+        questions: [getQuestionDetails(model.id)],
+      }).then(({ dashboard, questions: [question] }) => {
+        updateDashboardCards({
+          dashboard_id: dashboard.id,
+          cards: [
+            {
+              card_id: question.id,
+              parameter_mappings: [getParameterMapping(question.id)],
+            },
+          ],
+        });
+      });
+      cy.wrap(dashboard.id).as("dashboardId");
+    });
+  });
+
+  it("should be able to get field values coming from a sql model-based question in a regular dashboard (metabase#42829)", () => {
+    visitDashboard("@dashboardId");
+    applyFilterAndVerifyResults();
   });
 });
 
