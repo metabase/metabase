@@ -109,3 +109,7 @@ export function testStackedTooltipRows(rows = []) {
     });
   });
 }
+
+export function pieSlices() {
+  return echartsContainer().find("path[stroke-linejoin='bevel']");
+}
