@@ -20,6 +20,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
@@ -1261,7 +1262,8 @@
   (->> (dissoc body :namespace :skip_graph)
        decode-graph
        (graph/update-graph! namespace))
-   (when-not skip_graph
+  (if skip_graph
+    {:revision (c-perm-revision/latest-id)}
     (graph/graph namespace)))
 
 (api/define-routes)
