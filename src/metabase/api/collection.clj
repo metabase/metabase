@@ -1253,8 +1253,7 @@
 (api/defendpoint PUT "/graph"
   "Do a batch update of Collections Permissions by passing in a modified graph.
   Will overwrite parts of the graph that are present in the request, and leave the rest unchanged."
-  [:as {{:keys [namespace], :as body} :body,
-        {skip_graph :skip-graph} :params}]
+  [:as {{:keys [namespace skip_graph] :as body} :body}]
   {body      :map
    skip_graph [:maybe ms/BooleanValue]
    namespace  [:maybe ms/NonBlankString]}
