@@ -58,10 +58,6 @@ export function useDashboardUrlQuery(
       return;
     }
 
-    if (_.isEqual(previousQueryParams, queryParams)) {
-      return;
-    }
-
     const currentQuery = location?.query ?? {};
 
     const nextQueryParams = toLocationQuery(queryParams);
