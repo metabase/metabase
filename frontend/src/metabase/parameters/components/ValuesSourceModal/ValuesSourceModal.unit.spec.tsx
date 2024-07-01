@@ -393,6 +393,7 @@ describe("ValuesSourceModal", () => {
 
       expect(screen.getByRole("textbox")).toHaveValue("Gadget\nWidget");
     });
+
     it("should render a hint about using models when labels are used", async () => {
       await setup({
         parameter: createMockUiParameter({
