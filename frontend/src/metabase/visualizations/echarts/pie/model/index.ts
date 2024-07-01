@@ -126,6 +126,7 @@ export function getPieChartModel(
         normalizedPercentage: metricValue / total, // slice percentage values are normalized to 0-1 scale
         rowIndex: index,
         color,
+        isOther: false,
       };
     })
     .filter(slice => isNonPositive || slice.value >= 0)
@@ -146,6 +147,7 @@ export function getPieChartModel(
       displayValue: otherTotal,
       normalizedPercentage: otherTotal / total,
       color: renderingContext.getColor("text-light"),
+      isOther: true,
     });
   }
 

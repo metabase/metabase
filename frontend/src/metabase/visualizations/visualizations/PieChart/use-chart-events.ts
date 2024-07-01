@@ -2,7 +2,6 @@ import type { EChartsType } from "echarts/core";
 import { type MutableRefObject, useEffect, useMemo } from "react";
 import _ from "underscore";
 
-import { OTHER_SLICE_KEY } from "metabase/visualizations/echarts/pie/constants";
 import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/types";
 import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
@@ -20,7 +19,7 @@ export const getTooltipModel = (
   formatters: PieChartFormatters,
 ): StackedTooltipModel => {
   const hoveredOther =
-    chartModel.slices[hoveredIndex].data.key === OTHER_SLICE_KEY &&
+    chartModel.slices[hoveredIndex].data.isOther &&
     chartModel.otherSlices.length > 1;
 
   const rows = (hoveredOther ? chartModel.otherSlices : chartModel.slices).map(
@@ -107,10 +106,7 @@ function handleClick(
     event: event.event.event,
   };
 
-  if (
-    visualizationIsClickable(clickObject) &&
-    slice.data.key !== OTHER_SLICE_KEY
-  ) {
+  if (visualizationIsClickable(clickObject) && !slice.data.isOther) {
     onVisualizationClick(clickObject);
   }
 }
