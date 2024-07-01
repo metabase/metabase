@@ -1150,11 +1150,7 @@ describe.skip("issue 27521", () => {
     cy.visit("/");
 
     cy.log("Create Q1");
-    newButton("Question").click();
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
-    });
+    openOrdersTable({ mode: "notebook" });
 
     getNotebookStep("data").button("Pick columns").click();
     popover().findByText("Select none").click();
