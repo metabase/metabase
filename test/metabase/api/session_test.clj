@@ -469,6 +469,18 @@
                (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"x-metabase-locale" "es"}}})
                    :engines :h2 :details-fields first :display-name)))))))
 
+(deftest properties-skip-sensitive-test
+  (reset-throttlers!)
+  (testing "GET /session/properties"
+    (testing "don't return the token for admins"
+      (is (= nil
+             (-> (mt/client :get 200 "session/properties" (mt/user->credentials :crowberto))
+                 keys #{:premium-embedding-token}))))
+    (testing "don't return the token for non-admins"
+      (is (= nil
+             (-> (mt/client :get 200 "session/properties" (mt/user->credentials :rasta))
+                 keys #{:premium-embedding-token}))))))
+
 ;;; ------------------------------------------- TESTS FOR GOOGLE SIGN-IN ---------------------------------------------
 
 (deftest google-auth-test
