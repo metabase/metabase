@@ -1,35 +1,38 @@
 import type { FormEvent } from "react";
-import { useState } from "react";
 import { t } from "ttag";
 
 import { Box, Button, Divider, Group } from "metabase/ui";
 
 import { TimeToggle } from "../TimeToggle";
-import { clearTimePart, hasTimeParts } from "../utils";
+import { clearTimePart } from "../utils";
 
 import { DateRangePickerBody } from "./DateRangePickerBody";
+import type { DateRangePickerValue } from "./types";
 
-interface DateRangePickerProps {
-  value: [Date, Date];
+export interface DateRangePickerProps {
+  value: DateRangePickerValue;
   isNew: boolean;
-  onChange: (value: [Date, Date]) => void;
+  onChange: (value: DateRangePickerValue) => void;
   onSubmit: () => void;
 }
 
 export function DateRangePicker({
-  value,
+  value: { dateRange, hasTime },
   isNew,
   onChange,
   onSubmit,
 }: DateRangePickerProps) {
-  const [startDate, endDate] = value;
-  const [hasTime, setHasTime] = useState(
-    hasTimeParts(startDate) || hasTimeParts(endDate),
-  );
+  const [startDate, endDate] = dateRange;
+
+  const handleDateRangeChange = (newDateRange: [Date, Date]) => {
+    onChange({ dateRange: newDateRange, hasTime });
+  };
 
   const handleTimeToggle = () => {
-    setHasTime(!hasTime);
-    onChange([clearTimePart(startDate), clearTimePart(endDate)]);
+    onChange({
+      dateRange: [clearTimePart(startDate), clearTimePart(endDate)],
+      hasTime: !hasTime,
+    });
   };
 
   const handleSubmit = (event: FormEvent) => {
@@ -41,9 +44,9 @@ export function DateRangePicker({
     <form onSubmit={handleSubmit}>
       <Box p="md">
         <DateRangePickerBody
-          value={value}
+          value={dateRange}
           hasTime={hasTime}
-          onChange={onChange}
+          onChange={handleDateRangeChange}
         />
       </Box>
       <Divider />

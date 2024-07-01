@@ -56,6 +56,7 @@ describe("DatePicker", () => {
       type: "specific",
       operator: ">",
       values: [new Date(2020, 1, 15)],
+      hasTime: false,
     });
   });
 
@@ -65,6 +66,7 @@ describe("DatePicker", () => {
         type: "specific",
         operator: ">",
         values: [new Date(2020, 1, 15)],
+        hasTime: false,
       },
     });
 
@@ -75,6 +77,7 @@ describe("DatePicker", () => {
       type: "specific",
       operator: ">",
       values: [new Date(2020, 1, 20)],
+      hasTime: false,
     });
   });
 
