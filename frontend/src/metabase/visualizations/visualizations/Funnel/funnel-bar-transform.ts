@@ -28,7 +28,9 @@ export const funnelToBarTransform: TransformSeries = (
   const orderedRows =
     Array.isArray(rowsOrder) && rowsOrder.length > 0
       ? rowsOrder
-          .map(rowOrder => rowByDimensionValue.get(rowOrder.key))
+          .map(rowOrder =>
+            rowOrder.enabled ? rowByDimensionValue.get(rowOrder.key) : null,
+          )
           .filter(isNotNull)
       : rows;
 

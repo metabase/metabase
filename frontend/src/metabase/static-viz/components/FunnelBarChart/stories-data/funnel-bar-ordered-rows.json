@@ -21,7 +21,7 @@
           {
             "key": "Gizmo",
             "name": "Gizmo",
-            "enabled": true
+            "enabled": false
           },
           {
             "key": "Gadget",
