@@ -397,16 +397,16 @@ describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
 
 describe("issue 34350", { tags: "@external" }, () => {
   beforeEach(() => {
-    restore("postgres-writable");
-    cy.signInAsNormalUser();
+    restore("postgres-12");
+    cy.signInAsAdmin();
   });
 
   it("works after changing question's source table to a one from a different database (metabase#34350)", () => {
     openOrdersTable({ mode: "notebook" });
     openDataSelector();
     entityPickerModal().within(() => {
-      cy.findByText("Writable Postgres12").click();
-      cy.findByText("Scoreboard Actions").click();
+      cy.findByText("QA Postgres12").click();
+      cy.findByText("Orders").click();
     });
 
     visualize();
@@ -414,7 +414,7 @@ describe("issue 34350", { tags: "@external" }, () => {
     queryBuilderMain()
       .findByText("There was a problem with your question")
       .should("not.exist");
-    cy.findAllByTestId("cell-data").should("contain", "Amorous Aardvarks");
+    cy.findAllByTestId("cell-data").should("contain", "37.65");
   });
 });
 
