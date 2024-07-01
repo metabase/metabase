@@ -167,7 +167,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     saveDashboard();
     waitDashboardCardQuery();
 
-    cy.location("search").should("eq", "?id=&text=Organic");
+    cy.location("search").should("eq", "?text=Organic&id=");
     cy.findByTestId("dashcard").contains("39.58");
 
     // This part reproduces metabase#13960
