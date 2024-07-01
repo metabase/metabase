@@ -6,9 +6,11 @@
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [compojure.core :as compojure :refer [GET]]
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
+   [metabase.util.date-2.parse :as u.date.parse]
    [metabase.util.i18n :as i18n]
    [toucan2.core :as t2])
   (:import
@@ -32,19 +34,25 @@
             {:content nil})))
    :ttl/threshold (u/hours->ms 5)))
 
+(defn- valid-thru []
+  (some->> (premium-features/premium-embedding-token)
+           premium-features/fetch-token-status
+           :valid-thru
+           u.date.parse/parse
+           (t/format "MMMM d, YYYY")))
+
 (defn billing-status
   "Returns content that powers the billing page in certain circumstances."
   []
   (let [max-users (premium-features/max-users-allowed)
-        ;; Yes, there's a defsetting for user count, but it is only updated every 5 minutes, and this should be
-        ;; exactly up to date here, and this endpoint is only used by the admin panel, so it's not a big deal.
+        ;; There is a defsetting for user count, but it is only updated every 5 minutes, and this should be exactly up
+        ;; to date here:
         total-users (t2/count :model/User :is_active true, :type :personal)]
     {:version "v1"
-     :content [{:name "Plan" :value "Metabase Enterprise Airgap Self-Hosted" :format "string" :display "value"}
-               {:name "Users" :value total-users :format "integer" :display "internal-link" :link "user-list"}
-               {:name "Max Users" :value max-users :format "integer" :display "value"}
-               {:name "Users Left" :value (- max-users total-users) :format "integer" :display "value"}
-               {:name "Billing Status" :value "📎 Duude, you're gettin' an airgapped instance!" :format "string" :display "value"}]}))
+     :content [{:name "Users included in your plan" :value max-users :format "integer" :display "value"}
+               {:name "Users available" :value (- max-users total-users) :format "integer" :display "value"}
+               {:name "Token expiration date" :value (valid-thru) :format "string" :display "value"}
+               {:name "Plan" :value "Metabase Enterprise Airgap" :format "string" :display "value"}]}))
 
 (api/defendpoint GET "/"
   "Get billing information. This acts as a proxy between `metabase-billing-info-url` and the client,
