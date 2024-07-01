@@ -129,6 +129,14 @@ describe("getPRsFromCommitMessage", () => {
   it("should return the PR id for a message with multiple backport PRs", () => {
     expect(getPRsFromCommitMessage("Backport (#123) (#456)")).toEqual([123, 456]);
     expect(getPRsFromCommitMessage("Backport (#1234) and (#4567)")).toEqual([1234, 4567]);
+    expect(getPRsFromCommitMessage("Backport (#1234) and (#4567) (#8989)")).toEqual([1234, 4567, 8989]);
+  });
+
+  it("should ignore pr numbers outside the title", () => {
+    expect(getPRsFromCommitMessage("Backport (#123) (#456)\n\n(#888) (#999)")).toEqual([123, 456]);
+    expect(getPRsFromCommitMessage("Backport (#1234) and (#4567)\n\n(#888)")).toEqual([1234, 4567]);
+    expect(getPRsFromCommitMessage("Backport (#1234)\n\n and (#4567) (#8989)")).toEqual([1234]);
+    expect(getPRsFromCommitMessage("Backport\n\n (#1234)\n\n and (#4567) (#8989)")).toEqual(null);
   });
 });
 
