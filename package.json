@@ -407,9 +407,6 @@
       "eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0 --fix",
       "prettier --write"
     ],
-    "e2e/test/scenarios/*/{*.(js|ts),!(helpers|shared)/*.(js|ts)}": [
-      "node e2e/validate-e2e-test-files.js"
-    ],
     "**/*.{clj,cljc,cljs,bb}": [
       "clj-kondo --config ./.clj-kondo/config.edn --config-dir ./.clj-kondo --parallel --lint",
       "./bin/whitespace_lint_staged.sh"
