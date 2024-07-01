@@ -61,7 +61,7 @@ function getHoverData(
   const index = dataIndexToHoveredIndex(event.dataIndex);
 
   const indexOutOfBounds = chartModel.slices[index] == null;
-  if (indexOutOfBounds) {
+  if (indexOutOfBounds || chartModel.slices[index].data.noHover) {
     return null;
   }
 

@@ -19,21 +19,23 @@ export function getPieChartLegend(
     width: legendWidth,
     items,
   } = calculateLegendRowsWithColumns({
-    items: chartModel.slices.map(s => {
-      const label = s.data.isOther
-        ? OTHER_SLICE_KEY // need to use this instead of `s.data.key` to ensure type is string
-        : formatters.formatDimension(s.data.key);
+    items: chartModel.slices
+      .filter(s => s.data.includeInLegend)
+      .map(s => {
+        const label = s.data.isOther
+          ? OTHER_SLICE_KEY // need to use this instead of `s.data.key` to ensure type is string
+          : formatters.formatDimension(s.data.key);
 
-      return {
-        name: label,
-        percent:
-          settings["pie.percent_visibility"] === "legend"
-            ? formatters.formatPercent(s.data.normalizedPercentage, "legend")
-            : undefined,
-        color: s.data.color,
-        key: String(s.data.key),
-      };
-    }),
+        return {
+          name: label,
+          percent:
+            settings["pie.percent_visibility"] === "legend"
+              ? formatters.formatPercent(s.data.normalizedPercentage, "legend")
+              : undefined,
+          color: s.data.color,
+          key: String(s.data.key),
+        };
+      }),
     width: DIMENSIONS.maxSideLength,
     horizontalPadding: DIMENSIONS.padding.side,
   });
