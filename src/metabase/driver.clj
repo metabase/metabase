@@ -958,10 +958,20 @@
   nil)
 
 (defmulti table-name-length-limit
-  "Return the maximum number of characters allowed in a table name, or `nil` if there is no limit."
+  "Return the maximum number of bytes allowed in a table name, or `nil` if there is no limit."
   {:changelog-test/ignore true, :added "0.47.0", :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti column-name-length-limit
+  "Return the maximum number of bytes allowed in a column name, or `nil` if there is no limit."
+  {:changelog-test/ignore true, :added "0.49.19", :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod column-name-length-limit :default [driver]
+  ;; For most databases, the same limit is used for all identifier types.
+  (table-name-length-limit driver))
 
 (defmulti create-table!
   "Create a table named `table-name`. If the table already exists it will throw an error.

@@ -17,6 +17,7 @@
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.db.custom-migrations-test :as custom-migrations-test]
+   [metabase.db.liquibase :as liquibase]
    [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.models
@@ -1592,6 +1593,25 @@
                   (-> (t2/select-one :cache_config)
                       (update :config json/decode true)))))))))
 
+(deftest cache-config-old-id-cleanup
+  (testing "Cache config migration old id is removed from databasechangelog"
+    (impl/test-migrations ["v50.2024-06-28T12:35:50"] [migrate!]
+      (let [clog       (keyword (liquibase/changelog-table-name (mdb/data-source)))
+            last-order (:orderexecuted (t2/select-one clog {:order-by [[:orderexecuted :desc]]}))]
+        (t2/insert! clog [{:id            "v50.2024-04-12T12:33:09"
+                           :author        "piranha"
+                           :filename      "001_update_migrations.yaml"
+                           :dateexecuted  :%now
+                           :orderexecuted (inc last-order)
+                           :exectype      "EXECUTED"}])
+
+        (is (=? {:id            "v50.2024-04-12T12:33:09"
+                 :orderexecuted pos?}
+                (t2/select-one clog :id "v50.2024-04-12T12:33:09")))
+
+        (migrate!)
+        (is (nil? (t2/select-one clog :id "v50.2024-04-12T12:33:09")))))))
+
 (deftest split-data-permissions-migration-test
   (testing "View Data and Create Query permissions are created correctly based on existing data permissions"
     (impl/test-migrations ["v50.2024-02-26T22:15:54" "v50.2024-02-26T22:15:55"] [migrate!]
@@ -2015,6 +2035,37 @@
         (migrate! :down 49)
         (is (= #{(format "/block/db/%d/" db-id)}
                (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))))))
+
+(deftest sandboxing-rollback-test
+  ;; Rollback tests flake on MySQL, so only run on Postgres/H2
+  (mt/test-drivers [:postgres :h2]
+    (testing "Can we rollback to 49 when sandboxing is configured"
+      (impl/test-migrations ["v50.2024-01-10T03:27:29" "v50.2024-06-20T13:21:30"] [migrate!]
+        (let [db-id         (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "DB"
+                                                                                       :engine     "h2"
+                                                                                       :created_at :%now
+                                                                                       :updated_at :%now
+                                                                                       :details    "{}"}))
+              table-id      (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                                    :schema     "SchemaName"
+                                                                                    :name       "Table"
+                                                                                    :created_at :%now
+                                                                                    :updated_at :%now
+                                                                                    :active     true}))
+              permission-id (t2/insert-returning-pk! (t2/table-name :model/Permissions) {:object "/db/fake-permission/"
+                                                                                         :group_id 1})
+              _             (t2/query-one {:insert-into :sandboxes
+                                           :values      [{:group_id             1
+                                                          :table_id             table-id
+                                                          :attribute_remappings "{\"foo\", 1}"
+                                                          :permission_id        permission-id}]})
+              expected        {:group_id             1
+                               :table_id             table-id
+                               :attribute_remappings "{\"foo\", 1}"}]
+          (migrate!)
+          (is (=? expected (t2/select-one :sandboxes :table_id table-id)))
+          (migrate! :down 49)
+          (is (=? expected (t2/select-one :sandboxes :table_id table-id))))))))
 
 (deftest view-count-test
   (testing "report_card.view_count and report_dashboard.view_count should be populated"

@@ -1,24 +1,18 @@
 import type { Location } from "history";
-import { useEffect } from "react";
 
 import type { DashboardUrlHashOptions } from "metabase/dashboard/types";
 import { parseHashOptions } from "metabase/lib/browser";
 import { isWithinIframe } from "metabase/lib/dom";
-import { useDispatch } from "metabase/lib/redux";
-import { setInitialUrlOptions } from "metabase/redux/embed";
+
+import { DEFAULT_EMBED_DISPLAY_PARAMS } from "../constants";
 
 export const useEmbedFrameOptions = ({ location }: { location: Location }) => {
-  const dispatch = useDispatch();
-  useEffect(() => {
-    dispatch(setInitialUrlOptions(location));
-  }, [dispatch, location]);
-
   const {
     bordered = isWithinIframe(),
-    titled = true,
-    theme,
-    hide_parameters,
-    hide_download_button,
+    titled = DEFAULT_EMBED_DISPLAY_PARAMS.titled,
+    theme = DEFAULT_EMBED_DISPLAY_PARAMS.theme,
+    hide_parameters = DEFAULT_EMBED_DISPLAY_PARAMS.hideParameters,
+    hide_download_button = DEFAULT_EMBED_DISPLAY_PARAMS.hideDownloadButton,
   } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
 
   return {

@@ -30,9 +30,24 @@ import {
   echartsContainer,
   newButton,
   appBar,
+  openProductsTable,
+  queryBuilderFooter,
+  enterCustomColumnDetails,
+  addCustomColumn,
+  tableInteractive,
+  createNativeQuestion,
+  queryBuilderMain,
+  leftSidebar,
+  assertQueryBuilderRowCount,
+  visitDashboard,
+  getDashboardCard,
+  testTooltipPairs,
+  join,
+  visitQuestion,
 } from "e2e/support/helpers";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 describe("issue 32625, issue 31635", () => {
   const CC_NAME = "Is Promotion";
@@ -299,6 +314,34 @@ describe("issue 38354", { tags: "@external" }, () => {
   });
 });
 
+describe("issue 30056", () => {
+  const questionDetails = {
+    query: {
+      "source-query": {
+        "source-table": PEOPLE_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", PEOPLE.LATITUDE, { "base-type": "type/Float" }],
+          ["field", PEOPLE.LONGITUDE, { "base-type": "type/Float" }],
+        ],
+      },
+      filter: [">", ["field", "count", { "base-type": "type/Integer" }], 2],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show table breadcrumbs for questions with post-aggregation filters (metabase#30056)", () => {
+    createQuestion(questionDetails, { visitQuestion: true });
+    // the name of the table is hidden after a few seconds with a CSS animation,
+    // so check for "exist" only
+    queryBuilderHeader().findByText("People").should("exist");
+  });
+});
+
 describe("issue 39102", () => {
   const questionDetails = {
     name: "39102",
@@ -354,6 +397,44 @@ describe("issue 39102", () => {
       cy.findByText("Count").should("be.visible");
       cy.findByText("4").should("be.visible");
     });
+  });
+});
+
+describe("issue 13814", () => {
+  const questionDetails = {
+    display: "scalar",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["count", ["field", ORDERS.TAX, { "base-type": "type/Float" }]],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should support specifying a field in 'count' MBQL clause even if the UI doesn't support it (metabase#13814)", () => {
+    cy.log("verify that the API supports saving this MBQL");
+    createQuestion(questionDetails).then(({ body: card }) =>
+      visitQuestion(card.id),
+    );
+
+    cy.log("verify that the query is executed correctly");
+    cy.findByTestId("scalar-value").findByText("18,760").should("be.visible");
+
+    cy.log(
+      "verify that the clause is displayed correctly and won't crash if updated",
+    );
+    openNotebook();
+    getNotebookStep("summarize")
+      .findByText("Count of Tax")
+      .should("be.visible")
+      .click();
+    popover().findByText("Count of rows").click();
+    getNotebookStep("summarize").findByText("Count").should("be.visible");
   });
 });
 
@@ -473,6 +554,23 @@ describe("issue 40435", () => {
   });
 });
 
+describe("issue 41381", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show an error message when adding a constant-only custom expression (metabase#41381)", () => {
+    openOrdersTable({ mode: "notebook" });
+    addCustomColumn();
+    enterCustomColumnDetails({ formula: "'Test'", name: "Constant" });
+    popover().within(() => {
+      cy.findByText("Invalid expression").should("be.visible");
+      cy.button("Done").should("be.disabled");
+    });
+  });
+});
+
 describe(
   "issue 42010 -- Unable to filter by mongo id",
   { tags: "@mongo" },
@@ -567,6 +665,27 @@ function removeFilter() {
   cy.findByTestId("question-row-count").should("have.text", "Showing 2 rows");
 }
 
+describe("issue 33439", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show an error message when trying to use convertTimezone on an unsupported db (metabase#33439)", () => {
+    openOrdersTable({ mode: "notebook" });
+    addCustomColumn();
+    enterCustomColumnDetails({
+      formula:
+        'convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")',
+      name: "Date",
+    });
+    popover().within(() => {
+      cy.findByText("Unsupported function convert-timezone");
+      cy.button("Done").should("be.disabled");
+    });
+  });
+});
+
 describe("issue 42244", () => {
   const COLUMN_NAME = "Created At".repeat(5);
 
@@ -636,7 +755,52 @@ describe("issue 42957", () => {
   });
 });
 
-describe("issue 10493", () => {
+describe("issue 40064", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to edit a custom column with the same name as one of the columns used in the expression (metabase#40064)", () => {
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: {
+            Tax: ["*", ["field", ORDERS.TAX, { "base-type": "type/Float" }], 2],
+          },
+          limit: 1,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.log("check the initial expression value");
+    tableInteractive().findByText("4.14").should("be.visible");
+
+    cy.log("update the expression and check the value");
+    openNotebook();
+    getNotebookStep("expression").findByText("Tax").click();
+    enterCustomColumnDetails({ formula: "[Tax] * 3" });
+    popover().button("Update").click();
+    visualize();
+    tableInteractive().findByText("6.21").should("be.visible");
+
+    cy.log("rename the expression and make sure you cannot create a cycle");
+    openNotebook();
+    getNotebookStep("expression").findByText("Tax").click();
+    enterCustomColumnDetails({ formula: "[Tax] * 3", name: "Tax3" });
+    popover().button("Update").click();
+    getNotebookStep("expression").findByText("Tax3").click();
+    enterCustomColumnDetails({ formula: "[Tax3] * 3", name: "Tax3" });
+    popover().within(() => {
+      cy.findByText("Unknown Field: Tax3").should("be.visible");
+      cy.button("Update").should("be.disabled");
+    });
+  });
+});
+
+describe.skip("issue 10493", () => {
   beforeEach(() => {
     restore();
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -684,6 +848,92 @@ describe("issue 10493", () => {
       cy.findByText("Quantity").should("exist");
       cy.findByText("25").should("exist");
       cy.findByText("75").should("exist");
+    });
+  });
+});
+
+describe("issue 32020", () => {
+  const question1Details = {
+    name: "Q1",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["sum", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }]],
+      ],
+      breakout: [
+        ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+      ],
+    },
+  };
+
+  const question2Details = {
+    name: "Q2",
+    query: {
+      "source-table": PEOPLE_ID,
+      aggregation: [
+        ["max", ["field", PEOPLE.LONGITUDE, { "base-type": "type/Float" }]],
+      ],
+      breakout: [
+        ["field", PEOPLE.ID, { "base-type": "type/BigInteger" }],
+        [
+          "field",
+          PEOPLE.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    createQuestion(question1Details);
+    createQuestion(question2Details);
+  });
+
+  it("should be possible to use aggregation columns from source and joined questions in aggregation (metabase#32020)", () => {
+    startNewQuestion();
+
+    cy.log("create joined question manually");
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText(question1Details.name).click();
+    });
+    join();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText(question2Details.name).click();
+    });
+    popover().findByText("ID").click();
+    popover().findByText("ID").click();
+
+    cy.log("aggregation column from the source question");
+    getNotebookStep("summarize")
+      .findByText(/Pick the metric/)
+      .click();
+    popover().within(() => {
+      cy.findByText("Sum of ...").click();
+      cy.findByText("Sum of Total").click();
+    });
+
+    cy.log("aggregation column from the joined question");
+    getNotebookStep("summarize").icon("add").click();
+    popover().within(() => {
+      cy.findByText("Sum of ...").click();
+      cy.findByText(question2Details.name).click();
+      cy.findByText("Max of Longitude").click();
+    });
+
+    cy.log("visualize and check results");
+    visualize();
+    tableInteractive().within(() => {
+      cy.findByText("Sum of Sum of Total").should("be.visible");
+      cy.findByText("Sum of Q2 → Max").should("be.visible");
     });
   });
 });
@@ -773,6 +1023,504 @@ describe("issue 44415", () => {
     cy.get("@questionId").then(questionId => {
       cy.url().should("not.include", `/question/${questionId}`);
       cy.url().should("include", "question#");
+    });
+  });
+});
+
+describe("issue 37374", () => {
+  const questionDetails = {
+    query: {
+      "source-table": PRODUCTS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+        ["field", PRODUCTS.VENDOR, { "base-type": "type/Text" }],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    createQuestion(questionDetails, { wrapId: true });
+    cy.signIn("nodata");
+  });
+
+  it("should allow to change the viz type to pivot without data access (metabase#37374)", () => {
+    visitQuestion("@questionId");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
+
+    cy.log("changing the viz type to pivot table and running the query works");
+    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("chart-type-sidebar")
+      .findByTestId("Pivot Table-button")
+      .click();
+    cy.wait("@cardPivotQuery");
+    cy.findByTestId("pivot-table").should("be.visible");
+
+    cy.log("changing the viz type back to table and running the query works");
+    cy.findByTestId("chart-type-sidebar").findByTestId("Table-button").click();
+    cy.wait("@cardQuery");
+    tableInteractive().should("be.visible");
+  });
+});
+
+describe("issue 44532", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    openProductsTable();
+  });
+
+  it("should update chart metrics and dimensions with each added breakout (metabase #44532)", () => {
+    summarize();
+
+    rightSidebar()
+      .findByRole("listitem", { name: "Category" })
+      .button("Add dimension")
+      .click();
+    cy.wait("@dataset");
+
+    echartsContainer().within(() => {
+      cy.findByText("Count").should("exist"); // y-axis
+      cy.findByText("Category").should("exist"); // x-axis
+
+      // x-axis values
+      cy.findByText("Doohickey").should("exist");
+      cy.findByText("Gadget").should("exist");
+      cy.findByText("Gizmo").should("exist");
+      cy.findByText("Widget").should("exist");
+    });
+
+    rightSidebar()
+      .findByRole("listitem", { name: "Created At" })
+      .button("Add dimension")
+      .click();
+    cy.wait("@dataset");
+
+    cy.findByLabelText("Legend").within(() => {
+      cy.findByText("Doohickey").should("exist");
+      cy.findByText("Gadget").should("exist");
+      cy.findByText("Gizmo").should("exist");
+      cy.findByText("Widget").should("exist");
+    });
+
+    echartsContainer().within(() => {
+      cy.findByText("Count").should("exist"); // y-axis
+      cy.findByText("Created At").should("exist"); // x-axis
+
+      // x-axis values
+      cy.findByText("January 2023").should("exist");
+      cy.findByText("January 2024").should("exist");
+      cy.findByText("January 2025").should("exist");
+
+      // previous x-axis values
+      cy.findByText("Doohickey").should("not.exist");
+      cy.findByText("Gadget").should("not.exist");
+      cy.findByText("Gizmo").should("not.exist");
+      cy.findByText("Widget").should("not.exist");
+    });
+
+    rightSidebar().button("Done").click();
+    cy.wait("@dataset");
+
+    cy.findByLabelText("Legend").within(() => {
+      cy.findByText("Doohickey").should("exist");
+      cy.findByText("Gadget").should("exist");
+      cy.findByText("Gizmo").should("exist");
+      cy.findByText("Widget").should("exist");
+    });
+
+    echartsContainer().within(() => {
+      cy.findByText("Count").should("exist"); // y-axis
+      cy.findByText("Created At").should("exist"); // x-axis
+
+      // x-axis values
+      cy.findByText("January 2023").should("exist");
+      cy.findByText("January 2024").should("exist");
+      cy.findByText("January 2025").should("exist");
+
+      // previous x-axis values
+      cy.findByText("Doohickey").should("not.exist");
+      cy.findByText("Gadget").should("not.exist");
+      cy.findByText("Gizmo").should("not.exist");
+      cy.findByText("Widget").should("not.exist");
+    });
+  });
+});
+
+describe("issue 33441", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show an error message for an incorrect date expression (metabase#33441)", () => {
+    openOrdersTable({ mode: "notebook" });
+    addCustomColumn();
+    enterCustomColumnDetails({
+      formula: 'datetimeDiff([Created At] , now, "days")',
+      name: "Date",
+    });
+    popover().within(() => {
+      cy.findByText("Invalid expression").should("be.visible");
+      cy.button("Done").should("be.disabled");
+    });
+  });
+});
+
+describe("issue 31960", () => {
+  const questionDetails = {
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+    },
+    display: "line",
+    visualization_settings: {
+      "graph.metrics": ["count"],
+      "graph.dimensions": ["CREATED_AT"],
+    },
+  };
+
+  // the dot that corresponds to July 10–16, 2022
+  const dotIndex = 10;
+  const rowCount = 11;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should apply a date range filter for a query broken out by week (metabase#31960)", () => {
+    cy.createDashboardWithQuestions({ questions: [questionDetails] }).then(
+      ({ dashboard }) => {
+        visitDashboard(dashboard.id);
+      },
+    );
+
+    getDashboardCard().within(() => {
+      cartesianChartCircle().eq(dotIndex).realHover();
+    });
+    testTooltipPairs([
+      ["Created At:", "July 10–16, 2022"],
+      ["Count:", String(rowCount)],
+      ["Compared to previous week", "+10%"],
+    ]);
+    getDashboardCard().within(() => {
+      cartesianChartCircle().eq(dotIndex).click({ force: true });
+    });
+
+    popover().findByText("See these Orders").click();
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is Jul 10–16, 2022")
+      .should("be.visible");
+    assertQueryBuilderRowCount(rowCount);
+  });
+});
+
+describe("issue 43294", () => {
+  const questionDetails = {
+    display: "line",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    },
+    visualization_settings: {
+      "graph.metrics": ["count"],
+      "graph.dimensions": ["CREATED_AT"],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not overwrite viz settings with click actions in raw data mode (metabase#43294)", () => {
+    createQuestion(questionDetails, { visitQuestion: true });
+    queryBuilderFooter().findByLabelText("Switch to data").click();
+
+    cy.log("compare action");
+    cy.button("Add column").click();
+    popover().findByText("Compare “Count” to previous months").click();
+    popover().button("Done").click();
+
+    cy.log("extract action");
+    cy.button("Add column").click();
+    popover().findByText("Extract part of column").click();
+    popover().within(() => {
+      cy.findByText("Created At: Month").click();
+      cy.findByText("Year").click();
+    });
+
+    cy.log("combine action");
+    cy.button("Add column").click();
+    popover().findByText("Combine columns").click();
+    popover().button("Done").click();
+
+    cy.log("check visualization");
+    queryBuilderFooter().findByLabelText("Switch to visualization").click();
+    echartsContainer().within(() => {
+      cy.findByText("Count").should("be.visible");
+      cy.findByText("Created At").should("be.visible");
+    });
+  });
+});
+
+describe("issue 40399", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show results from other stages in a stages preview (metabase#40399)", () => {
+    createQuestion(
+      {
+        name: "40399",
+        query: {
+          "source-table": PRODUCTS_ID,
+          joins: [
+            {
+              fields: "all",
+              alias: "Orders",
+              "source-table": ORDERS_ID,
+              strategy: "left-join",
+              condition: [
+                "=",
+                ["field", PRODUCTS.ID, null],
+                ["field", ORDERS.PRODUCT_ID, { "join-alias": "Orders" }],
+              ],
+            },
+          ],
+          filter: ["=", ["field", PRODUCTS.CATEGORY, null], "Widget"],
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+
+    openNotebook();
+
+    getNotebookStep("filter", { stage: 0 }).within(() => {
+      cy.icon("play").click();
+      cy.findByTestId("preview-root")
+        .findAllByText("Widget")
+        .should("be.visible");
+    });
+
+    getNotebookStep("join", { stage: 0 }).within(() => {
+      cy.icon("play").click();
+      cy.findByTestId("preview-root")
+        .findAllByText("Gizmo")
+        .should("be.visible");
+
+      cy.findByTestId("preview-root").findByText("Widget").should("not.exist");
+    });
+
+    getNotebookStep("data", { stage: 0 }).within(() => {
+      cy.icon("play").click();
+      cy.findByTestId("preview-root")
+        .findAllByText("Gizmo")
+        .should("be.visible");
+
+      cy.findByTestId("preview-root").findAllByText("Gizmo").should("exist");
+      cy.findByTestId("preview-root").findAllByText("Widget").should("exist");
+    });
+  });
+});
+
+describe("issue 19894", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show all columns when using the join column selecter (metabase#19894)", () => {
+    createQuestion(
+      {
+        name: "Q1",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        },
+      },
+      {
+        wrapId: true,
+      },
+    );
+
+    createQuestion({
+      name: "Q2",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["sum", ["field", PRODUCTS.PRICE, null]]],
+        breakout: [["field", PRODUCTS.CATEGORY, null]],
+      },
+    });
+
+    createQuestion({
+      name: "Q3",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["avg", ["field", PRODUCTS.RATING, null]]],
+        breakout: [["field", PRODUCTS.CATEGORY, null]],
+      },
+    });
+
+    startNewQuestion();
+
+    modal().findByText("Saved questions").click();
+    modal().findByText("Q1").click();
+
+    cy.button("Join data").click();
+
+    modal().findByText("Saved questions").click();
+    modal().findByText("Q2").click();
+
+    popover().findByText("Category").click();
+    popover().findByText("Category").click();
+
+    cy.button("Join data").click();
+
+    modal().findByText("Saved questions").click();
+    modal().findByText("Q3").click();
+
+    popover().findByText("Category").should("be.visible");
+    popover().findByText("Count").should("be.visible");
+
+    popover().findByText("Q1").click();
+    popover().findByText("Q2").click();
+
+    popover().findByText("Category").should("be.visible");
+    popover().findByText("Sum of Price").should("be.visible");
+
+    popover().findByText("Q1").click();
+
+    popover().findByText("Category").should("be.visible");
+    popover().findByText("Count").should("be.visible");
+  });
+});
+
+describe("issue 44637", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not crash when rendering a line/bar chart with empty results (metabase#44637)", () => {
+    createNativeQuestion(
+      {
+        native: {
+          query: "SELECT '2023-01-01'::date, 2 FROM people WHERE false",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    assertQueryBuilderRowCount(0);
+    queryBuilderMain().findByText("No results!").should("exist");
+    queryBuilderFooter().button("Visualization").click();
+    leftSidebar().icon("bar").click();
+    queryBuilderMain().within(() => {
+      cy.findByText("No results!").should("exist");
+      cy.findByText("Something's gone wrong").should("not.exist");
+    });
+
+    queryBuilderFooter().icon("calendar").click();
+    rightSidebar().findByText("Add an event");
+  });
+});
+
+describe("issue 44668", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not drop graph.metrics after adding a new query stage (metabase#44668)", () => {
+    createQuestion(
+      {
+        display: "bar",
+        query: {
+          aggregation: [["count"]],
+          breakout: [["field", PEOPLE.STATE, { "base-type": "type/Text" }]],
+          "source-table": PEOPLE_ID,
+          limit: 5,
+        },
+        visualization_settings: {
+          "graph.metrics": ["count"],
+          "graph.dimensions": ["STATE"],
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    openNotebook();
+
+    cy.findAllByTestId("action-buttons").last().button("Custom column").click();
+    enterCustomColumnDetails({
+      formula: 'concat("abc_", [Count])',
+      name: "Custom String",
+    });
+    popover().button("Done").click();
+
+    getNotebookStep("expression", { stage: 1 }).icon("add").click();
+    enterCustomColumnDetails({ formula: "[Count] * 2", name: "Custom Number" });
+    popover().button("Done").click();
+
+    visualize();
+
+    echartsContainer().within(() => {
+      cy.findByText("State").should("be.visible"); // x-axis
+      cy.findByText("Count").should("be.visible"); // y-axis
+
+      // x-axis values
+      ["AK", "AL", "AR", "AZ", "CA"].forEach(state => {
+        cy.findByText(state).should("be.visible");
+      });
+    });
+
+    // Ensure custom columns weren't added as series automatically
+    queryBuilderMain().findByLabelText("Legend").should("not.exist");
+
+    cy.findByTestId("viz-settings-button").click();
+
+    // Ensure can use Custom Number as series
+    leftSidebar().findByText("Add another series").click();
+    queryBuilderMain()
+      .findByLabelText("Legend")
+      .within(() => {
+        cy.findByText("Count").should("exist");
+        cy.findByText("Custom Number").should("exist");
+      });
+    leftSidebar().within(() => {
+      cy.findByText("Add another series").should("not.exist");
+      cy.findByText("Add series breakout").should("not.exist");
+      cy.findByTestId("remove-Custom Number").click();
+    });
+    queryBuilderMain().findByLabelText("Legend").should("not.exist");
+
+    leftSidebar().findByText("Add series breakout").click();
+    popover().within(() => {
+      cy.findByText("Count").should("exist");
+      cy.findByText("Custom Number").should("exist");
+      cy.findByText("Custom String").click();
+    });
+    queryBuilderMain()
+      .findByLabelText("Legend")
+      .within(() => {
+        ["68", "56", "49", "20", "90"].forEach(value => {
+          cy.findByText(`abc_${value}`).should("exist");
+        });
+      });
+    leftSidebar().within(() => {
+      cy.findByText("Add another series").should("not.exist");
+      cy.findByText("Add series breakout").should("not.exist");
     });
   });
 });

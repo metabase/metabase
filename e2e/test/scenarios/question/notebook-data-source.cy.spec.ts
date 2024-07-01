@@ -5,8 +5,9 @@ import {
   ORDERS_MODEL_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import {
+  join,
+  type StructuredQuestionDetails,
   createQuestion,
   entityPickerModal,
   entityPickerModalItem,
@@ -21,7 +22,6 @@ import {
   resyncDatabase,
   saveQuestion,
   onlyOnOSS,
-  onlyOnEE,
   startNewQuestion,
   shouldDisplayTabs,
   tabsShouldBe,
@@ -73,34 +73,6 @@ describe("scenarios > notebook > data source", () => {
         });
       },
     );
-
-    it.skip("should display tables from the only existing database by default on an enterprise instance without token activation (metabase#40223)", () => {
-      onlyOnEE();
-      cy.visit("/");
-      cy.findByTestId("app-bar").findByText("New").click();
-      popover().findByTextEnsureVisible("Question").click();
-      cy.findByTestId("data-step-cell").should(
-        "have.text",
-        "Pick your starting data",
-      );
-
-      entityPickerModal().within(() => {
-        cy.log("Should not have Recents tab");
-        cy.findAllByRole("tab").should("have.length", 0);
-
-        entityPickerModalLevel(0).should("not.exist");
-        entityPickerModalLevel(1).should("not.exist");
-        entityPickerModalLevel(2).get("[data-index]").should("have.length", 8);
-        assertDataPickerEntityNotSelected(2, "Accounts");
-        assertDataPickerEntityNotSelected(2, "Analytic Events");
-        assertDataPickerEntityNotSelected(2, "Feedback");
-        assertDataPickerEntityNotSelected(2, "Invoices");
-        assertDataPickerEntityNotSelected(2, "Orders");
-        assertDataPickerEntityNotSelected(2, "People");
-        assertDataPickerEntityNotSelected(2, "Products");
-        assertDataPickerEntityNotSelected(2, "Reviews");
-      });
-    });
 
     it("should not show saved questions if only models exist (metabase#25142)", () => {
       createQuestion({
@@ -180,17 +152,19 @@ describe("scenarios > notebook > data source", () => {
     });
 
     it(
-      "should correctly display a table from a multi-schema database (metabase#39807)",
+      "should correctly display a table from a multi-schema database (metabase#39807,metabase#11958)",
       { tags: "@external" },
       () => {
         const dialect = "postgres";
-        const TEST_TABLE = "multi_schema";
+        const testTable1 = "multi_schema";
+        const testTable2 = "many_data_types";
 
         const dbName = "Writable Postgres12";
         const schemaName = "Wild";
         const tableName = "Animals";
 
-        resetTestTable({ type: dialect, table: TEST_TABLE });
+        resetTestTable({ type: dialect, table: testTable1 });
+        resetTestTable({ type: dialect, table: testTable2 });
         restore(`${dialect}-writable`);
 
         cy.signInAsAdmin();
@@ -217,12 +191,36 @@ describe("scenarios > notebook > data source", () => {
           assertDataPickerEntitySelected(2, tableName);
 
           entityPickerModalTab("Recents").click();
-
           cy.contains("button", "Animals")
             .should("exist")
             .and("contain.text", tableName)
             .and("have.attr", "aria-selected", "true");
+
+          entityPickerModalTab("Tables").click();
+          cy.findByText(dbName).click();
+          cy.findByText(schemaName).click();
+          cy.findByText(tableName).click();
         });
+
+        cy.log("select a table from the second schema");
+        join();
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Tables").click();
+          cy.findByText("Public").click();
+          cy.findByText("Many Data Types").click();
+        });
+        popover().findByText("Name").click();
+        popover().findByText("Text").click();
+
+        cy.log("select a table from the third schema");
+        join();
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Tables").click();
+          cy.findByText("Domestic").click();
+          cy.findByText("Animals").click();
+        });
+        popover().findByText("Name").click();
+        popover().findByText("Name").click();
       },
     );
 

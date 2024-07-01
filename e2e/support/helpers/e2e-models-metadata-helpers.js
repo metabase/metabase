@@ -25,7 +25,7 @@ export function openColumnOptions(column) {
 }
 
 export function renameColumn(oldName, newName) {
-  cy.findByDisplayValue(oldName).clear().type(newName);
+  cy.findByDisplayValue(oldName).clear().type(newName).blur();
 }
 
 export function setColumnType(oldType, newType) {

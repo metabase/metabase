@@ -23,7 +23,10 @@ import {
   isFilterParameter,
   isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
-import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
+import {
+  getIsMultiSelect,
+  parameterHasNoDisplayValue,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
   TemporalUnit,
@@ -32,7 +35,6 @@ import type {
   ValuesSourceType,
 } from "metabase-types/api";
 
-import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import { RequiredParamToggle } from "../RequiredParamToggle";
 import { ValuesSourceSettings } from "../ValuesSourceSettings";

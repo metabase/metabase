@@ -1,15 +1,16 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  addOrUpdateDashboardCard,
   appBar,
   clearFilterWidget,
   createNativeQuestion,
   createQuestion,
+  dashboardHeader,
   dashboardParametersDoneButton,
   dashboardParameterSidebar,
   editDashboard,
   filterWidget,
   getDashboardCard,
+  modal,
   popover,
   queryBuilderHeader,
   queryBuilderMain,
@@ -18,8 +19,10 @@ import {
   saveDashboard,
   selectDashboardFilter,
   setFilter,
+  sidebar,
   undoToast,
   undoToastList,
+  updateDashboardCards,
   visitDashboard,
   visitEmbeddedPage,
 } from "e2e/support/helpers";
@@ -27,7 +30,7 @@ import {
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const dashboardDetails = {
-  name: "Test dashboard",
+  name: "Test Dashboard",
 };
 
 const singleBreakoutQuestionDetails = {
@@ -139,8 +142,24 @@ const nativeQuestionDetails = {
   },
 };
 
-const nativeQuestionWithParameterDetails = {
-  name: "SQL query with a parameter",
+const nativeQuestionWithTextParameterDetails = {
+  name: "SQL query with a text parameter",
+  display: "table",
+  native: {
+    query: "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}}",
+    "template-tags": {
+      category: {
+        id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
+        name: "category",
+        "display-name": "Category",
+        type: "text",
+      },
+    },
+  },
+};
+
+const nativeQuestionWithDateParameterDetails = {
+  name: "SQL query with a date parameter",
   display: "table",
   native: {
     query: "SELECT * FROM ORDERS WHERE {{date}}",
@@ -154,6 +173,17 @@ const nativeQuestionWithParameterDetails = {
         "widget-type": "date/all-options",
       },
     },
+  },
+};
+
+const nativeUnitQuestionDetails = {
+  name: "SQL units",
+  display: "table",
+  native: {
+    query:
+      "SELECT 'month' AS UNIT " +
+      "UNION ALL SELECT 'year' AS UNIT " +
+      "UNION ALL SELECT 'invalid' AS UNIT",
   },
 };
 
@@ -195,7 +225,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       createQuestion(multiStageQuestionDetails);
       createQuestion(expressionBreakoutQuestionDetails);
       createQuestion(binningBreakoutQuestionDetails);
-      createNativeQuestion(nativeQuestionWithParameterDetails);
+      createNativeQuestion(nativeQuestionWithDateParameterDetails);
       cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         visitDashboard(dashboard.id),
       );
@@ -279,7 +309,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       removeQuestion();
 
       cy.log("native query");
-      addQuestion(nativeQuestionWithParameterDetails.name);
+      addQuestion(nativeQuestionWithDateParameterDetails.name);
       editParameter(parameterDetails.name);
       getDashboardCard()
         .findByText(/Add a variable to this question/)
@@ -363,6 +393,40 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       });
     });
 
+    it("should connect multiple parameters to the same column in a card and drill thru, with the last parameter taking priority", () => {
+      createQuestion(singleBreakoutQuestionDetails);
+      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
+        visitDashboard(dashboard.id),
+      );
+
+      editDashboard();
+      addQuestion(singleBreakoutQuestionDetails.name);
+      addTemporalUnitParameter();
+      selectDashboardFilter(getDashboardCard(), "Created At");
+      addTemporalUnitParameter();
+      selectDashboardFilter(getDashboardCard(), "Created At");
+      saveDashboard();
+
+      filterWidget().eq(0).click();
+      popover().findByText("Quarter").click();
+      filterWidget().eq(1).click();
+      popover().findByText("Year").click();
+      getDashboardCard().within(() => {
+        // metabase#44684
+        // should be "Created At: Year" and "2022" because the last parameter is "Year"
+        cy.findByText("Created At: Quarter").should("be.visible");
+        cy.findByText("Q2 2022").should("be.visible");
+        cy.findByText(singleBreakoutQuestionDetails.name).click();
+      });
+      appBar()
+        .should("contain.text", "Started from")
+        .should("contain.text", singleBreakoutQuestionDetails.name);
+      queryBuilderMain().within(() => {
+        cy.findByText("Created At: Year").should("be.visible");
+        cy.findByText("2022").should("be.visible");
+      });
+    });
+
     it("should connect a parameter to multiple questions within a dashcard and drill thru", () => {
       createDashboardWithMultiSeriesCard().then(dashboard =>
         visitDashboard(dashboard.id),
@@ -404,6 +468,181 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       queryBuilderHeader()
         .findByText("Count by Created At: Quarter")
         .should("be.visible");
+    });
+  });
+
+  describe("click behaviors", () => {
+    it("should pass a temporal unit with 'update dashboard filter' click behavior", () => {
+      createDashboardWithMappedQuestion({
+        extraQuestions: [nativeUnitQuestionDetails],
+      }).then(dashboard => visitDashboard(dashboard.id));
+
+      cy.log("setup click behavior");
+      editDashboard();
+      getDashboardCard(1)
+        .findByLabelText("Click behavior")
+        .click({ force: true });
+      sidebar().within(() => {
+        cy.findByText("UNIT").click();
+        cy.findByText("Update a dashboard filter").click();
+        cy.findByText(parameterDetails.name).click();
+      });
+      popover().findByText("UNIT").click();
+      saveDashboard();
+
+      cy.log("verify click behavior with a valid temporal unit");
+      getDashboardCard(1).findByText("year").click();
+      filterWidget().findByText("Year").should("be.visible");
+      getDashboardCard(0).findByText("Created At: Year").should("be.visible");
+
+      cy.log("verify that invalid temporal units are ignored");
+      getDashboardCard(1).findByText("invalid").click();
+      filterWidget()
+        .findByText(/invalid/i)
+        .should("not.exist");
+      getDashboardCard(0).findByText("Created At: Month").should("be.visible");
+
+      cy.log("verify that recovering from an invalid temporal unit works");
+      getDashboardCard(1).findByText("year").click();
+      filterWidget().findByText("Year").should("be.visible");
+      getDashboardCard(0).findByText("Created At: Year").should("be.visible");
+    });
+
+    it("should pass a temporal unit 'custom destination -> dashboard' click behavior", () => {
+      createDashboardWithMappedQuestion({
+        dashboardDetails: {
+          name: "Target dashboard",
+        },
+      });
+      cy.createDashboardWithQuestions({
+        dashboardDetails: {
+          name: "Source dashboard",
+        },
+        questions: [nativeUnitQuestionDetails],
+      }).then(({ dashboard }) => cy.wrap(dashboard.id).as("sourceDashboardId"));
+      visitDashboard("@sourceDashboardId");
+
+      cy.log("setup click behavior");
+      editDashboard();
+      getDashboardCard()
+        .findByLabelText("Click behavior")
+        .click({ force: true });
+      sidebar().within(() => {
+        cy.findByText("UNIT").click();
+        cy.findByText("Go to a custom destination").click();
+        cy.findByText("Dashboard").click();
+      });
+      modal().findByText("Target dashboard").click();
+      sidebar().findByText(parameterDetails.name).click();
+      popover().findByText("UNIT").click();
+      saveDashboard();
+
+      cy.log("verify that invalid temporal units are ignored");
+      getDashboardCard().findByText("invalid").click();
+      dashboardHeader().findByText("Target dashboard").should("be.visible");
+      filterWidget()
+        .findByText(/invalid/i)
+        .should("not.exist");
+      getDashboardCard().findByText("Created At: Month").should("be.visible");
+
+      cy.log("verify click behavior with a valid temporal unit");
+      visitDashboard("@sourceDashboardId");
+      getDashboardCard().findByText("year").click();
+      dashboardHeader().findByText("Target dashboard").should("be.visible");
+      filterWidget().findByText("Year").should("be.visible");
+      getDashboardCard().findByText("Created At: Year").should("be.visible");
+    });
+
+    it("should pass a temporal unit with 'custom destination -> url' click behavior", () => {
+      createDashboardWithMappedQuestion({
+        dashboardDetails: {
+          name: "Target dashboard",
+        },
+      }).then(dashboard => cy.wrap(dashboard.id).as("targetDashboardId"));
+      cy.createDashboardWithQuestions({
+        dashboardDetails: {
+          name: "Source dashboard",
+        },
+        questions: [nativeUnitQuestionDetails],
+      }).then(({ dashboard }) => cy.wrap(dashboard.id).as("sourceDashboardId"));
+      visitDashboard("@sourceDashboardId");
+
+      cy.log("setup click behavior");
+      editDashboard();
+      getDashboardCard()
+        .findByLabelText("Click behavior")
+        .click({ force: true });
+      sidebar().within(() => {
+        cy.findByText("UNIT").click();
+        cy.findByText("Go to a custom destination").click();
+        cy.findByText("URL").click();
+      });
+      modal().findByText("Values you can reference").click();
+      popover().within(() => {
+        cy.findByText("UNIT").should("be.visible");
+        cy.findByText(parameterDetails.name).should("not.exist");
+      });
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        modal().within(() => {
+          cy.findByPlaceholderText("e.g. http://acme.com/id/{{user_id}}").type(
+            `http://localhost:4000/dashboard/${targetDashboardId}?${parameterDetails.slug}={{UNIT}}`,
+            { parseSpecialCharSequences: false },
+          );
+          cy.button("Done").click();
+        });
+      });
+      saveDashboard();
+
+      cy.log("verify click behavior with a temporal valid unit");
+      getDashboardCard().findByText("year").click();
+      dashboardHeader().findByText("Target dashboard").should("be.visible");
+      filterWidget().findByText("Year").should("be.visible");
+      getDashboardCard().findByText("Created At: Year").should("be.visible");
+
+      cy.log("verify that invalid temporal units are ignored");
+      visitDashboard("@sourceDashboardId");
+      getDashboardCard().findByText("invalid").click();
+      dashboardHeader().findByText("Target dashboard").should("be.visible");
+      filterWidget()
+        .findByText(/invalid/i)
+        .should("not.exist");
+      getDashboardCard().findByText("Created At: Month").should("be.visible");
+    });
+
+    it("should not allow to use temporal unit parameter values with SQL queries", () => {
+      createNativeQuestion(nativeQuestionWithTextParameterDetails);
+      createDashboardWithMappedQuestion().then(dashboard =>
+        visitDashboard(dashboard.id),
+      );
+
+      cy.log("setup click behavior only with a temporal unit parameter");
+      editDashboard();
+      getDashboardCard()
+        .findByLabelText("Click behavior")
+        .click({ force: true });
+      sidebar().within(() => {
+        cy.findByText("Count").click();
+        cy.findByText("Go to a custom destination").click();
+        cy.findByText("Saved question").click();
+      });
+      modal().findByText(nativeQuestionWithTextParameterDetails.name).click();
+      sidebar().findByText("No available targets").should("be.visible");
+
+      cy.log("setup click behavior with a text parameter");
+      setFilter("Text or Category");
+      dashboardParametersDoneButton().click();
+      getDashboardCard()
+        .findByLabelText("Click behavior")
+        .click({ force: true });
+      sidebar().within(() => {
+        cy.findByText(/Count goes to/).click();
+        cy.findByText("Go to a custom destination").click();
+        cy.findByText("Category").click();
+      });
+      popover().within(() => {
+        cy.findByText("Text").should("be.visible");
+        cy.findByText(parameterDetails.name).should("not.exist");
+      });
     });
   });
 
@@ -517,7 +756,9 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
   describe("parameter settings", () => {
     it("should be able to set available temporal units", () => {
-      createDashboardWithCard().then(dashboard => visitDashboard(dashboard.id));
+      createDashboardWithMappedQuestion().then(dashboard =>
+        visitDashboard(dashboard.id),
+      );
 
       editDashboard();
       editParameter(parameterDetails.name);
@@ -541,7 +782,9 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should clear the default value if it is no longer within the allowed unit list", () => {
-      createDashboardWithCard().then(dashboard => visitDashboard(dashboard.id));
+      createDashboardWithMappedQuestion().then(dashboard =>
+        visitDashboard(dashboard.id),
+      );
 
       cy.log("set the default value");
       editDashboard();
@@ -560,7 +803,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should be able to set the default value and make it required", () => {
-      createDashboardWithCard().then(dashboard =>
+      createDashboardWithMappedQuestion().then(dashboard =>
         cy.wrap(dashboard.id).as("dashboardId"),
       );
       visitDashboard("@dashboardId");
@@ -600,16 +843,44 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
   describe("query string parameters", () => {
     it("should be able to parse the parameter value from the url", () => {
-      createDashboardWithCard().then(dashboard => {
+      createDashboardWithMappedQuestion().then(dashboard => {
         visitDashboard(dashboard.id, { params: { unit_of_time: "year" } });
       });
+      getDashboardCard().findByText("Created At: Year").should("be.visible");
+    });
+
+    it("should ignore invalid temporal unit values from the url", () => {
+      createDashboardWithMappedQuestion().then(dashboard => {
+        visitDashboard(dashboard.id, { params: { unit_of_time: "invalid" } });
+      });
+      filterWidget().within(() => {
+        cy.findByText(parameterDetails.name).should("be.visible");
+        cy.findByText(/invalid/i).should("not.exist");
+      });
+      getDashboardCard().findByText("Created At: Month").should("be.visible");
+    });
+
+    it("should accept temporal units outside of the allowlist if they are otherwise valid values from the url", () => {
+      createDashboardWithMappedQuestion({
+        dashboardDetails: {
+          parameters: [
+            {
+              ...parameterDetails,
+              temporal_units: ["month", "quarter"],
+            },
+          ],
+        },
+      }).then(dashboard => {
+        visitDashboard(dashboard.id, { params: { unit_of_time: "year" } });
+      });
+      filterWidget().findByText("Year").should("be.visible");
       getDashboardCard().findByText("Created At: Year").should("be.visible");
     });
   });
 
   describe("permissions", () => {
     it("should add a temporal unit parameter and connect it to a card and drill thru", () => {
-      createDashboardWithCard().then(dashboard => {
+      createDashboardWithMappedQuestion().then(dashboard => {
         cy.signIn("nodata");
         visitDashboard(dashboard.id);
       });
@@ -632,7 +903,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should be able to use temporal unit parameters in a public dashboard", () => {
-      createDashboardWithCard().then(dashboard => {
+      createDashboardWithMappedQuestion().then(dashboard => {
         cy.request("POST", `/api/dashboard/${dashboard.id}/public_link`).then(
           ({ body: { uuid } }) => {
             cy.signOut();
@@ -647,10 +918,12 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should be able to use temporal unit parameters in a embedded dashboard", () => {
-      createDashboardWithCard({
-        enable_embedding: true,
-        embedding_params: {
-          [parameterDetails.slug]: "enabled",
+      createDashboardWithMappedQuestion({
+        dashboardDetails: {
+          enable_embedding: true,
+          embedding_params: {
+            [parameterDetails.slug]: "enabled",
+          },
         },
       }).then(dashboard => {
         visitEmbeddedPage({
@@ -691,25 +964,30 @@ function editParameter(name) {
     .click();
 }
 
-function createDashboardWithCard(dashboardDetails = {}) {
-  return createQuestion(singleBreakoutQuestionDetails).then(
-    ({ body: card }) => {
-      return cy
-        .createDashboard({
-          ...dashboardDetails,
-          parameters: [parameterDetails],
-        })
-        .then(({ body: dashboard }) => {
-          return addOrUpdateDashboardCard({
-            dashboard_id: dashboard.id,
+function createDashboardWithMappedQuestion({
+  dashboardDetails = {},
+  extraQuestions = [],
+} = {}) {
+  return cy
+    .createDashboardWithQuestions({
+      dashboardDetails: {
+        parameters: [parameterDetails],
+        ...dashboardDetails,
+      },
+      questions: [singleBreakoutQuestionDetails, ...extraQuestions],
+    })
+    .then(({ dashboard, questions: [card, ...extraCards] }) => {
+      return updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [
+          {
             card_id: card.id,
-            card: {
-              parameter_mappings: [getParameterMapping(card)],
-            },
-          }).then(() => dashboard);
-        });
-    },
-  );
+            parameter_mappings: [getParameterMapping(card)],
+          },
+          ...extraCards.map(({ id }) => ({ card_id: id })),
+        ],
+      }).then(() => dashboard);
+    });
 }
 
 function createDashboardWithMultiSeriesCard() {
@@ -724,16 +1002,18 @@ function createDashboardWithMultiSeriesCard() {
         name: "Question 2",
         display: "line",
       }).then(({ body: card2 }) => {
-        addOrUpdateDashboardCard({
-          card_id: card1.id,
+        updateDashboardCards({
           dashboard_id: dashboard.id,
-          card: {
-            series: [
-              {
-                id: card2.id,
-              },
-            ],
-          },
+          cards: [
+            {
+              card_id: card1.id,
+              series: [
+                {
+                  id: card2.id,
+                },
+              ],
+            },
+          ],
         }).then(() => dashboard);
       });
     });

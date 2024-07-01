@@ -80,7 +80,7 @@ export const ModelPersistenceConfiguration = () => {
 
   const dismissLoadingToast = useCallback(
     (toastId: number) => {
-      dispatch(dismissUndo(toastId));
+      dispatch(dismissUndo({ undoId: toastId }));
     },
     [dispatch],
   );
@@ -175,7 +175,7 @@ export const ModelPersistenceConfiguration = () => {
         <div>
           <ModelCachingScheduleWidget
             setting={modelCachingSetting}
-            onChange={async value => {
+            onChange={async (value: unknown) => {
               await resolveWithToasts([
                 PersistedModelsApi.setRefreshSchedule({ cron: value }),
                 dispatch(refreshSiteSettings({})),

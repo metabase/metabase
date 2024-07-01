@@ -21,7 +21,7 @@ export const saveChartImage = async (selector: string, fileName: string) => {
 
   node.classList.add(SAVING_DOM_IMAGE_CLASS);
 
-  const { default: html2canvas } = await import("html2canvas");
+  const { default: html2canvas } = await import("html2canvas-pro");
   const canvas = await html2canvas(node, {
     useCORS: true,
   });

@@ -14,7 +14,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
-   [ring.util.codec :as codec]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -435,11 +434,6 @@
             (testing "attempting to create a dimension when one already exists should update the existing"
               (is (= (u/the-id new-dim)
                      (u/the-id updated-dim))))))))))
-
-(deftest virtual-field-values-test
-  (testing "Check that trying to get values for a 'virtual' field just returns a blank values map"
-    (is (= {:values []}
-           (mt/user-http-request :rasta :get 200 (format "field/%s/values" (codec/url-encode "field,created_at,{base-type,type/Datetime}")))))))
 
 (deftest create-dimension-with-human-readable-field-id-test
   (testing "POST /api/field/:id/dimension"

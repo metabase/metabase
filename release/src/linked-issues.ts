@@ -14,11 +14,18 @@ export function getLinkedIssues(body: string) {
 }
 
 export function getPRsFromCommitMessage(message: string) {
-  const result = [ ...message.matchAll(/\(#(\d+)\)/g) ];
+  const firstLine = message.split('\n\n')[0];
+  const result = [ ...firstLine.matchAll(/\(#(\d+)\)/g) ];
   if (!result.length) {
     console.log('no pr found in commit message', message);
     return null;
   }
 
   return result.map(r => Number(r[1]));
+}
+
+// backport PRs just have a pr number in the body without a keyword
+export function getBackportSourcePRNumber(body: string) {
+  const matches = body.match(/#(\d+)/);
+  return matches ? Number(matches[1]) : null;
 }
