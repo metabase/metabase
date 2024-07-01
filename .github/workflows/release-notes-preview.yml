@@ -1,0 +1,61 @@
+name: Release Notes Preview
+run-name: Preview ${{ inputs.version }} release notes
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Metabase version (e.g. v0.46.3)'
+        type: string
+        required: true
+  pull_request: # for testing
+
+jobs:
+  preview-release-notes:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+    # - name: Fail early on the incorrect version format
+    #   if: ${{ !(startsWith(inputs.version,'v0.') || startsWith(inputs.version,'v1.')) }}
+    #   run: |
+    #     echo "The version format is invalid!"
+    #     echo "It must start with either 'v0.' or 'v1.'."
+    #     echo "Please, try again."
+    #     exit 1
+    - uses: actions/checkout@v4
+      with:
+        sparse-checkout: release
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn && yarn build
+    - name: Get Release Version
+      uses: actions/github-script@v7
+      env:
+        DOCKERHUB_OWNER: test_owner
+        DOCKERHUB_REPO: test_repo
+        AWS_S3_DOWNLOADS_BUCKET: test_bucket
+      with:
+        script: | # js
+          const { getChangelog } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const fs = require('fs');
+
+          const version = '${{ inputs.version }}' || 'v0.50.9';
+
+          const notes = await getChangelog({
+            version,
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+          });
+
+          console.log(notes);
+
+          fs.writeFileSync(`release-notes-preview-${version}.md`, notes);
+    - name: Upload Release Notes
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-notes-preview-${{inputs.version}}.md
+        path: |
+          ${{ github.workspace }}/release-notes-preview-*.md
+
+
+
