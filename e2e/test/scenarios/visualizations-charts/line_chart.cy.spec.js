@@ -766,6 +766,39 @@ describe("scenarios > visualizations > line chart", () => {
       cy.findByText(X_AXIS_VALUE);
     });
   });
+
+  it("should not reset selected metrics series when changing a dimension (metabase#42540)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            ["count"],
+            ["sum", ["field", ORDERS.TOTAL, null]],
+            ["avg", ["field", ORDERS.QUANTITY, null]],
+          ],
+          breakout: [
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+          ],
+        },
+        type: "query",
+      },
+      display: "line",
+      visualization_settings: {
+        "graph.x_axis.scale": "ordinal",
+        "graph.dimensions": ["RATING"],
+        "graph.metrics": ["count", "sum"], // Only two metrics should be visible
+      },
+    });
+
+    cy.button("Summarize").click();
+    cy.findByLabelText("Tax").click();
+
+    cy.findByTestId("visualization-root")
+      .findAllByText("Average of Quantity")
+      .should("not.exist");
+  });
 });
 
 function showTooltipForFirstCircleInSeries(seriesColor) {
