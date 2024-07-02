@@ -46,7 +46,7 @@ export const ParametersList = ({
   const visibleValuePopulatedParameters = useMemo(() => {
     const visibleParams = getVisibleParameters(parameters, hideParameters);
     return visibleParams.filter(
-      parameter => isEditing || !parameter.name.includes("#hide"), //testing
+      parameter => isEditing || !parameter.name.includes("#hide"),
     );
   }, [parameters, hideParameters, isEditing]);
 
