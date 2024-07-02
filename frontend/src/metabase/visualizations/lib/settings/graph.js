@@ -38,12 +38,13 @@ import {
   getDefaultColumns,
   getDefaultDimensionFilter,
   getDefaultMetricFilter,
-  getAreDimensionsAndMetricsValid,
   getDefaultDimensions,
   getDefaultShowStackValues,
   STACKABLE_DISPLAY_TYPES,
   getDefaultMetrics,
   isShowStackValuesValid,
+  getAreDimensionsValid,
+  getAreMetricsValid,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
@@ -89,7 +90,7 @@ export const GRAPH_DATA_SETTINGS = {
         ? "0.5rem"
         : "1rem",
     isValid: (series, vizSettings) =>
-      getAreDimensionsAndMetricsValid(series, vizSettings),
+      getAreDimensionsValid(series, vizSettings),
     getDefault: (series, vizSettings) =>
       getDefaultDimensions(series, vizSettings),
     persistDefault: true,
@@ -150,8 +151,7 @@ export const GRAPH_DATA_SETTINGS = {
     section: t`Data`,
     title: t`Y-axis`,
     widget: "fields",
-    isValid: (series, vizSettings) =>
-      getAreDimensionsAndMetricsValid(series, vizSettings),
+    isValid: (series, vizSettings) => getAreMetricsValid(series, vizSettings),
     getDefault: series => getDefaultMetrics(series),
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings, _onChange, extra) => {

@@ -6,7 +6,8 @@ import {
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import type { LegacySeriesSettingsObjectKey } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
-  getAreDimensionsAndMetricsValid,
+  getAreDimensionsValid,
+  getAreMetricsValid,
   getDefaultBubbleSizeCol,
   getDefaultDataLabelsFrequency,
   getDefaultDimensionFilter,
@@ -143,22 +144,17 @@ export const computeStaticComboChartSettings = (
     getDefaultMetricFilter(mainCard.display),
   );
 
-  const areDimensionsAndMetricsValid = getAreDimensionsAndMetricsValid(
-    rawSeries,
-    settings,
-  );
-
   fillWithDefaultValue(
     settings,
     "graph.dimensions",
     getDefaultDimensions(rawSeries, settings),
-    areDimensionsAndMetricsValid,
+    getAreDimensionsValid(rawSeries, settings),
   );
   fillWithDefaultValue(
     settings,
     "graph.metrics",
     getDefaultMetrics(rawSeries),
-    areDimensionsAndMetricsValid,
+    getAreMetricsValid(rawSeries, settings),
   );
 
   const cardsColumns = getCardsColumns(rawSeries, settings);
