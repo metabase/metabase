@@ -34,7 +34,7 @@ export class Api extends EventEmitter {
   sessionToken;
 
   onBeforeRequest;
-  requestContext;
+  requestClient;
 
   GET;
   POST;
@@ -97,9 +97,9 @@ export class Api extends EventEmitter {
           delete headers["Content-Type"];
         }
 
-        if (this.requestContext) {
+        if (this.requestClient) {
           // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-          headers["X-Metabase-Request-Context"] = this.requestContext;
+          headers["X-Metabase-Client"] = this.requestClient;
         }
 
         if (this.sessionToken) {

@@ -143,9 +143,9 @@ describe("useInitData hook", () => {
 
       const lastCallRequest = fetchMock.lastCall("path:/api/some/url")?.request;
 
-      expect(
-        lastCallRequest?.headers.get("X-Metabase-Request-Context"),
-      ).toEqual("embedding-sdk");
+      expect(lastCallRequest?.headers.get("X-Metabase-Client")).toEqual(
+        "embedding-sdk",
+      );
     });
   });
 
