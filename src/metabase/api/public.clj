@@ -508,7 +508,7 @@
   (let [field          (api/check-404 (t2/select-one Field :id field-id))
         remapped-field (api/check-404 (t2/select-one Field :id remapped-field-id))]
     (check-search-field-is-allowed field-id remapped-field-id)
-    (api.field/remapped-values field remapped-field (api.field/parse-query-param-values-for-field field value-str))))
+    (api.field/remapped-value field remapped-field (api.field/parse-query-param-value-for-field field value-str))))
 
 (defn card-field-remapped-values
   "Return the reampped Field values for a Field referenced by a *Card*. This explanation is almost useless, so see the

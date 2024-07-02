@@ -396,8 +396,8 @@
     (api/check-403 (mi/can-read? search-field))
     (search-values field search-field value mw.offset-paging/*limit*)))
 
-(defn remapped-values
-  "Search for remapped values where the value of `field` exactly matches one of `values`. Returns a list of pairs like
+(defn remapped-value
+  "Search for one specific remapping where the value of `field` exactly matches `value`. Returns a pair like
 
       [<value-of-field> <value-of-remapped-field>]
 
@@ -405,43 +405,44 @@
 
    For example, with the Sample Database, you could find the name of the Person with ID 20 as follows:
 
-      (remapped-values <PEOPLE.ID Field> <PEOPLE.NAME Field> [20])
-      ;; -> [[20 \"Peter Watsica\"]]"
-  [field remapped-field values]
+      (remapped-value <PEOPLE.ID Field> <PEOPLE.NAME Field> 20)
+      ;; -> [20 \"Peter Watsica\"]"
+  [field remapped-field value]
   (try
     (let [field   (follow-fks field)
           results (qp/process-query
                    {:database (db-id field)
                     :type     :query
                     :query    {:source-table (table-id field)
-                               :filter       (concat [:= [:field (u/the-id field) nil]] values)
+                               :filter       [:= [:field (u/the-id field) nil] value]
                                :fields       [[:field (u/the-id field) nil]
                                               [:field (u/the-id remapped-field) nil]]
-                               :limit (count values)}})]
-      (get-in results [:data :rows]))
+                               :limit        1}})]
+      ;; return first row if it exists
+      (first (get-in results [:data :rows])))
     ;; as with fn above this error can usually be safely ignored which is why log level is log/debug
     (catch Throwable e
       (log/debug e "Error searching for remapping")
-      [])))
+      nil)))
 
-(defn parse-query-param-values-for-field
-  "Parse `values` passed as a URL query param in a way appropriate for the `field` it belongs to. E.g. for text Fields
+(defn parse-query-param-value-for-field
+  "Parse a `value` passed as a URL query param in a way appropriate for the `field` it belongs to. E.g. for text Fields
   the value doesn't need to be parsed; for numeric Fields we should parse it as a number."
-  [field values]
+  [field ^String value]
   (if (isa? (:base_type field) :type/Number)
-    (mapv #(.parse (NumberFormat/getInstance) %) values)
-    values))
+    (.parse (NumberFormat/getInstance) value)
+    value))
 
 (api/defendpoint GET "/:id/remapping/:remapped-id"
   "Fetch remapped Field values."
-  [id remapped-id values]
+  [id remapped-id value]
   {id          ms/PositiveInt
    remapped-id ms/PositiveInt
-   values       (ms/QueryVectorOf ms/NonBlankString)}
+   value       ms/NonBlankString}
   (let [field          (api/read-check Field id)
         remapped-field (api/read-check Field remapped-id)
-        values         (parse-query-param-values-for-field field values)]
-    (remapped-values field remapped-field values)))
+        value          (parse-query-param-value-for-field field value)]
+    (remapped-value field remapped-field value)))
 
 (api/defendpoint GET "/:id/related"
   "Return related entities."
