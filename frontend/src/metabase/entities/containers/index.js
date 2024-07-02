@@ -3,12 +3,27 @@ import EntityLink from "./EntityLink";
 import EntityListLoader, { entityListLoader } from "./EntityListLoader";
 import { EntityName } from "./EntityName";
 import EntityObjectLoader, { entityObjectLoader } from "./EntityObjectLoader";
+import { entityObjectLoaderRtkQuery } from "./rtk-query";
 
 export function addEntityContainers(entity) {
   const ObjectName = entity.nameOne;
 
   // Entity.load higher-order component
-  entity.load = ({ id, query, ...props } = {}) =>
+  entity.load = ({ id, query, ...props } = {}) => {
+    // TODO: map all entities
+    if (!entity.rtk) {
+      return entity.loadLegacy({ id, query, ...props });
+    }
+
+    return entityObjectLoaderRtkQuery({
+      entityType: entity.name,
+      entityId: id,
+      entityQuery: query,
+      ...props,
+    });
+  };
+
+  entity.loadLegacy = ({ id, query, ...props } = {}) =>
     entityObjectLoader({
       entityType: entity.name,
       entityId: id,
