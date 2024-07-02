@@ -761,8 +761,7 @@
           (let [query (assoc
                        (mt/mbql-query venues)
                        :constraints nil
-                       :middleware {:js-int-to-string? false
-                                    :ignore-cached-results? false
+                       :middleware {:ignore-cached-results? false
                                     :process-viz-settings? true
                                     :format-rows? false}
                        :viz-settings {}

@@ -1214,8 +1214,7 @@
               :middleware    {:process-viz-settings?  true
                               :skip-results-metadata? true
                               :ignore-cached-results? true
-                              :format-rows?           format_rows
-                              :js-int-to-string?      false}})))
+                              :format-rows?           format_rows}})))
 
 (api/defendpoint POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run a pivot table query for a specific DashCard."

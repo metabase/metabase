@@ -377,14 +377,13 @@
                                                       :card_id            card-id
                                                       :dashboard_id       dashboard-id}]
         (testing "No parameters -- ignore Dashboard default (#20493, #20503)"
-          ;; [[metabase.query-processor.middleware.large-int-id]] middleware is converting the IDs to strings I guess
-          (is (= [["1" "Rustic Paper Wallet" "Gizmo"]
-                  ["2" "Small Marble Shoes" "Doohickey"]]
+          (is (= [[1 "Rustic Paper Wallet" "Gizmo"]
+                  [2 "Small Marble Shoes" "Doohickey"]]
                  (mt/rows
                   (run-query-for-dashcard dashboard-id card-id dashcard-id)))))
         (testing "Request parameters with :default -- ignore these as well (#20516)"
-          (is (= [["1" "Rustic Paper Wallet" "Gizmo"]
-                  ["2" "Small Marble Shoes" "Doohickey"]]
+          (is (= [[1 "Rustic Paper Wallet" "Gizmo"]
+                  [2 "Small Marble Shoes" "Doohickey"]]
                  (mt/rows
                   (run-query-for-dashcard dashboard-id card-id dashcard-id
                                           :parameters [{:name    "Category"
@@ -393,8 +392,8 @@
                                                         :type    "category"
                                                         :default ["Gizmo"]}])))))
         (testing "Request parameters with :default and nil value"
-          (is (= [["1" "Rustic Paper Wallet" "Gizmo"]
-                  ["2" "Small Marble Shoes" "Doohickey"]]
+          (is (= [[1 "Rustic Paper Wallet" "Gizmo"]
+                  [2 "Small Marble Shoes" "Doohickey"]]
                  (mt/rows
                   (run-query-for-dashcard dashboard-id card-id dashcard-id
                                           :parameters [{:name    "Category"

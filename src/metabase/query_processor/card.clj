@@ -219,7 +219,7 @@
                      (update :viz-settings (fn [viz] (merge viz dash-viz)))
                      (update :middleware (fn [middleware]
                                            (merge
-                                             {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
+                                             {:ignore-cached-results? ignore-cache}
                                              middleware))))
         info     (cond-> {:executed-by            api/*current-user-id*
                           :context                context

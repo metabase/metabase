@@ -29,8 +29,7 @@
                                 (qp/process-query
                                  (qp/userland-query-with-default-constraints
                                   (assoc query :middleware {:skip-results-metadata? true
-                                                            :process-viz-settings?  true
-                                                            :js-int-to-string?      false})
+                                                            :process-viz-settings?  true})
                                   (merge (cond-> {:executed-by pulse-creator-id
                                                   :context     :pulse
                                                   :card-id     card-id}
@@ -81,8 +80,7 @@
                                                       :context       :dashboard-subscription
                                                       :export-format :api
                                                       :parameters    parameters
-                                                      :middleware    {:process-viz-settings? true
-                                                                      :js-int-to-string?     false}
+                                                      :middleware    {:process-viz-settings? true}
                                                       :make-run      (fn make-run [qp _export-format]
                                                                        (^:once fn* [query info]
                                                                                (qp

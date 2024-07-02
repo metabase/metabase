@@ -69,8 +69,7 @@
             (recur (dec retries)))))))
 
 (def ^:private query-defaults
-  {:middleware {:add-default-userland-constraints? true
-                :js-int-to-string? true}})
+  {:middleware {:add-default-userland-constraints? true}})
 
 (deftest basic-query-test
   (testing "POST /api/dataset"
@@ -144,8 +143,7 @@
                                       [:native     [:map
                                                     [:query [:= "foobar"]]]]
                                       [:middleware [:map
-                                                    [:add-default-userland-constraints? [:= true]]
-                                                    [:js-int-to-string?                 [:= true]]]]]]
+                                                    [:add-default-userland-constraints? [:= true]]]]]]
                        [:database_id [:= (mt/id)]]
                        [:state       [:= "42000"]]
                        [:class       [:= "class org.h2.jdbc.JdbcSQLSyntaxErrorException"]]]

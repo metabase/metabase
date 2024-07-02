@@ -722,8 +722,7 @@
    :middleware  {:process-viz-settings?  true
                  :skip-results-metadata? true
                  :ignore-cached-results? true
-                 :format-rows?           format_rows
-                 :js-int-to-string?      false}))
+                 :format-rows?           format_rows}))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
