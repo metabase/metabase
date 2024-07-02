@@ -77,14 +77,13 @@ const CollectionPermissionsModal = ({
   namespace,
   collection,
   collectionsList,
-
   initialize,
   updateCollectionPermission,
   saveCollectionPermissions,
 }) => {
   useEffect(() => {
-    initialize(namespace);
-  }, [initialize, namespace]);
+    initialize({ collectionId: collection.id, namespace });
+  }, [initialize, namespace, collection.id]);
 
   useEffect(() => {
     const isPersonalCollectionLoaded =

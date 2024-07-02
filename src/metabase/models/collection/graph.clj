@@ -6,9 +6,7 @@
    [metabase.audit :as audit]
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection :refer [Collection]]
-   [metabase.models.collection-permission-graph-revision
-    :as c-perm-revision
-    :refer [CollectionPermissionGraphRevision]]
+   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.permissions-group
@@ -122,6 +120,64 @@
          (collection-permission-graph collection-namespace)
          modify-instance-analytics-for-admins))))
 
+(defn- narrow-to-collection-only
+  "The graph often contains permissions for the root collection in each group. This function removes :root and any other
+  collection that might be there, besides `collection-id`. The graph should only include permissions for the collection
+  with ID `collection-id` afterward."
+  [graph collection-id]
+  (update graph
+          :groups
+          (fn [groups]
+            (into {} (for [[group-id group-graph] groups]
+                       [group-id (select-keys group-graph [collection-id])])))))
+
+(defn- sort-child-perms [dps]
+  (vec (sort-by {:write 1 :read 2 :none 3} (distinct dps))))
+
+(defn- build-descendant-perms
+  [collection-id group-ids descendant-ids]
+  ;; for each Group, and it's descendants:
+  ;; take the entire list of descendants, and dedupe it. sort by [:write, :read, :none] order.
+  ;; if the group has 'less' permissions on the collection than on the subcollection, include a warning.
+  ;; 'less' permissions means:
+  ;; - if the group has `:none` on the collection, but `:read` or `:write` on a subcollection, put a warning on the _parent_.
+  (reduce
+   (fn [descendant-perms [group-id coll-descendants]]
+     (let [group-perms  ((group-id->permissions-set) group-id)
+           child-perms  (map (partial perms-type-for-collection group-perms) coll-descendants)]
+       (assoc-in descendant-perms [group-id collection-id] (sort-child-perms child-perms))))
+   {}
+   (for [group-id group-ids]
+     [group-id descendant-ids])))
+
+(defn- descendant-perms
+  "When a user has permissions on a collection, but not on a subcollection, we want to include a warning. To let the
+  frontend compute this without sending down the whole graph, we return descendant permissions, under the
+  key :descendant-perms, keyed the same way as the :groups perm-graph."
+  [graph]
+  (let [group-ids        (keys (:groups graph))
+        collection-ids   (distinct (mapcat keys (vals (:groups graph))))
+        _                (assert (= 1 (count collection-ids)) "The collection perms graph should only contain permissions for a single collection.")
+        collection-id    (first collection-ids)
+        collection       (into {} (t2/select :model/Collection :id collection-id))
+        ;; does this need to be effective descendants? No: admins can see all collections.
+        descendant-ids      (map :id (collection/descendants-flat collection))]
+    (build-descendant-perms collection-id group-ids descendant-ids)))
+
+(mu/defn graph-for-coll-id
+  "Fetch a graph corresponding to the current permissions status for a single collection with ID `collection-id`.
+  This works just like [[metabase.models.permissions/graph-for-db-id]], but for Collections."
+  [collection-id] :- [:map
+                      [:revision :int]
+                      [:groups :map]
+                      [:warnings [:maybe [:map]]]]
+  (t2/with-transaction [_conn]
+    (let [graph-for-coll-id (-> (if (= collection-id :root)
+                                  (graph :root)
+                                  (collection-permission-graph [collection-id] nil))
+                                (narrow-to-collection-only collection-id))]
+      (assoc graph-for-coll-id :descendant-perms (descendant-perms graph-for-coll-id)))))
+
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
 (mu/defn ^:private update-collection-permissions!
@@ -177,7 +233,7 @@
          (doseq [[group-id changes] changes]
            (update-audit-collection-permissions! group-id changes)
            (update-group-permissions! collection-namespace group-id changes))
-         (data-perms.graph/save-perms-revision! CollectionPermissionGraphRevision
+         (data-perms.graph/save-perms-revision! :model/CollectionPermissionGraphRevision
                                                 (:revision old-graph)
                                                 (assoc old-graph :namespace collection-namespace)
                                                 changes))))))

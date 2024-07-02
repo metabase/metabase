@@ -76,7 +76,7 @@ type CollectionPermissionsPageProps = {
   isDirty: boolean;
   savePermissions: () => void;
   loadPermissions: () => void;
-  initialize: () => void;
+  initialize: (params: { collectionId: CollectionId }) => void;
   route: Route;
 };
 
@@ -93,8 +93,8 @@ function CollectionsPermissionsPageView({
   route,
 }: CollectionPermissionsPageProps) {
   useEffect(() => {
-    initialize();
-  }, [initialize]);
+    initialize({ collectionId: collection.id });
+  }, [initialize, collection.id]);
 
   const handlePermissionChange = useCallback(
     (
