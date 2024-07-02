@@ -185,7 +185,7 @@
 
 ;; ## Tests for individual syncing functions
 
-(deftest describe-database-test
+(deftest ^:parallel describe-database-test
   (mt/test-driver :mongo
     (is (= #{{:schema nil, :name "checkins"}
              {:schema nil, :name "categories"}
@@ -197,7 +197,7 @@
              {:schema nil, :name "reviews"}}
             (:tables (driver/describe-database :mongo (mt/db)))))))
 
-(deftest describe-table-test
+(deftest ^:parallel describe-table-test
   (mt/test-driver :mongo
     (is (= {:schema nil
             :name   "venues"
