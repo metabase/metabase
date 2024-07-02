@@ -37,6 +37,7 @@
                               :describe-fields           true
                               :describe-fks              true
                               :nested-field-columns      false
+                              :set-timezone              true
                               :test/jvm-timezone-setting false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
@@ -212,10 +213,6 @@
   [_]
   :%getdate)
 
-(defmethod sql-jdbc.execute/set-timezone-sql :redshift
-  [_]
-  "SET TIMEZONE TO %s;")
-
 ;; This impl is basically the same as the default impl in [[metabase.driver.sql-jdbc.execute]], but doesn't attempt to
 ;; make the connection read-only, because that seems to be causing problems for people
 (defmethod sql-jdbc.execute/do-with-connection-with-options :redshift
@@ -227,10 +224,15 @@
    (fn [^Connection conn]
      (when-not (sql-jdbc.execute/recursive-connection?)
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
-       (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
+       (when session-timezone
+         (let [existing-session-timezone (::session-timezone (sql-jdbc.conn/connection-metadata conn))]
+           (when-not (= existing-session-timezone session-timezone)
+             (with-open [stmt (.createStatement conn)]
+               (.execute stmt (format "SET TIMEZONE TO '%s';" session-timezone)))
+             (sql-jdbc.conn/swap-connection-metadata! conn assoc ::session-timezone session-timezone))))
        (sql-jdbc.execute/set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (qp.store/with-metadata-provider db-or-id-or-spec
-                                                                                               (lib.metadata/database (qp.store/metadata-provider)))
-                                                               (u/id db-or-id-or-spec)     db-or-id-or-spec))
+                                                                                                (lib.metadata/database (qp.store/metadata-provider)))
+                                                                  (u/id db-or-id-or-spec)     db-or-id-or-spec))
        (try
          (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
          (catch Throwable e
