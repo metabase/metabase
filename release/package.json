@@ -11,6 +11,7 @@
     "build": "esbuild src/index.ts --bundle --outfile=dist/index.cjs --platform=node --target=node16",
     "prettier": "prettier --write",
     "release-offline": "tsx release-offline.ts",
+    "generate-changelog": "tsx generate-changelog.ts",
     "copy-required-checks": "tsx ./src/required-checks.ts",
     "test:unit": "jest --testPathPattern unit",
     "test:integration": "jest --testPathPattern integration"
