@@ -2484,6 +2484,128 @@ describe("issue 43154", () => {
   });
 });
 
+describe("issue 42829", () => {
+  const modelDetails = {
+    name: "SQL model",
+    type: "model",
+    native: {
+      query: "SELECT * FROM PEOPLE",
+    },
+  };
+
+  const stateFieldDetails = {
+    id: PEOPLE.STATE,
+    display_name: "State",
+    semantic_type: "type/State",
+  };
+
+  const getQuestionDetails = modelId => ({
+    name: "SQL model-based question",
+    type: "question",
+    query: {
+      "source-table": `card__${modelId}`,
+      aggregation: [
+        ["distinct", ["field", "STATE", { "base-type": "type/Text" }]],
+      ],
+    },
+    display: "scalar",
+  });
+
+  const parameterDetails = {
+    name: "State",
+    slug: "state",
+    id: "5aefc725",
+    type: "string/=",
+    sectionId: "location",
+  };
+
+  const dashboardDetails = {
+    parameters: [parameterDetails],
+    enable_embedding: true,
+    embedding_params: {
+      [parameterDetails.slug]: "enabled",
+    },
+  };
+
+  const getParameterMapping = questionId => ({
+    parameter_id: parameterDetails.id,
+    card_id: questionId,
+    target: ["dimension", ["field", "STATE", { "base-type": "type/Text" }]],
+  });
+
+  function filterAndVerifyResults() {
+    filterWidget().click();
+    popover().within(() => {
+      cy.findByText("AK").click();
+      cy.findByText("AR").click();
+      cy.button("Add filter").click();
+    });
+    getDashboardCard().findByTestId("scalar-value").should("have.text", "2");
+  }
+
+  function drillAndVerifyResults() {
+    getDashboardCard().findByText("SQL model-based question").click();
+    cy.findByTestId("qb-filters-panel").findByText("State is 2 selections");
+    cy.findByTestId("scalar-value").should("have.text", "2");
+  }
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createNativeQuestion(modelDetails).then(({ body: model }) => {
+      // populate result_metadata
+      cy.request("POST", `/api/card/${model.id}/query`);
+      setModelMetadata(model.id, field => {
+        if (field.display_name === "STATE") {
+          return { ...field, ...stateFieldDetails };
+        }
+        return field;
+      });
+      cy.createDashboardWithQuestions({
+        dashboardDetails,
+        questions: [getQuestionDetails(model.id)],
+      }).then(({ dashboard, questions: [question] }) => {
+        updateDashboardCards({
+          dashboard_id: dashboard.id,
+          cards: [
+            {
+              card_id: question.id,
+              parameter_mappings: [getParameterMapping(question.id)],
+            },
+          ],
+        });
+        cy.wrap(dashboard.id).as("dashboardId");
+      });
+    });
+  });
+
+  it("should be able to get field values coming from a sql model-based question in a regular dashboard (metabase#42829)", () => {
+    visitDashboard("@dashboardId");
+    filterAndVerifyResults();
+    drillAndVerifyResults();
+  });
+
+  // param_fields is null for public dashboards, should be fixed on the BE
+  it.skip("should be able to get field values coming from a sql model-based question in a public dashboard (metabase#42829)", () => {
+    cy.get("@dashboardId").then(dashboardId =>
+      visitPublicDashboard(dashboardId),
+    );
+    filterAndVerifyResults();
+  });
+
+  // param_fields is null for embedded dashboards, should be fixed on the BE
+  it.skip("should be able to get field values coming from a sql model-based question in a embedded dashboard (metabase#42829)", () => {
+    cy.get("@dashboardId").then(dashboardId =>
+      visitEmbeddedPage({
+        resource: { dashboard: dashboardId },
+        params: {},
+      }),
+    );
+    filterAndVerifyResults();
+  });
+});
+
 describe("issue 43799", () => {
   const modelDetails = {
     name: "43799",
