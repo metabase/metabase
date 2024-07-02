@@ -34,7 +34,7 @@ describe("search > recently viewed", () => {
     // inside the "Orders in a dashboard" dashboard, the order is queried again,
     // which elicits a ViewLog entry
 
-    cy.intercept("/api/activity/recents?context=views").as("recent");
+    cy.intercept("/api/activity/recents?*").as("recent");
     //Because this is testing keyboard navigation, these tests can run in embedded mode
     visitFullAppEmbeddingUrl({ url: "/", qs: { top_nav: true, search: true } });
     cy.wait("@recent");
