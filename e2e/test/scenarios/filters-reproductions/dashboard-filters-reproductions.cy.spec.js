@@ -3580,6 +3580,39 @@ describe("issue 35954", () => {
 
     cy.findByTestId("fixed-width-filters").icon("gear").click();
     getDashboardCard().should("contain", "Unknown Field");
+
+    cy.get("@dashboardId").then(id => {
+      cy.log("Make sure this works for the public sharing setting");
+      cy.request("POST", `/api/dashboard/${id}/public_link`).then(
+        ({ body: { uuid } }) => {
+          // Set the filter through the URL
+          cy.visit(`/public/dashboard/${uuid}?equal_to=3`);
+        },
+      );
+      cy.findAllByTestId("cell-data")
+        .should("contain", "christ")
+        .and("contain", "xavier")
+        .and("not.contain", "kale");
+
+      cy.log("Make sure this works for the embedding setting");
+      cy.request("PUT", `/api/dashboard/${id}`, {
+        embedding_params: {
+          equal_to: "locked",
+        },
+        enable_embedding: true,
+      });
+
+      const payload = {
+        resource: { dashboard: id },
+        params: { equal_to: [3] },
+      };
+
+      visitEmbeddedPage(payload);
+      cy.findAllByTestId("cell-data")
+        .should("contain", "christ")
+        .and("contain", "xavier")
+        .and("not.contain", "kale");
+    });
   });
 });
 
