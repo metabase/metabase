@@ -696,6 +696,13 @@ class Question {
     return a.isDirtyComparedTo(b);
   }
 
+  isQueryDirtyComparedTo(originalQuestion: Question) {
+    return !Lib.areLegacyQueriesEqual(
+      this.datasetQuery(),
+      originalQuestion.datasetQuery(),
+    );
+  }
+
   // Internal methods
   _serializeForUrl({
     includeOriginalCardId = true,

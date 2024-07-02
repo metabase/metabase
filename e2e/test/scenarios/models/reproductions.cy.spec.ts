@@ -8,12 +8,16 @@ import {
   getNotebookStep,
   hovercard,
   join,
+  mapColumnTo,
   modal,
+  openColumnOptions,
   openNotebook,
   openQuestionActions,
   popover,
   queryBuilderMain,
+  renameColumn,
   restore,
+  saveMetadataChanges,
   saveQuestion,
   startNewModel,
   startNewQuestion,
@@ -529,9 +533,13 @@ describe.skip("issue 40635", () => {
   });
 
   function assertVisualizationColumns() {
-    cy.findAllByTestId("header-cell").should("contain", "ID");
-    cy.findAllByTestId("header-cell").should("contain", "Products → ID");
-    cy.findAllByTestId("header-cell").should("contain", "Products_2 → ID");
+    assertTableHeader(0, "ID");
+    assertTableHeader(1, "Products → ID");
+    assertTableHeader(2, "Products_2 → ID");
+  }
+
+  function assertTableHeader(index: number, name: string) {
+    cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
   }
 
   function assertSettingsSidebar() {
@@ -549,5 +557,60 @@ describe.skip("issue 40635", () => {
     });
 
     cy.button("Done").click();
+  }
+});
+
+describe("issue 33427", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("does not confuse the names of various native model columns mapped to the same database field (metabase#33427)", () => {
+    createNativeQuestion(
+      {
+        type: "model",
+        native: {
+          query: `
+            select o.ID, p1.title as created_by, p2.title as updated_by
+            from ORDERS o
+            join PRODUCTS p1 on p1.ID = o.PRODUCT_ID
+            join PRODUCTS p2 on p2.ID = o.USER_ID;
+        `,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    assertColumnHeaders();
+
+    cy.findByLabelText("Move, trash, and more...").click();
+    popover().findByText("Edit metadata").click();
+
+    openColumnOptions("CREATED_BY");
+    mapColumnTo({ table: "Products", column: "Title" });
+    renameColumn("Title", "CREATED_BY");
+
+    openColumnOptions("UPDATED_BY");
+    mapColumnTo({ table: "Products", column: "Title" });
+    renameColumn("Title", "UPDATED_BY");
+
+    assertColumnHeaders();
+    saveMetadataChanges();
+
+    assertColumnHeaders();
+
+    openNotebook();
+    getNotebookStep("data").button("Pick columns").click();
+    popover().within(() => {
+      cy.findByText("CREATED_BY").should("be.visible");
+      cy.findByText("UPDATED_BY").should("be.visible");
+    });
+  });
+
+  function assertColumnHeaders() {
+    cy.findAllByTestId("header-cell")
+      .should("contain", "CREATED_BY")
+      .and("contain", "UPDATED_BY");
   }
 });

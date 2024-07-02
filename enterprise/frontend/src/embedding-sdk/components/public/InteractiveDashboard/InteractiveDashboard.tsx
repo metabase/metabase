@@ -8,7 +8,6 @@ import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
-import CS from "metabase/css/core/index.css";
 import { NAVIGATE_TO_NEW_CARD, reset } from "metabase/dashboard/actions";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
@@ -24,6 +23,8 @@ import type { QuestionDashboardCard } from "metabase-types/api";
 export type InteractiveDashboardProps = SdkDashboardDisplayProps & {
   questionHeight?: number;
   questionPlugins?: SdkClickActionPluginsConfig;
+
+  className?: string;
 };
 
 const InteractiveDashboardInner = ({
@@ -35,6 +36,7 @@ const InteractiveDashboardInner = ({
   hiddenParameters = [],
   questionHeight,
   questionPlugins,
+  className,
 }: InteractiveDashboardProps) => {
   const {
     displayOptions,
@@ -108,38 +110,36 @@ const InteractiveDashboardInner = ({
     setAdhocQuestionUrl(null);
   };
 
-  if (adhocQuestionUrl) {
-    return (
-      <InteractiveAdHocQuestion
-        questionPath={adhocQuestionUrl}
-        withTitle={withTitle}
-        height={questionHeight}
-        plugins={questionPlugins}
-        onNavigateBack={handleNavigateBackToDashboard}
-      />
-    );
-  }
-
   return (
-    <Box w="100%" ref={ref} className={CS.overflowAuto}>
-      <PublicOrEmbeddedDashboard
-        dashboardId={dashboardId}
-        parameterQueryParams={initialParameterValues}
-        hideDownloadButton={displayOptions.hideDownloadButton}
-        hideParameters={displayOptions.hideParameters}
-        background={displayOptions.background}
-        titled={displayOptions.titled}
-        cardTitled={withCardTitle}
-        theme={theme}
-        isFullscreen={isFullscreen}
-        onFullscreenChange={onFullscreenChange}
-        refreshPeriod={refreshPeriod}
-        onRefreshPeriodChange={onRefreshPeriodChange}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        font={font}
-        bordered={displayOptions.bordered}
-        navigateToNewCardFromDashboard={handleNavigateToNewCardFromDashboard}
-      />
+    <Box w="100%" h="100%" ref={ref} className={className}>
+      {adhocQuestionUrl ? (
+        <InteractiveAdHocQuestion
+          questionPath={adhocQuestionUrl}
+          withTitle={withTitle}
+          height={questionHeight}
+          plugins={questionPlugins}
+          onNavigateBack={handleNavigateBackToDashboard}
+        />
+      ) : (
+        <PublicOrEmbeddedDashboard
+          dashboardId={dashboardId}
+          parameterQueryParams={initialParameterValues}
+          hideDownloadButton={displayOptions.hideDownloadButton}
+          hideParameters={displayOptions.hideParameters}
+          background={displayOptions.background}
+          titled={displayOptions.titled}
+          cardTitled={withCardTitle}
+          theme={theme}
+          isFullscreen={isFullscreen}
+          onFullscreenChange={onFullscreenChange}
+          refreshPeriod={refreshPeriod}
+          onRefreshPeriodChange={onRefreshPeriodChange}
+          setRefreshElapsedHook={setRefreshElapsedHook}
+          font={font}
+          bordered={displayOptions.bordered}
+          navigateToNewCardFromDashboard={handleNavigateToNewCardFromDashboard}
+        />
+      )}
     </Box>
   );
 };

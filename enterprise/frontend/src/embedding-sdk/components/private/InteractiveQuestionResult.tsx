@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -19,16 +19,18 @@ import {
   Notebook,
   NotebookButton,
   QuestionVisualization,
-} from "embedding-sdk/components/public/InteractiveQuestion";
-import {
-  useInteractiveQuestionContext,
-  useInteractiveQuestionData,
-} from "embedding-sdk/components/public/InteractiveQuestion/context";
+} from "embedding-sdk/components/public/InteractiveQuestion/components";
+import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Flex, Group, Stack } from "metabase/ui";
 
+import { useInteractiveQuestionData } from "../public/InteractiveQuestion/hooks";
+
 interface InteractiveQuestionResultProps {
   height?: string | number;
+  withResetButton?: boolean;
+  withTitle: boolean;
+  customTitle?: ReactNode;
 }
 
 type QuestionView = "notebook" | "filter" | "summarize" | "visualization";
@@ -40,23 +42,25 @@ const ResultView = ({
   questionView: QuestionView;
   setQuestionView: (questionView: QuestionView) => void;
 }) => {
+  const returnToVisualization = () => {
+    setQuestionView("visualization");
+  };
+
   if (questionView === "filter") {
     return (
       <Stack>
-        <Button onClick={() => setQuestionView("visualization")}>
-          {t`Close`}
-        </Button>
-        <Filter />
+        <Button onClick={returnToVisualization}>{t`Close`}</Button>
+        <Filter onClose={returnToVisualization} />
       </Stack>
     );
   }
 
   if (questionView === "summarize") {
-    return <Summarize onClose={() => setQuestionView("visualization")} />;
+    return <Summarize onClose={returnToVisualization} />;
   }
 
   if (questionView === "notebook") {
-    return <Notebook onClick={() => setQuestionView("visualization")} />;
+    return <Notebook onApply={returnToVisualization} />;
   }
 
   return <QuestionVisualization />;
@@ -64,6 +68,9 @@ const ResultView = ({
 
 export const InteractiveQuestionResult = ({
   height,
+  withTitle,
+  customTitle,
+  withResetButton,
 }: InteractiveQuestionResultProps): ReactElement => {
   const [questionView, setQuestionView] =
     useState<QuestionView>("visualization");
@@ -73,25 +80,19 @@ export const InteractiveQuestionResult = ({
   const { defaultHeight, isQueryRunning, queryResults, question } =
     useInteractiveQuestionData();
 
+  let content;
+
   if (isQuestionLoading || isQueryRunning) {
-    return <SdkLoader />;
-  }
-
-  if (!question || !queryResults) {
-    return <SdkError message={t`Question not found`} />;
-  }
-
-  return (
-    <Box
-      className={cx(CS.flexFull, CS.fullWidth)}
-      h={height ?? defaultHeight}
-      bg="var(--mb-color-bg-question)"
-    >
+    content = <SdkLoader />;
+  } else if (!question || !queryResults) {
+    content = <SdkError message={t`Question not found`} />;
+  } else {
+    content = (
       <Stack h="100%">
         <Flex direction="row" gap="md" px="md" align="center">
           <BackButton />
-          <Title />
-          <QuestionResetButton />
+          {withTitle && (customTitle ?? <Title />)}
+          {withResetButton && <QuestionResetButton />}
           <FilterButton onClick={() => setQuestionView("filter")} />
           <SummarizeButton
             isOpen={questionView === "summarize"}
@@ -100,7 +101,11 @@ export const InteractiveQuestionResult = ({
           />
           <NotebookButton
             isOpen={questionView === "notebook"}
-            onClick={() => setQuestionView("notebook")}
+            onClick={() =>
+              setQuestionView(
+                questionView === "notebook" ? "visualization" : "notebook",
+              )
+            }
           />
         </Flex>
 
@@ -113,6 +118,16 @@ export const InteractiveQuestionResult = ({
           />
         </Group>
       </Stack>
+    );
+  }
+
+  return (
+    <Box
+      className={cx(CS.flexFull, CS.fullWidth)}
+      h={height ?? defaultHeight}
+      bg="var(--mb-color-bg-question)"
+    >
+      {content}
     </Box>
   );
 };

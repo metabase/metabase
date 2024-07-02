@@ -34,7 +34,10 @@ import {
   updateDashboardCards,
   visitDashboard,
   visitEmbeddedPage,
+  visitModel,
   visitPublicDashboard,
+  setModelMetadata,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -3312,6 +3315,120 @@ describe("issue 34955", () => {
 
     popover().within(() => {
       cy.findByText(column).click();
+    });
+  }
+});
+
+describe("issue 35852", () => {
+  const model = {
+    name: "35852 - sql",
+    type: "model",
+    native: {
+      query: "SELECT * FROM PRODUCTS LIMIT 10",
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show filter values for a model based on sql query (metabase#35852)", () => {
+    createNativeQuestion(model).then(({ body: { id: modelId } }) => {
+      setModelMetadata(modelId, field => {
+        if (field.display_name === "CATEGORY") {
+          return {
+            ...field,
+            id: PRODUCTS.CATEGORY,
+            display_name: "Category",
+            semantic_type: "type/Category",
+            fk_target_field_id: null,
+          };
+        }
+
+        return field;
+      });
+
+      createDashboardWithFilterAndQuestionMapped(modelId);
+      visitModel(modelId);
+    });
+
+    tableHeaderClick("Category");
+    popover().findByText("Filter by this column").click();
+
+    cy.log("Verify filter values are available");
+
+    popover()
+      .should("contain", "Gizmo")
+      .should("contain", "Doohickey")
+      .should("contain", "Gadget")
+      .should("contain", "Widget");
+
+    popover().within(() => {
+      cy.findByText("Gizmo").click();
+      cy.button("Add filter").click();
+    });
+
+    cy.log("Verify filter is applied");
+
+    cy.findAllByTestId("cell-data")
+      .filter(":contains(Gizmo)")
+      .should("have.length", 2);
+
+    visitDashboard("@dashboardId");
+
+    filterWidget().click();
+
+    popover().within(() => {
+      cy.findByText("Gizmo").click();
+      cy.button("Add filter").click();
+    });
+
+    getDashboardCard().findAllByText("Gizmo").should("have.length", 2);
+  });
+
+  function createDashboardWithFilterAndQuestionMapped(modelId) {
+    const parameterDetails = {
+      name: "Category",
+      slug: "category",
+      id: "2a12e66c",
+      type: "string/=",
+      sectionId: "string",
+    };
+
+    const dashboardDetails = {
+      parameters: [parameterDetails],
+    };
+
+    const questionDetails = {
+      name: "Q1",
+      query: { "source-table": `card__${modelId}`, limit: 10 },
+    };
+
+    cy.createDashboardWithQuestions({
+      dashboardDetails,
+      questions: [questionDetails],
+    }).then(({ dashboard, questions: [card] }) => {
+      cy.wrap(dashboard.id).as("dashboardId");
+
+      updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [
+          {
+            card_id: card.id,
+            parameter_mappings: [
+              {
+                card_id: card.id,
+                parameter_id: parameterDetails.id,
+                target: [
+                  "dimension",
+                  ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+                ],
+              },
+            ],
+          },
+        ],
+      });
     });
   }
 });
