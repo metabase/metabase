@@ -20,8 +20,6 @@ When using the query builder, you can use expressions to create new:
 - **Filters**. The expression `= contains([comment], "Metabase")` would filter for rows where the `comment` field contained the word "Metabase".
 - **Summaries**. Also known as metrics or aggregations. `= Share([Total] > 50)` would return the percentage of orders with totals greater than 50 dollars.
 
-> Metabase currently does not support using question marks `?` in custom expression names.
-
 This page covers the basics of expressions. You can check out a [full list of expressions][expression-list] in Metabase, or walk through a tutorial that shows you how you can use [custom expressions in the notebook editor][custom-expressions].
 
 ## Types of expressions

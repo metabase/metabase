@@ -751,8 +751,6 @@ See [Offset](./expressions/offset.md).
   case(contains([Title], 'Wallet'), true, false)
   ```
 
-- Metabase currently does not support using question marks `?` in custom expression names.
-
 ### Database limitations
 
 Limitations are noted for each aggregation and function above, and here there are in summary:

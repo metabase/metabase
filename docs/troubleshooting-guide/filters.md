@@ -39,9 +39,7 @@ If a question filter is giving you no results or the wrong results:
 
 If you're having trouble filtering on a:
 
-- [Custom column](../questions/query-builder/introduction.md#creating-custom-columns):
-  - check if the custom expression is working as expected. For example, your custom expression might be returning blank values when you expect numbers.
-  - Make sure your custom column title does not include a question mark `?`.
+- [Custom column](../questions/query-builder/introduction.md#creating-custom-columns): check if the custom expression is working as expected. For example, your custom expression might be returning blank values when you expect numbers.
 - [SQL field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type): make sure you're using the correct [field filter syntax](../questions/native-editor/sql-parameters.md#field-filter-syntax), then see [Troubleshooting SQL variables](./sql.md#sql-variables-and-field-filters).
 
 **Explanation**
