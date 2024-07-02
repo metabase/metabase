@@ -194,6 +194,22 @@
               :specific-errors {:include ["should be either tables or tables.fields, received: \"schemas\""]}}
              (mt/user-http-request :lucky :get 400 (format "database/%d?include=schemas" (mt/id))))))))
 
+(deftest get-database-legacy-no-self-service-test
+  (testing "GET /api/database/:id"
+    (testing "A database can be fetched even if one table has legacy-no-self-service permissions"
+        (mt/with-user-in-groups [group {:name "Legacy no-self-service group"}
+                                 user  [group]]
+          (mt/with-temp [:model/Database         {db-id :id}      {}
+                         :model/Table            {table-id-1 :id} {:db_id  db-id}
+                         :model/Table            {table-id-2 :id} {:db_id  db-id}]
+            (mt/with-no-data-perms-for-all-users!
+              ;; Query permissions for a single table is enough to fetch the DB
+              (data-perms/set-table-permission! group table-id-1 :perms/view-data :legacy-no-self-service)
+              (data-perms/set-table-permission! group table-id-1 :perms/create-queries :no)
+              (data-perms/set-table-permission! group table-id-2 :perms/view-data :unrestricted)
+              (data-perms/set-table-permission! group table-id-2 :perms/create-queries :query-builder)
+              (mt/user-http-request user :get 200 (format "database/%d" db-id))))))))
+
 (deftest get-database-can-upload-test
   (testing "GET /api/database"
     (mt/with-discard-model-updates [:model/Database] ; to restore any existing metabase_database.uploads_enabled=true
@@ -1548,7 +1564,6 @@
     (mt/with-temp [Database {db-id :id} {}
                    Table    t1 {:db_id db-id :schema "schema1"}
                    Table    t2 {:db_id db-id :schema "schema1"}]
-
       (testing "should work if user has full DB perms..."
         (is (= ["schema1"]
                (mt/with-full-data-perms-for-all-users!
@@ -1738,17 +1753,25 @@
                    Table    t1  {:db_id db-id :schema "schema1" :name "t1"}
                    Table    _t2 {:db_id db-id :schema "schema2"}
                    Table    t3  {:db_id db-id :schema "schema1" :name "t3"}]
-      (testing "if we have full DB perms"
+      (testing "if we have full data perms for the DB"
         (mt/with-full-data-perms-for-all-users!
           (is (= ["t1" "t3"]
                (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1")))))))
 
-      (testing "if we have Table perms for all tables in the schema"
+      (testing "if we have query perms for all tables in the schema"
         (mt/with-no-data-perms-for-all-users!
-          (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t1) :perms/create-queries :query-builder)
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t3) :perms/create-queries :query-builder)
           (is (= ["t1" "t3"]
+                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1")))))))
+
+      (testing "if we have query perms for one table in the schema, and legacy-no-self-service data perms for another"
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t1) :perms/view-data :legacy-no-self-service)
+          (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t1) :perms/create-queries :no)
+          (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t3) :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t3) :perms/create-queries :query-builder)
+          (is (= ["t3"]
                  (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))))
 
     (testing "should return a 403 for a user that doesn't have read permissions"

@@ -1085,8 +1085,9 @@
 
 ;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
 
-(defenterprise current-user-can-read-schema?
-  "OSS implementation. Returns a boolean whether the current user can write the given field."
+(defenterprise current-user-can-manage-schema-metadata?
+  "Returns a boolean whether the current user has permission to edit table metadata for any tables in the schema.
+  On OSS, this is only available to admins."
   metabase-enterprise.advanced-permissions.common
   [_db-id _schema-name]
   (mi/superuser?))
@@ -1101,7 +1102,7 @@
                                                      :perms/create-queries
                                                      database-id
                                                      schema-name))
-   (current-user-can-read-schema? database-id schema-name)))
+   (current-user-can-manage-schema-metadata? database-id schema-name)))
 
 (api/defendpoint GET "/:id/syncable_schemas"
   "Returns a list of all syncable schemas found for the database `id`."
