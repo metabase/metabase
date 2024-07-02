@@ -2190,7 +2190,8 @@
 (deftest populate-is-defective-duplicate-test
   (testing "Migration v49.2024-06-27T13:52:56"
     (mt/test-drivers #{:h2 :mysql}
-      (impl/test-migrations ["v49.2024-06-27T13:52:56"] [migrate!]
+      (impl/test-migrations ["v49.2024-06-27T00:00:01"
+                             "v49.2024-06-27T00:00:09"] [migrate!]
         (let [db-id (t2/insert-returning-pk! (t2/table-name Database)
                                              {:details   "{}"
                                               :created_at    :%now
@@ -2259,9 +2260,9 @@
           (testing "4. More than two fields can be defective"
             (assert-defective-cases cases-4))
           (testing "5. Fields with different parent_id's are not defective duplicates"
-            (assert-defective-cases cases-5)))))))
-
-(mt/set-test-drivers! [:h2 :mysql])
+            (assert-defective-cases cases-5))
+          (testing "Migrate down succeeds"
+            (migrate! :down 47)))))))
 
 (deftest unique-field-is-defective-duplicate-constraint-test
   (testing "Migrations v49.2024-06-27T00:00:01 to v49.2024-06-27T00:00:09, which add a constraint for H2 and MySQL to prevent duplicate fields"
@@ -2326,16 +2327,11 @@
         ;; clean up the fields to test adding them again after rolling back the migrations
         (t2/delete! (t2/table-name Field) :id [:in (map :id @fields-to-clean-up)])
         (reset! fields-to-clean-up [])
-        (if (= driver/*driver* :postgres)
-          (testing "Before 49, Postgres does not allow fields to have the same table, name, but different parent_id"
-            (doseq [[defective? field-thunk] defective+field-thunk]
-              (if defective?
-                (is (thrown? Exception (field-thunk)))
-                (let [field (field-thunk)]
-                  (is (some? field))
-                  (swap! fields-to-clean-up conj field)))))
-          (testing "Before 49, all fields are allowed"
-            (doseq [[_ field-thunk] defective+field-thunk]
-              (let [field (field-thunk)]
-                (is (some? field))
-                (swap! fields-to-clean-up conj field)))))))))
+        (testing "After rolling back the migrations, all fields are allowed"
+          ;; This is needed to allow load-from-h2 to Postgres and then downgrading to work
+          (doseq [[_ field-thunk] defective+field-thunk]
+            (let [field (field-thunk)]
+              (is (some? field))
+              (swap! fields-to-clean-up conj field))))
+        (testing "Migrate up again succeeds"
+          (migrate!))))))

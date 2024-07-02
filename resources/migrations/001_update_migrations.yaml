@@ -4452,6 +4452,25 @@ databaseChangeLog:
             tableName: ${databasechangelog.name}
             constraintName: idx_databasechangelog_id_author_filename
 
+  # metabase_field.is_defective_duplicate is a new column that indicates whether a field is a defective duplicate field
+  # that should never have been created under Postgres' `idx_uniq_field_table_id_parent_id_name_2col` constraint, but
+  # was allowed to be created in MySQL or H2.
+  - changeSet:
+      id: v48.00-068
+      author: calherries
+      comment: Add metabase_field.is_defective_duplicate
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: is_defective_duplicate
+                  type: ${boolean.type}
+                  remarks: "Indicates whether column is a defective duplicate field that should never have been created."
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+
   - changeSet:
       id: v49.00-000
       author: qnkhuat
@@ -6495,28 +6514,10 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.2024-06-27T00:00:01
-      author: calherries
-      comment: Add metabase_field.is_defective_duplicate
-      changes:
-        - addColumn:
-            tableName: metabase_field
-            columns:
-              - column:
-                  name: is_defective_duplicate
-                  type: ${boolean.type}
-                  remarks: "Indicates whether column is a defective duplicate field that should never have been created."
-                  constraints:
-                    nullable: false
-                  defaultValue: false
-
-  - changeSet:
       id: v49.2024-06-27T00:00:02
       author: calherries
       comment: Populate metabase_field.is_defective_duplicate
       changes:
-        # No migration is needed for Postgres because the idx_uniq_field_table_id_parent_id_name
-        # and idx_uniq_field_table_id_parent_id_name_2col constraints mean defective duplicates cannot exist
         - sql:
             dbms: mysql,mariadb
             sql: >-
@@ -6551,61 +6552,36 @@ databaseChangeLog:
                       SELECT
                           mf.id,
                           ROW_NUMBER() OVER (
-                              PARTITION BY mf.table_id, mf.name, mf.parent_id
+                              PARTITION BY mf.table_id, mf.name
                               ORDER BY
                                   CASE WHEN mf.active THEN 0 ELSE 1 END,
                                   CASE WHEN mf.nfc_path IS NULL THEN 0 ELSE 1 END,
                                   mf.created_at
                           ) AS rn
                       FROM metabase_field mf
+                      WHERE mf.parent_id IS NULL
                   ) x
                   WHERE x.rn > 1
-              )
-      rollback: # No rollback since is_defective_duplicate does not exist before 49
+              );
+      rollback: # No rollback needed since is_defective_duplicate is unused in 48.
 
   # Previously we had two unique constraints on metabase_field's name, table_id, and parent_id columns.
   #
   # 1. `idx_uniq_field_table_id_parent_id_name` is a unique constraint on (name, table_id, parent_id)
-  # but since NULL <> NULL, it only applies a constraint on fields where parent_id is not NULL.
+  # Since NULL <> NULL, it only applies a constraint on fields where parent_id IS NOT NULL.
+  # This constraint doesn't need modifying because (parent_id IS NOT NULL) implies (is_defective_duplicate = FALSE).
 
   # 2. `idx_uniq_field_table_id_parent_id_name_2col` is a Postgres-only unique constraint on
   # `(name, table_id) WHERE parent_id IS NULL`. There was no equivalent constraint for H2 or MySQL because only
-  # Postgres supports partial indexes. The following migrations introduce an equivalent constraint for H2 and
+  # Postgres supports partial indexes. The following migration introduces an equivalent constraint for H2 and
   # MySQL by adding a constraint that uses a generated column to handle NULL parent_id values.
   #
   # At the same time, we exclude fields where is_defective_duplicate=TRUE from the above constraints.
-
-  # The next two changesets exclude fields where is_defective_duplicate=TRUE for Postgres using partial indexes.
-  - changeSet:
-      id: v49.2024-06-27T00:00:03
-      author: calherries
-      comment: replace idx_uniq_field_table_id_parent_id_name for Postgres
-      changes:
-        - sql:
-            dbms: postgresql
-            sql: >-
-              ALTER TABLE metabase_field DROP CONSTRAINT IF EXISTS idx_uniq_field_table_id_parent_id_name;
-              DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name;
-              CREATE UNIQUE INDEX idx_uniq_field_table_id_parent_id_name
-                ON "metabase_field" ("table_id", "parent_id", "name")
-                WHERE "parent_id" IS NOT NULL AND "is_defective_duplicate" = FALSE;
-      rollback:
-        - sql:
-            dbms: postgresql
-            sql: >-
-              DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name;
-              ALTER TABLE metabase_field
-              ADD CONSTRAINT idx_uniq_field_table_id_parent_id_name
-              UNIQUE ("table_id", "parent_id", "name");
 
   - changeSet:
       id: v49.2024-06-27T00:00:04
       author: calherries
       comment: replace idx_uniq_field_table_id_parent_id_name_2col for Postgres
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type:
       changes:
         - sql:
             dbms: postgresql
@@ -6614,14 +6590,7 @@ databaseChangeLog:
               CREATE UNIQUE INDEX idx_uniq_field_table_id_parent_id_name_2col
                 ON "metabase_field" ("table_id", "name")
                 WHERE "parent_id" IS NULL AND "is_defective_duplicate" = FALSE;
-      rollback:
-        - sql:
-            dbms: postgresql
-            sql: >-
-              DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name_2col;
-              CREATE UNIQUE INDEX idx_uniq_field_table_id_parent_id_name_2col
-                ON "metabase_field" ("table_id", "name")
-                WHERE "parent_id" IS NULL;
+      rollback: # No rollback since we want to allow downgrades to 48 to succeed
 
   # The next two changesets replace ON DELETE CASCADE with ON DELETE RESTRICT on fk_field_parent_ref_field_id.
   # We need to do this for MySQL because it doesn't support ON DELETE CASCADE in a stored generated column, and we
@@ -6714,7 +6683,7 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-06-27T00:00:09
       author: calherries
-      comment: Remove idx_uniq_field_table_id_parent_id_name because it is redundant
+      comment: Remove idx_uniq_field_table_id_parent_id_name for H2/MySQL because it is redundant
       preConditions:
         - onFail: MARK_RAN
         - dbms:
