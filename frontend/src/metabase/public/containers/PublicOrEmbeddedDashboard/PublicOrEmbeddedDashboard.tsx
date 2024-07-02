@@ -28,12 +28,6 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
-import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
-import { isActionDashCard } from "metabase/dashboard/utils";
-import title from "metabase/hoc/Title";
-import { isWithinIframe } from "metabase/lib/dom";
-import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
-import { WithPublicDashboardEndpoints } from "metabase/public/containers/PublicOrEmbeddedDashboard/WithPublicDashboardEndpoints";
 import { setErrorPage } from "metabase/redux/app";
 import type { DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
