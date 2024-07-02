@@ -28,11 +28,11 @@ interface FilterValuePickerProps<T> {
   onChange: (newValues: T[]) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
   onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
+  shouldCreate?: (query: string, values: string[]) => boolean;
 }
 
 interface FilterValuePickerOwnProps extends FilterValuePickerProps<string> {
   placeholder: string;
-  shouldCreate: (query: string) => boolean;
 }
 
 function FilterValuePicker({
@@ -61,7 +61,7 @@ function FilterValuePicker({
   if (isLoading) {
     return (
       <Center h="2.5rem">
-        <Loader data-testid="loading-spinner" />
+        <Loader data-testid="loading-indicator" />
       </Center>
     );
   }
@@ -115,7 +115,7 @@ export function StringFilterValuePicker({
   values,
   ...props
 }: FilterValuePickerProps<string>) {
-  const shouldCreate = (query: string) => {
+  const shouldCreate = (query: string, values: string[]) => {
     return query.trim().length > 0 && !values.includes(query);
   };
 
@@ -136,9 +136,9 @@ export function NumberFilterValuePicker({
   onChange,
   ...props
 }: FilterValuePickerProps<number>) {
-  const shouldCreate = (query: string) => {
+  const shouldCreate = (query: string, values: string[]) => {
     const number = parseFloat(query);
-    return isFinite(number) && !values.includes(number);
+    return isFinite(number) && !values.includes(query);
   };
 
   return (

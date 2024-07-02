@@ -2,9 +2,11 @@ import type { EChartsCoreOption } from "echarts/core";
 import type { LabelLayoutOptionCallback } from "echarts/types/src/util/types";
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
+import {
+  CHART_STYLE,
+  Z_INDEXES,
+} from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
-  CartesianChartModel,
   ChartDataset,
   LabelFormatter,
   WaterfallChartModel,
@@ -75,7 +77,7 @@ const getLabelLayoutFn = (
 };
 
 const computeWaterfallBarWidth = (
-  chartModel: CartesianChartModel,
+  chartModel: WaterfallChartModel,
   boundaryWidth: number,
 ) => {
   if (isCategoryAxis(chartModel.xAxisModel)) {
@@ -93,9 +95,10 @@ const computeWaterfallBarWidth = (
 };
 
 export const buildEChartsWaterfallSeries = (
-  chartModel: CartesianChartModel,
+  chartModel: WaterfallChartModel,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
+  chartWidth: number,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
 ) => {
@@ -111,15 +114,18 @@ export const buildEChartsWaterfallSeries = (
       seriesModel,
       chartModel.yAxisScaleTransforms,
       renderingContext,
+      chartWidth,
       labelFormatter,
     ),
     formatter:
       labelFormatter &&
       getDataLabelFormatter(
-        seriesModel,
+        WATERFALL_VALUE_KEY,
         chartModel.yAxisScaleTransforms,
         labelFormatter,
-        WATERFALL_VALUE_KEY,
+        chartWidth,
+        settings,
+        chartModel.dataDensity,
       ),
   });
 
@@ -134,16 +140,16 @@ export const buildEChartsWaterfallSeries = (
         x: X_AXIS_DATA_KEY,
         y: [WATERFALL_START_KEY, WATERFALL_END_KEY],
       },
-      z: CHART_STYLE.series.zIndex,
+      z: Z_INDEXES.series,
       renderItem: (_params, api) => {
-        const dataIndex = api.value(0);
-        const barStart = api.value(1);
-        const barEnd = api.value(2);
+        const xValue = api.value(0);
+        const yStart = api.value(1);
+        const yEnd = api.value(2);
 
-        const startCoord = api.coord([dataIndex, barStart]);
-        const endCoord = api.coord([dataIndex, barEnd]);
+        const startCoord = api.coord([xValue, yStart]);
+        const endCoord = api.coord([xValue, yEnd]);
         const rectHeight = startCoord[1] - endCoord[1];
-        const isIncrease = barEnd >= barStart;
+        const isIncrease = yEnd >= yStart;
 
         const fill = isIncrease
           ? settings["waterfall.increase_color"]
@@ -166,7 +172,7 @@ export const buildEChartsWaterfallSeries = (
     {
       id: WATERFALL_LABELS_SERIES_ID,
       type: "scatter",
-      z: CHART_STYLE.seriesLabels.zIndex,
+      z: Z_INDEXES.dataLabels,
       silent: true,
       dimensions: [X_AXIS_DATA_KEY, WATERFALL_VALUE_KEY, WATERFALL_END_KEY],
       symbolSize: 0,
@@ -185,7 +191,7 @@ export const buildEChartsWaterfallSeries = (
       id: WATERFALL_TOTAL_KEY,
       type: "bar",
       barWidth,
-      z: CHART_STYLE.series.zIndex,
+      z: Z_INDEXES.series,
       dimensions: [X_AXIS_DATA_KEY, WATERFALL_TOTAL_KEY],
       encode: {
         y: WATERFALL_TOTAL_KEY,
@@ -208,7 +214,7 @@ export const getWaterfallChartOption = (
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
-  isPlaceholder: boolean,
+  isAnimated: boolean,
   renderingContext: RenderingContext,
 ): EChartsCoreOption => {
   const hasTimelineEvents = timelineEventsModel != null;
@@ -224,6 +230,7 @@ export const getWaterfallChartOption = (
     chartModel,
     settings,
     chartMeasurements,
+    chartWidth,
     chartModel.waterfallLabelFormatter,
     renderingContext,
   );
@@ -236,7 +243,7 @@ export const getWaterfallChartOption = (
   const echartsDataset = [{ source: chartModel.transformedDataset }];
 
   return {
-    ...getSharedEChartsOptions(isPlaceholder),
+    ...getSharedEChartsOptions(isAnimated),
     grid: {
       ...chartMeasurements.padding,
     },

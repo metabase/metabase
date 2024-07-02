@@ -13,7 +13,7 @@
                                ns-set))
 
 (def admin-email-docs "### `MB_ADMIN_EMAIL`\n\n- Type: string\n- Default: `null`\n- [Configuration file name](./config-file.md): `admin-email`\n\nThe email address users should be referred to if they encounter a problem.")
-(def aggregated-query-row-limit-docs "### `MB_AGGREGATED_QUERY_ROW_LIMIT`\n\n- Type: integer\n- Default: `10000`\n- [Exported as](../installation-and-operation/serialization.md): `aggregated-query-row-limit`.\n- [Configuration file name](./config-file.md): `aggregated-query-row-limit`\n\nMaximum number of rows to return for aggregated queries via the API.")
+(def aggregated-query-row-limit-docs "### `MB_AGGREGATED_QUERY_ROW_LIMIT`\n\n- Type: integer\n- Default: `10000`\n- [Exported as](../installation-and-operation/serialization.md): `aggregated-query-row-limit`.\n- [Configuration file name](./config-file.md): `aggregated-query-row-limit`\n\nMaximum number of rows to return for aggregated queries via the API.\n\nMust be less than 1048575. This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.\n  This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.\n  See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.")
 
 (def expected-docs (str/join "\n\n"
                              [admin-email-docs

@@ -15,7 +15,6 @@
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.legacy-metric :refer [LegacyMetric]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
@@ -63,9 +62,6 @@
         {:source-field (id :guard integer?)}
         (assoc &match :source-field (fully-qualified-name Field id))
 
-        [:metric (id :guard integer?)]
-        [:metric (fully-qualified-name LegacyMetric id)]
-
         [:segment (id :guard integer?)]
         [:segment (fully-qualified-name Segment id)])))
 
@@ -109,7 +105,7 @@
                   :dashboard_id :fields_hash :personal_owner_id :made_public_by_id :collection_id
                   :pulse_id :result_metadata :action_id)
     (not *include-entity-id*)   (dissoc :entity_id)
-    (some #(instance? % entity) (map type [LegacyMetric Field Segment])) (dissoc :table_id)))
+    (some #(instance? % entity) (map type [Field Segment])) (dissoc :table_id)))
 
 (defmulti ^:private serialize-one
   {:arglists '([instance])}

@@ -110,11 +110,10 @@ jobs:
   run-sanity-check:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
-    needs: [release-artifact, check-uberjar-health]
+    needs: [release-artifact]
     strategy:
       matrix:
         edition: [oss, ee]
-        folder: [onboarding, search]
     env:
       MB_EDITION: ${{ matrix.edition }}
       DISPLAY: ""
@@ -127,20 +126,17 @@ jobs:
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       TERM: xterm
-    services:
-      maildev:
-        image: maildev/maildev:2.0.5
-        ports:
-          - "1080:1080"
-          - "1025:1025"
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.release-artifact.outputs.commit }}
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: true
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare JDK 11
@@ -163,7 +159,10 @@ jobs:
       - name: Run a few important Cypress tests as sanity check
         run: |
           mkdir -p ./target/uberjar && cp metabase.jar ./target/uberjar/metabase.jar
-          yarn test-cypress-run --folder ${{ matrix.folder }}
+          yarn test-cypress-run \
+            --env grepTags="@smoke",grepOmitFiltered=true \
+            --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
+            --browser 'replay-chromium'
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
@@ -176,7 +175,7 @@ jobs:
           if-no-files-found: ignore
 
   containerize:
-    needs: [release-artifact, run-sanity-check]
+    needs: [release-artifact]
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     strategy:
@@ -285,3 +284,37 @@ jobs:
       - name: Wait for Metabase to start
         run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
         timeout-minutes: 3
+
+  tests-complete-message:
+    if: always()
+    runs-on: ubuntu-22.04
+    needs: [run-sanity-check, check-uberjar-health, verify-docker-pull]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Send tests complete message
+        uses: actions/github-script@v7
+        env:
+          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendTestsCompleteMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const allJobsSuccessful =
+              '${{ needs.run-sanity-check.result }}' === 'success' &&
+              '${{ needs.check-uberjar-health.result }}' === 'success' &&
+              '${{ needs.verify-docker-pull.result }}' === 'success';
+
+            await sendTestsCompleteMessage({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              version: '${{ inputs.version }}',
+              runId: '${{ github.run_id }}',
+              channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+              testStatus: allJobsSuccessful ? 'success' : 'failure',
+            }).catch(console.error);

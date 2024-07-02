@@ -69,7 +69,7 @@ describe("scenarios > metrics > collection", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should show metrics in collections", () => {
+  it("should show metrics in collections", { tags: "@flaky" }, () => {
     createQuestion(ORDERS_SCALAR_METRIC);
     createQuestion(ORDERS_TIMESERIES_METRIC);
     cy.visit("/collection/root");

@@ -43,9 +43,6 @@
 (mr/def ::segment
   [:schema {:doc/title "Valid legacy Segment ID"} pos-int?])
 
-(mr/def ::legacy-metric
-  [:schema {:doc/title "Valid legacy Metric ID"} pos-int?])
-
 (mr/def ::metric
   [:schema {:doc/title "Valid legacy Metric ID"} pos-int?])
 

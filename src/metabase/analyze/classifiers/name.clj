@@ -143,7 +143,7 @@
     [:semantic_type {:optional true} [:maybe :keyword]]]
    ::analyze.schema/no-kebab-case-keys])
 
-(mu/defn infer-semantic-type :- [:maybe :keyword]
+(mu/defn infer-semantic-type-by-name :- [:maybe :keyword]
   "Classifer that infers the semantic type of a `field` based on its name and base type."
   [field-or-column :- FieldOrColumn]
   ;; Don't overwrite keys, else we're ok with overwriting as a new more precise type might have
@@ -152,11 +152,11 @@
                 (str/blank? (:name field-or-column)))
     (semantic-type-for-name-and-base-type (:name field-or-column) (:base_type field-or-column))))
 
-(mu/defn infer-and-assoc-semantic-type :- [:maybe FieldOrColumn]
+(mu/defn infer-and-assoc-semantic-type-by-name :- [:maybe FieldOrColumn]
   "Returns `field-or-column` with a computed semantic type based on the name and base type of the `field-or-column`"
   [field-or-column :- FieldOrColumn
    _fingerprint    :- [:maybe fingerprint.schema/Fingerprint]]
-  (when-let [inferred-semantic-type (infer-semantic-type field-or-column)]
+  (when-let [inferred-semantic-type (infer-semantic-type-by-name field-or-column)]
     (log/debugf "Based on the name of %s, we're giving it a semantic type of %s."
                 (sync-util/name-for-logging field-or-column)
                 inferred-semantic-type)
@@ -193,7 +193,6 @@
                                             type))
                                         entity-types-patterns)
                                   (case (some-> (:db_id table) driver.u/database->driver)
-                                    :googleanalytics :entity/GoogleAnalyticsTable
-                                    :druid           :entity/EventTable
+                                    :druid :entity/EventTable
                                     nil)
                                   :entity/GenericTable))))

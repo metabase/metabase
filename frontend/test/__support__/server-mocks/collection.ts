@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   convertSavedQuestionToVirtualTable,
@@ -35,6 +35,7 @@ export function setupCollectionsEndpoints({
 }: CollectionEndpoints) {
   fetchMock.get("path:/api/collection/root", rootCollection);
   fetchMock.get(`path:/api/collection/trash`, trashCollection);
+  fetchMock.get(`path:/api/collection/${trashCollection.id}`, trashCollection);
   fetchMock.get(
     {
       url: "path:/api/collection/tree",
@@ -133,6 +134,10 @@ export function setupUnauthorizedCollectionsEndpoints(
 
 export function setupUnauthorizedCollectionEndpoints(collection: Collection) {
   fetchMock.get(`path:/api/collection/${collection.id}`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
+  fetchMock.get(`path:/api/collection/${collection.id}/items`, {
     status: 403,
     body: PERMISSION_ERROR,
   });

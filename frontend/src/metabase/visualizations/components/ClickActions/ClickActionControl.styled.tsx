@@ -6,7 +6,7 @@ import { Icon, rem } from "metabase/ui";
 
 export const ClickActionButtonIcon = styled(Icon)`
   margin-right: 0.2rem;
-  color: ${({ theme }) => theme.fn.themeColor("brand")};
+  color: var(--mb-color-brand);
   transition: all 200ms linear;
 `;
 
@@ -16,33 +16,33 @@ export const ClickActionButtonTextIcon = styled.span`
   text-align: center;
   font-weight: 700;
   font-size: 1.25rem;
-  color: ${({ theme }) => theme.fn.themeColor("brand")};
+  color: var(--mb-color-brand);
   transition: all 200ms linear;
 `;
 
 export const Subtitle = styled.div`
-  color: ${({ theme }) => theme.fn.themeColor("text-light")};
+  color: var(--mb-color-text-light);
   font-weight: normal;
   margin-left: 1rem;
 `;
 
 export const TokenFilterActionButton = styled(Button)`
-  color: ${({ theme }) => theme.fn.themeColor("brand")};
+  color: var(--mb-color-brand);
   font-size: 1.25rem;
   line-height: 1rem;
   padding: 0.125rem 0.85rem 0.25rem;
-  border: 1px solid ${({ theme }) => theme.fn.themeColor("focus")};
+  border: 1px solid var(--mb-color-focus);
   border-radius: 100px;
 
   &:hover {
-    color: ${({ theme }) => theme.fn.themeColor("white")};
-    background-color: ${({ theme }) => theme.fn.themeColor("brand")};
-    border-color: ${({ theme }) => theme.fn.themeColor("brand")};
+    color: var(--mb-color-text-white);
+    background-color: var(--mb-color-brand);
+    border-color: var(--mb-color-brand);
   }
 `;
 
 export const TokenActionButton = styled(Button)`
-  color: ${({ theme }) => theme.fn.themeColor("brand")};
+  color: var(--mb-color-brand);
   font-size: 0.875em;
   line-height: 1rem;
   padding: 0.3125rem 0.875rem;
@@ -50,14 +50,14 @@ export const TokenActionButton = styled(Button)`
   border-radius: 100px;
 
   &:hover {
-    color: ${({ theme }) => theme.fn.themeColor("white")};
-    background-color: ${({ theme }) => theme.fn.themeColor("brand")};
-    border-color: ${({ theme }) => theme.fn.themeColor("brand")};
+    color: var(--mb-color-text-white);
+    background-color: var(--mb-color-brand);
+    border-color: var(--mb-color-brand);
   }
 `;
 
 export const SortControl = styled(Button)`
-  color: ${({ theme }) => theme.fn.themeColor("brand")};
+  color: var(--mb-color-brand);
   border: 1px solid ${({ theme }) => alpha(theme.fn.themeColor("brand"), 0.35)};
   line-height: 1;
 
@@ -67,9 +67,9 @@ export const SortControl = styled(Button)`
   border-radius: 100px;
 
   &:hover {
-    color: ${({ theme }) => theme.fn.themeColor("white")};
-    background-color: ${({ theme }) => theme.fn.themeColor("brand")};
-    border-color: ${({ theme }) => theme.fn.themeColor("brand")};
+    color: var(--mb-color-text-white);
+    background-color: var(--mb-color-brand);
+    border-color: var(--mb-color-brand);
   }
 `;
 
@@ -82,13 +82,13 @@ export const FormattingControl = styled(Button)`
   padding: 0.125rem 0.25rem;
 
   &:hover {
-    color: ${({ theme }) => theme.fn.themeColor("brand")};
+    color: var(--mb-color-brand);
     background-color: transparent;
   }
 `;
 
 export const InfoControl = styled.div`
-  color: ${({ theme }) => theme.fn.themeColor("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: bold;
   line-height: 1.5rem;
   max-width: 10.75rem;

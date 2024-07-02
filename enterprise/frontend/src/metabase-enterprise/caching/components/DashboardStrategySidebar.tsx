@@ -11,7 +11,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErr
 import type { DashboardSidebarPageProps } from "metabase/dashboard/components/DashboardInfoSidebar";
 import { color } from "metabase/lib/colors";
 import { Button, Flex, Icon, Title } from "metabase/ui";
-import type { CacheableModel, Strategy } from "metabase-types/api";
+import type { CacheableModel, CacheStrategy } from "metabase-types/api";
 
 import { DashboardStrategySidebarBody } from "./DashboardStrategySidebar.styled";
 
@@ -49,7 +49,7 @@ const DashboardStrategySidebar_Base = ({
     "dashboard",
   );
   const saveAndCloseSidebar = useCallback(
-    async (values: Strategy) => {
+    async (values: CacheStrategy) => {
       await saveStrategy(values);
       setPage("default");
     },
@@ -96,6 +96,7 @@ const DashboardStrategySidebar_Base = ({
           targetId={dashboardId}
           targetModel="dashboard"
           targetName={dashboard.name}
+          isInSidebar
           setIsDirty={setIsStrategyFormDirty}
           saveStrategy={saveAndCloseSidebar}
           savedStrategy={savedStrategy}
@@ -116,7 +117,7 @@ export const DashboardStrategySidebar = withRouter(
 const BackButton = ({ onClick }: { onClick: () => void }) => (
   <Button
     lh={0}
-    style={{ marginInlineStart: ".5rem" }}
+    style={{ marginInlineStart: "1rem" }}
     variant="subtle"
     onClick={onClick}
   >

@@ -27,11 +27,11 @@
 
 (defn- uses-default-describe-table? [driver]
   (and (identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table driver))
-       (not (driver/database-supports? driver :describe-fields nil))))
+       (not (driver.u/supports? driver :describe-fields nil))))
 
 (defn- uses-default-describe-fields? [driver]
   (and (identical? (get-method driver/describe-fields :sql-jdbc) (get-method driver/describe-fields driver))
-       (driver/database-supports? driver :describe-fields nil)))
+       (driver.u/supports? driver :describe-fields nil)))
 
 (defn- sql-jdbc-drivers-using-default-describe-table-or-fields-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`, or `describe-fields`."
@@ -46,7 +46,7 @@
 (deftest ^:parallel describe-fields-nested-field-columns-test
   (testing (str "Drivers that support describe-fields should not support the nested field columns feature."
                 "It is possible to support both in the future but this has not been implemented yet.")
-    (is (empty? (filter #(driver/database-supports? % :describe-fields nil)
+    (is (empty? (filter #(driver.u/supports? % :describe-fields nil)
                         (mt/normal-drivers-with-feature :nested-field-columns))))))
 
 (deftest ^:parallel describe-table-test
@@ -141,7 +141,7 @@
 (defn- describe-fields-for-table [db table]
   (let [driver (driver.u/database->driver db)]
     (sort-by :database-position
-             (if (driver/database-supports? driver :describe-fields db)
+             (if (driver.u/supports? driver :describe-fields db)
                (vec (driver/describe-fields driver
                                             db
                                             :schema-names [(:schema table)]
@@ -189,11 +189,13 @@
       11111                     java.lang.Long)))
 
 (deftest ^:parallel row->types-test
-  (testing "array rows ignored properly in JSON row->types (#21752)"
-    (let [arr-row   {:bob (json/encode [:bob :cob :dob 123 "blob"])}
-          obj-row   {:zlob (json/encode {:blob Long/MAX_VALUE})}]
-      (is (= {} (#'sql-jdbc.describe-table/json-map->types arr-row)))
-      (is (= {[:zlob "blob"] java.lang.Long} (#'sql-jdbc.describe-table/json-map->types obj-row)))))
+  (testing "none object rows ignored properly in JSON row->types (#21752, #44459)"
+    (let [arr-row    {:bob (json/encode [:bob :cob :dob 123 "blob"])}
+          obj-row    {:zlob (json/encode {:blob Long/MAX_VALUE})}
+          string-row {:naked (json/encode "string")}]
+     (is (= {} (#'sql-jdbc.describe-table/json-map->types string-row)))
+     (is (= {} (#'sql-jdbc.describe-table/json-map->types arr-row)))
+     (is (= {[:zlob "blob"] java.lang.Long} (#'sql-jdbc.describe-table/json-map->types obj-row)))))
   (testing "JSON json-map->types handles bigint OK (#22732)"
     (let [int-row   {:zlob (json/encode {"blob" (inc (bigint Long/MAX_VALUE))})}
           float-row {:zlob "{\"blob\": 12345678901234567890.12345678901234567890}"}]
@@ -337,6 +339,39 @@
                  driver/*driver*
                  (mt/db)
                  {:name "json" :id (mt/id "json")}))))))))
+
+(deftest json-columns-with-values-are-not-object-test
+  (testing "able sync a db with jsonb columns where value is an array or a string #44459"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+      (mt/dataset (mt/dataset-definition
+                    "naked_json"
+                    ["json_table"
+                     [{:field-name "array_col" :base-type :type/JSON}
+                      {:field-name "string_col" :base-type :type/JSON}]
+                     [ ["[1, 2, 3]" "\"just-a-string-in-a-json-column\""]]])
+
+        (testing "there should be no nested fields"
+         (is (= #{} (sql-jdbc.sync/describe-nested-field-columns
+                     driver/*driver*
+                     (mt/db)
+                     {:name "json_table" :id (mt/id "json_table")}))))
+
+        (sync/sync-database! (mt/db))
+        (is (=? (if (mysql/mariadb? (mt/db))
+                  #{{:name "id"
+                     :base_type :type/Integer}
+                    {:name "array_col"
+                     :base_type :type/Text}
+                    {:name "string_col"
+                     :base_type :type/Text}}
+                  #{{:name "id"
+                     :base_type :type/Integer}
+                    {:name "array_col"
+                     :base_type :type/JSON}
+                    {:name "string_col"
+                     :base_type :type/JSON}})
+                (t2/select-fn-set #(select-keys % [:name :base_type])
+                                  :model/Field :table_id (mt/id "json_table"))))))))
 
 (mt/defdataset big-json
   [["big_json_table"

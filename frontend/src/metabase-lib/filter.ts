@@ -1,7 +1,7 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import * as ML from "cljs/metabase.lib.js";
-import type { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn, TemporalUnit } from "metabase-types/api";
 
 import {
   isBoolean,
@@ -36,7 +36,6 @@ import type {
   BooleanFilterOperatorName,
   BooleanFilterParts,
   Bucket,
-  BucketName,
   ColumnMetadata,
   CoordinateFilterOperatorName,
   CoordinateFilterParts,
@@ -296,9 +295,8 @@ export function isBooleanFilter(
 export function specificDateFilterClause(
   query: Query,
   stageIndex: number,
-  { operator, column, values }: SpecificDateFilterParts,
+  { operator, column, values, hasTime }: SpecificDateFilterParts,
 ): ExpressionClause {
-  const hasTime = values.some(hasTimeParts);
   const serializedValues = hasTime
     ? values.map(value => serializeDateTime(value))
     : values.map(value => serializeDate(value));
@@ -336,16 +334,27 @@ export function specificDateFilterParts(
     return null;
   }
 
-  const values = serializedValues.map(value => deserializeDateTime(value));
-  if (!isDefinedArray(values)) {
-    return null;
+  const dateValues = serializedValues.map(deserializeDate);
+  if (isDefinedArray(dateValues)) {
+    return {
+      operator,
+      column,
+      values: dateValues,
+      hasTime: false,
+    };
   }
 
-  return {
-    operator,
-    column,
-    values,
-  };
+  const dateTimeValues = serializedValues.map(deserializeDateTime);
+  if (isDefinedArray(dateTimeValues)) {
+    return {
+      operator,
+      column,
+      values: dateTimeValues,
+      hasTime: true,
+    };
+  }
+
+  return null;
 }
 
 export function isSpecificDateFilter(
@@ -379,8 +388,14 @@ export function relativeDateFilterClause({
       columnWithoutBucket,
       expressionClause("interval", [-offsetValue, offsetBucket]),
     ]),
-    expressionClause("relative-datetime", [value < 0 ? value : 0, bucket]),
-    expressionClause("relative-datetime", [value > 0 ? value : 0, bucket]),
+    expressionClause("relative-datetime", [
+      value !== "current" && value < 0 ? value : 0,
+      bucket,
+    ]),
+    expressionClause("relative-datetime", [
+      value !== "current" && value > 0 ? value : 0,
+      bucket,
+    ]),
   ]);
 }
 
@@ -559,11 +574,11 @@ function findTemporalBucket(
   query: Query,
   stageIndex: number,
   column: ColumnMetadata,
-  bucketName: BucketName,
+  temporalUnit: TemporalUnit,
 ): Bucket | undefined {
   return availableTemporalBuckets(query, stageIndex, column).find(bucket => {
     const bucketInfo = displayInfo(query, stageIndex, bucket);
-    return bucketInfo.shortName === bucketName;
+    return bucketInfo.shortName === temporalUnit;
   });
 }
 
@@ -685,21 +700,21 @@ const TIME_FORMATS = ["HH:mm:ss.SSS[Z]", "HH:mm:ss.SSS", "HH:mm:ss", "HH:mm"];
 const TIME_FORMAT_MS = "HH:mm:ss.SSS";
 const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
 
-function hasTimeParts(date: Date): boolean {
-  return (
-    date.getHours() !== 0 ||
-    date.getMinutes() !== 0 ||
-    date.getSeconds() !== 0 ||
-    date.getMilliseconds() !== 0
-  );
-}
-
 function serializeDate(date: Date): string {
   return moment(date).format(DATE_FORMAT);
 }
 
 function serializeDateTime(date: Date): string {
   return moment(date).format(DATE_TIME_FORMAT);
+}
+
+function deserializeDate(value: string): Date | null {
+  const date = moment(value, DATE_FORMAT, true);
+  if (!date.isValid()) {
+    return null;
+  }
+
+  return date.toDate();
 }
 
 function deserializeDateTime(value: string): Date | null {
@@ -848,9 +863,9 @@ function serializeExcludeDatePart(
 
 function deserializeExcludeDatePart(
   value: ExpressionArg | ExpressionParts,
-  bucketName: BucketName,
+  temporalUnit: TemporalUnit,
 ): number | null {
-  if (bucketName === "hour-of-day") {
+  if (temporalUnit === "hour-of-day") {
     return isNumberLiteral(value) ? value : null;
   }
 
@@ -863,7 +878,7 @@ function deserializeExcludeDatePart(
     return null;
   }
 
-  switch (bucketName) {
+  switch (temporalUnit) {
     case "day-of-week":
       return date.isoWeekday();
     case "month-of-year":

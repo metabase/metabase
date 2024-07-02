@@ -31,7 +31,6 @@
                      [:metadata/table         ::lib.schema.metadata/table]
                      [:metadata/column        ::lib.schema.metadata/column]
                      [:metadata/card          ::lib.schema.metadata/card]
-                     [:metadata/legacy-metric ::lib.schema.metadata/legacy-metric]
                      [:metadata/metric        ::lib.schema.metadata/metric]
                      [:metadata/segment       ::lib.schema.metadata/segment]]]
   (let [metadata (-> metadata
@@ -51,12 +50,12 @@
 
 (defn- metadatas [cache uncached-provider metadata-type ids]
   (when (seq ids)
-    (log/debugf "Getting %s metadata with IDs %s" metadata-type (pr-str (sort ids)))
+    (log/tracef "Getting %s metadata with IDs %s" metadata-type (pr-str (sort ids)))
     (let [existing-ids (set (keys (get @cache metadata-type)))
           missing-ids  (set/difference (set ids) existing-ids)]
-      (log/debugf "Already fetched %s: %s" metadata-type (pr-str (sort (set/intersection (set ids) existing-ids))))
+      (log/tracef "Already fetched %s: %s" metadata-type (pr-str (sort (set/intersection (set ids) existing-ids))))
       (when (seq missing-ids)
-        (log/debugf "Need to fetch %s: %s" metadata-type (pr-str (sort missing-ids)))
+        (log/tracef "Need to fetch %s: %s" metadata-type (pr-str (sort missing-ids)))
         ;; TODO -- we should probably store `::nil` markers for things we tried to fetch that didn't exist
         (doseq [instance (lib.metadata.protocols/metadatas uncached-provider metadata-type missing-ids)]
           (store-in-cache! cache [metadata-type (:id instance)] instance))))
@@ -82,7 +81,6 @@
   (let [k     (case metadata-type
                 :metadata/column        ::table-fields
                 :metadata/metric        ::table-metrics
-                :metadata/legacy-metric ::table-legacy-metrics
                 :metadata/segment       ::table-segments)
         thunk (fn []
                 (let [objects (lib.metadata.protocols/metadatas-for-table metadata-provider metadata-type table-id)]
@@ -90,6 +88,19 @@
                     (store-in-cache! cache [(:lib/type metadata) (:id metadata)] metadata))
                   objects))]
     (get-in-cache-or-fetch cache [k table-id] thunk)))
+
+(defn- metadatas-for-tables [metadata-provider cache metadata-type table-ids]
+  (let [k        (case metadata-type
+                   :metadata/column  ::table-fields
+                   :metadata/metric  ::table-metrics
+                   :metadata/segment ::table-segments)
+        uncached (filter #(nil? (get-in-cache cache [k %])) table-ids)
+        objects  (lib.metadata.protocols/metadatas-for-tables metadata-provider metadata-type uncached)]
+    (doseq [metadata objects]
+      (store-in-cache! cache [(:lib/type metadata) (:id metadata)] metadata))
+    (doseq [[table-id table-metadatas] (group-by :table-id objects)]
+      (store-in-cache! cache [k table-id] table-metadatas))
+    (mapcat #(get-in-cache cache [k %]) table-ids)))
 
 (defn- setting [metadata-provider cache setting-key]
   (get-in-cache-or-fetch cache [::setting (keyword setting-key)] #(lib.metadata.protocols/setting metadata-provider setting-key)))
@@ -105,6 +116,8 @@
     (get-in-cache-or-fetch cache [::database-tables] #(tables metadata-provider cache)))
   (metadatas-for-table [_this metadata-type table-id]
     (metadatas-for-table metadata-provider cache metadata-type table-id))
+  (metadatas-for-tables [_this metadata-type table-ids]
+    (metadatas-for-tables metadata-provider cache metadata-type table-ids))
   (setting [_this setting-key]
     (setting metadata-provider cache setting-key))
 

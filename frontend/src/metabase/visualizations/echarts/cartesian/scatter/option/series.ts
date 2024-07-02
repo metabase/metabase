@@ -1,10 +1,10 @@
-import d3 from "d3";
+import * as d3 from "d3";
 import type { ScatterSeriesOption } from "echarts/charts";
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { RenderingContext } from "metabase/visualizations/types";
 
-import { CHART_STYLE } from "../../constants/style";
+import { CHART_STYLE, Z_INDEXES } from "../../constants/style";
 import type { DataKey, Datum, Extent, SeriesModel } from "../../model/types";
 
 const MIN_BUBBLE_DIAMETER = 15;
@@ -30,10 +30,10 @@ function getBubbleDiameterScale(
   );
   // Domain is [0, 1] since the `t` parameteter of the interpolate function below
   // is normalized to 0-1.
-  const areaScale = d3.scale.linear().domain([0, 1]).range(areaRange);
+  const areaScale = d3.scaleLinear([0, 1], areaRange);
 
-  const scale = d3.scale
-    .linear()
+  const scale = d3
+    .scaleLinear()
     .domain(bubbleSizeDomain)
     // D3 will take a value from the domain (bubble size column) and normalize it (`t` is between 0,1).
     // Then we plug the normalized value `t` into the `areaScale` to get the corrseponding area for that diameter.
@@ -65,10 +65,11 @@ export function buildEChartsScatterSeries(
       y: seriesModel.dataKey,
       x: X_AXIS_DATA_KEY,
     },
+    z: Z_INDEXES.series,
     itemStyle: {
       color: seriesModel.color,
       opacity: CHART_STYLE.opacity.scatter,
-      borderColor: renderingContext.getColor("white"),
+      borderColor: renderingContext.getColor("bg-white"),
       borderWidth: 1,
     },
     emphasis: {

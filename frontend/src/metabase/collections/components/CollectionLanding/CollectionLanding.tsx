@@ -23,17 +23,24 @@ const CollectionLanding = ({
   children,
 }: CollectionLandingProps) => {
   const dispatch = useDispatch();
-  const { data: trashCollection } = useGetCollectionQuery("trash");
+  const { data: trashCollection } = useGetCollectionQuery({ id: "trash" });
 
   const collectionId = extractCollectionId(slug);
 
   useEffect(
     function redirectIfTrashCollection() {
-      if (trashCollection?.id === collectionId) {
+      // redirect /collection/trash and /collection/<trash-collection-id> to /trash
+      const isTrashSlug = slug === "trash";
+      const isTrashCollectionId =
+        collectionId &&
+        trashCollection?.id &&
+        trashCollection.id === collectionId;
+
+      if (isTrashSlug || isTrashCollectionId) {
         dispatch(replace("/trash"));
       }
     },
-    [dispatch, trashCollection?.id, collectionId],
+    [dispatch, slug, trashCollection?.id, collectionId],
   );
 
   if (!isNotNull(collectionId)) {

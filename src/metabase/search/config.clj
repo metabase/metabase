@@ -147,7 +147,7 @@
    :collection_type     :text
    :collection_location :text
    :collection_authority_level :text
-   :trashed_from_collection_id :integer
+   :archived_directly   :boolean
    ;; returned for Card and Dashboard
    :collection_position :integer
    :creator_id          :integer
@@ -186,57 +186,59 @@
   "All of the result components that by default are displayed by the frontend."
   #{:name :display_name :collection_name :description})
 
-(defmulti searchable-columns-for-model
-  "The columns that will be searched for the query."
-  {:arglists '([model])}
-  (fn [model] model))
+(defmulti searchable-columns
+  "The columns that can be searched for each model."
+  {:arglists '([model search-native-query])}
+  (fn [model _] model))
 
-(defmethod searchable-columns-for-model :default
-  [_]
+(defmethod searchable-columns :default
+  [_ _]
   [:name])
 
-(defmethod searchable-columns-for-model "action"
-  [_]
-  [:name
-   :dataset_query
-   :description])
+(defmethod searchable-columns "action"
+  [_ search-native-query]
+  (cond-> [:name
+           :description]
+    search-native-query
+    (conj :dataset_query)))
 
-(defmethod searchable-columns-for-model "card"
-  [_]
-  [:name
-   :dataset_query
-   :description])
+(defmethod searchable-columns "card"
+  [_ search-native-query]
+  (cond-> [:name
+           :description]
+    search-native-query
+    (conj :dataset_query)))
 
-(defmethod searchable-columns-for-model "dataset"
-  [_]
-  (searchable-columns-for-model "card"))
+(defmethod searchable-columns "dataset"
+  [_ search-native-query]
+  (searchable-columns "card" search-native-query))
 
-(defmethod searchable-columns-for-model "metric"
-  [_]
-  (searchable-columns-for-model "card"))
+(defmethod searchable-columns "metric"
+  [_ search-native-query]
+  (searchable-columns "card" search-native-query))
 
-(defmethod searchable-columns-for-model "dashboard"
-  [_]
-  [:name
-   :description])
-
-(defmethod searchable-columns-for-model "page"
-  [_]
-  (searchable-columns-for-model "dashboard"))
-
-(defmethod searchable-columns-for-model "database"
-  [_]
+(defmethod searchable-columns "dashboard"
+  [_ _]
   [:name
    :description])
 
-(defmethod searchable-columns-for-model "table"
-  [_]
+(defmethod searchable-columns "page"
+  [_ search-native-query]
+  (searchable-columns "dashboard" search-native-query))
+
+(defmethod searchable-columns "database"
+  [_ _]
+  [:name
+   :description])
+
+(defmethod searchable-columns "table"
+  [_ _]
   [:name
    :display_name
    :description])
 
-(defmethod searchable-columns-for-model "indexed-entity"
-  [_]
+(defmethod searchable-columns "indexed-entity"
+  [_ _]
   [:name])
 
 (def ^:private default-columns
@@ -281,7 +283,7 @@
 
 (defmethod columns-for-model "card"
   [_]
-  (conj default-columns :collection_id :trashed_from_collection_id :collection_position :dataset_query :display :creator_id
+  (conj default-columns :collection_id :archived_directly :collection_position :dataset_query :display :creator_id
         [:collection.name :collection_name]
         [:collection.type :collection_type]
         [:collection.location :collection_location]
@@ -302,7 +304,7 @@
 
 (defmethod columns-for-model "dashboard"
   [_]
-  (conj default-columns :trashed_from_collection_id :collection_id :collection_position :creator_id bookmark-col
+  (conj default-columns :archived_directly :collection_id :collection_position :creator_id bookmark-col
         [:collection.name :collection_name]
         [:collection.type :collection_type]
         [:collection.authority_level :collection_authority_level]))
@@ -318,6 +320,7 @@
         [:name :collection_name]
         [:type :collection_type]
         [:authority_level :collection_authority_level]
+        :archived_directly
         :location
         bookmark-col))
 

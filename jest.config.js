@@ -13,9 +13,11 @@ const config = {
       "<rootDir>/node_modules/react-markdown/react-markdown.min.js",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.jsx",
+    "csv-parse/browser/esm/sync":
+      "<rootDir>/node_modules/csv-parse/dist/cjs/sync",
   },
   transformIgnorePatterns: [
-    "<rootDir>/node_modules/(?!(screenfull|echarts|zrender|rehype-external-links|hast.*|devlop|property-information|comma-separated-tokens|space-separated-tokens|vfile|vfile-message|html-void-elements|stringify-entities|character-entities-html4)/)",
+    "<rootDir>/node_modules/(?!(screenfull|echarts|zrender|rehype-external-links|hast.*|devlop|property-information|comma-separated-tokens|space-separated-tokens|vfile|vfile-message|html-void-elements|stringify-entities|character-entities-html4|d3|d3-*)/)",
   ],
   testPathIgnorePatterns: [
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
@@ -29,7 +31,10 @@ const config = {
     "<rootDir>/frontend/src",
     "<rootDir>/enterprise/frontend/src",
   ],
-  modulePathIgnorePatterns: ["<rootDir>/target/cljs_release/.*"],
+  modulePathIgnorePatterns: [
+    "<rootDir>/target/cljs_release/.*",
+    "<rootDir>/resources/frontend_client",
+  ],
   setupFiles: [
     "<rootDir>/frontend/test/jest-setup.js",
     "<rootDir>/frontend/test/metabase-bootstrap.js",

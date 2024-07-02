@@ -515,20 +515,13 @@
                                                       (get exprs "circular-c")
                                                       c-pos))))))))
 
-(deftest ^:parallel diagnose-expression-test-4-offset-requires-order
-  (testing "adding/editing an offset expression"
+(deftest ^:parallel diagnose-expression-test-4-offset-not-allowed-in-expressions
+  (testing "adding/editing an expression using offset is not allowed"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
-      (testing "returns a message when there is no ordering"
-        (is (=? {:message "OFFSET in a custom expression requires a sort order"}
-                (lib.expression/diagnose-expression query 0 :expression
-                                                    (lib/offset (meta/field-metadata :orders :subtotal) -1)
-                                                    nil))))
-      (testing "works with a defined order"
-        (is (nil? (-> query
-                      (lib/order-by (meta/field-metadata :orders :created-at))
-                      (lib.expression/diagnose-expression 0 :expression
-                                                          (lib/offset (meta/field-metadata :orders :subtotal) -1)
-                                                          nil))))))))
+      (is (=? {:message "OFFSET is not supported in custom expressions"}
+              (lib.expression/diagnose-expression query 0 :expression
+                                                  (lib/offset (meta/field-metadata :orders :subtotal) -1)
+                                                  nil))))))
 
 (deftest ^:parallel diagnose-expression-test-5-offset-not-allowed-in-filters
   (testing "adding/editing a filter using offset is not allowed"

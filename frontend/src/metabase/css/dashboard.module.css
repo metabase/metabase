@@ -10,7 +10,7 @@
 }
 
 .Dashboard.DashboardNight .Card {
-  color: var(--color-text-white);
+  color: var(--mb-color-text-white);
 }
 
 .Dashboard.DashboardFullscreen .fullscreenNormalText {
@@ -19,12 +19,12 @@
 }
 
 .Dashboard.DashboardNight.DashboardFullscreen .fullscreenNightText {
-  color: color-mod(var(--color-text-white) alpha(-14%));
+  color: var(--mb-color-text-white-alpha-85);
   transition: color 1s linear;
 }
 
 .Dashboard.DashboardNight .DashCard .Card svg text {
-  fill: color-mod(var(--color-text-white) alpha(-14%)) !important;
+  fill: var(--mb-color-text-white-alpha-85) !important;
   stroke: none !important;
 }
 
@@ -83,7 +83,7 @@
 
 .DashEditing .DashCard:global(.react-draggable-dragging) .Card,
 .DashEditing .DashCard:global(.react-resizable-resizing) .Card {
-  background-color: var(--color-bg-medium) !important;
+  background-color: var(--mb-color-bg-medium) !important;
   border: 1px solid var(--mb-color-brand);
 }
 
@@ -147,7 +147,7 @@
 /* .react-grid-placeholder is a global class from `react-grid-layout` */
 .DashEditing :global(.react-grid-placeholder) {
   z-index: 0;
-  background-color: var(--color-bg-light) !important;
+  background-color: var(--mb-color-bg-light) !important;
   transition: all 0.15s linear;
 }
 
@@ -190,16 +190,15 @@
 
 /* when in night mode code snippets should have a more readable background-color */
 .DashboardNight pre code {
-  background-color: color-mod(var(--mb-color-bg-white) alpha(-86%));
+  background-color: var(--mb-color-bg-white-alpha-15);
 }
 
 .DashboardNight :global(.text-card-markdown code) {
-  background-color: color-mod(var(--mb-color-bg-white) alpha(-86%));
+  background-color: var(--mb-color-bg-white-alpha-15);
 }
 
 .Dashboard :global(text.value-label),
-.Dashboard :global(text.value-label-white),
-.Dashboard .LineAreaBarChart :global(.dc-chart .axis text) {
+.Dashboard :global(text.value-label-white) {
   font-size: 12px;
 }
 

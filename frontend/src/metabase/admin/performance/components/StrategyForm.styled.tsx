@@ -1,9 +1,8 @@
 import styled from "@emotion/styled";
 
 import { Form } from "metabase/forms";
-import { color } from "metabase/lib/colors";
 import type { BoxProps } from "metabase/ui";
-import { Box, FixedSizeIcon, Loader } from "metabase/ui";
+import { Box, FixedSizeIcon, Group, Loader } from "metabase/ui";
 
 export const LoaderInButton = styled(Loader)`
   position: relative;
@@ -27,8 +26,38 @@ export const StyledForm = styled(Form)`
   flex-grow: 1;
 `;
 
-export const FormBox = styled(Box)<BoxProps>`
-  border-bottom: 1px solid ${color("border")};
+export const FormBox = styled(Box)<
+  BoxProps & {
+    isInSidebar?: boolean;
+  }
+>`
   overflow: auto;
   flex-grow: 1;
+  padding-bottom: 2.5rem;
+  ${({ isInSidebar }) =>
+    isInSidebar
+      ? `
+  padding-inline-start: 2rem;
+  padding-inline-end: 1rem;
+  `
+      : `
+  padding-inline: 2.5rem;
+`}
+`;
+
+export const StyledFormButtonsGroup = styled(Group)<{ isInSidebar?: boolean }>`
+  padding-block: 1rem;
+  gap: 1rem;
+  background-color: var(--mb-color-bg-white);
+  border-top: 1px solid var(--mb-color-border);
+  ${({ isInSidebar }) =>
+    isInSidebar
+      ? `
+  justify-content: flex-end;
+  padding-inline-start: 2rem;
+  padding-inline-end: 1rem;
+  `
+      : `
+  padding-inline: 2.5rem;
+  `}
 `;

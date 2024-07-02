@@ -3,11 +3,13 @@ import {
   filterNullDimensionValues,
   getCardsColumnByDataKeyMap,
   getJoinedCardsDataset,
+  scaleDataset,
   sortDataset,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   getCardSeriesModels,
   getDimensionModel,
+  getWaterfallChartDataDensity,
   getWaterfallLabelFormatter,
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
@@ -52,13 +54,22 @@ export const getWaterfallChartModel = (
     renderingContext,
   );
 
-  let dataset = getJoinedCardsDataset(rawSeries, cardsColumns, showWarning);
-  dataset = sortDataset(dataset, settings["graph.x_axis.scale"], showWarning);
+  const unsortedDataset = getJoinedCardsDataset(
+    rawSeries,
+    cardsColumns,
+    showWarning,
+  );
+  const dataset = sortDataset(
+    unsortedDataset,
+    settings["graph.x_axis.scale"],
+    showWarning,
+  );
+  let scaledDataset = scaleDataset(dataset, [seriesModel], settings);
 
   const xAxisModel = getWaterfallXAxisModel(
     dimensionModel,
     rawSeries,
-    dataset,
+    scaledDataset,
     settings,
     renderingContext,
     showWarning,
@@ -68,7 +79,7 @@ export const getWaterfallChartModel = (
     xAxisModel.axisType === "time" ||
     xAxisModel.isHistogram
   ) {
-    dataset = filterNullDimensionValues(dataset, showWarning);
+    scaledDataset = filterNullDimensionValues(scaledDataset, showWarning);
   }
 
   const yAxisScaleTransforms = getAxisTransforms(
@@ -76,7 +87,7 @@ export const getWaterfallChartModel = (
   );
 
   const transformedDataset = getWaterfallDataset(
-    dataset,
+    scaledDataset,
     yAxisScaleTransforms,
     seriesModel.dataKey,
     settings,
@@ -90,6 +101,13 @@ export const getWaterfallChartModel = (
       settings,
       renderingContext,
     );
+
+  const dataDensity = getWaterfallChartDataDensity(
+    transformedDataset,
+    waterfallLabelFormatter,
+    settings,
+    renderingContext,
+  );
 
   // Pass waterfall dataset and keys for correct extent computation
   const leftAxisModel = getYAxisModel(
@@ -109,7 +127,7 @@ export const getWaterfallChartModel = (
 
   // Extending the original dataset with total datum for tooltips
   const originalDatasetWithTotal = extendOriginalDatasetWithTotalDatum(
-    dataset,
+    scaledDataset,
     transformedDataset[transformedDataset.length - 1],
     seriesModel.dataKey,
     settings,
@@ -130,5 +148,7 @@ export const getWaterfallChartModel = (
       [WATERFALL_TOTAL_KEY]: seriesModel.dataKey,
     },
     waterfallLabelFormatter,
+    dataDensity,
+    seriesLabelsFormatters: {},
   };
 };

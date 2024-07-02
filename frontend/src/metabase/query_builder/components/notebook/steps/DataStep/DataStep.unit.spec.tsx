@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupDatabasesEndpoints,
-  setupRecentViewsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
@@ -55,7 +55,7 @@ const setup = (
   const updateQuery = jest.fn();
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
-  setupRecentViewsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
 
   renderWithProviders(
     <DataStep
@@ -122,13 +122,13 @@ describe("DataStep", () => {
 
     const modal = await screen.findByTestId("entity-picker-modal");
     expect(
-      within(modal).getByText("Pick your starting data"),
+      await within(modal).findByText("Pick your starting data"),
     ).toBeInTheDocument();
 
     // Ensure the table picker not open
-    expect(within(modal).getByText("Orders")).toBeInTheDocument();
-    expect(within(modal).getByText("Products")).toBeInTheDocument();
-    expect(within(modal).getByText("People")).toBeInTheDocument();
+    expect(await within(modal).findByText("Orders")).toBeInTheDocument();
+    expect(await within(modal).findByText("Products")).toBeInTheDocument();
+    expect(await within(modal).findByText("People")).toBeInTheDocument();
   });
 
   it("should render with a selected table", () => {

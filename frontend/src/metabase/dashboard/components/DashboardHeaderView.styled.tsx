@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import EditableText from "metabase/core/components/EditableText";
-import { color } from "metabase/lib/colors";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
   breakpointMaxSmall,
@@ -151,7 +150,7 @@ export const HeaderContent = styled.div<HeaderContentProps>`
 export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;
   align-items: center;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 
   ${breakpointMinSmall} {
     margin-left: auto;
@@ -172,7 +171,7 @@ export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBar
     padding-top: 0.375rem;
     padding-left: 1rem;
     padding-right: 1rem;
-    border-top: 1px solid ${color("border")};
+    border-top: 1px solid var(--mb-color-border);
   }
 `;
 

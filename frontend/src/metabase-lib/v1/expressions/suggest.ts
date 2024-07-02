@@ -47,10 +47,10 @@ const suggestionText = (func: MBQLClauseFunctionConfig) => {
 
 export const GROUPS = {
   popularExpressions: {
-    displayName: t`Most used functions`,
+    displayName: t`Common functions`,
   },
   popularAggregations: {
-    displayName: t`Most used aggregations`,
+    displayName: t`Common aggregations`,
   },
   shortcuts: {
     displayName: t`Shortcuts`,
@@ -67,7 +67,7 @@ export type SuggestArgs = {
   reportTimezone?: string;
   startRule: string;
   targetOffset?: number;
-  expressionPosition?: number;
+  expressionIndex: number | undefined;
   getColumnIcon: (column: Lib.ColumnMetadata) => string;
 };
 
@@ -79,7 +79,7 @@ export function suggest({
   metadata,
   reportTimezone,
   startRule,
-  expressionPosition,
+  expressionIndex,
   targetOffset = source.length,
 }: SuggestArgs): {
   helpText?: HelpText;
@@ -232,7 +232,7 @@ export function suggest({
 
   if (_.last(matchPrefix) !== "]") {
     suggestions.push(
-      ...Lib.expressionableColumns(query, stageIndex, expressionPosition).map(
+      ...Lib.expressionableColumns(query, stageIndex, expressionIndex).map(
         column => {
           const displayInfo = Lib.displayInfo(query, stageIndex, column);
 

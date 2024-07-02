@@ -141,7 +141,7 @@ describe(
                   cy.get("header").findByText(NEW_COLLECTION_NAME);
                 });
 
-                it("should be able to move models", { tags: "@flaky" }, () => {
+                it("should be able to move models", () => {
                   // TODO: Currently nodata users can't turn a question into a model
                   cy.skipOn(user === "nodata");
 
@@ -225,10 +225,15 @@ describe(
                   cy.log("assert public collections are not visible");
                   openQuestionActions();
                   popover().findByText("Add to dashboard").click();
+                  clickTabForUser(user, "Dashboards");
+
                   entityPickerModal().within(() => {
                     cy.findByText("Add this question to a dashboard").should(
                       "be.visible",
                     );
+
+                    clickTabForUser(user, "Dashboards");
+
                     cy.findByText(/'s personal collection/i).should(
                       "be.visible",
                     );
@@ -247,6 +252,7 @@ describe(
                       "be.visible",
                     );
 
+                    clickTabForUser(user, "Dashboards");
                     cy.findByText(/'s personal collection/i).should(
                       "be.visible",
                     );
@@ -268,11 +274,7 @@ describe(
                     openQuestionActions();
                     cy.findByTestId("add-to-dashboard-button").click();
 
-                    entityPickerModal()
-                      .findByRole("tab", { name: /Dashboards/ })
-                      .click();
-
-                    findActivePickerItem("Orders in a dashboard");
+                    findSelectedPickerItem("Orders in a dashboard");
                   });
 
                   it("should handle lost access", () => {
@@ -464,6 +466,12 @@ function findActivePickerItem(name) {
   });
 }
 
+function findSelectedPickerItem(name) {
+  return findPickerItem(name).then($button => {
+    expect($button).to.have.attr("aria-selected", "true");
+  });
+}
+
 function findInactivePickerItem(name) {
   return findPickerItem(name).then($button => {
     expect($button).not.to.have.attr("data-active", "true");
@@ -478,4 +486,12 @@ function moveQuestionTo(newCollectionName, clickTab = false) {
     cy.findByText(newCollectionName).click();
     cy.button("Move").click();
   });
+}
+
+function clickTabForUser(user, tabName) {
+  if (user === "admin") {
+    cy.findAllByRole("tab")
+      .contains(tabName)
+      .then($el => $el && cy.wrap($el).click());
+  }
 }

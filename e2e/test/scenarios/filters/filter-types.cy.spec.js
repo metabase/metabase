@@ -378,7 +378,7 @@ const RELATIVE_DATE_CASES = [
   // Past
   {
     title: "yesterday",
-    offset: "Past",
+    offset: "Previous",
     unit: "day",
     value: 1,
     expectedDisplayName: "Created At is yesterday",
@@ -386,14 +386,14 @@ const RELATIVE_DATE_CASES = [
   },
   {
     title: "previous 7 days",
-    offset: "Past",
+    offset: "Previous",
     unit: "days",
     value: 7,
     expectedDisplayName: "Created At is in the previous 7 days",
   },
   {
     title: "previous 3 weeks starting a quarter ago",
-    offset: "Past",
+    offset: "Previous",
     unit: "weeks",
     value: 3,
     offsetUnit: "quarter",
@@ -403,7 +403,7 @@ const RELATIVE_DATE_CASES = [
   },
   {
     title: "previous month",
-    offset: "Past",
+    offset: "Previous",
     unit: "month",
     value: 1,
     expectedDisplayName: "Created At is in the previous month",
@@ -411,14 +411,14 @@ const RELATIVE_DATE_CASES = [
   },
   {
     title: "previous 3 months",
-    offset: "Past",
+    offset: "Previous",
     unit: "months",
     value: 3,
     expectedDisplayName: "Created At is in the previous 3 months",
   },
   {
     title: "previous two quarters",
-    offset: "Past",
+    offset: "Previous",
     unit: "quarters",
     value: 2,
     expectedDisplayName: "Created At is in the previous 2 quarters",
@@ -487,8 +487,8 @@ describe("scenarios > filters > filter types", () => {
             values.forEach(value => {
               cy.findByLabelText("Filter value")
                 .focus()
-                .type(value)
-                .realPress("Tab");
+                .type(`${value},`, { delay: 50 })
+                .blur();
             });
             options.forEach(option => cy.findByText(option).click());
             cy.button("Add filter").click();
@@ -522,7 +522,10 @@ describe("scenarios > filters > filter types", () => {
             .first()
             .within(() => {
               values.forEach(value => {
-                cy.findByLabelText("Filter value").focus().type(value).blur();
+                cy.findByLabelText("Filter value")
+                  .focus()
+                  .type(`${value},`, { delay: 50 })
+                  .blur();
               });
               cy.button("Add filter").click();
             });

@@ -9,11 +9,10 @@
    [metabase.models :refer [Card]]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.interface :as qp.i]
-   [metabase.query-processor.middleware.fix-bad-references
-    :as fix-bad-refs]
+   [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
@@ -86,8 +85,8 @@
 
 (defn- populate-metadata [{query :dataset_query id :id :as _model}]
   (let [updater (a/thread
-                  (let [metadata (a/<!! (qp.async/result-metadata-for-query-async query))]
-                    (t2/update! 'Card id {:result_metadata metadata})))]
+                  (let [metadata #_{:clj-kondo/ignore [:deprecated-var]} (qp.metadata/legacy-result-metadata query nil)]
+                    (t2/update! :model/Card id {:result_metadata metadata})))]
     ;; 4 seconds is long but redshift can be a little slow
     (when (= ::timed-out (mt/wait-for-result updater 4000 ::timed-out))
       (throw (ex-info "Query metadata not set in time for querying against model"

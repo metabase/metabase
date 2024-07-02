@@ -7,7 +7,7 @@ redirect_from:
 
 # Migrating to a production application database
 
-This page covers how to convert a Metabase that's been using the built-in application database, H2, to a production-ready instance with either PostgreSQL or MySQL/MariaDB. For more on why you should do this, check out [How to run Metabase in production](https://www.metabase.com/learn/administration/metabase-in-production).
+This page covers how to convert a Metabase that's been using the built-in application database, H2, to a production-ready instance PostgreSQL. For more on why you should use Postgres as your app DB, check out [How to run Metabase in production](https://www.metabase.com/learn/administration/metabase-in-production).
 
 If you'd rather move to Metabase Cloud, check out [Migrate to Metabase Cloud](https://www.metabase.com/docs/latest/cloud/migrate/guide).
 
@@ -29,11 +29,11 @@ You could also choose to run Metabase on a [Metabase Cloud](https://www.metabase
 
 ## Supported databases for storing your Metabase application data
 
-- [PostgreSQL](https://www.postgresql.org/). Minimum version: `9.5`.
+We recommend using PostgreSQL for your application database.
+
+- [PostgreSQL](https://www.postgresql.org/). Minimum version: `9.5`. Postgres is our preferred choice for Metabase's application database.
 - [MySQL](https://www.mysql.com/). Minimum version: `8.0.17`. Required settings (which are the default): `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
 - [MariaDB](https://mariadb.org/). Minimum version: `10.4.0`. Required settings (which are the default): `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
-
-Go with whichever database you're familiar with. If you're not familiar with any of these, or not sure which to pick, go with Postgres.
 
 ## JAR: How to migrate from H2 to your production application database
 
@@ -49,7 +49,7 @@ Metabase provides a custom migration command for migrating to a new application 
 
 ### 1. Confirm that you can connect to your target application database
 
-You must be able to connect to the target Postgres or MySQL/MariaDB database in whatever environment you're running this migration command in. So, if you're attempting to move the data to a cloud database, make sure you can connect to that database.
+You must be able to connect to the target application database in whatever environment you're running this migration command in. So, if you're attempting to move the data to a cloud database, make sure you can connect to that database.
 
 ### 2. Shut down your Metabase instance
 
@@ -63,7 +63,7 @@ Safety first! See [Backing up Metabase Application Data](backing-up-metabase-app
 
 Run the migration command, `load-from-h2`, using the appropriate [environment variables](../configuring-metabase/environment-variables.md) for the target database you want to migrate to.
 
-You can find details about specifying MySQL and Postgres databases at [Configuring the application database](configuring-application-database.md).
+You can find details about specifying databases at [Configuring the application database](configuring-application-database.md).
 
 Here's an example command for migrating to a Postgres database:
 
@@ -111,7 +111,7 @@ Metabase provides a custom migration command for migrating to a new application 
 
 ### 1. Confirm that you can connect to your target application database
 
-You must be able to connect to the target Postgres or MySQL/MariaDB database in whatever environment you're running this migration command in. So, if you're attempting to move the data to a cloud database, make sure you can connect to that database.
+You must be able to connect to the target application database in whatever environment you're running this migration command in. So, if you're attempting to move the data to a cloud database, make sure you can connect to that database.
 
 ### 2. Back up your H2 application database
 
@@ -143,7 +143,7 @@ java -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
 
 Metabase will start up, perform the migration (meaning, it'll take the data from the H2 file and put it into your new app db, in this a Postgres db), and then exit.
 
-You can find details about specifying MySQL and Postgres databases at [Configuring the application database](configuring-application-database.md).
+See [Configuring the application database](configuring-application-database.md).
 
 ### 5. Start a new Docker container that uses the new app db
 

@@ -11,7 +11,6 @@
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.legacy-metric :refer [LegacyMetric]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.segment :refer [Segment]]
@@ -68,10 +67,6 @@
   (if (:fk_target_field_id field)
     (str (->> field :table_id (fully-qualified-name Table)) "/fks/" (safe-name field))
     (str (->> field :table_id (fully-qualified-name Table)) "/fields/" (safe-name field))))
-
-(defmethod fully-qualified-name* LegacyMetric
-  [metric]
-  (str (->> metric :table_id (fully-qualified-name Table)) "/metrics/" (safe-name metric)))
 
 (defmethod fully-qualified-name* Segment
   [segment]
@@ -179,12 +174,6 @@
 (defmethod path->context* "fks"
   [context _ _ field-name]
   (path->context* context "fields" nil field-name))
-
-(defmethod path->context* "metrics"
-  [context _ _ metric-name]
-  (assoc context :metric (t2/select-one-pk LegacyMetric
-                           :table_id (:table context)
-                           :name     metric-name)))
 
 (defmethod path->context* "segments"
   [context _ _ segment-name]

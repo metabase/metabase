@@ -262,6 +262,7 @@
 (defsetting premium-embedding-token     ; TODO - rename this to premium-features-token?
   (deferred-tru "Token for premium features. Go to the MetaStore to get yours!")
   :audit :never
+  :sensitive? true
   :setter
   (fn [new-value]
     ;; validate the new value if we're not unsetting it
@@ -473,6 +474,10 @@
 (define-premium-feature enable-upload-management?
   "Should we allow admins to clean up tables created from uploads?"
   :upload-management)
+
+(define-premium-feature has-attached-dwh?
+  "Does the Metabase Cloud instance have an internal data warehouse attached?"
+  :attached-dwh)
 
 (defsetting is-hosted?
   "Is the Metabase instance running in the cloud?"

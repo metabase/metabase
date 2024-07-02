@@ -1,18 +1,19 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
-  setupDatabaseEndpoints,
   setupErrorParameterValuesEndpoints,
   setupParameterValuesEndpoints,
   setupSearchEndpoints,
   setupUnauthorizedCardsEndpoints,
   setupUnauthorizedCollectionsEndpoints,
-  setupRecentViewsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
+  setupTableQueryMetadataEndpoint,
+  setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -31,6 +32,7 @@ import {
   createMockField,
   createMockParameterValues,
   createMockTable,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import ValuesSourceModal from "./ValuesSourceModal";
@@ -66,7 +68,7 @@ describe("ValuesSourceModal", () => {
       });
 
       expect(
-        screen.getByText(/We don’t have any cached values/),
+        await screen.findByText(/We don’t have any cached values/),
       ).toBeInTheDocument();
     });
 
@@ -80,7 +82,7 @@ describe("ValuesSourceModal", () => {
         }),
       });
 
-      expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+      expect(await screen.findByRole("textbox")).toHaveValue("A\nB\nC");
     });
 
     it("should not show the connected fields option if parameter is not wired to any fields", async () => {
@@ -130,7 +132,7 @@ describe("ValuesSourceModal", () => {
           values: [["C"], ["D"]],
         }),
       });
-      expect(screen.getByRole("textbox")).toHaveValue("C\nD");
+      expect(await screen.findByRole("textbox")).toHaveValue("C\nD");
 
       await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
       expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();
@@ -150,7 +152,7 @@ describe("ValuesSourceModal", () => {
         }),
       });
       expect(
-        screen.getByText(/We don’t have any cached values/),
+        await screen.findByText(/We don’t have any cached values/),
       ).toBeInTheDocument();
 
       await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
@@ -280,25 +282,6 @@ describe("ValuesSourceModal", () => {
     });
 
     it("should allow searching for a card without access to the root collection (metabase#30355)", async () => {
-      fetchMock.get(
-        { url: "path:/api/collection", overwriteRoutes: false },
-        [],
-      );
-      fetchMock.get(
-        {
-          url: "path:/api/collection/tree",
-          query: { tree: true, "exclude-archived": true },
-          overwriteRoutes: false,
-        },
-        [],
-      );
-      setupDatabaseEndpoints(
-        createMockDatabase({
-          id: -1337,
-          tables: [createMockTable({ schema: "Everything%20else" })],
-        }),
-      );
-
       await setup({
         hasCollectionAccess: false,
       });
@@ -428,20 +411,39 @@ const setup = async ({
   hasCollectionAccess = true,
   hasParameterValuesError = false,
 }: SetupOpts = {}) => {
+  const currentUser = createMockUser();
   const databases = [createMockDatabase()];
-  const collections = [createMockCollection(ROOT_COLLECTION)];
+  const rootCollection = createMockCollection(ROOT_COLLECTION);
+  const personalCollection = createMockCollection({
+    id: currentUser.personal_collection_id,
+  });
   const onSubmit = jest.fn();
   const onClose = jest.fn();
 
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints([]);
-  setupRecentViewsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
+  setupCollectionByIdEndpoint({
+    collections: [personalCollection],
+  });
+  setupCollectionItemsEndpoint({
+    collection: personalCollection,
+    collectionItems: [],
+  });
 
   if (hasCollectionAccess) {
-    setupCollectionsEndpoints({ collections });
+    setupCollectionsEndpoints({ collections: [rootCollection] });
     setupCardsEndpoints(cards);
+    cards.forEach(card =>
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: `card__${card.id}`,
+          fields: card.result_metadata,
+        }),
+      ),
+    );
   } else {
-    setupUnauthorizedCollectionsEndpoints(collections);
+    setupUnauthorizedCollectionsEndpoints([rootCollection]);
     setupUnauthorizedCardsEndpoints(cards);
   }
 
@@ -457,6 +459,7 @@ const setup = async ({
       onSubmit={onSubmit}
       onClose={onClose}
     />,
+    { storeInitialState: { currentUser } },
   );
 
   await waitForLoaderToBeRemoved();

@@ -93,7 +93,7 @@
 (defenterprise ensure-audit-db-installed!
   "OSS implementation of `audit-db/ensure-db-installed!`, which is an enterprise feature, so does nothing in the OSS
   version."
-  metabase-enterprise.audit-db [] ::noop)
+  metabase-enterprise.audit-app.audit [] ::noop)
 
 (defn- init!*
   "General application initialization function which should be run once at application startup."
@@ -155,6 +155,7 @@
   (ensure-audit-db-installed!)
   (init-status/set-progress! 0.95)
 
+  (settings/migrate-encrypted-settings!)
   ;; start scheduler at end of init!
   (task/start-scheduler!)
   (init-status/set-complete!)

@@ -12,10 +12,10 @@ export const DropdownFieldSet = styled(FieldSet)<{
   overflow: hidden;
 
   border: 2px solid
-    ${({ theme, fieldHasValueOrFocus }) =>
+    ${({ fieldHasValueOrFocus }) =>
       fieldHasValueOrFocus
-        ? theme.fn.themeColor("brand")
-        : theme.fn.themeColor("border")};
+        ? "var(--mb-color-brand)"
+        : "var(--mb-color-border)"};
 
   margin: 0;
   padding: 0.5rem 0.75rem;
@@ -38,8 +38,8 @@ export const DropdownFieldSet = styled(FieldSet)<{
 
   &,
   legend {
-    color: ${({ theme, fieldHasValueOrFocus }) =>
-      fieldHasValueOrFocus && theme.fn.themeColor("brand")};
+    color: ${({ fieldHasValueOrFocus }) =>
+      fieldHasValueOrFocus && "var(--mb-color-brand)"};
   }
 `;
 

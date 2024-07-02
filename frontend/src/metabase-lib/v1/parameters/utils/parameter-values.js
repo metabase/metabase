@@ -77,6 +77,11 @@ export function areParameterValuesIdentical(a, b) {
   );
 }
 
+/**
+ * @import { NormalizedParameter } from "metabase-types/api";
+ *
+ * @returns {NormalizedParameter}
+ */
 export function normalizeParameter(parameter) {
   return {
     id: parameter.id,
@@ -144,4 +149,8 @@ export function getParameterValuesBySlug(parameters, parameterValuesById) {
       parameter.value ?? parameterValuesById[parameter.id] ?? null,
     ]),
   );
+}
+
+export function getIsMultiSelect(parameter) {
+  return parameter.isMultiSelect ?? true;
 }

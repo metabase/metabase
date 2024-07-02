@@ -2,8 +2,11 @@ import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { autoWireDashcardsWithMatchingParameters } from "metabase/dashboard/actions/auto-wire-parameters/actions";
-import { closeAutoWireParameterToast } from "metabase/dashboard/actions/auto-wire-parameters/toasts";
+import { showAutoWireToast } from "metabase/dashboard/actions/auto-wire-parameters/actions";
+import {
+  closeAutoWireParameterToast,
+  closeAddCardAutoWireToasts,
+} from "metabase/dashboard/actions/auto-wire-parameters/toasts";
 import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { updateDashboard } from "metabase/dashboard/actions/save";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
@@ -13,8 +16,9 @@ import {
   setParameterName as setParamName,
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
-import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
+import { buildTemporalUnitOption } from "metabase-lib/v1/parameters/utils/operators";
+import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import {
   isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
@@ -27,7 +31,7 @@ import type {
   ParameterId,
   ParameterMappingOptions,
   ParameterTarget,
-  QuestionDashboardCard,
+  TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
@@ -51,6 +55,7 @@ import {
   getParameters,
   getParameterValues,
   getParameterMappingsBeforeEditing,
+  getSelectedTabId,
 } from "../selectors";
 import { isQuestionDashCard } from "../utils";
 
@@ -100,7 +105,7 @@ function updateParameters(
 }
 
 export const setEditingParameter =
-  (parameterId: ParameterId) => (dispatch: Dispatch) => {
+  (parameterId: ParameterId | null) => (dispatch: Dispatch) => {
     if (parameterId != null) {
       dispatch(
         setSidebar({
@@ -140,10 +145,21 @@ export const addParameter = createThunkAction(
   },
 );
 
+export const ADD_TEMPORAL_UNIT_PARAMETER =
+  "metabase/dashboard/ADD_TEMPORAL_UNIT_PARAMETER";
+export const addTemporalUnitParameter = createThunkAction(
+  ADD_TEMPORAL_UNIT_PARAMETER,
+  () => async dispatch => {
+    await dispatch(addParameter(buildTemporalUnitOption()));
+  },
+);
+
 export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
 export const removeParameter = createThunkAction(
   REMOVE_PARAMETER,
   (parameterId: ParameterId) => (dispatch, getState) => {
+    dispatch(closeAddCardAutoWireToasts());
+
     updateParameters(dispatch, getState, parameters =>
       parameters.filter(p => p.id !== parameterId),
     );
@@ -168,12 +184,10 @@ export const setParameterMapping = createThunkAction(
       const dashcard = getDashCardById(getState(), dashcardId);
 
       if (target !== null && isQuestionDashCard(dashcard)) {
+        const selectedTabId = getSelectedTabId(getState());
+
         dispatch(
-          autoWireDashcardsWithMatchingParameters(
-            parameterId,
-            dashcard,
-            target,
-          ),
+          showAutoWireToast(parameterId, dashcard, target, selectedTabId),
         );
       }
 
@@ -182,8 +196,7 @@ export const setParameterMapping = createThunkAction(
           id: dashcardId,
           attributes: {
             parameter_mappings: getParameterMappings(
-              // TODO remove type casting when getParameterMappings is fixed
-              dashcard as QuestionDashboardCard,
+              dashcard,
               parameterId,
               cardId,
               target,
@@ -469,10 +482,35 @@ export const setParameterIsMultiSelect = createThunkAction(
     updateParameter(dispatch, getState, parameterId, parameter => ({
       ...parameter,
       isMultiSelect: isMultiSelect,
+      default:
+        !isMultiSelect &&
+        Array.isArray(parameter.default) &&
+        parameter.default.length > 1
+          ? [parameter.default[0]]
+          : parameter.default,
     }));
 
     return { id: parameterId, isMultiSelect };
   },
+);
+
+export const SET_PARAMETER_TEMPORAL_UNITS =
+  "metabase/dashboard/SET_PARAMETER_TEMPORAL_UNITS";
+export const setParameterTemporalUnits = createThunkAction(
+  SET_PARAMETER_TEMPORAL_UNITS,
+  (parameterId: ParameterId, temporalUnits: TemporalUnit[]) =>
+    (dispatch, getState) => {
+      updateParameter(dispatch, getState, parameterId, parameter => ({
+        ...parameter,
+        temporal_units: temporalUnits,
+        default:
+          parameter.default && temporalUnits.includes(parameter.default)
+            ? parameter.default
+            : undefined,
+      }));
+
+      return { id: parameterId, temporalUnits };
+    },
 );
 
 export const SET_PARAMETER_QUERY_TYPE =
@@ -632,7 +670,7 @@ export const closeAutoApplyFiltersToast = createThunkAction(
   () => (dispatch, getState) => {
     const toastId = getAutoApplyFiltersToastId(getState());
     if (toastId) {
-      dispatch(dismissUndo(toastId, false));
+      dispatch(dismissUndo({ undoId: toastId, track: false }));
     }
   },
 );

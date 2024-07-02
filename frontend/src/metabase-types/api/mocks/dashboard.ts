@@ -5,6 +5,7 @@ import type {
   VirtualCard,
   ActionDashboardCard,
   VirtualDashboardCard,
+  DashboardQueryMetadata,
 } from "metabase-types/api";
 
 import { createMockCard } from "./card";
@@ -17,7 +18,8 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   name: "Dashboard",
   dashcards: [],
   can_write: true,
-  can_restore: true,
+  can_restore: false,
+  can_delete: false,
   description: "",
   cache_ttl: null,
   "last-edit-info": {
@@ -179,3 +181,14 @@ export const createMockPlaceholderDashboardCard = ({
     ...opts,
     card: createMockVirtualCard({ display: "placeholder" }),
   });
+
+export const createMockDashboardQueryMetadata = (
+  opts?: Partial<DashboardQueryMetadata>,
+): DashboardQueryMetadata => ({
+  databases: [],
+  tables: [],
+  fields: [],
+  cards: [],
+  dashboards: [],
+  ...opts,
+});

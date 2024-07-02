@@ -4,12 +4,14 @@ import { within } from "@testing-library/react";
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupCardQueryEndpoints,
   setupDatabaseEndpoints,
   setupTableEndpoints,
   setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
@@ -22,6 +24,7 @@ import {
 } from "metabase/query_builder/actions";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockColumn,
   createMockDatabase,
   createMockDataset,
@@ -31,7 +34,10 @@ import {
 } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 
-import { InteractiveQuestion } from "./InteractiveQuestion";
+import {
+  getQuestionParameters,
+  InteractiveQuestion,
+} from "./InteractiveQuestion";
 
 const TEST_USER = createMockUser();
 const TEST_DB_ID = 1;
@@ -63,6 +69,12 @@ const setup = ({
   const TEST_CARD = createMockCard();
   if (isValidCard) {
     setupCardEndpoints(TEST_CARD);
+    setupCardQueryMetadataEndpoint(
+      TEST_CARD,
+      createMockCardQueryMetadata({
+        databases: [TEST_DB],
+      }),
+    );
   } else {
     setupUnauthorizedCardEndpoints(TEST_CARD);
   }
@@ -89,7 +101,7 @@ describe("InteractiveQuestion", () => {
   it("should initially render with a loader", async () => {
     setup();
 
-    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
   });
 
   it("should render when question is valid", async () => {
@@ -113,26 +125,28 @@ describe("InteractiveQuestion", () => {
     await waitForLoaderToBeRemoved();
 
     expect(
-      within(screen.getByTestId("TableInteractive-root")).getByText(
+      await within(screen.getByTestId("TableInteractive-root")).findByText(
         TEST_COLUMN.display_name,
       ),
     ).toBeInTheDocument();
     expect(
-      within(screen.getByRole("gridcell")).getByText("Test Row"),
+      await within(screen.getByRole("gridcell")).findByText("Test Row"),
     ).toBeInTheDocument();
 
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
     // Mimicking drilling down by rerunning the query again
     const storeDispatch = store.dispatch as unknown as ThunkDispatch<
       State,
       void,
       AnyAction
     >;
-    storeDispatch(clearQueryResult());
-    storeDispatch(runQuestionQuery());
+    act(() => {
+      storeDispatch(clearQueryResult());
+      storeDispatch(runQuestionQuery());
+    });
 
     expect(screen.queryByText("Question not found")).not.toBeInTheDocument();
-    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     expect(
       within(await screen.findByRole("gridcell")).getByText("Test Row"),
     ).toBeInTheDocument();
@@ -154,5 +168,20 @@ describe("InteractiveQuestion", () => {
 
     expect(screen.getByText("Error")).toBeInTheDocument();
     expect(screen.getByText("Question not found")).toBeInTheDocument();
+  });
+
+  describe("getQuestionParameters", () => {
+    it("should generate proper URL params", () => {
+      const questionId = 109;
+
+      expect(getQuestionParameters(questionId)).toEqual({
+        location: {
+          query: {},
+          hash: "",
+          pathname: "/question/109",
+        },
+        params: { slug: "109" },
+      });
+    });
   });
 });

@@ -2,8 +2,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import DebouncedFrame from "metabase/components/DebouncedFrame";
-import { color } from "metabase/lib/colors";
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import { SyncedParametersList } from "metabase/parameters/components/ParametersList";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
 import { ViewTitleHeader } from "./ViewHeader";
@@ -11,7 +10,7 @@ import { ViewTitleHeader } from "./ViewHeader";
 export const QueryBuilderViewRoot = styled.div`
   display: flex;
   flex-direction: column;
-  background-color: ${color("bg-white")};
+  background-color: var(--mb-color-bg-white);
   height: 100%;
   position: relative;
 `;
@@ -56,7 +55,7 @@ export const QueryBuilderMain = styled.main<{ isSidebarOpen: boolean }>`
 const headerHeight = "4rem";
 
 export const BorderedViewTitleHeader = styled(ViewTitleHeader)`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   padding-top: 8px;
   padding-bottom: 8px;
   min-height: ${headerHeight};
@@ -64,14 +63,14 @@ export const BorderedViewTitleHeader = styled(ViewTitleHeader)`
 
 export const QueryBuilderViewHeaderContainer = styled.div`
   flex-shrink: 0;
-  background-color: ${color("bg-white")};
+  background-color: var(--mb-color-bg-white);
   position: relative;
   z-index: 3;
 `;
 
 export const NativeQueryEditorContainer = styled.div`
   margin-bottom: 1rem;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   z-index: 2;
 `;
 

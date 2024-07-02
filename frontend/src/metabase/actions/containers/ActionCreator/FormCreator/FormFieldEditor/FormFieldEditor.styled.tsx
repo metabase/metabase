@@ -2,15 +2,15 @@ import styled from "@emotion/styled";
 
 import FormField from "metabase/core/components/FormField";
 import Radio from "metabase/core/components/Radio";
-import { color, darken } from "metabase/lib/colors";
+import { darken } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
 const DRAG_HANDLE_SIZE = 12;
 
 export const FormFieldContainer = styled.div`
-  background-color: ${color("bg-white")};
-  border: 1px solid ${color("border")};
+  background-color: var(--mb-color-bg-white);
+  border: 1px solid var(--mb-color-border);
   border-radius: ${space(1)};
   overflow: hidden;
 `;
@@ -49,12 +49,12 @@ export const Header = styled.div`
 `;
 
 export const Title = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 700;
 `;
 
 export const Subtitle = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 0.85rem;
   font-weight: 700;
 
@@ -62,15 +62,15 @@ export const Subtitle = styled.div`
 `;
 
 export const DragHandle = styled(Icon)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-top: 4px;
 `;
 
 DragHandle.defaultProps = { size: DRAG_HANDLE_SIZE };
 
 export const PreviewContainer = styled(ContentContainer)`
-  background-color: ${color("bg-light")};
-  border-top: 1px solid ${darken("bg-light", 0.1)};
+  background-color: var(--mb-color-bg-light);
+  border-top: 1px solid ${() => darken("bg-light", 0.1)};
 
   padding: 1rem 1rem 2rem 1rem;
 
@@ -79,7 +79,7 @@ export const PreviewContainer = styled(ContentContainer)`
   }
 
   ${FormField.Label} {
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
   }
 `;
 

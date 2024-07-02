@@ -51,7 +51,7 @@ export type SearchResultsProps = {
 
 export const SearchLoadingSpinner = () => (
   <Stack p="xl" align="center">
-    <Loader size="lg" data-testid="loading-spinner" />
+    <Loader size="lg" data-testid="loading-indicator" />
     <Text size="xl" color="text-light">
       {t`Loading…`}
     </Text>
@@ -166,6 +166,8 @@ export const SearchResults = ({
                 showDescription={true}
                 isSelected={cursorIndex === index}
                 onClick={onClick}
+                index={index}
+                context="search-bar"
               />
             </li>
           );

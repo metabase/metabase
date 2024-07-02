@@ -1,5 +1,4 @@
-import { render, screen } from "@testing-library/react";
-
+import { act, render, screen } from "__support__/ui";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 describe("LoadingAndErrorWrapper", () => {
@@ -7,7 +6,7 @@ describe("LoadingAndErrorWrapper", () => {
     it("should display a loading message if given a true loading prop", () => {
       render(<LoadingAndErrorWrapper loading={true} />);
 
-      expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     });
 
     it("should display a given child if loading is false", () => {
@@ -56,13 +55,19 @@ describe("LoadingAndErrorWrapper", () => {
         );
 
         expect(screen.getByText("One")).toBeInTheDocument();
-        jest.advanceTimersByTime(interval);
+        act(() => {
+          jest.advanceTimersByTime(interval);
+        });
 
         expect(screen.getByText("Two")).toBeInTheDocument();
-        jest.advanceTimersByTime(interval);
+        act(() => {
+          jest.advanceTimersByTime(interval);
+        });
 
         expect(screen.getByText("Three")).toBeInTheDocument();
-        jest.advanceTimersByTime(interval);
+        act(() => {
+          jest.advanceTimersByTime(interval);
+        });
 
         expect(screen.getByText("One")).toBeInTheDocument();
       });

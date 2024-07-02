@@ -21,13 +21,14 @@ import type {
 import type { TimelineEventId } from "metabase-types/api";
 
 import type { ChartMeasurements } from "../chart-measurements/types";
+import { getBarSeriesDataLabelKey } from "../model/util";
 
 import { getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLinesOption } from "./trend-line";
 
-export const getSharedEChartsOptions = (isPlaceholder: boolean) => ({
+export const getSharedEChartsOptions = (isAnimated: boolean) => ({
   useUTC: true,
-  animation: !isPlaceholder,
+  animation: isAnimated,
   animationDuration: 0,
   animationDurationUpdate: 1, // by setting this to 1ms we visually eliminate shape transitions while preserving opacity transitions
   toolbox: {
@@ -48,7 +49,7 @@ export const getCartesianChartOption = (
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   chartWidth: number,
-  isPlaceholder: boolean,
+  isAnimated: boolean,
   hoveredSeriesDataKey: DataKey | null,
   renderingContext: RenderingContext,
 ): EChartsCoreOption => {
@@ -87,14 +88,14 @@ export const getCartesianChartOption = (
   // dataset option
   const dimensions = [
     X_AXIS_DATA_KEY,
-    ...chartModel.seriesModels.map(seriesModel => seriesModel.dataKey),
-  ];
-
-  if (settings["stackable.stack_type"] != null) {
-    dimensions.push(
-      ...[POSITIVE_STACK_TOTAL_DATA_KEY, NEGATIVE_STACK_TOTAL_DATA_KEY],
-    );
-  }
+    POSITIVE_STACK_TOTAL_DATA_KEY,
+    NEGATIVE_STACK_TOTAL_DATA_KEY,
+    ...chartModel.seriesModels.map(seriesModel => [
+      seriesModel.dataKey,
+      getBarSeriesDataLabelKey(seriesModel.dataKey, "+"),
+      getBarSeriesDataLabelKey(seriesModel.dataKey, "-"),
+    ]),
+  ].flatMap(dimension => dimension);
 
   const echartsDataset = [
     {
@@ -118,7 +119,7 @@ export const getCartesianChartOption = (
   }
 
   return {
-    ...getSharedEChartsOptions(isPlaceholder),
+    ...getSharedEChartsOptions(isAnimated),
     grid: {
       ...chartMeasurements.padding,
     },

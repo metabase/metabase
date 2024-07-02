@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
@@ -163,61 +164,58 @@
 (deftest ^:parallel extraction-function-timestamp-with-time-zone-test
   (mt/dataset times-mixed
     (mt/test-drivers (filter mt/supports-timestamptz-type? (mt/normal-drivers-with-feature :temporal-extract))
-      (let [ops   [:get-year :get-quarter :get-month :get-day
-                   :get-day-of-week :get-hour :get-minute :get-second]
-            query (lib/query
-                   (lib.tu/merged-mock-metadata-provider
-                    (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                    {:settings {:report-timezone "Asia/Kabul", :start-of-week :sunday}})
-                   (mt/mbql-query times
-                     {:expressions (into {"shifted-day"  [:datetime-subtract $dt_tz 78 :day]
-                                          ;; the idea is to extract a column with value =
-                                          ;; 2004-01-01 02:49:09 +04:30 this way the UTC value is
-                                          ;; 2003-12-31 22:19:09 +00:00 which will make sure the
-                                          ;; year, quarter, month, day, week is extracted
-                                          ;; correctly TODO: it's better to use a literal for
-                                          ;; this, but the function is not working properly with
-                                          ;; OffsetDatetime for all drivers, so we'll go wit this
-                                          ;; for now
-                                          "shifted-hour" [:datetime-subtract
-                                                          [:expression "shifted-day"]
-                                                          4
-                                                          :hour]}
-                                         (for [op ops]
-                                           [(name op) [op [:expression "shifted-hour"]]]))
-                      :fields      (into [] (for [op ops] [:expression (name op)]))
-                      :filter      [:= $index 1]
-                      :limit       1}))]
-        (mt/with-native-query-testing-context query
-          (is (= (if (or (#{:sqlserver :h2} driver/*driver*)
-                         (driver/database-supports? driver/*driver* :set-timezone (mt/db)))
-                   {:get-year        2004
-                    :get-quarter     1
-                    :get-month       1
-                    :get-day         1
-                    :get-day-of-week 5
-                    ;; TIMEZONE FIXME these drivers are returning the extracted hours in
-                    ;; the timezone that they were inserted in
-                    ;; maybe they need explicit convert-timezone to the report-tz before extraction?
-                    :get-hour        (case driver/*driver*
-                                       (:h2 :sqlserver :oracle) 5
-                                       2)
-                    :get-minute      (case driver/*driver*
-                                       (:h2 :sqlserver :oracle) 19
-                                       49)
-                    :get-second      9}
-                   {:get-year        2003
-                    :get-quarter     4
-                    :get-month       12
-                    :get-day         31
-                    :get-day-of-week 4
-                    :get-hour        22
-                    :get-minute      19
-                    :get-second      9})
-                 (->> (mt/process-query query)
-                      (mt/formatted-rows (repeat int))
-                      first
-                      (zipmap ops)))))))))
+      (mt/with-temporary-setting-values [start-of-week   :sunday
+                                         report-timezone "Asia/Kabul"]
+        (let [ops   [:get-year :get-quarter :get-month :get-day
+                     :get-day-of-week :get-hour :get-minute :get-second]
+              query (mt/mbql-query times {:expressions (into {"shifted-day"  [:datetime-subtract $dt_tz 78 :day]
+                                                              ;; the idea is to extract a column with value =
+                                                              ;; 2004-01-01 02:49:09 +04:30 this way the UTC value is
+                                                              ;; 2003-12-31 22:19:09 +00:00 which will make sure the
+                                                              ;; year, quarter, month, day, week is extracted
+                                                              ;; correctly TODO: it's better to use a literal for
+                                                              ;; this, but the function is not working properly with
+                                                              ;; OffsetDatetime for all drivers, so we'll go wit this
+                                                              ;; for now
+                                                              "shifted-hour" [:datetime-subtract
+                                                                              [:expression "shifted-day"]
+                                                                              4
+                                                                              :hour]}
+                                                             (for [op ops]
+                                                               [(name op) [op [:expression "shifted-hour"]]]))
+                                          :fields      (into [] (for [op ops] [:expression (name op)]))
+                                          :filter      [:= $index 1]
+                                          :limit       1})]
+          (mt/with-native-query-testing-context query
+            (is (= (if (or (#{:sqlserver :h2} driver/*driver*)
+                           (driver.u/supports? driver/*driver* :set-timezone (mt/db)))
+                     {:get-year        2004
+                      :get-quarter     1
+                      :get-month       1
+                      :get-day         1
+                      :get-day-of-week 5
+                      ;; TIMEZONE FIXME these drivers are returning the extracted hours in
+                      ;; the timezone that they were inserted in
+                      ;; maybe they need explicit convert-timezone to the report-tz before extraction?
+                      :get-hour        (case driver/*driver*
+                                         (:h2 :sqlserver :oracle) 5
+                                         2)
+                      :get-minute      (case driver/*driver*
+                                         (:h2 :sqlserver :oracle) 19
+                                         49)
+                      :get-second      9}
+                     {:get-year        2003
+                      :get-quarter     4
+                      :get-month       12
+                      :get-day         31
+                      :get-day-of-week 4
+                      :get-hour        22
+                      :get-minute      19
+                      :get-second      9})
+                   (->> (mt/process-query query)
+                        (mt/formatted-rows (repeat int))
+                        first
+                        (zipmap ops))))))))))
 
 (deftest ^:parallel temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
@@ -595,7 +593,7 @@
                              $times.dt
                              [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Seoul"]))))))
 
-          (when (driver/database-supports? driver/*driver* :set-timezone (mt/db))
+          (when (driver.u/supports? driver/*driver* :set-timezone (mt/db))
             (mt/with-report-timezone-id! "Europe/Rome"
               (testing "results should be displayed in the converted timezone, not report-tz"
                 (is (= ["2004-03-19T09:19:09+01:00" "2004-03-19T17:19:09+09:00"]
@@ -621,7 +619,7 @@
                               "Asia/Seoul"
                               "UTC"]))))))
 
-          (when (driver/database-supports? driver/*driver* :set-timezone (mt/db))
+          (when (driver.u/supports? driver/*driver* :set-timezone (mt/db))
             (mt/with-report-timezone-id! "Europe/Rome"
               (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
                 (is (= ["2004-03-19T03:19:09+01:00" "2004-03-19T11:19:09+09:00"]
@@ -1034,7 +1032,7 @@
                            "2022-10-03T00:00:00Z"))))) ; 2022-10-03T00:00:00Z
   (testing "hour under a day"
     (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
-      (is (partial= (if (driver/database-supports? driver/*driver* :set-timezone (mt/db))
+      (is (partial= (if (driver.u/supports? driver/*driver* :set-timezone (mt/db))
                       {:second 82800 :minute 1380 :hour 23 :day 1}
                       {:second 82800 :minute 1380 :hour 23 :day 0})
                     (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
@@ -1045,7 +1043,7 @@
                            "2022-10-03T00:00:00+01:00"))))) ; 2022-10-02T23:00:00Z
   (testing "hour under a week"
     (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
-      (is (partial= (if (driver/database-supports? driver/*driver* :set-timezone (mt/db))
+      (is (partial= (if (driver.u/supports? driver/*driver* :set-timezone (mt/db))
                       {:hour 167 :day 7 :week 1}
                       {:hour 167 :day 6 :week 0})
                     (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
@@ -1065,7 +1063,7 @@
                            "2022-10-09T00:00:00Z"))))) ; 2022-10-09T00:00:00Z
   (testing "hour under a month"
     (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
-      (is (partial= (if (driver/database-supports? driver/*driver* :set-timezone (mt/db))
+      (is (partial= (if (driver.u/supports? driver/*driver* :set-timezone (mt/db))
                       {:hour 743 :day 31 :week 4 :month 1}
                       {:hour 743 :day 30 :week 4 :month 0})
                     (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
@@ -1085,7 +1083,7 @@
                            "2022-11-02T00:00:00Z"))))) ; 2022-11-02T00:00:00Z
   (testing "hour under a quarter"
     (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
-      (is (partial= (if (driver/database-supports? driver/*driver* :set-timezone (mt/db))
+      (is (partial= (if (driver.u/supports? driver/*driver* :set-timezone (mt/db))
                       {:month 3 :quarter 1}
                       {:month 2 :quarter 0})
                     (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
@@ -1114,7 +1112,7 @@
                            "2023-10-02T00:00:00Z"))))) ; 2023-10-02T00:00:00Z
   (testing "hour under a year"
     (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
-      (is (partial= (if (driver/database-supports? driver/*driver* :set-timezone (mt/db))
+      (is (partial= (if (driver.u/supports? driver/*driver* :set-timezone (mt/db))
                       {:day 365 :month 12 :year 1}
                       {:day 364 :month 11 :year 0})
                     (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00

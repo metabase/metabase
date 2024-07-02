@@ -12,9 +12,13 @@ import {
   sidebar,
   entityPickerModal,
   modal,
+  openNavigationSidebar,
   navigationSidebar,
   restore,
   entityPickerModalTab,
+  visitCollection,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 describe("scenarios > collections > trash", () => {
@@ -62,7 +66,7 @@ describe("scenarios > collections > trash", () => {
     popover().within(() => {
       cy.findByText("Move to trash").should("not.exist");
       cy.findByText("Restore").should("exist");
-      cy.findByText("Delete permanently").should("exist");
+      cy.findByText("Delete permanently").should("not.exist");
     });
     toggleEllipsisMenuFor("Collection A");
 
@@ -111,11 +115,18 @@ describe("scenarios > collections > trash", () => {
 
   it("should be able to trash & restore dashboards/collections/questions on entity page and from parent collection", () => {
     cy.log("create test resources");
-    createCollection({ name: "Collection A" });
-    createDashboard({ name: "Dashboard A" });
+    cy.log("Bookmark the resources to test metabase#44224");
+    createCollection({ name: "Collection A" }).then(collection => {
+      cy.request("POST", `/api/bookmark/collection/${collection.id}`);
+    });
+    createDashboard({ name: "Dashboard A" }).then(dashboard => {
+      cy.request("POST", `/api/bookmark/dashboard/${dashboard.id}`);
+    });
     createNativeQuestion({
       name: "Question A",
       native: { query: "select 1;" },
+    }).then(question => {
+      cy.request("POST", `/api/bookmark/card/${question.id}`);
     });
 
     visitRootCollection();
@@ -137,12 +148,15 @@ describe("scenarios > collections > trash", () => {
 
     toggleEllipsisMenuFor(/Collection A/);
     popover().findByText("Restore").click();
+    ensureBookmarkVisible(/Collection A/);
 
     toggleEllipsisMenuFor("Dashboard A");
     popover().findByText("Restore").click();
+    ensureBookmarkVisible("Dashboard A");
 
     toggleEllipsisMenuFor("Question A");
     popover().findByText("Restore").click();
+    ensureBookmarkVisible("Question A");
 
     cy.log("should be able to archive entities from their own views");
     visitRootCollection();
@@ -158,6 +172,7 @@ describe("scenarios > collections > trash", () => {
       cy.findByText("Move to trash").click();
     });
     ensureCanRestoreFromPage("Collection A");
+    ensureBookmarkVisible("Collection A");
 
     // dashboard
     collectionTable().within(() => {
@@ -174,6 +189,7 @@ describe("scenarios > collections > trash", () => {
       cy.findByText("Dashboard A").should("not.exist");
     });
     ensureCanRestoreFromPage("Dashboard A");
+    ensureBookmarkVisible("Dashboard A");
 
     // question
     collectionTable().within(() => {
@@ -190,6 +206,7 @@ describe("scenarios > collections > trash", () => {
       cy.findByText("Question A").should("not.exist");
     });
     ensureCanRestoreFromPage("Question A");
+    ensureBookmarkVisible("Question A");
   });
 
   it("should not show restore option if entity is within nested in an archived collection list", () => {
@@ -338,12 +355,15 @@ describe("scenarios > collections > trash", () => {
 
     cy.log("can delete from trash list");
     toggleEllipsisMenuFor("Collection A");
-    popover().findByText("Delete permanently").click();
-    modal().findByText("Delete Collection A permanently?").should("exist");
-    modal().findByText("Delete permanently").click();
-    collectionTable().within(() => {
-      cy.findByText("Collection A").should("not.exist");
-    });
+    // FUTURE: replace following two lines with commented out code when collections can be deleted
+    popover().findByText("Delete permanently").should("not.exist");
+    toggleEllipsisMenuFor("Collection A");
+    // popover().findByText("Delete permanently").click();
+    // modal().findByText("Delete Collection A permanently?").should("exist");
+    // modal().findByText("Delete permanently").click();
+    // collectionTable().within(() => {
+    //   cy.findByText("Collection A").should("not.exist");
+    // });
 
     toggleEllipsisMenuFor("Dashboard A");
     popover().findByText("Delete permanently").click();
@@ -365,12 +385,15 @@ describe("scenarios > collections > trash", () => {
     collectionTable().within(() => {
       cy.findByText("Collection B").click();
     });
-    archiveBanner().findByText("Delete permanently").click();
-    modal().findByText("Delete Collection B permanently?").should("exist");
-    modal().findByText("Delete permanently").click();
-    collectionTable().within(() => {
-      cy.findByText("Collection B").should("not.exist");
-    });
+    // FUTURE: replace following two lines with commented out code when collections can be deleted
+    archiveBanner().findByText("Delete permanently").should("not.exist");
+    cy.visit("/trash");
+    // archiveBanner().findByText("Delete permanently").click();
+    // modal().findByText("Delete Collection B permanently?").should("exist");
+    // modal().findByText("Delete permanently").click();
+    // collectionTable().within(() => {
+    //   cy.findByText("Collection B").should("not.exist");
+    // });
 
     collectionTable().within(() => {
       cy.findByText("Dashboard B").click();
@@ -402,12 +425,13 @@ describe("scenarios > collections > trash", () => {
         true,
       );
       cy.visit("/trash");
-      selectItem("Collection A");
-      selectItem("Dashboard A");
-      selectItem("Question A");
     });
 
     it("user should be able to bulk restore", () => {
+      selectItem("Collection A");
+      selectItem("Dashboard A");
+      selectItem("Question A");
+
       cy.findByTestId("toast-card")
         .should("be.visible")
         .within(() => {
@@ -424,6 +448,10 @@ describe("scenarios > collections > trash", () => {
     });
 
     it("user should be able to bulk move out of trash", () => {
+      selectItem("Collection A");
+      selectItem("Dashboard A");
+      selectItem("Question A");
+
       cy.findByTestId("toast-card")
         .should("be.visible")
         .within(() => {
@@ -455,6 +483,9 @@ describe("scenarios > collections > trash", () => {
     });
 
     it("user should be able to bulk delete", () => {
+      selectItem("Dashboard A");
+      selectItem("Question A");
+
       cy.findByTestId("toast-card")
         .should("be.visible")
         .within(() => {
@@ -464,12 +495,13 @@ describe("scenarios > collections > trash", () => {
         });
 
       modal().within(() => {
-        cy.findByText("Delete 3 items permanently?");
+        cy.findByText("Delete 2 items permanently?");
         cy.findByText("Delete permanently").click();
       });
 
       collectionTable().within(() => {
-        cy.findByText("Collection A").should("not.exist");
+        cy.findByText("Collection A").should("exist");
+        cy.findByText("Dashboard A").should("not.exist");
         cy.findByText("Question A").should("not.exist");
       });
     });
@@ -486,7 +518,7 @@ describe("scenarios > collections > trash", () => {
     ).as("question");
 
     cy.get("@question").then(question => {
-      cy.visit(`/question/${question.id}-question-a`);
+      visitQuestion(question.id);
       // should not have disabled actions in top navbar
       cy.findAllByTestId("qb-header-action-panel").within(() => {
         cy.findByText("Filter").should("not.exist");
@@ -505,7 +537,7 @@ describe("scenarios > collections > trash", () => {
     });
 
     cy.get("@dashboard").then(dashboard => {
-      cy.visit(`/dashboard/${dashboard.id}-dashboard-a`);
+      visitDashboard(dashboard.id);
 
       cy.findAllByTestId("dashboard-header").within(() => {
         cy.icon("pencil").should("not.exist");
@@ -561,7 +593,7 @@ describe("scenarios > collections > trash", () => {
     cy.signInAsNormalUser();
 
     cy.get("@collection").then(collection => {
-      cy.visit(`/collection/${collection.id}-collection-a`);
+      visitCollection(collection.id);
       archiveBanner().findByText("Restore").should("not.exist");
       archiveBanner().findByText("Move").should("not.exist");
       archiveBanner().findByText("Delete permanently").should("not.exist");
@@ -609,6 +641,53 @@ describe("scenarios > collections > trash", () => {
       cy.findByText(CURATEABLE_NAME).should("be.visible");
     });
   });
+
+  it("should highlight the trash in the navbar when viewing root trash collection or an entity in the trash", () => {
+    createCollection({ name: "Collection A" }, true).as("collection");
+    createDashboard({ name: "Dashboard A" }, true).as("dashboard");
+    createNativeQuestion(
+      {
+        name: "Question A",
+        native: { query: "select 1;" },
+      },
+      true,
+    ).as("question");
+
+    cy.log("Make sure trash is selected for root trash collection");
+    cy.visit("/trash");
+    assertTrashSelectedInNavigationSidebar();
+
+    cy.log("Make sure trash is selected for a trashed collection");
+    cy.get("@collection").then(collection => {
+      cy.intercept("GET", `/api/collection/${collection.id}`).as(
+        "getCollection",
+      );
+      visitCollection(collection.id);
+      cy.wait("@getCollection");
+      assertTrashSelectedInNavigationSidebar();
+    });
+
+    cy.log("Make sure trash is selected for a trashed dashboard");
+    cy.get("@dashboard").then(dashboard => {
+      cy.intercept("GET", `/api/dashboard/${dashboard.id}`).as("getDashboard");
+      visitDashboard(dashboard.id);
+      cy.wait("@getDashboard");
+      openNavigationSidebar();
+      assertTrashSelectedInNavigationSidebar();
+    });
+
+    cy.log("Make sure trash is selected for a trashed question");
+    cy.get("@question").then(question => {
+      cy.log(question.id);
+      cy.intercept("POST", `/api/card/${question.id}/query`).as(
+        "getQuestionResult",
+      );
+      visitQuestion(question.id);
+      cy.wait("@getQuestionResult");
+      openNavigationSidebar();
+      assertTrashSelectedInNavigationSidebar();
+    });
+  });
 });
 
 function toggleEllipsisMenuFor(item) {
@@ -623,9 +702,12 @@ function toggleEllipsisMenuFor(item) {
 function createCollection(collectionInfo, archive) {
   return cy
     .createCollection(collectionInfo)
-    .then(({ body: collection }) =>
-      Promise.all([collection, archive && cy.archiveCollection(collection.id)]),
-    )
+    .then(({ body: collection }) => {
+      return Promise.all([
+        collection,
+        archive && cy.archiveCollection(collection.id),
+      ]);
+    })
     .then(([collection]) => collection);
 }
 
@@ -685,4 +767,18 @@ function selectItem(name) {
   cy.findByText(name)
     .closest("tr")
     .within(() => cy.findByRole("checkbox").click());
+}
+
+function assertTrashSelectedInNavigationSidebar() {
+  navigationSidebar().within(() => {
+    cy.findByText("Trash")
+      .parents("li")
+      .should("have.attr", "aria-selected", "true");
+  });
+}
+
+function ensureBookmarkVisible(bookmark) {
+  cy.findByRole("tab", { name: /bookmarks/i })
+    .findByText(bookmark)
+    .should("be.visible");
 }

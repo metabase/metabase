@@ -28,6 +28,8 @@ import {
   visitIframe,
   entityPickerModal,
   filterWidget,
+  queryBuilderHeader,
+  removeMultiAutocompleteValue,
 } from "e2e/support/helpers";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import {
@@ -671,7 +673,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     it("allows setting saved question as custom destination and changing it back to default click behavior", () => {
-      cy.createQuestion(TARGET_QUESTION);
+      cy.createQuestion(TARGET_QUESTION, { wrapId: true });
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
@@ -694,13 +696,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.intercept("GET", "/api/collection", cy.spy().as("collections"));
 
       clickLineChartPoint();
-      cy.location().should(({ hash, pathname }) => {
-        expect(pathname).to.equal("/question");
-        const card = deserializeCardFromUrl(hash);
-        expect(card.name).to.deep.equal(TARGET_QUESTION.name);
-        expect(card.display).to.deep.equal(TARGET_QUESTION.display);
-        expect(card.dataset_query.query).to.deep.equal(TARGET_QUESTION.query);
+      cy.get("@questionId").then(questionId => {
+        cy.location()
+          .its("pathname")
+          .should("contain", `/question/${questionId}`);
       });
+      queryBuilderHeader()
+        .findByDisplayValue(TARGET_QUESTION.name)
+        .should("be.visible");
 
       cy.log("Should navigate to question using router (metabase#33379)");
       cy.findByTestId("view-footer").should("contain", "Showing 5 rows");
@@ -1406,6 +1409,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           customLinkTextInput.type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
             parseSpecialCharSequences: false,
           });
+          customLinkTextInput.blur();
+
           cy.button("Done").click();
         });
 
@@ -1443,7 +1448,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
         cy.button(DASHBOARD_FILTER_TEXT.name).click();
         popover().within(() => {
-          cy.icon("close").click();
+          removeMultiAutocompleteValue(0);
           cy.findByPlaceholderText("Search by Name").type("Dell Adams");
           cy.button("Update filter").click();
         });

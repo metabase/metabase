@@ -6,7 +6,7 @@ import {
   useGetCollectionQuery,
   useListCollectionItemsQuery,
 } from "metabase/api";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 
@@ -44,7 +44,7 @@ export const RootItemList = ({
   const { data: personalCollection, isLoading: isLoadingPersonalCollecton } =
     useGetCollectionQuery(
       currentUser?.personal_collection_id
-        ? currentUser?.personal_collection_id
+        ? { id: currentUser.personal_collection_id }
         : skipToken,
     );
 
@@ -64,7 +64,7 @@ export const RootItemList = ({
     data: rootCollection,
     isLoading: isLoadingRootCollecton,
     error: rootCollectionError,
-  } = useGetCollectionQuery("root");
+  } = useGetCollectionQuery({ id: "root" });
 
   const data = useMemo(() => {
     const collectionsData: CollectionPickerItem[] = [];

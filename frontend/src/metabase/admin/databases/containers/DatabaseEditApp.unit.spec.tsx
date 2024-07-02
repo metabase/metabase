@@ -48,13 +48,11 @@ const ENGINES_MOCK: Record<string, Engine> = {
 const MockComponent = () => <div />;
 
 interface SetupOpts {
-  cachingEnabled?: boolean;
   databaseIdParam?: string;
   initialRoute?: string;
 }
 
 async function setup({
-  cachingEnabled = false,
   databaseIdParam = "",
   initialRoute = `/${databaseIdParam}`,
 }: SetupOpts = {}) {
@@ -67,7 +65,6 @@ async function setup({
     "token-features": createMockTokenFeatures({
       cache_granular_controls: true,
     }),
-    "enable-query-caching": cachingEnabled,
   });
 
   const { history } = renderWithProviders(
@@ -168,7 +165,9 @@ describe("DatabaseEditApp", () => {
 
       history.goBack();
 
-      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      expect(
+        await screen.findByTestId("leave-confirmation"),
+      ).toBeInTheDocument();
     });
 
     it("does not show custom warning modal after creating new database connection", async () => {

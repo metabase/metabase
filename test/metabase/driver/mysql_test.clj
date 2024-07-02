@@ -1,11 +1,10 @@
-(ns metabase.driver.mysql-test
+(ns ^:mb/once metabase.driver.mysql-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [metabase.actions.error :as actions.error]
-   [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
@@ -16,6 +15,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models.action :as action]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
@@ -254,45 +254,35 @@
 (def ^:private sample-connection-details
   {:db "my_db", :host "localhost", :port "3306", :user "cam", :password "bad-password"})
 
-(def ^:private sample-jdbc-spec
-  {:password             "bad-password"
-   :characterSetResults  "UTF8"
-   :characterEncoding    "UTF8"
-   :classname            "org.mariadb.jdbc.Driver"
-   :subprotocol          "mysql"
-   :zeroDateTimeBehavior "convertToNull"
-   :user                 "cam"
-   :subname              "//localhost:3306/my_db"
-   :connectionAttributes (str "program_name:" config/mb-version-and-process-identifier)
-   :useCompression       true
-   :useUnicode           true})
-
-(deftest connection-spec-test
+(deftest ^:parallel connection-spec-test
   (testing "Do `:ssl` connection details give us the connection spec we'd expect?"
-    (is (= (assoc sample-jdbc-spec :useSSL true :serverSslCert "sslCert")
-           (sql-jdbc.conn/connection-details->spec :mysql (assoc sample-connection-details :ssl      true
-                                                                                           :ssl-cert "sslCert")))))
+    (is (=? {:useSSL true, :serverSslCert "sslCert"}
+            (sql-jdbc.conn/connection-details->spec :mysql (assoc sample-connection-details :ssl      true
+                                                                  :ssl-cert "sslCert"))))))
 
+(deftest ^:parallel connection-spec-test-2
   (testing "what about non-SSL connections?"
-    (is (= (assoc sample-jdbc-spec :useSSL false)
-           (sql-jdbc.conn/connection-details->spec :mysql sample-connection-details))))
+    (is (=? {:useSSL false}
+            (sql-jdbc.conn/connection-details->spec :mysql sample-connection-details)))))
 
+(deftest ^:parallel connection-spec-test-3
   (testing "Connections that are `:ssl false` but with `useSSL` in the additional options should be treated as SSL (see #9629)"
-    (is (= (assoc sample-jdbc-spec :useSSL  true
-                                   :subname "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true")
-           (sql-jdbc.conn/connection-details->spec :mysql
-             (assoc sample-connection-details
-                    :ssl false
-                    :additional-options "useSSL=true&trustServerCertificate=true")))))
+    (is (=? {:useSSL true, :subname "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true"}
+            (sql-jdbc.conn/connection-details->spec :mysql
+                                                    (assoc sample-connection-details
+                                                           :ssl false
+                                                           :additional-options "useSSL=true&trustServerCertificate=true"))))))
+
+(deftest ^:parallel connection-spec-test-4
   (testing "A program_name specified in additional-options is not overwritten by us"
     (let [conn-attrs "connectionAttributes=program_name:my_custom_value"]
-      (is (= (-> sample-jdbc-spec
-                 (assoc :subname (str "//localhost:3306/my_db?" conn-attrs), :useSSL false)
-                 ;; because program_name was in additional-options, we shouldn't use emit :connectionAttributes
-                 (dissoc :connectionAttributes))
-             (sql-jdbc.conn/connection-details->spec
-              :mysql
-              (assoc sample-connection-details :additional-options conn-attrs)))))))
+      (is (=? {:subname (str "//localhost:3306/my_db?" conn-attrs)
+               :useSSL false
+               ;; because program_name was in additional-options, we shouldn't use emit :connectionAttributes
+               :connectionAttributes (symbol "nil #_\"key is not present.\"")}
+              (sql-jdbc.conn/connection-details->spec
+               :mysql
+               (assoc sample-connection-details :additional-options conn-attrs)))))))
 
 (deftest read-timediffs-test
   (mt/test-driver :mysql
@@ -360,6 +350,47 @@
                                :base_type :type/Text}]}]
                    (->> (t2/hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
                         (map table-fingerprint))))))))))
+
+(defn- create-enums-table! [db]
+  (let [spec (sql-jdbc.conn/connection-details->spec :mysql (:details db))]
+    (doseq [sql ["CREATE TABLE birds (name VARCHAR(50) PRIMARY KEY, bird_type ENUM('toucan', 'pigeon', 'turkey'));"
+                 "INSERT INTO birds (name, bird_type) VALUES ('Rasta', 'toucan');"]]
+      (jdbc/execute! spec sql))))
+
+(deftest enums-test
+  (mt/test-driver :mysql
+    (testing "ENUM columns are synced with the correct base and semantic types"
+      (mt/with-empty-db
+        (create-enums-table! (mt/db))
+        (sync/sync-database! (mt/db))
+        (is (=? {:base_type     :type/MySQLEnum
+                 :semantic_type :type/Category}
+                (t2/select-one :model/Field :name "bird_type")))))))
+
+(deftest enums-actions-test
+  (mt/test-driver :mysql
+    (testing "actions with enums"
+      (mt/with-empty-db
+        (create-enums-table! (mt/db))
+        (sync/sync-database! (mt/db))
+        (mt/with-actions-enabled
+          (mt/with-actions [model {:type          :model
+                                   :dataset_query (mt/mbql-query birds)}
+                            {action-id :action-id} {:type :implicit
+                                                    :kind "row/create"}]
+            (testing "Enum fields are a valid implicit parameter target"
+              (let [columns        (->> model :result_metadata (map :name) set)
+                    action-targets (->> (action/select-action :id action-id)
+                                        :parameters
+                                        (map :id)
+                                        set)]
+                (is (= columns action-targets))))
+            (testing "Can create new records with an enum value"
+              (is (= {:created-row {:name "Lucky", :bird_type "pigeon"}}
+                     (mt/user-http-request :crowberto
+                                           :post 200
+                                           (format "action/%s/execute" action-id)
+                                           {:parameters {"name" "Lucky", "bird_type" "pigeon"}}))))))))))
 
 (deftest group-on-time-column-test
   (mt/test-driver :mysql

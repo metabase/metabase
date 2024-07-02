@@ -7,7 +7,7 @@
   left: 0;
   right: 0;
   height: 43px;
-  background-color: color-mod(var(--mb-color-bg-white) alpha(-85%));
+  background-color: var(--mb-color-bg-white-alpha-15);
 }
 
 .editHeaderButtons {

@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { color } from "metabase/lib/colors";
 
 /**
  * The upsell color palette is designed to function in harmony with the original Metabase set of Blues, Grays and Purples
@@ -30,7 +29,7 @@ export const UpsellPillComponent = styled(ExternalLink)`
 
   &:hover {
     background-color: ${upsellColors.primary};
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     border: 1px solid ${upsellColors.primary};
   }
 `;
@@ -54,7 +53,7 @@ export const UpsellCTALink = styled(ExternalLink)`
 
   &:hover {
     background-color: ${upsellColors.primary};
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
   }
 `;
 
@@ -64,4 +63,5 @@ export const UpsellCardComponent = styled.div`
   border-radius: 0.5rem;
   overflow: hidden;
   border: 1px solid ${upsellColors.secondary};
+  background-color: var(--mb-color-bg-white);
 `;

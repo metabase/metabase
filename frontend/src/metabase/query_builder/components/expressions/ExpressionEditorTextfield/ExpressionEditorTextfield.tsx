@@ -78,19 +78,19 @@ export function suggestWithExtras(
     res.suggestions ?? [];
 
   if (args.showMetabaseLinks && args.source === "") {
-    suggestions.unshift(...(args.shortcuts ?? []));
+    suggestions.push(...(args.shortcuts ?? []));
 
     if (args.startRule === "aggregation") {
       suggestions.push({
         footer: true,
-        name: t`View all aggregations`,
+        name: t`Documentation`,
         icon: "external",
         href: "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#aggregations",
       });
     } else {
       suggestions.push({
         footer: true,
-        name: t`View all functions`,
+        name: t`Documentation`,
         icon: "external",
         href: "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#functions",
       });
@@ -122,7 +122,7 @@ interface ExpressionEditorTextfieldProps {
   stageIndex: number;
   metadata: Metadata;
   startRule: "expression" | "aggregation" | "boolean";
-  expressionPosition?: number;
+  expressionIndex?: number;
   width?: number;
   reportTimezone?: string;
   textAreaId?: string;
@@ -162,7 +162,7 @@ function transformPropsToState(
     clause,
     query,
     stageIndex,
-    expressionPosition,
+    expressionIndex,
     metadata,
     reportTimezone,
     showMetabaseLinks,
@@ -176,6 +176,7 @@ function transformPropsToState(
     startRule,
     stageIndex,
     query,
+    expressionIndex,
   });
 
   const { suggestions = [], helpText = null } = suggestWithExtras({
@@ -183,7 +184,7 @@ function transformPropsToState(
     startRule,
     source,
     targetOffset: 0,
-    expressionPosition,
+    expressionIndex,
     query,
     stageIndex,
     metadata,
@@ -217,6 +218,7 @@ class ExpressionEditorTextfield extends React.Component<
   input = React.createRef<AceEditor>();
   suggestionTarget = React.createRef<HTMLDivElement>();
   helpTextTarget = React.createRef<HTMLDivElement>();
+  popupMenuTarget = React.createRef<HTMLUListElement>();
 
   static defaultProps = {
     expression: "",
@@ -237,7 +239,14 @@ class ExpressionEditorTextfield extends React.Component<
     newProps: Readonly<ExpressionEditorTextfieldProps>,
   ) {
     // we only refresh our state if we had no previous state OR if our expression changed
-    const { expression, clause, startRule, query, stageIndex } = newProps;
+    const {
+      expression,
+      clause,
+      startRule,
+      query,
+      stageIndex,
+      expressionIndex,
+    } = newProps;
     const hasLegacyExpressionChanged = !_.isEqual(
       this.props.expression,
       expression,
@@ -254,6 +263,7 @@ class ExpressionEditorTextfield extends React.Component<
         startRule,
         stageIndex,
         query,
+        expressionIndex,
       });
       const currentSource = this.state.source;
       this.setState(transformPropsToState(newProps));
@@ -417,6 +427,12 @@ class ExpressionEditorTextfield extends React.Component<
     }
   };
 
+  handleHighlightSuggestion = (index: number) => {
+    this.setState({
+      highlightedSuggestionIndex: index,
+    });
+  };
+
   chooseSuggestion = () => {
     const { highlightedSuggestionIndex, suggestions } = this.state;
 
@@ -440,6 +456,15 @@ class ExpressionEditorTextfield extends React.Component<
   };
 
   handleInputBlur = (e: React.FocusEvent) => {
+    // Ensure there is no active popup menu before we blur or
+    // that user didn't interact with the popup menu
+    if (
+      this.popupMenuTarget.current &&
+      e.relatedTarget?.contains(this.popupMenuTarget.current)
+    ) {
+      return;
+    }
+
     this.setState({ isFocused: false });
 
     // Switching to another window also triggers the blur event.
@@ -512,7 +537,7 @@ class ExpressionEditorTextfield extends React.Component<
 
   compileExpression() {
     const { source } = this.state;
-    const { query, stageIndex, startRule, name } = this.props;
+    const { query, stageIndex, startRule, name, expressionIndex } = this.props;
     if (!source || source.length === 0) {
       return null;
     }
@@ -522,6 +547,7 @@ class ExpressionEditorTextfield extends React.Component<
       query,
       stageIndex,
       startRule,
+      expressionIndex,
     });
 
     return { expression, expressionClause };
@@ -534,7 +560,7 @@ class ExpressionEditorTextfield extends React.Component<
       name,
       query,
       stageIndex,
-      expressionPosition,
+      expressionIndex,
       metadata,
     } = this.props;
 
@@ -548,7 +574,7 @@ class ExpressionEditorTextfield extends React.Component<
       name,
       query,
       stageIndex,
-      expressionPosition,
+      expressionIndex,
       metadata,
     });
   }
@@ -560,7 +586,7 @@ class ExpressionEditorTextfield extends React.Component<
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       onCommit,
       onError,
-      expressionPosition,
+      expressionIndex,
     } = this.props;
     const { source } = this.state;
 
@@ -569,7 +595,7 @@ class ExpressionEditorTextfield extends React.Component<
       startRule,
       query,
       stageIndex,
-      expressionPosition,
+      expressionIndex,
     });
 
     this.setState({ errorMessage });
@@ -614,7 +640,7 @@ class ExpressionEditorTextfield extends React.Component<
       reportTimezone,
       stageIndex,
       metadata,
-      expressionPosition,
+      expressionIndex,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       showMetabaseLinks,
       shortcuts = [],
@@ -625,7 +651,7 @@ class ExpressionEditorTextfield extends React.Component<
       startRule,
       source,
       targetOffset: cursor.column,
-      expressionPosition,
+      expressionIndex,
       query,
       stageIndex,
       metadata,
@@ -713,7 +739,9 @@ class ExpressionEditorTextfield extends React.Component<
           suggestions={suggestions}
           onSuggestionMouseDown={this.onSuggestionSelected}
           highlightedIndex={highlightedSuggestionIndex}
+          onHighlightSuggestion={this.handleHighlightSuggestion}
           open={isFocused}
+          ref={this.popupMenuTarget}
         >
           <EditorContainer
             isFocused={isFocused}

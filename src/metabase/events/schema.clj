@@ -2,6 +2,7 @@
   (:require
    [malli.core :as mc]
    [malli.util :as mut]
+   [metabase.models.view-log :as view-log]
    [toucan2.core :as t2]))
 
 ;; collection events
@@ -21,16 +22,16 @@
       view-only      (mc/schema
                       [:map {:closed true}
                        [:user-id [:maybe pos-int?]]
-                       [:object [:fn #(t2/instance-of? :model/Dashboard %)]]])
+                       [:object-id [:maybe pos-int?]]])
       with-dashcards (mut/assoc default-schema
                                 :dashcards [:sequential [:map [:id pos-int?]]])]
   (def ^:private dashboard-events-schemas
-    {:event/dashboard-read             view-only
-     :event/dashboard-create           default-schema
-     :event/dashboard-update           default-schema
-     :event/dashboard-delete           default-schema
-     :event/dashboard-remove-cards     with-dashcards
-     :event/dashboard-add-cards        with-dashcards}))
+    {:event/dashboard-read         view-only
+     :event/dashboard-create       default-schema
+     :event/dashboard-update       default-schema
+     :event/dashboard-delete       default-schema
+     :event/dashboard-remove-cards with-dashcards
+     :event/dashboard-add-cards    with-dashcards}))
 
 ;; card events
 
@@ -40,9 +41,14 @@
                        [:object   [:fn #(t2/instance-of? :model/Card %)]]])]
   (def ^:private card-events-schemas
     {:event/card-create default-schema
-     :event/card-read   default-schema
      :event/card-update default-schema
      :event/card-delete default-schema
+     :event/card-read   (mc/schema
+                         [:map {:closed true}
+                          ;; context is deliberately coupled to view-log's context
+                          [:context [:and :some ::view-log/context]]
+                          [:user-id [:maybe pos-int?]]
+                          [:object-id [:maybe pos-int?]]])
      :event/card-query  [:map {:closed true}
                          [:card-id pos-int?]
                          [:user-id [:maybe pos-int?]]

@@ -77,7 +77,7 @@ export default class RecipientPicker extends Component {
             valueRenderer={value => value.common_name ?? value.email}
             optionRenderer={option => (
               <div className={cx(CS.flex, CS.alignCenter)}>
-                <Text color="white">
+                <Text color="text-white">
                   <UserAvatar user={option.value} />
                 </Text>
                 <span className={CS.ml1}>{option.value.common_name}</span>

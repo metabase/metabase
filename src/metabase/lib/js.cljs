@@ -65,6 +65,7 @@
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
+   [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
@@ -248,7 +249,9 @@
 
   > **Code health:** Healthy"
   [a-query stage-number]
-  (if (empty? (lib.core/aggregations a-query stage-number))
+  (if (and
+        (empty? (lib.core/aggregations a-query stage-number))
+        (empty? (lib.core/breakouts a-query stage-number)))
     ;; No extra stage needed with no aggregations.
     #js {:query      a-query
          :stageIndex stage-number}
@@ -366,6 +369,8 @@
   Recursively converts CLJS maps and sequences into JS objects and arrays."
   [x]
   (cond
+    ;; `(seqable? nil) ; => true`, so we need to check for it before
+    (nil? x)     nil
     ;; Note that map? is only true for CLJS maps, not JS objects.
     (map? x)     (display-info-map->js x)
     (string? x)  x
@@ -591,6 +596,11 @@
   ([a-query stage-number x]
    (-> (lib.core/available-temporal-buckets a-query stage-number x)
        to-array)))
+
+(defn ^:export available-temporal-units
+  "The temporal bucketing units for date type expressions."
+  []
+  (to-array (map clj->js (lib.core/available-temporal-units))))
 
 ;; # Manipulating Clauses
 ;;
@@ -1245,10 +1255,24 @@
   ;; Set up this query stage's `:aggregation` list as the context for [[lib.convert/->pMBQL]] to convert legacy
   ;; `[:aggregation 0]` refs into pMBQL `[:aggregation uuid]` refs.
   (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
-    (let [haystack (mapv ->column-or-ref legacy-columns)
-          needles  (map legacy-ref->pMBQL legacy-refs)]
-      #_{:clj-kondo/ignore [:discouraged-var]}
-      (to-array (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack)))))
+    (let [haystack      (mapv ->column-or-ref legacy-columns)
+          needles       (map legacy-ref->pMBQL legacy-refs)
+          column-refs   (into {} (keep-indexed (fn [i col]
+                                                 [(-> col
+                                                      lib.core/ref
+                                                      lib.convert/->legacy-MBQL
+                                                      normalize-legacy-ref)
+                                                  i]))
+                              legacy-columns)
+          exact-matches (map #(-> %
+                                  (js->clj :keywordize-keys true)
+                                  (update 0 keyword)
+                                  column-refs)
+                             legacy-refs)]
+      (if (every? #(and % (>= % 0)) exact-matches)
+        (to-array exact-matches)
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (to-array (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack))))))
 
 (defn ^:export source-table-or-card-id
   "Returns the ID of the source table (as a number) or the ID of the source card (as a string prefixed
@@ -1474,12 +1498,12 @@
 
 (defn ^:export join-clause
   "Create a join clause (an `:mbql/join` map) against something `joinable` (Table metadata, a Saved Question, another
-  query, etc.) with 1 or more `conditions`, which should be an array of filter clauses. You can then adjust this join
-  clause with functions like [[with-join-fields]], or add it to a query with [[join]].
+  query, etc.) with 1 or more `conditions`, which should be an array of filter clauses, and a join strategy. You can
+  then adjust this join clause with functions like [[with-join-fields]], or add it to a query with [[join]].
 
   > **Code health:** Healthy"
-  [joinable conditions]
-  (lib.core/join-clause joinable conditions))
+  [joinable conditions strategy]
+  (lib.core/join-clause joinable conditions strategy))
 
 (defn ^:export join
   "Add `a-join`, a join clause as created by [[join-clause]], to the specified stage of `a-query`.
@@ -1947,7 +1971,19 @@
   #js {"column"     column
        "query"      a-query
        "stageIndex" stage-number
-       "value"      (if (= value :null) nil value)})
+       "value"      (lib.drill-thru.common/drill-value->js value)})
+
+(defn ^:export aggregation-drill-details
+  "Returns a JS object with the details needed to render the complex UI for `compare-aggregation` drills.
+  The argument is the opaque `a-drill-thru` value returned by [[available-drill-thrus]].
+
+  The return value has the form:
+
+      aggregation: aggregation clause as returned by [[aggregation-clause]]
+
+  > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
+  [{:keys [aggregation] :as _aggregation-drill}]
+  #js {"aggregation" aggregation})
 
 (defn ^:export column-extract-drill-extractions
   "Returns a JS array of the possible column *extractions* offered by `column-extract-drill`.
@@ -2232,22 +2268,34 @@
     (fn [_]
       (lib.core/can-run a-query (keyword card-type))))))
 
-(defn ^:export can-preview
-  "Returns true if the query is previewable.
+(defn ^:export preview-query
+  "*Truncates* a query for use in the Notebook editor's \"preview\" system.
 
-  This is a stronger condition than [[can-run]] - there are some cases where we want to be stricter about previews than
-  about regular save and run. For example, an `:offset` expression requires a sort order but sorting comes later in the
-  query builder than the expression. So the partial query we would preview at the expression step is invalid and it
-  fails `can-preview`. However, we don't currently have a good path for surfacing *reasons* a query can't be saved,
-  previewed or run. So we want [[can-save]] and [[can-run]] to be true for a query with an `:offset` expression and no
-  sort order (so the QP can return a good error message), but [[can-preview]] can be stricter.
+  Takes `a-query` and `stage-index` as usual.
+
+  - Stages later than `stage-index` are dropped.
+  - `clause-type` is an enum (see below); all clauses of *later* types are dropped.
+  - `clause-index` is optional: if not provided then all clauses are kept; if it's a number than clauses
+    `[0, clause-index]` are kept. (To keep no clauses, specify the earlier `clause-type`.)
+
+  The `clause-type` enum represents the steps of the notebook editor, in the order they appear in the notebook:
+
+  - `:data` - just the source data for the stage
+  - `:joins`
+  - `:expressions`
+  - `:filters`
+  - `:aggregation`
+  - `:breakout`
+  - `:order-by`
+  - `:limit`
+
+  If the resulting query fails [[can-preview]], returns nil.
 
   > **Code health:** Healthy, Single use."
-  [a-query]
-  (lib.cache/side-channel-cache
-    :can-preview a-query
-    (fn [_]
-      (lib.core/can-preview a-query))))
+  [a-query stage-number clause-type clause-index]
+  (let [truncated-query (lib.core/preview-query a-query stage-number (keyword clause-type) clause-index)]
+    (when (lib.core/can-preview truncated-query)
+      truncated-query)))
 
 (defn ^:export can-save
   "Returns true if the query can be saved.

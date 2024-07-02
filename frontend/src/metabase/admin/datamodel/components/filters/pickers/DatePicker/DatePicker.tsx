@@ -51,7 +51,7 @@ export type DateOperator = {
 export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "previous",
-    displayName: t`Past`,
+    displayName: t`Previous`,
     init: filter => getPreviousDateFilter(filter),
     test: filter => isPreviousDateFilter(filter),
     group: "relative",
@@ -143,7 +143,7 @@ type Props = {
   onFilterChange: (filter: any[]) => void;
 };
 
-const DatePicker: React.FC<Props> = props => {
+const DatePicker: React.FC<React.PropsWithChildren<Props>> = props => {
   const {
     className,
     filter,

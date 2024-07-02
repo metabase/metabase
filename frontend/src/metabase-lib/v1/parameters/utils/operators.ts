@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   doesOperatorExist,
   getOperatorByTypeAndName,
@@ -10,7 +12,7 @@ import {
 import { NUMBER, STRING, PRIMARY_KEY } from "metabase-lib/v1/types/constants";
 import type { Parameter, ParameterMappingOptions } from "metabase-types/api";
 
-import { getIsMultiSelect } from "../../../../metabase/parameters/utils/dashboards";
+import { getIsMultiSelect } from "./parameter-values";
 
 type OperatorType = "date" | "number" | "string";
 export type ParameterSectionId =
@@ -86,10 +88,22 @@ export function buildTypedOperatorOptions(
   });
 }
 
+export function buildTemporalUnitOption(): ParameterMappingOptions {
+  return {
+    name: t`Unit of Time`,
+    type: "temporal-unit",
+    sectionId: "temporal-unit",
+  };
+}
+
 export function getNumberParameterArity(parameter: Parameter) {
   switch (parameter.type) {
     case "number/=":
     case "number/!=":
+      if (!getIsMultiSelect(parameter)) {
+        return 1;
+      }
+
       return "n";
     case "number/between":
       return 2;

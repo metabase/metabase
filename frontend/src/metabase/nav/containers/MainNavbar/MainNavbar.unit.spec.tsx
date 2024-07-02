@@ -4,7 +4,9 @@ import { Route } from "react-router";
 import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
+  setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import {
@@ -13,6 +15,8 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { createMockModelResult } from "metabase/browse/test-utils";
+import type { ModelResult } from "metabase/browse/types";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as Urls from "metabase/lib/urls";
 import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
@@ -40,6 +44,7 @@ type SetupOpts = {
   hasOwnDatabase?: boolean;
   openQuestionCard?: Card;
   openDashboard?: Dashboard;
+  models?: ModelResult[];
 };
 
 const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -73,6 +78,7 @@ async function setup({
   hasOwnDatabase = true,
   openDashboard,
   openQuestionCard,
+  models = [],
 }: SetupOpts = {}) {
   const databases = [];
   const collections = [TEST_COLLECTION];
@@ -98,7 +104,11 @@ async function setup({
   }
 
   setupCollectionsEndpoints({ collections });
+  setupCollectionByIdEndpoint({
+    collections: [PERSONAL_COLLECTION_BASE, TEST_COLLECTION],
+  });
   setupDatabasesEndpoints(databases);
+  setupSearchEndpoints(models);
   fetchMock.get("path:/api/bookmark", []);
 
   if (openQuestionCard) {
@@ -141,6 +151,7 @@ async function setup({
   );
 
   await waitForLoaderToBeRemoved();
+  await waitForLoaderToBeRemoved(); // tests will fail without the 2nd call
 }
 
 async function setupCollectionPage({
@@ -219,6 +230,36 @@ describe("nav > containers > MainNavbar", () => {
       await setup({ pathname: "/browse/databases/1" });
       const listItem = screen.getByRole("listitem", {
         name: /Browse databases/i,
+      });
+      expect(listItem).toHaveAttribute("aria-selected", "true");
+    });
+  });
+
+  describe("browse models link", () => {
+    it("should render when there are models", async () => {
+      await setup({ models: [createMockModelResult()] });
+      const listItem = await screen.findByRole("listitem", {
+        name: /Browse models/i,
+      });
+      const link = await within(listItem).findByRole("link");
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute("href", "/browse/models");
+    });
+
+    it("should not render when there are no models", async () => {
+      await setup({ models: [] });
+      expect(
+        screen.queryByRole("listitem", { name: /Browse models/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should be highlighted if selected", async () => {
+      await setup({
+        models: [createMockModelResult()],
+        pathname: "/browse/models",
+      });
+      const listItem = await screen.findByRole("listitem", {
+        name: /Browse models/i,
       });
       expect(listItem).toHaveAttribute("aria-selected", "true");
     });

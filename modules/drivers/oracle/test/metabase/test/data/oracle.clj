@@ -225,7 +225,7 @@
 
 (defn drop-user! [username]
   (u/ignore-exceptions
-   (execute! "DROP USER %s CASCADE" username)))
+   (execute! "DROP USER \"%s\" CASCADE" username)))
 
 (defmethod tx/before-run :oracle
   [_]

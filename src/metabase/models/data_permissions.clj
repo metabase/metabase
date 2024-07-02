@@ -5,7 +5,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.config :as config]
+   [metabase.audit :as audit]
    [metabase.models.interface :as mi]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
@@ -257,9 +257,10 @@
                            (database-permission-for-group group-id perm-type database-id)
                            perm-value))
 
-(mu/defn table-permission-for-group :- PermissionValue
-  "Returns the effective permission value for a given *group*, permission type, and database ID, and table ID."
-  [group-id perm-type database-id table-id]
+(mu/defn table-permission-for-groups :- PermissionValue
+  "Returns the effective permission value provided by a set of *group-ids*, for a provided permission type, database
+  ID, and table ID."
+  [group-ids perm-type database-id table-id]
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
                     {perm-type (Permissions perm-type)})))
@@ -268,7 +269,7 @@
                                       {:select [[:p.perm_value :value]]
                                        :from [[:data_permissions :p]]
                                        :where [:and
-                                               [:= :p.group_id group-id]
+                                               [:in :p.group_id group-ids]
                                                [:= :p.perm_type (u/qualified-name perm-type)]
                                                [:= :p.db_id database-id]
                                                [:or
@@ -278,14 +279,13 @@
                                                                                 perm-type)))
         (least-permissive-value perm-type))))
 
-(mu/defn group-has-permission-for-table? :- :boolean
-  "Returns a Boolean indicating whether the group has the specified permission value for the given table ID, or a more
-  permissive value."
-  [group-id perm-type perm-value database-id table-id]
+(mu/defn groups-have-permission-for-table? :- :boolean
+  "Returns a Boolean indicating whether the provided groups grant the specified permission level or higher for the given
+  table ID, or a more permissive value. (i.e. if a user is in all of these groups, would they have this permission?)"
+  [group-ids perm-type perm-value database-id table-id]
   (at-least-as-permissive? perm-type
-                           (table-permission-for-group group-id perm-type database-id table-id)
+                           (table-permission-for-groups group-ids perm-type database-id table-id)
                            perm-value))
-
 
 (mu/defn table-permission-for-user :- PermissionValue
   "Returns the effective permission value for a given user, permission type, and database ID, and table ID. If the user
@@ -541,7 +541,7 @@
   "Returns a tree representation of all data permissions. Can be optionally filtered by group ID, database ID,
   and/or permission type. This is intended to power the permissions editor in the admin panel, and should not be used
   for permission enforcement, as it will read much more data than necessary."
-  [& {:keys [group-id db-id perm-type audit?]}]
+  [& {:keys [group-id group-ids db-id perm-type audit?]}]
   (let [data-perms (t2/select [:model/DataPermissions
                                [:perm_type :type]
                                [:group_id :group-id]
@@ -553,7 +553,8 @@
                                        (when perm-type [:= :perm_type (u/qualified-name perm-type)])
                                        (when db-id [:= :db_id db-id])
                                        (when group-id [:= :group_id group-id])
-                                       (when-not audit? [:not= :db_id config/audit-db-id])]})]
+                                       (when group-ids [:in :group_id group-ids])
+                                       (when-not audit? [:not= :db_id audit/audit-db-id])]})]
     (reduce
      (fn [graph {group-id  :group-id
                  perm-type :type

@@ -1,12 +1,11 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 
 export const SectionRoot = styled.div`
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;
 
 export const SectionHeader = styled.div`
@@ -21,17 +20,17 @@ export const SectionContainer = styled.div`
 `;
 
 export const SectionTitle = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 700;
 `;
 
 export const SectionDescription = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-top: 0.5rem;
 `;
 
 export const SectionButton = styled(Button)`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   width: 2.5rem;
   height: 2.5rem;
 `;

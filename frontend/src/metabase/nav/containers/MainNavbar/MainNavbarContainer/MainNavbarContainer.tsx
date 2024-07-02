@@ -94,7 +94,7 @@ function MainNavbarContainer({
     data: trashCollection,
     isLoading,
     error,
-  } = useGetCollectionQuery("trash");
+  } = useGetCollectionQuery({ id: "trash" });
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const preparedCollections = [];
@@ -113,6 +113,7 @@ function MainNavbarContainer({
     if (trashCollection) {
       const trash: CollectionTreeItem = {
         ...trashCollection,
+        id: "trash",
         icon: getCollectionIcon(trashCollection),
         children: [],
       };
@@ -132,7 +133,7 @@ function MainNavbarContainer({
   }, [rootCollection, trashCollection, collections, currentUser]);
 
   const reorderBookmarks = useCallback(
-    ({ newIndex, oldIndex }) => {
+    ({ newIndex, oldIndex }: { newIndex: number; oldIndex: number }) => {
       const newBookmarks = [...bookmarks];
       const movedBookmark = newBookmarks[oldIndex];
 

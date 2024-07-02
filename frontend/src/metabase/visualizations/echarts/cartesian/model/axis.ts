@@ -1,4 +1,4 @@
-import d3 from "d3";
+import * as d3 from "d3";
 import dayjs from "dayjs";
 import _ from "underscore";
 
@@ -38,7 +38,7 @@ import type {
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   computeTimeseriesDataInverval,
-  getTimezone,
+  getTimezoneOrOffset,
   minTimeseriesUnit,
   tryGetDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
@@ -60,6 +60,7 @@ import { numericScale } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { getAxisTransforms } from "./transforms";
+import { getFormattingOptionsWithoutScaling } from "./util";
 
 const KEYS_TO_COMPARE = new Set([
   "number_style",
@@ -190,7 +191,10 @@ function generateSplits(
 
 function axisCost(extents: Extent[], favorUnsplit = true) {
   const axisExtent = d3.extent(extents.flatMap(e => e));
-  const axisRange = axisExtent[1] - axisExtent[0];
+
+  // TODO: handle cases where members of axisExtent is undefined
+  const axisRange = axisExtent[1]! - axisExtent[0]!;
+
   if (favorUnsplit && extents.length === 0) {
     return SPLIT_AXIS_UNSPLIT_COST;
   } else if (axisRange === 0) {
@@ -335,12 +339,12 @@ const getYAxisSplit = (
 
 const calculateStackedExtent = (
   seriesKeys: DataKey[],
-  data: ChartDataset,
+  dataset: ChartDataset,
 ): Extent => {
   let min = 0;
   let max = 0;
 
-  data.forEach(entry => {
+  dataset.forEach(entry => {
     let positiveStack = 0;
     let negativeStack = 0;
     seriesKeys.forEach(key => {
@@ -362,12 +366,12 @@ const calculateStackedExtent = (
 
 function calculateNonStackedExtent(
   seriesKeys: DataKey[],
-  data: ChartDataset,
+  dataset: ChartDataset,
 ): Extent {
   let min = Infinity;
   let max = -Infinity;
 
-  data.forEach(entry => {
+  dataset.forEach(entry => {
     seriesKeys.forEach(key => {
       const value = entry[key];
       if (typeof value === "number") {
@@ -405,14 +409,17 @@ const getYAxisFormatter = (
 
   return (value: RowValue) => {
     if (!isNumber(value)) {
-      return " ";
+      return "";
     }
 
-    return renderingContext.formatValue(value, {
+    // since we already transformed the dataset values, we do not need to
+    // consider scaling anymore
+    const options = getFormattingOptionsWithoutScaling({
       column,
       ...(settings.column?.(column) ?? {}),
       ...formattingOptions,
     });
+    return renderingContext.formatValue(value, options);
   };
 };
 
@@ -491,7 +498,7 @@ export function getYAxisModel(
   seriesKeys: string[],
   seriesNames: string[],
   stackModels: StackModel[],
-  dataset: ChartDataset,
+  trasnformedDataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   columnByDataKey: Record<DataKey, DatasetColumn>,
   stackType: StackType,
@@ -502,7 +509,12 @@ export function getYAxisModel(
     return null;
   }
 
-  const extent = getYAxisExtent(seriesKeys, stackModels, dataset, stackType);
+  const extent = getYAxisExtent(
+    seriesKeys,
+    stackModels,
+    trasnformedDataset,
+    stackType,
+  );
   const column = columnByDataKey[seriesKeys[0]];
   const label = getYAxisLabel(seriesNames, settings);
   const formatter = getYAxisFormatter(
@@ -526,11 +538,12 @@ export function getYAxisModel(
 export function getYAxesModels(
   seriesModels: SeriesModel[],
   dataset: ChartDataset,
+  transformedDataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   columnByDataKey: Record<DataKey, DatasetColumn>,
   isAutoSplitSupported: boolean,
   stackModels: StackModel[],
-  compactSeriesDataKeys: DataKey[],
+  isCompactFormatting: boolean,
   renderingContext: RenderingContext,
 ) {
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
@@ -565,41 +578,30 @@ export function getYAxesModels(
     stackModel => stackModel.axis === "left",
   );
 
-  const leftAxisFormattingOptions = getYAxisFormattingOptions({
-    compactSeriesDataKeys,
-    axisSeriesKeysSet: leftAxisSeriesKeysSet,
-    settings,
-  });
-  const rightAxisFormattingOptions = getYAxisFormattingOptions({
-    compactSeriesDataKeys,
-    axisSeriesKeysSet: rightAxisSeriesKeysSet,
-    settings,
-  });
-
   return {
     leftAxisModel: getYAxisModel(
       leftAxisSeriesKeys,
       leftAxisSeriesNames,
       leftStackModels,
-      dataset,
+      transformedDataset,
       settings,
       columnByDataKey,
       settings["stackable.stack_type"] ?? null,
       renderingContext,
-      leftAxisFormattingOptions,
+      { compact: isCompactFormatting },
     ),
     rightAxisModel: getYAxisModel(
       rightAxisSeriesKeys,
       rightAxisSeriesNames,
       rightStackModels,
-      dataset,
+      transformedDataset,
       settings,
       columnByDataKey,
       settings["stackable.stack_type"] === "normalized"
         ? null
         : settings["stackable.stack_type"] ?? null,
       renderingContext,
-      rightAxisFormattingOptions,
+      { compact: isCompactFormatting },
     ),
   };
 }
@@ -645,7 +647,11 @@ export function getTimeSeriesXAxisModel(
     dimensionModel,
     showWarning,
   );
-  const { interval: dataTimeSeriesInterval, timezone } = timeSeriesInfo;
+  const {
+    interval: dataTimeSeriesInterval,
+    timezone,
+    offsetMinutes,
+  } = timeSeriesInfo;
   const formatter = (value: RowValue, unit?: DateTimeAbsoluteUnit) => {
     const formatUnit =
       unit ??
@@ -675,7 +681,13 @@ export function getTimeSeriesXAxisModel(
     if (!date) {
       return null;
     }
-    return date.tz(timezone).format("YYYY-MM-DDTHH:mm:ss[Z]");
+
+    const dateInTimezone =
+      offsetMinutes != null
+        ? date.add(offsetMinutes, "minute")
+        : date.tz(timezone);
+
+    return dateInTimezone.format("YYYY-MM-DDTHH:mm:ss[Z]");
   };
   const fromEChartsAxisValue = (rawValue: number) => {
     return dayjs.utc(rawValue);
@@ -864,7 +876,10 @@ function getTimeSeriesXAxisInfo(
       .map(column => (isAbsoluteDateTimeUnit(column.unit) ? column.unit : null))
       .filter(isNotNull),
   );
-  const timezone = getTimezone(rawSeries, showWarning);
+  const { timezone, offsetMinutes } = getTimezoneOrOffset(
+    rawSeries,
+    showWarning,
+  );
   const interval = (computeTimeseriesDataInverval(xValues, unit) ?? {
     count: 1,
     unit: "day",
@@ -884,7 +899,7 @@ function getTimeSeriesXAxisInfo(
     intervalsCount = Math.ceil(max.diff(min, interval.unit) / interval.count);
   }
 
-  return { interval, timezone, intervalsCount, range, unit };
+  return { interval, timezone, offsetMinutes, intervalsCount, range, unit };
 }
 
 export function getScaledMinAndMax(

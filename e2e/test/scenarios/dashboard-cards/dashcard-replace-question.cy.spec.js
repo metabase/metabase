@@ -17,6 +17,7 @@ import {
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
   entityPickerModal,
+  undoToastList,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -150,14 +151,12 @@ describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
 
     // Ensure can replace with a question
     replaceQuestion(findTargetDashcard(), {
-      nextQuestionName: "Next question",
-      collectionName: "First collection",
+      nextQuestionName: "Orders",
     });
     expectGoodSnowplowEvent({ event: "dashboard_card_replaced" });
     findTargetDashcard().within(() => {
-      assertDashCardTitle("Next question");
-      cy.findByText("Ean").should("exist");
-      cy.findByText("Rustic Paper Wallet").should("exist");
+      assertDashCardTitle("Orders");
+      cy.findByText("Product ID").should("exist");
     });
 
     // Ensure can replace with a model
@@ -190,12 +189,11 @@ describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
     });
 
     replaceQuestion(findTargetDashcard(), {
-      nextQuestionName: "Next question",
-      collectionName: "First collection",
+      nextQuestionName: "Orders",
     });
 
-    // There're two toasts: "Undo replace" and "Undo parameters auto-wiring"
-    cy.findAllByTestId("toast-undo").eq(0).button("Undo").click();
+    // There're two toasts: "Undo replace" and "Auto-connect"
+    undoToastList().eq(0).button("Undo").click();
 
     // Ensure we kept viz settings and parameter mapping changes from before
     findTargetDashcard().within(() => {
@@ -286,7 +284,7 @@ function assertDashCardTitle(title) {
 function overwriteDashCardTitle(dashcardElement, textTitle) {
   findDashCardAction(dashcardElement, "Show visualization options").click();
   modal().within(() => {
-    cy.findByLabelText("Title").type(`{selectall}{del}${textTitle}`);
+    cy.findByLabelText("Title").type(`{selectall}{del}${textTitle}`).blur();
     cy.button("Done").click();
   });
 }

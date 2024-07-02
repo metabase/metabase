@@ -16,6 +16,7 @@ import type { IconName, IconProps } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import Visualization from "metabase/visualizations/components/Visualization";
+import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {
   Dashboard,
@@ -44,7 +45,8 @@ interface DashCardVisualizationProps {
   dashboard: Dashboard;
   dashcard: DashboardCard;
   series: Series;
-  mode?: Mode;
+  mode?: QueryClickActionsMode | Mode;
+  href: string | undefined;
 
   gridSize: {
     width: number;
@@ -67,13 +69,18 @@ interface DashCardVisualizationProps {
   isFullscreen?: boolean;
   isMobile?: boolean;
   isNightMode?: boolean;
-  isPublic?: boolean;
+  /** If public sharing or static/public embed */
+  isPublicOrEmbedded?: boolean;
   isXray?: boolean;
+  withTitle?: boolean;
 
   error?: { message?: string; icon?: IconName };
   headerIcon?: IconProps;
 
-  onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
+  onUpdateVisualizationSettings: (
+    id: DashCardId,
+    settings: VisualizationSettings,
+  ) => void;
   onChangeCardAndRun: DashCardOnChangeCardAndRunHandler | null;
   showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
@@ -87,6 +94,7 @@ export function DashCardVisualization({
   dashboard,
   series,
   mode,
+  href,
   gridSize,
   gridItemWidth,
   totalNumGridCols,
@@ -97,7 +105,7 @@ export function DashCardVisualization({
   isSlow,
   isPreviewing,
   isEmbed,
-  isPublic,
+  isPublicOrEmbedded,
   isXray,
   isEditingDashboardLayout,
   isClickBehaviorSidebarOpen,
@@ -107,6 +115,7 @@ export function DashCardVisualization({
   isFullscreen = false,
   isMobile = false,
   isEditingParameter,
+  withTitle = true,
   onChangeCardAndRun,
   showClickBehaviorSidebar,
   onChangeLocation,
@@ -119,7 +128,14 @@ export function DashCardVisualization({
       : null;
   }, [dashcard.card, metadata]);
 
-  const renderVisualizationOverlay = useCallback(() => {
+  const handleOnUpdateVisualizationSettings = useCallback(
+    (settings: VisualizationSettings) => {
+      onUpdateVisualizationSettings(dashcard.id, settings);
+    },
+    [dashcard.id, onUpdateVisualizationSettings],
+  );
+
+  const visualizationOverlay = useMemo(() => {
     if (isClickBehaviorSidebarOpen) {
       const disableClickBehavior =
         getVisualizationRaw(series)?.disableClickBehavior;
@@ -173,7 +189,7 @@ export function DashCardVisualization({
     series,
   ]);
 
-  const renderActionButtons = useCallback(() => {
+  const actionButtons = useMemo(() => {
     if (!question) {
       return null;
     }
@@ -184,7 +200,7 @@ export function DashCardVisualization({
       result: mainSeries,
       isXray,
       isEmbed,
-      isPublic,
+      isPublicOrEmbedded,
       isEditing,
     });
 
@@ -207,7 +223,7 @@ export function DashCardVisualization({
     dashcard.dashboard_id,
     series,
     isEmbed,
-    isPublic,
+    isPublicOrEmbedded,
     isEditing,
     isXray,
     dashboard.id,
@@ -230,13 +246,14 @@ export function DashCardVisualization({
       rawSeries={series}
       metadata={metadata}
       mode={mode}
+      href={href}
       gridSize={gridSize}
       totalNumGridCols={totalNumGridCols}
       headerIcon={headerIcon}
       expectedDuration={expectedDuration}
       error={error?.message}
       errorIcon={error?.icon}
-      showTitle
+      showTitle={withTitle}
       isAction={isAction}
       isDashboard
       isSlow={isSlow}
@@ -246,10 +263,10 @@ export function DashCardVisualization({
       isPreviewing={isPreviewing}
       isEditingParameter={isEditingParameter}
       isMobile={isMobile}
-      actionButtons={renderActionButtons()}
-      replacementContent={renderVisualizationOverlay()}
+      actionButtons={actionButtons}
+      replacementContent={visualizationOverlay}
       getExtraDataForClick={getExtraDataForClick}
-      onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+      onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
       onChangeCardAndRun={onChangeCardAndRun}
       onChangeLocation={onChangeLocation}
     />

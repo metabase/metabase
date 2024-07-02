@@ -6,7 +6,7 @@
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require
    [medley.core :as m]
-   [metabase.config :as config]
+   [metabase.audit :as audit]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
    [metabase.models.data-permissions :as data-perms]
@@ -120,15 +120,16 @@
 (defenterprise add-sandboxes-to-permissions-graph
   "Augments a provided permissions graph with active sandboxing policies."
   :feature :sandboxes
-  [graph & {:keys [group-id db-id audit?]}]
+  [graph & {:keys [group-ids group-id db-id audit?]}]
   (let [sandboxes (t2/select :model/GroupTableAccessPolicy
                              {:select [:s.group_id :s.table_id :t.db_id :t.schema]
                               :from [[:sandboxes :s]]
                               :join [[:metabase_table :t] [:= :s.table_id :t.id]]
                               :where [:and
                                       (when group-id [:= :s.group_id group-id])
+                                      (when group-ids [:in :s.group_id group-ids])
                                       (when db-id [:= :t.db_id db-id])
-                                      (when-not audit? [:not [:= :t.db_id config/audit-db-id]])]})]
+                                      (when-not audit? [:not [:= :t.db_id audit/audit-db-id]])]})]
     ;; Incorporate each sandbox policy into the permissions graph.
     (reduce (fn [acc {:keys [group_id table_id db_id schema]}]
               (merge-sandbox-into-graph acc group_id table_id db_id schema [:view-data] :sandboxed))
@@ -197,7 +198,7 @@
   [{:keys [table_id group_id], :as gtap}]
   (let [db-id (database/table-id->database-id table_id)]
     ;; Remove native query access to the DB when saving a sandbox
-    (when (= (data-perms/table-permission-for-group group_id :perms/create-queries db-id table_id) :query-builder-and-native)
+    (when (= (data-perms/table-permission-for-groups #{group_id} :perms/create-queries db-id table_id) :query-builder-and-native)
       (data-perms/set-database-permission! group_id db-id :perms/create-queries :query-builder)))
   (u/prog1 gtap
     (check-columns-match-table gtap)))

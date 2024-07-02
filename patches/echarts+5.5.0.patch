@@ -1,8 +1,22 @@
+diff --git a/node_modules/echarts/lib/chart/line/LineView.js b/node_modules/echarts/lib/chart/line/LineView.js
+index 9da26b6..edf6ed7 100644
+--- a/node_modules/echarts/lib/chart/line/LineView.js
++++ b/node_modules/echarts/lib/chart/line/LineView.js
+@@ -140,6 +140,9 @@ function turnPointsIntoStep(points, coordSys, stepTurnAt, connectNulls) {
+     pt[0] = points[i];
+     pt[1] = points[i + 1];
+     stepPoints.push(pt[0], pt[1]);
++    if (isNaN(nextPt[1 - baseIndex])) {
++      continue;
++    }
+     switch (stepTurnAt) {
+       case 'end':
+         stepPt[baseIndex] = nextPt[baseIndex];
 diff --git a/node_modules/echarts/lib/chart/line/helper.js b/node_modules/echarts/lib/chart/line/helper.js
-index fa02e2f..176bfbc 100644
+index fa02e2f..c84b0ac 100644
 --- a/node_modules/echarts/lib/chart/line/helper.js
 +++ b/node_modules/echarts/lib/chart/line/helper.js
-@@ -108,16 +108,18 @@ function getValueStart(valueAxis, valueOrigin) {
+@@ -108,16 +108,20 @@ function getValueStart(valueAxis, valueOrigin) {
    return valueStart;
  }
  export function getStackedOnPoint(dataCoordInfo, coordSys, data, idx) {
@@ -11,15 +25,16 @@ index fa02e2f..176bfbc 100644
 +  let stackResultValue = NaN;
    if (dataCoordInfo.stacked) {
 -    value = data.get(data.getCalculationInfo('stackedOverDimension'), idx);
--  }
--  if (isNaN(value)) {
--    value = dataCoordInfo.valueStart;
 +    stackedOverValue = data.get(data.getCalculationInfo('stackedOverDimension'), idx);
 +    stackResultValue = data.get(data.getCalculationInfo('stackResultDimension'), idx);
++  } else {
++    stackResultValue = data.get(dataCoordInfo.valueDim, idx);
    }
-+  if (isNaN(stackedOverValue) && !(dataCoordInfo.stacked && isNaN(stackResultValue))) {
+-  if (isNaN(value)) {
+-    value = dataCoordInfo.valueStart;
++  if (isNaN(stackedOverValue) && !isNaN(stackResultValue)) {
 +    stackedOverValue = dataCoordInfo.valueStart;
-+}
+   }
    var baseDataOffset = dataCoordInfo.baseDataOffset;
    var stackedData = [];
    stackedData[baseDataOffset] = data.get(dataCoordInfo.baseDim, idx);
@@ -28,7 +43,7 @@ index fa02e2f..176bfbc 100644
    return coordSys.dataToPoint(stackedData);
  }
 diff --git a/node_modules/echarts/lib/data/helper/dataStackHelper.js b/node_modules/echarts/lib/data/helper/dataStackHelper.js
-index c25de1b..f94690e 100644
+index c25de1b..a3ced22 100644
 --- a/node_modules/echarts/lib/data/helper/dataStackHelper.js
 +++ b/node_modules/echarts/lib/data/helper/dataStackHelper.js
 @@ -83,6 +83,13 @@ export function enableDataStack(seriesModel, dimensionsInput, opt) {
@@ -69,3 +84,21 @@ index c25de1b..f94690e 100644
    // Add stack dimension, they can be both calculated by coordinate system in `unionExtent`.
    // That put stack logic in List is for using conveniently in echarts extensions, but it
    // might not be a good way.
+diff --git a/node_modules/echarts/lib/label/labelLayoutHelper.js b/node_modules/echarts/lib/label/labelLayoutHelper.js
+index a75f606..52c5a0b 100644
+--- a/node_modules/echarts/lib/label/labelLayoutHelper.js
++++ b/node_modules/echarts/lib/label/labelLayoutHelper.js
+@@ -256,6 +256,13 @@ export function hideOverlap(labelList) {
+     var transform = labelItem.transform;
+     var label = labelItem.label;
+     var labelLine = labelItem.labelLine;
++    
++    if (label.style.text === "") {
++      hideEl(label);
++      labelLine && hideEl(labelLine);
++      continue;
++    }
++    
+     globalRect.copy(labelItem.rect);
+     // Add a threshold because layout may be aligned precisely.
+     globalRect.width -= 0.1;

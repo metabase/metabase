@@ -211,7 +211,7 @@
                  (update :stages ->pMBQL))]
     (cond-> join
       (:fields join) (update :fields (fn [fields]
-                                       (if (seqable? fields)
+                                       (if (sequential? fields)
                                          (mapv ->pMBQL fields)
                                          (keyword fields))))
       (not (:alias join)) (assoc :alias legacy-default-join-alias))))
@@ -352,7 +352,13 @@
          (comp (disqualify)
                (remove (fn [[k _v]]
                          (= k :effective-type))))
-         m)))
+         ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where those
+         ;; were not present originally. Base types are adeed in [[metabase.lib.query/add-types-to-fields]].
+         (if (contains? m :metabase.lib.query/transformation-added-base-type)
+           (dissoc m
+                   :metabase.lib.query/transformation-added-base-type
+                   :base-type)
+           m))))
 
 (defmulti ^:private aggregation->legacy-MBQL
   {:arglists '([aggregation-clause])}

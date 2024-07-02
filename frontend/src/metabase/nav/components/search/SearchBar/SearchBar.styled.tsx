@@ -1,7 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import {
   breakpointMaxSmall,
@@ -33,19 +32,19 @@ export const SearchInputContainer = styled.div<{
   ${({ isActive }) => {
     if (isActive) {
       return css`
-        background-color: ${color("bg-medium")};
+        background-color: var(--mb-color-bg-medium);
       `;
     }
     return css`
-      background-color: ${color("white")};
+      background-color: var(--mb-color-bg-white);
 
       &:hover {
-        background-color: ${color("bg-light")};
+        background-color: var(--mb-color-bg-light);
       }
     `;
   }}
 
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
 
   overflow: hidden;
 
@@ -67,7 +66,7 @@ export const SearchInputContainer = styled.div<{
       props.isActive &&
       css`
         width: 100%;
-        border-color: ${color("border")};
+        border-color: var(--mb-color-border);
         ${activeInputCSS};
       `};
   }
@@ -83,7 +82,7 @@ export const SearchInput = styled.input<{
 }>`
   background-color: transparent;
   border: none;
-  color: ${({ theme }) => theme.fn.themeColor("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 700;
   font-size: 0.875rem;
 
@@ -95,7 +94,7 @@ export const SearchInput = styled.input<{
   }
 
   &::placeholder {
-    color: ${({ theme }) => theme.fn.themeColor("text-dark")};
+    color: var(--mb-color-text-dark);
   }
 
   ${breakpointMinSmall} {
@@ -147,12 +146,12 @@ export const CloseSearchButton = styled.button`
   width: 3rem;
   height: 100%;
 
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 
   cursor: pointer;
 
   &:hover {
-    color: ${color("text-medium")};
+    color: var(--mb-color-text-medium);
   }
 `;
 
@@ -161,7 +160,7 @@ export const SearchResultsFloatingContainer = styled.div`
   left: 0;
   right: 0;
 
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 
   ${breakpointMaxSmall} {
     top: ${APP_BAR_HEIGHT};

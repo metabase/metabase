@@ -6,9 +6,16 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.api.common :refer [*current-user-permissions-set*]]
+   [metabase.audit :as audit]
    [metabase.models
-    :refer [Card Collection Dashboard NativeQuerySnippet Permissions
-            PermissionsGroup Pulse User]]
+    :refer [Card
+            Collection
+            Dashboard
+            NativeQuerySnippet
+            Permissions
+            PermissionsGroup
+            Pulse
+            User]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -273,82 +280,157 @@
              Exception
              (collection/children-location collection)))))))
 
-(deftest ^:parallel permissions-set->visible-collection-ids-test
-  (testing "Make sure we can look at the current user's permissions set and figure out which Collections they're allowed to see"
-    (is (= #{8 9}
-           (collection/permissions-set->visible-collection-ids
-            #{"/db/1/"
-              "/db/2/native/"
-              "/db/4/schema/"
-              "/db/5/schema/PUBLIC/"
-              "/db/6/schema/PUBLIC/table/7/"
-              "/collection/8/"
-              "/collection/9/read/"}))))
+(deftest permissions-set->visible-collection-ids-test
+  ;; let's just say all of the collections we're dealing with are:
+  ;; - NOT the trash
+  ;; - NOT archived
+  ;; - don't have a `archive_operation_id`
+  (with-redefs [collection/is-trash? (constantly false)
+                collection/collection-id->collection
+                (constantly
+                 (zipmap (next (range 10))
+                         (next (map (fn [id]
+                                      {:id id
+                                       :archived false
+                                       :archive_operation_id nil})
+                                    (range 10)))))]
+    (testing "Make sure we can look at the current user's permissions set and figure out which Collections they're allowed to see"
+      (is (= #{8 9}
+             (collection/permissions-set->visible-collection-ids
+              #{"/db/1/"
+                "/db/2/native/"
+                "/db/4/schema/"
+                "/db/5/schema/PUBLIC/"
+                "/db/6/schema/PUBLIC/table/7/"
+                "/collection/8/"
+                "/collection/9/read/"}))))
 
-  (testing "If the current user has root permissions then make sure the function returns `:all`, which signifies that they are able to see all Collections"
-    (is (= :all
-           (collection/permissions-set->visible-collection-ids
-            #{"/"
-              "/db/2/native/"
-              "/collection/9/read/"}))))
+    (testing "If the current user has root permissions then make sure the function returns `:all`, which signifies that they are able to see all Collections"
+      (is (= (into #{"root"} (range 1 10))
+             (collection/permissions-set->visible-collection-ids
+              #{"/"
+                "/db/2/native/"
+                "/collection/9/read/"}))))
 
-  (testing "for the Root Collection we should return `root`"
-    (is (= #{8 9 "root"}
-           (collection/permissions-set->visible-collection-ids
-            #{"/collection/8/"
-              "/collection/9/read/"
-              "/collection/root/"})))
+    (testing "for the Root Collection we should return `root`"
+      (is (= #{8 9 "root"}
+             (collection/permissions-set->visible-collection-ids
+              #{"/collection/8/"
+                "/collection/9/read/"
+                "/collection/root/"})))
 
-    (is (= #{"root"}
-           (collection/permissions-set->visible-collection-ids
-            #{"/collection/root/read/"})))))
+      (is (= #{"root"}
+             (collection/permissions-set->visible-collection-ids
+              #{"/collection/root/read/"}))))))
 
-(deftest ^:parallel effective-location-path-test
-  (testing "valid input"
-    (doseq [[args expected] {["/10/20/30/" #{10 20}]    "/10/20/"
-                             ["/10/20/30/" #{10 30}]    "/10/30/"
-                             ["/10/20/30/" #{}]         "/"
-                             ["/10/20/30/" #{10 20 30}] "/10/20/30/"
-                             ["/10/20/30/" :all]        "/10/20/30/"}]
-      (testing (pr-str (cons 'effective-location-path args))
-        (is (= expected
+;; testing the 2-arity form of `permissions-set->visible-collection-ids`
+(deftest permissions-set->visible-collection-ids-test-with-config
+  (with-redefs [collection/is-trash? #(= (:id %) 1)
+                collection/collection-id->collection
+                ;; These are the collections we get to play with
+                (constantly
+                 {1 {:id 1
+                     :archived false
+                     :archive_operation_id nil}
+                  2 {:id 2
+                     :archived true
+                     :archive_operation_id "1234"}
+                  3 {:id 3
+                     :archived true
+                     :archive_operation_id "1234"}
+                  4 {:id 4
+                     :archived true
+                     :archive_operation_id "5678"}
+                  5 {:id 5
+                     :archived false
+                     :archive_operation_id nil}})]
+    (let [permissions #{"/collection/1/" "/collection/2/"
+                        "/collection/3/" "/collection/4/"
+                        "/collection/5/"}]
+      (testing "Archived"
+        (testing "Default"
+          (is (= #{5}
+                 (collection/permissions-set->visible-collection-ids permissions {}))))
+        (testing "Only"
+          (is (= #{2 3 4}
+                 (collection/permissions-set->visible-collection-ids permissions {:include-archived-items :only}))))
+        (testing "Exclude"
+          (is (= #{5}
+                 (collection/permissions-set->visible-collection-ids permissions {:include-archived-items :exclude}))))
+        (testing "All"
+          (is (= #{2 3 4 5}
+                 (collection/permissions-set->visible-collection-ids permissions {:include-archived-items :all})))))
+      (testing "Include trash?"
+        (testing "true"
+          (is (= #{1 5}
+                 (collection/permissions-set->visible-collection-ids permissions {:include-trash-collection? true}))))
+        (testing "false"
+          (is (= #{5}
+                 (collection/permissions-set->visible-collection-ids permissions {:include-trash-collection? false}))))
+        (testing "default"
+          (is (= #{5}
+                 (collection/permissions-set->visible-collection-ids permissions {})))))
+      (testing "archive operation id"
+        (testing "can filter down to a particular archive operation id"
+          (is (= #{2 3}
+                 (collection/permissions-set->visible-collection-ids permissions {:archive-operation-id "1234"
+                                                                                  :include-archived-items :all})))
+          (is (= #{4}
+                 (collection/permissions-set->visible-collection-ids permissions {:archive-operation-id "5678"
+                                                                                  :include-archived-items :all}))))))))
+
+(deftest effective-location-path-test
+  (with-redefs [collection/collection-id->collection (constantly
+                                                      (zipmap (map * (next (range 10)) (repeat 10))
+                                                              (next (map (fn [id]
+                                                                           {:id id
+                                                                            :archived false
+                                                                            :archive_operation_id nil})
+                                                                         (map * (range 10) (repeat 10))))))]
+    (testing "valid input"
+      (doseq [[args expected] {["/10/20/30/" #{10 20}]    "/10/20/"
+                               ["/10/20/30/" #{10 30}]    "/10/30/"
+                               ["/10/20/30/" #{}]         "/"
+                               ["/10/20/30/" #{10 20 30}] "/10/20/30/"}]
+        (testing (pr-str (cons 'effective-location-path args))
+          (is (= expected
+                 (apply collection/effective-location-path args))))))
+
+    (testing "invalid input"
+      (doseq [args [["/10/20/30/" nil]
+                    ["/10/20/30/" [20]]
+                    [nil #{}]
+                    [[10 20] #{}]]]
+        (testing (pr-str (cons 'effective-location-path args))
+          (is (thrown?
+               Exception
                (apply collection/effective-location-path args))))))
 
-  (testing "invalid input"
-    (doseq [args [["/10/20/30/" nil]
-                  ["/10/20/30/" [20]]
-                  [nil #{}]
-                  [[10 20] #{}]]]
-      (testing (pr-str (cons 'effective-location-path args))
-        (is (thrown?
-             Exception
-             (apply collection/effective-location-path args))))))
+    (testing "Does the function also work if we call the single-arity version that powers hydration?"
+      (testing "mix of full and read perms"
+        (binding [*current-user-permissions-set* (atom #{"/collection/10/" "/collection/20/read/"})]
+          (is (= "/10/20/"
+                 (collection/effective-location-path {:location "/10/20/30/"})))))
 
-  (testing "Does the function also work if we call the single-arity version that powers hydration?"
-    (testing "mix of full and read perms"
-      (binding [*current-user-permissions-set* (atom #{"/collection/10/" "/collection/20/read/"})]
-        (is (= "/10/20/"
-               (collection/effective-location-path {:location "/10/20/30/"})))))
+      (testing "missing some perms"
+        (binding [*current-user-permissions-set* (atom #{"/collection/10/read/" "/collection/30/read/"})]
+          (is (= "/10/30/"
+                 (collection/effective-location-path {:location "/10/20/30/"})))))
 
-    (testing "missing some perms"
-      (binding [*current-user-permissions-set* (atom #{"/collection/10/read/" "/collection/30/read/"})]
-        (is (= "/10/30/"
-               (collection/effective-location-path {:location "/10/20/30/"})))))
+      (testing "no perms"
+        (binding [*current-user-permissions-set* (atom #{})]
+          (is (= "/"
+                 (collection/effective-location-path {:location "/10/20/30/"})))))
 
-    (testing "no perms"
-      (binding [*current-user-permissions-set* (atom #{})]
-        (is (= "/"
-               (collection/effective-location-path {:location "/10/20/30/"})))))
+      (testing "read perms for all"
+        (binding [*current-user-permissions-set* (atom #{"/collection/10/" "/collection/20/read/" "/collection/30/read/"})]
+          (is (= "/10/20/30/"
+                 (collection/effective-location-path {:location "/10/20/30/"})))))
 
-    (testing "read perms for all"
-      (binding [*current-user-permissions-set* (atom #{"/collection/10/" "/collection/20/read/" "/collection/30/read/"})]
-        (is (= "/10/20/30/"
-               (collection/effective-location-path {:location "/10/20/30/"})))))
-
-    (testing "root perms"
-      (binding [*current-user-permissions-set* (atom #{"/"})]
-        (is (= "/10/20/30/"
-               (collection/effective-location-path {:location "/10/20/30/"})))))))
+      (testing "root perms"
+        (binding [*current-user-permissions-set* (atom #{"/"})]
+          (is (= "/10/20/30/"
+                 (collection/effective-location-path {:location "/10/20/30/"}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                Nested Collections: CRUD Constraints & Behavior                                 |
@@ -748,7 +830,7 @@
 
   (testing "Let's make sure we get an Exception when we try to archive the Custom Reports Collection"
     (t2.with-temp/with-temp [Collection cr-collection {}]
-      (with-redefs [perms/default-custom-reports-collection (constantly cr-collection)]
+      (with-redefs [audit/default-custom-reports-collection (constantly cr-collection)]
         (is (thrown-with-msg?
              Exception
              #"You cannot archive the Custom Reports Collection."
@@ -1672,8 +1754,8 @@
                              Collection cr-collection    {}
                              Card       cr-card          {:collection_id (:id cr-collection)}
                              Dashboard  cr-dashboard     {:collection_id (:id cr-collection)}]
-      (with-redefs [perms/default-audit-collection          (constantly audit-collection)
-                    perms/default-custom-reports-collection (constantly cr-collection)]
+      (with-redefs [audit/default-audit-collection          (constantly audit-collection)
+                    audit/default-custom-reports-collection (constantly cr-collection)]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-additional-premium-features #{:audit-app}
             (is (not (mi/can-write? audit-collection))

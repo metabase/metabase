@@ -117,7 +117,7 @@ export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION = {
 export const PLUGIN_DATA_PERMISSIONS: {
   permissionsPayloadExtraSelectors: ((
     state: State,
-  ) => Record<string, unknown>)[];
+  ) => [Record<string, undefined | { group_id: string }[]>, string[]])[];
   hasChanges: ((state: State) => boolean)[];
   shouldRestrictNativeQueryPermissions: (
     permissions: GroupsPermissions,
@@ -246,6 +246,8 @@ type AuthorityLevelMenuItem = {
   action: () => void;
 };
 
+export type ItemWithCollection = { collection: CollectionEssentials };
+
 export const PLUGIN_COLLECTIONS = {
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
@@ -269,6 +271,9 @@ export const PLUGIN_COLLECTIONS = {
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
   ): AuthorityLevelMenuItem[] => [],
   getIcon: getIconBase,
+  filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
+    items: Item[],
+  ) => items as Item[],
 };
 
 export type CollectionAuthorityLevelIcon = ComponentType<
@@ -440,6 +445,7 @@ export const PLUGIN_MODEL_PERSISTENCE = {
 
 export const PLUGIN_EMBEDDING = {
   isEnabled: () => false,
+  isInteractiveEmbeddingEnabled: (_state: State) => false,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {

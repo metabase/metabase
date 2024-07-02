@@ -5,7 +5,7 @@ import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 import type {
-  DatasetColumn,
+  Field,
   FieldId,
   FieldReference,
   ModelCacheRefreshStatus,
@@ -148,20 +148,16 @@ export function getModelCacheSchemaName(databaseId: number, siteUUID: string) {
   return `metabase_cache_${firstLetters}_${databaseId}`;
 }
 
-type QueryField = FieldReference & { field_ref: FieldReference };
-
-function getFieldFromColumnVizSetting(
-  columnVizSetting: TableColumnOrderSetting,
-  columns: DatasetColumn[],
-  columnMetadata: QueryField[],
+function getFieldIndexFromColumnVizSetting(
+  column: Field,
+  columnSettings: TableColumnOrderSetting[],
 ) {
-  // We have some corrupted visualization settings where both names are mixed
-  // We should settle on `fieldRef`, make it required and remove `field_ref`
-  const fieldRef = columnVizSetting.fieldRef || columnVizSetting.field_ref;
-  return (
-    columns.find(column => isSameField(column.field_ref, fieldRef)) ||
-    columnMetadata.find(column => isSameField(column.field_ref, fieldRef))
-  );
+  return columnSettings.findIndex(columnSetting => {
+    // We have some corrupted visualization settings where both names are mixed
+    // We should settle on `fieldRef`, make it required and remove `field_ref`
+    const fieldRef = columnSetting.fieldRef || columnSetting.field_ref;
+    return isSameField(column.field_ref, fieldRef);
+  });
 }
 
 // Columns in resultsMetadata contain all the necessary metadata
@@ -171,29 +167,23 @@ function getFieldFromColumnVizSetting(
 // This ensures metadata rich columns are sorted correctly not to break the "Tab" key navigation behavior.
 export function getSortedModelFields(
   model: Question,
-  columnMetadata?: QueryField[],
+  columnMetadata: Field[] | undefined | null,
 ) {
   if (!Array.isArray(columnMetadata)) {
     return [];
   }
 
-  const orderedColumns = model.setting("table.columns");
-
-  if (!Array.isArray(orderedColumns)) {
+  const columnSettings = model.setting("table.columns");
+  if (!Array.isArray(columnSettings)) {
     return columnMetadata;
   }
 
-  const table = model.legacyQueryTable();
-  const tableFields = table?.fields ?? [];
-  const tableColumns = tableFields.map(field => field.column());
-
-  return orderedColumns
-    .map(columnVizSetting =>
-      getFieldFromColumnVizSetting(
-        columnVizSetting,
-        tableColumns,
-        columnMetadata,
-      ),
-    )
-    .filter(Boolean);
+  // always return metadata columns even if the corresponding viz settings don't exist
+  return columnMetadata
+    .map(column => ({
+      column,
+      index: getFieldIndexFromColumnVizSetting(column, columnSettings),
+    }))
+    .sort((a, b) => a.index - b.index)
+    .map(({ column }) => column);
 }

@@ -1,5 +1,5 @@
-import type { EmbeddingTheme } from "embedding-sdk/types/theme/private";
 import { alpha, isDark, lighten } from "metabase/lib/colors";
+import type { MantineTheme } from "metabase/ui";
 
 /**
  * Cell data is the inner container within a table cell.
@@ -10,15 +10,18 @@ export function getCellDataTheme({
   theme,
   isIDColumn,
 }: {
-  theme: EmbeddingTheme;
+  theme: MantineTheme;
   isIDColumn: boolean;
 }) {
   const cellTheme = theme.other?.table?.cell;
   const idTheme = theme.other?.table?.idColumn;
 
+  const fontSize = cellTheme?.fontSize;
+
   if (isIDColumn) {
     return {
       color: idTheme?.textColor,
+      fontSize,
       background:
         idTheme?.backgroundColor || alpha(theme.fn.themeColor("brand"), 0.08),
       border: `1px solid ${alpha(
@@ -28,13 +31,13 @@ export function getCellDataTheme({
     };
   }
 
-  return { color: cellTheme?.textColor };
+  return { color: cellTheme?.textColor, fontSize };
 }
 
 export const getCellHoverBackground = ({
   theme,
 }: {
-  theme: EmbeddingTheme;
+  theme: MantineTheme;
 }): string => {
   const brand = theme.fn.themeColor("brand");
   const background = theme.other?.table?.cell?.backgroundColor;

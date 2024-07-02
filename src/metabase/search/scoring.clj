@@ -111,11 +111,8 @@
 
   Some of the scorers can be tweaked with configuration in [[metabase.search.config]]."
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.core :as lib]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.config :as search.config]
    [metabase.search.util :as search.util]
@@ -159,9 +156,9 @@
 (defn- text-scores-with
   "Scores a search result. Returns a vector of score maps, each containing `:weight`, `:score`, and other info about
   the text match, if there is one. If there is no match, the score is 0."
-  [weighted-scorers query-tokens search-result]
+  [search-native-query weighted-scorers query-tokens search-result]
   ;; TODO is pmap over search-result worth it?
-  (let [scores (for [column      (search.config/searchable-columns-for-model (:model search-result))
+  (let [scores (for [column      (search.config/searchable-columns (:model search-result) search-native-query)
                      {:keys [scorer name weight]
                       :as   _ws} weighted-scorers
                      :let        [matched-text (-> search-result
@@ -259,10 +256,11 @@
      (count model->sort-position)))
 
 (defn- text-scores-with-match
-  [raw-search-string result]
-  (if (seq raw-search-string)
-    (text-scores-with match-based-scorers
-                      (search.util/tokenize (search.util/normalize raw-search-string))
+  [result {:keys [search-string search-native-query]}]
+  (if (seq search-string)
+    (text-scores-with search-native-query
+                      match-based-scorers
+                      (search.util/tokenize (search.util/normalize search-string))
                       result)
     [{:score 0 :weight 0}]))
 
@@ -301,47 +299,6 @@
     (/
      (max (- stale-time days-ago) 0)
      stale-time)))
-
-;;; TODO OMG mix of kebab-case and snake_case here going to make me throw up, we should use all kebab-case in Clojure
-;;; land and then convert the stuff that actually gets sent over the wire in the REST API to snake_case in the API
-;;; endpoint itself, not in the search impl.
-(defn serialize
-  "Massage the raw result from the DB and match data into something more useful for the client"
-  [{:as result :keys [all-scores relevant-scores name display_name collection_id collection_name
-                      collection_authority_level collection_type collection_effective_ancestors]}]
-  (let [matching-columns    (into #{} (remove nil? (map :column relevant-scores)))
-        match-context-thunk (first (keep :match-context-thunk relevant-scores))]
-    (-> result
-        (assoc
-         :name           (if (and (contains? matching-columns :display_name) display_name)
-                           display_name
-                           name)
-         :context        (when (and match-context-thunk
-                                    (empty?
-                                     (remove matching-columns search.config/displayed-columns)))
-                           (match-context-thunk))
-         :collection     (merge {:id              collection_id
-                                 :name            collection_name
-                                 :authority_level collection_authority_level
-                                 :type            collection_type}
-                                (when collection_effective_ancestors
-                                  {:effective_ancestors collection_effective_ancestors}))
-         :scores          all-scores)
-        (update :dataset_query (fn [dataset-query]
-                                 (when-let [query (some-> dataset-query json/parse-string)]
-                                   (if (get query "type")
-                                      (mbql.normalize/normalize query)
-                                      (not-empty (lib/normalize query))))))
-        (dissoc
-         :all-scores
-         :relevant-scores
-         :collection_effective_ancestors
-         :trashed_from_collection_id
-         :collection_id
-         :collection_location
-         :collection_name
-         :collection_type
-         :display_name))))
 
 (defn weights-and-scores
   "Default weights and scores for a given result."
@@ -397,9 +354,9 @@
 
 (defn score-and-result
   "Returns a map with the normalized, combined score from relevant-scores as `:score` and `:result`."
-  [raw-search-string result]
-  (let [text-matches     (-> raw-search-string
-                             (text-scores-with-match result)
+  [result {:keys [search-string search-native-query]}]
+  (let [text-matches     (-> (text-scores-with-match result {:search-string       search-string
+                                                             :search-native-query search-native-query})
                              (force-weight text-scores-weight))
         all-scores       (into (vec (score-result result)) text-matches)
         relevant-scores  (remove #(= 0 (:score %)) all-scores)
@@ -407,7 +364,7 @@
     ;; Searches with a blank search string mean "show me everything, ranked";
     ;; see https://github.com/metabase/metabase/pull/15604 for archived search.
     ;; If the search string is non-blank, results with no text match have a score of zero.
-    (if (or (str/blank? raw-search-string)
+    (if (or (str/blank? search-string)
             (pos? (reduce (fn [acc {:keys [score] :or {score 0}}] (+ acc score))
                           0
                           text-matches)))

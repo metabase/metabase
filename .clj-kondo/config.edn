@@ -1,5 +1,5 @@
 ;; -*- comment-column: 100; -*-
-{:config-paths ["macros"]
+{:config-paths ["macros" "src"]
  :linters
  {:aliased-namespace-symbol     {:level :warning}
   :invalid-arity                {:skip-args [metabase.lib.util.match/match]} ; TODO (cam): can we fix these?
@@ -107,6 +107,7 @@
    malli.core/explainer                               {:message "Use metabase.util.malli.registry/explainer instead of malli.core/explainer"}
    me.flowthing.pp/pprint                             {:message "Use metabase.util.log instead of me.flowthing.pp/pprint"}
    medley.core/random-uuid                            {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
+   metabase.driver/database-supports?                 {:message "Use metabase.driver.util/supports? instead of metabase.driver/database-supports?"}
    metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
    metabase.test/with-temp*                           {:message "Use mt/with-temp instead of mt/with-temp*"}
    toucan2.tools.with-temp                            {:message "Use mt/with-temp instead of t2.with-temp/with-temp"}}
@@ -135,7 +136,7 @@
    ;;    namespace(s). This is mostly a temporary placeholder until we go in and create module namespaces, which means
    ;;    you should go create one.
    ;;
-   ;; 2. A set of namespace symbols. All namespaces in other modules will only be allowed ;; to use namespaces from
+   ;; 2. A set of namespace symbols. All namespaces in other modules will only be allowed to use namespaces from
    ;;    this set. Ideally this set should only have one namespace, but restricting it to a set of several is still
    ;;    better than `:any`.
    ;;
@@ -158,8 +159,10 @@
     metabase.async                 #{metabase.async.streaming-response
                                      metabase.async.streaming-response.thread-pool
                                      metabase.async.util}                                           ; TODO -- consolidate these into a real API namespace.
+    metabase.audit                 #{metabase.audit}
     metabase.bootstrap             #{metabase.bootstrap}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
+    metabase.channel               #{metabase.channel.core}
     metabase.config                #{metabase.config}
     metabase.core                  #{metabase.core.initialization-status}                           ; TODO -- only namespace used outside of EE, this probably belongs in `metabase.server` anyway since that's the only place it's used.
     metabase.db                    #{metabase.db
@@ -259,9 +262,11 @@
     metabase.analyze               :any
     metabase.api                   :any
     metabase.async                 :any
+    metabase.audit                 :any
     metabase.bootstrap             #{}
     metabase.cmd                   :any
     metabase.compatibility         :any
+    metabase.channel               :any
     metabase.config                #{metabase.plugins}
     metabase.core                  :any
     metabase.db                    :any
@@ -278,7 +283,12 @@
     metabase.metabot               :any
     metabase.models                :any
     metabase.moderation            :any
-    metabase.native-query-analyzer :any
+    metabase.native-query-analyzer #{metabase.config
+                                     metabase.driver
+                                     metabase.lib
+                                     metabase.public-settings
+                                     metabase.query-processor
+                                     metabase.util}
     metabase.permissions           :any
     metabase.plugins               :any
     metabase.public-settings       :any
@@ -409,6 +419,7 @@
     metabase.api.user                                             api.user
     metabase.api.util                                             api.util
     metabase.async.streaming-response.thread-pool                 thread-pool
+    metabase.channel.core                                         channel
     metabase.cmd.copy.h2                                          copy.h2
     metabase.config                                               config
     metabase.config.file                                          config.file
@@ -428,10 +439,6 @@
     metabase.driver.druid.js                                      druid.js
     metabase.driver.druid.query-processor                         druid.qp
     metabase.driver.druid.sync                                    druid.sync
-    metabase.driver.googleanalytics.client                        ga.client
-    metabase.driver.googleanalytics.execute                       ga.execute
-    metabase.driver.googleanalytics.metadata                      ga.metadata
-    metabase.driver.googleanalytics.query-processor               ga.qp
     metabase.driver.impl                                          driver.impl
     metabase.driver.mongo.execute                                 mongo.execute
     metabase.driver.mongo.parameters                              mongo.params
@@ -687,6 +694,9 @@
    metabase.api.card-test/with-temp-native-card!                                                                             hooks.common/with-two-bindings
    metabase.api.card-test/with-temp-native-card-with-params!                                                                 hooks.common/with-two-bindings
    metabase.api.collection-test/with-french-user-and-personal-collection                                                     hooks.common/with-two-top-level-bindings
+   metabase.api.common/defendpoint                                                                                           hooks.metabase.api.common/defendpoint
+   metabase.api.common/defendpoint-async                                                                                     hooks.metabase.api.common/defendpoint
+   metabase.api.common/defendpoint-async-schema                                                                              hooks.metabase.api.common/defendpoint
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.dashboard-test/with-simple-dashboard-with-tabs                                                               hooks.common/with-one-binding
    metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
@@ -785,9 +795,6 @@
    metabase.api.card-test/with-ordered-items                                    macros.metabase.api.card-test/with-ordered-items
    metabase.api.collection-test/with-collection-hierarchy                       macros.metabase.api.collection-test/with-collection-hierarchy
    metabase.api.collection-test/with-some-children-of-collection                macros.metabase.api.collection-test/with-some-children-of-collection
-   metabase.api.common/defendpoint                                              macros.metabase.api.common/defendpoint
-   metabase.api.common/defendpoint-async                                        macros.metabase.api.common/defendpoint
-   metabase.api.common/defendpoint-async-schema                                 macros.metabase.api.common/defendpoint
    metabase.api.common/define-routes                                            macros.metabase.api.common/define-routes
    metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing     macros.metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing
    metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing macros.metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing
@@ -839,7 +846,11 @@
   ;; `metabase.driver.*`, excluding `-test` namespaces.
   ;;
   {:pattern "metabase(?:(?:(?:-enterprise\\.sandbox)?\\.query-processor\\.)|(?:\\.driver\\.)).*(?<!-test)$"
-   :name    qp-and-driver-source-namespaces}]
+   :name    qp-and-driver-source-namespaces}
+
+  ;; driver namespaces
+  {:pattern "metabase\\.driver.*$"
+   :name    driver-namespaces}]
 
  :config-in-ns
  {test-namespaces
@@ -847,7 +858,9 @@
    {:inline-def                              {:level :off}
     :missing-docstring                       {:level :off}
     :private-call                            {:level :off}
-    :metabase/defsetting-must-specify-export {:level :off}}
+    :metabase/defsetting-must-specify-export {:level :off}
+    :discouraged-var                         {metabase.driver/database-supports? {:level :off}}}
+
    :hooks
    {:analyze-call
     {clojure.core/defmacro hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
@@ -896,6 +909,11 @@
      toucan.models              {:message "Don't use application database inside MLv2 code"}
      toucan.util.test           {:message "Don't use application database inside MLv2 code"}
      toucan2.core               {:message "Don't use application database inside MLv2 code"}}}}
+
+  driver-namespaces
+  {:linters
+   {:discouraged-var
+    {metabase.driver/database-supports? {:level :off}}}}
 
   qp-and-driver-source-namespaces
   {:linters

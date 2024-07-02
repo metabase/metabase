@@ -12,7 +12,7 @@ export const TokenFieldItem = styled.li<{
   height: 46px;
   border-radius: 0.5rem;
   color: ${({ isValid }) => (isValid ? color("brand") : color("error"))};
-  background-color: ${alpha("brand", 0.2)};
+  background-color: ${() => alpha("brand", 0.2)};
 `;
 
 export const TokenFieldAddon = styled.a<{
@@ -24,6 +24,6 @@ export const TokenFieldAddon = styled.a<{
   color: ${({ isValid }) => (isValid ? "" : color("error"))};
 
   &:hover {
-    color: ${darken("brand", 0.2)};
+    color: ${() => darken("brand", 0.2)};
   }
 `;

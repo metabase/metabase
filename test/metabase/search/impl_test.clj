@@ -1,11 +1,13 @@
 (ns metabase.search.impl-test
-  "There are a lot more tests around search in [[metabase.search.impl-test]]. TODO: we should move more of those tests
+  "There are a lot more tests around search in [[metabase.api.search-test]]. TODO: we should move more of those tests
   into this namespace."
   (:require
+   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.search.config :as search.config]
    [metabase.search.impl :as search.impl]
    [metabase.test :as mt]
@@ -55,14 +57,15 @@
        :model/Segment   _              {:table_id table-id
                                         :name     (str "segment 3 " search-string)}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [do-search (fn []
-                          (search.impl/search {:search-string      search-string
-                                               :archived?          false
-                                               :models             search.config/all-models
-                                               :current-user-id    (mt/user->id :crowberto)
-                                               :current-user-perms #{"/"}
-                                               :model-ancestors?   false
-                                               :limit-int          100}))]
+        (binding [config/*request-id* (random-uuid)]
+          (let [do-search (fn []
+                            (search.impl/search {:search-string      search-string
+                                                 :archived?          false
+                                                 :models             search.config/all-models
+                                                 :current-user-id    (mt/user->id :crowberto)
+                                                 :current-user-perms #{"/"}
+                                                 :model-ancestors?   false
+                                                 :limit-int          100}))]
           ;; warm it up, in case the DB call depends on the order of test execution and it needs to
           ;; do some initialization
           (do-search)
@@ -71,7 +74,7 @@
             ;; the call count number here are expected to change if we change the search api
             ;; we have this test here just to keep tracks this number to remind us to put effort
             ;; into keep this number as low as we can
-            (is (= 6 (call-count)))))))))
+            (is (= 6 (call-count))))))))))
 
 (deftest created-at-correctness-test
   (let [search-term   "created-at-filtering"
@@ -247,3 +250,19 @@
           (test-search "thisyear" new-result)
           (test-search "past1years-from-12months" old-result)
           (test-search "today" new-result))))))
+
+(deftest ^:parallel serialize-test
+  (testing "It normalizes dataset queries from strings"
+    (let [query  {:type     :query
+                  :query    {:source-query {:source-table 1}}
+                  :database 1}
+          result {:name          "card"
+                  :model         "card"
+                  :dataset_query (json/generate-string query)
+                  :all-scores {}
+                  :relevant-scores {}}]
+      (is (= query (-> result search.impl/serialize :dataset_query)))))
+  (testing "Doesn't error on other models without a query"
+    (is (nil? (-> {:name "dash" :model "dashboard" :all-scores {} :relevant-scores {}}
+                  search.impl/serialize
+                  :dataset_query)))))

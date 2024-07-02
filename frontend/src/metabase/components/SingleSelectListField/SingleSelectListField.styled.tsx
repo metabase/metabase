@@ -42,11 +42,12 @@ export const OptionItem = styled.div<OptionItemProps>`
   padding: 0.5rem 0.6rem;
   width: 100%;
   background-color: ${props =>
-    color(props.selected ? props.selectedColor : color("white"))};
-  color: ${props => color(props.selected ? "white" : color("text"))};
+    props.selected ? color(props.selectedColor) : color("bg-white")};
+  color: ${props =>
+    props.selected ? color("text-white") : "var(--mb-color-text-dark)"};
 
   &:hover {
     background-color: ${props =>
-      color(props.selected ? props.selectedColor : color("bg-light"))};
+      props.selected ? color(props.selectedColor) : "var(--mb-color-bg-light)"};
   }
 `;

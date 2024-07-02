@@ -381,46 +381,57 @@
     ;; there seem to be no way to encounter this, search in tests for `BigDecimal`
     JsonParser$NumberType/BIG_DECIMAL BigDecimal))
 
+(defn- json-object?
+  "Return true if the string `s` is a JSON where value is an object.
+
+    (is-json-object \"{}\") => true
+    (is-json-object \"[]\") => false
+    (is-json-object \"\\\"foo\\\"\") => false"
+  [^String s]
+  (= JsonToken/START_OBJECT (-> s json-parser .nextToken)))
+
 (defn- json->types
   "Parses given json (a string or a reader) into a map of paths to types, i.e. `{[\"bob\"} String}`.
 
   Uses Jackson Streaming API to skip allocating data structures, eschews allocating values when possible.
   Respects *nested-field-column-max-row-length*."
   [v path]
-  (let [p (json-parser v)]
-    (loop [path (or path [])
-           key  nil
-           res  (transient {})]
-      (let [token (.nextToken p)]
-        (cond
-          (nil? token)
-          (persistent! res)
+  (if-not (json-object? v)
+    {}
+    (let [p (json-parser v)]
+      (loop [path      (or path [])
+             field     nil
+             res       (transient {})]
+        (let [token (.nextToken p)]
+          (cond
+           (nil? token)
+           (persistent! res)
 
-          ;; we could be more precise here and issue warning about nested fields (the one in `describe-json-fields`),
-          ;; but this limit could be hit by multiple json fields (fetched in `describe-json-fields`) rather than only
-          ;; by this one. So for the sake of issuing only a single warning in logs we'll spill over limit by a single
-          ;; entry (instead of doing `<=`).
-          (< max-nested-field-columns (count res))
-          (persistent! res)
+           ;; we could be more precise here and issue warning about nested fields (the one in `describe-json-fields`),
+           ;; but this limit could be hit by multiple json fields (fetched in `describe-json-fields`) rather than only
+           ;; by this one. So for the sake of issuing only a single warning in logs we'll spill over limit by a single
+           ;; entry (instead of doing `<=`).
+           (< max-nested-field-columns (count res))
+           (persistent! res)
 
-          :else
-          (u/case-enum token
-            JsonToken/VALUE_NUMBER_INT   (recur path key (assoc! res (conj path key) (number-type (.getNumberType p))))
-            JsonToken/VALUE_NUMBER_FLOAT (recur path key (assoc! res (conj path key) (number-type (.getNumberType p))))
-            JsonToken/VALUE_TRUE         (recur path key (assoc! res (conj path key) Boolean))
-            JsonToken/VALUE_FALSE        (recur path key (assoc! res (conj path key) Boolean))
-            JsonToken/VALUE_NULL         (recur path key (assoc! res (conj path key) nil))
-            JsonToken/VALUE_STRING       (recur path key (assoc! res (conj path key)
-                                                                 (type-by-parsing-string (.getText p))))
-            JsonToken/FIELD_NAME         (recur path (.getText p) res)
-            JsonToken/START_OBJECT       (recur (cond-> path key (conj key)) key res)
-            JsonToken/END_OBJECT         (recur (cond-> path (seq path) pop) key res)
-            ;; We put top-level array row type semantics on JSON roadmap but skip for now
-            JsonToken/START_ARRAY        (do (.skipChildren p)
-                                             (if key
-                                               (recur path key (assoc! res (conj path key) clojure.lang.PersistentVector))
-                                               (recur path key res)))
-            JsonToken/END_ARRAY          (recur path key res)))))))
+           :else
+           (u/case-enum token
+             JsonToken/VALUE_NUMBER_INT   (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
+             JsonToken/VALUE_NUMBER_FLOAT (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
+             JsonToken/VALUE_TRUE         (recur path field (assoc! res (conj path field) Boolean))
+             JsonToken/VALUE_FALSE        (recur path field (assoc! res (conj path field) Boolean))
+             JsonToken/VALUE_NULL         (recur path field (assoc! res (conj path field) nil))
+             JsonToken/VALUE_STRING       (recur path field (assoc! res (conj path field)
+                                                                    (type-by-parsing-string (.getText p))))
+             JsonToken/FIELD_NAME         (recur path (.getText p) res)
+             JsonToken/START_OBJECT       (recur (cond-> path field  (conj field)) field res)
+             JsonToken/END_OBJECT         (recur (cond-> path (seq path) pop) field res)
+             ;; We put top-level array row type semantics on JSON roadmap but skip for now
+             JsonToken/START_ARRAY        (do (.skipChildren p)
+                                              (if field
+                                                (recur path field (assoc! res (conj path field) clojure.lang.PersistentVector))
+                                                (recur path field res)))
+             JsonToken/END_ARRAY          (recur path field res))))))))
 
 (defn- json-map->types [json-map]
   (apply merge (map #(json->types (second %) [(first %)]) json-map)))

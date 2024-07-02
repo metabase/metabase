@@ -1,6 +1,14 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
   (:require
+   #?@(:clj  ([clojure.math.numeric-tower :as math]
+              [me.flowthing.pp :as pp]
+              [metabase.config :as config]
+              #_{:clj-kondo/ignore [:discouraged-namespace]}
+              [metabase.util.jvm :as u.jvm]
+              [metabase.util.string :as u.str]
+              [potemkin :as p]
+              [ring.util.codec :as codec]))
    [camel-snake-kebab.internals.macros :as csk.macros]
    [clojure.data :refer [diff]]
    [clojure.pprint :as pprint]
@@ -15,15 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.memoize :as memoize]
    [net.cgrand.macrovich :as macros]
-   [weavejester.dependency :as dep]
-   #?@(:clj  ([clojure.math.numeric-tower :as math]
-              [me.flowthing.pp :as pp]
-              [metabase.config :as config]
-              #_{:clj-kondo/ignore [:discouraged-namespace]}
-              [metabase.util.jvm :as u.jvm]
-              [metabase.util.string :as u.str]
-              [potemkin :as p]
-              [ring.util.codec :as codec])))
+   [weavejester.dependency :as dep])
   #?(:clj (:import
            (clojure.lang Reflector)
            (java.text Normalizer Normalizer$Form)
@@ -247,7 +247,12 @@
          (subs s 1))))
 
 (defn snake-keys
-  "Convert the keys in a map from `kebab-case` to `snake_case`."
+  "Convert the top-level keys in a map to `snake_case`."
+  [m]
+  (update-keys m ->snake_case_en))
+
+(defn deep-snake-keys
+  "Recursively convert the keys in a map to `snake_case`."
   [m]
   (recursive-map-keys ->snake_case_en m))
 
@@ -972,3 +977,45 @@
                          (partition 2 clauses))
                  (when (odd? (count clauses))
                    (list (last clauses))))))))))
+
+(defn update-keys-vals
+  "A combination of [[update-keys]] and [[update-vals]], which simultaneously re-maps keys and values."
+  ([m f]
+   (update-keys-vals m f f))
+  ([m key-f val-f]
+   (let [ret (persistent!
+              (reduce-kv (fn [acc k v]
+                           (assoc! acc (key-f k) (val-f v)))
+                         (transient {})
+                         m))]
+     (with-meta ret (meta m)))))
+
+(defn string-byte-count
+  "Number of bytes in a string using UTF-8 encoding."
+  [s]
+  #?(:clj (count (.getBytes (str s) "UTF-8"))
+     :cljs (.. (js/TextEncoder.) (encode s) -length)))
+
+#?(:clj
+   (defn ^:private string-character-at
+     [s i]
+     (str (.charAt ^String s i))))
+
+(defn truncate-string-to-byte-count
+  "Truncate string `s` to `max-length-bytes` UTF-8 bytes (as opposed to truncating to some number of *characters*)."
+  [s max-length-bytes]
+  #?(:clj
+     (loop [i 0, cumulative-byte-count 0]
+       (cond
+         (= cumulative-byte-count max-length-bytes) (subs s 0 i)
+         (> cumulative-byte-count max-length-bytes) (subs s 0 (dec i))
+         (>= i (count s))                           s
+         :else                                      (recur (inc i)
+                                                           (long (+
+                                                                  cumulative-byte-count
+                                                                  (string-byte-count (string-character-at s i)))))))
+
+     :cljs
+     (let [buf (js/Uint8Array. max-length-bytes)
+           result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}
+       (subs s 0 (.-read result)))))

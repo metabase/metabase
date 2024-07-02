@@ -26,6 +26,7 @@ import {
   publishChanges,
   setEmbeddingParameter,
   assertEmbeddingParameter,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -107,9 +108,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       popover().within(() => {
-        cy.findByPlaceholderText("Search by Name or enter an ID").type(
-          "1{enter}3{enter}",
-        );
+        cy.findByPlaceholderText("Search by Name or enter an ID").type("1,3,");
 
         cy.button("Add filter").click();
       });
@@ -140,7 +139,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       openFilterOptions("Name");
 
       cy.findByPlaceholderText("Search by Name").type("L");
-      popover().findByText("Lina Heaney").click();
+      popover().last().findByText("Lina Heaney").click();
 
       cy.button("Add filter").click();
 
@@ -317,19 +316,33 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       openFilterOptions("Id");
       popover().within(() => {
-        cy.findByPlaceholderText("Search by Name or enter an ID").type("Aly");
-
-        cy.contains("Alycia McCullough - 2016");
+        multiAutocompleteInput().type("Aly");
       });
+
+      popover().last().contains("Alycia McCullough - 2016");
+
+      // close the suggestions popover
+      popover()
+        .first()
+        .within(() => {
+          multiAutocompleteInput().blur();
+        });
 
       cy.log("should allow searching PEOPLE.NAME by PEOPLE.NAME");
 
       openFilterOptions("Name");
       popover().within(() => {
-        cy.findByPlaceholderText("Search by Name").type("Aly");
-
-        cy.contains("Alycia McCullough");
+        multiAutocompleteInput().type("{backspace}Aly");
       });
+
+      popover().last().contains("Alycia McCullough");
+
+      // close the suggestions popover
+      popover()
+        .first()
+        .within(() => {
+          multiAutocompleteInput().blur();
+        });
 
       cy.log("should show values for PEOPLE.SOURCE");
 
@@ -340,10 +353,17 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       openFilterOptions("User");
       popover().within(() => {
-        cy.findByPlaceholderText("Search by Name or enter an ID").type("Aly");
-
-        cy.contains("Alycia McCullough - 2016");
+        multiAutocompleteInput().type("Aly");
       });
+
+      popover().last().contains("Alycia McCullough - 2016");
+
+      // close the suggestions popover
+      popover()
+        .first()
+        .within(() => {
+          multiAutocompleteInput().blur();
+        });
 
       cy.log("should accept url parameters");
 
@@ -616,7 +636,7 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
         .findByTestId("embed-frame")
         .invoke("attr", "data-embed-theme")
         .then(embedTheme => {
-          expect(embedTheme).to.eq(undefined); // default value, unset
+          expect(embedTheme).to.eq("light"); // default value
         });
 
       // We're getting an input element which is 0x0 in size

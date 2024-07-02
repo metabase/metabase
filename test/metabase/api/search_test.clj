@@ -1,11 +1,10 @@
 (ns ^:mb/once metabase.api.search-test
-  "There are  more tests around search in [[metabase.search.impl-test]]. TODO: we should move more of the tests
+  "There are more tests around search in [[metabase.search.impl-test]]. TODO: we should move more of the tests
   below into that namespace."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models
     :refer [Action Card CardBookmark Collection Dashboard DashboardBookmark
@@ -134,7 +133,8 @@
     (cond-> result
       true (assoc :archived true)
       (= (:model result) "collection") (assoc :location (collection/trash-path)
-                                              :effective_location (collection/trash-path)))))
+                                              :effective_location (collection/trash-path)
+                                              :collection (assoc default-collection :id true :name true :type "trash")))))
 
 (defn- on-search-types [model-set f coll]
   (for [search-item coll]
@@ -743,14 +743,14 @@
 (defn- archived-collection [m]
   (assoc m
          :archived true
-         :trashed_from_location "/"
-         :location (collection/trash-path)))
+         :archived_directly true
+         :archive_operation_id (str (random-uuid))))
 
 (defn- archived-with-trashed-from-id [m]
   (assoc m
          :archived true
-         :trashed_from_collection_id (:collection_id m)
-         :collection_id (collection/trash-collection-id)))
+         :archived_directly true
+         :collection_id (:collection_id m)))
 
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
@@ -951,94 +951,6 @@
             (mt/with-temp [Dashboard dashboard {}]
               (t2/update! Pulse (:id pulse) {:dashboard_id (:id dashboard)})
               (is (= nil (search-for-pulses pulse))))))))))
-
-
-
-(deftest snowplow-new-search-query-event-test
-  (testing "Send a snowplow event when a search query is triggered and context is passed"
-    (snowplow-test/with-fake-snowplow-collector
-      (mt/user-http-request :crowberto :get 200 "search?q=test" :context "search-bar")
-      (is (=? {:data    {"event"                "new_search_query"
-                         "runtime_milliseconds" pos?
-                         "context"              "search-bar"}
-               :user-id (str (mt/user->id :crowberto))}
-              (last (snowplow-test/pop-event-data-and-user-id!)))))))
-
-(deftest snowplow-new-search-query-event-test-2
-  (testing "Send a snowplow event when a search query is triggered and context is passed"
-    (snowplow-test/with-fake-snowplow-collector
-      (mt/user-http-request :crowberto :get 200 "search?q=test" :context "search-app")
-      (is (=? {:data    {"event"                "new_search_query"
-                         "runtime_milliseconds" pos?
-                         "context"              "search-app"}
-               :user-id (str (mt/user->id :crowberto))}
-              (last (snowplow-test/pop-event-data-and-user-id!)))))))
-
-(deftest snowplow-new-search-query-event-test-3
-  (testing "Don't send a snowplow event if the search doesn't contain context"
-    (snowplow-test/with-fake-snowplow-collector
-      (mt/user-http-request :crowberto :get 200 "search" :q "test" :models "table")
-      (is (empty? (snowplow-test/pop-event-data-and-user-id!)))
-
-      (mt/user-http-request :crowberto :get 200 "search" :q "test" :table_db_id (mt/id))
-      (is (empty? (snowplow-test/pop-event-data-and-user-id!)))
-
-      (mt/user-http-request :crowberto :get 200 "search" :q "test" :archived true)
-      (is (empty? (snowplow-test/pop-event-data-and-user-id!))))))
-
-(deftest snowplow-search-results-filtered-event-test
-  (testing "Send a snowplow event when a new filtered search query is made"
-    (snowplow-test/with-fake-snowplow-collector
-      (mt/user-http-request :crowberto :get 200 "search" :q "test" :context "search-app" :models "card")
-      (is (=? {:data    {"event"                 "search_results_filtered"
-                         "runtime_milliseconds"  pos?
-                         "creation_date"         false
-                         "creator"               false
-                         "last_edit_date"        false
-                         "last_editor"           false
-                         "content_type"          ["card"]
-                         "search_native_queries" false
-                         "verified_items"        false}
-               :user-id (str (mt/user->id :crowberto))}
-              (last (snowplow-test/pop-event-data-and-user-id!)))))))
-
-(deftest snowplow-search-results-filtered-event-test-2
-  (testing "Send a snowplow event when a new filtered search query is made"
-    (snowplow-test/with-fake-snowplow-collector
-      (mt/user-http-request :crowberto :get 200 "search"
-                            :q "test"
-                            :context "search-app"
-                            :models "card"
-                            :models "dashboard"
-                            :created_at "2000-01-01"
-                            :created_by (mt/user->id :crowberto)
-                            :last_edited_at "2000-01-01" :last_edited_by (mt/user->id :crowberto)
-                            :search_native_query true)
-      (is (=? {:data    {"event"                 "search_results_filtered"
-                         "runtime_milliseconds"  pos?
-                         "creation_date"         true
-                         "creator"               true
-                         "last_edit_date"        true
-                         "last_editor"           true
-                         "content_type"          ["card" "dashboard"]
-                         "search_native_queries" true
-                         "verified_items"        false}
-               :user-id (str (mt/user->id :crowberto))}
-              (last (snowplow-test/pop-event-data-and-user-id!)))))))
-
-(deftest snowplow-search-results-filtered-event-test-3
-  (snowplow-test/with-fake-snowplow-collector
-    (testing "Send a snowplow event even if the search doesn't have any advanced filters"
-      (mt/user-http-request :crowberto :get 200 "search" :q "test" :context "search-app")
-      (is (=? {:data    {"event"                "new_search_query"
-                         "runtime_milliseconds" pos?
-                         "context"              "search-app"}
-               :user-id (str (mt/user->id :crowberto))}
-              (last (snowplow-test/pop-event-data-and-user-id!)))))
-
-    (testing "Don't send a snowplow event if the doesn't have context"
-      (mt/user-http-request :crowberto :get 200 "search" :q "test" :created_at "2000-01-01")
-      (is (empty? (snowplow-test/pop-event-data-and-user-id!))))))
 
 (deftest filter-by-creator-test
   (let [search-term "Created by Filter"]
@@ -1498,6 +1410,34 @@
                (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term
                                           :filter_items_in_personal_collection "exclude"))))))))
 
+(deftest collection-effective-parent-test
+  (mt/with-temp [:model/Collection coll-1  {:name "Collection 1"}
+                 :model/Collection coll-2  {:name "Collection 2", :location (collection/location-path coll-1)}
+                 :model/Collection _coll-3 {:name "Collection 3", :location (collection/location-path coll-1 coll-2)}]
+    (testing "Collection search results are properly hydrated with their effective parent in the :collection field"
+      (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
+        (is (= {:id              (u/the-id coll-2)
+                :name            "Collection 2"
+                :authority_level nil
+                :type            nil}
+               (-> result :data first :collection))))
+
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-2)
+      (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
+        (is (= {:id              (u/the-id coll-1)
+                :name            "Collection 1"
+                :authority_level nil
+                :type            nil}
+               (-> result :data first :collection))))
+
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-1)
+      (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
+        (is (= {:id              "root"
+                :name            "Our analytics"
+                :authority_level nil
+                :type            nil}
+               (-> result :data first :collection)))))))
+
 (deftest archived-search-results-with-no-write-perms-test
   (testing "Results which the searching user has no write permissions for are filtered out. (#24018, #33602)"
     ;; note that the collection does not start out archived, so that we can revoke/grant permissions on it
@@ -1587,12 +1527,12 @@
         (testing "the collection data includes the type under `item.type` for collections"
           (is (every? #(contains? % :type)
                       (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
-                              :data
-                              (filter #(= (:model %) "collection")))))
+                           :data
+                           (filter #(= (:model %) "collection")))))
           (is (not-any? #(contains? % :type)
                         (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
-                              :data
-                              (remove #(= (:model %) "collection"))))))
+                             :data
+                             (remove #(= (:model %) "collection"))))))
         (testing "`item.type` is correct for collections"
           (is (= #{"meow mix"} (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
                                  :data

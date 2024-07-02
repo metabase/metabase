@@ -15,6 +15,7 @@ import {
   assertQueryBuilderRowCount,
   entityPickerModal,
   entityPickerModalTab,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -63,7 +64,7 @@ describe("scenarios > question > nested", () => {
       { loadBaseQuestionMetadata: true },
     );
 
-    openHeaderCellContextMenu("Count");
+    tableHeaderClick("Count");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Distribution").click();
     cy.wait("@dataset");
@@ -75,7 +76,7 @@ describe("scenarios > question > nested", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Nested GUI").click();
 
-    openHeaderCellContextMenu("Count");
+    tableHeaderClick("Count");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sum over time").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -101,7 +102,7 @@ describe("scenarios > question > nested", () => {
       { loadBaseQuestionMetadata: true },
     );
 
-    openHeaderCellContextMenu("COUNT");
+    tableHeaderClick("COUNT");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Distribution").click();
     cy.wait("@dataset");
@@ -112,7 +113,7 @@ describe("scenarios > question > nested", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Nested SQL").click();
 
-    openHeaderCellContextMenu("COUNT");
+    tableHeaderClick("COUNT");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sum over time").click();
     cy.wait("@dataset");
@@ -260,8 +261,7 @@ describe("scenarios > question > nested", () => {
     createNestedQuestion({ baseQuestionDetails });
 
     // The column title
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Products → Category").click();
+    tableHeaderClick("Products → Category");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Distribution").click();
     cy.wait("@dataset");
@@ -623,14 +623,5 @@ function visitNestedQueryAdHoc(id) {
       type: "query",
       query: { "source-table": `card__${id}` },
     },
-  });
-}
-
-function openHeaderCellContextMenu(cell) {
-  cy.findByTestId("TableInteractive-root").within(() => {
-    cy.findAllByTestId("header-cell")
-      .should("be.visible")
-      .contains(cell)
-      .click();
   });
 }

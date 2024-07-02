@@ -42,16 +42,14 @@
   "Schema for a valid `Field` visibility type."
   (into [:enum] (map name field/visibility-types)))
 
-(api/defendpoint GET "/:id"
+(defn get-field
   "Get `Field` with ID."
-  [id include_editable_data_model]
-  {id                          ms/PositiveInt
-   include_editable_data_model ms/BooleanValue}
-  (let [field                       (-> (api/check-404 (t2/select-one Field :id id))
-                                        (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
-        field                       (if include_editable_data_model
-                                      (field/hydrate-target-with-write-perms field)
-                                      (t2/hydrate field :target))]
+  [id {:keys [include-editable-data-model?]}]
+  (let [field (-> (api/check-404 (t2/select-one Field :id id))
+                  (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
+        field (if include-editable-data-model?
+                (field/hydrate-target-with-write-perms field)
+                (t2/hydrate field :target))]
     ;; Normal read perms = normal access.
     ;;
     ;; There's also a special case where we allow you to fetch a Field even if you don't have full read permissions for
@@ -60,11 +58,25 @@
     ;; differently in other endpoints such as the FieldValues fetching endpoint.
     ;;
     ;; Check for permissions and throw 403 if we don't have them...
-    (if include_editable_data_model
+    (if include-editable-data-model?
       (api/write-check Table (:table_id field))
       (api/check-403 (mi/can-read? field)))
     ;; ...but if we do, return the Field <3
     field))
+
+(defn get-fields
+  "Get `Field`s with IDs in `ids`."
+  [ids]
+  (when (seq ids)
+    (-> (filter mi/can-read? (t2/select Field :id [:in ids]))
+        (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))))
+
+(api/defendpoint GET "/:id"
+  "Get `Field` with ID."
+  [id include_editable_data_model]
+  {id                          ms/PositiveInt
+   include_editable_data_model ms/BooleanValue}
+  (get-field id {:include-editable-data-model? include_editable_data_model}))
 
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
@@ -228,9 +240,6 @@
 
 ;;; -------------------------------------------------- FieldValues ---------------------------------------------------
 
-(def ^:private empty-field-values
-  {:values []})
-
 (declare search-values)
 
 (mu/defn field->values :- ms/FieldValuesResult
@@ -266,15 +275,6 @@
   {id ms/PositiveInt}
   (let [field (api/read-check (t2/select-one Field :id id))]
     (field->values field)))
-
-;; match things like GET /field%2Ccreated_at%2options
-;; (this is how things like [field,created_at,{:base-type,:type/Datetime}] look when URL-encoded)
-(api/defendpoint GET "/field%2C:field-name%2C:options/values"
-  "Implementation of the field values endpoint for fields in the Saved Questions 'virtual' DB. This endpoint is just a
-  convenience to simplify the frontend code. It just returns the standard 'empty' field values response."
-  ;; we don't actually care what field-name or field-type are, so they're ignored
-  [_ _]
-  empty-field-values)
 
 (defn- validate-human-readable-pairs
   "Human readable values are optional, but if present they must be present for each field value. Throws if invalid,

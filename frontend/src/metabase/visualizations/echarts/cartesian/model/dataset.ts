@@ -45,6 +45,7 @@ import type {
 import { tryGetDate } from "../utils/timeseries";
 
 import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";
+import { getBarSeriesDataLabelKey, getColumnScaling } from "./util";
 
 /**
  * Sums two metric column values.
@@ -92,6 +93,11 @@ export const getDatasetKey = (
   return `${datasetKey}:${breakoutValue}`;
 };
 
+interface DatasetColumnInfo {
+  column: DatasetColumn;
+  isMetric: boolean;
+}
+
 /**
  * Aggregates metric column values in a datum for a given row.
  * When a breakoutIndex is specified it aggregates metrics per breakout value.
@@ -105,14 +111,14 @@ export const getDatasetKey = (
  */
 const aggregateColumnValuesForDatum = (
   datum: Record<DataKey, RowValue>,
-  columns: DatasetColumn[],
+  columns: DatasetColumnInfo[],
   row: RowValue[],
   cardId: number,
   dimensionIndex: number,
   breakoutIndex: number | undefined,
   showWarning?: ShowWarning,
 ): void => {
-  columns.forEach((column, columnIndex) => {
+  columns.forEach(({ column, isMetric }, columnIndex) => {
     const rowValue = row[columnIndex];
     const isDimensionColumn = columnIndex === dimensionIndex;
 
@@ -122,9 +128,11 @@ const aggregateColumnValuesForDatum = (
         : getDatasetKey(column, cardId, row[breakoutIndex]);
 
     // The dimension values should not be aggregated, only metrics
-    if (isMetric(column) && !isDimensionColumn) {
+    if (isMetric && !isDimensionColumn) {
       if (seriesKey in datum) {
-        showWarning?.(unaggregatedDataWarning(columns[dimensionIndex]).text);
+        showWarning?.(
+          unaggregatedDataWarning(columns[dimensionIndex].column).text,
+        );
       }
 
       datum[seriesKey] = sumMetric(datum[seriesKey], rowValue);
@@ -158,11 +166,15 @@ export const getJoinedCardsDataset = (
       card,
       data: { rows, cols },
     } = cardSeries;
-    const columns = cardsColumns[index];
+    const datasetColumns = cols.map(column => ({
+      column,
+      isMetric: isMetric(column),
+    }));
+    const chartColumns = cardsColumns[index];
 
-    const dimensionIndex = columns.dimension.index;
+    const dimensionIndex = chartColumns.dimension.index;
     const breakoutIndex =
-      "breakout" in columns ? columns.breakout.index : undefined;
+      "breakout" in chartColumns ? chartColumns.breakout.index : undefined;
 
     for (const row of rows) {
       const dimensionValue = row[dimensionIndex];
@@ -178,7 +190,7 @@ export const getJoinedCardsDataset = (
 
       aggregateColumnValuesForDatum(
         datum,
-        cols,
+        datasetColumns,
         row,
         card.id,
         dimensionIndex,
@@ -356,13 +368,15 @@ function getStackedValueTransformFunction(
       const rawBelowTotal = belowSeriesKeys
         .map(belowSeriesKey => datum[belowSeriesKey])
         .reduce((total: number, rowValue) => {
-          const value = getNumberOrZero(rowValue);
-
-          if (sign === "+" && value >= 0) {
-            return total + value;
+          if (typeof rowValue !== "number") {
+            return total;
           }
-          if (sign === "-" && value < 0) {
-            return total + value;
+
+          if (sign === "+" && rowValue >= 0) {
+            return total + rowValue;
+          }
+          if (sign === "-" && rowValue < 0) {
+            return total + rowValue;
           }
           return total;
         }, 0);
@@ -390,7 +404,7 @@ function getStackedValueTransformFunction(
   };
 }
 
-function getStackedValueTransfom(
+function getStackedValueTransform(
   settings: ComputedVisualizationSettings,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   stackModels: StackModel[],
@@ -419,15 +433,69 @@ function getStackedDataLabelTransform(
       const transformedDatum = { ...datum };
 
       seriesDataKeys.forEach(seriesDataKey => {
-        if (getNumberOrZero(datum[seriesDataKey]) > 0) {
+        const value = datum[seriesDataKey];
+        if (typeof value !== "number") {
+          return;
+        }
+
+        if (value >= 0) {
           transformedDatum[POSITIVE_STACK_TOTAL_DATA_KEY] = Number.MIN_VALUE;
         }
-        if (getNumberOrZero(datum[seriesDataKey]) < 0) {
+        if (value < 0) {
           transformedDatum[NEGATIVE_STACK_TOTAL_DATA_KEY] = -Number.MIN_VALUE;
         }
       });
 
       return transformedDatum;
+    },
+  };
+}
+
+function getBarSeriesDataLabelTransform(
+  barSeriesModels: SeriesModel[],
+): ConditionalTransform {
+  return {
+    condition: barSeriesModels.length > 0,
+    fn: (datum: Datum) => {
+      const transforedDatum = { ...datum };
+
+      barSeriesModels.forEach(({ dataKey }) => {
+        const value = datum[dataKey];
+        if (typeof value !== "number") {
+          return;
+        }
+        if (value >= 0) {
+          transforedDatum[getBarSeriesDataLabelKey(dataKey, "+")] =
+            Number.MIN_VALUE;
+        }
+        if (value < 0) {
+          transforedDatum[getBarSeriesDataLabelKey(dataKey, "-")] =
+            -Number.MIN_VALUE;
+        }
+      });
+
+      return transforedDatum;
+    },
+  };
+}
+
+/**
+ * Replaces zero values with nulls for bar series so that we can use minHeight ECharts option
+ * to set minimum bar height for all non-zero values because it applies to bars with zero values too.
+ */
+function getBarSeriesZeroToNullTransform(
+  barSeriesModels: SeriesModel[],
+): ConditionalTransform {
+  return {
+    condition: barSeriesModels.length > 0,
+    fn: (datum: Datum) => {
+      const transforedDatum = { ...datum };
+
+      barSeriesModels.forEach(({ dataKey }) => {
+        transforedDatum[dataKey] = datum[dataKey] === 0 ? null : datum[dataKey];
+      });
+
+      return transforedDatum;
     },
   };
 }
@@ -455,6 +523,8 @@ export function filterNullDimensionValues(
 const Y_AXIS_CROSSING_ERROR = Error(
   t`Y-axis must not cross 0 when using log scale.`,
 );
+
+export const NO_X_AXIS_VALUES_ERROR_MESSAGE = t`There is no data to display. Check the query to ensure there are non-null x-axis values.`;
 
 export function replaceZeroesForLogScale(
   dataset: ChartDataset,
@@ -569,6 +639,40 @@ const interpolateTimeSeriesData = (
   return result;
 };
 
+export function scaleDataset(
+  dataset: ChartDataset,
+  seriesModels: SeriesModel[],
+  settings: ComputedVisualizationSettings,
+): ChartDataset {
+  const scalingByDataKey: Record<DataKey, number> = {};
+  for (const seriesModel of seriesModels) {
+    scalingByDataKey[seriesModel.dataKey] = getColumnScaling(
+      seriesModel.column,
+      settings,
+    );
+  }
+
+  const transformFn = (datum: Datum) => {
+    const transformedRecord = { ...datum };
+    for (const seriesModel of seriesModels) {
+      const scale = scalingByDataKey[seriesModel.dataKey];
+
+      const key = seriesModel.dataKey;
+      if (key in datum) {
+        const scaledValue = Number.isFinite(datum[key])
+          ? (datum[key] as number) * scale
+          : null;
+        transformedRecord[key] = scaledValue;
+      }
+    }
+    return transformedRecord;
+  };
+
+  return dataset.map(datum => {
+    return transformFn(datum);
+  });
+}
+
 const getYAxisScaleTransforms = (
   seriesModels: SeriesModel[],
   stackModels: StackModel[],
@@ -586,7 +690,7 @@ const getYAxisScaleTransforms = (
     nonStackedSeriesKeys,
     value => yAxisScaleTransforms.toEChartsAxisValue(value),
   );
-  const stackedTransforms = getStackedValueTransfom(
+  const stackedTransforms = getStackedValueTransform(
     settings,
     yAxisScaleTransforms,
     stackModels,
@@ -614,6 +718,12 @@ export const applyVisualizationSettingsDataTransformations = (
   settings: ComputedVisualizationSettings,
   showWarning?: ShowWarning,
 ) => {
+  const barSeriesModels = seriesModels.filter(seriesModel => {
+    const seriesSettings = settings.series(
+      seriesModel.legacySeriesSettingsObjectKey,
+    );
+    return seriesSettings.display === "bar";
+  });
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
 
   if (
@@ -622,6 +732,9 @@ export const applyVisualizationSettingsDataTransformations = (
     xAxisModel.isHistogram
   ) {
     dataset = filterNullDimensionValues(dataset, showWarning);
+    if (dataset.length === 0) {
+      throw new Error(NO_X_AXIS_VALUES_ERROR_MESSAGE);
+    }
   }
 
   if (settings["graph.y_axis.scale"] === "log") {
@@ -665,6 +778,7 @@ export const applyVisualizationSettingsDataTransformations = (
       }),
     },
     getStackedDataLabelTransform(settings, seriesDataKeys),
+    getBarSeriesDataLabelTransform(barSeriesModels),
     {
       condition:
         settings["stackable.stack_type"] != null &&
@@ -675,6 +789,7 @@ export const applyVisualizationSettingsDataTransformations = (
           ?.seriesKeys ?? [],
       ),
     },
+    getBarSeriesZeroToNullTransform(barSeriesModels),
   ]);
 };
 

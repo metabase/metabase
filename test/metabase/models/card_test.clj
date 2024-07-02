@@ -3,12 +3,15 @@
    [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
+   [metabase.api.common :as api]
+   [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.card :as card]
+   [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.card-test :as qp.card-test]
@@ -181,11 +184,13 @@
 
 (deftest replace-fields-and-tables!-test
   (testing "fields and tables in a native card can be replaced"
-    (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}]
-      (card/replace-fields-and-tables! card {:fields {(mt/id :orders :total) (mt/id :people :name)}
-                                             :tables {(mt/id :orders) (mt/id :people)}})
-      (is (= "SELECT NAME FROM PEOPLE"
-             (:query (:native (t2/select-one-fn :dataset_query :model/Card :id card-id))))))))
+    ;; We need the user to be defined in order to population the new revision related to the card update
+    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}]
+        (card/replace-fields-and-tables! card {:fields {(mt/id :orders :total) (mt/id :people :name)}
+                                               :tables {(mt/id :orders) (mt/id :people)}})
+        (is (= "SELECT NAME FROM PEOPLE"
+               (:query (:native (t2/select-one-fn :dataset_query :model/Card :id card-id)))))))))
 
 ;;; ------------------------------------------ Circular Reference Detection ------------------------------------------
 
@@ -839,9 +844,9 @@
                          ;; we don't need a description for made_public_by_id because whenever this field changes
                          ;; public_uuid will change and we have a description for it.
                          :made_public_by_id
-                         ;; similarly, we don't need a description for `trashed_from_collection_id` because whenever
+                         ;; similarly, we don't need a description for `archived_directly` because whenever
                          ;; this field changes `archived` will also change and we have a description for that.
-                         :trashed_from_collection_id
+                         :archived_directly
                          ;; we don't expect a description for this column because it should never change
                          ;; once created by the migration
                          :dataset_query_metrics_v2_migration_backup} col)
@@ -937,7 +942,7 @@
    (is (= [2 1 0]
           (map :parameter_usage_count (t2/hydrate [card1 card2 card3] :parameter_usage_count))))))
 
-(deftest average-query-time-and-last-query-started-test
+(deftest ^:parallel average-query-time-and-last-query-started-test
   (let [now       (t/offset-date-time)
         yesterday (t/minus now (t/days 1))]
     (mt/with-temp
@@ -951,7 +956,14 @@
                                    :cache_hit    false
                                    :running_time 100}]
       (is (= 75 (-> card (t2/hydrate :average_query_time) :average_query_time int)))
-      (is (= now (-> card (t2/hydrate :last_query_start) :last_query_start))))))
+      ;; the DB might save last_query_start with a different level of precision than the JVM does, on my machine
+      ;; `offset-date-time` returns nanosecond precision (9 decimal places) but `last_query_start` is coming back with
+      ;; microsecond precision (6 decimal places). We don't care about such a small difference, just strip it off of the
+      ;; times we're comparing.
+      (is (= (.withNano now 0)
+             (-> (-> card (t2/hydrate :last_query_start) :last_query_start)
+                 t/offset-date-time
+                 (.withNano 0)))))))
 
 (deftest save-mlv2-card-test
   (testing "App DB CRUD should work for a Card with an MLv2 query (#39024)"
@@ -995,3 +1007,32 @@
                      :table_id      (mt/id :orders)
                      :database_id   (mt/id)}
                     (t2/select-one :model/Card :id (u/the-id card))))))))))
+
+(deftest can-run-adhoc-query-test
+  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        venues            (lib.metadata/table metadata-provider (mt/id :venues))
+        query             (lib/query metadata-provider venues)]
+    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (mt/with-temp [:model/Card card {:dataset_query query}
+                     :model/Card no-query {}]
+        (is (=? {:can_run_adhoc_query true}
+                (t2/hydrate card :can_run_adhoc_query)))
+        (is (=? {:can_run_adhoc_query false}
+                (t2/hydrate no-query :can_run_adhoc_query)))))))
+
+(deftest audit-card-permisisons-test
+  (testing "Cards in audit collections are not readable or writable on OSS, even if they exist (#42645)"
+    ;; Here we're testing the specific scenario where an EE instance is downgraded to OSS, but still has the audit
+    ;; collections and cards installed. Since we can't load audit content on OSS, let's just redef the audit collection
+    ;; to a temp collection and ensure permission checks work properly.
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       card       {:collection_id (:id collection)}]
+        (with-redefs [audit/default-audit-collection (constantly collection)]
+          (mt/with-test-user :rasta
+            (is (false? (mi/can-read? card)))
+            (is (false? (mi/can-write? card))))
+
+          (mt/with-test-user :crowberto
+            (is (false? (mi/can-read? card)))
+            (is (false? (mi/can-write? card)))))))))

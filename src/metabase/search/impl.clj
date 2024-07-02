@@ -5,6 +5,8 @@
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
@@ -12,7 +14,9 @@
    [metabase.models.permissions :as perms]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
+   [metabase.search.config
+    :as search.config
+    :refer [SearchableModel SearchContext]]
    [metabase.search.filter :as search.filter]
    [metabase.search.scoring :as scoring]
    [metabase.search.util :as search.util]
@@ -103,30 +107,24 @@
 
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
-  so we can return its `:name`.
-
-  A brief note here on `collection-join-id` and `collection-permission-id`. What the heck do these represent?
-
-  Permissions on Trashed items work differently than normal permissions. If something is in the trash, you can only
-  see it if you have the relevant permissions on the *original* collection the item was trashed from. This is set as
-  `trashed_from_collection_id`.
-
-  However, the item is actually *in* the Trash, and we want to show that to the frontend. Therefore, we need two
-  different collection IDs. One, the ID we should be checking permissions on, and two, the ID we should be joining to
-  Collections on."
+  so we can return its `:name`."
   [honeysql-query                                :- ms/Map
    model                                         :- :string
    {:keys [current-user-perms
-           filter-items-in-personal-collection]} :- SearchContext]
-  (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms)
-        collection-join-id       (if (= model "collection")
+           filter-items-in-personal-collection
+           archived]} :- SearchContext]
+  (let [visible-collections      (collection/permissions-set->visible-collection-ids
+                                  current-user-perms
+                                  {:include-archived-items :all
+                                   :include-trash-collection? true
+                                   :permission-level (if archived
+                                                       :write
+                                                       :read)})
+        collection-id-col        (if (= model "collection")
                                    :collection.id
                                    :collection_id)
-        collection-permission-id (if (= model "collection")
-                                   :collection.id
-                                   (mi/parent-collection-id-column-for-perms (:db-model (search.config/model-to-db-model model))))
         collection-filter-clause (collection/visible-collection-ids->honeysql-filter-clause
-                                  collection-permission-id
+                                  collection-id-col
                                   visible-collections)]
     (cond-> honeysql-query
       true
@@ -134,7 +132,7 @@
       ;; add a JOIN against Collection *unless* the source table is already Collection
       (not= model "collection")
       (sql.helpers/left-join [:collection :collection]
-                             [:= collection-join-id :collection.id])
+                             [:= collection-id-col :collection.id])
 
       (some? filter-items-in-personal-collection)
       (sql.helpers/where
@@ -155,7 +153,7 @@
                 [:and [:= :collection.personal_owner_id nil]]
                 (for [id (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])]
                   [:not-like :collection.location (format "/%d/%%" id)]))
-               [:= collection-join-id nil]))))))
+               [:= collection-id-col nil]))))))
 
 (mu/defn ^:private add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
@@ -298,16 +296,14 @@
             (or (contains? current-user-perms "/collection/root/")
                 (contains? current-user-perms "/collection/root/read/"))
 
-            collection-id [:coalesce :model.trashed_from_collection_id :collection_id]
-
             collection-perm-clause
             [:or
-             (when has-root-access? [:= collection-id nil])
+             (when has-root-access? [:= :collection_id nil])
              [:and
-              [:not= collection-id nil]
+              [:not= :collection_id nil]
               [:or
-               (has-perm-clause "/collection/" collection-id "/")
-               (has-perm-clause "/collection/" collection-id "/read/")]]]]
+               (has-perm-clause "/collection/" :collection_id "/")
+               (has-perm-clause "/collection/" :collection_id "/read/")]]]]
         (sql.helpers/where
          query
          collection-perm-clause)))))
@@ -499,9 +495,9 @@
         ;; the set of all collection IDs where we *don't* know the collection name. For example, if `col-id->info`
         ;; contained `{1 {:effective_location "/2/" :name "Foo"}}`, we need to look up the name of collection `2`.
         to-fetch     (into #{} (comp (keep :effective_location)
-                                      (mapcat collection/location-path->ids)
+                                     (mapcat collection/location-path->ids)
                                       ;; already have these names
-                                      (remove col-id->info))
+                                     (remove col-id->info))
                             (vals col-id->info))
         ;; the now COMPLETE map of collection IDs to info
         col-id->info (merge (if (seq to-fetch)
@@ -517,6 +513,67 @@
                                         (map col-id->info))
                                    []))))]
     (map annotate search-results)))
+
+(defn- add-collection-effective-location
+  "Batch-hydrates :effective_location and :effective_parent on collection search results. Keeps search results in
+  order."
+  [search-results]
+  (let [collections    (filter #(mi/instance-of? :model/Collection %) search-results)
+        hydrated-colls (t2/hydrate collections :effective_parent)
+        idx->coll      (into {} (map (juxt :id identity) hydrated-colls))]
+    (map (fn [search-result]
+           (if (mi/instance-of? :model/Collection search-result)
+             (idx->coll (:id search-result))
+             (assoc search-result :effective_location nil)))
+         search-results)))
+
+;;; TODO OMG mix of kebab-case and snake_case here going to make me throw up, we should use all kebab-case in Clojure
+;;; land and then convert the stuff that actually gets sent over the wire in the REST API to snake_case in the API
+;;; endpoint itself, not in the search impl.
+(defn serialize
+  "Massage the raw result from the DB and match data into something more useful for the client"
+  [{:as result :keys [all-scores relevant-scores name display_name collection_id collection_name
+                      collection_authority_level collection_type collection_effective_ancestors effective_parent
+                      archived_directly model]}]
+  (let [matching-columns    (into #{} (remove nil? (map :column relevant-scores)))
+        match-context-thunk (first (keep :match-context-thunk relevant-scores))]
+    (-> result
+        (assoc
+         :name           (if (and (contains? matching-columns :display_name) display_name)
+                           display_name
+                           name)
+         :context        (when (and match-context-thunk
+                                    (empty?
+                                     (remove matching-columns search.config/displayed-columns)))
+                           (match-context-thunk))
+         :collection     (if (and archived_directly (not= "collection" model))
+                           (select-keys (collection/trash-collection)
+                                        [:id :name :authority_level :type])
+                           (merge {:id              collection_id
+                                   :name            collection_name
+                                   :authority_level collection_authority_level
+                                   :type            collection_type}
+                                  ;; for  non-root collections, override :collection with the values for its effective parent
+                                  effective_parent
+                                  (when collection_effective_ancestors
+                                    {:effective_ancestors collection_effective_ancestors})))
+         :scores          all-scores)
+        (update :dataset_query (fn [dataset-query]
+                                 (when-let [query (some-> dataset-query json/parse-string)]
+                                   (if (get query "type")
+                                     (mbql.normalize/normalize query)
+                                     (not-empty (lib/normalize query))))))
+        (dissoc
+         :all-scores
+         :relevant-scores
+         :collection_effective_ancestors
+         :collection_id
+         :collection_location
+         :collection_name
+         :collection_type
+         :archived_directly
+         :display_name
+         :effective_parent))))
 
 (defn- add-can-write [row]
   (if (some #(mi/instance-of? % row) [:model/Dashboard :model/Card])
@@ -547,28 +604,31 @@
         xf                 (comp
                             (map t2.realize/realize)
                             (map to-toucan-instance)
-                            (map #(if (t2/instance-of? :model/Collection %)
-                                    (t2/hydrate % :effective_location)
-                                    (assoc % :effective_location nil)))
+                            (map #(if (and (t2/instance-of? :model/Collection %)
+                                           (:archived_directly %))
+                                    (assoc % :location (collection/trash-path))
+                                    %))
                             (map #(cond-> %
                                     (t2/instance-of? :model/Collection %) (assoc :type (:collection_type %))))
                             (map #(cond-> % (t2/instance-of? :model/Collection %) collection/maybe-localize-trash-name))
-                            ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
+                            ;; MySQL returns booleans as `1` or `0` so convert those to boolean as
                             ;; needed
                             (map #(update % :bookmark bit->boolean))
-
                             (map #(update % :archived bit->boolean))
+                            (map #(update % :archived_directly bit->boolean))
+
                             (filter (partial check-permissions-for-model search-ctx))
 
                             (map #(update % :pk_ref json/parse-string))
                             (map add-can-write)
-                            (map (partial scoring/score-and-result (:search-string search-ctx)))
+                            (map #(scoring/score-and-result % (select-keys search-ctx [:search-string :search-native-query])))
 
                             (filter #(pos? (:score %))))
         total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
-                              true hydrate-user-metadata
+                              true                           hydrate-user-metadata
                               (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
-                              true (map scoring/serialize))
+                              true                           (add-collection-effective-location)
+                              true                           (map serialize))
         add-perms-for-col  (fn [item]
                              (cond-> item
                                (mi/instance-of? :model/Collection item)
@@ -602,7 +662,7 @@
    [:limit                               {:optional true} [:maybe ms/Int]]
    [:offset                              {:optional true} [:maybe ms/Int]]
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
-   [:search-native-query                 {:optional true} [:maybe boolean?]]
+   [:search-native-query                 {:optional true} [:maybe true?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]])
 

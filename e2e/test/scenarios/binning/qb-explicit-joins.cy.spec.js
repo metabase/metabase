@@ -10,6 +10,7 @@ import {
   cartesianChartCircle,
   chartPathWithFillColor,
   entityPickerModalTab,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } =
@@ -98,9 +99,10 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.wait("@dataset");
       echartsContainer()
         .get("text")
-        .should("contain", "Q1 1965")
-        .and("contain", "Q1 1972")
-        .and("contain", "Q1 2000");
+        .should("contain", "Q1 1968")
+        .and("contain", "Q1 1978")
+        .and("contain", "Q1 1988")
+        .and("contain", "Q1 1998");
     });
 
     it("should work for number", () => {
@@ -116,7 +118,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
     });
 
-    it("should work for longitude", { tags: "@flaky" }, () => {
+    it("should work for longitude", () => {
       changeBinningForDimension({
         name: "People → Longitude",
         fromBinning: "Auto bin",
@@ -216,8 +218,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     });
 
     it("should work for time series", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("People → Birth Date").click();
+      tableHeaderClick("People → Birth Date");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
@@ -229,9 +230,10 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
       echartsContainer()
         .get("text", { timeout: 1000 })
-        .should("contain", "January 1965")
-        .and("contain", "January 1972")
-        .and("contain", "January 2000");
+        .should("contain", "January 1968")
+        .and("contain", "January 1978")
+        .and("contain", "January 1988")
+        .and("contain", "January 1998");
 
       cartesianChartCircle();
 
@@ -248,12 +250,14 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
         .get("text")
         .should("contain", "Q1 1965")
         .and("contain", "Q1 1972")
+        .and("contain", "Q1 1979")
+        .and("contain", "Q1 1986")
+        .and("contain", "Q1 1993")
         .and("contain", "Q1 2000");
     });
 
     it("should work for number", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Products → Price").click();
+      tableHeaderClick("Products → Price");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
@@ -272,8 +276,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     });
 
     it("should work for longitude", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("People → Longitude").click();
+      tableHeaderClick("People → Longitude");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 

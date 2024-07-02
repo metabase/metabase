@@ -18,17 +18,17 @@
 
 (defn- query-field-ids
   "Find out ids of all fields used in a query. Conforms to the same protocol as [[query-analyzer/field-ids-for-sql]],
-  so returns `{:direct #{...int ids}}` map.
+  so returns `{:explicit #{...int ids}}` map.
 
   Does not track wildcards for queries rendered as tables afterwards."
   [query]
   (case (lib/normalized-query-type query)
     :native     (try
-                  (query-analyzer/field-ids-for-sql query)
+                  (query-analyzer/field-ids-for-native query)
                   (catch Exception e
                     (log/error e "Error parsing SQL" query)))
-    :query      {:direct (mbql.u/referenced-field-ids query)}
-    :mbql/query {:direct (lib.util/referenced-field-ids query)}
+    :query      {:explicit (mbql.u/referenced-field-ids query)}
+    :mbql/query {:explicit (lib.util/referenced-field-ids query)}
     nil))
 
 (defn update-query-fields-for-card!
@@ -39,15 +39,15 @@
   Returns `nil` (and logs the error) if there was a parse error."
   [{card-id :id, query :dataset_query}]
   (try
-    (let [{:keys [direct indirect] :as res} (query-field-ids query)
-          id->row                           (fn [direct? field-id]
-                                              {:card_id          card-id
-                                               :field_id         field-id
-                                               :direct_reference direct?})
-          query-field-rows                  (concat
-                                             (map (partial id->row true) direct)
-                                             (map (partial id->row false) indirect))]
-      ;; when response is `nil`, it's a disabled parser, not unknown columns
+    (let [{:keys [explicit implicit] :as res} (query-field-ids query)
+          id->row                             (fn [explicit? field-id]
+                                                {:card_id            card-id
+                                                 :field_id           field-id
+                                                 :explicit_reference explicit?})
+          query-field-rows                    (concat
+                                               (map (partial id->row true) explicit)
+                                               (map (partial id->row false) implicit))]
+      ;; when the response is `nil`, it's a disabled parser, not unknown columns
       (when (some? res)
         (t2/with-transaction [_conn]
           (let [existing            (t2/select :model/QueryField :card_id card-id)
@@ -57,7 +57,7 @@
                                                 {:id-fn      :field_id
                                                  :to-compare #(dissoc % :id :card_id :field_id)})]
             (when (seq to-delete)
-              ;; this delete seems to break transaction (implicit commit or something) on MySQL, and this `diff`
+              ;; this deletion seems to break transaction (implicit commit or something) on MySQL, and this `diff`
               ;; algo drops its frequency by a lot - which should help with transactions affecting each other a
               ;; lot. Parallel tests in `metabase.models.query.permissions-test` were breaking when delete was
               ;; executed unconditionally on every query change.
@@ -66,6 +66,6 @@
               (t2/insert! :model/QueryField to-create))
             (doseq [item to-update]
               (t2/update! :model/QueryField {:card_id card-id :field_id (:field_id item)}
-                          (select-keys item [:direct_reference])))))))
+                          (select-keys item [:explicit_reference])))))))
     (catch Exception e
       (log/error e "Error updating query fields"))))

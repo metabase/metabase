@@ -20,7 +20,7 @@ From the **+ New** dropdown, select **Question**, then pick your starting data:
 You can start a question from:
 
 - **A model**. A [model](../../data-modeling/models.md) is a special kind of saved question meant to be used as a good starting point for questions. Sometimes these are called derived tables, as they usually pull together data from multiple raw tables.
-- **Raw data**. You'll need to specify the database and the table in that database as the starting point for your question.
+- **Tables**. You'll need to specify the database and the table in that database as the starting point for your question.
 - A **saved question**. You can use the results of any question as the starting point for a new question.
 
 Note that there are some kinds of saved questions that can't be used as source data:
@@ -32,7 +32,7 @@ Note that there are some kinds of saved questions that can't be used as source d
 
 ## The query builder
 
-Once you select your data, Metabase will take you to the query builder. Say you selected **Raw data** > **Sample database** > **Orders**, then you'll see something like this:
+Once you select your data, Metabase will take you to the query builder. Say you selected **Tables** > **Sample database** > **Orders**, then you'll see something like this:
 
 ![Metabase query builder](../images/notebook-editor.png)
 
@@ -74,9 +74,9 @@ Broadly speaking, there are three types of columns, each with their own set of f
 
 - **Numeric columns** let you add filters to only include rows in your table where this number is between two specific values, or is greater or less than a specific value, or is exactly equal to something.
 - **Text or category columns** let you specify that you only want to include data where this column is or isn't a specific option, or you can exclude empty cells in that column.
-- **Date** columns give you a lot of options to filter by specific date ranges, relative date ranges, and more.
+- **Date columns** give you a lot of options to filter by specific date ranges, relative date ranges, and more.
 
-## Filter modal
+## Filter multiple columns
 
 When viewing a table or chart, clicking on the **Filter** will bring up the filter modal:
 
@@ -89,17 +89,19 @@ Here you can add multiple filters to your question in one go. Filter options wil
 One important thing to understand when filtering on a date column is the difference between specific and relative dates:
 
 - **Specific dates** are things like November 1, 2010, or June 3 – July 12, 2017; they always refer to the same date(s).
-- **Relative dates** are things like "the past 30 days," or "the current week;" as time passes, the dates these options refer to _change_. Relative dates are a useful way to set up a filter on a question so that it stays up-to-date by showing you, for example, how many people visited your website in the last 7 days. You can also click on the **...** to specify a **Starting from** option, which lets you offset the relative date range. For example, you could set the range as the "Previous 7 days, starting from 2 days ago".
+- **Relative dates** are things like "the previous 30 days," or "the current week;" as time passes, the dates these options refer to _change_. Relative dates are a useful way to set up a filter on a question so that it stays up-to-date by showing you, for example, how many people visited your website in the last 7 days. You can also click on the **...** to specify a **Starting from** option, which lets you offset the relative date range. For example, you could set the range as the "Previous 7 days, starting from 2 days ago".
 
 ### Filtering by a segment
 
 If your Metabase administrators have created special named filters for the table you're viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are called [**Segments**](../../data-modeling/segments-and-metrics.md), and they're shortcuts to a combination of filters that are commonly used in your organization. They might be called things like “Active Users,” or “Most Popular Products.”
 
-### Filters with `OR`
+### Filter with custom expressions
 
 ![Filter expression](../images/filter-expression.png)
 
-If you have a more complex filter you're trying to express, you can pick **Custom Expression** from the add filter menu to create a filter expression. You can use comparison operators like greater than, `>`, or less than ,`<`, as well as spreadsheet-like functions. For example, `[Subtotal] > 100 OR median([Age]) < 40`. Learn more about writing [expressions](./expressions.md) or skip right to the [list of expressions](./expressions-list.md).
+If you have a more complex filter you're trying to express, you can pick [Custom Expression](./expressions.md) from the add filter menu to create a filter expression. You can use comparison operators like greater than, `>`, or less than ,`<`, as well as spreadsheet-like functions. For example, `[Subtotal] > 100 OR median([Age]) < 40`.
+
+Learn more about writing [expressions](./expressions.md) or skip right to the [list of expressions](./expressions-list.md).
 
 ## Summarizing and grouping by
 
@@ -166,21 +168,25 @@ If you want to jump ahead and learn about [how to change the visualization](../s
 
 ## Drill-through menu
 
-You can also click through questions to explored the data in greater detail.
+When viewing a chart, you can also click through questions to explore the data in greater detail.
 
 ![Drill-through menu](../images/drill-through-menu.png)
 
-The drill-through menu will present different options depending on what you click on. You can then optionally save that exploration as a new question. The drill-through menu is only available for questions built using the query builder. For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/questions/drill-through).
+The drill-through menu will present different options depending on what you click on. You can then optionally save any exploration as a new question. The drill-through menu is only available for questions built using the query builder. For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/questions/drill-through).
 
-## Returning to the notebook editor
+## Column heading drill-through
 
-To return to the notebook editor for a question, click on the show editor button in the upper right.
+When viewing a [table](../sharing/visualizations/table.md), clicking on the heading of a column gives you different options, depending on the columns data type. See [table](../sharing/visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
+
+## Returning to the editor
+
+To return to the editor for a question, click on the **Show editor** button in the upper right.
 
 ![Show editor](../images/show-editor.png)
 
 ## Viewing an individual record's details
 
-To see more info about a given record (a user, order, venue, etc.), click on a record's ID number (or primary key). You can see all fields related to that one record and all connected tables that are hidden in the table view for the sake of readability. To page through the other records in the current table, press the right or left arrow keys, or click on the arrows to the right or left of the screen.
+To see more info about a given record (a user account, order, venue, etc.), click on a record's ID number (or primary key). You can see all fields related to that one record and all connected tables that are hidden in the table view for the sake of readability. To page through the other records in the current table, press the right or left arrow keys, or click on the arrows to the right or left of the screen.
 
 ![Record details](../images/record-details.png)
 
@@ -196,7 +202,7 @@ Custom expressions allow you to use spreadsheet-like functions and simple arithm
 
 ![Custom column](../images/custom-column.png)
 
-Custom columns are helpful when you need to create a new column based on a calculation, such as subtracting the value of one column from another, or extracting a portion of an existing text column. Custom columns that you add aren't permanently added to your table; they'll only be present in the given question.
+Custom columns are helpful when you need to create a new column based on a calculation, such as subtracting the value of one column from another, or extracting a portion of an existing text column. Custom columns that you add aren't permanently added to your table; the columns will only be present in the given question.
 
 You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations.
 
@@ -214,7 +220,7 @@ The sorting step lets you pick one or more columns to sort your results by. For 
 
 ## Setting a row limit
 
-The row limit step lets you limit how many rows you want from the previous results. When used in conjunction with sorting, this can let you do things like create a top-10 list, by first sorting by one of the columns in your result, then adding a row limit of 10. Unlike other steps, the row limit step can only be added at the end of your question.
+The row limit step lets you cap how many rows you want from the previous results. When used in conjunction with sorting, limits can let you do things like create a top-10 list, by first sorting by one of the columns in your result, then adding a row limit of 10. Unlike other steps, the row limit step can only be added at the end of your question. If you do want to add more steps to limited results, you can always save the limited results as a question, then start a _new_ question based on those results.
 
 ## Viewing the SQL that powers your question
 
@@ -234,6 +240,10 @@ You can also convert the question to a [native editor question](../native-editor
 2. Click **Convert the question to SQL** option in the bottom right below the SQL code.
 
 Conversion is a one-way street: you can't convert a SQL question back into a query builder question.
+
+## Caching question results
+
+See [Caching question results](../../configuring-metabase/caching.md#question-caching-policy).
 
 ## Play around with saved questions
 

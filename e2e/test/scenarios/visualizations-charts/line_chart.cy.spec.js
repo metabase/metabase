@@ -99,6 +99,54 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 
+  it("should reset series settings when switching to line chart", () => {
+    visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "area",
+    });
+
+    cy.findByTestId("viz-settings-button").click();
+    openSeriesSettings("Count");
+    cy.icon("bar").click();
+
+    cy.findByTestId("viz-type-button").click();
+
+    cy.icon("line").click();
+
+    // should be a line chart
+    cartesianChartCircleWithColor("#509EE3");
+  });
+
+  it("should reset stacking settings when switching to line chart (metabase#43538)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["avg", ["field", PRODUCTS.PRICE, null]]],
+          breakout: [
+            ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "year" }],
+            ["field", PRODUCTS.CATEGORY, null],
+          ],
+        },
+        type: "query",
+      },
+      display: "bar",
+      visualization_settings: {
+        "stackable.stack_type": "normalized",
+      },
+    });
+
+    cy.findByTestId("viz-type-button").click();
+
+    cy.icon("line").click();
+
+    cartesianChartCircleWithColor("#A989C5");
+
+    // Y-axis scale should not be normalized
+    echartsContainer().findByText("100%").should("not.exist");
+  });
+
   it("should be able to format data point values style independently on multi-series chart (metabase#13095)", () => {
     visitQuestionAdhoc({
       dataset_query: {
@@ -609,7 +657,7 @@ describe("scenarios > visualizations > line chart", () => {
       series.forEach(serie => {
         const [old_name, new_name] = serie;
 
-        cy.findByDisplayValue(old_name).clear().type(new_name);
+        cy.findByDisplayValue(old_name).clear().type(new_name).blur();
       });
 
       modal()
@@ -695,6 +743,11 @@ describe("scenarios > visualizations > line chart", () => {
       dataset_query: testQuery,
       display: "line",
     });
+
+    queryBuilderMain().within(() => {
+      echartsContainer().findByText("Quantity").should("exist");
+    });
+    cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
 
     cy.findByTestId("query-visualization-root")
       .trigger("mousedown", 180, 200)

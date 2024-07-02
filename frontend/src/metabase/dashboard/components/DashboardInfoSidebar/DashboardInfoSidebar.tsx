@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from "react";
+import type { Dispatch, FocusEvent, SetStateAction } from "react";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
@@ -6,25 +6,25 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks";
-import EditableText from "metabase/core/components/EditableText";
 import {
   revertToRevision,
   toggleAutoApplyFilters,
   updateDashboard,
 } from "metabase/dashboard/actions";
+import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
 import { isDashboardCacheable } from "metabase/dashboard/utils";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
-import { Stack, Switch } from "metabase/ui";
+import { Text, Stack, Switch } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import {
   ContentSection,
   DashboardInfoSidebarRoot,
   DescriptionHeader,
+  EditableDescription,
   HistoryHeader,
 } from "./DashboardInfoSidebar.styled";
 
@@ -76,6 +76,8 @@ const DashboardInfoSidebarBody = ({
   setDashboardAttribute,
   setPage,
 }: DashboardSidebarPageProps) => {
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
+
   const { data: revisions } = useRevisionListQuery({
     query: { model_type: "dashboard", model_id: dashboard.id },
   });
@@ -85,10 +87,23 @@ const DashboardInfoSidebarBody = ({
 
   const handleDescriptionChange = useCallback(
     (description: string) => {
-      setDashboardAttribute?.("description", description);
-      dispatch(updateDashboard({ attributeNames: ["description"] }));
+      if (description.length <= DASHBOARD_DESCRIPTION_MAX_LENGTH) {
+        setDashboardAttribute?.("description", description);
+        dispatch(updateDashboard({ attributeNames: ["description"] }));
+      }
     },
     [dispatch, setDashboardAttribute],
+  );
+
+  const handleDescriptionBlur = useCallback(
+    (event: FocusEvent<HTMLTextAreaElement>) => {
+      if (event.target.value.length > DASHBOARD_DESCRIPTION_MAX_LENGTH) {
+        setDescriptionError(
+          t`Must be ${DASHBOARD_DESCRIPTION_MAX_LENGTH} characters or less`,
+        );
+      }
+    },
+    [],
   );
 
   const handleToggleAutoApplyFilters = useCallback(
@@ -102,26 +117,31 @@ const DashboardInfoSidebarBody = ({
   const canWrite = dashboard.can_write && !dashboard.archived;
   const isCacheable = isDashboardCacheable(dashboard);
 
-  const showCaching =
-    canWrite &&
-    PLUGIN_CACHING.isEnabled() &&
-    MetabaseSettings.get("enable-query-caching");
+  const showCaching = canWrite && PLUGIN_CACHING.isEnabled();
 
   return (
     <>
       <ContentSection>
         <DescriptionHeader>{t`About`}</DescriptionHeader>
-        <EditableText
+        <EditableDescription
           initialValue={dashboard.description}
           isDisabled={!canWrite}
           onChange={handleDescriptionChange}
+          onFocus={() => setDescriptionError("")}
+          onBlur={handleDescriptionBlur}
           isOptional
           isMultiline
           isMarkdown
+          hasError={!!descriptionError}
           placeholder={t`Add description`}
           key={`dashboard-description-${dashboard.description}`}
           style={{ fontSize: ".875rem" }}
         />
+        {!!descriptionError && (
+          <Text color="error" size="xs" mt="xs">
+            {descriptionError}
+          </Text>
+        )}
       </ContentSection>
 
       {!dashboard.archived && (

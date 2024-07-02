@@ -150,24 +150,24 @@
           (is (= [["Conchúr Tihomir"]]
                  (mt/rows results))))
         (testing "cols"
-          (is (= [{:display_name "NAME"
-                   :base_type    :type/Text
-                   :effective_type :type/Text
-                   :source       :native
-                   :field_ref    [:field "NAME" {:base-type :type/Text}]
-                   :name         "NAME"}]
-                 (mt/cols results))))))))
+          (is (=? [{:display_name "NAME"
+                    :base_type    :type/Text
+                    :effective_type :type/Text
+                    :source       :native
+                    :field_ref    [:field "NAME" {:base-type :type/Text}]
+                    :name         "NAME"}]
+                  (mt/cols results))))))))
 
 (deftest ^:parallel native-query-date-trunc-test
   (mt/test-driver :h2
     (testing "A native query that doesn't return a column class name metadata should work correctly (#12150)"
-      (is (= [{:display_name "D"
-               :base_type    :type/Date
-               :effective_type :type/Date
-               :source       :native
-               :field_ref    [:field "D" {:base-type :type/Date}]
-               :name         "D"}]
-             (mt/cols (qp/process-query (mt/native-query {:query "SELECT date_trunc('day', DATE) AS D FROM CHECKINS LIMIT 5;"}))))))))
+      (is (=? [{:display_name "D"
+                :base_type    :type/Date
+                :effective_type :type/Date
+                :source       :native
+                :field_ref    [:field "D" {:base-type :type/Date}]
+                :name         "D"}]
+              (mt/cols (qp/process-query (mt/native-query {:query "SELECT date_trunc('day', DATE) AS D FROM CHECKINS LIMIT 5;"}))))))))
 
 (deftest ^:parallel timestamp-with-timezone-test
   (testing "Make sure TIMESTAMP WITH TIME ZONEs come back as OffsetDateTimes."

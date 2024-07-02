@@ -13,7 +13,8 @@ export const ParameterFieldSet = styled(FieldSet)<ParameterFieldSetProps>`
   align-items: center;
   transition: opacity 500ms linear;
   border: 2px solid
-    ${props => (props.fieldHasValueOrFocus ? color("brand") : color("border"))};
+    ${props =>
+      props.fieldHasValueOrFocus ? color("brand") : "var(--mb-color-border)"};
   margin: 0.5em 0;
   padding: 0.25em 1em;
   width: 100%;
@@ -41,16 +42,17 @@ export const ParameterContainer = styled.div<ParameterContainerProps>`
   display: flex;
   align-items: center;
   border: 1px solid
-    ${props => (props.isEditingParameter ? color("brand") : color("border"))};
+    ${props =>
+      props.isEditingParameter ? color("brand") : "var(--mb-color-border)"};
   border-radius: 0.5rem;
   cursor: pointer;
   font-weight: bold;
   min-width: 170px;
   margin: 0.25rem 0.5rem 0.25rem 0;
   padding: 0.5rem;
-  color: ${props => props.isEditingParameter && color("white")};
+  color: ${props => props.isEditingParameter && color("text-white")};
   background-color: ${props =>
-    props.isEditingParameter ? color("brand") : color("white")};
+    props.isEditingParameter ? color("brand") : color("bg-white")};
 `;
 
 export const SettingsIcon = styled(Icon)`

@@ -8,7 +8,7 @@ import {
   TIMELINE_EVENT_DATA_NAME,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
-  CartesianChartModel,
+  BaseCartesianChartModel,
   ChartDataset,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
@@ -30,11 +30,11 @@ import {
 } from "metabase/visualizations/visualizations/CartesianChart/events";
 import type { CardId } from "metabase-types/api";
 
-import { getHoveredEChartsSeriesIndex } from "./utils";
+import { getHoveredEChartsSeriesDataKeyAndIndex } from "./utils";
 
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   timelineEventsModel: TimelineEventsModel | null,
   option: EChartsCoreOption,
   {
@@ -51,6 +51,7 @@ export const useChartEvents = (
     onDeselectTimelineEvents,
     hovered,
     metadata,
+    isDashboard,
   }: VisualizationProps,
 ) => {
   const isBrushing = useRef<boolean>();
@@ -206,11 +207,12 @@ export const useChartEvents = (
         return;
       }
 
-      const hoveredEChartsSeriesIndex = getHoveredEChartsSeriesIndex(
-        chartModel.seriesModels,
-        option,
-        hovered,
-      );
+      const { hoveredSeriesDataKey, hoveredEChartsSeriesIndex } =
+        getHoveredEChartsSeriesDataKeyAndIndex(
+          chartModel.seriesModels,
+          option,
+          hovered,
+        );
 
       if (hovered == null || hoveredEChartsSeriesIndex == null) {
         return;
@@ -220,7 +222,20 @@ export const useChartEvents = (
 
       let dataIndex: number | undefined;
 
-      if (originalDatumIndex != null) {
+      const seriesModel = chartModel.seriesModels.find(
+        seriesModel => seriesModel.dataKey === hoveredSeriesDataKey,
+      );
+      // If hovering a bar series, we highlight the entire series to ensure that
+      // all the data labels show
+      const isBarSeries =
+        seriesModel != null
+          ? settings.series(seriesModel.legacySeriesSettingsObjectKey)
+              .display === "bar"
+          : false;
+      const shouldHighlightEntireSeries =
+        isBarSeries && chartModel.seriesModels.length > 1;
+
+      if (originalDatumIndex != null && !shouldHighlightEntireSeries) {
         // (issue #40215)
         // since some transformed datasets have indexes differing from
         // the original datasets indexes and ECharts uses the transformedDataset
@@ -247,6 +262,7 @@ export const useChartEvents = (
       };
     },
     [
+      settings,
       chartModel.seriesModels,
       chartModel.transformedDataset,
       chartRef,
@@ -307,16 +323,12 @@ export const useChartEvents = (
         settings,
       };
 
-      if (
-        !areMultipleCards &&
-        hasBreakout &&
-        visualizationIsClickable(clickData)
-      ) {
+      if (hasBreakout && visualizationIsClickable(clickData)) {
         onVisualizationClick({
           ...clickData,
           element: event.currentTarget,
         });
-      } else {
+      } else if (isDashboard) {
         onOpenQuestion(seriesModel.cardId);
       }
     },
@@ -327,6 +339,7 @@ export const useChartEvents = (
       visualizationIsClickable,
       onVisualizationClick,
       onOpenQuestion,
+      isDashboard,
     ],
   );
 

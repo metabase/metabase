@@ -2,7 +2,6 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { color } from "metabase/lib/colors";
 
 interface InputContainerProps {
   isPreviewing: boolean;
@@ -26,11 +25,11 @@ export const InputContainer = styled.div<InputContainerProps>`
 
   .${DashboardS.DashCard}:hover &,
   .${DashboardS.DashCard}:focus-within & {
-    border: 1px solid ${color("brand")};
+    border: 1px solid var(--mb-color-brand);
   }
 
   .${DashboardS.DashCard}.resizing & {
-    border: 1px solid ${color("brand")};
+    border: 1px solid var(--mb-color-brand);
   }
 
   ${({ isPreviewing, isEmpty }) =>
@@ -41,8 +40,8 @@ export const InputContainer = styled.div<InputContainerProps>`
   ${({ isEmpty }) =>
     isEmpty &&
     css`
-      border: 1px solid ${color("brand")};
-      color: ${color("text-light")};
+      border: 1px solid var(--mb-color-brand);
+      color: var(--mb-color-text-light);
     `}
 `;
 
@@ -50,7 +49,7 @@ export const TextInput = styled.input`
   border: none;
   background: none;
   max-height: 100%;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1.375rem;
   font-weight: 700;
   height: inherit;

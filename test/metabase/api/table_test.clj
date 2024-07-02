@@ -34,7 +34,8 @@
 (defn- db-details []
   (merge
    (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version
-                         :cache_field_values_schedule :metadata_sync_schedule])
+                         :cache_field_values_schedule :metadata_sync_schedule :uploads_enabled :uploads_schema_name
+                         :uploads_table_prefix])
    {:engine                      "h2"
     :name                        "test-data"
     :is_sample                   false
@@ -610,6 +611,7 @@
                   :schema            "Everything else"
                   :db_id             (:database_id card)
                   :id                card-virtual-table-id
+                  :type              "question"
                   :moderated_status  nil
                   :description       nil
                   :dimension_options (default-dimension-options)
@@ -669,6 +671,7 @@
                     :schema            "Everything else"
                     :db_id             (:database_id card)
                     :id                card-virtual-table-id
+                    :type              "question"
                     :description       nil
                     :moderated_status  nil
                     :dimension_options (default-dimension-options)
@@ -906,6 +909,25 @@
               (is (= (repeat 2 (var-get #'api.table/coordinate-dimension-indexes))
                      (dimension-options))))))))))
 
+(deftest card-type-and-dataset-query-are-returned-with-metadata
+  (testing "GET /api/table/card__:id/query_metadata returns card type"
+    (let [dataset-query (mt/mbql-query venues
+                          {:aggregation  [:sum $price]
+                           :filter       [:> $price 1]
+                           :source-table $$venues})
+          base-card     {:database_id   (mt/id)
+                         :dataset_query dataset-query}]
+      (t2.with-temp/with-temp [Card question base-card
+                               Card model    (assoc base-card :type :model)
+                               Card metric   (assoc base-card :type :metric)]
+        (are [card expected-type] (=? expected-type
+                                      (->> (format "table/card__%d/query_metadata" (:id card))
+                                           (mt/user-http-request :crowberto :get 200)
+                                           ((juxt :type :dataset_query))))
+          question ["question" nil]
+          model    ["model"    nil]
+          metric   ["metric"   some?])))))
+
 (deftest related-test
   (testing "GET /api/table/:id/related"
     (testing "related/recommended entities"
@@ -991,11 +1013,11 @@
   (mt/test-driver :h2
     (mt/with-empty-db
       (testing "Happy path"
-        (mt/with-temporary-setting-values [uploads-enabled true]
+        (upload-test/with-uploads-enabled
           (is (= {:status 200, :body nil}
                  (update-csv-via-api! :metabase.upload/append)))))
       (testing "Failure paths return an appropriate status code and a message in the body"
-        (mt/with-temporary-setting-values [uploads-enabled false]
+        (upload-test/with-uploads-disabled
           (is (= {:status 422, :body {:message "Uploads are not enabled."}}
                  (update-csv-via-api! :metabase.upload/append))))))))
 
@@ -1022,11 +1044,11 @@
   (mt/test-driver :h2
     (mt/with-empty-db
      (testing "Happy path"
-       (mt/with-temporary-setting-values [uploads-enabled true]
+       (upload-test/with-uploads-enabled
          (is (= {:status 200, :body nil}
                 (update-csv-via-api! :metabase.upload/replace)))))
      (testing "Failure paths return an appropriate status code and a message in the body"
-       (mt/with-temporary-setting-values [uploads-enabled false]
+       (upload-test/with-uploads-disabled
          (is (= {:status 422, :body {:message "Uploads are not enabled."}}
                 (update-csv-via-api! :metabase.upload/replace))))))))
 

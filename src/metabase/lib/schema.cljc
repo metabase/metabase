@@ -50,6 +50,9 @@
     ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
     ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
     ;; nil.
+    ;;
+    ;; TODO -- pretty sure this is supposed to be `:params`, not `:args`, and this is allowed to be anything rather
+    ;; than just `literal`... I think we're using the `literal` schema tho for either normalization or serialization
     [:args {:optional true} [:sequential ::literal/literal]]
     ;; the Table/Collection/etc. that this query should be executed against; currently only used for MongoDB, where it
     ;; is required.
@@ -84,19 +87,8 @@
     {:error/message ":fields must be distinct"}
     #'lib.schema.util/distinct-refs?]])
 
-;;; this is just for enabling round-tripping filters with named segment references, i.e. Google Analytics segments.
-;;;
-;;; TODO -- we should just add this to the schema `:mbql.clause/segment`
-(mr/def ::named-segment-reference
-  [:tuple
-   #_tag  [:= :segment]
-   #_opts :map
-   #_name :string])
-
 (mr/def ::filterable
-  [:or
-   [:ref ::expression/boolean]
-   [:ref ::named-segment-reference]])
+  [:ref ::expression/boolean])
 
 (mr/def ::filters
   [:sequential {:min 1} ::filterable])

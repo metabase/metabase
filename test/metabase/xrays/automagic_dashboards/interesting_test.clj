@@ -1,10 +1,9 @@
-(ns metabase.xrays.automagic-dashboards.interesting-test
+(ns ^:mb/once metabase.xrays.automagic-dashboards.interesting-test
   (:require
-   [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase.models :refer [Card Field]]
    [metabase.models.interface :as mi]
-   [metabase.query-processor.async :as qp.async]
+   [metabase.query-processor.metadata :as qp.metadata]
    [metabase.test :as mt]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [metabase.xrays.automagic-dashboards.interesting :as interesting]
@@ -34,9 +33,6 @@
                       {:table table :column column}))))
 
 (deftest ^:parallel field-matching-predicates-test
-  (testing "A Google Analytics dimension will match on field name."
-    (let [fa-fieldspec "ga:name"]
-      (is (= fa-fieldspec ((#'interesting/fieldspec-matcher fa-fieldspec) {:name fa-fieldspec})))))
   (testing "The fieldspec-matcher does not match on ID columns."
     (mt/dataset test-data
       (let [id-field (field :products :id)]
@@ -389,18 +385,16 @@
                  "Profit" {:matches [{:name "DISCOUNT"}
                                      {:name "QUANTITY"}]}}
                 (#'interesting/find-dimensions context
-                  (->> dimension-defs cycle (drop 2) (take 4)))))
+                                               (->> dimension-defs cycle (drop 2) (take 4)))))
         (is (=? {"Date"    {:matches [{:name "Date"}]}
                  "Revenue" {:matches [{:name "DISCOUNT"}
                                       {:name "QUANTITY"}]}}
                 (#'interesting/find-dimensions context
-                                         (->> dimension-defs cycle (drop 3) (take 4)))))))))
+                                               (->> dimension-defs cycle (drop 3) (take 4)))))))))
 
 (defn- result-metadata-for-query [query]
-  (first
-   (a/alts!!
-    [(qp.async/result-metadata-for-query-async query)
-     (a/timeout 1000)])))
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (qp.metadata/legacy-result-metadata query nil))
 
 (deftest ^:parallel candidate-binding-inner-shape-test
   (testing "Ensure we have examples to understand the shape returned from candidate-bindings"

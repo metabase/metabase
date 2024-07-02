@@ -1,12 +1,19 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { openReviewsTable, popover, restore } from "e2e/support/helpers";
+import {
+  openReviewsTable,
+  popover,
+  restore,
+  tableHeaderClick,
+  openTable,
+} from "e2e/support/helpers";
 
-const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
+const { REVIEWS, REVIEWS_ID, ACCOUNTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > drillthroughs > table_drills", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.viewport(1500, 800);
   });
 
   it("should display proper drills on cell click for unaggregated query", () => {
@@ -53,7 +60,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       cy.findByText("View details").should("be.visible");
     });
 
-    cy.get("[data-testid=cell-data]").contains("ID").click({ force: true });
+    tableHeaderClick("ID");
     popover().within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
@@ -63,7 +70,8 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       cy.findByText("Distinct values").should("be.visible");
     });
 
-    cy.get("[data-testid=cell-data]").contains("Reviewer").click();
+    //cy.get("[data-testid=cell-data]").contains("Reviewer").click();
+    tableHeaderClick("Reviewer");
     popover().within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
@@ -74,7 +82,8 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       cy.findByText("Distinct values").should("be.visible");
     });
 
-    cy.get("[data-testid=cell-data]").contains("Rating").click();
+    // cy.get("[data-testid=cell-data]").contains("Rating").click();
+    tableHeaderClick("Rating");
     popover().within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
@@ -124,7 +133,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       cy.findByText("≠").should("be.visible");
     });
 
-    cy.get("[data-testid=cell-data]").contains("Reviewer").click();
+    tableHeaderClick("Reviewer");
     popover().within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
@@ -133,7 +142,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       cy.findByText("Filter by this column").should("be.visible");
     });
 
-    cy.get("[data-testid=cell-data]").contains("Count").click();
+    tableHeaderClick("Count");
     popover().within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
@@ -200,5 +209,38 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     popover()
       .findByText("Drill-through doesn’t work on SQL questions.")
       .should("be.visible");
+  });
+});
+
+describe("scenarios > visualizations > drillthroughs > table_drills > nulls", () => {
+  beforeEach(() => {
+    // It's important to restore to the "setup" to have access to "Accounts" table
+    restore("setup");
+    cy.signInAsAdmin();
+    cy.viewport(1500, 800);
+  });
+
+  it("should display proper drills on a datetime cell click when there is no value (metabase#44101)", () => {
+    const CANCELLED_AT_INDEX = 9;
+
+    openTable({ table: ACCOUNTS_ID, limit: 1 });
+    cy.findAllByRole("gridcell")
+      .eq(CANCELLED_AT_INDEX)
+      .should("have.text", "")
+      .click({ force: true });
+
+    popover().within(() => {
+      cy.findByText("Filter by this date").should("be.visible");
+      cy.findByText("Is empty").should("be.visible");
+      cy.findByText("Not empty").should("be.visible").click();
+    });
+
+    cy.findByTestId("filter-pill").should(
+      "have.text",
+      "Canceled At is not empty",
+    );
+    cy.findAllByRole("gridcell")
+      .eq(CANCELLED_AT_INDEX)
+      .should("not.have.text", "");
   });
 });

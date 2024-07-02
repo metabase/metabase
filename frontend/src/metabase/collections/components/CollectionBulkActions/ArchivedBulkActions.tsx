@@ -3,16 +3,13 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { BulkDeleteConfirmModal } from "metabase/archive/components/BulkDeleteConfirmModal";
+import { canMoveItem, isRootTrashCollection } from "metabase/collections/utils";
 import {
-  canDeleteItem,
-  canMoveItem,
-  isRootTrashCollection,
-} from "metabase/collections/utils";
-import { BulkActionButton } from "metabase/components/BulkActionBar";
-import { color } from "metabase/lib/colors";
+  BulkActionButton,
+  BulkActionDangerButton,
+} from "metabase/components/BulkActionBar";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
-import { Box } from "metabase/ui";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 type ArchivedBulkActionsProps = {
@@ -63,8 +60,8 @@ export const ArchivedBulkActions = ({
 
   // delete
   const canDelete = useMemo(() => {
-    return selected.every(item => canDeleteItem(item, collection));
-  }, [selected, collection]);
+    return selected.every(item => item.can_delete);
+  }, [selected]);
 
   const handleBulkDeletePermanentlyStart = async () => {
     setSelectedItems(selected);
@@ -108,12 +105,12 @@ export const ArchivedBulkActions = ({
       <BulkActionButton onClick={handleBulkMoveStart} disabled={!canMove}>
         {t`Move`}
       </BulkActionButton>
-      <BulkActionButton
+      <BulkActionDangerButton
         onClick={handleBulkDeletePermanentlyStart}
         disabled={!canDelete}
       >
-        <Box c={color("danger")}>{t`Delete permanently`}</Box>
-      </BulkActionButton>
+        {t`Delete permanently`}
+      </BulkActionDangerButton>
 
       {hasSelectedItems && selectedAction === "delete" && (
         <BulkDeleteConfirmModal

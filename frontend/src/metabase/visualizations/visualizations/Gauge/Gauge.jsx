@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import d3 from "d3";
+import * as d3 from "d3";
 import { Component } from "react";
 import * as React from "react";
 import ReactDOM from "react-dom";
@@ -38,10 +38,10 @@ const getBackgroundArcColor = () => color("bg-medium");
 const getSegmentLabelColor = () => color("text-dark");
 const getCenterLabelColor = () => color("text-dark");
 const getArrowFillColor = () => color("text-medium");
-const getArrowStrokeColor = () => "white";
+const getArrowStrokeColor = () => color("bg-white");
 
 // in ems, but within the scaled 100px SVG element
-const FONT_SIZE_SEGMENT_LABEL = 0.25;
+const FONT_SIZE_SEGMENT_LABEL = 0.285;
 const FONT_SIZE_CENTER_LABEL_MIN = 0.5;
 const FONT_SIZE_CENTER_LABEL_MAX = 0.7;
 
@@ -205,8 +205,8 @@ export default class Gauge extends Component {
     const segments = settings["gauge.segments"].filter(segmentIsValid);
 
     // value to angle in radians, clamped
-    const angle = d3.scale
-      .linear()
+    const angle = d3
+      .scaleLinear()
       .domain(range) // NOTE: confusing, but the "range" is the domain for the arc scale
       .range([
         ((ARC_DEGREES / 180) * -Math.PI) / 2,
@@ -356,7 +356,7 @@ const GaugeArc = ({
   onHoverChange,
   onVisualizationClick,
 }) => {
-  const arc = d3.svg
+  const arc = d3
     .arc()
     .outerRadius(OUTER_RADIUS)
     .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
@@ -420,8 +420,8 @@ const GaugeSegmentLabel = ({ position: [x, y], style = {}, children }) => (
     x={x}
     y={y}
     style={{
-      fill: color("text-medium"),
-      fontSize: `${FONT_SIZE_SEGMENT_LABEL}rem`,
+      fill: "var(--mb-color-text-medium)",
+      fontSize: `${FONT_SIZE_SEGMENT_LABEL}em`,
       textAnchor: Math.abs(x) < 5 ? "middle" : x > 0 ? "start" : "end",
       // shift text in the lower half down a bit
       transform:

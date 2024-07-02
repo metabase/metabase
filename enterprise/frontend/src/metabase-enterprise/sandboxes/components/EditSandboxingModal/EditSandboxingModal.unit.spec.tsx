@@ -2,10 +2,12 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupAdhocQueryMetadataEndpoint,
+  setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
-  setupRecentViewsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -16,7 +18,11 @@ import {
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import type { GroupTableAccessPolicy } from "metabase-types/api";
-import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockCardQueryMetadata,
+  createMockCollection,
+} from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   PEOPLE,
@@ -67,7 +73,11 @@ const setup = ({
     collections: [EDITABLE_ROOT_COLLECTION],
     rootCollection: EDITABLE_ROOT_COLLECTION,
   });
-  setupRecentViewsEndpoints([]);
+
+  setupRecentViewsAndSelectionsEndpoints([]);
+  setupAdhocQueryMetadataEndpoint(
+    createMockCardQueryMetadata({ databases: [database] }),
+  );
 
   fetchMock.post("path:/api/mt/gtap/validate", 204);
   fetchMock.get("path:/api/permissions/group/1", {});
@@ -81,6 +91,12 @@ const setup = ({
     });
     fetchMock.get("path:/api/collection/1", EDITABLE_ROOT_COLLECTION);
     setupCardsEndpoints([TEST_CARD]);
+    setupCardQueryMetadataEndpoint(
+      TEST_CARD,
+      createMockCardQueryMetadata({
+        databases: [database],
+      }),
+    );
   }
 
   const onSave = jest.fn();
@@ -114,7 +130,7 @@ describe("EditSandboxingModal", () => {
 
         expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
-        await userEvent.click(screen.getByText("Pick a column"));
+        await userEvent.click(await screen.findByText("Pick a column"));
         await userEvent.click(await screen.findByText("ID"));
 
         await userEvent.click(screen.getByText("Pick a user attribute"));

@@ -2,20 +2,19 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
-import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const LastEditedInfoText = styled(LastEditInfoLabel)`
   ${({ theme }) => {
     return css`
-      color: ${theme.fn.themeColor("text-medium")};
+      color: var(--mb-color-text-medium);
       font-size: ${theme.fontSizes.sm};
       font-weight: 500;
 
       cursor: pointer;
 
       &:hover {
-        color: ${theme.fn.themeColor("brand")};
+        color: var(--mb-color-brand);
       }
     `;
   }}
@@ -29,5 +28,5 @@ export const LastEditedInfoText = styled(LastEditInfoLabel)`
 `;
 
 export const LastEditedInfoTooltip = styled(LastEditInfoLabel)`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
 `;

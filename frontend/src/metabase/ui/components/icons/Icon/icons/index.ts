@@ -87,6 +87,8 @@ import close_component from "./close.svg?component";
 import close_source from "./close.svg?source";
 import cloud_component from "./cloud.svg?component";
 import cloud_source from "./cloud.svg?source";
+import cloud_filled_component from "./cloud_filled.svg?component";
+import cloud_filled_source from "./cloud_filled.svg?source";
 import combine_component from "./combine.svg?component";
 import combine_source from "./combine.svg?source";
 import compare_component from "./compare.svg?component";
@@ -143,6 +145,8 @@ import filter_component from "./filter.svg?component";
 import filter_source from "./filter.svg?source";
 import folder_component from "./folder.svg?component";
 import folder_source from "./folder.svg?source";
+import folder_filled_component from "./folder_filled.svg?component";
+import folder_filled_source from "./folder_filled.svg?source";
 import formula_component from "./formula.svg?component";
 import formula_source from "./formula.svg?source";
 import function_component from "./function.svg?component";
@@ -213,6 +217,8 @@ import line_style_solid_component from "./line_style-solid.svg?component";
 import line_style_solid_source from "./line_style-solid.svg?source";
 import lineandbar_component from "./lineandbar.svg?component";
 import lineandbar_source from "./lineandbar.svg?source";
+import lines_component from "./lines.svg?component";
+import lines_source from "./lines.svg?source";
 import link_component from "./link.svg?component";
 import link_source from "./link.svg?source";
 import list_component from "./list.svg?component";
@@ -317,6 +323,8 @@ import sort_component from "./sort.svg?component";
 import sort_source from "./sort.svg?source";
 import sort_arrows_component from "./sort_arrows.svg?component";
 import sort_arrows_source from "./sort_arrows.svg?source";
+import sparkles_component from "./sparkles.svg?component";
+import sparkles_source from "./sparkles.svg?source";
 import split_component from "./split.svg?component";
 import split_source from "./split.svg?source";
 import sql_component from "./sql.svg?component";
@@ -551,6 +559,10 @@ export const Icons = {
     component: cloud_component,
     source: cloud_source,
   },
+  cloud_filled: {
+    component: cloud_filled_component,
+    source: cloud_filled_source,
+  },
   compare: {
     component: compare_component,
     source: compare_source,
@@ -679,6 +691,10 @@ export const Icons = {
     component: folder_component,
     source: folder_source,
   },
+  folder_filled: {
+    component: folder_filled_component,
+    source: folder_filled_source,
+  },
   gauge: {
     component: gauge_component,
     source: gauge_source,
@@ -790,6 +806,10 @@ export const Icons = {
   line: {
     component: line_component,
     source: line_source,
+  },
+  lines: {
+    component: lines_component,
+    source: lines_source,
   },
   lineandbar: {
     component: lineandbar_component,
@@ -1039,6 +1059,10 @@ export const Icons = {
     component: snippet_component,
     source: snippet_source,
   },
+  sparkles: {
+    component: sparkles_component,
+    source: sparkles_source,
+  },
   star_filled: {
     component: star_filled_component,
     source: star_filled_source,
@@ -1064,10 +1088,12 @@ export const Icons = {
     source: tab_source,
   },
   table: {
+    // for database tables
     component: table_component,
     source: table_source,
   },
   table2: {
+    // for questions with table visualizations
     component: table2_component,
     source: table2_source,
   },

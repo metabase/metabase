@@ -2,7 +2,7 @@
 /*eslint no-use-before-define: "error"*/
 
 import { createSelector } from "@reduxjs/toolkit";
-import d3 from "d3";
+import * as d3 from "d3";
 import { getIn, merge, updateIn } from "icepick";
 import _ from "underscore";
 
@@ -29,10 +29,14 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { getMode as getQuestionMode } from "metabase/visualizations/click-actions/lib/modes";
 import {
+  computeTimeseriesDataInverval,
+  minTimeseriesUnit,
+} from "metabase/visualizations/echarts/cartesian/utils/timeseries";
+import {
   getXValues,
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
-
+import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import {
@@ -42,6 +46,7 @@ import {
 import Question from "metabase-lib/v1/Question";
 import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { isNotNull } from "metabase/lib/types";
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 
 export const getUiControls = state => state.qb.uiControls;
@@ -758,10 +763,6 @@ const getNativeEditorSelectedRange = createSelector(
   uiControls => uiControls && uiControls.nativeEditorSelectedRange,
 );
 
-function isEventWithinDomain(event, xDomain) {
-  return event.timestamp.isBetween(xDomain[0], xDomain[1], undefined, "[]");
-}
-
 export const getIsTimeseries = createSelector(
   [getVisualizationSettings],
   settings => settings && isTimeseries(settings),
@@ -773,9 +774,44 @@ export const getTimeseriesXValues = createSelector(
     isTimeseries && series && settings && getXValues({ series, settings }),
 );
 
+const getTimeseriesDataInterval = createSelector(
+  [
+    getTransformedSeries,
+    getVisualizationSettings,
+    getIsTimeseries,
+    getTimeseriesXValues,
+  ],
+  (series, settings, isTimeseries, xValues) => {
+    if (!isTimeseries || !xValues) {
+      return null;
+    }
+    const columns = series[0]?.data?.cols ?? [];
+    const dimensions = settings?.["graph.dimensions"] ?? [];
+    const dimensionColumns = dimensions.map(dimension =>
+      columns.find(column => column.name === dimension),
+    );
+    const columnUnits = dimensionColumns
+      .map(column =>
+        isAbsoluteDateTimeUnit(column?.unit) ? column.unit : null,
+      )
+      .filter(isNotNull);
+    return computeTimeseriesDataInverval(
+      xValues,
+      minTimeseriesUnit(columnUnits),
+    );
+  },
+);
+
 export const getTimeseriesXDomain = createSelector(
   [getIsTimeseries, getTimeseriesXValues],
-  (isTimeseries, xValues) => xValues && isTimeseries && d3.extent(xValues),
+  (isTimeseries, xValues) => {
+    return (
+      isTimeseries &&
+      Array.isArray(xValues) &&
+      xValues.length > 0 &&
+      d3.extent(xValues)
+    );
+  },
 );
 
 export const getFetchedTimelines = createSelector([getEntities], entities => {
@@ -799,14 +835,40 @@ export const getTransformedTimelines = createSelector(
   },
 );
 
+function isEventWithinDomain(event, xDomain) {
+  return event.timestamp.isBetween(xDomain[0], xDomain[1], undefined, "[]");
+}
+
+function getXDomainForTimelines(xDomain, dataInterval) {
+  // When looking at, let's say, count of orders over years, last year value is Jan 1, 2024
+  // If we filter timeline events up until Jan 1, 2024, we won't see any events from 2024,
+  // so we need to extend xDomain by dataInterval.count * dataInterval.unit to include them
+  if (xDomain && isAbsoluteDateTimeUnit(dataInterval?.unit)) {
+    let maxValue = xDomain[1]
+      .clone()
+      .add(dataInterval.count, dataInterval.unit);
+
+    if (dataInterval.unit !== "hour" && dataInterval.unit !== "minute") {
+      maxValue = maxValue.subtract(1, "day");
+    }
+
+    return [xDomain[0], maxValue];
+  }
+
+  return xDomain;
+}
+
 export const getFilteredTimelines = createSelector(
-  [getTransformedTimelines, getTimeseriesXDomain],
-  (timelines, xDomain) => {
+  [getTransformedTimelines, getTimeseriesXDomain, getTimeseriesDataInterval],
+  (timelines, xDomain, dataInterval) => {
+    const timelineXDomain = getXDomainForTimelines(xDomain, dataInterval);
     return timelines
       .map(timeline =>
         updateIn(timeline, ["events"], events =>
           xDomain
-            ? events.filter(event => isEventWithinDomain(event, xDomain))
+            ? events.filter(event =>
+                isEventWithinDomain(event, timelineXDomain),
+              )
             : events,
         ),
       )
@@ -1003,22 +1065,6 @@ export const getIsEditingInDashboard = state => {
 
 export const getDashboard = state => {
   return getDashboardById(state, getDashboardId(state));
-};
-
-export const canUploadToQuestion = question => state => {
-  const uploadsEnabled = getSetting(state, "uploads-enabled");
-  if (!uploadsEnabled) {
-    return false;
-  }
-  const uploadsDbId = getSetting(state, "uploads-database-id");
-  const canUploadToDb =
-    uploadsDbId === question.databaseId() &&
-    Databases.selectors
-      .getObject(state, {
-        entityId: uploadsDbId,
-      })
-      ?.canUpload();
-  return canUploadToDb;
 };
 
 export const getTemplateTags = createSelector([getCard], card =>

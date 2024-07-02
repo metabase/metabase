@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.config :as config]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.log :as log])
@@ -45,7 +46,7 @@
    (report-timezone-id-if-supported driver/*driver* (lib.metadata/database (qp.store/metadata-provider))))
 
   (^String [driver database]
-   (when (driver/database-supports? driver :set-timezone database)
+   (when (driver.u/supports? driver :set-timezone database)
      (valid-timezone-id (report-timezone-id*)))))
 
 (defn database-timezone-id

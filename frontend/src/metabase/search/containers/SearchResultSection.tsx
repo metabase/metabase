@@ -23,9 +23,13 @@ export const SearchResultSection = ({
         <Text tt="uppercase" fw={700} ml="sm" mb="sm">
           {resultsLabel}
         </Text>
-        {results.map(item => {
+        {results.map((item, index) => {
           return (
-            <SearchResult key={`${item.id}__${item.model}`} result={item} />
+            <SearchResult
+              key={`${item.id}__${item.model}`}
+              result={item}
+              index={index}
+            />
           );
         })}
       </Stack>

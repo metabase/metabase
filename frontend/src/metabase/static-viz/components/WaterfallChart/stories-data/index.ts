@@ -1,4 +1,5 @@
 import customColors from "./custom-colors.json";
+import customYAxisRangeWithColumnScaling from "./custom-y-axis-range-with-column-scaling.json";
 import dataLabelsColumnFormatting from "./data-labels-column-formatting.json";
 import dataLabelsMixed from "./data-labels-mixed.json";
 import dataLabelsTimeseries from "./data-labels-timeseries.json";
@@ -30,6 +31,7 @@ import timeXScaleTwoBarsWithoutTotal from "./time-x-scale-two-bars-without-total
 import timeSeriesDataAsOrdinalXScale from "./timeseries-data-as-ordinal-x-scale.json";
 import timeseriesXScaleUnsorted from "./timeseries-x-scale-unsorted.json";
 import timeseriesXScale from "./timeseries-x-scale.json";
+import twoBarsWithTotal from "./two-bars-with-total.json";
 import unaggregatedLinear from "./unaggregated-linear.json";
 import unaggregatedOrdinal from "./unaggregated-ordinal.json";
 import unaggregatedTimeseries from "./unaggregated-timeseries.json";
@@ -38,6 +40,7 @@ import yAxisCompactWithoutDataLabels from "./y-axis-compact-without-data-labels.
 import yAxisFullWithDataLabels from "./y-axis-full-with-data-labels.json";
 
 export const data = {
+  customYAxisRangeWithColumnScaling,
   yAxisCompactWithoutDataLabels,
   yAxisAutoCompactWithDataLabels,
   yAxisFullWithDataLabels,
@@ -76,4 +79,5 @@ export const data = {
   nullXAxisValue,
   linearNullDimension,
   ordinalNullDimension,
+  twoBarsWithTotal,
 };

@@ -11,7 +11,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErr
 import { color } from "metabase/lib/colors";
 import type { SidebarCacheFormProps } from "metabase/plugins";
 import { Button, Flex, Icon, Title } from "metabase/ui";
-import type { Strategy } from "metabase-types/api";
+import type { CacheStrategy } from "metabase-types/api";
 
 import { SidebarCacheFormBody } from "./SidebarCacheForm.styled";
 import { getItemId, getItemName } from "./utils";
@@ -38,7 +38,7 @@ const SidebarCacheForm_Base = ({
 
   const saveStrategy = useSaveStrategy(id, filteredConfigs, setConfigs, model);
   const saveAndCloseSidebar = useCallback(
-    async (values: Strategy) => {
+    async (values: CacheStrategy) => {
       await saveStrategy(values);
       setPage("default");
     },
@@ -89,6 +89,7 @@ const SidebarCacheForm_Base = ({
           shouldShowName={false}
           onReset={closeSidebar}
           buttonLabels={{ save: t`Save`, discard: t`Cancel` }}
+          isInSidebar
         />
       </DelayedLoadingAndErrorWrapper>
       {confirmationModal}

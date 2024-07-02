@@ -9,6 +9,8 @@ export type LoadingAndErrorWrapperProps = {
   className?: string;
   error: any;
   loading: any;
+  /** Component that indicates that data is loading, for example a spinner */
+  loader?: ReactNode;
   noBackground?: boolean;
   noWrapper?: boolean;
   children?: ReactNode;
@@ -29,15 +31,14 @@ export const DelayedLoadingAndErrorWrapper = ({
   error,
   loading,
   delay = 300,
-  blankComponent = null,
+  loader,
   children,
   ...props
 }: {
   delay?: number;
-  /** This is shown during the delay if `loading` is true */
-  blankComponent?: ReactNode;
 } & LoadingAndErrorWrapperProps) => {
-  const [showWrapper, setShowWrapper] = useState(false);
+  // If delay is zero show the wrapper immediately. Otherwise, apply a timeout
+  const [showWrapper, setShowWrapper] = useState(delay === 0);
 
   props.loadingMessages ??= [];
 
@@ -52,7 +53,8 @@ export const DelayedLoadingAndErrorWrapper = ({
     return <>{children}</>;
   }
   if (!showWrapper) {
-    return <>{blankComponent}</>;
+    // make tests aware that things are loading
+    return <span data-testid="loading-indicator" />;
   }
   return (
     <Transition
@@ -63,9 +65,11 @@ export const DelayedLoadingAndErrorWrapper = ({
     >
       {styles => (
         <div style={styles}>
-          <LoadingAndErrorWrapper error={error} loading={loading} {...props}>
-            {children}
-          </LoadingAndErrorWrapper>
+          {loader ?? (
+            <LoadingAndErrorWrapper error={error} loading={loading} {...props}>
+              {children}
+            </LoadingAndErrorWrapper>
+          )}
         </div>
       )}
     </Transition>

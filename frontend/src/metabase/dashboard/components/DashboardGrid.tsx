@@ -17,6 +17,7 @@ import Modal from "metabase/components/Modal";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import ModalS from "metabase/css/components/modal.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
+import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import {
   isQuestionDashCard,
   getVisibleCardIds,
@@ -39,6 +40,7 @@ import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import type {
   BaseDashboardCard,
   Card,
@@ -128,16 +130,20 @@ type OwnProps = {
   slowCards: Record<DashCardId, boolean>;
   isEditing: boolean;
   isEditingParameter: boolean;
-  isPublic?: boolean;
+  /** If public sharing or static/public embed */
+  isPublicOrEmbedded?: boolean;
   isXray?: boolean;
   isFullscreen: boolean;
   isNightMode: boolean;
+  withCardTitle?: boolean;
   clickBehaviorSidebarDashcard: DashboardCard | null;
-  mode?: Mode;
+  mode?: QueryClickActionsMode | Mode;
   // public dashboard passes it explicitly
   width?: number;
   // public dashboard passes it as noop
-  navigateToNewCardFromDashboard?: () => void;
+  navigateToNewCardFromDashboard?: (
+    opts: NavigateToNewCardFromDashboardOpts,
+  ) => void;
   onEditingChange?: (dashboard: Dashboard | null) => void;
 };
 
@@ -173,6 +179,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     width: 0,
     isEditing: false,
     isEditingParameter: false,
+    withCardTitle: true,
   };
 
   componentDidMount() {
@@ -300,12 +307,24 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       minW = minSize.width;
       minH = minSize.height;
     }
+
+    const w = dashcard.size_x || initialSize.width;
+    const h = dashcard.size_y || initialSize.height;
+
+    if (w < minW) {
+      minW = w;
+    }
+
+    if (h < minH) {
+      minH = h;
+    }
+
     return {
       i: String(dashcard.id),
       x: dashcard.col || 0,
       y: dashcard.row || 0,
-      w: dashcard.size_x || initialSize.width,
-      h: dashcard.size_y || initialSize.height,
+      w,
+      h,
       dashcard: dashcard,
       minW,
       minH,
@@ -343,7 +362,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   getRowHeight() {
     const { width } = this.props;
 
-    const contentViewportElement = this.context;
+    const contentViewportElement = this.context as any;
     const hasScroll =
       contentViewportElement?.clientHeight <
       contentViewportElement?.scrollHeight;
@@ -495,8 +514,9 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         isFullscreen={this.props.isFullscreen}
         isNightMode={this.props.isNightMode}
         isMobile={isMobile}
-        isPublic={this.props.isPublic}
+        isPublicOrEmbedded={this.props.isPublicOrEmbedded}
         isXray={this.props.isXray}
+        withTitle={this.props.withCardTitle}
         onRemove={this.onDashCardRemove}
         onAddSeries={this.onDashCardAddSeries}
         onReplaceCard={this.onReplaceCard}
@@ -597,6 +617,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
   render() {
     const { dashboard, width } = this.props;
+
     return (
       <DashboardGridContainer
         data-testid="dashboard-grid"

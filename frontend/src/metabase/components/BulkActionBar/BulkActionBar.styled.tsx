@@ -20,7 +20,7 @@ export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
 `;
 
 export const ToastCard = styled(Card)`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
 
   padding: 0.75rem ${space(2)};
   display: flex;
@@ -30,17 +30,26 @@ export const ToastCard = styled(Card)`
 `;
 
 export const BulkActionButton = styled(Button)`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
 
-  border-color: ${alpha(color("bg-white"), 0)};
-  background-color: ${alpha(color("bg-white"), 0.1)};
+  border-color: ${() => alpha(color("bg-white"), 0)};
+  background-color: ${() => alpha(color("bg-white"), 0.1)};
+
   :hover {
-    color: ${color("white")};
-    border-color: ${alpha(color("bg-white"), 0)};
-    background-color: ${alpha(color("bg-white"), 0.3)};
+    color: var(--mb-color-text-white);
+    border-color: ${() => alpha(color("bg-white"), 0)};
+    background-color: ${() => alpha(color("bg-white"), 0.3)};
   }
+
   :disabled {
-    border-color: ${alpha(color("bg-white"), 0)};
-    background-color: ${alpha(color("bg-white"), 0.1)};
+    border-color: ${() => alpha(color("bg-white"), 0)};
+    background-color: ${() => alpha(color("bg-white"), 0.1)};
+  }
+` as unknown as typeof Button;
+
+export const BulkActionDangerButton = styled(BulkActionButton)`
+  :hover {
+    color: var(--mb-color-text-white);
+    background-color: var(--mb-color-error);
   }
 ` as unknown as typeof Button;

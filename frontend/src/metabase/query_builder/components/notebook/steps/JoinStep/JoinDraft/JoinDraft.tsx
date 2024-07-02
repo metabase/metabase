@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { Box, Flex, Text } from "metabase/ui";
@@ -32,6 +33,7 @@ export function JoinDraft({
   isReadOnly,
   onJoinChange,
 }: JoinDraftProps) {
+  const databaseId = Lib.databaseID(query);
   const [strategy, setStrategy] = useState(
     () => initialStrategy ?? getDefaultJoinStrategy(query, stageIndex),
   );
@@ -65,7 +67,7 @@ export function JoinDraft({
       newTable,
     );
     if (newConditions.length > 0) {
-      const newJoin = Lib.joinClause(newTable, newConditions);
+      const newJoin = Lib.joinClause(newTable, newConditions, strategy);
       onJoinChange(newJoin);
     } else {
       const newColumns = Lib.joinableColumns(query, stageIndex, newTable);
@@ -78,12 +80,31 @@ export function JoinDraft({
   const handleConditionChange = (newCondition: Lib.JoinCondition) => {
     if (rhsTable) {
       const newJoin = Lib.withJoinFields(
-        Lib.joinClause(rhsTable, [newCondition]),
+        Lib.joinClause(rhsTable, [newCondition], strategy),
         getJoinFields(rhsTableColumns, selectedRhsTableColumns),
       );
       onJoinChange(newJoin);
     }
   };
+
+  const resetStateRef = useLatest(() => {
+    const rhsTableColumns = initialRhsTable
+      ? Lib.joinableColumns(query, stageIndex, initialRhsTable)
+      : [];
+
+    setStrategy(initialStrategy ?? getDefaultJoinStrategy(query, stageIndex));
+    setRhsTable(initialRhsTable);
+    setRhsTableColumns(rhsTableColumns);
+    setSelectedRhsTableColumns(rhsTableColumns);
+    setLhsColumn(undefined);
+  });
+
+  useEffect(
+    function resetStateOnDatabaseChange() {
+      resetStateRef.current();
+    },
+    [databaseId, resetStateRef],
+  );
 
   return (
     <Flex miw="100%" gap="1rem">

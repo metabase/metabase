@@ -1,28 +1,29 @@
+import { useCallback } from "react";
+
 import {
   fetchDashboard,
   fetchDashboardCardData,
-  fetchDashboardCardMetadata,
 } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import type { DashboardId } from "metabase-types/api";
 
 export const useRefreshDashboard = ({
   dashboardId,
-  queryParams,
+  parameterQueryParams,
 }: {
   dashboardId: DashboardId;
-  queryParams: Record<string, unknown>;
+  parameterQueryParams: Record<string, unknown>;
 }): {
   refreshDashboard: () => Promise<void>;
 } => {
   const dispatch = useDispatch();
 
-  const refreshDashboard = async () => {
+  const refreshDashboard = useCallback(async () => {
     if (dashboardId) {
       await dispatch(
         fetchDashboard({
           dashId: dashboardId,
-          queryParams: queryParams,
+          queryParams: parameterQueryParams,
           options: { preserveParameters: true },
         }),
       );
@@ -33,9 +34,8 @@ export const useRefreshDashboard = ({
           clearCache: false,
         }),
       );
-      dispatch(fetchDashboardCardMetadata());
     }
-  };
+  }, [dashboardId, dispatch, parameterQueryParams]);
 
   return { refreshDashboard };
 };

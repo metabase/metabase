@@ -5,9 +5,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.audit-db :as audit-db]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase.audit :as audit]
    [metabase.core :as mbc]
    [metabase.models
     :refer [Action
@@ -19,7 +19,6 @@
             Dimension
             Field
             FieldValues
-            LegacyMetric
             NativeQuerySnippet
             Pulse
             PulseCard
@@ -694,45 +693,6 @@
                       {:model "Schema"     :id "PUBLIC"}
                       {:model "Table"      :id "Customers"}
                       {:model "Field"      :id "name"}]}
-                   (set (serdes/dependencies ser))))))))))
-
-(deftest metrics-test
-  (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [User
-                       {ann-id :id}
-                       {:first_name "Ann"
-                        :last_name  "Wilson"
-                        :email      "ann@heart.band"}
-
-                       Database   {db-id :id}        {:name "My Database"}
-                       Table      {no-schema-id :id} {:name "Schemaless Table" :db_id db-id}
-                       Field      {field-id :id}     {:name "Some Field" :table_id no-schema-id}
-
-                       LegacyMetric
-                       {m1-id  :id
-                        m1-eid :entity_id}
-                       {:name       "My Metric"
-                        :creator_id ann-id
-                        :table_id   no-schema-id
-                        :definition {:source-table no-schema-id
-                                     :aggregation  [[:sum [:field field-id nil]]]}}]
-      (testing "metrics"
-        (let [ser (serdes/extract-one "LegacyMetric" {} (t2/select-one LegacyMetric :id m1-id))]
-          (is (=? {:serdes/meta [{:model "LegacyMetric" :id m1-eid :label "my_metric"}]
-                   :table_id    ["My Database" nil "Schemaless Table"]
-                   :creator_id  "ann@heart.band"
-                   :definition  {:source-table ["My Database" nil "Schemaless Table"]
-                                 :aggregation [[:sum [:field ["My Database" nil "Schemaless Table" "Some Field"] nil]]]}
-                   :created_at  OffsetDateTime}
-                  ser))
-          (is (not (contains? ser :id)))
-
-          (testing "depend on the Table and any fields referenced in :definition"
-            (is (= #{[{:model "Database" :id "My Database"}
-                      {:model "Table" :id "Schemaless Table"}]
-                     [{:model "Database" :id "My Database"}
-                      {:model "Table" :id "Schemaless Table"}
-                      {:model "Field" :id "Some Field"}]}
                    (set (serdes/dependencies ser))))))))))
 
 (deftest native-query-snippets-test
@@ -1658,24 +1618,33 @@
                       (map serdes/path)
                       set)))))))))
 
-(deftest foreign-key-field-test
+(deftest field-references-test
   (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [Database   {db-id         :id}        {:name "My Database"}
-                       Table      {no-schema-id  :id}        {:name "Schemaless Table" :db_id db-id}
-                       Field      {some-field-id :id}        {:name "Some Field" :table_id no-schema-id}
-                       Table      {schema-id     :id}        {:name        "Schema'd Table"
-                                                              :db_id       db-id
-                                                              :schema      "PUBLIC"}
-                       Field      _                          {:name "Other Field" :table_id schema-id}
-                       Field      {fk-id         :id}        {:name     "Foreign Key"
-                                                              :table_id schema-id
-                                                              :fk_target_field_id some-field-id}]
+    (ts/with-temp-dpc [Database   {db-id          :id}        {:name "My Database"}
+                       Table      {no-schema-id   :id}        {:name "Schemaless Table" :db_id db-id}
+                       Field      {some-field-id  :id}        {:name "Some Field" :table_id no-schema-id}
+                       Table      {schema-id      :id}        {:name        "Schema'd Table"
+                                                               :db_id       db-id
+                                                               :schema      "PUBLIC"}
+                       Field      {other-field-id :id}        {:name "Other Field" :table_id schema-id}
+                       Field      {fk-id          :id}        {:name     "Foreign Key"
+                                                               :table_id schema-id
+                                                               :fk_target_field_id some-field-id}
+                       Field      {nested-id      :id}        {:name "Nested Field"
+                                                               :table_id schema-id
+                                                               :parent_id other-field-id}]
 
       (testing "fields that reference foreign keys are properly exported as Field references"
         (is (= ["My Database" nil "Schemaless Table" "Some Field"]
                (->> (t2/select-one Field :id fk-id)
                     (serdes/extract-one "Field" {})
-                    :fk_target_field_id)))))))
+                    :fk_target_field_id))))
+
+      (testing "Fields that reference parents are properly exported as Field references"
+        (is (= ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]
+               (->> (t2/select-one Field :id nested-id)
+                    (serdes/extract-one "Field" {})
+                    :parent_id)))))))
 
 (deftest escape-report-test
   (mt/with-empty-h2-app-db
@@ -1733,8 +1702,8 @@
     (mt/with-empty-h2-app-db
       (mbc/ensure-audit-db-installed!)
       (testing "sanity check that the audit collection exists"
-        (is (some? (audit-db/default-audit-collection)))
-        (is (some? (audit-db/default-custom-reports-collection))))
+        (is (some? (audit/default-audit-collection)))
+        (is (some? (audit/default-custom-reports-collection))))
       (let [ser (extract/extract {:no-settings   true
                                   :no-data-model true})]
         (is (= #{@trash-eid} (by-model "Collection" ser)))))))

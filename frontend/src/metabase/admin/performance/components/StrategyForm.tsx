@@ -31,12 +31,12 @@ import {
 } from "metabase/ui";
 import type {
   CacheableModel,
+  CacheStrategy,
+  CacheStrategyType,
   ScheduleSettings,
   ScheduleStrategy,
-  Strategy,
-  StrategyType,
 } from "metabase-types/api";
-import { DurationUnit } from "metabase-types/api";
+import { CacheDurationUnit } from "metabase-types/api";
 
 import { strategyValidationSchema } from "../constants/complex";
 import { rootId } from "../constants/simple";
@@ -52,6 +52,7 @@ import {
   FormWrapper,
   LoaderInButton,
   StyledForm,
+  StyledFormButtonsGroup,
 } from "./StrategyForm.styled";
 
 interface ButtonLabels {
@@ -68,31 +69,36 @@ export const StrategyForm = ({
   savedStrategy,
   shouldAllowInvalidation = false,
   shouldShowName = true,
-  formStyle = {},
   onReset,
-  buttonLabels = {
-    save: t`Save changes`,
-    discard: t`Discard changes`,
-  },
+  isInSidebar = false,
+  buttonLabels = isInSidebar
+    ? {
+        save: t`Save`,
+        discard: t`Cancel`,
+      }
+    : {
+        save: t`Save changes`,
+        discard: t`Discard changes`,
+      },
 }: {
   targetId: number | null;
   targetModel: CacheableModel;
   targetName: string;
   setIsDirty: (isDirty: boolean) => void;
-  saveStrategy: (values: Strategy) => Promise<void>;
-  savedStrategy?: Strategy;
+  saveStrategy: (values: CacheStrategy) => Promise<void>;
+  savedStrategy?: CacheStrategy;
   shouldAllowInvalidation?: boolean;
   shouldShowName?: boolean;
-  formStyle?: React.CSSProperties;
   onReset?: () => void;
   buttonLabels?: ButtonLabels;
+  isInSidebar?: boolean;
 }) => {
-  const defaultStrategy: Strategy = {
+  const defaultStrategy: CacheStrategy = {
     type: targetId === rootId ? "nocache" : "inherit",
   };
 
   return (
-    <FormProvider<Strategy>
+    <FormProvider<CacheStrategy>
       key={targetId}
       initialValues={savedStrategy ?? defaultStrategy}
       validationSchema={strategyValidationSchema}
@@ -107,8 +113,8 @@ export const StrategyForm = ({
         setIsDirty={setIsDirty}
         shouldAllowInvalidation={shouldAllowInvalidation}
         shouldShowName={shouldShowName}
-        formStyle={formStyle}
         buttonLabels={buttonLabels}
+        isInSidebar={isInSidebar}
       />
     </FormProvider>
   );
@@ -121,8 +127,8 @@ const StrategyFormBody = ({
   setIsDirty,
   shouldAllowInvalidation,
   shouldShowName = true,
-  formStyle = {},
   buttonLabels,
+  isInSidebar,
 }: {
   targetId: number | null;
   targetModel: CacheableModel;
@@ -130,10 +136,10 @@ const StrategyFormBody = ({
   setIsDirty: (isDirty: boolean) => void;
   shouldAllowInvalidation: boolean;
   shouldShowName?: boolean;
-  formStyle?: React.CSSProperties;
   buttonLabels: ButtonLabels;
+  isInSidebar?: boolean;
 }) => {
-  const { dirty, values, setFieldValue } = useFormikContext<Strategy>();
+  const { dirty, values, setFieldValue } = useFormikContext<CacheStrategy>();
   const { setStatus } = useFormContext();
   const [wasDirty, setWasDirty] = useState(false);
 
@@ -153,17 +159,22 @@ const StrategyFormBody = ({
 
   useEffect(() => {
     if (selectedStrategyType === "duration") {
-      setFieldValue("unit", DurationUnit.Hours);
+      setFieldValue("unit", CacheDurationUnit.Hours);
     }
   }, [selectedStrategyType, values, setFieldValue]);
 
+  const headingId = "strategy-form-heading";
+
   return (
     <FormWrapper>
-      <StyledForm style={{ ...formStyle }}>
-        <FormBox className="strategy-form-box">
+      <StyledForm
+        style={{ overflow: isInSidebar ? undefined : "auto" }}
+        aria-labelledby={headingId}
+      >
+        <FormBox>
           {shouldShowName && (
-            <Box lh="1rem" px="lg" py="md" color="text-medium">
-              <Group spacing="lg">
+            <Box lh="1rem" pt="md" color="text-medium">
+              <Group spacing="sm">
                 {targetModel === "database" && (
                   <FixedSizeIcon name="database" color="inherit" />
                 )}
@@ -173,18 +184,21 @@ const StrategyFormBody = ({
               </Group>
             </Box>
           )}
-          <Stack
-            maw="35rem"
-            p="lg"
-            pt={targetId === rootId ? undefined : 0}
-            spacing="xl"
-          >
-            <StrategySelector targetId={targetId} model={targetModel} />
+          <Stack maw="35rem" pt={targetId === rootId ? "xl" : 0} spacing="xl">
+            <StrategySelector
+              targetId={targetId}
+              model={targetModel}
+              headingId={headingId}
+            />
             {selectedStrategyType === "ttl" && (
               <>
                 <Field
                   title={t`Minimum query duration`}
-                  subtitle={t`Metabase will cache all saved questions with an average query execution time greater than this many seconds.`}
+                  subtitle={
+                    <Text size="sm">
+                      {t`Metabase will cache all saved questions with an average query execution time greater than this many seconds.`}
+                    </Text>
+                  }
                 >
                   <PositiveNumberInput
                     strategyType="ttl"
@@ -221,23 +235,24 @@ const StrategyFormBody = ({
           targetName={targetName}
           shouldAllowInvalidation={shouldAllowInvalidation}
           buttonLabels={buttonLabels}
+          isInSidebar={isInSidebar}
         />
       </StyledForm>
     </FormWrapper>
   );
 };
 
-const FormButtonsGroup = ({ children }: { children: ReactNode }) => {
+const FormButtonsGroup = ({
+  children,
+  isInSidebar,
+}: {
+  children: ReactNode;
+  isInSidebar?: boolean;
+}) => {
   return (
-    <Group
-      p="md"
-      px="lg"
-      spacing="md"
-      bg="white"
-      className="form-buttons-group"
-    >
+    <StyledFormButtonsGroup isInSidebar={isInSidebar}>
       {children}
-    </Group>
+    </StyledFormButtonsGroup>
   );
 };
 
@@ -247,6 +262,7 @@ type FormButtonsProps = {
   shouldAllowInvalidation: boolean;
   targetName?: string;
   buttonLabels: ButtonLabels;
+  isInSidebar?: boolean;
 };
 
 const FormButtons = ({
@@ -255,8 +271,9 @@ const FormButtons = ({
   shouldAllowInvalidation,
   targetName,
   buttonLabels,
+  isInSidebar,
 }: FormButtonsProps) => {
-  const { dirty } = useFormikContext<Strategy>();
+  const { dirty } = useFormikContext<CacheStrategy>();
 
   if (targetId === rootId) {
     shouldAllowInvalidation = false;
@@ -268,11 +285,12 @@ const FormButtons = ({
 
   if (isSavingPossible) {
     return (
-      <FormButtonsGroup>
+      <FormButtonsGroup isInSidebar={isInSidebar}>
         <SaveAndDiscardButtons
           dirty={dirty}
           isFormPending={isFormPending}
           buttonLabels={buttonLabels}
+          isInSidebar={isInSidebar}
         />
       </FormButtonsGroup>
     );
@@ -280,7 +298,7 @@ const FormButtons = ({
 
   if (shouldAllowInvalidation && targetId && targetName) {
     return (
-      <FormButtonsGroup>
+      <FormButtonsGroup isInSidebar={isInSidebar}>
         <PLUGIN_CACHING.InvalidateNowButton
           targetId={targetId}
           targetModel={targetModel}
@@ -333,10 +351,12 @@ const SaveAndDiscardButtons = ({
   dirty,
   isFormPending,
   buttonLabels,
+  isInSidebar,
 }: {
   dirty: boolean;
   isFormPending: boolean;
   buttonLabels: ButtonLabels;
+  isInSidebar?: boolean;
 }) => {
   return (
     <>
@@ -344,7 +364,7 @@ const SaveAndDiscardButtons = ({
         {buttonLabels.discard}
       </Button>
       <FormSubmitButton
-        miw="10rem"
+        miw={isInSidebar ? undefined : "10rem"}
         h="40px"
         label={buttonLabels.save}
         successLabel={
@@ -364,13 +384,15 @@ const SaveAndDiscardButtons = ({
 const StrategySelector = ({
   targetId,
   model,
+  headingId,
 }: {
   targetId: number | null;
   model?: CacheableModel;
+  headingId: string;
 }) => {
   const { strategies } = PLUGIN_CACHING;
 
-  const { values } = useFormikContext<Strategy>();
+  const { values } = useFormikContext<CacheStrategy>();
 
   const availableStrategies = useMemo(() => {
     return targetId === rootId ? _.omit(strategies, "inherit") : strategies;
@@ -381,7 +403,7 @@ const StrategySelector = ({
       <FormRadioGroup
         label={
           <Stack spacing="xs">
-            <Text lh="1rem" color="text-medium">
+            <Text lh="1rem" color="text-medium" id={headingId}>
               {t`Select the cache invalidation policy`}
             </Text>
             <Text lh="1rem" fw="normal" size="sm" color="text-medium">
@@ -408,6 +430,7 @@ const StrategySelector = ({
                 key={name}
                 label={optionLabelFormatted}
                 autoFocus={values.type === name}
+                role="radio"
               />
             );
           })}
@@ -421,7 +444,7 @@ export const PositiveNumberInput = ({
   strategyType,
   ...props
 }: {
-  strategyType: StrategyType;
+  strategyType: CacheStrategyType;
 } & Partial<FormTextInputProps>) => {
   return (
     <FormTextInput
@@ -465,7 +488,7 @@ const Field = ({
 };
 
 const getDefaultValueForField = (
-  strategyType: StrategyType,
+  strategyType: CacheStrategyType,
   fieldName?: string,
 ) => {
   return fieldName
@@ -474,26 +497,18 @@ const getDefaultValueForField = (
 };
 
 const MultiplierFieldSubtitle = () => (
-  <div>
+  <Text size="sm">
     {t`To determine how long each cached result should stick around, we take that query's average execution time and multiply that by what you input here. The result is how many seconds the cache should remain valid for.`}{" "}
     <Tooltip
-      events={{
-        hover: true,
-        focus: true,
-        touch: true,
-      }}
+      multiline
       inline={true}
-      styles={{
-        tooltip: {
-          whiteSpace: "normal",
-        },
-      }}
+      position="bottom"
       label={t`If a query takes on average 120 seconds (2 minutes) to run, and you input 10 for your multiplier, its cache entry will persist for 1,200 seconds (20 minutes).`}
       maw="20rem"
     >
-      <Text tabIndex={0} lh="1" display="inline" c="brand">
+      <Text tabIndex={0} size="sm" lh="1" display="inline" c="brand">
         {t`Example`}
       </Text>
     </Tooltip>
-  </div>
+  </Text>
 );

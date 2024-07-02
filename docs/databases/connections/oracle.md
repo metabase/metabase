@@ -71,11 +71,14 @@ For more information on setting up a truststore for AWS RDS Oracle instances, se
 
 If you need to connect to other databases using SSL, instead of creating a new truststore, you'll probably want to add the RDS CA to your existing truststore file (likely called `cacerts`).
 
+## Supported Oracle database and Oracle driver versions
+
+- **Driver version**: the minimum Oracle driver version should be 19c, regardless of which Java version or Oracle database version you have.
+- **Database version**: the minimum database version should be version 19c, as Oracle [no longer supports database versions prior to 19](https://endoflife.date/oracle-database).
+
 ## Downloading the Oracle JDBC Driver JAR
 
 You can download a JDBC driver from [Oracle's JDBC driver downloads page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/index.html).
-
-The minimum driver version should be 19c, regardless of which Java version or Oracle Database version you have.
 
 We recommend using the `ojdbc8.jar` JAR.
 

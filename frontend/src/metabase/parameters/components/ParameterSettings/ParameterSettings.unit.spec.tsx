@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
@@ -44,7 +44,9 @@ describe("ParameterSidebar", () => {
     await fillValue(labelInput, "");
     // expect there to be an error message with the text "Required"
     expect(screen.getByText(/required/i)).toBeInTheDocument();
-    labelInput.blur();
+    act(() => {
+      labelInput.blur();
+    });
     // when the input blurs, the value should have reverted to the original
     expect(onChangeName).not.toHaveBeenCalled();
     expect(labelInput).toHaveValue("foo");
@@ -53,7 +55,9 @@ describe("ParameterSidebar", () => {
 
     // sanity check with a non-blank value
     await fillValue(labelInput, "bar");
-    labelInput.blur();
+    act(() => {
+      labelInput.blur();
+    });
     expect(onChangeName).toHaveBeenCalledWith("bar");
     expect(labelInput).toHaveValue("bar");
   });
@@ -71,7 +75,9 @@ describe("ParameterSidebar", () => {
     await fillValue(labelInput, "tAb");
     // expect there to be an error message with the text "reserved"
     expect(screen.getByText(/reserved/i)).toBeInTheDocument();
-    labelInput.blur();
+    act(() => {
+      labelInput.blur();
+    });
     // when the input blurs, the value should have reverted to the original
     expect(onChangeName).not.toHaveBeenCalled();
     expect(labelInput).toHaveValue("foo");
@@ -80,7 +86,9 @@ describe("ParameterSidebar", () => {
 
     // sanity check with a non-blank value
     await fillValue(labelInput, "bar");
-    labelInput.blur();
+    act(() => {
+      labelInput.blur();
+    });
     expect(onChangeName).toHaveBeenCalledWith("bar");
     expect(labelInput).toHaveValue("bar");
   });
@@ -224,12 +232,33 @@ describe("ParameterSidebar", () => {
       expect(screen.getByDisplayValue("Equal to")).toBeInTheDocument();
     });
   });
+
+  describe("temporal-unit", () => {
+    it("should not render the type or operator", async () => {
+      setup({ parameter: createMockUiParameter({ type: "temporal-unit" }) });
+      expect(await screen.findByText("Label")).toBeInTheDocument();
+      expect(screen.queryByText("Filter type")).not.toBeInTheDocument();
+      expect(screen.queryByText("Filter operator")).not.toBeInTheDocument();
+    });
+
+    it("should set available temporal units", async () => {
+      const parameter = createMockUiParameter({
+        type: "temporal-unit",
+        temporal_units: ["day"],
+      });
+      const { onChangeTemporalUnits } = setup({ parameter });
+      await userEvent.click(await screen.findByText("Day"));
+      await userEvent.click(await screen.findByLabelText("Month"));
+      expect(onChangeTemporalUnits).toHaveBeenCalledWith(["day", "month"]);
+    });
+  });
 });
 
 const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
   const onChangeQueryType = jest.fn();
   const onChangeName = jest.fn();
   const onChangeIsMultiSelect = jest.fn();
+  const onChangeTemporalUnits = jest.fn();
 
   renderWithProviders(
     <ParameterSettings
@@ -244,9 +273,15 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
       onChangeSourceType={jest.fn()}
       onChangeSourceConfig={jest.fn()}
       onChangeRequired={jest.fn()}
+      onChangeTemporalUnits={onChangeTemporalUnits}
       hasMapping={false}
     />,
   );
 
-  return { onChangeQueryType, onChangeName, onChangeIsMultiSelect };
+  return {
+    onChangeQueryType,
+    onChangeName,
+    onChangeIsMultiSelect,
+    onChangeTemporalUnits,
+  };
 };

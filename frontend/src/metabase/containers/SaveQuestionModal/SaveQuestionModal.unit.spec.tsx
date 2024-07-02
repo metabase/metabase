@@ -8,7 +8,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
   setupCollectionItemsEndpoint,
-  setupRecentViewsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -66,10 +66,8 @@ const setup = async (
   question: Question,
   originalQuestion: Question | null = null,
   {
-    isCachingEnabled,
     collectionEndpoints,
   }: {
-    isCachingEnabled?: boolean;
     collectionEndpoints?: CollectionEndpoints;
   } = {},
 ) => {
@@ -89,9 +87,9 @@ const setup = async (
     });
   }
 
-  setupRecentViewsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
 
-  const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
+  const settings = mockSettings();
 
   const state = createMockState({
     settings,
@@ -659,7 +657,7 @@ describe("SaveQuestionModal", () => {
 
     describe("OSS", () => {
       it("is not shown", async () => {
-        await setup(question, null, { isCachingEnabled: true });
+        await setup(question, null);
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),
@@ -673,7 +671,7 @@ describe("SaveQuestionModal", () => {
       });
 
       it("is not shown", async () => {
-        await setup(question, null, { isCachingEnabled: true });
+        await setup(question, null);
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),
@@ -740,7 +738,7 @@ describe("SaveQuestionModal", () => {
       });
     });
 
-    afterAll(() => {
+    afterEach(() => {
       jest.restoreAllMocks();
     });
 

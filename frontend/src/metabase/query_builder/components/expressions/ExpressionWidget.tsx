@@ -14,7 +14,7 @@ import {
   trackColumnExtractViaShortcut,
 } from "../../analytics";
 
-import { CombineColumns } from "./CombineColumns";
+import { CombineColumns, hasCombinations } from "./CombineColumns";
 import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";
 import {
   ActionButtonsWrapper,
@@ -27,7 +27,7 @@ import {
 } from "./ExpressionWidget.styled";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
-import { ExtractColumn } from "./ExtractColumn";
+import { ExtractColumn, hasExtractions } from "./ExtractColumn";
 
 export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   query: Lib.Query;
@@ -46,7 +46,7 @@ export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   startRule?: string;
   reportTimezone?: string;
   header?: ReactNode;
-  expressionPosition?: number;
+  expressionIndex?: number;
 
   onChangeExpression?: (name: string, expression: Expression) => void;
   onChangeClause?: (
@@ -70,7 +70,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     startRule,
     reportTimezone,
     header,
-    expressionPosition,
+    expressionIndex,
     onChangeExpression,
     onChangeClause,
     onRemoveExpression,
@@ -199,7 +199,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
         </FieldLabel>
         <ExpressionEditorTextfield
           expression={expression}
-          expressionPosition={expressionPosition}
+          expressionIndex={expressionIndex}
           clause={clause}
           startRule={startRule}
           name={name}
@@ -211,20 +211,22 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
           onCommit={handleCommit}
           onError={(errorMessage: string) => setError(errorMessage)}
           shortcuts={[
-            !startRule && {
-              shortcut: true,
-              name: t`Combine columns`,
-              action: () => setIsCombiningColumns(true),
-              group: "shortcuts",
-              icon: "combine",
-            },
-            !startRule && {
-              shortcut: true,
-              name: t`Extract columns`,
-              icon: "arrow_split",
-              group: "shortcuts",
-              action: () => setIsExtractingColumn(true),
-            },
+            !startRule &&
+              hasCombinations(query, stageIndex) && {
+                shortcut: true,
+                name: t`Combine columns`,
+                action: () => setIsCombiningColumns(true),
+                group: "shortcuts",
+                icon: "combine",
+              },
+            !startRule &&
+              hasExtractions(query, stageIndex) && {
+                shortcut: true,
+                name: t`Extract columns`,
+                icon: "arrow_split",
+                group: "shortcuts",
+                action: () => setIsExtractingColumn(true),
+              },
           ].filter(Boolean)}
         />
       </ExpressionFieldWrapper>

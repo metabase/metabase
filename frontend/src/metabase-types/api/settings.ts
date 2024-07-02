@@ -143,6 +143,7 @@ export type DayOfWeekId =
   | "saturday";
 
 export const tokenFeatures = [
+  "attached_dwh",
   "advanced_permissions",
   "audit_app",
   "cache_granular_controls",
@@ -190,6 +191,12 @@ export interface OpenAiModel {
 
 export type HelpLinkSetting = "metabase" | "hidden" | "custom";
 
+export interface UploadsSettings {
+  db_id: number | null;
+  schema_name: string | null;
+  table_prefix: string | null;
+}
+
 interface InstanceSettings {
   "admin-email": string;
   "email-smtp-host": string | null;
@@ -199,7 +206,6 @@ interface InstanceSettings {
   "email-smtp-password": string | null;
   "enable-embedding": boolean;
   "enable-nested-queries": boolean;
-  "enable-query-caching"?: boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   "example-dashboard-id": number | null;
@@ -210,10 +216,7 @@ interface InstanceSettings {
   "show-homepage-xrays": boolean;
   "site-uuid": string;
   "subscription-allowed-domains": string | null;
-  "uploads-enabled": boolean;
-  "uploads-database-id": number | null;
-  "uploads-schema-name": string | null;
-  "uploads-table-prefix": string | null;
+  "uploads-settings": UploadsSettings;
   "user-visibility": string | null;
 }
 
@@ -247,6 +250,7 @@ interface AdminSettings {
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-embedding-autoenabled": boolean;
   "setup-license-active-at-setup": boolean;
+  "store-url": string;
 }
 
 interface SettingsManagerSettings {
@@ -299,6 +303,7 @@ interface PublicSettings {
   "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
+  "persisted-model-refresh-cron-schedule": string;
   "report-timezone-long": string;
   "report-timezone-short": string;
   "session-cookies": boolean | null;

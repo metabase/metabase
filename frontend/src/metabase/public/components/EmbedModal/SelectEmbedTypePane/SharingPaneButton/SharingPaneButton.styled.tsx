@@ -16,26 +16,26 @@ export const SharingPaneButtonContent = styled(Paper)<
 `;
 
 export const SharingPaneButtonTitle = styled(Title)<SharingPaneElementProps>`
-  ${({ disabled, theme }) =>
+  ${({ disabled }) =>
     !disabled
       ? css`
           ${SharingPaneButtonContent}:hover & {
-            color: ${theme.fn.themeColor("brand")};
+            color: var(--mb-color-brand);
           }
         `
       : css`
-          color: ${theme.fn.themeColor("text-light")};
+          color: var(--mb-color-text-light);
         `}
 `;
 
 export const SharingPaneActionButton = styled(Button)<
   ButtonProps & HTMLAttributes<HTMLButtonElement> & SharingPaneElementProps
 >`
-  ${({ disabled, theme }) =>
+  ${({ disabled }) =>
     !disabled &&
     css`
       ${SharingPaneButtonContent}:hover & {
-        background-color: ${theme.fn.themeColor("brand")};
+        background-color: var(--mb-color-brand);
         color: white;
       }
     `}

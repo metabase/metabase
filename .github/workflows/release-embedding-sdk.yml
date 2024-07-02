@@ -9,7 +9,7 @@ on:
         type: string
         required: true
       git_ref:
-        description: 'Valid git reference e.g. branches, tags, hashes'
+        description: 'A git commit hash that will be used to build the SDK'
         type: string
         required: true
 
@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  git-tag:
+  check-git-tag:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
@@ -30,25 +30,21 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.git_ref }}
+          fetch-depth: 0
+          fetch-tags: true
 
-      - name: Setup git user
+      - name: check tags
         run: |
-          git config --global user.email "metabase-bot@metabase.com"
-          git config --global user.name "Metabase bot"
-
-      - name: Create a new git tag
-        run: |
-          git tag ${{ env.tag }}
-
-      - name: Push the new tag
-        id : push-tag
-        run: |
-          git push origin ${{ env.tag }}
-      - if: ${{ failure() && steps.push-tag.outcome == 'failure' }}
-        run: echo "Tag '${{ env.tag }}' already exists. If you expect to run this workflow with the same tag, please remove the tag first and rerun this workflow again."
+          if [ $(git tag -l | grep $tag$) ]
+          then
+            echo "::error::Tag '${{ env.tag }}' already exists. If you expect to run this workflow with the same tag, please remove the tag first and rerun this workflow again."
+            exit 1
+          else
+            exit 0
+          fi
 
   test:
-    needs: git-tag
+    needs: check-git-tag
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -77,6 +73,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.git_ref }}
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -86,9 +84,17 @@ jobs:
         with:
           m2-cache-key: "release-sdk"
 
+      - name: Update readme
+        run: |
+          ./bin/embedding-sdk/release_utils.bash update_readme ${{ inputs.sdk_version }}
+
       - name: Bump published npm package version
         run: |
-          sed -i -E 's/("version": ").*"/\1${{ inputs.sdk_version }}"/' enterprise/frontend/src/embedding-sdk/package.template.json
+          ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
+
+      - name: Update changelog
+        run: |
+          yarn embedding-sdk:generate-changelog -o changelog-diff
 
       - name: Build SDK bundle
         run: yarn run build-embedding-sdk
@@ -101,6 +107,12 @@ jobs:
         with:
           name: metabase-sdk
           path: ./resources/embedding-sdk
+
+      - name: Upload changelog diff
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-changelog-diff
+          path: ./changelog-diff
 
   build-jar:
     needs: test
@@ -136,7 +148,6 @@ jobs:
         run: |
           aws s3 cp $FILE s3://$BUCKET/$BUCKET_PATH
 
-
   publish-npm:
     needs: [build-sdk, upload-jar]
     runs-on: ubuntu-22.04
@@ -150,25 +161,28 @@ jobs:
 
       - name: Setup git user
         run: |
-          git config --global user.email "metabase-bot@metabase.com"
-          git config --global user.name "Metabase bot"
+          git config --global user.email "github-automation@metabase.com"
+          git config --global user.name "Metabase Automation"
 
       - name: Update readme
         run: |
-          sed -i -E 's|(embedding-sdk-)[0-9.]+|\1${{ inputs.sdk_version }}|' enterprise/frontend/src/embedding-sdk/README.md
-          sed -i -E 's|(http://downloads.metabase.com/sdk/v)[0-9.]+|\1${{ inputs.sdk_version }}|' enterprise/frontend/src/embedding-sdk/README.md
+          bash ./bin/embedding-sdk/release_utils.bash update_readme ${{ inputs.sdk_version }}
 
       - name: Bump published npm package version
         run: |
-          sed -i -E 's/("version": ").*"/\1${{ inputs.sdk_version }}"/' enterprise/frontend/src/embedding-sdk/package.template.json
+          bash ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
 
-      - uses: actions/create-github-app-token@v1
-        id: app-token
+      - name: Retrieve SDK changelog diff
+        uses: actions/download-artifact@v4
         with:
-          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
-          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+          name: sdk-changelog-diff
 
-      - name: Create a PR updating readme + published version
+      - name: Update changelog
+        run: |
+          cat changelog-diff enterprise/frontend/src/embedding-sdk/CHANGELOG.md > new-changelog
+          mv new-changelog enterprise/frontend/src/embedding-sdk/CHANGELOG.md
+
+      - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
         run: |
           git checkout -b update-sdk-version-${{ inputs.sdk_version }}
           git commit -a -m 'Update Readme version references and published npm version to ${{ inputs.sdk_version }}'
@@ -178,7 +192,31 @@ jobs:
                        --title "Update SDK version to ${{ inputs.sdk_version }}"\
                        --body "Update Readme version references and published npm package version to ${{ inputs.sdk_version }}"
         env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+
+      - name: Edit PR adding useful information (using Metabase bot app)
+        run: |
+          gh pr edit --add-reviewer @metabase/embedding --add-label no-backport
+        env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Auto approve PR (using GitHub Actions account)
+        run: |
+          gh pr review --approve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
+        run: |
+          gh pr merge --auto --squash
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Retrieve build SDK package artifact
         uses: actions/download-artifact@v4
@@ -191,3 +229,25 @@ jobs:
           cd sdk
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
           npm publish
+
+  git-tag:
+    needs: publish-npm
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      tag: embedding-sdk-${{ inputs.sdk_version }}
+    steps:
+      - name: Check out the code using the provided ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref }}
+
+      # Lightweight tags don't need committer name and email
+      - name: Create a new git tag
+        run: |
+          git tag ${{ env.tag }}
+
+      - name: Push the new tag
+        id : push-tag
+        run: |
+          git push origin ${{ env.tag }}

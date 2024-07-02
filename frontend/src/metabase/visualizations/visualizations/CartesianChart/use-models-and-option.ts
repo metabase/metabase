@@ -1,13 +1,11 @@
 import { useCallback, useMemo } from "react";
 
-import { usePalette } from "metabase/hooks/use-palette";
-import { color } from "metabase/lib/colors";
-import { formatValue } from "metabase/lib/formatting";
-import { measureTextWidth } from "metabase/lib/measure-text";
+import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { extractRemappings } from "metabase/visualizations";
 import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
 import type {
+  CartesianChartModel,
   ScatterPlotModel,
   WaterfallChartModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -17,10 +15,8 @@ import { getScatterPlotOption } from "metabase/visualizations/echarts/cartesian/
 import { getTimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/model";
 import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/model";
 import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
-import type {
-  RenderingContext,
-  VisualizationProps,
-} from "metabase/visualizations/types";
+import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
+import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { getHoveredSeriesDataKey } from "./utils";
 
@@ -38,7 +34,7 @@ export function useModelsAndOption({
   onRender,
   hovered,
 }: VisualizationProps) {
-  const palette = usePalette();
+  const renderingContext = useBrowserRenderingContext({ fontFamily });
 
   const rawSeriesWithRemappings = useMemo(
     () => extractRemappings(rawSeries),
@@ -55,23 +51,14 @@ export function useModelsAndOption({
     [onRender],
   );
 
-  const renderingContext: RenderingContext = useMemo(
-    () => ({
-      getColor: name => color(name, palette),
-      formatValue: (value, options) => String(formatValue(value, options)),
-      measureText: measureTextWidth,
-      fontFamily,
-    }),
-    [fontFamily, palette],
-  );
-
   const hasTimelineEvents = timelineEvents
     ? timelineEvents.length !== 0
     : false;
 
   const chartModel = useMemo(() => {
-    let getModel = getCartesianChartModel;
+    let getModel;
 
+    getModel = getCartesianChartModel;
     if (card.display === "waterfall") {
       getModel = getWaterfallChartModel;
     } else if (card.display === "scatter") {
@@ -128,6 +115,8 @@ export function useModelsAndOption({
       return {};
     }
 
+    const shouldAnimate = !isPlaceholder && !isReducedMotionPreferred();
+
     switch (card.display) {
       case "waterfall":
         return getWaterfallChartOption(
@@ -137,7 +126,7 @@ export function useModelsAndOption({
           timelineEventsModel,
           selectedOrHoveredTimelineEventIds,
           settings,
-          isPlaceholder ?? false,
+          shouldAnimate,
           renderingContext,
         );
       case "scatter":
@@ -148,18 +137,18 @@ export function useModelsAndOption({
           selectedOrHoveredTimelineEventIds,
           settings,
           width,
-          isPlaceholder ?? false,
+          shouldAnimate,
           renderingContext,
         );
       default:
         return getCartesianChartOption(
-          chartModel,
+          chartModel as CartesianChartModel,
           chartMeasurements,
           timelineEventsModel,
           selectedOrHoveredTimelineEventIds,
           settings,
           width,
-          isPlaceholder ?? false,
+          shouldAnimate,
           hoveredSeriesDataKey,
           renderingContext,
         );

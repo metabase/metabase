@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 import { t } from "ttag";
 
 import SelectList from "metabase/components/SelectList";
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { Icon, Text } from "metabase/ui";
 
@@ -12,7 +11,7 @@ export const DataSelectorSection = styled.section`
 
 export const DataBucketIcon = styled(Icon)`
   margin-top: 2px;
-  color: ${color("text-dark")} !important;
+  color: var(--mb-color-text-dark) !important;
 `;
 
 export const DataBucketDescription = styled.span`
@@ -28,7 +27,7 @@ const BackButtonContainer = styled.div`
 
 const BackButtonLabel = styled.span`
   font-size: 16px;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 
   margin-left: ${space(1)};
 
@@ -37,7 +36,7 @@ const BackButtonLabel = styled.span`
   word-wrap: anywhere;
 
   :hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -62,14 +61,14 @@ export const EmptyStateContainer = styled.div`
 
 export const TableSearchContainer = styled.div`
   padding: 0.5rem;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 `;
 
 export const TriggerContainer = styled.div`
   width: 100%;
   position: relative;
   padding: 0.5rem 2.625rem 0.5rem 0.6875rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: ${space(0)};
   cursor: pointer;
 `;
@@ -85,9 +84,9 @@ export const TriggerContainerIcon = styled.div`
   height: 100%;
 `;
 
-export const TextSchema = styled(Text)`
+export const TextSchema = styled(Text)<React.PropsWithChildren>`
   font-size: 0.75em;
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   line-height: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;

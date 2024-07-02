@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupRecentViewsEndpoints } from "__support__/server-mocks";
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
   mockScrollBy,
@@ -88,7 +88,7 @@ const setup = ({
 }: SetupOpts = {}) => {
   mockGetBoundingClientRect();
   mockScrollBy();
-  setupRecentViewsEndpoints(recentItems);
+  setupRecentViewsAndSelectionsEndpoints(recentItems);
 
   fetchMock.get("path:/api/search", mockSearchResults);
 
@@ -110,7 +110,7 @@ const setup = ({
 };
 
 describe("EntityPickerModal", () => {
-  afterAll(() => {
+  afterEach(() => {
     jest.restoreAllMocks();
   });
 

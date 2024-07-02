@@ -13,17 +13,18 @@ import { getParameterMappingOptions as _getParameterMappingOptions } from "metab
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
+import { mergeSettings } from "metabase/visualizations/lib/settings";
 import Question from "metabase-lib/v1/Question";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
   CardId,
-  DashboardId,
   DashCardId,
+  Dashboard,
   DashboardCard,
+  DashboardId,
   DashboardParameterMapping,
   ParameterId,
-  Dashboard,
 } from "metabase-types/api";
 import type {
   ClickBehaviorSidebarState,
@@ -32,7 +33,12 @@ import type {
   StoreDashboard,
 } from "metabase-types/store";
 
-import { isQuestionCard, isQuestionDashCard } from "./utils";
+import { getNewCardUrl } from "./actions/getNewCardUrl";
+import {
+  hasDatabaseActionsEnabled,
+  isQuestionCard,
+  isQuestionDashCard,
+} from "./utils";
 
 type SidebarState = State["dashboard"]["sidebar"];
 
@@ -66,10 +72,12 @@ export const getDashboards = (state: State) => state.dashboard.dashboards;
 export const getDashcardDataMap = (state: State) =>
   state.dashboard.dashcardData;
 
-export function getDashcardData(state: State, dashcardId: DashCardId) {
-  const dashcardData = getDashcardDataMap(state);
-  return dashcardData[dashcardId];
-}
+export const getDashcardData = createSelector(
+  [getDashcardDataMap, (_state: State, dashcardId: DashCardId) => dashcardId],
+  (dashcardDataMap, dashcardId) => {
+    return dashcardDataMap[dashcardId];
+  },
+);
 
 export const getSlowCards = (state: State) => state.dashboard.slowCards;
 export const getParameterValues = (state: State) =>
@@ -88,9 +96,6 @@ export const getLoadingStartTime = (state: State) =>
   state.dashboard.loadingDashCards.startTime;
 export const getLoadingEndTime = (state: State) =>
   state.dashboard.loadingDashCards.endTime;
-
-export const getIsMetadataLoaded = (state: State) =>
-  state.dashboard.loadingMetadata.loadingStatus === "complete";
 
 export const getIsSlowDashboard = createSelector(
   [getLoadingStartTime, getLoadingEndTime],
@@ -182,6 +187,37 @@ export const getDashboardComplete = createSelector(
         dashcards: orderedDashcards,
       }
     );
+  },
+);
+
+export const getDashcardHref = createSelector(
+  [getMetadata, getDashboardComplete, getParameterValues, getDashCardById],
+  (metadata, dashboard, parameterValues, dashcard) => {
+    if (
+      !dashboard ||
+      !dashcard ||
+      !isQuestionDashCard(dashcard) ||
+      !dashcard.card.dataset_query // cards without queries will cause MLv2 to throw in getNewCardUrl
+    ) {
+      return undefined;
+    }
+
+    const card = {
+      ...dashcard.card,
+      visualization_settings: mergeSettings(
+        dashcard.card.visualization_settings,
+        dashcard.visualization_settings,
+      ),
+    };
+
+    return getNewCardUrl({
+      metadata,
+      dashboard,
+      parameterValues,
+      dashcard,
+      nextCard: card,
+      previousCard: card,
+    });
   },
 );
 
@@ -532,4 +568,21 @@ export const getDisplayTheme = (state: State) => state.dashboard.theme;
 export const getIsNightMode = createSelector(
   [getDisplayTheme],
   theme => theme === "night",
+);
+
+export const getHasModelActionsEnabled = createSelector(
+  [getMetadata],
+  metadata => {
+    if (!metadata) {
+      return false;
+    }
+
+    const databases = metadata.databasesList();
+    const hasModelActionsEnabled = Object.values(databases).some(database =>
+      // @ts-expect-error Schema types do not match
+      hasDatabaseActionsEnabled(database),
+    );
+
+    return hasModelActionsEnabled;
+  },
 );

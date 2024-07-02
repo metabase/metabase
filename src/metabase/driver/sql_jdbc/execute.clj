@@ -238,8 +238,8 @@
   [driver ^Connection conn]
   (let [dbmeta (.getMetaData conn)]
     (loop [[[level-name ^Integer level] & more] [[:read-uncommitted Connection/TRANSACTION_READ_UNCOMMITTED]
-                                                 [:repeatable-read  Connection/TRANSACTION_REPEATABLE_READ]
-                                                 [:read-committed   Connection/TRANSACTION_READ_COMMITTED]]]
+                                                 [:read-committed   Connection/TRANSACTION_READ_COMMITTED]
+                                                 [:repeatable-read  Connection/TRANSACTION_REPEATABLE_READ]]]
       (cond
         (.supportsTransactionIsolationLevel dbmeta level)
         (do
@@ -348,9 +348,16 @@
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
     (set-time-zone-if-supported! driver conn session-timezone)
-    (set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (qp.store/with-metadata-provider db-or-id-or-spec
-                                                                            (lib.metadata/database (qp.store/metadata-provider)))
-                                              (u/id db-or-id-or-spec)     db-or-id-or-spec))
+    (when-let [db (cond
+                    ;; id?
+                    (integer? db-or-id-or-spec)
+                    (qp.store/with-metadata-provider db-or-id-or-spec
+                      (lib.metadata/database (qp.store/metadata-provider)))
+                    ;; db?
+                    (u/id db-or-id-or-spec)     db-or-id-or-spec
+                    ;; otherwise it's a spec and we can't get the db
+                    :else nil)]
+      (set-role-if-supported! driver conn db))
     (let [read-only? (not write?)]
       (try
         ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
@@ -640,7 +647,7 @@
 (defmethod column-metadata :sql-jdbc
   [driver ^ResultSetMetaData rsmeta]
   (mapv
-   (fn [^Integer i]
+   (fn [^Long i]
      (let [col-name     (.getColumnLabel rsmeta i)
            db-type-name (.getColumnTypeName rsmeta i)
            base-type    (sql-jdbc.sync.interface/database-type->base-type driver (keyword db-type-name))]
@@ -652,8 +659,8 @@
         #_:original_name #_(.getColumnName rsmeta i)
         #_:jdbc_type #_ (u/ignore-exceptions
                           (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
-        #_:db_type   #_db-type-name
-        :base_type   (or base-type :type/*)}))
+        :base_type     (or base-type :type/*)
+        :database_type db-type-name}))
    (column-range rsmeta)))
 
 (defn reducible-rows

@@ -83,12 +83,14 @@ export function showDashboardCardActions(index = 0) {
  * @returns {Cypress.Chainable<JQuery<HTMLElement>>}
  */
 export function findDashCardAction(dashcardElement, labelText) {
-  return dashcardElement.realHover().findByLabelText(labelText);
+  return dashcardElement
+    .realHover({ scrollBehavior: "bottom" })
+    .findByLabelText(labelText);
 }
 
 export function removeDashboardCard(index = 0) {
   getDashboardCard(index)
-    .realHover({ scrollBehavior: "bottom" })
+    .realHover()
     .findByTestId("dashboardcard-actions-panel")
     .should("be.visible")
     .icon("close")
@@ -236,11 +238,14 @@ export function resizeDashboardCard({ card, x, y }) {
     const resizeHandle = cy.get(".react-resizable-handle");
     resizeHandle
       .trigger("mousedown", { button: 0 })
+      .wait(200)
       .trigger("mousemove", {
         clientX: x,
         clientY: y,
       })
-      .trigger("mouseup", { force: true });
+      .wait(200)
+      .trigger("mouseup", { force: true })
+      .wait(200);
   });
 }
 
@@ -264,8 +269,12 @@ export function dashboardSaveButton() {
   return cy.findByTestId("edit-bar").findByRole("button", { name: "Save" });
 }
 
+export function dashboardParameterSidebar() {
+  return cy.findByTestId("dashboard-parameter-sidebar");
+}
+
 export function dashboardParametersDoneButton() {
-  return cy.findByTestId("dashboard-parameter-sidebar").button("Done");
+  return dashboardParameterSidebar().button("Done");
 }
 
 /**

@@ -259,4 +259,4 @@
                      (cond-> field
                        ;; Try to get a better guestimate of what we're dealing with on first sync
                        (every? nil? ((juxt :semantic_type :last_analyzed) field))
-                       (assoc :semantic_type (classifiers.name/infer-semantic-type field)))))))
+                       (assoc :semantic_type (classifiers.name/infer-semantic-type-by-name field)))))))

@@ -147,6 +147,8 @@
    [:id             {:optional true} ::lib.schema.id/field]
    [:display-name   {:optional true} [:maybe :string]]
    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+   ;; type of this column in the data warehouse, e.g. `TEXT` or `INTEGER`
+   [:database-type  {:optional true} [:maybe :string]]
    ;; if this is a field from another table (implicit join), this is the field in the current table that should be
    ;; used to perform the implicit join. e.g. if current table is `VENUES` and this field is `CATEGORIES.ID`, then the
    ;; `fk_field_id` would be `VENUES.CATEGORY_ID`. In a `:field` reference this is saved in the options map as
@@ -227,7 +229,7 @@
    :metric])
 
 (mr/def ::type
-  [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/legacy-metric :metadata/metric
+  [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/metric
    :metadata/segment])
 
 (mr/def ::card
@@ -268,22 +270,6 @@
    [:table-id   ::lib.schema.id/table]
    ;; the MBQL snippet defining this Segment; this may still be in legacy
    ;; format. [[metabase.lib.segment/segment-definition]] handles conversion to pMBQL if needed.
-   [:definition [:maybe :map]]
-   [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
-
-(mr/def ::legacy-metric
-  "Malli schema for a legacy v1 [[metabase.models.legacy-metric]], but with kebab-case keys. A Metric defines an MBQL
-  snippet with an aggregation and optionally a filter clause. You can add a `:metric` reference to the `:aggregations`
-  in an MBQL stage, and the QP treats it like a macro and expands it to the underlying clauses --
-  see [[metabase.query-processor.middleware.expand-macros]]."
-  [:map
-   {:error/message "Valid legacy (v1) Metric metadata"}
-   [:lib/type   [:= :metadata/legacy-metric]]
-   [:id         ::lib.schema.id/legacy-metric]
-   [:name       ::lib.schema.common/non-blank-string]
-   [:table-id   ::lib.schema.id/table]
-   ;; the MBQL snippet defining this Metric; this may still be in legacy
-   ;; format. [[metabase.lib.legacy-metric/metric-definition]] handles conversion to pMBQL if needed.
    [:definition [:maybe :map]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 

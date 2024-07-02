@@ -4,9 +4,12 @@ import type {
   Collection,
   CollectionAuthorityLevel,
   CollectionId,
+  Database,
+  Field,
   Parameter,
   ParameterId,
   ParameterTarget,
+  Table,
 } from "metabase-types/api";
 
 import type {
@@ -45,6 +48,7 @@ export interface Dashboard {
   collection_authority_level?: CollectionAuthorityLevel;
   can_write: boolean;
   can_restore: boolean;
+  can_delete: boolean;
   cache_ttl: number | null;
   "last-edit-info": {
     id: number;
@@ -70,6 +74,14 @@ export interface Dashboard {
 
 /** Dashboards with string ids, like x-rays, cannot have cache configurations */
 export type CacheableDashboard = Omit<Dashboard, "id"> & { id: number };
+
+export type DashboardQueryMetadata = {
+  databases: Database[];
+  tables: Table[];
+  fields: Field[];
+  cards: Card[];
+  dashboards: Dashboard[];
+};
 
 export type DashCardId = number;
 

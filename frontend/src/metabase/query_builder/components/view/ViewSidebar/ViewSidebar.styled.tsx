@@ -1,7 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const ViewSidebarAside = styled.aside<{
@@ -17,11 +16,11 @@ export const ViewSidebarAside = styled.aside<{
   ${({ isOpen, side }) =>
     side === "left"
       ? css`
-          border-right: ${isOpen ? `1px solid ${color("border")}` : "none"};
+          border-right: ${isOpen ? "1px solid var(--mb-color-border)" : "none"};
           left: 0;
         `
       : css`
-          border-left: ${isOpen ? `1px solid ${color("border")}` : "none"};
+          border-left: ${isOpen ? "1px solid var(--mb-color-border)" : "none"};
           right: 0;
 
           ${breakpointMaxSmall} {

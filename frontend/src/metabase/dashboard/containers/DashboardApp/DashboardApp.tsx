@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect } from "react";
 import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
-import type { Route } from "react-router";
+import type { Route, WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
@@ -12,6 +12,11 @@ import _ from "underscore";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import CS from "metabase/css/core/index.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
+import { useSyncURLSlug } from "metabase/dashboard/components/DashboardTabs/use-sync-url-slug";
+import {
+  useDashboardUrlParams,
+  useRefreshDashboard,
+} from "metabase/dashboard/hooks";
 import favicon from "metabase/hoc/Favicon";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
@@ -101,12 +106,24 @@ const mapDispatchToProps = {
 const connector = connect(mapStateToProps, mapDispatchToProps);
 type ReduxProps = ConnectedProps<typeof connector>;
 
-type DashboardAppProps = OwnProps & ReduxProps;
+type DashboardAppProps = OwnProps & ReduxProps & WithRouterProps;
 
 const DashboardApp = (props: DashboardAppProps) => {
   const { dashboard, isRunning, isLoadingComplete, isEditing, isDirty, route } =
     props;
 
+  const {
+    documentTitle: _documentTitle,
+    pageFavicon: _pageFavicon,
+    isRunning: _isRunning,
+    isLoadingComplete: _isLoadingComplete,
+    children,
+    location,
+    ...dashboardProps
+  } = props;
+
+  const parameterQueryParams = location.query;
+  const dashboardId = getDashboardId(props);
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
   const addCardOnLoad = options.add != null ? Number(options.add) : undefined;
@@ -137,7 +154,7 @@ const DashboardApp = (props: DashboardAppProps) => {
     }
 
     return () => {
-      dispatch(dismissUndo(slowToastId));
+      dispatch(dismissUndo({ undoId: slowToastId }));
     };
   }, [
     dashboard?.name,
@@ -149,7 +166,7 @@ const DashboardApp = (props: DashboardAppProps) => {
 
   const onConfirmToast = useCallback(async () => {
     await requestPermission();
-    dispatch(dismissUndo(slowToastId));
+    dispatch(dismissUndo({ undoId: slowToastId }));
   }, [dispatch, requestPermission, slowToastId]);
 
   const onTimeout = useCallback(() => {
@@ -171,24 +188,44 @@ const DashboardApp = (props: DashboardAppProps) => {
     onTimeout,
   });
 
+  const { refreshDashboard } = useRefreshDashboard({
+    dashboardId: dashboardId,
+    parameterQueryParams,
+  });
+
   const {
-    documentTitle: _documentTitle,
-    pageFavicon: _pageFavicon,
-    isRunning: _isRunning,
-    isLoadingComplete: _isLoadingComplete,
-    children,
-    ...dashboardProps
-  } = props;
+    hasNightModeToggle,
+    hideParameters,
+    isFullscreen,
+    isNightMode,
+    onNightModeChange,
+    refreshPeriod,
+    onFullscreenChange,
+    setRefreshElapsedHook,
+    onRefreshPeriodChange,
+  } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
+
+  useSyncURLSlug({ location });
 
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
       <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
-
-      {/* @ts-expect-error for now until we can get the prop-drilled types sorted out. Previously DashboardControls was a JS file so types weren't checked, but now there's a Pandora's box here */}
+      {/* @ts-expect-error - types coming from thunks are not correct*/}
       <Dashboard
-        dashboardId={getDashboardId(props)}
+        location={location}
+        dashboardId={dashboardId}
         editingOnLoad={editingOnLoad}
         addCardOnLoad={addCardOnLoad}
+        isFullscreen={isFullscreen}
+        refreshPeriod={refreshPeriod}
+        hideParameters={hideParameters}
+        isNightMode={isNightMode}
+        hasNightModeToggle={hasNightModeToggle}
+        setRefreshElapsedHook={setRefreshElapsedHook}
+        onNightModeChange={onNightModeChange}
+        onFullscreenChange={onFullscreenChange}
+        onRefreshPeriodChange={onRefreshPeriodChange}
+        parameterQueryParams={parameterQueryParams}
         {...dashboardProps}
       />
       {/* For rendering modal urls */}

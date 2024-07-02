@@ -16,7 +16,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest with-temp-vals-in-db-test
-  (testing "let's make sure this acutally works right!"
+  (testing "let's make sure this actually works right!"
     (let [position #(t2/select-one-fn :position Field :id (data/id :venues :price))]
       (mt/with-temp-vals-in-db Field (data/id :venues :price) {:position -1}
         (is (= -1
@@ -102,3 +102,19 @@
       (take-latch)
       (testing "The original definition survives"
         (is (= "original" (clump "orig" "inal")))))))
+
+(defn mock-me-inner []
+  :mock/original)
+
+(defn mock-me-outer []
+  (mock-me-inner))
+
+(deftest with-dynamic-redefs-nested-binding-test
+  (defn z []
+    (mt/with-dynamic-redefs [mock-me-outer
+                             (let [orig (mt/dynamic-value mock-me-outer)]
+                               (fn []
+                                 (mt/with-dynamic-redefs [mock-me-inner (constantly :mock/redefined)]
+                                   (orig))))]
+      (mock-me-outer)))
+  (is (= :mock/redefined (z))))

@@ -4,18 +4,18 @@ import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupMostRecentlyViewedDashboard,
+  setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
-  setupCollectionItemsEndpoint,
-  setupRecentViewsEndpoints,
 } from "__support__/server-mocks";
 import {
-  renderWithProviders,
-  screen,
-  waitFor,
   mockGetBoundingClientRect,
   mockScrollBy,
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
@@ -63,6 +63,7 @@ const COLLECTION = createMockCollection({
   can_write: true,
   is_personal: false,
   location: "/",
+  effective_location: "/",
 });
 
 const SUBCOLLECTION = createMockCollection({
@@ -71,6 +72,7 @@ const SUBCOLLECTION = createMockCollection({
   can_write: true,
   is_personal: false,
   location: `/${COLLECTION.id}/`,
+  effective_location: `/${COLLECTION.id}/`,
 });
 
 const PERSONAL_COLLECTION = createMockCollection({
@@ -80,6 +82,7 @@ const PERSONAL_COLLECTION = createMockCollection({
   can_write: true,
   is_personal: true,
   location: "/",
+  effective_location: "/",
 });
 
 const PERSONAL_SUBCOLLECTION = createMockCollection({
@@ -88,6 +91,7 @@ const PERSONAL_SUBCOLLECTION = createMockCollection({
   can_write: true,
   is_personal: true,
   location: `/${PERSONAL_COLLECTION.id}/`,
+  effective_location: `/${PERSONAL_COLLECTION.id}/`,
 });
 
 const ROOT_COLLECTION = createMockCollection({
@@ -230,7 +234,7 @@ const setup = async ({
 
   setupCollectionsEndpoints({ collections, rootCollection: ROOT_COLLECTION });
   setupCollectionByIdEndpoint({ collections, error });
-  setupRecentViewsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
   setupMostRecentlyViewedDashboard(mostRecentlyViewedDashboard);
   setupSearchEndpoints(searchResults);
 
@@ -295,14 +299,12 @@ const setup = async ({
   );
 
   if (waitForContent) {
-    await waitFor(() => {
-      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-    });
+    await waitForLoaderToBeRemoved();
   }
 };
 
 describe("AddToDashSelectDashModal", () => {
-  afterAll(() => {
+  afterEach(() => {
     jest.restoreAllMocks();
   });
 
@@ -374,8 +376,6 @@ describe("AddToDashSelectDashModal", () => {
           collection => collection.id === DASHBOARD.collection_id,
         ),
       );
-
-      console.log("dashboardCollection", dashboardCollection);
 
       await screen.findByText(/add this model to a dashboard/i);
 
@@ -549,6 +549,7 @@ describe("AddToDashSelectDashModal", () => {
       const urlObject = new URL(checkNotNull(call?.request?.url));
       expect(urlObject.pathname).toEqual("/api/search");
       expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual({
+        context: "entity-picker",
         models: "dashboard",
         q: typedText,
         filter_items_in_personal_collection: "only",
@@ -577,6 +578,7 @@ describe("AddToDashSelectDashModal", () => {
       const urlObject = new URL(checkNotNull(call?.request?.url));
       expect(urlObject.pathname).toEqual("/api/search");
       expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual({
+        context: "entity-picker",
         models: "dashboard",
         q: typedText,
       });
@@ -612,7 +614,9 @@ describe("AddToDashSelectDashModal", () => {
   });
 });
 
-function assertPath(collections: Collection[]) {
+async function assertPath(collections: Collection[]) {
+  await waitForLoaderToBeRemoved();
+
   return Promise.all(
     collections.map(async collection => {
       return expect(await findPickerItem(collection.name)).toBeInTheDocument();

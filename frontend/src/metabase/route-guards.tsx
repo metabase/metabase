@@ -3,10 +3,20 @@ import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getIsMetabotEnabled } from "metabase/home/selectors";
+import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 
 type Props = { children: React.ReactElement };
+
+const getRedirectUrl = () => {
+  const params = new URLSearchParams(window.location.search);
+  const redirectUrlParam = params.get("redirect");
+
+  return redirectUrlParam != null && isSameOrSiteUrlOrigin(redirectUrlParam)
+    ? redirectUrlParam
+    : "/";
+};
 
 const MetabaseIsSetup = connectedReduxRedirect<Props, State>({
   // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
@@ -35,9 +45,10 @@ const UserIsAdmin = connectedReduxRedirect<Props, State>({
 
 const UserIsNotAuthenticated = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserIsNotAuthenticated",
-  redirectPath: "/",
+  redirectPath: () => getRedirectUrl(),
   allowRedirectBack: false,
-  authenticatingSelector: state => state.auth.loginPending,
+  authenticatingSelector: state =>
+    state.auth.loginPending || !state.auth.redirect,
   authenticatedSelector: state => !state.currentUser,
   redirectAction: routerActions.replace,
 });

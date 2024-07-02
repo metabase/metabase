@@ -1,19 +1,23 @@
+import type { MouseEvent } from "react";
 import { useCallback } from "react";
-import { c, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { useUserSetting } from "metabase/common/hooks";
-import CollapseSection from "metabase/components/CollapseSection";
+import { useHasTokenFeature } from "metabase/common/hooks/use-has-token-feature";
+import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboard";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
-import CS from "metabase/css/core/index.css";
 import {
   getCollectionIcon,
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
 import { isSmallScreen } from "metabase/lib/dom";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
+import { UploadCSV } from "metabase/nav/containers/MainNavbar/SidebarItems/UploadCSV";
+import { getSetting } from "metabase/selectors/settings";
 import type { IconName, IconProps } from "metabase/ui";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 
@@ -32,6 +36,7 @@ import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 import type { SelectedItem } from "../types";
 
 import BookmarkList from "./BookmarkList";
+import { BrowseNavSection } from "./BrowseNavSection";
 
 interface CollectionTreeItem extends Collection {
   icon: IconName | IconProps;
@@ -57,8 +62,6 @@ type Props = {
     oldIndex: number;
   }) => void;
 };
-const BROWSE_MODELS_URL = "/browse/models";
-const BROWSE_DATA_URL = "/browse/databases";
 const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
 const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 
@@ -74,6 +77,12 @@ function MainNavbarView({
   handleCreateNewCollection,
   handleCloseNavbar,
 }: Props) {
+  const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
+    "expand-bookmarks-in-nav",
+  );
+
+  const { canNavigateHome } = useHomepageDashboard();
+
   const {
     card: cardItem,
     collection: collectionItem,
@@ -87,11 +96,28 @@ function MainNavbarView({
     }
   }, [handleCloseNavbar]);
 
-  const [expandBrowse = true, setExpandBrowse] = useUserSetting(
-    "expand-browse-in-nav",
+  const handleHomeClick = useCallback(
+    (event: MouseEvent) => {
+      // Prevent navigating to the dashboard homepage when a user is already there
+      // https://github.com/metabase/metabase/issues/43800
+      if (!canNavigateHome) {
+        event.preventDefault();
+      }
+      onItemSelect();
+    },
+    [canNavigateHome, onItemSelect],
   );
-  const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
-    "expand-bookmarks-in-nav",
+
+  // Can upload CSVs if
+  // - properties.token_features.attached_dwh === true
+  // - properties.uploads-settings.db_id exists
+  // - retrieve collection using properties.uploads-settings.db_id
+  const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
+  const uploadDbId = useSelector(
+    state => getSetting(state, "uploads-settings")?.db_id,
+  );
+  const rootCollection = collections.find(
+    ({ id, can_write }) => (id === null || id === "root") && can_write,
   );
 
   return (
@@ -101,45 +127,22 @@ function MainNavbarView({
           <PaddedSidebarLink
             isSelected={nonEntityItem?.url === "/"}
             icon="home"
-            onClick={onItemSelect}
+            onClick={handleHomeClick}
             url="/"
           >
             {t`Home`}
           </PaddedSidebarLink>
+
+          {hasAttachedDWHFeature && uploadDbId && rootCollection && (
+            <UploadCSV collection={rootCollection} />
+          )}
         </SidebarSection>
         <SidebarSection>
-          <CollapseSection
-            header={
-              <SidebarHeading>{c("A verb, shown in the sidebar")
-                .t`Browse`}</SidebarHeading>
-            }
-            initialState={expandBrowse ? "expanded" : "collapsed"}
-            iconPosition="right"
-            iconSize={8}
-            headerClass={CS.mb1}
-            onToggle={setExpandBrowse}
-          >
-            <PaddedSidebarLink
-              icon="model"
-              url={BROWSE_MODELS_URL}
-              isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
-              onClick={onItemSelect}
-              aria-label={t`Browse models`}
-            >
-              {t`Models`}
-            </PaddedSidebarLink>
-            {hasDataAccess && (
-              <PaddedSidebarLink
-                icon="database"
-                url={BROWSE_DATA_URL}
-                isSelected={nonEntityItem?.url?.startsWith(BROWSE_DATA_URL)}
-                onClick={onItemSelect}
-                aria-label={t`Browse databases`}
-              >
-                {t`Databases`}
-              </PaddedSidebarLink>
-            )}
-          </CollapseSection>
+          <BrowseNavSection
+            nonEntityItem={nonEntityItem}
+            onItemSelect={onItemSelect}
+            hasDataAccess={hasDataAccess}
+          />
           {hasDataAccess && (
             <>
               {!hasOwnDatabase && isAdmin && (
@@ -199,7 +202,7 @@ function CollectionSectionHeading({
   handleCreateNewCollection,
 }: CollectionSectionHeadingProps) {
   const renderMenu = useCallback(
-    ({ closePopover }) => (
+    ({ closePopover }: { closePopover: () => void }) => (
       <CollectionMenuList>
         <SidebarLink
           icon="add"

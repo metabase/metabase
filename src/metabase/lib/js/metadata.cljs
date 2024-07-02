@@ -424,7 +424,7 @@
 
 (defmethod lib-type :metric
   [_object-type]
-  :metadata/legacy-metric)
+  :metadata/metric)
 
 (defmethod excluded-keys :metric
   [_object-type]
@@ -542,6 +542,9 @@
         (tables metadata database-id))
       (metadatas-for-table [_this metadata-type table-id]
         (metadatas-for-table metadata metadata-type table-id))
+      (metadatas-for-tables [_this metadata-type table-ids]
+        ;; since this is already all in memory, we don't worry about batching
+        (map #(metadatas-for-table metadata metadata-type %) table-ids))
       (setting [_this setting-key]
         (setting unparsed-metadata setting-key))
 

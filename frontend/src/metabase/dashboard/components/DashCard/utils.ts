@@ -10,12 +10,18 @@ import {
 import type { ParameterMappingOption as ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import {
+  getParameterColumns,
+  isParameterVariableTarget,
+} from "metabase-lib/v1/parameters/utils/targets";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type {
   BaseDashboardCard,
   DashboardCard,
   ParameterTarget,
   QuestionDashboardCard,
+  DimensionReference,
+  Parameter,
 } from "metabase-types/api";
 
 const VIZ_WITH_CUSTOM_MAPPING_UI = ["placeholder", "link"];
@@ -39,45 +45,54 @@ export function getMappingOptionByTarget<T extends DashboardCard>(
   dashcard: T,
   target?: ParameterTarget | null,
   question?: T extends QuestionDashboardCard ? Question : undefined,
+  parameter?: Parameter,
 ): ParameterMappingOption | undefined {
   if (!target) {
     return;
   }
 
   const isAction = isActionDashCard(dashcard);
-
   // action has it's own settings, no need to get mapping options
   if (isAction) {
     return;
   }
 
-  const isVirtual = isVirtualDashCard(dashcard);
   const isNative = isQuestionDashCard(dashcard)
     ? isNativeDashCard(dashcard)
     : false;
 
-  if (isVirtual || isAction || isNative) {
-    const normalizedTarget = normalize(target);
-
-    return mappingOptions.find(mappingOption =>
-      _.isEqual(normalize(mappingOption.target), normalizedTarget),
-    );
+  if (!isNative && isParameterVariableTarget(target)) {
+    return;
   }
 
+  const isVirtual = isVirtualDashCard(dashcard);
+  const normalizedTarget = normalize(target);
+  const matchedMappingOptions = mappingOptions.filter(mappingOption =>
+    _.isEqual(mappingOption.target, normalizedTarget),
+  );
+  if (isVirtual || isAction || isNative) {
+    return matchedMappingOptions[0];
+  }
+  // performance optimization for MBQL queries:
+  // if there is an exact match based on the reference, no need to do complex matching
+  if (matchedMappingOptions.length === 1) {
+    return matchedMappingOptions[0];
+  }
   if (!question) {
     return;
   }
 
-  const stageIndex = -1;
-  const query = question.query();
-  const columns = Lib.visibleColumns(query, stageIndex);
-  const normalizedTarget = normalize(target[1]);
+  const { query, stageIndex, columns } = getParameterColumns(
+    question,
+    parameter,
+  );
+  const fieldRef = normalizedTarget[1];
 
   const [columnByTargetIndex] = Lib.findColumnIndexesFromLegacyRefs(
     query,
     stageIndex,
     columns,
-    [normalizedTarget],
+    [fieldRef],
   );
 
   // target not found - no need to look further
@@ -89,7 +104,7 @@ export function getMappingOptionByTarget<T extends DashboardCard>(
     query,
     stageIndex,
     columns,
-    mappingOptions.map(({ target }) => normalize(target[1])),
+    mappingOptions.map(({ target }) => target[1] as DimensionReference),
   );
 
   const mappingIndex = mappingColumnIndexes.indexOf(columnByTargetIndex);

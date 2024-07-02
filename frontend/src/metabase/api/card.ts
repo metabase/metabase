@@ -1,6 +1,7 @@
 import type {
   Card,
   CardId,
+  CardQueryMetadata,
   CreateCardRequest,
   GetCardRequest,
   ListCardsRequest,
@@ -14,26 +15,35 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  provideCardQueryMetadataTags,
 } from "./tags";
 
 export const cardApi = Api.injectEndpoints({
   endpoints: builder => ({
     listCards: builder.query<Card[], ListCardsRequest | void>({
-      query: body => ({
+      query: params => ({
         method: "GET",
         url: "/api/card",
-        body,
+        params,
       }),
       providesTags: (cards = []) => provideCardListTags(cards),
     }),
     getCard: builder.query<Card, GetCardRequest>({
-      query: ({ id, ignore_error, ...body }) => ({
+      query: ({ id, ignore_error, ...params }) => ({
         method: "GET",
         url: `/api/card/${id}`,
-        body,
+        params,
         noEvent: ignore_error,
       }),
       providesTags: card => (card ? provideCardTags(card) : []),
+    }),
+    getCardQueryMetadata: builder.query<CardQueryMetadata, CardId>({
+      query: id => ({
+        method: "GET",
+        url: `/api/card/${id}/query_metadata`,
+      }),
+      providesTags: (metadata, error, id) =>
+        metadata ? provideCardQueryMetadataTags(id, metadata) : [],
     }),
     createCard: builder.mutation<Card, CreateCardRequest>({
       query: body => ({
@@ -93,6 +103,7 @@ export const cardApi = Api.injectEndpoints({
 export const {
   useListCardsQuery,
   useGetCardQuery,
+  useGetCardQueryMetadataQuery,
   useCreateCardMutation,
   useUpdateCardMutation,
   useDeleteCardMutation,

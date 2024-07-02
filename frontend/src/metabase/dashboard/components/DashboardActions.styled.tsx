@@ -20,7 +20,7 @@ export const ShareButton = styled(DashboardHeaderButton)<ShareButtonProps>`
 
 export const FullScreenButtonIcon = styled(FullscreenIcon)`
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -28,12 +28,12 @@ export const NightModeButtonIcon = styled(NightModeIcon)`
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
 export const RefreshWidgetButton = styled(RefreshWidget)`
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
