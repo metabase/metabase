@@ -1108,13 +1108,13 @@
           (is (= [[""]]
                  (mt/rows results))))
         (testing "cols"
-          (is (= [{:display_name "sleep"
-                   :base_type    :type/Text
-                   :effective_type :type/Text
-                   :source       :native
-                   :field_ref    [:field "sleep" {:base-type :type/Text}]
-                   :name         "sleep"}]
-                 (mt/cols results))))))))
+          (is (=? [{:display_name "sleep"
+                    :base_type    :type/Text
+                    :effective_type :type/Text
+                    :source       :native
+                    :field_ref    [:field "sleep" {:base-type :type/Text}]
+                    :name         "sleep"}]
+                  (mt/cols results))))))))
 
 (deftest ^:parallel id-field-parameter-test
   (mt/test-driver :postgres

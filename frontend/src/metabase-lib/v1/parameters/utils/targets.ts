@@ -103,7 +103,9 @@ export function getParameterTargetField(
       return null;
     }
 
-    return metadata.field(fieldValuesInfo.fieldId);
+    // do not use `metadata.field(id)` because it only works for fields loaded
+    // with the original table, not coming from model metadata
+    return fields.find(field => field.id === fieldValuesInfo.fieldId);
   }
 
   return null;

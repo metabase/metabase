@@ -6,7 +6,13 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
+
+(mr/def ::compiled
+  [:map
+   [:query :any]
+   [:params {:optional true} [:maybe [:sequential :any]]]])
 
 (defn- compile* [{query-type :type, :as query}]
     (assert (not (:qp/compiled query)) "This query has already been compiled!")
@@ -14,7 +20,7 @@
     (:native query)
     (driver/mbql->native driver/*driver* query)))
 
-(mu/defn compile-preprocessed :- :map
+(mu/defn compile-preprocessed :- ::compiled
   "Compile an already-preprocessed query, if needed. Returns just the resulting 'inner' native query.
   `:native` key in a legacy query."
   [preprocessed-query :- :map]
@@ -26,7 +32,7 @@
                         {:query preprocessed-query, :type qp.error-type/driver}
                         e))))))
 
-(mu/defn compile :- :map
+(mu/defn compile :- ::compiled
   "Preprocess and compile a query, if needed. Returns just the resulting 'inner' native query."
   [query :- :map]
   (qp.setup/with-qp-setup [query query]
