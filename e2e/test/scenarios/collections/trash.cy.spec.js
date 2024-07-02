@@ -655,7 +655,7 @@ describe("scenarios > collections > trash", () => {
 
     cy.log("Make sure trash is selected for root trash collection");
     cy.visit("/trash");
-    assertTrashSelectinInNavigationSidebar();
+    assertTrashSelectedInNavigationSidebar();
 
     cy.log("Make sure trash is selected for a trashed collection");
     cy.get("@collection").then(collection => {
@@ -664,7 +664,7 @@ describe("scenarios > collections > trash", () => {
       );
       visitCollection(collection.id);
       cy.wait("@getCollection");
-      assertTrashSelectinInNavigationSidebar();
+      assertTrashSelectedInNavigationSidebar();
     });
 
     cy.log("Make sure trash is selected for a trashed dashboard");
@@ -673,7 +673,7 @@ describe("scenarios > collections > trash", () => {
       visitDashboard(dashboard.id);
       cy.wait("@getDashboard");
       openNavigationSidebar();
-      assertTrashSelectinInNavigationSidebar();
+      assertTrashSelectedInNavigationSidebar();
     });
 
     cy.log("Make sure trash is selected for a trashed question");
@@ -685,7 +685,7 @@ describe("scenarios > collections > trash", () => {
       visitQuestion(question.id);
       cy.wait("@getQuestionResult");
       openNavigationSidebar();
-      assertTrashSelectinInNavigationSidebar();
+      assertTrashSelectedInNavigationSidebar();
     });
   });
 });
@@ -769,7 +769,7 @@ function selectItem(name) {
     .within(() => cy.findByRole("checkbox").click());
 }
 
-function assertTrashSelectinInNavigationSidebar() {
+function assertTrashSelectedInNavigationSidebar() {
   navigationSidebar().within(() => {
     cy.findByText("Trash")
       .parents("li")

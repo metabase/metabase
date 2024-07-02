@@ -34,7 +34,10 @@ import {
   updateDashboardCards,
   visitDashboard,
   visitEmbeddedPage,
+  visitModel,
   visitPublicDashboard,
+  setModelMetadata,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -2484,6 +2487,128 @@ describe("issue 43154", () => {
   });
 });
 
+describe("issue 42829", () => {
+  const modelDetails = {
+    name: "SQL model",
+    type: "model",
+    native: {
+      query: "SELECT * FROM PEOPLE",
+    },
+  };
+
+  const stateFieldDetails = {
+    id: PEOPLE.STATE,
+    display_name: "State",
+    semantic_type: "type/State",
+  };
+
+  const getQuestionDetails = modelId => ({
+    name: "SQL model-based question",
+    type: "question",
+    query: {
+      "source-table": `card__${modelId}`,
+      aggregation: [
+        ["distinct", ["field", "STATE", { "base-type": "type/Text" }]],
+      ],
+    },
+    display: "scalar",
+  });
+
+  const parameterDetails = {
+    name: "State",
+    slug: "state",
+    id: "5aefc725",
+    type: "string/=",
+    sectionId: "location",
+  };
+
+  const dashboardDetails = {
+    parameters: [parameterDetails],
+    enable_embedding: true,
+    embedding_params: {
+      [parameterDetails.slug]: "enabled",
+    },
+  };
+
+  const getParameterMapping = questionId => ({
+    parameter_id: parameterDetails.id,
+    card_id: questionId,
+    target: ["dimension", ["field", "STATE", { "base-type": "type/Text" }]],
+  });
+
+  function filterAndVerifyResults() {
+    filterWidget().click();
+    popover().within(() => {
+      cy.findByText("AK").click();
+      cy.findByText("AR").click();
+      cy.button("Add filter").click();
+    });
+    getDashboardCard().findByTestId("scalar-value").should("have.text", "2");
+  }
+
+  function drillAndVerifyResults() {
+    getDashboardCard().findByText("SQL model-based question").click();
+    cy.findByTestId("qb-filters-panel").findByText("State is 2 selections");
+    cy.findByTestId("scalar-value").should("have.text", "2");
+  }
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createNativeQuestion(modelDetails).then(({ body: model }) => {
+      // populate result_metadata
+      cy.request("POST", `/api/card/${model.id}/query`);
+      setModelMetadata(model.id, field => {
+        if (field.display_name === "STATE") {
+          return { ...field, ...stateFieldDetails };
+        }
+        return field;
+      });
+      cy.createDashboardWithQuestions({
+        dashboardDetails,
+        questions: [getQuestionDetails(model.id)],
+      }).then(({ dashboard, questions: [question] }) => {
+        updateDashboardCards({
+          dashboard_id: dashboard.id,
+          cards: [
+            {
+              card_id: question.id,
+              parameter_mappings: [getParameterMapping(question.id)],
+            },
+          ],
+        });
+        cy.wrap(dashboard.id).as("dashboardId");
+      });
+    });
+  });
+
+  it("should be able to get field values coming from a sql model-based question in a regular dashboard (metabase#42829)", () => {
+    visitDashboard("@dashboardId");
+    filterAndVerifyResults();
+    drillAndVerifyResults();
+  });
+
+  // param_fields is null for public dashboards, should be fixed on the BE
+  it.skip("should be able to get field values coming from a sql model-based question in a public dashboard (metabase#42829)", () => {
+    cy.get("@dashboardId").then(dashboardId =>
+      visitPublicDashboard(dashboardId),
+    );
+    filterAndVerifyResults();
+  });
+
+  // param_fields is null for embedded dashboards, should be fixed on the BE
+  it.skip("should be able to get field values coming from a sql model-based question in a embedded dashboard (metabase#42829)", () => {
+    cy.get("@dashboardId").then(dashboardId =>
+      visitEmbeddedPage({
+        resource: { dashboard: dashboardId },
+        params: {},
+      }),
+    );
+    filterAndVerifyResults();
+  });
+});
+
 describe("issue 43799", () => {
   const modelDetails = {
     name: "43799",
@@ -3198,4 +3323,234 @@ describe("issue 44790", () => {
 
     getDashboardCard().should("contain", "borer-hudson@yahoo.com");
   });
+});
+
+describe("issue 34955", () => {
+  const ccName = "Custom Created At";
+
+  const questionDetails = {
+    name: "34955",
+    query: {
+      "source-table": ORDERS_ID,
+      expressions: {
+        [ccName]: [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime" },
+        ],
+      },
+      fields: [
+        [
+          "field",
+          ORDERS.ID,
+          {
+            "base-type": "type/BigInteger",
+          },
+        ],
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "base-type": "type/DateTime",
+          },
+        ],
+        [
+          "expression",
+          ccName,
+          {
+            "base-type": "type/DateTime",
+          },
+        ],
+      ],
+      limit: 2,
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    cy.createQuestionAndDashboard({
+      questionDetails,
+      cardDetails: {
+        size_x: 16,
+        size_y: 8,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      cy.wrap(dashboard_id).as("dashboardId");
+
+      visitDashboard(dashboard_id);
+      editDashboard();
+
+      setFilter("Time", "Single Date", "On");
+      connectFilterToColumn(ccName);
+
+      setFilter("Time", "Date Range", "Between");
+      connectFilterToColumn(ccName);
+
+      saveDashboard();
+
+      cy.findAllByTestId("column-header")
+        .eq(-2)
+        .should("have.text", "Created At");
+      cy.findAllByTestId("column-header").eq(-1).should("have.text", ccName);
+      cy.findAllByTestId("cell-data")
+        .filter(":contains(May 15, 2024, 8:04 AM)")
+        .should("have.length", 2);
+    });
+  });
+
+  it("should connect specific date filter (`Between`) to the temporal custom column (metabase#34955-1)", () => {
+    cy.get("@dashboardId").then(dashboard_id => {
+      // Apply filter through URL to prevent the typing flakes
+      cy.visit(`/dashboard/${dashboard_id}?on=&between=2024-01-01~2024-03-01`);
+      cy.findAllByTestId("field-set-content")
+        .last()
+        .should("contain", "January 1, 2024 - March 1, 2024");
+
+      cy.findAllByTestId("cell-data")
+        .filter(":contains(January 1, 2024, 7:26 AM)")
+        .should("have.length", 2);
+    });
+  });
+
+  // TODO: Once the issue is fixed, merge into a single repro to avoid unnecessary overhead!
+  it.skip("should connect specific date filter (`On`) to the temporal custom column (metabase#34955-2)", () => {
+    cy.get("@dashboardId").then(dashboard_id => {
+      // Apply filter through URL to prevent the typing flakes
+      cy.visit(`/dashboard/${dashboard_id}?on=2024-01-01&between=`);
+      cy.findAllByTestId("field-set-content")
+        .first()
+        .should("contain", "January 1, 2024");
+
+      cy.findAllByTestId("cell-data")
+        .filter(":contains(January 1, 2024, 7:26 AM)")
+        .should("have.length", 2);
+    });
+  });
+
+  function connectFilterToColumn(column) {
+    getDashboardCard().within(() => {
+      cy.findByText("Column to filter on");
+      cy.findByText("Select…").click();
+    });
+
+    popover().within(() => {
+      cy.findByText(column).click();
+    });
+  }
+});
+
+describe("issue 35852", () => {
+  const model = {
+    name: "35852 - sql",
+    type: "model",
+    native: {
+      query: "SELECT * FROM PRODUCTS LIMIT 10",
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show filter values for a model based on sql query (metabase#35852)", () => {
+    createNativeQuestion(model).then(({ body: { id: modelId } }) => {
+      setModelMetadata(modelId, field => {
+        if (field.display_name === "CATEGORY") {
+          return {
+            ...field,
+            id: PRODUCTS.CATEGORY,
+            display_name: "Category",
+            semantic_type: "type/Category",
+            fk_target_field_id: null,
+          };
+        }
+
+        return field;
+      });
+
+      createDashboardWithFilterAndQuestionMapped(modelId);
+      visitModel(modelId);
+    });
+
+    tableHeaderClick("Category");
+    popover().findByText("Filter by this column").click();
+
+    cy.log("Verify filter values are available");
+
+    popover()
+      .should("contain", "Gizmo")
+      .should("contain", "Doohickey")
+      .should("contain", "Gadget")
+      .should("contain", "Widget");
+
+    popover().within(() => {
+      cy.findByText("Gizmo").click();
+      cy.button("Add filter").click();
+    });
+
+    cy.log("Verify filter is applied");
+
+    cy.findAllByTestId("cell-data")
+      .filter(":contains(Gizmo)")
+      .should("have.length", 2);
+
+    visitDashboard("@dashboardId");
+
+    filterWidget().click();
+
+    popover().within(() => {
+      cy.findByText("Gizmo").click();
+      cy.button("Add filter").click();
+    });
+
+    getDashboardCard().findAllByText("Gizmo").should("have.length", 2);
+  });
+
+  function createDashboardWithFilterAndQuestionMapped(modelId) {
+    const parameterDetails = {
+      name: "Category",
+      slug: "category",
+      id: "2a12e66c",
+      type: "string/=",
+      sectionId: "string",
+    };
+
+    const dashboardDetails = {
+      parameters: [parameterDetails],
+    };
+
+    const questionDetails = {
+      name: "Q1",
+      query: { "source-table": `card__${modelId}`, limit: 10 },
+    };
+
+    cy.createDashboardWithQuestions({
+      dashboardDetails,
+      questions: [questionDetails],
+    }).then(({ dashboard, questions: [card] }) => {
+      cy.wrap(dashboard.id).as("dashboardId");
+
+      updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [
+          {
+            card_id: card.id,
+            parameter_mappings: [
+              {
+                card_id: card.id,
+                parameter_id: parameterDetails.id,
+                target: [
+                  "dimension",
+                  ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+                ],
+              },
+            ],
+          },
+        ],
+      });
+    });
+  }
 });

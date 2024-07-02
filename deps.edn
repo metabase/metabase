@@ -498,6 +498,7 @@
                                    "frontend/test/metabase/lib/urls\\.unit\\.spec\\.js$"
                                    "frontend/test/metabase/lib/formatting\\.unit\\.spec\\.js$"
                                    "src/metabase/shared/util/currency\\.cljc$"
+                                   "test/metabase/pulse/render/png_test.clj"
                                    "#.+#$"
                                    "\\.transit\\.json$"]}}
 

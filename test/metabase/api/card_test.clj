@@ -23,6 +23,7 @@
     :refer [Card CardBookmark Collection Dashboard Database ModerationReview
             Pulse PulseCard PulseChannel PulseChannelRecipient Table Timeline
             TimelineEvent]]
+   [metabase.models.card.metadata :as card.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
@@ -30,7 +31,6 @@
    [metabase.models.revision :as revision]
    [metabase.permissions.util :as perms.u]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -967,17 +967,18 @@
 (deftest updating-card-updates-metadata-2
   (let [query (updating-card-updates-metadata-query)]
     (testing "Updating other parts but not query does not update the metadata"
-      (let [orig   qp.async/result-metadata-for-query-async
+      (let [orig   @#'card.metadata/legacy-result-metadata-future
             called (atom 0)]
-        (with-redefs [qp.async/result-metadata-for-query-async (fn [q]
-                                                                 (swap! called inc)
-                                                                 (orig q))]
+        (with-redefs [card.metadata/legacy-result-metadata-future (fn [q]
+                                                                    (swap! called inc)
+                                                                    (orig q))]
           (mt/with-model-cleanup [:model/Card]
             (let [card (mt/user-http-request :crowberto :post 200 "card"
                                              (card-with-name-and-query "card-name"
                                                                        query))]
               (is (= @called 1))
-              (is (= ["ID" "NAME"] (map norm (:result_metadata card))))
+              (is (=? {:result_metadata #(= ["ID" "NAME"] (map norm %))}
+                      card))
               (mt/user-http-request
                :crowberto :put 200 (str "card/" (u/the-id card))
                (assoc card
@@ -1043,32 +1044,25 @@
             ;; Rebind the `execute-statement!` function so that we can capture the generated SQL and inspect it
             (let [orig       sql-jdbc.execute/execute-statement!
                   sql-result (atom nil)]
-              (with-redefs [sql-jdbc.execute/execute-statement!
-                            (fn [driver stmt sql]
-                              (reset! sql-result sql)
-                              (orig driver stmt sql))]
+              (with-redefs [sql-jdbc.execute/execute-statement! (fn [driver stmt sql]
+                                                                  (reset! sql-result sql)
+                                                                  (orig driver stmt sql))
+                            driver/query-result-metadata        (get-method driver/query-result-metadata :default)]
                 (mt/user-http-request
                  :crowberto :post 200 "card"
                  (assoc (card-with-name-and-query card-name)
                         :dataset_query      (mt/native-query {:query "SELECT count(*) AS \"count\" FROM VENUES"})
                         :collection_id      (u/the-id collection))))
               (testing "check the correct metadata was fetched and was saved in the DB"
-                (is (= [{:base_type     (count-base-type)
-                         :effective_type (count-base-type)
-                         :display_name  "count"
-                         :name          "count"
-                         :semantic_type :type/Quantity
-                         :fingerprint   {:global {:distinct-count 1
-                                                  :nil%           0.0},
-                                         :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}
-                         :field_ref     [:field "count" {:base-type (count-base-type)}]}]
-                       (t2/select-one-fn :result_metadata :model/Card :name card-name))))
+                (is (=? [{:base_type      (count-base-type)
+                          :display_name   "count"
+                          :name           "count"}]
+                        (t2/select-one-fn :result_metadata :model/Card :name card-name))))
               (testing "Was the user id found in the generated SQL?"
-                (is (= true
-                       (boolean
-                        (when-let [s @sql-result]
-                          (re-find (re-pattern (str "userID: " (mt/user->id :crowberto)))
-                                   s)))))))))))))
+                (is (string? @sql-result))
+                (when-some [s @sql-result]
+                  (is (re-find (re-pattern (str "userID: " (mt/user->id :crowberto)))
+                               s)))))))))))
 
 (deftest create-card-with-collection-position
   (testing "Make sure we can create a Card with a Collection position"

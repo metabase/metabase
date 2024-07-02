@@ -1,23 +1,22 @@
 (ns ^:mb/once metabase.xrays.automagic-dashboards.core-test
   (:require
    [cheshire.core :as json]
-   [clojure.core.async :as a]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models
-    :refer [Card Collection Database Field LegacyMetric Segment Table]]
+   [metabase.models :refer [Card Collection Database Field LegacyMetric Segment Table]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.query :as query :refer [Query]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.async :as qp.async]
+   [metabase.query-processor.metadata :as qp.metadata]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.xrays.automagic-dashboards.combination :as combination]
    [metabase.xrays.automagic-dashboards.comparison :as comparison]
    [metabase.xrays.automagic-dashboards.core :as magic]
@@ -52,7 +51,7 @@
 
 ;;; ------------------- `->root source` -------------------
 
-(deftest source-root-table-test
+(deftest ^:parallel source-root-table-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Table"
     (mt/dataset test-data
       (testing "The source of a table is the table itself"
@@ -62,7 +61,7 @@
           (is (= entity table))
           (is (= source entity)))))))
 
-(deftest source-root-field-test
+(deftest ^:parallel source-root-field-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Field"
     (mt/dataset test-data
       (testing "The source of a field is the originating table of the field"
@@ -72,7 +71,7 @@
           (is (= source table))
           (is (= entity field)))))))
 
-(deftest source-root-card-test
+(deftest ^:parallel source-root-card-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
     (mt/dataset test-data
       (testing "Card sourcing has four branches..."
@@ -89,7 +88,7 @@
               (is (= entity card))
               (is (= source (assoc card :entity_type :entity/GenericTable))))))))))
 
-(deftest source-root-card-test-2
+(deftest ^:parallel source-root-card-test-2
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
     (mt/dataset test-data
       (testing "Card sourcing has four branches..."
@@ -113,7 +112,7 @@
               (is (= entity card))
               (is (= source (assoc nested-query :entity_type :entity/GenericTable))))))))))
 
-(deftest source-root-card-test-3
+(deftest ^:parallel source-root-card-test-3
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
     (mt/dataset test-data
       (testing "Card sourcing has four branches..."
@@ -127,7 +126,7 @@
                 (is (= entity card))
                 (is (= source (assoc card :entity_type :entity/GenericTable)))))))))))
 
-(deftest source-root-card-test-4
+(deftest ^:parallel source-root-card-test-4
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
     (mt/dataset test-data
       (testing "Card sourcing has four branches..."
@@ -147,7 +146,7 @@
               (is (= entity card))
               (is (= source (t2/select-one :model/Table :id table-id))))))))))
 
-(deftest source-root-query-test
+(deftest ^:parallel source-root-query-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Query"
     (mt/dataset test-data
       (testing "The source of a query is the underlying datasource of the query"
@@ -163,7 +162,7 @@
           (is (= entity query))
           (is (= source (t2/select-one :model/Table (mt/id :orders)))))))))
 
-(deftest source-root-metric-test
+(deftest^:parallel source-root-metric-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/LegacyMetric"
     (testing "The source of a metric is its underlying table."
       (t2.with-temp/with-temp [LegacyMetric metric {:table_id   (mt/id :venues)
@@ -172,7 +171,7 @@
           (is (= entity metric))
           (is (= source (t2/select-one :model/Table (mt/id :venues)))))))))
 
-(deftest source-root-segment-test
+(deftest^:parallel source-root-segment-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Segment"
     (testing "The source of a segment is its underlying table."
       (mt/with-temp [Segment segment {:table_id   (mt/id :venues)
@@ -205,8 +204,10 @@
       (doseq [[table cardinality] (map vector
                                        (t2/select Table :db_id (mt/id) {:order-by [[:name :asc]]})
                                        [2 8 11 11 15 17 5 7])]
-        (test-automagic-analysis table cardinality)))
+        (test-automagic-analysis table cardinality)))))
 
+(deftest automagic-analysis-test-2
+  (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup!
       (is (= 1
              (->> (magic/automagic-analysis (t2/select-one Table :id (mt/id :venues)) {:show 1})
@@ -250,7 +251,10 @@
                                    (comp (mapcat :parameter_mappings)
                                          (map :target))
                                    (:dashcards dashboard))]
-          (is (= expected-targets actual-targets))))
+          (is (= expected-targets actual-targets))))))
+
+(deftest parameter-mapping-test-2
+  (mt/dataset test-data
     (testing "native queries have parameter mappings with field ids"
       (let [query (mt/native-query {:query "select * from products"})]
         (t2.with-temp/with-temp [Card card (mt/card-with-source-metadata-for-query
@@ -310,11 +314,10 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (t2/select-one Card :id card-id) 2))))))
 
-(defn- result-metadata-for-query [query]
-  (first
-   (a/alts!!
-    [(qp.async/result-metadata-for-query-async query)
-     (a/timeout 1000)])))
+(mu/defn ^:private result-metadata-for-query :- [:maybe [:sequential :map]]
+  [query :- :map]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (qp.metadata/legacy-result-metadata query nil))
 
 (deftest explicit-filter-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -341,14 +344,15 @@
 (deftest native-query-with-cards-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-full-data-perms-for-all-users!
-      (let [source-query {:native   {:query "select * from venues"}
+      (let [source-query {:native   {:query "select * from venues limit 1"}
                           :type     :native
                           :database (mt/id)}]
         (mt/with-temp [Collection {collection-id :id} {}
                        Card       {source-id :id}     {:table_id        nil
                                                        :collection_id   collection-id
                                                        :dataset_query   source-query
-                                                       :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}
+                                                       :result_metadata (get-in (qp/process-query source-query)
+                                                                                [:data :results_metadata :columns])}
                        Card       {card-id :id}       {:table_id      nil
                                                        :collection_id collection-id
                                                        :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
@@ -487,11 +491,14 @@
                  (set (map :id (#'interesting/matching-fields context (dimensions "CreateTimestamp"))))))
           ;; This does not match any of our fabricated context fields (even (mt/id :people :latitude)) because the
           ;; context is fabricated and needs additional data (:table). See above test for a working example with a match
-          (is (= #{} (set (map :id (#'interesting/matching-fields context (dimensions "Lat"))))))))))
+          (is (= #{} (set (map :id (#'interesting/matching-fields context (dimensions "Lat")))))))))))
+
+(deftest field-candidate-matching-test-2
   (testing "Verify dimension selection works for dimension definitions with 2-element [tablespec fieldspec] definitions."
     (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
-        ;; Unlike the above test, we do need to provide a full context to match these fields against the dimension definitions.
+        ;; Unlike the above test, we do need to provide a full context to match these fields against the dimension
+        ;; definitions.
         (let [source-query {:database (mt/id)
                             :type     :query
                             :query    (mt/$ids
@@ -512,10 +519,8 @@
              Card       card                {:table_id        (mt/id :products)
                                              :collection_id   collection-id
                                              :dataset_query   source-query
-                                             :result_metadata (mt/with-test-user
-                                                                :rasta
-                                                                (result-metadata-for-query
-                                                                 source-query))
+                                             :result_metadata (mt/with-test-user :rasta
+                                                                (result-metadata-for-query source-query))
                                              :type            :model}]
             (let [base-context (#'magic/make-base-context (#'magic/->root card))
                   dimensions   {"GenericCategoryMedium" {:field_type [:entity/GenericTable :type/Category] :max_cardinality 10}
@@ -1782,15 +1787,16 @@
   (testing "Questions based on native questions should produce a valid dashboard."
     (mt/dataset test-data
       (mt/with-test-user :crowberto
-        (let [native-query {:native   {:query "select * from people"}
+        (let [native-query {:native   {:query "select * from people limit 1"}
                             :type     :native
                             :database (mt/id)}]
           (mt/with-temp
             [Card {native-card-id :id :as native-card} {:table_id        nil
                                                         :name            "15655"
                                                         :dataset_query   native-query
-                                                        :result_metadata (mt/with-test-user :crowberto (result-metadata-for-query native-query))}
-             ;card__19169
+                                                        :result_metadata (get-in (qp/process-query native-query)
+                                                                                 [:data :results_metadata :columns])}
+                                        ;card__19169
              Card card {:table_id      (mt/id :orders)
                         :dataset_query {:query    {:source-table (format "card__%s" native-card-id)
                                                    :aggregation  [[:count]]
@@ -1802,31 +1808,31 @@
                 (is (= "A closer look at the metrics and dimensions used in this saved question."
                        description))
                 (is (set/subset?
-                      #{{:group-name "# A look at the SOURCE fields", :card-name nil}
-                        {:group-name "## The number of 15655 over time", :card-name nil}
-                        {:group-name nil, :card-name "Over time"}
-                        {:group-name nil, :card-name "Number of 15655 per day of the week"}
-                        {:group-name "## How this metric is distributed across different categories", :card-name nil}
-                        {:group-name nil, :card-name "Number of 15655 per NAME over time"}
-                        {:group-name nil, :card-name "Number of 15655 per CITY over time"}
-                        {:group-name "## Overview", :card-name nil}
-                        {:group-name nil, :card-name "Count"}
-                        {:group-name nil, :card-name "How the SOURCE is distributed"}
-                        {:group-name "## How the SOURCE fields is distributed", :card-name nil}
-                        {:group-name nil, :card-name "SOURCE by NAME"}
-                        {:group-name nil, :card-name "SOURCE by CITY"}}
-                      (set (map (fn [dashcard]
-                                  {:group-name (get-in dashcard [:visualization_settings :text])
-                                   :card-name  (get-in dashcard [:card :name])})
-                                dashcards)))))
+                     #{{:group-name "# A look at the SOURCE fields", :card-name nil}
+                       {:group-name "## The number of 15655 over time", :card-name nil}
+                       {:group-name nil, :card-name "Over time"}
+                       {:group-name nil, :card-name "Number of 15655 per day of the week"}
+                       {:group-name "## How this metric is distributed across different categories", :card-name nil}
+                       {:group-name nil, :card-name "Number of 15655 per NAME over time"}
+                       {:group-name nil, :card-name "Number of 15655 per CITY over time"}
+                       {:group-name "## Overview", :card-name nil}
+                       {:group-name nil, :card-name "Count"}
+                       {:group-name nil, :card-name "How the SOURCE is distributed"}
+                       {:group-name "## How the SOURCE fields is distributed", :card-name nil}
+                       {:group-name nil, :card-name "SOURCE by NAME"}
+                       {:group-name nil, :card-name "SOURCE by CITY"}}
+                     (set (map (fn [dashcard]
+                                 {:group-name (get-in dashcard [:visualization_settings :text])
+                                  :card-name  (get-in dashcard [:card :name])})
+                               dashcards)))))
               (let [cell-query ["=" ["field" "SOURCE" {:base-type "type/Text"}] "Affiliate"]
                     {comparison-description :description
                      comparison-dashcards   :dashcards
                      transient_name         :transient_name} (comparison/comparison-dashboard
-                                                               dashboard
-                                                               card
-                                                               native-card
-                                                               {:left {:cell-query cell-query}})]
+                     dashboard
+                     card
+                     native-card
+                     {:left {:cell-query cell-query}})]
                 (testing "Questions based on native queries produce a comparable dashboard"
                   (is (= "Comparison of Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
                          transient_name))
