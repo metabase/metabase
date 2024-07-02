@@ -1,3 +1,4 @@
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   editDashboard,
@@ -21,6 +22,9 @@ import {
   multiAutocompleteInput,
   multiAutocompleteValue,
   sidebar,
+  resetTestTable,
+  resyncDatabase,
+  getTable,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -302,6 +306,63 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
   });
 });
 
+describe(
+  "scenarios > dashboard > filters > exotic types",
+  { tags: ["@external"] },
+  () => {
+    const TABLE_NAME = "ip_addresses";
+
+    beforeEach(() => {
+      resetTestTable({ type: "postgres", table: TABLE_NAME });
+      restore("postgres-writable");
+      cy.signInAsAdmin();
+      resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: TABLE_NAME,
+      });
+
+      getTable({ databaseId: WRITABLE_DB_ID, name: TABLE_NAME }).then(table => {
+        cy.createQuestionAndDashboard({
+          questionDetails: {
+            database: WRITABLE_DB_ID,
+            query: {
+              "source-table": table.id,
+            },
+          },
+        }).then(({ body: { dashboard_id } }) => {
+          visitDashboard(dashboard_id);
+        });
+      });
+    });
+
+    it("should be possible to use custom labels on IP address columns", () => {
+      editDashboard();
+      setFilter("Text or Category", "Is");
+      mapFilterToQuestion("Inet");
+      setFilterListSource({
+        values: [
+          ["192.168.0.1/24", "Router"],
+          ["127.0.0.1", "Localhost"],
+          "0.0.0.1/0",
+        ],
+      });
+      saveDashboard();
+
+      openFilter();
+      popover().within(() => {
+        cy.findByText("Router").should("be.visible");
+        cy.findByText("Localhost").should("be.visible");
+        cy.findByText("0.0.0.1/0").should("be.visible");
+
+        cy.findByText("Router").click();
+        cy.button("Add filter").click();
+      });
+
+      cy.findByTestId("fixed-width-filters").should("contain", "Router");
+    });
+  },
+);
+
 describeEE("scenarios > dashboard > filters", () => {
   beforeEach(() => {
     restore("default-ee");
@@ -335,9 +396,9 @@ describeEE("scenarios > dashboard > filters", () => {
   });
 });
 
-const mapFilterToQuestion = () => {
+const mapFilterToQuestion = (column = "Category") => {
   cy.findByText("Select…").click();
-  popover().within(() => cy.findByText("Category").click());
+  popover().within(() => cy.findByText(column).click());
 };
 
 const filterDashboard = ({
@@ -364,6 +425,10 @@ const filterDashboard = ({
     cy.button("Add filter").click();
   });
 };
+
+function openFilter() {
+  cy.findByText("Text").click();
+}
 
 const archiveQuestion = () => {
   openQuestionActions();
