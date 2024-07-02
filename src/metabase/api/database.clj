@@ -174,9 +174,9 @@
                           :from     [:report_card]
                           :where    (into [:and
                                            [:not= :result_metadata nil]
-                                           [:= :archived false
+                                           [:= :archived false]
                                            ;; always return metrics for now
-                                                  [:in :type [(u/qualified-name card-type) "metric"]]]
+                                           [:in :type [(u/qualified-name card-type) "metric"]]
                                            [:in :database_id ids-of-dbs-that-support-source-queries]
                                            (collection/visible-collection-ids->honeysql-filter-clause
                                             (collection/permissions-set->visible-collection-ids
