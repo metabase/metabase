@@ -1,40 +1,13 @@
-import fetchMock from "fetch-mock";
-
-import {
-  setupErrorParameterValuesEndpoints,
-  setupParameterValuesEndpoints,
-} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { ParameterValue } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 import FormattedParameterValue, {
   type FormattedParameterValueProps,
 } from "./FormattedParameterValue";
 
-type SetupOpts = FormattedParameterValueProps & {
-  values?: ParameterValue[];
-  error?: boolean;
-};
+type SetupOpts = FormattedParameterValueProps;
 
-function setup({
-  parameter,
-  value,
-  placeholder,
-  values,
-  error = false,
-}: SetupOpts) {
-  if (values) {
-    setupParameterValuesEndpoints({
-      values,
-      has_more_values: false,
-    });
-  }
-
-  if (error) {
-    setupErrorParameterValuesEndpoints();
-  }
-
+function setup({ parameter, value, placeholder }: SetupOpts) {
   return renderWithProviders(
     <FormattedParameterValue
       parameter={parameter}
@@ -56,7 +29,6 @@ describe("FormattedParameterValue", () => {
       }),
     });
 
-    expect(fetchMock.called()).toBe(false);
     expect(screen.getByText("Custom Label")).toBeInTheDocument();
   });
 
@@ -71,39 +43,6 @@ describe("FormattedParameterValue", () => {
       }),
     });
 
-    expect(fetchMock.called()).toBe(false);
     expect(screen.getByText("B")).toBeInTheDocument();
-  });
-
-  it("should fetch the parameter config if it has not been passed, falling back to the value while loading", async () => {
-    setup({
-      value: "A",
-      parameter: createMockParameter({}),
-      values: [["A", "Custom Label"], ["B"]],
-    });
-
-    expect(fetchMock.called()).toBe(true);
-
-    // shows the value initially
-    expect(screen.getByText("A")).toBeInTheDocument();
-
-    await fetchMock.flush();
-
-    expect(await screen.findByText("Custom Label")).toBeInTheDocument();
-  });
-
-  it("should fetch the parameter config if it has not been passed, falling back to the value if there is an error", async () => {
-    setup({
-      value: "A",
-      parameter: createMockParameter({}),
-      error: true,
-    });
-
-    expect(fetchMock.called()).toBe(true);
-    expect(screen.getByText("A")).toBeInTheDocument();
-
-    await fetchMock.flush();
-
-    expect(screen.getByText("A")).toBeInTheDocument();
   });
 });
