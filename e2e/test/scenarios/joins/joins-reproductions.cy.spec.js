@@ -1237,7 +1237,7 @@ describe.skip("issue 27521", () => {
 describe("issue 42385", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("postgres-12");
-    cy.signInAsNormalUser();
+    cy.signInAsAdmin();
   });
 
   it("should remove invalid draft join clause when query database changes (metabase#42385)", () => {
