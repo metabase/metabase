@@ -36,7 +36,7 @@ export type EmbedDisplayParams = {
   hideParameters: EmbedHideParameters;
   font: EmbedFont;
   theme: DisplayTheme;
-  downloads: boolean
+  downloads: boolean;
 };
 
 export type EmbedDisplayControls = EmbedThemeControls &
