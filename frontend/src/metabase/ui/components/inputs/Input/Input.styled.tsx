@@ -16,10 +16,14 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
     defaultProps: {
       size: "md",
     },
-    styles: (theme, { multiline }: InputStylesParams, { size = "md" }) => ({
+    styles: (
+      theme,
+      { multiline, radius }: InputStylesParams,
+      { size = "md" },
+    ) => ({
       input: {
         color: theme.fn.themeColor("text-dark"),
-        borderRadius: theme.radius.xs,
+        borderRadius: radius ?? theme.radius.xs,
         height: multiline ? "auto" : getSize({ size, sizes: SIZES }),
         minHeight: getSize({ size, sizes: SIZES }),
         background: theme.fn.themeColor("bg-white"),

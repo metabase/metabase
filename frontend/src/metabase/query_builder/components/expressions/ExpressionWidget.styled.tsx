@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
+import { TextInput } from "metabase/ui";
 
 export const Container = styled.div`
   width: 472px;
@@ -44,4 +45,10 @@ export const ActionButtonsWrapper = styled.div`
 
   display: flex;
   gap: 1rem;
+`;
+
+export const ExpressionNameInput = styled(TextInput)`
+  & input {
+    font-weight: 700;
+  }
 `;

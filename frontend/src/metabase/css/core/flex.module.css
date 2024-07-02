@@ -20,6 +20,10 @@
   flex: 0.5;
 }
 
+.flex1 {
+  flex: 1;
+}
+
 .flexNoShrink {
   flex-shrink: 0;
 }
@@ -60,6 +64,7 @@
   justify-content: center;
 }
 
+
 .justifyBetween {
   justify-content: space-between;
 }
@@ -70,6 +75,10 @@
 
 .alignStart {
   align-items: flex-start;
+}
+
+.placeContentStart {
+  place-content: flex-start;
 }
 
 .alignEnd {

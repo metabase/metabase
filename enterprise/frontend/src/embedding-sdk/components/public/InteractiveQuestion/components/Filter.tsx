@@ -51,7 +51,7 @@ const FilterInner = ({
   };
 
   return (
-    <Stack>
+    <Stack w="100%" h="100%">
       <FilterContent.Header value={searchText} onChange={handleSearch} />
       <FilterContent.Body
         groupItems={visibleItems}
