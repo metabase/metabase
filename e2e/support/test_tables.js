@@ -209,7 +209,7 @@ export const ip_addresses = async dbClient => {
   await dbClient.schema.dropTableIfExists(tableName);
 
   await dbClient.schema.createTable(tableName, table => {
-    table.integer("count");
+    table.text("count");
   });
 
   await dbClient.schema.raw(`ALTER TABLE ${tableName} ADD inet inet`);

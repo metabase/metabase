@@ -322,6 +322,11 @@ describe(
       });
 
       getTable({ databaseId: WRITABLE_DB_ID, name: TABLE_NAME }).then(table => {
+        const countField = table.fields.find(field => field.name === "count");
+        cy.request("PUT", `/api/field/${countField.id}`, {
+          semantic_type: "type/Quantity",
+        });
+
         cy.createQuestionAndDashboard({
           questionDetails: {
             database: WRITABLE_DB_ID,
@@ -359,6 +364,28 @@ describe(
       });
 
       cy.findByTestId("fixed-width-filters").should("contain", "Router");
+    });
+
+    it("should be possible to use custom labels on type/Quantity fields", () => {
+      editDashboard();
+      setFilter("Text or Category", "Is");
+      mapFilterToQuestion("Count");
+      setFilterListSource({
+        values: [["10", "Ten"], ["20", "Twenty"], "30"],
+      });
+      saveDashboard();
+
+      openFilter();
+      popover().within(() => {
+        cy.findByText("Ten").should("be.visible");
+        cy.findByText("Twenty").should("be.visible");
+        cy.findByText("30").should("be.visible");
+
+        cy.findByText("Twenty").click();
+        cy.button("Add filter").click();
+      });
+
+      cy.findByTestId("fixed-width-filters").should("contain", "Twenty");
     });
   },
 );
