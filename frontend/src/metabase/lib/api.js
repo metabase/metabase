@@ -31,10 +31,10 @@ const DEFAULT_OPTIONS = {
 
 export class Api extends EventEmitter {
   basename = "";
-  apiKey = "";
   sessionToken;
 
   onBeforeRequest;
+  requestContext;
 
   GET;
   POST;
@@ -97,12 +97,13 @@ export class Api extends EventEmitter {
           delete headers["Content-Type"];
         }
 
-        if (this.apiKey) {
-          headers["X-Api-Key"] = this.apiKey;
+        if (this.requestContext) {
+          // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+          headers["X-Metabase-Request-Context"] = this.requestContext;
         }
 
         if (this.sessionToken) {
-          // eslint-disable-next-line no-literal-metabase-strings -- not a UI string
+          // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
           headers["X-Metabase-Session"] = this.sessionToken;
         }
 

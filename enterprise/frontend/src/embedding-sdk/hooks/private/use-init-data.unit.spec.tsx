@@ -1,3 +1,5 @@
+import { waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -18,6 +20,7 @@ import {
   createMockSdkState,
 } from "embedding-sdk/test/mocks/state";
 import type { SDKConfig } from "embedding-sdk/types";
+import { GET } from "metabase/lib/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -38,6 +41,10 @@ const TestComponent = ({ config }: { config: SDKConfig }) => {
     } as SDKConfig,
   });
 
+  const handleClick = () => {
+    GET("/api/some/url")();
+  };
+
   return (
     <div
       data-testid="test-component"
@@ -46,6 +53,7 @@ const TestComponent = ({ config }: { config: SDKConfig }) => {
       data-error-message={(loginStatus as LoginStatusError).error?.message}
     >
       Test Component
+      <button onClick={handleClick}>Send test request</button>
     </div>
   );
 };
@@ -65,6 +73,8 @@ const setup = ({
     exp: 1965805007,
     iat: 1965805007,
   });
+
+  fetchMock.get("path:/api/some/url", {});
 
   setupCurrentUserEndpoint(
     TEST_USER,
@@ -120,6 +130,22 @@ describe("useInitData hook", () => {
         "data-error-message",
         "Invalid JWT URI provided.",
       );
+    });
+
+    it("should set a context for all API requests", async () => {
+      setup({});
+
+      await userEvent.click(screen.getByText("Send test request"));
+
+      await waitFor(() => {
+        expect(fetchMock.called("path:/api/some/url")).toBeTruthy();
+      });
+
+      const lastCallRequest = fetchMock.lastCall("path:/api/some/url")?.request;
+
+      expect(
+        lastCallRequest?.headers.get("X-Metabase-Request-Context"),
+      ).toEqual("embedding-sdk");
     });
   });
 

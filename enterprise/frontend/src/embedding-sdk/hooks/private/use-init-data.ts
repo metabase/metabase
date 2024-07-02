@@ -50,6 +50,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
   useEffect(() => {
     if (loginStatus.status === "uninitialized") {
       api.basename = config.metabaseInstanceUrl;
+      api.requestContext = "embedding-sdk";
 
       if (isValidJwtAuth(config)) {
         setupJwtAuth(config, dispatch);
