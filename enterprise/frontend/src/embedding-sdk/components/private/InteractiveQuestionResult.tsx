@@ -93,7 +93,13 @@ export const InteractiveQuestionResult = ({
           <BackButton />
           {withTitle && (customTitle ?? <Title />)}
           {withResetButton && <QuestionResetButton />}
-          <FilterButton onClick={() => setQuestionView("filter")} />
+          <FilterButton
+            onClick={() =>
+              setQuestionView(
+                questionView === "filter" ? "visualization" : "filter",
+              )
+            }
+          />
           <SummarizeButton
             isOpen={questionView === "summarize"}
             onOpen={() => setQuestionView("summarize")}
