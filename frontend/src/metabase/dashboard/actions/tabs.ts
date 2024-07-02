@@ -582,14 +582,20 @@ export const tabsReducer = createReducer<DashboardState>(
 
     builder.addCase(initTabs, (state, { payload: { slug } }) => {
       const { prevTabs } = getPrevDashAndTabs({ state });
+      console.log("initTabs", prevTabs);
+      if (prevTabs.length !== 0) {
+        const idFromSlug = getIdFromSlug(slug);
 
-      const idFromSlug = getIdFromSlug(slug);
-      const tabId =
-        idFromSlug && prevTabs.map(t => t.id).includes(idFromSlug)
-          ? idFromSlug
-          : prevTabs[0]?.id ?? null;
+        console.log(prevTabs, idFromSlug);
+        const tabId =
+          idFromSlug && prevTabs.map(t => t.id).includes(idFromSlug)
+            ? idFromSlug
+            : prevTabs[0]?.id ?? null;
 
-      state.selectedTabId = tabId;
+        state.selectedTabId = tabId;
+      } else {
+        state.selectedTabId = null;
+      }
     });
   },
 );

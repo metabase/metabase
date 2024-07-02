@@ -1,13 +1,18 @@
 import type { Location } from "history";
 import { useEffect, useState } from "react";
-import { push, replace } from "react-router-redux";
 import { usePrevious } from "react-use";
-import _ from "underscore";
+import _, { isEqual } from "underscore";
 
-import { getIdFromSlug, initTabs, selectTab } from "metabase/dashboard/actions";
-import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
+import { getIdFromSlug, selectTab } from "metabase/dashboard/actions";
+import {
+  getDashboard,
+  getIsEditing,
+  getSelectedTabId,
+  getTabs,
+} from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { SelectedTabId } from "metabase-types/store";
+import { replace } from "react-router-redux";
 
 export function parseSlug({ location }: { location: Location }) {
   const slug = location.query["tab"];
@@ -30,111 +35,220 @@ export function getSlug({
   return [tabId, ...name.toLowerCase().split(" ")].join("-");
 }
 
-function useUpdateURLSlug({ location }: { location: Location }) {
+export function useSyncURLSlug({ location }: { location: Location }) {
   const dispatch = useDispatch();
 
-  return {
-    updateURLSlug: ({
-      slug,
-      shouldReplace = false,
-    }: {
-      slug: string;
-      shouldReplace?: boolean;
-    }) => {
-      const updater = shouldReplace ? replace : push;
-
-      const newQuery = slug
-        ? { ...location.query, tab: slug }
-        : _.omit(location.query, "tab");
-      dispatch(updater({ ...location, query: newQuery }));
-    },
-  };
-}
-
-export function useSyncURLSlug({ location }: { location: Location }) {
-  const [tabInitialized, setTabInitialized] = useState(false);
+  const tabs = useSelector(getTabs);
+  const prevTabs = usePrevious(tabs);
 
   const slug = parseSlug({ location });
-  const tabs = useSelector(getTabs);
-  const selectedTabId = useSelector(getSelectedTabId);
-
   const prevSlug = usePrevious(slug);
-  const prevTabs = usePrevious(tabs);
-  const prevSelectedTabId = usePrevious(selectedTabId);
 
-  const dispatch = useDispatch();
-  const { updateURLSlug } = useUpdateURLSlug({ location });
+  const slugId = getIdFromSlug(slug);
+  const prevSlugId = usePrevious(slugId);
+
+  const selectedId = useSelector(getSelectedTabId);
+  const prevSelectedId = usePrevious(selectedId);
+
+  const isEditingDashboard = useSelector(state => Boolean(getIsEditing(state)));
+  const prevIsEditingDashboard =
+    usePrevious(isEditingDashboard) ?? isEditingDashboard;
+
+  const dashboard = useSelector(getDashboard);
+  const prevDashboard = usePrevious(dashboard);
+
+  // INITIALIZATION + CHANGED DASHBOARD
+
+  const isDashboardDataInitializing =
+    prevTabs?.length === 0 &&
+    tabs &&
+    dashboard &&
+    prevDashboard?.id !== dashboard?.id;
+
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    if (!tabs || tabs.length === 0) {
-      return;
-    }
-
-    const tabFromSlug = tabs.find(t => t.id === getIdFromSlug(slug));
-
-    // If the tabs haven't been loaded before, the tab data from slug exists,
-    // and the current tab differs from the slug.
-    const isTabFromSlugLoaded =
-      !prevTabs?.length && tabFromSlug && selectedTabId !== tabFromSlug.id;
-
-    // Selects the tab once the tab data has been loaded.
-    if (isTabFromSlugLoaded) {
-      dispatch(selectTab({ tabId: tabFromSlug.id }));
-
-      updateURLSlug({
-        slug: getSlug({
-          tabId: tabFromSlug.id,
-          name: tabFromSlug.name,
-        }),
-      });
-      return;
-    }
-
-    const slugChanged = slug && slug !== prevSlug;
-    if (slugChanged) {
-      dispatch(initTabs({ slug }));
-      const slugId = getIdFromSlug(slug);
-      const hasTabs = tabs.length > 0;
-      const isValidSlug = !!tabs.find(t => t.id === slugId);
-      if (hasTabs && !isValidSlug) {
-        const [tab] = tabs;
-        updateURLSlug({ slug: getSlug({ tabId: tab.id, name: tab.name }) });
+    if (isDashboardDataInitializing) {
+      console.log("INITIALIZATION", selectedId, slugId);
+      if (slugId) {
+        dispatch(selectTab({ tabId: slugId }));
+      } else if (selectedId) {
+        dispatch(
+          replace({
+            ...location,
+            query: {
+              ...location.query,
+              tab: getSlug({
+                tabId: selectedId,
+                name: tabs.find(({ id }) => id === selectedId)?.name,
+              }),
+            },
+          }),
+        );
       }
-      return;
+      setIsInitialized(true);
     }
+  }, [
+    dispatch,
+    isDashboardDataInitializing,
+    location,
+    selectedId,
+    slugId,
+    tabs,
+  ]);
 
-    const tabSelected = selectedTabId !== prevSelectedTabId;
-    const tabRenamed =
-      tabs.find(t => t.id === selectedTabId)?.name !==
-      prevTabs?.find(t => t.id === selectedTabId)?.name;
-    const penultimateTabDeleted = tabs.length === 1 && prevTabs?.length === 2;
+  // TAB SWITCHED
 
-    if (tabSelected || tabRenamed || penultimateTabDeleted) {
-      const newSlug =
-        tabs.length <= 1
-          ? ""
-          : getSlug({
-              tabId: selectedTabId,
-              name: tabs.find(t => t.id === selectedTabId)?.name,
-            });
-      updateURLSlug({
-        slug: newSlug,
-        shouldReplace: !tabInitialized,
-      });
+  useEffect(() => {
+    if (
+      !isDashboardDataInitializing &&
+      prevTabs &&
+      tabs.length > 0 &&
+      prevSelectedId !== selectedId &&
+      prevTabs.length === tabs.length &&
+      slugId !== selectedId &&
+      !(prevIsEditingDashboard && !isEditingDashboard)
+    ) {
+      console.log(
+        "TAB SWITCHED",
+        selectedId,
+        slugId,
+        prevSlug,
+        prevSelectedId,
+        prevIsEditingDashboard,
+        isEditingDashboard,
+      );
+      dispatch(
+        replace({
+          ...location,
+          query: {
+            ...location.query,
+            tab: getSlug({
+              tabId: selectedId,
+              name: tabs.find(({ id }) => id === selectedId)?.name,
+            }),
+          },
+        }),
+      );
+    }
+  }, [
+    dispatch,
+    isDashboardDataInitializing,
+    isEditingDashboard,
+    location,
+    prevIsEditingDashboard,
+    prevSelectedId,
+    prevSlug,
+    prevTabs,
+    selectedId,
+    slugId,
+    tabs,
+  ]);
 
-      if (newSlug) {
-        setTabInitialized(true);
+  // LEAVE EDIT MODE
+  useEffect(() => {
+    if (
+      prevIsEditingDashboard &&
+      !isEditingDashboard &&
+      isEqual(dashboard, prevDashboard)
+    ) {
+      // console.log(selectedId, slugId, prevTabs, tabs);
+      // if (selectedId !== slugId) {
+      //   console.log("selecting here", slugId);
+      //   dispatch(selectTab({ tabId: slugId ?? null }));
+      // }
+    }
+  }, [
+    dashboard,
+    dispatch,
+    isEditingDashboard,
+    prevDashboard,
+    prevIsEditingDashboard,
+    prevTabs,
+    selectedId,
+    slugId,
+    tabs,
+  ]);
+
+  // RENAME TAB / MODIFY TAB / ADD TAB / DELETE TAB
+
+  useEffect(() => {
+    if (isEditingDashboard && !isEqual(tabs, prevTabs)) {
+      if (prevTabs.length < tabs.length) {
+        console.log("ADD TAB");
+      } else if (prevTabs.length > tabs.length) {
+        console.log("DELETE TAB");
+      } else {
+        console.log("RENAME TAB / MOVE TAB");
+      }
+    }
+  }, [isEditingDashboard, prevTabs, tabs]);
+
+  useEffect(() => {
+    if (!isEditingDashboard) {
+      const hasDashboardChanged = !isEqual(dashboard, prevDashboard);
+
+      console.log({ hasDashboardChanged });
+      console.log(selectedId, prevSelectedId, tabs, prevTabs);
+      console.log(slug, slugId);
+      const isCurrentSlugIdValue = tabs.find(({ id }) => id === slugId);
+
+      const isNextSlugIdValue = tabs.find(({ id }) => id === selectedId);
+
+      if (
+        !isNextSlugIdValue &&
+        isCurrentSlugIdValue &&
+        slugId &&
+        slugId !== selectedId
+      ) {
+        console.log("SELECTING", slugId);
+        dispatch(selectTab({ tabId: slugId }));
+        const nextSlug = getSlug({
+          tabId: slugId,
+          name: tabs.find(({ id }) => id === slugId)?.name,
+        });
+
+        if (!isEditingDashboard && nextSlug !== slug) {
+          dispatch(
+            replace({
+              ...location,
+              query: {
+                ...location.query,
+                tab: nextSlug,
+              },
+            }),
+          );
+        }
+      } else {
+        const nextSlug = getSlug({
+          tabId: selectedId,
+          name: tabs.find(({ id }) => id === selectedId)?.name,
+        });
+
+        console.log(isInitialized, nextSlug, slug);
+
+        if (!isEditingDashboard && isInitialized && nextSlug !== slug) {
+          dispatch(
+            replace({
+              ...location,
+              query: {
+                ...location.query,
+                tab: nextSlug,
+              },
+            }),
+          );
+        }
       }
     }
   }, [
-    tabInitialized,
-    slug,
-    selectedTabId,
-    tabs,
-    prevSlug,
-    prevSelectedTabId,
-    prevTabs,
     dispatch,
-    updateURLSlug,
+    isEditingDashboard,
+    isInitialized,
+    location,
+    prevSelectedId,
+    prevTabs,
+    selectedId,
+    slug,
+    tabs,
   ]);
 }
