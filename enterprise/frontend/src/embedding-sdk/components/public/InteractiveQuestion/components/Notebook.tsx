@@ -10,6 +10,7 @@ import {
   getIsRunnable,
 } from "metabase/query_builder/selectors";
 import { getSetting } from "metabase/selectors/settings";
+import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { useInteractiveQuestionData } from "../hooks";
@@ -30,20 +31,22 @@ export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
 
   return (
     question && (
-      <QBNotebook
-        question={question}
-        isDirty={isDirty}
-        isRunnable={isRunnable}
-        isResultDirty={Boolean(isResultDirty)}
-        reportTimezone={reportTimezone}
-        readOnly={false}
-        updateQuestion={(question: Question) =>
-          dispatch(updateQuestion(question))
-        }
-        runQuestionQuery={() => dispatch(runQuestionQuery())}
-        setQueryBuilderMode={onApply}
-        hasVisualizeButton={true}
-      />
+      <Box w="100%" h="100%">
+        <QBNotebook
+          question={question}
+          isDirty={isDirty}
+          isRunnable={isRunnable}
+          isResultDirty={Boolean(isResultDirty)}
+          reportTimezone={reportTimezone}
+          readOnly={false}
+          updateQuestion={(question: Question) =>
+            dispatch(updateQuestion(question))
+          }
+          runQuestionQuery={() => dispatch(runQuestionQuery())}
+          setQueryBuilderMode={onApply}
+          hasVisualizeButton={true}
+        />
+      </Box>
     )
   );
 };

@@ -20,6 +20,10 @@
   flex: 0.5;
 }
 
+.flex1 {
+  flex: 1;
+}
+
 .flexNoShrink {
   flex-shrink: 0;
 }

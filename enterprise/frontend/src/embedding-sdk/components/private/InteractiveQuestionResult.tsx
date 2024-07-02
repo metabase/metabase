@@ -22,7 +22,7 @@ import {
 } from "embedding-sdk/components/public/InteractiveQuestion/components";
 import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
-import { Box, Button, Flex, Group, Stack } from "metabase/ui";
+import { Box, Flex, Group, Stack } from "metabase/ui";
 
 import { useInteractiveQuestionData } from "../public/InteractiveQuestion/hooks";
 
@@ -47,12 +47,7 @@ const ResultView = ({
   };
 
   if (questionView === "filter") {
-    return (
-      <Stack>
-        <Button onClick={returnToVisualization}>{t`Close`}</Button>
-        <Filter onClose={returnToVisualization} />
-      </Stack>
-    );
+    return <Filter onClose={returnToVisualization} />;
   }
 
   if (questionView === "summarize") {
