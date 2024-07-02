@@ -6495,7 +6495,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.2024-06-27T13:52:51
+      id: v49.2024-06-27T00:00:01
       author: calherries
       comment: Add metabase_field.is_defective_duplicate
       changes:
@@ -6511,7 +6511,7 @@ databaseChangeLog:
                   defaultValue: false
 
   - changeSet:
-      id: v49.2024-06-27T13:52:56
+      id: v49.2024-06-27T00:00:02
       author: calherries
       comment: Populate metabase_field.is_defective_duplicate
       changes:
@@ -6539,11 +6539,7 @@ databaseChangeLog:
                       ) AS rn
                   FROM metabase_field mf
               ) x ON mf.id = x.id
-              SET mf.is_defective_duplicate =
-                  CASE
-                      WHEN x.rn > 1 THEN TRUE
-                      ELSE FALSE
-                  END;
+              SET mf.is_defective_duplicate = x.rn > 1;
         - sql:
             dbms: h2
             sql: >-
@@ -6567,49 +6563,49 @@ databaseChangeLog:
               )
       rollback: # No rollback since is_defective_duplicate does not exist before 49
 
+  # Previously we had two unique constraints on metabase_field's name, table_id, and parent_id columns.
   #
-  # Expand unique constraints for (Field name + table_id + parent_id) to exclude fields where is_defective_column=TRUE
+  # 1. `idx_uniq_field_table_id_parent_id_name` is a unique constraint on (name, table_id, parent_id)
+  # but since NULL <> NULL, it only applies a constraint on fields where parent_id is not NULL.
+
+  # 2. `idx_uniq_field_table_id_parent_id_name_2col` is a Postgres-only unique constraint on
+  # `(name, table_id) WHERE parent_id IS NULL`. There was no equivalent constraint for H2 or MySQL because only
+  # Postgres supports partial indexes. The following migrations introduce an equivalent constraint for H2 and
+  # MySQL by adding a constraint that uses a generated column to handle NULL parent_id values.
   #
-  # Constraints with NULL values won't work if the data warehouse DB in question doesn't use schemas (e.g. MySQL or MongoDB). It
-  # will work for other data warehouse types.
-  #
-  # Luckily Postgres (but not H2 or MySQL) supports constraints that only apply to columns matching conditions, so we can
-  # add additional constraints to properly handle those cases.
+  # At the same time, we exclude fields where is_defective_duplicate=TRUE from the above constraints.
+
+  # The next two changesets exclude fields where is_defective_duplicate=TRUE for Postgres using partial indexes.
   - changeSet:
-      id: v49.2024-06-27T13:52:57
+      id: v49.2024-06-27T00:00:03
       author: calherries
-      comment: Add a unique constraint on metabase_field (table_id, parent_id, name) WHERE is_defective_duplicate = FALSE
+      comment: replace idx_uniq_field_table_id_parent_id_name for Postgres
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE metabase_field DROP CONSTRAINT IF EXISTS idx_uniq_field_table_id_parent_id_name;
+              DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name;
+              CREATE UNIQUE INDEX idx_uniq_field_table_id_parent_id_name
+                ON "metabase_field" ("table_id", "parent_id", "name")
+                WHERE "parent_id" IS NOT NULL AND "is_defective_duplicate" = FALSE;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name;
+              ALTER TABLE metabase_field
+              ADD CONSTRAINT idx_uniq_field_table_id_parent_id_name
+              UNIQUE ("table_id", "parent_id", "name");
+
+  - changeSet:
+      id: v49.2024-06-27T00:00:04
+      author: calherries
+      comment: replace idx_uniq_field_table_id_parent_id_name_2col for Postgres
       preConditions:
         - onFail: MARK_RAN
-        - or:
-            - and:
-                - dbms:
-                    type: mysql,mariadb
-                - sqlCheck:
-                    expectedResult: 0
-                    sql: >-
-                      SELECT COUNT(*)
-                      FROM (
-                          SELECT COUNT(*)
-                          FROM `metabase_field`
-                          WHERE `is_defective_duplicate`
-                          GROUP BY `table_id`, `parent_id`, `name`
-                          HAVING COUNT(*) > 1
-                      ) t1
-            - and:
-                - dbms:
-                    type: h2,postgresql
-                - sqlCheck:
-                    expectedResult: 0
-                    sql: >-
-                      SELECT COUNT(*)
-                      FROM (
-                          SELECT COUNT(*)
-                          FROM metabase_field
-                          WHERE is_defective_duplicate
-                          GROUP BY table_id, parent_id, name
-                          HAVING COUNT(*) > 1
-                      ) t1
+        - dbms:
+            type:
       changes:
         - sql:
             dbms: postgresql
@@ -6617,35 +6613,120 @@ databaseChangeLog:
               DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name_2col;
               CREATE UNIQUE INDEX idx_uniq_field_table_id_parent_id_name_2col
                 ON "metabase_field" ("table_id", "name")
-                WHERE "parent_id" IS NULL
-                  AND "is_defective_duplicate" = FALSE;
-      rollback: # TODO
+                WHERE "parent_id" IS NULL AND "is_defective_duplicate" = FALSE;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name_2col;
+              CREATE UNIQUE INDEX idx_uniq_field_table_id_parent_id_name_2col
+                ON "metabase_field" ("table_id", "name")
+                WHERE "parent_id" IS NULL;
 
-  # TODO: add constraints for MySQL
-  # - changeSet:
-  #     id: v49.2024-06-28T14:52:54
-  #     author: calherries
-  #     comment: Add unique_name_filter column to metabase_field
-  #     changes:
-  #       - sql:
-  #           dbms: mysql,mariadb
-  #           sql: >-
-  #             ALTER TABLE metabase_field ADD COLUMN unique_name_filter INTEGER GENERATED ALWAYS AS (
-  #                 IF(is_defective_duplicate = TRUE, NUL IFNULL(parent_id, 0))
-  #             ) STORED;
-  #     rollback: # TODO
+  # The next two changesets replace ON DELETE CASCADE with ON DELETE RESTRICT on fk_field_parent_ref_field_id.
+  # We need to do this for MySQL because it doesn't support ON DELETE CASCADE in a stored generated column, and we
+  # want to use parent_id in the `unique_field_helper` generated column. Cascading deletes are handled in the
+  # application instead.
+  - changeSet:
+      id: v49.2024-06-27T00:00:05
+      author: calherries
+      comment: Drop fk_field_parent_ref_field_id constraint with ON DELETE CASCADE
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_field
+            constraintName: fk_field_parent_ref_field_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_field
+            baseColumnNames: parent_id
+            referencedTableName: metabase_field
+            referencedColumnNames: id
+            constraintName: fk_field_parent_ref_field_id
+            onDelete: CASCADE
 
-  # - changeSet:
-  #     id: v49.2024-06-27T13:52:55
-  #     author: calherries
-  #     comment: Add a unique constraint on metabase_field (table_id, name) WHERE is_defective_duplicate = FALSE
-  #     changes:
-  #       - addUniqueConstraint:
-  #           remarks: idx_unique_field_name
-  #           tableName: metabase_field
-  #           constraintName: idx_unique_field_name
-  #           columnNames: name, table_id, unique_name_filter
-  #     rollback:
+  - changeSet:
+      id: v49.2024-06-27T00:00:06
+      author: calherries
+      comment: Add fk_field_parent_ref_field_id constraint with ON DELETE RESTRICT
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_field
+            baseColumnNames: parent_id
+            referencedTableName: metabase_field
+            referencedColumnNames: id
+            constraintName: fk_field_parent_ref_field_id
+            onDelete: RESTRICT
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_field
+            constraintName: fk_field_parent_ref_field_id
+
+  # The following two changesets add a new column `unique_field_helper` to `metabase_field` and a unique constraint
+  # `idx_unique_field`.
+  # The combination of `unique_field_helper` and `idx_unique_field` achieves two things:
+  # 1. It enforces the conditional constraints:
+  #   - if parent_id IS NULL, then (table_id, name) is unique. (Postgres' idx_uniq_field_table_id_parent_id_name)
+  #   - if parent_id IS NOT NULL, then (table_id, name, parent_id) is unique. (Postgres' idx_uniq_field_table_id_parent_id_name_col2)
+  # 2. It only enforces the constraints when is_defective_duplicate = FALSE
+  - changeSet:
+      id: v49.2024-06-27T00:00:07
+      author: calherries
+      comment: Add unique_field_helper column to metabase_field
+      changes:
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE metabase_field ADD COLUMN IF NOT EXISTS unique_field_helper INTEGER GENERATED ALWAYS AS (
+                  CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE (CASE WHEN parent_id IS NULL THEN 0 ELSE parent_id END) END
+              );
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE metabase_field ADD COLUMN unique_field_helper INTEGER GENERATED ALWAYS AS (
+                  CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE (CASE WHEN parent_id IS NULL THEN 0 ELSE parent_id END) END
+              ) STORED;
+      rollback:
+        - sql:
+            dbms: h2,mysql,mariadb
+            sql: ALTER TABLE metabase_field DROP COLUMN unique_field_helper;
+
+  - changeSet:
+      id: v49.2024-06-27T00:00:08
+      author: calherries
+      comment: Add a unique constraint on metabase_field for MySQL and H2
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+           type: h2,mysql,mariadb
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_field
+            constraintName: idx_unique_field
+            columnNames: name, table_id, unique_field_helper
+      rollback:
+        - sql:
+            dbms: h2
+            sql: ALTER TABLE metabase_field DROP CONSTRAINT IF EXISTS idx_unique_field;
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE metabase_field DROP INDEX idx_unique_field;
+
+  - changeSet:
+      id: v49.2024-06-27T00:00:09
+      author: calherries
+      comment: Remove idx_uniq_field_table_id_parent_id_name because it is redundant
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+           type: h2,mysql,mariadb
+      changes:
+        - dropUniqueConstraint:
+            tableName: metabase_field
+            constraintName: idx_uniq_field_table_id_parent_id_name
+      rollback:
+        - sql:
+            dbms: h2,mysql,mariadb
+            sql: ALTER TABLE metabase_field ADD CONSTRAINT idx_uniq_field_table_id_parent_id_name UNIQUE (table_id, parent_id, name);
 
   - changeSet:
       id: v50.2024-01-04T13:52:51

@@ -19,6 +19,7 @@
    [metabase.db.custom-migrations-test :as custom-migrations-test]
    [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
+   [metabase.driver :as driver]
    [metabase.models
     :refer [Action
             Card
@@ -2186,14 +2187,86 @@
                      #{b h}} ;; => not archived at all, `archive_operation_id` is nil
                    (set (vals archive-operation-id->collection-ids))))))))))
 
-;; Test cases
-;; 1. active is 1st preference: active and not nfc_path IS NULL and later created_at is preferred over not active and nfc_path IS NULL and earlier created_at
-;; 2. nfc_path IS NULL is 2nd preference: both active, and nfc_path IS NULL is preferred over not nfc_path IS NULL
-;; 3. created_at is 3rd preference: both active, and nfc_path IS NULL, but earlier created_at is preferred over later created_at
-
 (deftest populate-is-defective-duplicate-test
   (testing "Migration v49.2024-06-27T13:52:56"
-    (impl/test-migrations ["v49.2024-06-27T13:52:56"] [migrate!]
+    (mt/test-drivers #{:h2 :mysql}
+      (impl/test-migrations ["v49.2024-06-27T13:52:56"] [migrate!]
+        (let [db-id (t2/insert-returning-pk! (t2/table-name Database)
+                                             {:details   "{}"
+                                              :created_at    :%now
+                                              :updated_at    :%now
+                                              :engine    "h2"
+                                              :is_sample false
+                                              :name      "populate-is-defective-duplicate-test-db"})
+              table! (fn []
+                       (t2/insert-returning-instance! (t2/table-name Table)
+                                                      {:db_id      db-id
+                                                       :name       (mt/random-name)
+                                                       :created_at :%now
+                                                       :updated_at :%now
+                                                       :active     true}))
+              field! (fn [table values]
+                       (t2/insert-returning-instance! (t2/table-name Field)
+                                                      (merge {:table_id      (:id table)
+                                                              :parent_id     nil
+                                                              :base_type     "type/Text"
+                                                              :database_type "TEXT"
+                                                              :created_at    :%now
+                                                              :updated_at    :%now}
+                                                             values)))
+              earlier #inst "2023-01-01"
+              later   #inst "2024-01-01"
+              ; 1.
+              table-1 (table!)
+              cases-1 {; field                                                                                 ; is_defective_duplicate
+                       (field! table-1 {:name "F1", :active true,  :nfc_path "NOT NULL", :created_at later})   false
+                       (field! table-1 {:name "F1", :active false, :nfc_path nil,        :created_at earlier}) true}
+              ; 2.
+              table-2 (table!)
+              cases-2 {(field! table-2 {:name "F2", :active true,  :nfc_path nil,        :created_at later})   false
+                       (field! table-2 {:name "F2", :active true,  :nfc_path "NOT NULL", :created_at earlier}) true}
+              ; 3.
+              table-3 (table!)
+              cases-3 {(field! table-3 {:name "F3", :active true,  :nfc_path nil,        :created_at earlier}) false
+                       (field! table-3 {:name "F3", :active true,  :nfc_path nil,        :created_at later})   true}
+              ; 4.
+              table-4 (table!)
+              cases-4 {(field! table-4 {:name "F4", :active true,  :nfc_path nil,        :created_at earlier}) false
+                       (field! table-4 {:name "F4", :active false, :nfc_path nil,        :created_at later})   true
+                       (field! table-4 {:name "F4", :active false, :nfc_path "NOT NULL", :created_at earlier}) true
+                       (field! table-4 {:name "F4", :active false, :nfc_path "NOT NULL", :created_at later})   true}
+              ; 5.
+              table-5 (table!)
+              field-no-parent-1   (field! table-5 {:name "F5", :active true,  :parent_id nil})
+              field-no-parent-2   (field! table-5 {:name "F5", :active false, :parent_id nil})
+              field-with-parent-1 (field! table-5 {:name "F5", :active true,  :parent_id (:id field-no-parent-1)})
+              field-with-parent-2 (field! table-5 {:name "F5", :active true,  :parent_id (:id field-no-parent-2)})
+              cases-5 {field-no-parent-1 false
+                       field-no-parent-2 true
+                       field-with-parent-1 false
+                       field-with-parent-2 false}
+              assert-defective-cases (fn [field->defective?]
+                                       (doseq [[field-before defective?] field->defective?]
+                                         (let [field-after (t2/select-one (t2/table-name Field) :id (:id field-before))]
+                                           (is (= defective? (:is_defective_duplicate field-after))))))]
+          (migrate!)
+          (testing "1. Active is 1st preference"
+            (assert-defective-cases cases-1))
+          (testing "2. NULL nfc_path is 2nd preference"
+            (assert-defective-cases cases-2))
+          (testing "3. Earlier created_at is 3rd preference"
+            (assert-defective-cases cases-3))
+          (testing "4. More than two fields can be defective"
+            (assert-defective-cases cases-4))
+          (testing "5. Fields with different parent_id's are not defective duplicates"
+            (assert-defective-cases cases-5)))))))
+
+(mt/set-test-drivers! [:h2 :mysql])
+
+(deftest unique-field-is-defective-duplicate-constraint-test
+  (testing "Migrations v49.2024-06-27T00:00:01 to v49.2024-06-27T00:00:09, which add a constraint for H2 and MySQL to prevent duplicate fields"
+    (impl/test-migrations ["v49.2024-06-27T00:00:01"
+                           "v49.2024-06-27T00:00:09"] [migrate!]
       (let [db-id (t2/insert-returning-pk! (t2/table-name Database)
                                            {:details   "{}"
                                             :created_at    :%now
@@ -2201,14 +2274,13 @@
                                             :engine    "h2"
                                             :is_sample false
                                             :name      "populate-is-defective-duplicate-test-db"})
-            table! (fn []
-                     (t2/insert-returning-instance! (t2/table-name Table)
-                                                    {:db_id      db-id
-                                                     :name       (mt/random-name)
-                                                     :created_at :%now
-                                                     :updated_at :%now
-                                                     :active     true}))
-            field! (fn [table values]
+            table                 (t2/insert-returning-instance! (t2/table-name Table)
+                                                                 {:db_id      db-id
+                                                                  :name       (mt/random-name)
+                                                                  :created_at :%now
+                                                                  :updated_at :%now
+                                                                  :active     true})
+            field! (fn [values]
                      (t2/insert-returning-instance! (t2/table-name Field)
                                                     (merge {:table_id      (:id table)
                                                             :parent_id     nil
@@ -2217,49 +2289,53 @@
                                                             :created_at    :%now
                                                             :updated_at    :%now}
                                                            values)))
-            earlier #inst "2023-01-01"
-            later   #inst "2024-01-01"
-            ; 1.
-            table-1 (table!)
-            cases-1 {; field                                                                                 ; is_defective_duplicate
-                     (field! table-1 {:name "F1", :active true,  :nfc_path "NOT NULL", :created_at later})   false
-                     (field! table-1 {:name "F1", :active false, :nfc_path nil,        :created_at earlier}) true}
-            ; 2.
-            table-2 (table!)
-            cases-2 {(field! table-2 {:name "F2", :active true,  :nfc_path nil,        :created_at later})   false
-                     (field! table-2 {:name "F2", :active true,  :nfc_path "NOT NULL", :created_at earlier}) true}
-            ; 3.
-            table-3 (table!)
-            cases-3 {(field! table-3 {:name "F3", :active true,  :nfc_path nil,        :created_at earlier}) false
-                     (field! table-3 {:name "F3", :active true,  :nfc_path nil,        :created_at later})   true}
-            ; 4.
-            table-4 (table!)
-            cases-4 {(field! table-4 {:name "F4", :active true,  :nfc_path nil,        :created_at earlier}) false
-                     (field! table-4 {:name "F4", :active false, :nfc_path nil,        :created_at later})   true
-                     (field! table-4 {:name "F4", :active false, :nfc_path "NOT NULL", :created_at earlier}) true
-                     (field! table-4 {:name "F4", :active false, :nfc_path "NOT NULL", :created_at later})   true}
-            ; 5.
-            table-5 (table!)
-            field-no-parent-1   (field! table-5 {:name "F5", :active true,  :parent_id nil})
-            field-no-parent-2   (field! table-5 {:name "F5", :active false, :parent_id nil})
-            field-with-parent-1 (field! table-5 {:name "F5", :active true,  :parent_id (:id field-no-parent-1)})
-            field-with-parent-2 (field! table-5 {:name "F5", :active true,  :parent_id (:id field-no-parent-2)})
-            cases-5 {field-no-parent-1 false
-                     field-no-parent-2 true
-                     field-with-parent-1 false
-                     field-with-parent-2 false}
-            assert-defective-cases (fn [field->defective?]
-                                     (doseq [[field-before defective?] field->defective?]
-                                       (let [field-after (t2/select-one (t2/table-name Field) :id (:id field-before))]
-                                         (is (= defective? (:is_defective_duplicate field-after))))))]
+            field-no-parent-1     (field! {:name "F1", :active true, :parent_id nil})
+            field-no-parent-2     (field! {:name "F2", :active true, :parent_id nil})
+            defective+field-thunk [; A field is defective if they have non-unique (table, name) but parent_id is NULL
+                                   [true  #(field! {:name "F1", :active true, :parent_id nil, :nfc_path "NOT NULL"})]
+                                   ; A field is not defective if they have non-unique (table, name) but different parent_id
+                                   [false #(field! {:name "F1", :active true, :parent_id (:id field-no-parent-1)})]
+                                   [false #(field! {:name "F1", :active true, :parent_id (:id field-no-parent-2)})]]
+            fields-to-clean-up    (atom [])]
+        (if (= driver/*driver* :postgres)
+          (testing "Before the migrations, Postgres does not allow fields to have the same table, name, but different parent_id"
+            (doseq [[defective? field-thunk] defective+field-thunk]
+              (if defective?
+                (is (thrown? Exception (field-thunk)))
+                (let [field (field-thunk)]
+                  (is (some? field))
+                  (swap! fields-to-clean-up conj field)))))
+          (testing "Before the migrations, all fields are allowed"
+            (doseq [[_ field-thunk] defective+field-thunk]
+              (let [field (field-thunk)]
+                (is (some? field))
+                (swap! fields-to-clean-up conj field)))))
         (migrate!)
-        (testing "1. Active is 1st preference"
-          (assert-defective-cases cases-1))
-        (testing "2. NULL nfc_path is 2nd preference"
-          (assert-defective-cases cases-2))
-        (testing "3. Earlier created_at is 3rd preference"
-          (assert-defective-cases cases-3))
-        (testing "4. More than two fields can be defective"
-          (assert-defective-cases cases-4))
-        (testing "5. Fields with different parent_id's are not defective duplicates"
-          (assert-defective-cases cases-5))))))
+        ;; clean up the fields to test adding them again after the migrations
+        (t2/delete! (t2/table-name Field) :id [:in (map :id @fields-to-clean-up)])
+        (reset! fields-to-clean-up [])
+        (testing "After the migrations, only allow fields that have the same table, name, but different parent_id"
+          (doseq [[defective? field-thunk] defective+field-thunk]
+            (if defective?
+              (is (thrown? Exception (field-thunk)))
+              (let [field (field-thunk)]
+                (is (some? field))
+                (swap! fields-to-clean-up conj field)))))
+        (testing "Migrate down succeeds"
+          (migrate! :down 48))
+        ;; clean up the fields to test adding them again after rolling back the migrations
+        (t2/delete! (t2/table-name Field) :id [:in (map :id @fields-to-clean-up)])
+        (reset! fields-to-clean-up [])
+        (if (= driver/*driver* :postgres)
+          (testing "Before 49, Postgres does not allow fields to have the same table, name, but different parent_id"
+            (doseq [[defective? field-thunk] defective+field-thunk]
+              (if defective?
+                (is (thrown? Exception (field-thunk)))
+                (let [field (field-thunk)]
+                  (is (some? field))
+                  (swap! fields-to-clean-up conj field)))))
+          (testing "Before 49, all fields are allowed"
+            (doseq [[_ field-thunk] defective+field-thunk]
+              (let [field (field-thunk)]
+                (is (some? field))
+                (swap! fields-to-clean-up conj field)))))))))

@@ -129,7 +129,7 @@
 
 (t2/define-after-select :model/Field
   [field]
-  (dissoc field :is_defective_duplicate))
+  (dissoc field :is_defective_duplicate :unique_field_helper))
 
 (t2/define-before-insert :model/Field
   [field]
@@ -142,6 +142,12 @@
     (when (false? (:active <>))
       (t2/update! :model/Field {:fk_target_field_id (:id field)} {:semantic_type      nil
                                                                   :fk_target_field_id nil}))))
+
+(t2/define-before-delete :model/Field
+  [field]
+  ; Cascading deletes parent_id cannot be done with foreign key constraints in the database
+  ; because parent_id constributes to a generated column
+  (t2/delete! :model/Field :parent_id (:id field)))
 
 (defn- field->db-id
   [{table-id :table_id, {db-id :db_id} :table}]
