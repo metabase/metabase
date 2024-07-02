@@ -8014,6 +8014,7 @@ databaseChangeLog:
       id: v51.2024-07-02T16:48:21
       author: adam-james
       comment: Remove existing user_parameter_value entries as we want to add dashboard_id, and can't easily backfill
+      rollback: # none, entries already removed and are non-critical to app functionality
       changes:
         - delete:
            tableName: user_parameter_value
@@ -8029,12 +8030,21 @@ databaseChangeLog:
                   name: dashboard_id
                   type: int
                   remarks: The ID of the dashboard
-                  constraints:
-                    nullable: false
-                    references: report_dashboard(id)
-                    foreignKeyName: fk_user_parameter_value_dashboard_id
-                    deleteCascade: true
             tableName: user_parameter_value
+
+  - changeSet:
+      id: v51.2024-07-02T16:55:42
+      author: adam-james
+      comment: Add fk constraint to user_parameter_value.dashboard_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: user_parameter_value
+            baseColumnNames: dashboard_id
+            referencedTableName: report_dashboard
+            referencedColumnNames: id
+            constraintName: fk_user_parameter_value_dashboard_id
+            nullable: false
+            deleteCascade: true
 
   - changeSet:
       id: v51.2024-07-02T17:07:15
@@ -8048,6 +8058,10 @@ databaseChangeLog:
             columns:
               column:
                 name: dashboard_id
+      rollback:
+        - dropIndex:
+            tableName: user_parameter_value
+            indexName: idx_user_parameter_value_dashboard_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
