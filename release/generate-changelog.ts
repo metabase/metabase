@@ -5,7 +5,6 @@ import "zx/globals";
 
 import {
   isValidVersionString,
-  hasBeenReleased,
   getChangelog,
 } from "./src";
 
@@ -30,7 +29,8 @@ if (!isValidVersionString(version)) {
 }
 
 const notes = await getChangelog({
-  version, github,
+  version,
+  github,
   owner: GITHUB_OWNER,
   repo: GITHUB_REPO,
 });
