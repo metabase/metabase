@@ -2188,7 +2188,7 @@
                    (set (vals archive-operation-id->collection-ids))))))))))
 
 (deftest populate-is-defective-duplicate-test
-  (testing "Migration v49.2024-06-27T00:00:02 to v49.2024-06-27T00:00:09"
+  (testing "Migration v49.2024-06-27T00:00:02 populates is_defective_duplicate correctly"
     (mt/test-drivers #{:h2 :mysql}
       (impl/test-migrations ["v49.2024-06-27T00:00:02"
                              "v49.2024-06-27T00:00:09"] [migrate!]
