@@ -442,22 +442,22 @@ describe("issue 28106", () => {
           .findByTestId("scroll-container")
           .as("schemasList");
 
-        // the list is virtualized and the scrollbar height changes during scrolling (metabase#44966)
-        // that's why we need to scroll twice and wait
-        cy.get("@schemasList").scrollTo("bottom");
-        cy.wait(100);
-        cy.get("@schemasList").scrollTo("bottom");
+        // The list is virtualized and the scrollbar height changes during scrolling (metabase#44966)
+        // that's why we need to scroll and wait multiple times.
+        // Test is flaky because of this - that's why there are 3 attempts.
+        for (let i = 0; i < 3; ++i) {
+          cy.get("@schemasList").scrollTo("bottom");
+          cy.wait(100);
+        }
 
         // assert scrolling worked and the last item is visible
         entityPickerModalItem(1, "Public").should("be.visible");
 
         // simulate scrolling up using mouse wheel 3 times
-        cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
-        cy.wait(100);
-        cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
-        cy.wait(100);
-        cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
-        cy.wait(100);
+        for (let i = 0; i < 3; ++i) {
+          cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
+          cy.wait(100);
+        }
 
         // assert first item does not exist - this means the list has not been scrolled to the top
         cy.findByText("Domestic").should("not.exist");
