@@ -629,3 +629,15 @@
                 (is (= [[1 29.46 31.46] [2 70.08 72.08]]
                        (mt/formatted-rows [int 2.0 2.0]
                          (qp/process-query query))))))))))))
+
+(deftest ^:parallel question-mark-in-expression-name-test
+  (testing "Custom column names containing a question mark should work correctly (#32543)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+      (let [query (mt/mbql-query venues
+                    {:expressions {"Double Price?" [:+ $price 2]}
+                     :fields      [[:expression "Double Price?"]]
+                     :limit       3
+                     :order-by    [[:asc $id]]})]
+        (mt/with-native-query-testing-context query
+          (is (= [[5] [4] [4]]
+                 (mt/formatted-rows [int] (qp/process-query query)))))))))
