@@ -434,7 +434,7 @@
 
 (api/defendpoint GET "/:id/remapping/:remapped-id"
   "Fetch remapped Field values."
-  [id remapped-id value values]
+  [id remapped-id values]
   {id          ms/PositiveInt
    remapped-id ms/PositiveInt
    values      [:maybe (ms/QueryVectorOf ms/NonBlankString)]}
