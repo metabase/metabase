@@ -397,7 +397,7 @@
     (search-values field search-field value mw.offset-paging/*limit*)))
 
 (defn remapped-values
-  "Search for remapped values where the value of `field` exactly matches one of `values`. Returns a list ofpairs like
+  "Search for remapped values where the value of `field` exactly matches one of `values`. Returns a list of pairs like
 
       [<value-of-field> <value-of-remapped-field>]
 
