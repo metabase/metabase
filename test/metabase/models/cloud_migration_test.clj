@@ -1,4 +1,4 @@
-(ns metabase.models.cloud-migration-test
+(ns ^:mb/once metabase.models.cloud-migration-test
   (:require
    [clj-http.fake :as http-fake]
    [clojure.test :refer :all]
