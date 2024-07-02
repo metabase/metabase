@@ -1,16 +1,16 @@
-import { forwardRef, type Ref, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
 import {
   skipToken,
-  useGetRemappedFieldValueQuery,
+  useGetRemappedFieldValuesQuery,
   useSearchFieldValuesQuery,
 } from "metabase/api";
-import { MultiAutocomplete, type SelectItemProps } from "metabase/ui";
+import { MultiAutocomplete } from "metabase/ui";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
-import { getFieldOptions } from "../utils";
+import { getEffectiveOptions } from "../utils";
 
 import { SEARCH_DEBOUNCE, SEARCH_LIMIT } from "./constants";
 import { shouldSearch } from "./utils";
@@ -41,25 +41,39 @@ export function SearchValuePicker({
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
 
-  const { data: fieldValues = initialFieldValues } = useSearchFieldValuesQuery(
-    {
-      fieldId,
-      searchFieldId,
-      value: searchQuery,
-      limit: SEARCH_LIMIT,
-    },
-    {
-      skip: !searchQuery,
-    },
+  const { data: searchFieldValues = initialFieldValues } =
+    useSearchFieldValuesQuery(
+      searchQuery
+        ? {
+            fieldId,
+            searchFieldId,
+            value: searchQuery,
+            limit: SEARCH_LIMIT,
+          }
+        : skipToken,
+    );
+
+  const { data: remappedFieldValues = initialFieldValues } =
+    useGetRemappedFieldValuesQuery(
+      remappedFieldId != null &&
+        selectedValues.length > 0 &&
+        searchValue.length === 0
+        ? {
+            fieldId,
+            remappedFieldId: remappedFieldId ?? 0,
+            values: selectedValues,
+          }
+        : skipToken,
+    );
+
+  const options = useMemo(
+    () =>
+      getEffectiveOptions(
+        [...searchFieldValues, ...remappedFieldValues],
+        selectedValues,
+      ),
+    [remappedFieldValues, searchFieldValues, selectedValues],
   );
-
-  const options = useMemo(() => {
-    return getFieldOptions(fieldValues);
-  }, [fieldValues]);
-
-  const itemComponent = useMemo(() => {
-    return getItemComponent(fieldId, remappedFieldId);
-  }, [fieldId, remappedFieldId]);
 
   const handleSearchChange = (newSearchValue: string) => {
     setSearchValue(newSearchValue);
@@ -69,7 +83,7 @@ export function SearchValuePicker({
   };
 
   const handleSearchTimeout = () => {
-    if (shouldSearch(searchValue, searchQuery, fieldValues)) {
+    if (shouldSearch(searchValue, searchQuery, searchFieldValues)) {
       setSearchQuery(searchValue);
     }
   };
@@ -86,30 +100,8 @@ export function SearchValuePicker({
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
       shouldCreate={shouldCreate}
-      itemComponent={itemComponent}
       onChange={onChange}
       onSearchChange={handleSearchChange}
     />
   );
-}
-
-function getItemComponent(fieldId: FieldId, remappedFieldId: FieldId | null) {
-  return forwardRef(function SearchValuePickerItem(
-    { value, label, ...props }: SelectItemProps,
-    ref: Ref<HTMLDivElement>,
-  ) {
-    const { data } = useGetRemappedFieldValueQuery(
-      value != null && remappedFieldId != null
-        ? { fieldId, remappedFieldId, value }
-        : skipToken,
-    );
-
-    const [_, text = value] = data ?? [value, label];
-
-    return (
-      <div ref={ref} {...props}>
-        {text}
-      </div>
-    );
-  });
 }
