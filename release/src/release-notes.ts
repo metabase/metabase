@@ -1,7 +1,7 @@
 import { match } from 'ts-pattern';
 
 import { nonUserFacingLabels } from "./constants";
-import { getMilestoneIssues, isLatestRelease } from "./github";
+import { getMilestoneIssues, isLatestRelease, hasBeenReleased } from "./github";
 import type { ReleaseProps, Issue } from "./types";
 import {
   isEnterpriseVersion,
@@ -70,7 +70,7 @@ const isNonUserFacingIssue = (issue: Issue) => {
   return nonUserFacingLabels.some(label => hasLabel(issue, label));
 }
 
-const formatIssue = (issue: Issue) => `- ${issue.title} (#${issue.number})`;
+const formatIssue = (issue: Issue) => `- ${issue.title.trim()} (#${issue.number})`;
 
 export const getDockerTag = (version: string) => {
   const imagePath = `${process.env.DOCKERHUB_OWNER}/${
@@ -188,19 +188,20 @@ export async function getChangelog({
   if (!isValidVersionString(version)) {
     throw new Error(`Invalid version string: ${version}`);
   }
-  const issues = await getMilestoneIssues({ version, github, owner, repo });
+  const isAlreadyReleased = await hasBeenReleased({
+    github,
+    owner,
+    repo,
+    version,
+  });
 
-  const bugFixes = issues.filter(isBugIssue);
-  const enhancements = issues.filter(issue => !isBugIssue(issue));
+  const issues = await getMilestoneIssues({
+    version,
+    github,
+    owner,
+    repo,
+    milestoneStatus: isAlreadyReleased ? "closed" : "open"
+  });
 
-  const notes = `
-## Enhancements
-${enhancements?.map(formatIssue).join("\n") ?? ""}
-
-
-## Bug fixes
-${bugFixes?.map(formatIssue).join("\n") ?? ""}
-`;
-
-  return notes;
+  return generateReleaseNotes({ version, checksum: "checksum-placeholder", issues });
 }
