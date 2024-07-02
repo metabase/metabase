@@ -62,10 +62,11 @@
         [query params]      (-> query
                                 params.parse/parse
                                 (sql.params.substitute/substitute params-map))]
-    (-> inner-query
-        (assoc :query query
-               :params params)
-        (update :metabase.models.query.permissions/referenced-card-ids set/union referenced-card-ids))))
+    (cond-> (assoc inner-query
+                   :query  query
+                   :params params)
+      (seq referenced-card-ids)
+      (update :metabase.models.query.permissions/referenced-card-ids set/union referenced-card-ids))))
 
 ;; `:sql` drivers almost certainly don't need to override this method, and instead can implement
 ;; `unprepare/unprepare-value` for specific classes, or, in extreme cases, `unprepare/unprepare` itself.
