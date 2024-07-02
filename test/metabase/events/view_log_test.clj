@@ -100,8 +100,6 @@
           (testing "Card read events are not recorded when viewing a dashboard"
             (is (nil? (latest-view (u/id user) (u/id card))))))))))
 
-;; Disable view_count updates to handle perf issues  (for now) (#44359)
-#_
 (deftest card-read-view-count-test
   (mt/with-temp [:model/User user {}
                  :model/Card card {:creator_id (u/id user)}]
@@ -113,8 +111,6 @@
       (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
       (is (= 2 (t2/select-one-fn :view_count :model/Card (:id card)))))))
 
-;; Disable view_count updates to handle perf issues  (for now) (#44359)
-#_
 (deftest dashboard-read-view-count-test
   (mt/with-temp [:model/User          user      {}
                  :model/Dashboard     dashboard {:creator_id (u/id user)}
@@ -131,8 +127,6 @@
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
         (is (= 2 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))))))
 
-;; Disable view_count updates to handle perf issues  (for now) (#44359)
-#_
 (deftest table-read-view-count-test
   (mt/with-temp [:model/User  user  {}
                  :model/Table table {}]
