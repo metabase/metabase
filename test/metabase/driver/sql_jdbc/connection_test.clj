@@ -115,6 +115,9 @@
               :redshift
               (assoc details :additional-options "defaultRowFetchSize=1000")
 
+              :athena
+              (assoc details :additional-options "some=value")
+
               (cond-> details
                 ;; swap localhost and 127.0.0.1
                 (and (string? (:host details))

@@ -217,7 +217,11 @@
    (server-connection-spec)
    nil
    (fn [^java.sql.Connection conn]
-     (let [dbs (into #{} (map :database_name) (jdbc/query {:connection conn} ["SHOW DATABASES;"]))]
+     ;; JDBC driver of version 3.2 result in following shape:
+     ;; ({:_col0 "airports"}
+     ;;  {:_col0 "avian_singles"}...)
+     ;; So no :database_name anymore!
+     (let [dbs (into #{} (map :_col0) (jdbc/query {:connection conn} ["SHOW DATABASES;"]))]
        (log/infof "The following Athena databases have already been created: %s" (pr-str (sort dbs)))
        dbs))))
 

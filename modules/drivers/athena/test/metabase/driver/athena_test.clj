@@ -1,9 +1,9 @@
 (ns metabase.driver.athena-test
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.athena :as athena]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -22,9 +22,13 @@
 
 (set! *warn-on-reflection* true)
 
+(set! *warn-on-reflection* true)
+
+(set! *warn-on-reflection* true)
+
 (def ^:private nested-schema
-  [{:col_name "key", :data_type "int"}
-   {:col_name "data", :data_type "struct<name:string>"}])
+  [{:_col0 "key    \tint   \t     "}
+   {:_col0 "data    \tstruct<name:string>   \t     "}])
 
 (def ^:private flat-schema-columns
   [{:column_name "id", :type_name  "string"}
@@ -81,8 +85,6 @@
 (deftest ^:parallel read-time-and-timestamp-with-time-zone-columns-test
   (mt/test-driver :athena
     (testing "We should return TIME and TIMESTAMP WITH TIME ZONE columns correctly"
-      ;; these both come back as `java.sql.type/VARCHAR` for some wacko reason from the JDBC driver, so let's make sure
-      ;; we have code in place to work around that.
       (let [timestamp-tz [:raw "timestamp '2022-11-16 04:21:00 US/Pacific'"]
             time         [:raw "time '5:03:00'"]
             [sql & args] (sql/format {:select [[timestamp-tz :timestamp-tz]
@@ -91,11 +93,8 @@
                              (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
           (let [[ts t] (mt/first-row (qp/process-query query))]
-            (is (#{#t "2022-11-16T04:21:00.000-08:00[America/Los_Angeles]"
-                   #t "2022-11-16T04:21:00.000-08:00[US/Pacific]"}
-                 ts))
-            (is (= #t "05:03"
-                   t))))))))
+            (is (= (t/offset-date-time 2022 11 16 12 21 0 0) ts))
+            (is (= #t "05:03" t))))))))
 
 (deftest ^:parallel set-time-and-timestamp-with-time-zone-test
   (mt/test-driver :athena
@@ -107,7 +106,10 @@
             query        (-> (mt/native-query {:query sql, :params args})
                              (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
-          (is (= [#t "2022-11-16T04:21:00.000-08:00[America/Los_Angeles]" #t "05:03"]
+          ;; TIMESTAMP WITH TIMEZONE is read (read-column-thunk...) as OffsetDateTime in results timezone id.
+          ;; Timezone on testing instances is UTC.
+          (is (= [(t/offset-date-time 2022 11 16 12 21 0 0)
+                  #t "05:03"]
                  (mt/first-row (qp/process-query query)))))))))
 
 (deftest ^:parallel add-interval-to-timestamp-with-time-zone-test
@@ -133,21 +135,21 @@
       (testing "Specifying access-key will not use credential chain"
         (is (not (contains?
                    (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
-                   :AwsCredentialsProviderClass))))
+                   :CredentialsProvider))))
       (testing "Not specifying access-key will use credential chain"
         (is (contains?
               (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
-              :AwsCredentialsProviderClass)))))
+              :CredentialsProvider)))))
   (testing "When hosted"
     (with-redefs [premium-features/is-hosted? (constantly true)]
       (testing "Specifying access-key will not use credential chain"
         (is (not (contains?
                    (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
-                   :AwsCredentialsProviderClass))))
+                   :CredentialsProvider))))
       (testing "Not specifying access-key will still not use credential chain"
         (is (not (contains?
                    (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
-                   :AwsCredentialsProviderClass)))))))
+                   :CredentialsProvider)))))))
 
 (deftest ^:parallel page-test
   (testing ":page clause places OFFSET *before* LIMIT"
@@ -249,7 +251,6 @@
                              nil
                              (fn [^Connection conn]
                                (let [metadata (.getMetaData conn)]
-                                 (with-open [rs (.getColumns metadata catalog (:schema table) (:name table) nil)]
-                                   (jdbc/metadata-result rs))))))))
+                                 (#'athena/get-columns metadata catalog (:schema table) (:name table))))))))
               (testing "`describe-table` returns the fields anyway"
                 (is (not-empty (:fields (driver/describe-table :athena db table)))))))))))
