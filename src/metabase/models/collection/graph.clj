@@ -159,7 +159,9 @@
         collection-ids   (distinct (mapcat keys (vals (:groups graph))))
         _                (assert (= 1 (count collection-ids)) "The collection perms graph should only contain permissions for a single collection.")
         collection-id    (first collection-ids)
-        collection       (into {} (t2/select :model/Collection :id collection-id))
+        collection       (if (= collection-id :root)
+                           (collection/root-collection-with-ui-details nil)
+                           (t2/select :model/Collection :id collection-id))
         ;; does this need to be effective descendants? No: admins can see all collections.
         descendant-ids      (map :id (collection/descendants-flat collection))]
     (build-descendant-perms collection-id group-ids descendant-ids)))
@@ -176,7 +178,9 @@
                                   (graph :root)
                                   (collection-permission-graph [collection-id] nil))
                                 (narrow-to-collection-only collection-id))]
-      (assoc graph-for-coll-id :descendant-perms (descendant-perms graph-for-coll-id)))))
+      (-> graph-for-coll-id
+          (assoc :descendant-perms (descendant-perms graph-for-coll-id))
+          modify-instance-analytics-for-admins))))
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
