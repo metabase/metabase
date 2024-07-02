@@ -1691,6 +1691,7 @@ describe("issue 39771", () => {
           const tooltipStyle = window.getComputedStyle($tooltip);
           const tooltipZindex = parseInt(tooltipStyle.zIndex, 10);
 
+          // resort to asserting zIndex because should("be.visible") passes unexpectedly
           expect(tooltipZindex).to.be.gte(popoverZindex);
         });
     });
