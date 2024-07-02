@@ -43,8 +43,7 @@ export function mergeGroupsPermissionsUpdates(
 
   const latestPermissionsEntries = allGroupIds.map(groupId => {
     const permissions =
-      newDataPermissions[groupId as unknown as number] ??
-      originalDataPermissions[groupId as unknown as number];
+      newDataPermissions[groupId] ?? originalDataPermissions[groupId];
     return [groupId, permissions];
   });
 
