@@ -373,39 +373,6 @@
            conjunction
            (last coll)))))))
 
-(mu/defn ^:private string-byte-count :- [:int {:min 0}]
-  "Number of bytes in a string using UTF-8 encoding."
-  [s :- :string]
-  #?(:clj (count (.getBytes (str s) "UTF-8"))
-     :cljs (.. (js/TextEncoder.) (encode s) -length)))
-
-#?(:clj
-   (mu/defn ^:private string-character-at :- [:string {:min 0, :max 1}]
-     [s :- :string
-      i :-[:int {:min 0}]]
-     (str (.charAt ^String s i))))
-
-(mu/defn ^:private truncate-string-to-byte-count :- :string
-  "Truncate string `s` to `max-length-bytes` UTF-8 bytes (as opposed to truncating to some number of
-  *characters*)."
-  [s                :- :string
-   max-length-bytes :- [:int {:min 1}]]
-  #?(:clj
-     (loop [i 0, cumulative-byte-count 0]
-       (cond
-         (= cumulative-byte-count max-length-bytes) (subs s 0 i)
-         (> cumulative-byte-count max-length-bytes) (subs s 0 (dec i))
-         (>= i (count s))                           s
-         :else                                      (recur (inc i)
-                                                           (long (+
-                                                                  cumulative-byte-count
-                                                                  (string-byte-count (string-character-at s i)))))))
-
-     :cljs
-     (let [buf (js/Uint8Array. max-length-bytes)
-           result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}
-       (subs s 0 (.-read result)))))
-
 (def ^:private truncate-alias-max-length-bytes
   "Length to truncate column and table identifiers to. See [[metabase.driver.impl/default-alias-max-length-bytes]] for
   reasoning."
@@ -444,10 +411,10 @@
 
   ([s         :- ::lib.schema.common/non-blank-string
     max-bytes :- [:int {:min 0}]]
-   (if (<= (string-byte-count s) max-bytes)
+   (if (<= (u/string-byte-count s) max-bytes)
      s
      (let [checksum  (crc32-checksum s)
-           truncated (truncate-string-to-byte-count s (- max-bytes truncated-alias-hash-suffix-length))]
+           truncated (u/truncate-string-to-byte-count s (- max-bytes truncated-alias-hash-suffix-length))]
        (str truncated \_ checksum)))))
 
 (mu/defn legacy-string-table-id->card-id :- [:maybe ::lib.schema.id/card]

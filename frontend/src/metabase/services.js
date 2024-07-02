@@ -206,6 +206,8 @@ export const CollectionsApi = {
   getRoot: GET("/api/collection/root"),
   update: PUT("/api/collection/:id"),
   graph: GET("/api/collection/graph"),
+  subgraph: GET("/api/collection/graph/collection/:id"),
+  // TODO: use RTKQuery instead
   updateGraph: PUT("/api/collection/graph"),
 };
 

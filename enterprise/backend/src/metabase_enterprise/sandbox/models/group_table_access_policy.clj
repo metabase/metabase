@@ -120,13 +120,14 @@
 (defenterprise add-sandboxes-to-permissions-graph
   "Augments a provided permissions graph with active sandboxing policies."
   :feature :sandboxes
-  [graph & {:keys [group-id db-id audit?]}]
+  [graph & {:keys [group-ids group-id db-id audit?]}]
   (let [sandboxes (t2/select :model/GroupTableAccessPolicy
                              {:select [:s.group_id :s.table_id :t.db_id :t.schema]
                               :from [[:sandboxes :s]]
                               :join [[:metabase_table :t] [:= :s.table_id :t.id]]
                               :where [:and
                                       (when group-id [:= :s.group_id group-id])
+                                      (when group-ids [:in :s.group_id group-ids])
                                       (when db-id [:= :t.db_id db-id])
                                       (when-not audit? [:not [:= :t.db_id audit/audit-db-id]])]})]
     ;; Incorporate each sandbox policy into the permissions graph.
