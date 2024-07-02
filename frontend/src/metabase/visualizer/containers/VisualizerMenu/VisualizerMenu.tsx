@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useSearchQuery } from "metabase/api";
 import { Card, Input, Tabs } from "metabase/ui";
 import { VisualizerMenuItem } from "metabase/visualizer/components/VisualizerMenuItem";
-import type { SearchResult } from "metabase-types/api";
+import type { Card as ICard } from "metabase-types/api";
 
 import { VisualizerMetricsList } from "./VisualizerMetricsList";
 import { VisualizerModelsList } from "./VisualizerModelsList";
@@ -12,7 +12,7 @@ import { VisualizerRecentsList } from "./VisualizerRecentsList";
 export function VisualizerMenu({
   setUsed,
 }: {
-  setUsed: (used: SearchResult) => void;
+  setUsed: (card: ICard) => void;
 }) {
   const [searchQuery, setSearchQuery] = useState<string>();
   const { data: searchResults } = useSearchQuery({

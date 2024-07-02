@@ -1,22 +1,56 @@
 import { useState } from "react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 
-import type { SearchResult } from "metabase-types/api";
+import { cardApi } from "metabase/api";
+import { useDispatch } from "metabase/lib/redux";
+import type { Card, Series } from "metabase-types/api";
+
+import { useVizSettings } from "../useVizSettings";
 
 import { VisualizerCanvas } from "./VisualizerCanvas";
 import { VisualizerMenu } from "./VisualizerMenu/VisualizerMenu";
 import { VisualizerUsed } from "./VisualizerUsed";
-
-import { useVizSettings } from "../useVizSettings";
+import { areSeriesCompatible } from "./utils";
 
 export function Visualizer() {
-  const [used, setUsed] = useState<SearchResult[]>([]);
+  const [series, setSeries] = useState<Series>([]);
+  const dispatch = useDispatch();
 
   const { isVizSettingsOpen, closeVizSettings } = useVizSettings();
 
-  function onSetUsed(item: SearchResult) {
-    setUsed([item]);
+  const cards = series.map(s => s.card);
+
+  async function onSetUsed(card: Card) {
+    const { data: dataset } = await dispatch(
+      cardApi.endpoints.cardQuery.initiate(card.id),
+    );
+
+    if (!dataset) {
+      return;
+    }
+
+    const newSeries = { card, data: dataset.data };
+
+    const [mainSeries] = series;
+    const mainCard = mainSeries?.card;
+
+    if (!mainSeries) {
+      setSeries([newSeries]);
+      return;
+    }
+
+    if (mainCard) {
+      const canMerge = areSeriesCompatible(mainSeries, newSeries);
+      if (canMerge) {
+        setSeries([...series, newSeries]);
+      } else {
+        setSeries([newSeries]);
+      }
+    } else {
+      setSeries([newSeries]);
+    }
   }
+
   return (
     <PanelGroup direction="horizontal" style={{ padding: 20 }}>
       {!isVizSettingsOpen && (
@@ -42,7 +76,7 @@ export function Visualizer() {
               ></span>
             </PanelResizeHandle>
             <Panel defaultSize={30}>
-              <VisualizerUsed used={used} />
+              <VisualizerUsed cards={cards} />
             </Panel>
           </PanelGroup>
         </Panel>
@@ -64,7 +98,7 @@ export function Visualizer() {
         ></span>
       </PanelResizeHandle>
       <Panel defaultSize={75} minSize={60}>
-        <VisualizerCanvas used={used} />
+        <VisualizerCanvas series={series} />
       </Panel>
       {isVizSettingsOpen && (
         <Panel minSize={40}>

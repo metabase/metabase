@@ -1,14 +1,14 @@
 import { t } from "ttag";
 
 import { Card, Title } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
+import type { Card as ICard } from "metabase-types/api";
 
-export function VisualizerUsed({ used }: { used: SearchResult[] | undefined }) {
+export function VisualizerUsed({ cards }: { cards?: ICard[] }) {
   return (
     <Card h="100%">
       <Title order={4}>{t`Being used`}</Title>
-      {used?.map((item, index) => (
-        <div key={index}>{item.name}</div>
+      {cards?.map((card, index) => (
+        <div key={index}>{card.name}</div>
       ))}
     </Card>
   );
