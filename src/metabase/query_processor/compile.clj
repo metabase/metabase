@@ -10,18 +10,18 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
+(mr/def ::compiled
+  [:map
+   [:query :any]
+   [:params {:optional true} [:maybe [:sequential :any]]]])
+
 (defn- compile* [{query-type :type, :as query}]
     (assert (not (:qp/compiled query)) "This query has already been compiled!")
   (if (= query-type :native)
     (:native query)
     (driver/mbql->native driver/*driver* query)))
 
-(mr/def ::native-inner-query
-  [:map
-   [:query :any]
-   [:params {:optional true} [:maybe [:sequential :any]]]])
-
-(mu/defn compile-preprocessed :- ::native-inner-query
+(mu/defn compile-preprocessed :- ::compiled
   "Compile an already-preprocessed query, if needed. Returns just the resulting 'inner' native query.
   `:native` key in a legacy query."
   [preprocessed-query :- ::qp.schema/query]
@@ -33,7 +33,7 @@
                         {:query preprocessed-query, :type qp.error-type/driver}
                         e))))))
 
-(mu/defn compile :- ::native-inner-query
+(mu/defn compile :- ::compiled
   "Preprocess and compile a query, if needed. Returns just the resulting 'inner' native query."
   [query :- ::qp.schema/query]
   (qp.setup/with-qp-setup [query query]
@@ -52,13 +52,13 @@
                      :qp/compiled-inline (binding [driver/*compile-with-inline-parameters* true]
                                            (compile-preprocessed preprocessed))))))
 
-(mr/def ::native-inner-query-with-inlined-parameters
+(mr/def ::compiled-with-inlined-parameters
   [:map
-   {:error/message "Query with inlined parameters (:params is empty)"}
+   {:error/message "Query with inlined parameters (:params must be empty)"}
    [:query :any]
    [:params {:optional true} [:maybe [:sequential {:max 0} :any]]]])
 
-(mu/defn compile-with-inline-parameters :- ::native-inner-query-with-inlined-parameters
+(mu/defn compile-with-inline-parameters :- ::compiled-with-inlined-parameters
   "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query
   itself as literals. This is used to power features such as 'Convert this Question to SQL'.
 
