@@ -42,7 +42,6 @@
   (grouper/start!
    increment-view-counts!*
    :capacity 500
-   ;; flushes every 5 mintues
    :interval (* 5 60 1000)))
 
 (defn- increment-view-counts!

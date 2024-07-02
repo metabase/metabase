@@ -40,7 +40,10 @@
   field-usages-queue
   (grouper/start!
    (fn [seq-of-field-usages]
-     (t2/insert! :model/FieldUsage (flatten seq-of-field-usages)))
+     (try
+       (t2/insert! :model/FieldUsage (flatten seq-of-field-usages))
+       (catch Throwable e
+         (log/error e "Error saving field usages"))))
    :capacity 500
    :interval (* 5 60 1000)))
 

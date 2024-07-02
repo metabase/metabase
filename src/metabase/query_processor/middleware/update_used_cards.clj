@@ -4,6 +4,7 @@
    [grouper.core :as grouper]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
@@ -45,6 +46,6 @@
   (mu/fn [query :- ::qp.schema/query
           rff   :- ::qp.schema/rff]
     (letfn [(rff* [metadata]
-              (grouper/submit! update-used-cards-queue (set (lib.metadata/invoked-ids metadata :metadata/card)))
+              (grouper/submit! update-used-cards-queue (set (lib.metadata/invoked-ids (qp.store/metadata-provider) :metadata/card)))
               (rff metadata))]
       (qp query rff*))))
