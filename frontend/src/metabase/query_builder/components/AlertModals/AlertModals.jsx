@@ -481,6 +481,7 @@ class AlertEditFormInner extends Component {
           onAlertChange={onAlertChange}
         />
         <AlertEditSchedule
+          alert={alert}
           alertType={alertType}
           schedule={schedule}
           onScheduleChange={this.onScheduleChange}
@@ -566,7 +567,29 @@ export const AlertSettingToggle = ({
   </div>
 );
 
-export function AlertEditSchedule({ alertType, schedule, onScheduleChange }) {
+function getSchedulePickerSendTimeText(alert) {
+  const channels = alert.channels.filter(channel => channel.enabled);
+  const [channel] = channels;
+  if (channels.length === 0) {
+    return;
+  }
+  if (channels.length === 2) {
+    return `Emails and Slack messages will be sent at`;
+  }
+  if (channel.channel_type === "email") {
+    return `Emails will be sent at`;
+  }
+  if (channel.channel_type === "slack") {
+    return `Slack messages will be sent at`;
+  }
+}
+
+export function AlertEditSchedule({
+  alert,
+  alertType,
+  schedule,
+  onScheduleChange,
+}) {
   return (
     <div>
       <h3 className={cx(CS.mt4, CS.mb3, CS.textDark)}>
@@ -581,6 +604,7 @@ export function AlertEditSchedule({ alertType, schedule, onScheduleChange }) {
             scheduleOptions={["hourly", "daily", "weekly"]}
             onScheduleChange={onScheduleChange}
             textBeforeInterval={t`Check`}
+            textBeforeSendTime={getSchedulePickerSendTimeText(alert)}
           />
         </div>
       </div>
