@@ -124,6 +124,9 @@
                          :text {:type "plain_text"
                                 :text (:name dashboard)
                                 :emoji true}}
+        link-section    {:type "section"
+                         :fields [{:type "mrkdwn"
+                                   :text (str "<" (pulse-params/dashboard-url (:id dashboard) (pulse-params/parameters pulse dashboard)) "| See this dashboard>")}]}
         creator-section {:type   "section"
                          :fields [{:type "mrkdwn"
                                    :text (str "Sent by " (-> pulse :creator :common_name))}]}
@@ -134,9 +137,7 @@
         filter-section  (when (seq filter-fields)
                           {:type   "section"
                            :fields filter-fields})]
-    (if filter-section
-      {:blocks [header-section filter-section creator-section]}
-      {:blocks [header-section creator-section]})))
+    {:blocks (filter some? [header-section link-section filter-section creator-section])}))
 
 (defn- slack-dashboard-footer
   "Returns a block element with the footer text and link which should be at the end of a Slack dashboard subscription."
