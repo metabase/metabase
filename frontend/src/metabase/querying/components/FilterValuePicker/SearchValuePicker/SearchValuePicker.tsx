@@ -2,11 +2,14 @@ import { useMemo, useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
-import { useSearchFieldValuesQuery } from "metabase/api";
+import {
+  useGetRemappedFieldValuesQuery,
+  useSearchFieldValuesQuery,
+} from "metabase/api";
 import { MultiAutocomplete } from "metabase/ui";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
-import { getFieldOptions } from "../utils";
+import { getEffectiveOptions } from "../utils";
 
 import { SEARCH_DEBOUNCE, SEARCH_LIMIT } from "./constants";
 import { shouldSearch } from "./utils";
@@ -35,19 +38,39 @@ export function SearchValuePicker({
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
 
-  const { data: fieldValues = initialFieldValues } = useSearchFieldValuesQuery(
-    {
-      fieldId,
-      searchFieldId,
-      value: searchQuery,
-      limit: SEARCH_LIMIT,
-    },
-    {
-      skip: !searchQuery,
-    },
-  );
+  const { data: remappedFieldValues = initialFieldValues } =
+    useGetRemappedFieldValuesQuery(
+      {
+        fieldId,
+        searchFieldId,
+        value: selectedValues,
+      },
+      {
+        skip: selectedValues.length === 0,
+      },
+    );
 
-  const options = useMemo(() => getFieldOptions(fieldValues), [fieldValues]);
+  const { data: searchFieldValues = initialFieldValues } =
+    useSearchFieldValuesQuery(
+      {
+        fieldId,
+        searchFieldId,
+        value: searchQuery,
+        limit: SEARCH_LIMIT,
+      },
+      {
+        skip: !searchQuery,
+      },
+    );
+
+  const options = useMemo(
+    () =>
+      getEffectiveOptions(
+        [...remappedFieldValues, ...searchFieldValues],
+        selectedValues,
+      ),
+    [remappedFieldValues, searchFieldValues, selectedValues],
+  );
 
   const handleSearchChange = (newSearchValue: string) => {
     setSearchValue(newSearchValue);
@@ -57,7 +80,7 @@ export function SearchValuePicker({
   };
 
   const handleSearchTimeout = () => {
-    if (shouldSearch(searchValue, searchQuery, fieldValues)) {
+    if (shouldSearch(searchValue, searchQuery, searchFieldValues)) {
       setSearchQuery(searchValue);
     }
   };
