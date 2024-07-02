@@ -25,10 +25,21 @@ To create the service account JSON file, follow Google's documentation on [setti
 3. **Grant the service account access to this project**. You'll need to add **roles** to the service account so that Metabase will have permission to view and run queries against your dataset. Make sure you add the following roles to the service account:
 
    - BigQuery Data Viewer
-   - BigQuery Metadata Viewer
    - BigQuery Job User (distinct from BigQuery User)
 
 For more information on **roles** in BigQuery, see [Google Cloud Platform's documentation](https://cloud.google.com/bigquery/docs/access-control).
+
+Or you can [create a custom GCP role](https://cloud.google.com/iam/docs/creating-custom-roles) with the following permissions:
+
+```
+bigquery.config.get
+bigquery.datasets.get
+bigquery.datasets.listTagBindings
+bigquery.jobs.create
+bigquery.tables.get
+bigquery.tables.getData
+bigquery.tables.list
+```
 
 4. **Create key**. Once you have assigned roles to the service account, click on the **Create Key** button, and select **JSON** for the **key type**. The JSON file will download to your computer.
 
