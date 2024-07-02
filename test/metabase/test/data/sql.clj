@@ -9,7 +9,9 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
-   [metabase.util.log :as log]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [metabase.util.random :as u.random]))
 
 (comment metabase.driver.sql/keep-me)
 
@@ -347,4 +349,8 @@
 
 (defmethod tx/native-query-with-card-template-tag :sql
   [_driver card-template-tag-name]
-  (format "SELECT * FROM {{%s}}" card-template-tag-name))
+  (let [source-table-name (u/lower-case-en (u.random/random-name))]
+    (format "WITH %s AS {{%s}} SELECT * FROM %s"
+            source-table-name
+            card-template-tag-name
+            source-table-name)))
