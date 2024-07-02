@@ -9,6 +9,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -333,7 +334,13 @@
      [:slug {:optional true} :string]
      [:name {:optional true} :string]
      [:default {:optional true} :any]
-     [:sectionId {:optional true} NonBlankString]]
+     [:sectionId {:optional true} NonBlankString]
+     [:temporal_units {:optional true}
+      [:sequential
+       (into [:enum]
+             (concat
+              lib.schema.temporal-bucketing/temporal-bucketing-units
+              (map name lib.schema.temporal-bucketing/temporal-bucketing-units)))]]]
     (deferred-tru "parameter must be a map with :id and :type keys")))
 
 (def ParameterMapping
