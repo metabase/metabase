@@ -9,6 +9,7 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.query-processor.interface :as qp.i]
    [metabase.util :as u]
    [metabase.util.fonts :as u.fonts]
    [metabase.util.i18n
@@ -934,5 +935,5 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :internal
   :export?    false
   :type       :integer
-  :default    10000000
+  :default    qp.i/absolute-max-results
   :doc "CSV export row limit.")
