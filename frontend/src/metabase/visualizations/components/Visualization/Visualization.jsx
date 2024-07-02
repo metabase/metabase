@@ -14,6 +14,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { formatNumber } from "metabase/lib/formatting";
 import { equals } from "metabase/lib/utils";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { getIsShowingRawTable } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getFont } from "metabase/styled-components/selectors";
@@ -518,7 +519,12 @@ class Visualization extends PureComponent {
           ) : (
             <div
               data-card-key={getCardKey(series[0].card?.id)}
-              className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
+              className={cx(
+                CS.flex,
+                CS.flexColumn,
+                CS.flexFull,
+                EmbedFrameS.WithThemeBackground,
+              )}
             >
               <CardVisualization
                 {...this.props}
