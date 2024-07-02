@@ -209,17 +209,21 @@
   "Default implementation of `create-db!` for SQL drivers."
   {:arglists '([driver dbdef & {:keys [skip-drop-db?]}])}
   [driver {:keys [table-definitions] :as dbdef} & options]
-  ;; first execute statements to drop the DB if needed (this will do nothing if `skip-drop-db?` is true)
-  (doseq [statement (apply ddl/drop-db-ddl-statements driver dbdef options)]
-    (execute/execute-sql! driver :server dbdef statement))
-  ;; now execute statements to create the DB
-  (doseq [statement (ddl/create-db-ddl-statements driver dbdef)]
-    (execute/execute-sql! driver :server dbdef statement))
-  ;; next, get a set of statements for creating the tables
-  (let [statements (apply ddl/create-db-tables-ddl-statements driver dbdef options)]
-    ;; exec the combined statement. Notice we're now executing in the `:db` context e.g. executing them for a specific
-    ;; DB rather than on `:server` (no DB in particular)
-    (execute/execute-sql! driver :db dbdef (str/join ";\n" statements)))
+  (with-open [server-connection #_{:clj-kondo/ignore [:discouraged-var]} (jdbc/get-connection (spec/dbdef->spec driver :server dbdef))]
+    (assert (instance? java.sql.Connection server-connection))
+    ;; first execute statements to drop the DB if needed (this will do nothing if `skip-drop-db?` is true)
+    (doseq [statement (apply ddl/drop-db-ddl-statements driver dbdef options)]
+      (execute/execute-sql! driver server-connection statement))
+    ;; now execute statements to create the DB
+    (doseq [statement (ddl/create-db-ddl-statements driver dbdef)]
+      (execute/execute-sql! driver server-connection statement)))
+  (with-open [db-connection #_{:clj-kondo/ignore [:discouraged-var]} (jdbc/get-connection (spec/dbdef->spec driver :db dbdef))]
+    (assert (instance? java.sql.Connection db-connection))
+    ;; next, get a set of statements for creating the tables
+    (let [statements (apply ddl/create-db-tables-ddl-statements driver dbdef options)]
+      ;; exec the combined statement. Notice we're now executing in the `:db` context e.g. executing them for a specific
+      ;; DB rather than on `:server` (no DB in particular)
+      (execute/execute-sql! driver db-connection (str/join ";\n" statements))))
   ;; Now load the data for each Table
   (doseq [tabledef table-definitions
           :let     [reference-duration (or (some-> (get @reference-load-durations [(:database-name dbdef) (:table-name tabledef)])
@@ -227,20 +231,22 @@
                                            "NONE")]]
     (u/profile (format "load-data for %s %s %s (reference H2 duration: %s)"
                        (name driver) (:database-name dbdef) (:table-name tabledef) reference-duration)
-               (try
-                (load-data! driver dbdef tabledef)
-                (catch Throwable e
-                  (throw (ex-info (format "Error loading data: %s" (ex-message e))
-                                  {:driver driver, :tabledef (update tabledef :rows (fn [rows]
-                                                                                      (concat (take 10 rows) ['...])))}
-                                  e)))))))
+      (try
+        (load-data! driver dbdef tabledef)
+        (catch Throwable e
+          (throw (ex-info (format "Error loading data: %s" (ex-message e))
+                          {:driver driver, :tabledef (update tabledef :rows (fn [rows]
+                                                                              (concat (take 10 rows) ['...])))}
+                          e)))))))
 
 (defn destroy-db!
   "Default impl of [[metabase.test.data.interface/destroy-db!]] for SQL drivers."
   [driver dbdef]
   (try
-    (doseq [statement (ddl/drop-db-ddl-statements driver dbdef)]
-      (execute/execute-sql! driver :server dbdef statement))
+    (with-open [server-connection #_{:clj-kondo/ignore [:discouraged-var]} (jdbc/get-connection (spec/dbdef->spec driver :server dbdef))]
+      (assert (instance? java.sql.Connection server-connection))
+      (doseq [statement (ddl/drop-db-ddl-statements driver dbdef)]
+        (execute/execute-sql! driver server-connection statement)))
     (catch Throwable e
       (throw (ex-info "Error destroying database"
                       {:driver driver, :dbdef dbdef}

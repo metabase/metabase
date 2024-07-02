@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -220,9 +221,9 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   [database]
   (set-pool! (u/the-id database) nil nil))
 
-(defn invalidate-pool-for-db-if-needed!
+(mu/defn invalidate-pool-for-db-if-needed!
   "Invalidate the connection pool for the given database if the connection details have changed."
-  [database]
+  [database :- [:map [:id ::lib.schema.id/database]]]
   (when-let [old-hash (get @database-id->jdbc-spec-hash (u/the-id database))]
     (let [new-hash (jdbc-spec-hash database)]
       (log/tracef "Maybe invalidating connection pool for %s... old hash: %s, new hash: %s"

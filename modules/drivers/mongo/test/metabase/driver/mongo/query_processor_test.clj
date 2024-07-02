@@ -11,6 +11,7 @@
    [metabase.query-processor-test.date-time-zone-functions-test
     :as qp.datetime-test]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -115,7 +116,8 @@
         (mt/with-clock #t "2021-02-15T17:33:00-08:00[US/Pacific]"
           (mt/dataset attempted-murders
             (testing "should still work even with bucketing bucketing"
-              (let [tz    (qp.timezone/results-timezone-id :mongo mt/db)
+              (let [tz    (qp.store/with-metadata-provider (mt/id)
+                            (qp.timezone/results-timezone-id :mongo (mt/db)))
                     query (mt/with-metadata-provider (mt/id)
                             (qp.compile/compile
                              (mt/mbql-query attempts
@@ -417,7 +419,8 @@
                   {"$group"
                    {"_id"
                     {"date"
-                     (let [tz (qp.timezone/results-timezone-id :mongo mt/db)]
+                     (let [tz (qp.store/with-metadata-provider (mt/id)
+                                (qp.timezone/results-timezone-id :mongo (mt/db)))]
                        (if (date-arithmetic-supported?)
                          {:$dateTrunc {:date "$date"
                                        :startOfWeek "sunday"

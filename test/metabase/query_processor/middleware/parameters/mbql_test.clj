@@ -94,14 +94,9 @@
 (defn- params-test-drivers []
   (disj (mt/normal-drivers) :redshift))
 
-(deftest date-ranges-e2e-test
+(deftest ^:parallel date-ranges-e2e-test
   (mt/test-drivers (params-test-drivers)
     (testing "check that date ranges work correctly"
-      ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this test's
-      ;; results
-      ;; TODO: Verify we still need the following expression in place. PR #36858 may have addressed that.
-      (when (= :snowflake driver/*driver*)
-        (driver/notify-database-updated driver/*driver* (mt/id)))
       (is (= [[29]]
              (mt/formatted-rows [int]
                (qp/process-query

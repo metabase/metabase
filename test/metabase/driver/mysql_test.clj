@@ -23,6 +23,7 @@
    [metabase.query-processor-test.string-extracts-test
     :as string-extracts-test]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -201,7 +202,6 @@
       (testing "Should add a `+` if needed to offset"
         (is (= "+00:00"
                (timezone {:global_tz "PDT", :system_tz "UTC", :offset "00:00"})))))
-
     (testing "real timezone query doesn't fail"
       (is (nil? (try
                   (driver/db-default-timezone driver/*driver* (mt/db))

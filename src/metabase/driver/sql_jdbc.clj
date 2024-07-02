@@ -12,6 +12,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu])
@@ -78,12 +79,14 @@
   [driver query context respond]
   (sql-jdbc.execute/execute-reducible-query driver query context respond))
 
-(defmethod driver/notify-database-updated :sql-jdbc
-  [_driver database]
+(mu/defmethod driver/notify-database-updated :sql-jdbc
+  [_driver  :- :keyword
+   database :- [:map [:id ::lib.schema.id/database]]]
   (sql-jdbc.conn/invalidate-pool-for-db-if-needed! database))
 
-(defmethod driver/notify-database-will-be-deleted! :sql-jdbc
-  [_driver database]
+(mu/defmethod driver/notify-database-will-be-deleted! :sql-jdbc
+  [_driver  :- :keyword
+   database :- [:map [:id ::lib.schema.id/database]]]
   (sql-jdbc.conn/invalidate-pool-for-db! database))
 
 (defmethod driver/dbms-version :sql-jdbc

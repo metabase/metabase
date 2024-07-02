@@ -27,6 +27,11 @@ title: Driver interface changelog
   update your implementation of `notify-database-updated` to check whether connection details have changed in a
   meaningful way and only destroy resources if actually needed.
 
+- `:sql-jdbc` test helper function `metabase.test.data.sql-jdbc.execute/execute-sql!` has been updated to take three
+   args, `driver connection sql`, instead of four, `driver connection-type dbdef sql`. This allows us to reuse
+   connections when loading test data instead of opening a new connection for each SQL statement. If your driver test
+   code called or implemented this method, please update it.
+
 - New optional method `metabase.driver/query-result-metadata` has been added for efficiently calculating metadata for
   queries without actually running them. `:sql-jdbc` has been given a default implementation; drivers not based on
   this that can determine result metadata without actually running queries should add their implementations as well

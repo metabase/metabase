@@ -7,7 +7,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu])
   (:import
    (java.time ZonedDateTime)))
 
@@ -74,7 +75,7 @@
   ^String []
   (valid-timezone-id (report-timezone-id*)))
 
-(defn results-timezone-id
+(mu/defn results-timezone-id :- :string
   "The timezone that a query is actually ran in ­ report timezone, if set and supported by the current driver;
   otherwise the timezone of the database (if known), otherwise the system timezone. Guaranteed to always return a
   timezone ID ­ never returns `nil`."
@@ -84,8 +85,10 @@
   (^String [database]
    (results-timezone-id (:engine database) database))
 
-  (^String [driver database & {:keys [use-report-timezone-id-if-unsupported?]
-                               :or   {use-report-timezone-id-if-unsupported? false}}]
+  (^String [driver   :- :keyword
+            database :- [:or [:= ::db-from-store] :map]
+            & {:keys [use-report-timezone-id-if-unsupported?]
+               :or   {use-report-timezone-id-if-unsupported? false}}]
    (valid-timezone-id
     (or *results-timezone-id-override*
         (if use-report-timezone-id-if-unsupported?

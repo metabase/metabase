@@ -114,12 +114,11 @@
     (when (= ag-type :cum-count)
       {:base_type :type/Decimal}))))
 
-(defmethod execute/execute-sql! :h2
-  [driver _ dbdef sql]
-  ;; we always want to use 'server' context when execute-sql! is called (never
-  ;; try connect as GUEST, since we're not giving them priviledges to create
-  ;; tables / etc)
-  ((get-method execute/execute-sql! :sql-jdbc/test-extensions) driver :server dbdef sql))
+(defmethod spec/dbdef->spec :h2
+  [driver _context dbdef]
+  ;; we always want to use 'server' context to get a connection spec for executing SQL is called (never try connect as
+  ;; GUEST, since we're not giving them priviledges to create tables / etc)
+  ((get-method spec/dbdef->spec :sql-jdbc/test-extensions) driver :server dbdef))
 
 ;; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
 (defmethod spec/dbdef->spec :h2
