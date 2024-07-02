@@ -134,3 +134,37 @@ describe("issue 41765", { tags: ["@external"] }, () => {
     popover().findByText(COLUMN_DISPLAY_NAME).should("be.visible");
   });
 });
+
+describe("(metabase#45042)", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("Should display tabs in normal view, and a nav menu in mobile view", () => {
+    cy.visit("/admin");
+
+    //Ensure tabs are present in normal view
+    cy.findByRole("navigation").within(() => {
+      cy.findByRole("link", { name: "Settings" }).should("exist");
+      cy.findByRole("link", { name: "Exit admin" }).should("exist");
+    });
+
+    //Shrink viewport
+    cy.viewport(500, 750);
+
+    //ensure that hamburger is visible and functional
+    cy.findByRole("navigation").within(() => {
+      cy.findByRole("button", { name: /burger/ })
+        .should("exist")
+        .click();
+      cy.findByRole("list", { name: "nav-list" }).should("exist");
+      cy.findByRole("link", { name: "Settings" }).should("exist");
+      cy.findByRole("link", { name: "Exit admin" }).should("exist");
+    });
+
+    //Click something to dismiss nav list
+    cy.findByRole("link", { name: "General" }).click();
+    cy.findByRole("list", { name: "nav-list" }).should("not.exist");
+  });
+});
