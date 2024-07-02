@@ -3,7 +3,7 @@ import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 
 import { cardApi } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
-import type { Card, Series } from "metabase-types/api";
+import type { Card, CardId, RecentItem, Series } from "metabase-types/api";
 
 import { useVizSettings } from "../useVizSettings";
 
@@ -20,16 +20,31 @@ export function Visualizer() {
 
   const cards = series.map(s => s.card);
 
-  async function onSetUsed(card: Card) {
+  const _fetchCardAndData = async (cardId: CardId) => {
+    const { data: card } = await dispatch(
+      cardApi.endpoints.getCard.initiate({ id: cardId }),
+    );
+
+    if (!card) {
+      return;
+    }
+
     const { data: dataset } = await dispatch(
-      cardApi.endpoints.cardQuery.initiate(card.id),
+      cardApi.endpoints.cardQuery.initiate(cardId),
     );
 
     if (!dataset) {
       return;
     }
 
-    const newSeries = { card, data: dataset.data };
+    return { card, data: dataset.data };
+  };
+
+  const handleAdd = async (item: RecentItem) => {
+    const newSeries = await _fetchCardAndData(item.id);
+    if (!newSeries) {
+      return;
+    }
 
     const [mainSeries] = series;
     const mainCard = mainSeries?.card;
@@ -49,7 +64,14 @@ export function Visualizer() {
     } else {
       setSeries([newSeries]);
     }
-  }
+  };
+
+  const handleReplace = async (item: RecentItem) => {
+    const newSeries = await _fetchCardAndData(item.id);
+    if (newSeries) {
+      setSeries([newSeries]);
+    }
+  };
 
   return (
     <PanelGroup direction="horizontal" style={{ padding: 20 }}>
@@ -57,7 +79,7 @@ export function Visualizer() {
         <Panel defaultSize={25} minSize={15}>
           <PanelGroup direction="vertical">
             <Panel defaultSize={70} minSize={20} maxSize={80}>
-              <VisualizerMenu setUsed={onSetUsed} />
+              <VisualizerMenu onAdd={handleAdd} onReplace={handleReplace} />
             </Panel>
             <PanelResizeHandle
               style={{

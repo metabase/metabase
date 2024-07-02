@@ -8,10 +8,14 @@ import { Box, Flex, Icon } from "metabase/ui";
 
 export function VisualizerMenuItem({
   item,
-  onClick,
+  onAdd,
+  onReplace,
+  isAddable = true,
 }: {
   item: any;
-  onClick: (item: any) => void;
+  onAdd: (item: any) => void;
+  onReplace: (item: any) => void;
+  isAddable?: boolean;
 }) {
   return (
     <Flex
@@ -31,18 +35,26 @@ export function VisualizerMenuItem({
           },
         },
       }}
-      onClick={() => onClick(item)}
+      onClick={() => onReplace(item)}
     >
       <Box py="sm" px="md">
         {item.displayName || item.name}
       </Box>
       {/* TODO - Only show this if the item is addable */}
-      <ActionIcon ml="auto">
-        <Icon
-          name="add"
-          style={{ borderLeft: `1px solid ${color("brand-lighter")}` }}
-        />
-      </ActionIcon>
+      {isAddable && (
+        <ActionIcon
+          ml="auto"
+          onClick={event => {
+            event.stopPropagation();
+            onAdd(item);
+          }}
+        >
+          <Icon
+            name="add"
+            style={{ borderLeft: `1px solid ${color("brand-lighter")}` }}
+          />
+        </ActionIcon>
+      )}
     </Flex>
   );
 }

@@ -3,20 +3,23 @@ import { useState } from "react";
 import { useSearchQuery } from "metabase/api";
 import { Card, Input, Tabs } from "metabase/ui";
 import { VisualizerMenuItem } from "metabase/visualizer/components/VisualizerMenuItem";
-import type { Card as ICard } from "metabase-types/api";
+import type { RecentItem } from "metabase-types/api";
 
 import { VisualizerMetricsList } from "./VisualizerMetricsList";
 import { VisualizerModelsList } from "./VisualizerModelsList";
 import { VisualizerRecentsList } from "./VisualizerRecentsList";
 
 export function VisualizerMenu({
-  setUsed,
+  onAdd,
+  onReplace,
 }: {
-  setUsed: (card: ICard) => void;
+  onAdd: (item: RecentItem) => void;
+  onReplace: (item: RecentItem) => void;
 }) {
   const [searchQuery, setSearchQuery] = useState<string>();
   const { data: searchResults } = useSearchQuery({
     q: searchQuery,
+    models: ["card", "dataset", "metric"],
   });
 
   return (
@@ -30,7 +33,13 @@ export function VisualizerMenu({
       {searchQuery ? (
         <div>
           {searchResults?.data.map((item, index) => (
-            <VisualizerMenuItem item={item} key={index} onClick={setUsed} />
+            <VisualizerMenuItem
+              item={item}
+              key={index}
+              onAdd={onAdd}
+              onReplace={onReplace}
+              isAddable={item.model === "card"}
+            />
           ))}
         </div>
       ) : (
@@ -45,10 +54,10 @@ export function VisualizerMenu({
               <VisualizerMetricsList />
             </Tabs.Panel>
             <Tabs.Panel value="models">
-              <VisualizerModelsList onClick={setUsed} />
+              <VisualizerModelsList onReplace={onReplace} />
             </Tabs.Panel>
             <Tabs.Panel value="recents">
-              <VisualizerRecentsList onClick={setUsed} />
+              <VisualizerRecentsList onAdd={onAdd} onReplace={onReplace} />
             </Tabs.Panel>
           </Tabs>
         </>
