@@ -6616,7 +6616,7 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-06-27T00:00:06
       author: calherries
-      comment: Add fk_field_parent_ref_field_id constraint with ON DELETE RESTRICT
+      comment: Add fk_field_parent_ref_field_id constraint without ON DELETE RESTRICT
       changes:
         - addForeignKeyConstraint:
             baseTableName: metabase_field
@@ -6624,7 +6624,6 @@ databaseChangeLog:
             referencedTableName: metabase_field
             referencedColumnNames: id
             constraintName: fk_field_parent_ref_field_id
-            onDelete: RESTRICT
       rollback:
         - dropForeignKeyConstraint:
             baseTableName: metabase_field
