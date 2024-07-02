@@ -1,5 +1,6 @@
+import { useClickOutside } from "@mantine/hooks";
 import cx from "classnames";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import LogoIcon from "metabase/components/LogoIcon";
@@ -13,6 +14,7 @@ import type { AdminPath } from "metabase-types/store";
 import StoreLink from "../StoreLink";
 
 import { AdminNavItem } from "./AdminNavItem";
+import AdminNavCS from "./AdminNavbar.module.css";
 import {
   AdminExitLink,
   AdminLogoContainer,
@@ -82,25 +84,23 @@ interface AdminMobileNavbarProps {
 const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  useEffect(() => {
-    if (mobileNavOpen) {
-      const listener = () => setMobileNavOpen(false);
-      document.addEventListener("click", listener, { once: true });
-      return () => document.removeEventListener("click", listener);
-    }
-  }, [mobileNavOpen]);
+  const ref = useClickOutside(() => setMobileNavOpen(false));
 
   return (
-    <AdminMobileNavbar>
+    <AdminMobileNavbar ref={ref}>
       <Button
         onClick={() => setMobileNavOpen(prev => !prev)}
         variant="subtle"
         p="0.25rem"
       >
-        <Icon name="burger" size={32} color="text-white" />
+        <Icon
+          name="burger"
+          size={32}
+          className={AdminNavCS.MobileHamburgerIcon}
+        />
       </Button>
       {mobileNavOpen && (
-        <AdminMobileNavBarItems>
+        <AdminMobileNavBarItems aria-label="nav-list">
           {adminPaths.map(({ name, key, path }) => (
             <AdminNavItem
               name={name}
