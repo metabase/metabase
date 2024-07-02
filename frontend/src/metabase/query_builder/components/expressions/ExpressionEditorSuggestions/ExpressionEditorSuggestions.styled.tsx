@@ -26,12 +26,13 @@ export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
   padding-right: 0.5rem;
   cursor: pointer;
   height: 2rem;
-
+  
+  color: var(--mb-color-text-dark);
+  
   ${props => props.isHighlighted && highlighted}
 `;
 
 export const ExpressionListFooter = styled.a<{ isHighlighted: boolean }>`
-  background: white;
   height: 2rem;
   color: var(--mb-color-text-medium);
   display: flex;

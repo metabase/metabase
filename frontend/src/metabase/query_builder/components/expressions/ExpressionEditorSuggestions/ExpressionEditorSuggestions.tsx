@@ -104,7 +104,7 @@ export const ExpressionEditorSuggestions = forwardRef<
   return (
     <Popover
       position="bottom-start"
-      opened={open && suggestions.length > 0}
+      opened={true || open && suggestions.length > 0}
       radius="xs"
       withinPortal
       zIndex={DEFAULT_POPOVER_Z_INDEX}

@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import Input from "metabase/core/components/Input/Input";
 import { isNotNull } from "metabase/lib/types";
-import { Button } from "metabase/ui";
+import { Button, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
 import type { Expression } from "metabase-types/api";
@@ -20,6 +20,7 @@ import {
   ActionButtonsWrapper,
   Container,
   ExpressionFieldWrapper,
+  ExpressionNameInput,
   FieldLabel,
   FieldWrapper,
   Footer,
@@ -233,15 +234,16 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
       {withName && (
         <FieldWrapper>
           <FieldLabel htmlFor="expression-name">{t`Name`}</FieldLabel>
-          <Input
+          <ExpressionNameInput
+            radius="md"
             id="expression-name"
             data-testid="expression-name"
             type="text"
             value={name}
+            fw={700}
             placeholder={t`Something nice and descriptive`}
-            fullWidth
             onChange={event => setName(event.target.value)}
-            onKeyPress={e => {
+            onKeyDown={e => {
               if (e.key === "Enter") {
                 handleCommit(expression, clause);
               }

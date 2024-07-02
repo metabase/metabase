@@ -61,6 +61,8 @@ export function BreakoutColumnList({
     [query, breakouts, pinnedColumns],
   );
 
+  console.log(pinnedItems)
+
   const sections = useMemo(
     () =>
       getColumnSections(

@@ -42,6 +42,7 @@ import {
   EditorEqualsSign,
   ErrorMessageContainer,
 } from "./ExpressionEditorTextfield.styled";
+import {Icon} from "metabase/ui";
 
 ace.config.set("basePath", "/assets/ui/");
 ace.config.set("useStrictCSP", true);
