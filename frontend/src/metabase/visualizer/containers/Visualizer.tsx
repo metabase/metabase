@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
+import type { WithRouterProps } from "react-router";
+import { useMount } from "react-use";
+import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
-import type { Card, CardId, RecentItem, Series } from "metabase-types/api";
+import type { CardId, RecentItem, Series } from "metabase-types/api";
 
 import { useVizSettings } from "../useVizSettings";
 
@@ -12,7 +15,7 @@ import { VisualizerMenu } from "./VisualizerMenu/VisualizerMenu";
 import { VisualizerUsed } from "./VisualizerUsed";
 import { areSeriesCompatible } from "./utils";
 
-export function Visualizer() {
+export function Visualizer({ location }: WithRouterProps) {
   const [series, setSeries] = useState<Series>([]);
   const dispatch = useDispatch();
 
@@ -73,13 +76,42 @@ export function Visualizer() {
     }
   };
 
+  useMount(() => {
+    async function init() {
+      const firstCardId = Number(location.query?.c1);
+      const secondCardId = Number(location.query?.c2);
+
+      if (
+        Number.isSafeInteger(firstCardId) &&
+        Number.isSafeInteger(secondCardId)
+      ) {
+        const [series1, series2] = await Promise.all([
+          _fetchCardAndData(firstCardId),
+          _fetchCardAndData(secondCardId),
+        ]);
+
+        if (series1 && series2 && areSeriesCompatible(series1, series2)) {
+          setSeries([series1, series2]);
+        }
+      }
+    }
+    init();
+  });
+
+  const hasInitialCardsSelected =
+    "c1" in location.query && "c2" in location.query;
+
   return (
     <PanelGroup direction="horizontal" style={{ padding: 20 }}>
       {!isVizSettingsOpen && (
         <Panel defaultSize={25} minSize={15}>
           <PanelGroup direction="vertical">
             <Panel defaultSize={70} minSize={20} maxSize={80}>
-              <VisualizerMenu onAdd={handleAdd} onReplace={handleReplace} />
+              <VisualizerMenu
+                defaultTab={hasInitialCardsSelected ? "recents" : "metrics"}
+                onAdd={handleAdd}
+                onReplace={handleReplace}
+              />
             </Panel>
             <PanelResizeHandle
               style={{
