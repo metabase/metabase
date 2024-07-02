@@ -2188,17 +2188,17 @@
                    (set (vals archive-operation-id->collection-ids))))))))))
 
 (deftest populate-is-defective-duplicate-test
-  (testing "Migration v49.2024-06-27T13:52:56"
+  (testing "Migration v49.2024-06-27T00:00:02 to v49.2024-06-27T00:00:09"
     (mt/test-drivers #{:h2 :mysql}
-      (impl/test-migrations ["v49.2024-06-27T00:00:01"
+      (impl/test-migrations ["v49.2024-06-27T00:00:02"
                              "v49.2024-06-27T00:00:09"] [migrate!]
         (let [db-id (t2/insert-returning-pk! (t2/table-name Database)
-                                             {:details   "{}"
-                                              :created_at    :%now
-                                              :updated_at    :%now
-                                              :engine    "h2"
-                                              :is_sample false
-                                              :name      "populate-is-defective-duplicate-test-db"})
+                                             {:details    "{}"
+                                              :created_at :%now
+                                              :updated_at :%now
+                                              :engine     "h2"
+                                              :is_sample  false
+                                              :name       "populate-is-defective-duplicate-test-db"})
               table! (fn []
                        (t2/insert-returning-instance! (t2/table-name Table)
                                                       {:db_id      db-id
@@ -2265,16 +2265,16 @@
             (migrate! :down 47)))))))
 
 (deftest unique-field-is-defective-duplicate-constraint-test
-  (testing "Migrations v49.2024-06-27T00:00:01 to v49.2024-06-27T00:00:09, which add a constraint for H2 and MySQL to prevent duplicate fields"
-    (impl/test-migrations ["v49.2024-06-27T00:00:01"
+  (testing "Migrations v49.2024-06-27T00:00:02 to v49.2024-06-27T00:00:09, which add a constraint for H2 and MySQL to prevent duplicate fields"
+    (impl/test-migrations ["v49.2024-06-27T00:00:02"
                            "v49.2024-06-27T00:00:09"] [migrate!]
       (let [db-id (t2/insert-returning-pk! (t2/table-name Database)
-                                           {:details   "{}"
-                                            :created_at    :%now
-                                            :updated_at    :%now
-                                            :engine    "h2"
-                                            :is_sample false
-                                            :name      "populate-is-defective-duplicate-test-db"})
+                                           {:details    "{}"
+                                            :created_at :%now
+                                            :updated_at :%now
+                                            :engine     "h2"
+                                            :is_sample  false
+                                            :name       "populate-is-defective-duplicate-test-db"})
             table                 (t2/insert-returning-instance! (t2/table-name Table)
                                                                  {:db_id      db-id
                                                                   :name       (mt/random-name)
