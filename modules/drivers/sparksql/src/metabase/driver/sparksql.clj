@@ -169,9 +169,31 @@
 
 (defmethod sql.qp/format-honeysql :sparksql
   [driver honeysql-form]
-  (binding [driver/*compile-with-inline-parameters* true
-            hive-like/*inline-param-style*          :paranoid]
-    ((get-method sql.qp/format-honeysql :hive-like) driver honeysql-form)))
+  ;; we're compiling a query for one of two reasons:
+  ;;
+  ;; 1. compiling a query to be executed, in which case [[driver/*compile-with-inline-parameters*]] will be falsely
+  ;;
+  ;; 2. compiling a query to power the "view the SQL" feature, which should be human-friendly with inlined parameters
+  ;;    and what not
+  ;;
+  ;; Spark SQL/Hive JDBC doesn't support JDBC parameterization and always need to compiled with inline parameters, but
+  ;; we want those parameters to be friendly like
+  ;;
+  ;;    WHERE bird_type = 'cockatiel'
+  ;;
+  ;; in human-friendly compilation for "view the SQL" and paranoid e.g.
+  ;;
+  ;;    WHERE bird_type = decode(unhex('776f77'), 'utf-8')
+  ;;
+  ;; if we're compiling the query for execution.
+  ;;
+  ;; Look at the value of [[driver/*compile-with-inline-parameters*]] to determine the type of compilation we're doing.
+  (let [compiling-for-execution? (not driver/*compile-with-inline-parameters*)]
+    (binding [driver/*compile-with-inline-parameters* true
+              hive-like/*inline-param-style*          (if compiling-for-execution?
+                                                        :paranoid
+                                                        :friendly)]
+      ((get-method sql.qp/format-honeysql :hive-like) driver honeysql-form))))
 
 (defmethod driver/execute-reducible-query :sparksql
   [driver query context respond]

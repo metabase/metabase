@@ -14,7 +14,6 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.compile :as qp.compile]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -105,8 +104,9 @@
     (testing "We should be able to handle TIME and TIMESTAMP WITH TIME ZONE parameters correctly"
       (let [timestamp-tz #t "2022-11-16T04:21:00.000-08:00[America/Los_Angeles]"
             time         #t "05:03"
-            [sql & args] (sql/format {:select [[timestamp-tz :timestamp-tz]
-                                               [time :time]]})
+            [sql & args] (sql.qp/format-honeysql :athena {:select [[timestamp-tz :timestamp-tz]
+                                                                   [time :time]]})
+            _            (assert (empty? args))
             query        (-> (mt/native-query {:query sql, :params args})
                              (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query

@@ -58,7 +58,7 @@
                  (update 0 (partial driver/prettify-native-form :sparksql))
                  (update 0 str/split-lines)))))))
 
-(deftest splice-strings-test
+(deftest ^:parallel friendly-inline-strings-in-convert-to-sql-test
   (mt/test-driver :sparksql
     (let [query (mt/mbql-query venues
                   {:aggregation [[:count]]
@@ -66,8 +66,13 @@
       (testing "The native query returned in query results should use user-friendly splicing"
         (is (= "SELECT COUNT(*) AS `count` FROM `test_data`.`venues` AS `t1` WHERE `t1`.`name` = 'wow'"
                (:query (qp.compile/compile-with-inline-parameters query))
-               (-> (qp/process-query query) :data :native_form :query))))
+               (-> (qp/process-query query) :data :native_form :query)))))))
 
+(deftest paranoid-inline-strings-test
+  (mt/test-driver :sparksql
+    (let [query (mt/mbql-query venues
+                  {:aggregation [[:count]]
+                   :filter      [:= $name "wow"]})]
       (testing "When actually running the query we should use paranoid splicing and hex-encode strings"
         (let [orig    sql-jdbc.execute/prepared-statement
               the-sql (atom nil)]
