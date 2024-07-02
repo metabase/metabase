@@ -169,7 +169,9 @@
   (or (nil? aggregation)
       (not (isa? base_type :type/Number))
       (and (driver.u/supports? (:engine db) :binning db)
-           (-> fingerprint :type :type/Number :min))))
+           (-> fingerprint :type :type/Number :min)
+           (not= (-> fingerprint :type :type/Number :min)
+                 (-> fingerprint :type :type/Number :max)))))
 
 (defn- valid-bindings? [{:keys [root]} satisfied-dimensions bindings]
   (let [cell-dimension? (singular-cell-dimensions root)]
