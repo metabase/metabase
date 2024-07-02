@@ -29,6 +29,12 @@ export const cardApi = Api.injectEndpoints({
       }),
       providesTags: (cards = []) => provideCardListTags(cards),
     }),
+    listCompatibleCards: builder.query<Card[], { id: CardId }>({
+      query: ({ id }) => ({
+        method: "GET",
+        url: `/api/card/${id}/series`,
+      }),
+    }),
     getCard: builder.query<Card, GetCardRequest>({
       query: ({ id, ignore_error, ...params }) => ({
         method: "GET",
@@ -109,6 +115,7 @@ export const cardApi = Api.injectEndpoints({
 
 export const {
   useListCardsQuery,
+  useListCompatibleCardsQuery,
   useGetCardQuery,
   useGetCardQueryMetadataQuery,
   useCreateCardMutation,

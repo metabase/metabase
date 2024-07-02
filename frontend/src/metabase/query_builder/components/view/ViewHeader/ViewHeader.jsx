@@ -49,6 +49,7 @@ import {
   QuestionDescription,
   QuestionSummarizeWidget,
 } from "./components";
+import { CompatibleSeriesButton } from "./components/CompatibleSeriesButton";
 import { canExploreResults } from "./utils";
 
 const viewTitleHeaderPropTypes = {
@@ -523,6 +524,7 @@ function ViewTitleHeaderRightSide(props) {
           />
         </ViewHeaderIconButtonContainer>
       )}
+      {isSaved && <CompatibleSeriesButton question={question} />}
       {isSaved && (
         <QuestionActions
           isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
