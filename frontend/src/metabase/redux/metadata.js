@@ -224,7 +224,7 @@ export const fetchRemapping = createThunkAction(
           });
           if (remapping) {
             // FIXME: should this be field.id (potentially the FK) or fieldId (always the PK)?
-            dispatch(addRemappings(field.id, [remapping]));
+            dispatch(addRemappings(field.id, remapping));
           }
         },
       });

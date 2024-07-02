@@ -416,7 +416,8 @@
                     :query    {:source-table (table-id field)
                                :filter       (concat [:= [:field (u/the-id field) nil]] values)
                                :fields       [[:field (u/the-id field) nil]
-                                              [:field (u/the-id remapped-field) nil]]}})]
+                                              [:field (u/the-id remapped-field) nil]]
+                               :limit (count values)}})]
       (get-in results [:data :rows]))
     ;; as with fn above this error can usually be safely ignored which is why log level is log/debug
     (catch Throwable e
