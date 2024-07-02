@@ -631,7 +631,7 @@
                          (qp/process-query query))))))))))))
 
 (deftest ^:parallel question-mark-in-expression-name-test
-  (testing "Custom column names containing a question mark should work correctly (#32543)"
+  (testing "Custom column names containing a question mark should work correctly (#32543, #44915)"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
       (let [query (mt/mbql-query venues
                     {:expressions {"Double Price?" [:+ $price 2]}
