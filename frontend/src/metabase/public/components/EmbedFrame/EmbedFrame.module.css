@@ -12,7 +12,12 @@ body {
   background-color: var(--mb-color-bg-dashboard);
 }
 
-.ThemeNight.EmbedFrame {
+.ThemeNight.EmbedFrame,
+/* This is to make it work when exporting to pdfs, where the EmbedFrame is not
+part of the exported dom We don't export the whole EmbedFrame because it
+contains the header with the title and the tabs, or sometimes we just want to
+export a dashcard */
+.ThemeNight.EmbedFrame .WithThemeBackground {
   background-color: var(--mb-color-bg-black);
   border-color: var(--mb-color-bg-dark);
 }
