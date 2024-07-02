@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.models :refer [Database Field Table]]
@@ -147,6 +148,58 @@
   (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/create-queries :query-builder-and-native)
   (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/download-results :one-million-rows))
 
+(defn- preprocess-dbdef-for-fks
+  "Return vector of form [[table-name field-name fk-table-name]...]"
+  [dbdef]
+  (loop [[table-def & table-defs] (:table-definitions dbdef)
+         result []]
+    (if (nil? table-def)
+      result
+      (recur table-defs
+             (into result
+                   (comp (filter (comp some? :fk))
+                         (map #(vector (:table-name table-def)
+                                       (:field-name %)
+                                       (name (:fk %)))))
+                   (:field-definitions table-def))))))
+
+(defn- dbdef->fk-field-infos
+  "Generate `fk-field-infos` structure. It is a seq of maps of 2 keys: :id and :fk-target-field-id. Existing database,
+  tables and fields in app db are examined to get the required info."
+  [dbdef db]
+  (when-some [table-field-fk (not-empty (preprocess-dbdef-for-fks dbdef))]
+    (let [tables (t2/select :model/Table :db_id (:id db))
+          fields (t2/select :model/Field {:where [:in :table_id (map :id tables)]})
+          table-id->table (m/index-by :id tables)
+          table-name->field-name->field (-> (group-by :table_id fields)
+                                            (update-keys (comp :name table-id->table))
+                                            (update-vals (partial m/index-by :name)))
+          table-name->pk-field (into {}
+                                     (comp (filter #(= (:semantic_type %) :type/PK))
+                                           (map #(vector (-> % :table_id table-id->table :name)
+                                                         %)))
+                                     fields)]
+      (map (fn [[table-name field-name target-table-name]]
+             {:id (get-in table-name->field-name->field [table-name field-name :id])
+              :fk-target-field-id (get-in table-name->pk-field [target-table-name :id])})
+           table-field-fk))))
+
+(defn- add-foreign-keys!
+  "Add foreign key relationships to app db. To be used with dbmses that do not support `:foreign-keys`.
+
+  `:foreign-keys` driver feature signals that underlying dbms _is capable of reporting_ some columns as having foregin
+  key relationship to other columns. If that's the case, sync infers those relationships.
+
+  However, users can freely define those relationships also for dbmses that do not support that (eg. Mongo).
+
+  This function simulates user added fks, based on dataset definition. Therefore enabling tests for eg. implicit joins
+  to work."
+  [dbdef db]
+  (let [fk-field-infos (dbdef->fk-field-infos dbdef db)]
+    (doseq [{:keys [id fk-target-field-id]} fk-field-infos]
+      (t2/update! :model/Field :id id {:semantic_type :type/FK
+                                       :fk_target_field_id fk-target-field-id}))))
+
 (defn- create-database! [driver {:keys [database-name], :as database-definition}]
   {:pre [(seq database-name)]}
   (try
@@ -165,6 +218,11 @@
                                                                       :details connection-details})))]
       (sync-newly-created-database! driver database-definition connection-details db)
       (set-test-db-permissions! (u/the-id db))
+      ;; Add foreign key relationships to app db as per dataset definition. _Only_ in case dbms in use does not support
+      ;; :foreign-keys feature. In case it does, sync should be able to infer foreign keys. This is required eg. for
+      ;; testing implicit joins.
+      (when-not (driver/database-supports? driver :foreign-keys nil)
+        (add-foreign-keys! database-definition db))
       ;; make sure we're returing an up-to-date copy of the DB
       (t2/select-one Database :id (u/the-id db)))
     (catch Throwable e
