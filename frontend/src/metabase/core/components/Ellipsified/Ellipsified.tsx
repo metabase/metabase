@@ -1,8 +1,8 @@
+import type { FloatingPosition } from "@mantine/core/lib/Floating";
 import type { CSSProperties, ReactNode } from "react";
-import type { Placement } from "tippy.js";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import { useIsTruncated } from "metabase/hooks/use-is-truncated";
+import { Tooltip } from "metabase/ui";
 
 import { EllipsifiedRoot } from "./Ellipsified.styled";
 
@@ -13,9 +13,9 @@ interface EllipsifiedProps {
   alwaysShowTooltip?: boolean;
   tooltip?: ReactNode;
   children?: ReactNode;
-  tooltipMaxWidth?: CSSProperties["maxWidth"];
+  tooltipMaxWidth?: number | "auto";
   lines?: number;
-  placement?: Placement;
+  placement?: FloatingPosition;
   "data-testid"?: string;
   id?: string;
 }
@@ -37,13 +37,15 @@ export const Ellipsified = ({
   const { isTruncated, ref } = useIsTruncated<HTMLDivElement>({
     disabled: canSkipTooltipRendering,
   });
+  const isEnabled =
+    (showTooltip && (isTruncated || alwaysShowTooltip)) || false;
 
   return (
     <Tooltip
-      tooltip={canSkipTooltipRendering ? undefined : tooltip || children || " "}
-      isEnabled={(showTooltip && (isTruncated || alwaysShowTooltip)) || false}
-      maxWidth={tooltipMaxWidth}
-      placement={placement}
+      disabled={!isEnabled}
+      label={canSkipTooltipRendering ? undefined : tooltip || children || " "}
+      position={placement}
+      width={tooltipMaxWidth}
     >
       <EllipsifiedRoot
         ref={ref}
