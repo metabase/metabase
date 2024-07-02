@@ -78,7 +78,7 @@ describe("Release Notes", () => {
 
       expect(notes).toContain("**Enhancements**\n\n- Feature Issue (#2)");
       expect(notes).toContain("**Bug fixes**\n\n- Bug Issue (#1)");
-      expect(notes).toContain("**Already Fixed**\n\nIssues that we have recently confirmed to have been fixed at some point in the past.\n\n- Issue Already Fixed (#3)");;
+      expect(notes).toContain("**Already Fixed**\n\nIssues that we have recently confirmed to have been fixed at some point in the past.\n\n- Issue Already Fixed (#3)");
       expect(notes).toContain("**Under the Hood**\n\n- Issue That Users Don't Care About (#4)");
 
       expect(notes).toContain("metabase/metabase-enterprise:v1.2.3");
@@ -152,6 +152,21 @@ describe("Release Notes", () => {
       expect(categorizedIssues.enhancements).toEqual([]);
     });
 
+    it('should omit hidden issues', () => {
+      const issue = {
+        number: 5,
+        title: "Docs Issue",
+        labels: [{ name: "Type:Documentation" }],
+      } as Issue;
+
+      const categorizedIssues = categorizeIssues([issue]);
+
+      expect(categorizedIssues.enhancements).toEqual([]);
+      expect(categorizedIssues.bugFixes).toEqual([]);
+      expect(categorizedIssues.alreadyFixedIssues).toEqual([]);
+      expect(categorizedIssues.underTheHoodIssues).toEqual([]);
+    });
+
     it('should put issues in only one bucket', () => {
       const issues = [
         {
@@ -176,6 +191,11 @@ describe("Release Notes", () => {
         },
         {
           number: 5,
+          title: "Non User Facing Issue 2",
+          labels: [{ name: ".Building & Releasing" }],
+        },
+        {
+          number: 6,
           title: "Docs Issue",
           labels: [{ name: "Type:Documentation" }],
         },
