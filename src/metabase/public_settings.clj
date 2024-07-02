@@ -816,6 +816,16 @@ See [fonts](../configuring-metabase/fonts.md).")
                     ;; frontend should set this value to `true` after the modal has been shown once
                     v))))
 
+(defsetting show-updated-permission-modal
+  (deferred-tru
+    "Whether an introductory modal should be shown for admins when they first upgrade to the new data-permissions format.")
+  :visibility :admin
+  :export?    false
+  :default    true
+  :user-local :only
+  :type       :boolean
+  :audit      :never)
+
 (defn- not-handling-api-request?
   []
   (nil? @api/*current-user*))
