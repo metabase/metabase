@@ -79,9 +79,6 @@ export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
   );
 };
 
-export const SET_RESULTS_METADATA = "metabase/qb/SET_RESULTS_METADATA";
-export const setResultsMetadata = createAction(SET_RESULTS_METADATA);
-
 export const SET_METADATA_DIFF = "metabase/qb/SET_METADATA_DIFF";
 export const setMetadataDiff = createAction(SET_METADATA_DIFF);
 
@@ -105,7 +102,6 @@ export const setFieldMetadata =
 
     dispatch(updateQuestion(nextQuestion));
     dispatch(setMetadataDiff({ name, changes }));
-    dispatch(setResultsMetadata(nextResultsMetadata));
   };
 
 export const onModelPersistenceChange = isEnabled => (dispatch, getState) => {
