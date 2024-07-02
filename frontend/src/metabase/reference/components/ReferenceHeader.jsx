@@ -30,7 +30,7 @@ const ReferenceHeader = ({
         <Ellipsified
           key="1"
           className={!headerLink && CS.flexFull}
-          tooltipMaxWidth="100%"
+          tooltipMaxWidth="auto"
         >
           {name}
         </Ellipsified>

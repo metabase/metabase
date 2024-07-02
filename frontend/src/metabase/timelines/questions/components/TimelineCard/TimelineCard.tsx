@@ -95,7 +95,7 @@ const TimelineCard = ({
           onChange={handleChangeVisibility}
         />
         <CardLabel>
-          <Ellipsified tooltipMaxWidth="100%">
+          <Ellipsified tooltipMaxWidth="auto">
             {getTimelineName(timeline)}
           </Ellipsified>
         </CardLabel>
