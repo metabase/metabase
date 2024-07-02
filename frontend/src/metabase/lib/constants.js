@@ -9,3 +9,4 @@ export const DEFAULT_SEARCH_LIMIT = 50;
 export const NULL_NUMERIC_VALUE = -Infinity;
 
 export const NULL_DISPLAY_VALUE = t`(empty)`;
+export const EMPTY_STRING_DISPLAY_VALUE = '" "';

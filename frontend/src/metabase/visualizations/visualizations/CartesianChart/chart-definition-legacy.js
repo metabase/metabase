@@ -1,8 +1,7 @@
 import _ from "underscore";
 
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
-import { isEmpty } from "metabase/lib/validate";
+import { getFormattedValue } from "metabase/visualizations/echarts/cartesian/model/util";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
@@ -85,7 +84,7 @@ function transformSingleSeries(s, series, seriesIndex) {
           series.length > 1 && card.name,
           // always show grouping value
           formatValue(
-            isEmpty(breakoutValue) ? NULL_DISPLAY_VALUE : breakoutValue,
+            getFormattedValue(breakoutValue, val => val),
             { column: cols[seriesColumnIndex] },
           ),
         ]

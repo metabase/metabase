@@ -1,4 +1,9 @@
+import {
+  EMPTY_STRING_DISPLAY_VALUE,
+  NULL_DISPLAY_VALUE,
+} from "metabase/lib/constants";
 import type { OptionsType } from "metabase/lib/formatting/types";
+import { isNullOrUndefined } from "metabase/lib/types";
 import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,
@@ -32,4 +37,19 @@ export function getColumnScaling(
     settings.column_settings?.[getColumnKey(column)];
   const scale = columnSettings?.scale;
   return Number.isFinite(scale) ? (scale as number) : 1;
+}
+
+export function getFormattedValue(
+  value: any,
+  getDefaultFormattedValue: (value: any) => string,
+) {
+  if (isNullOrUndefined(value)) {
+    return NULL_DISPLAY_VALUE;
+  }
+
+  if (value === "") {
+    return EMPTY_STRING_DISPLAY_VALUE;
+  }
+
+  return getDefaultFormattedValue(value);
 }

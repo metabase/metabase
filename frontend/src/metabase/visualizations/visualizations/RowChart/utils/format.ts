@@ -1,9 +1,10 @@
 import type { NumberLike, StringLike } from "@visx/scale";
 
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
-import { isEmpty } from "metabase/lib/validate";
-import { getFormattingOptionsWithoutScaling } from "metabase/visualizations/echarts/cartesian/model/util";
+import {
+  getFormattedValue,
+  getFormattingOptionsWithoutScaling,
+} from "metabase/visualizations/echarts/cartesian/model/util";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import type {
@@ -82,7 +83,5 @@ export const getLabelsFormatter = (
 
 export const getColumnValueFormatter = () => {
   return (value: RowValue, column: DatasetColumn) =>
-    isEmpty(value)
-      ? NULL_DISPLAY_VALUE
-      : String(formatValue(value, { column }));
+    getFormattedValue(value, val => String(formatValue(val, { column })));
 };

@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
@@ -49,7 +48,7 @@ import { CHART_STYLE } from "../constants/style";
 import { cachedFormatter } from "../utils/formatter";
 import { WATERFALL_VALUE_KEY } from "../waterfall/constants";
 
-import { getFormattingOptionsWithoutScaling } from "./util";
+import { getFormattedValue, getFormattingOptionsWithoutScaling } from "./util";
 
 export const getSeriesVizSettingsKey = (
   column: DatasetColumn,
@@ -215,12 +214,14 @@ export const getCardSeriesModels = (
   return breakoutValues.map(breakoutValue => {
     // Unfortunately, breakout series include formatted breakout values in the key
     // which can be different based on a user's locale.
-    const formattedBreakoutValue =
-      breakoutValue != null && breakoutValue !== ""
-        ? renderingContext.formatValue(breakoutValue, {
-            column: breakout.column,
-          })
-        : NULL_DISPLAY_VALUE;
+    const getDefaultFormattedValue = (val: any) =>
+      renderingContext.formatValue(val, {
+        column: breakout.column,
+      });
+    const formattedBreakoutValue = getFormattedValue(
+      breakoutValue,
+      getDefaultFormattedValue,
+    );
 
     const vizSettingsKey = getSeriesVizSettingsKey(
       metric.column,

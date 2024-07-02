@@ -4,8 +4,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import type { DragEndEvent } from "metabase/core/components/Sortable";
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { isEmpty } from "metabase/lib/validate";
+import { getFormattedValue } from "metabase/visualizations/echarts/cartesian/model/util";
 import type { Series } from "metabase-types/api";
 
 import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
@@ -59,7 +58,7 @@ export const ChartSettingOrderedSimple = ({
   );
 
   const getItemTitle = useCallback((item: SortableItem) => {
-    return isEmpty(item.name) ? NULL_DISPLAY_VALUE : item.name;
+    return getFormattedValue(item.name, val => val);
   }, []);
 
   const handleOnEdit = useCallback(
