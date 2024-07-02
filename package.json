@@ -131,7 +131,6 @@
     "@emotion/babel-plugin": "^11.11.0",
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
     "@loki/create-async-callback": "^0.35.0",
-    "@loki/is-loki-running": "^0.35.0",
     "@pmmmwh/react-refresh-webpack-plugin": "0.5.10",
     "@replayio/cypress": "^3.0.0",
     "@sinonjs/fake-timers": "^9.1.2",

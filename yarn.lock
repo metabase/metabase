@@ -2564,11 +2564,6 @@
   dependencies:
     "@loki/browser" "^0.35.0"
 
-"@loki/is-loki-running@^0.35.0":
-  version "0.35.0"
-  resolved "https://registry.yarnpkg.com/@loki/is-loki-running/-/is-loki-running-0.35.0.tgz#e19bd966bd806800fe45761affc5a3c90ea33964"
-  integrity sha512-QdeCn/+OwNRm1F9VTDGyhu1dEhHT2rgPH7+cGuTVLRceE/VBKx1qi6WWEP6sR8n2XYclFeqNvJgabg6AMYvkMw==
-
 "@loki/runner@^0.35.0":
   version "0.35.0"
   resolved "https://registry.yarnpkg.com/@loki/runner/-/runner-0.35.0.tgz#0d5d0df4b87342c34fdc1bc02258ecef937141c0"

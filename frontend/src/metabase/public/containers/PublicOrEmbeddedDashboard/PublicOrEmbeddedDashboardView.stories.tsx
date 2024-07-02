@@ -33,6 +33,7 @@ export default {
     ReduxDecorator,
     FasterExplicitSizeUpdateDecorator,
     WaitForResizeToStopDecorator,
+    MockIsEmbeddingDecorator,
   ],
 };
 
@@ -64,6 +65,16 @@ function WaitForResizeToStopDecorator(Story: Story) {
     setTimeout(asyncCallback, TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING);
   }, [asyncCallback]);
 
+  return <Story />;
+}
+
+declare global {
+  interface Window {
+    overrideIsWithinIframe?: boolean;
+  }
+}
+function MockIsEmbeddingDecorator(Story: Story) {
+  window.overrideIsWithinIframe = true;
   return <Story />;
 }
 

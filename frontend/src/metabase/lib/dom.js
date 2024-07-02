@@ -1,4 +1,3 @@
-import isLokiRunning from "@loki/is-loki-running";
 import querystring from "querystring";
 import _ from "underscore";
 
@@ -20,7 +19,7 @@ export const isWithinIframe = function () {
     }
 
     // Mock that we're embedding, so we could visual test embed components
-    if (isLokiRunning()) {
+    if (window.overrideIsWithinIframe) {
       return true;
     }
 
