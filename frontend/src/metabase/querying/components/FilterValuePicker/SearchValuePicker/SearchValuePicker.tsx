@@ -60,7 +60,7 @@ export function SearchValuePicker({
         searchValue.length === 0
         ? {
             fieldId,
-            remappedFieldId: remappedFieldId ?? 0,
+            remappedFieldId,
             values: selectedValues,
           }
         : skipToken,
