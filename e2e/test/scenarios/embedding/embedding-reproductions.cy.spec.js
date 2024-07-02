@@ -14,7 +14,17 @@ import {
   getIframeBody,
   addOrUpdateDashboardCard,
   describeEE,
+  createNativeQuestion,
+  createDashboardWithTabs,
+  withDatabase,
+  resyncDatabase,
+  toggleFilterWidgetValues,
+  getDashboardCard,
 } from "e2e/support/helpers";
+import {
+  createMockDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -491,6 +501,106 @@ describe("issues 20845, 25031", () => {
         });
       });
     });
+  });
+});
+
+describe.skip("27643", { tags: "@external" }, () => {
+  const PG_DB_ID = 2;
+
+  beforeEach(() => {
+    restore("postgres-12");
+    cy.signInAsAdmin();
+    resyncDatabase({
+      dbId: PG_DB_ID,
+    });
+    const TEMPLATE_TAG_NAME = "boolean_param";
+    withDatabase(PG_DB_ID, ({ INVOICES }) => {
+      /** @type {import("e2e/support/helpers").NativeQuestionDetails} */
+      const questionDetails = {
+        name: "Postgres SQL with boolean parameter",
+        database: PG_DB_ID,
+        native: {
+          query: "SELECT * FROM INVOICES [[ where {{ boolean_param }} ]]",
+          "template-tags": {
+            boolean_param: {
+              id: "3cfb3686-0d13-48db-ab5b-100481a3a830",
+              dimension: ["field", INVOICES.EXPECTED_INVOICE, null],
+              name: TEMPLATE_TAG_NAME,
+              "display-name": "Boolean Param",
+              type: "dimension",
+              "widget-type": "string/=",
+            },
+          },
+        },
+      };
+      createNativeQuestion(questionDetails)
+        .then(({ body: question }) => {
+          const DASHBOARD_FILTER_ID = "2850aeab";
+          const DASHBOARD_PARAMETER = createMockParameter({
+            id: DASHBOARD_FILTER_ID,
+            name: "Text filter for boolean field",
+            slug: "text_filter_for_boolean_field",
+          });
+          const dashboardDetails = {
+            name: "dashboard with card with boolean field filter",
+            enable_embedding: true,
+            embedding_params: {
+              [DASHBOARD_PARAMETER.slug]: "enabled",
+            },
+            dashcards: [
+              createMockDashboardCard({
+                id: -1,
+                size_x: 12,
+                size_y: 8,
+                card_id: question.id,
+                parameter_mappings: [
+                  {
+                    parameter_id: DASHBOARD_FILTER_ID,
+                    card_id: question.id,
+                    target: ["dimension", ["template-tag", TEMPLATE_TAG_NAME]],
+                  },
+                ],
+              }),
+            ],
+            parameters: [DASHBOARD_PARAMETER],
+          };
+          return createDashboardWithTabs(dashboardDetails);
+        })
+        .then(dashboard => {
+          cy.wrap(dashboard.id).as("dashboardId");
+        });
+    });
+  });
+
+  it("should allow dashboard filter to map to boolean field filter parameter in static embedding (metabase#27643)", () => {
+    cy.log("Test dashboard");
+    cy.get("@dashboardId").then(dashboardId => {
+      visitDashboard(dashboardId);
+    });
+
+    toggleFilterWidgetValues(["false"]);
+    getDashboardCard().findByText("Rows 1-6 of 455").should("be.visible");
+
+    cy.log("Test embedded dashboard");
+    cy.get("@dashboardId").then(dashboardId => {
+      visitEmbeddedPage({
+        resource: { dashboard: dashboardId },
+        params: {},
+      });
+    });
+
+    /**
+     * If we set the filter value now, this request won't be cancelled.
+     * And it will override the result from the next request with filter value.
+     */
+    getDashboardCard()
+      .findByText("Rows 1-6 of first 2000")
+      .should("be.visible");
+
+    toggleFilterWidgetValues(["false"]);
+    getDashboardCard()
+      .findByText("There was a problem displaying this chart.")
+      .should("not.exist");
   });
 });
 
