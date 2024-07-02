@@ -58,9 +58,6 @@ function FilterValuePicker({
     { skip: !canLoadFieldValues(fieldInfo) },
   );
 
-  fieldInfo.remappedFieldId = 35;
-  fieldInfo.searchFieldId = 35;
-
   if (isLoading) {
     return (
       <Center h="2.5rem">
