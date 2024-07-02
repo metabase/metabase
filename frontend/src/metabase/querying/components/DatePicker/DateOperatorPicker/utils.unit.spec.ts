@@ -20,10 +20,15 @@ const DATE_NEXT_30DAYS = new Date(2015, 11, 20, 0, 0);
 const DATE_NEXT_YEAR = new Date(2016, 5, 15, 0, 0);
 
 const SPECIFIC_VALUES: SpecificDatePickerValue[] = [
-  { type: "specific", operator: "=", values: [DATE] },
-  { type: "specific", operator: ">", values: [DATE] },
-  { type: "specific", operator: "<", values: [DATE] },
-  { type: "specific", operator: "between", values: [DATE, DATE] },
+  { type: "specific", operator: "=", values: [DATE], hasTime: false },
+  { type: "specific", operator: ">", values: [DATE], hasTime: false },
+  { type: "specific", operator: "<", values: [DATE], hasTime: false },
+  {
+    type: "specific",
+    operator: "between",
+    values: [DATE, DATE],
+    hasTime: false,
+  },
 ];
 
 const RELATIVE_VALUES: RelativeDatePickerValue[] = [
@@ -87,6 +92,7 @@ describe("setOptionType", () => {
           type: "specific",
           operator: "=",
           values: [TODAY],
+          hasTime: false,
         });
       },
     );
@@ -98,11 +104,13 @@ describe("setOptionType", () => {
           type: "specific",
           operator,
           values: [DATE],
+          hasTime: false,
         };
         expect(setOptionType(value, "=")).toEqual({
           type: "specific",
           operator: "=",
           values: [DATE],
+          hasTime: false,
         });
       },
     );
@@ -112,11 +120,13 @@ describe("setOptionType", () => {
         type: "specific",
         operator: "between",
         values: [DATE, DATE_NEXT_YEAR],
+        hasTime: false,
       };
       expect(setOptionType(value, "=")).toEqual({
         type: "specific",
         operator: "=",
         values: [DATE_NEXT_YEAR],
+        hasTime: false,
       });
     });
   });
@@ -129,6 +139,7 @@ describe("setOptionType", () => {
           type: "specific",
           operator: ">",
           values: [TODAY],
+          hasTime: false,
         });
       },
     );
@@ -140,11 +151,13 @@ describe("setOptionType", () => {
           type: "specific",
           operator,
           values: [DATE],
+          hasTime: false,
         };
         expect(setOptionType(value, ">")).toEqual({
           type: "specific",
           operator: ">",
           values: [DATE],
+          hasTime: false,
         });
       },
     );
@@ -154,11 +167,13 @@ describe("setOptionType", () => {
         type: "specific",
         operator: "between",
         values: [DATE, DATE_NEXT_YEAR],
+        hasTime: false,
       };
       expect(setOptionType(value, ">")).toEqual({
         type: "specific",
         operator: ">",
         values: [DATE],
+        hasTime: false,
       });
     });
   });
@@ -171,6 +186,7 @@ describe("setOptionType", () => {
           type: "specific",
           operator: "<",
           values: [TODAY],
+          hasTime: false,
         });
       },
     );
@@ -182,11 +198,13 @@ describe("setOptionType", () => {
           type: "specific",
           operator,
           values: [DATE],
+          hasTime: false,
         };
         expect(setOptionType(value, "<")).toEqual({
           type: "specific",
           operator: "<",
           values: [DATE],
+          hasTime: false,
         });
       },
     );
@@ -196,11 +214,13 @@ describe("setOptionType", () => {
         type: "specific",
         operator: "between",
         values: [DATE, DATE_NEXT_YEAR],
+        hasTime: false,
       };
       expect(setOptionType(value, "<")).toEqual({
         type: "specific",
         operator: "<",
         values: [DATE_NEXT_YEAR],
+        hasTime: false,
       });
     });
   });
@@ -213,6 +233,7 @@ describe("setOptionType", () => {
           type: "specific",
           operator: "between",
           values: [PAST_30DAYS, TODAY],
+          hasTime: false,
         });
       },
     );
@@ -224,11 +245,13 @@ describe("setOptionType", () => {
           type: "specific",
           operator,
           values: [DATE],
+          hasTime: false,
         };
         expect(setOptionType(value, "between")).toEqual({
           type: "specific",
           operator: "between",
           values: [DATE_PAST_30DAYS, DATE],
+          hasTime: false,
         });
       },
     );
@@ -238,11 +261,13 @@ describe("setOptionType", () => {
         type: "specific",
         operator: ">",
         values: [DATE],
+        hasTime: false,
       };
       expect(setOptionType(value, "between")).toEqual({
         type: "specific",
         operator: "between",
         values: [DATE, DATE_NEXT_30DAYS],
+        hasTime: false,
       });
     });
   });

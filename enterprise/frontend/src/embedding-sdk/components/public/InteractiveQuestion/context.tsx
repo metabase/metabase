@@ -1,30 +1,21 @@
 import {
   createContext,
   type PropsWithChildren,
-  useCallback,
   useContext,
-  useEffect,
-  useState,
-  type ReactNode,
   useMemo,
 } from "react";
-import { useUnmount } from "react-use";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
-import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { initializeQBRaw, resetQB } from "metabase/query_builder/actions";
-import {
-  getCard,
-  getFirstQueryResult,
-  getQueryResults,
-  getQuestion,
-  getUiControls,
-} from "metabase/query_builder/selectors";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+
+import {
+  type UseLoadQuestionParams,
+  useInteractiveQuestionData,
+  useLoadQuestion,
+} from "./hooks";
 
 type InteractiveQuestionContextType = {
   plugins: SdkPluginsConfig | null;
@@ -33,9 +24,6 @@ type InteractiveQuestionContextType = {
   resetQuestion: () => void;
   onReset?: () => void;
   onNavigateBack?: () => void;
-  withTitle?: boolean;
-  customTitle?: React.ReactNode;
-  withResetButton?: boolean;
 };
 
 /**
@@ -49,87 +37,13 @@ export const InteractiveQuestionContext = createContext<
   InteractiveQuestionContextType | undefined
 >(undefined);
 
-const returnNull = () => null;
-
-export const useInteractiveQuestionData = () => {
-  const question = useSelector(getQuestion);
-  const card = useSelector(getCard);
-  const result = useSelector(getFirstQueryResult);
-  const uiControls = useSelector(getUiControls);
-  const queryResults = useSelector(getQueryResults);
-
-  const defaultHeight = card ? getDefaultVizHeight(card.display) : undefined;
-
-  const { isRunning: isQueryRunning } = uiControls;
-
-  const hasQuestionChanges =
-    card && (!card.id || card.id !== card.original_card_id);
-
-  if (question) {
-    question.alertType = returnNull; // FIXME: this removes "You can also get an alert when there are some results." feature for question
+type InteractiveQuestionProviderProps = PropsWithChildren<
+  UseLoadQuestionParams & {
+    componentPlugins?: SdkPluginsConfig;
+    onReset?: () => void;
+    onNavigateBack?: () => void;
   }
-
-  return {
-    question,
-    card,
-    result,
-    uiControls,
-    queryResults,
-    isQueryRunning,
-    hasQuestionChanges,
-    defaultHeight,
-  };
-};
-
-type UseLoadQuestionParams = {
-  location: {
-    search?: string;
-    hash?: string;
-    pathname?: string;
-    query?: Record<string, unknown>;
-  };
-  params: {
-    slug?: string;
-  };
-};
-
-const useLoadQuestion = ({ location, params }: UseLoadQuestionParams) => {
-  const dispatch = useDispatch();
-
-  const queryResults = useSelector(getQueryResults);
-
-  const [isQuestionLoading, setIsQuestionLoading] = useState(true);
-
-  const loadQuestion = useCallback(async () => {
-    setIsQuestionLoading(true);
-
-    try {
-      await dispatch(initializeQBRaw(location, params));
-    } catch (e) {
-      console.error(`Failed to get question`, e);
-      setIsQuestionLoading(false);
-    }
-  }, [dispatch, location, params]);
-
-  useEffect(() => {
-    loadQuestion();
-  }, [loadQuestion]);
-
-  useEffect(() => {
-    if (queryResults) {
-      setIsQuestionLoading(false);
-    }
-  }, [queryResults]);
-
-  const resetQuestion = () => {
-    loadQuestion();
-  };
-
-  useUnmount(() => {
-    dispatch(resetQB());
-  });
-  return { resetQuestion, isQuestionLoading };
-};
+>;
 
 export const InteractiveQuestionProvider = ({
   children,
@@ -138,19 +52,7 @@ export const InteractiveQuestionProvider = ({
   componentPlugins,
   onReset,
   onNavigateBack,
-  withTitle = false,
-  customTitle,
-  withResetButton,
-}: PropsWithChildren<
-  UseLoadQuestionParams & {
-    componentPlugins?: SdkPluginsConfig;
-    withResetButton?: boolean;
-    onReset?: () => void;
-    onNavigateBack?: () => void;
-    withTitle?: boolean;
-    customTitle?: ReactNode;
-  }
->) => {
+}: InteractiveQuestionProviderProps) => {
   const { isQuestionLoading, resetQuestion } = useLoadQuestion({
     location: location,
     params: params,
@@ -172,9 +74,6 @@ export const InteractiveQuestionProvider = ({
         resetQuestion,
         onReset: onReset || resetQuestion,
         onNavigateBack,
-        withTitle,
-        customTitle,
-        withResetButton,
         mode,
         plugins,
       }}

@@ -60,7 +60,16 @@
           [status result]  (case status
                              ::ready-to-reduce
                              (try
-                               [::success (transduce identity rf-or-e reducible-rows)]
+                               [::success (transduce (fn [rf]
+                                                       (fn wrapper
+                                                         ([] (rf))
+                                                         ([acc]
+                                                          (some-> *canceled-chan* a/close!)
+                                                          (rf acc))
+                                                         ([acc row]
+                                                          (rf acc row))))
+                                                     rf-or-e
+                                                     reducible-rows)]
                                (catch Throwable e
                                  [::error (ex-info (i18n/tru "Error reducing result rows: {0}" (ex-message e))
                                                    {:type qp.error-type/qp}

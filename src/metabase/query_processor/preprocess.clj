@@ -140,11 +140,11 @@
   (let [replacement (-> preprocessed-query :info :alias/escaped->original)]
     (escape-join-aliases/restore-aliases preprocessed-query replacement)))
 
-(defn query->expected-cols
+(mu/defn query->expected-cols :- [:sequential :map]
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
   it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
   queries with native source queries won't work, since we don't need the results."
-  [query]
+  [query :- :map]
   (qp.setup/with-qp-setup [query query]
     (let [preprocessed (-> query preprocess restore-join-aliases)]
       (when-not (= (:type preprocessed) :query)

@@ -200,7 +200,7 @@
 (defmacro with-test-user
   "Call `body` with various `metabase.api.common` dynamic vars like `*current-user*` bound to the predefined test User
   named by `user-kwd`. If you want to bind a non-predefined-test User, use `mt/with-current-user` instead."
-  {:style/indent 1}
+  {:style/indent :defn}
   [user-kwd & body]
   `(do-with-test-user ~user-kwd (fn [] ~@body)))
 

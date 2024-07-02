@@ -23,11 +23,10 @@ export interface FilterModalProps {
   onClose: () => void;
 }
 
-export function FilterModal({
-  query: initialQuery,
-  onSubmit,
-  onClose,
-}: FilterModalProps) {
+export const useFilterContent = (
+  initialQuery: Lib.Query,
+  onSubmit: (newQuery: Lib.Query) => void,
+) => {
   const [query, setQuery] = useState(() =>
     appendStageIfAggregated(initialQuery),
   );
@@ -63,12 +62,57 @@ export function FilterModal({
 
   const handleSubmit = () => {
     onSubmit(Lib.dropEmptyStages(query));
-    onClose();
   };
 
   const handleSearch = (searchText: string) => {
     setTab(isSearchActive(searchText) ? SEARCH_KEY : groupItems[0]?.key);
     setSearchText(searchText);
+  };
+  return {
+    query,
+    version,
+    isChanged,
+    groupItems,
+    tab,
+    setTab,
+    canRemoveFilters,
+    searchText,
+    isSearching,
+    visibleItems,
+    handleInput,
+    handleChange,
+    handleReset,
+    handleSubmit,
+    handleSearch,
+  };
+};
+
+export function FilterModal({
+  query: initialQuery,
+  onSubmit,
+  onClose,
+}: FilterModalProps) {
+  const {
+    query,
+    version,
+    isChanged,
+    groupItems,
+    tab,
+    setTab,
+    canRemoveFilters,
+    searchText,
+    isSearching,
+    visibleItems,
+    handleInput,
+    handleChange,
+    handleReset,
+    handleSubmit,
+    handleSearch,
+  } = useFilterContent(initialQuery, onSubmit);
+
+  const onSubmitFilters = () => {
+    handleSubmit();
+    onClose();
   };
 
   return (
@@ -97,7 +141,7 @@ export function FilterModal({
             canRemoveFilters={canRemoveFilters}
             onClearFilters={handleReset}
             isChanged={isChanged}
-            onApplyFilters={handleSubmit}
+            onApplyFilters={onSubmitFilters}
           />
         </ModalFooter>
       </Modal.Content>

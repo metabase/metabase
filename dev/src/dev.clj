@@ -106,7 +106,8 @@
   explain-query]
  [dev.migrate
   migrate!
-  rollback!]
+  rollback!
+  migration-sql-by-id]
  [model-tracking
   track!
   untrack!
