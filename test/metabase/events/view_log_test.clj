@@ -6,6 +6,7 @@
    [metabase.api.embed-test :as embed-test]
    [metabase.api.public-test :as public-test]
    [metabase.events :as events]
+   [metabase.events.view-log :as events.view-log]
    [metabase.http-client :as client]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
@@ -154,6 +155,28 @@
           (is (= 2 (t2/select-one-fn :view_count :model/Table (:id table)))
               "view_count should be incremented"))))))
 
+(deftest increment-view-counts!*-test
+  (mt/with-temp [:model/Card  {card-1-id :id} {}
+                 :model/Card  {card-2-id :id} {}
+                 :model/Table {table-id :id}  {}]
+    (t2/with-call-count [call-count]
+      (testing "increment-view-counts!* update the view_count correctly"
+        (#'events.view-log/increment-view-counts!* [;; table-id : 1 views, card-id-1: 2 views, card-id 2: 2 views
+                                                    {:model :model/Table :id table-id}
+                                                    {:model :model/Card  :id card-1-id}
+                                                    {:model :model/Card  :id card-1-id}
+                                                    {:model :model/Card  :id card-2-id}
+                                                    {:model :model/Card  :id card-2-id}])
+        (is (= (+ 1 #_to-update-table-view
+                  1 #_grouped-update-for-cards-with-the-same-view-count)
+               (call-count))
+            "and groups db calls by frequency")
+        (is (= 1 (t2/select-one-fn :view_count :model/Table table-id))
+            "view_count for card-1 should be 2")
+        (is (= 2 (t2/select-one-fn :view_count :model/Card card-1-id))
+            "view_count for card-1 should be 2")
+        (is (= 2 (t2/select-one-fn :view_count :model/Card card-2-id))
+            "view_count for card-1 should be 2")))))
 
 ;;; ---------------------------------------- API tests begin -----------------------------------------
 
