@@ -434,14 +434,18 @@
 
 (api/defendpoint GET "/:id/remapping/:remapped-id"
   "Fetch remapped Field values."
-  [id remapped-id values]
+  [id remapped-id value values]
   {id          ms/PositiveInt
    remapped-id ms/PositiveInt
-   values      (ms/QueryVectorOf ms/NonBlankString)}
+   value       [:maybe ms/NonBlankString] ;; deprecated
+   values      [:maybe (ms/QueryVectorOf ms/NonBlankString)]}
   (let [field          (api/read-check Field id)
         remapped-field (api/read-check Field remapped-id)
-        values         (parse-query-param-values-for-field field values)]
-    (remapped-values field remapped-field values)))
+        values         (parse-query-param-values-for-field field (or values [value]))
+        remapped       (remapped-values field remapped-field values)]
+    (if (some? value) ;; preserve backward compability; previously only one row was returned
+      (first remapped)
+      remapped)))
 
 (api/defendpoint GET "/:id/related"
   "Return related entities."
