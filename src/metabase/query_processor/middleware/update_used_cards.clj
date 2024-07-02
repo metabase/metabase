@@ -16,7 +16,7 @@
   (when (seq used-card-ids)
     (qp.util/with-execute-async
       (fn []
-        (try
+        #_(try
           (t2/update! :model/Card :id [:in used-card-ids] {:last_used_at :%now})
           (catch Throwable e
             (log/error e "Error updating used cards")))))))

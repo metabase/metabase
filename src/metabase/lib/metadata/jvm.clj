@@ -13,6 +13,7 @@
    [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
    [methodical.core :as methodical]
@@ -396,7 +397,28 @@
           (and (instance? UncachedApplicationDatabaseMetadataProvider another)
                (= database-id (.database-id ^UncachedApplicationDatabaseMetadataProvider another)))))
 
-(mu/defn application-database-metadata-provider :- ::lib.schema.metadata/metadata-provider
+
+(def ^:dynamic *cached-providers*
+  "Override this to be an `(atom {})` in eg. API endpoints to reuse metadata providers for different user DBs.
+
+  This can greatly reduce appdb traffic during a complex request handler like `dataset` or `query_metadata`."
+  nil)
+
+(defn- get-cached [atomic-cache k factory]
+  (loop []
+    (let [old (deref atomic-cache)]
+      (if-let [exists (get old k)]
+        (do
+          (log/warnf "using cache for DB: %d" k)
+          exists)
+        (let [value (factory k)
+              nu    (assoc old k value)]
+          (log/warnf "cache miss for DB: %d" k)
+          (if (compare-and-set! atomic-cache old nu)
+            value
+            (recur)))))))
+
+(mu/defn ^:private make-application-database-metadata-provider :- ::lib.schema.metadata/metadata-provider
   "An implementation of [[metabase.lib.metadata.protocols/MetadataProvider]] for the application database.
 
   All operations are cached; so you can use the bulk operations to pre-warm the cache if you need to."
@@ -404,3 +426,12 @@
   (-> (->UncachedApplicationDatabaseMetadataProvider database-id)
       lib.metadata.cached-provider/cached-metadata-provider
       lib.metadata.invocation-tracker/invocation-tracker-provider))
+
+(mu/defn application-database-metadata-provider :- ::lib.schema.metadata/metadata-provider
+  "An implementation of [[metabase.lib.metadata.protocols/MetadataProvider]] for the application database.
+
+  All operations are cached; so you can use the bulk operations to pre-warm the cache if you need to."
+  [database-id :- ::lib.schema.id/database]
+  (if-let [cache *cached-providers*]
+    (get-cached cache database-id make-application-database-metadata-provider)
+    (make-application-database-metadata-provider database-id)))

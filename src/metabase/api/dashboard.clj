@@ -16,6 +16,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.action :as action]
@@ -847,9 +848,10 @@
   "Get all of the required query metadata for the cards on dashboard."
   [id]
   {id ms/PositiveInt}
-  (data-perms/with-relevant-permissions-for-user api/*current-user-id*
-    (let [dashboard (get-dashboard id)]
-      (api.query-metadata/dashboard-metadata dashboard))))
+  (binding [lib.metadata.jvm/*cached-providers* (atom {})]
+    (data-perms/with-relevant-permissions-for-user api/*current-user-id*
+      (let [dashboard (get-dashboard id)]
+        (api.query-metadata/dashboard-metadata dashboard)))))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 

@@ -47,12 +47,12 @@
 (m/defmethod events/publish-event! ::card-read-event
   "Handle processing for a generic read event notification"
   [topic {:keys [object-id user-id] :as event}]
-  (span/with-span!
+  #_(span/with-span!
     {:name    "view-log-card-read"
      :topic   topic
      :user-id user-id}
     (try
-      (increment-view-counts! :model/Card object-id)
+      #_(increment-view-counts! :model/Card object-id)
       (record-views! (generate-view :model :model/Card event))
       (catch Throwable e
         (log/warnf e "Failed to process view event. %s" topic)))))
@@ -92,7 +92,7 @@
 (m/defmethod events/publish-event! ::dashboard-read
   "Handle processing for the dashboard read event. Logs the dashboard view. Card views are logged separately."
   [topic {:keys [object-id user-id] :as event}]
-  (span/with-span!
+  #_(span/with-span!
     {:name "view-log-dashboard-read"
      :topic topic
      :user-id user-id}
@@ -109,11 +109,11 @@
   "Handle processing for the table read event. Does a basic permissions check to see if the the user has data perms for
   the table."
   [topic {:keys [object user-id] :as event}]
-  (span/with-span!
+  #_(span/with-span!
     {:name "view-log-table-read"
      :topic topic
      :user-id user-id}
-    (try
+    #_(try
       (increment-view-counts! :model/Table (:id object))
       (let [table-id    (u/id object)
             database-id (:db_id object)
