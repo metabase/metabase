@@ -218,13 +218,13 @@ export const fetchRemapping = createThunkAction(
         ],
         getData: async () => {
           const remapping = await MetabaseApi.field_remapping({
-            value,
+            values: [value],
             fieldId,
             remappedFieldId,
           });
           if (remapping) {
             // FIXME: should this be field.id (potentially the FK) or fieldId (always the PK)?
-            dispatch(addRemappings(field.id, [remapping]));
+            dispatch(addRemappings(field.id, remapping));
           }
         },
       });
