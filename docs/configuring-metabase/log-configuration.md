@@ -26,7 +26,6 @@ You can set different log levels for different areas of the application, e.g.,:
     <Logger name="metabase-enterprise" level="INFO"/>
     <Logger name="metabase.plugins" level="DEBUG"/>
     <Logger name="metabase.server.middleware" level="DEBUG"/>
-    <Logger name="metabase.query-processor.async" level="DEBUG"/>
     <Logger name="com.mchange" level="ERROR"/>
 
     <!-- Example: Add trace logging to the Metabase analysis process, which can help debugging trouble with syncing, fingerprinting and scanning -->

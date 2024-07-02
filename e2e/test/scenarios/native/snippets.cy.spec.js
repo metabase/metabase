@@ -255,6 +255,7 @@ describeEE("scenarios > question > snippets (EE)", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     modal().within(() => cy.findByText("Top folder").click());
     entityPickerModal().within(() => {
+      cy.findByText("Collections").click();
       cy.findByText("my favorite snippets").click();
       cy.findByText("Select").click();
     });

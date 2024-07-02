@@ -44,6 +44,7 @@ import {
   testTooltipPairs,
   join,
   visitQuestion,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -1333,6 +1334,63 @@ describe("issue 40399", () => {
   });
 });
 
+describe("issue 43057", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should differentiate between date and datetime filters with 00:00 time (metabase#43057)", () => {
+    openOrdersTable();
+
+    cy.log("set the date and verify the filter and results");
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    tableHeaderClick("Created At");
+    popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByText("Specific dates…").click();
+      cy.findByText("On").click();
+      cy.findByLabelText("Date").clear().type("November 18, 2024");
+      cy.button("Add filter").click();
+    });
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(16);
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is on Nov 18, 2024")
+      .should("be.visible");
+
+    cy.log("set time to 00:00 and verify the filter and results");
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is on Nov 18, 2024")
+      .click();
+    popover().within(() => {
+      cy.button("Add time").click();
+      cy.findByLabelText("Time").should("have.value", "00:00");
+      cy.button("Update filter").click();
+    });
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(1);
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is Nov 18, 2024, 12:00 AM")
+      .should("be.visible");
+
+    cy.log("remove time and verify the filter and results");
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is Nov 18, 2024, 12:00 AM")
+      .click();
+    popover().within(() => {
+      cy.findByLabelText("Time").should("have.value", "00:00");
+      cy.button("Remove time").click();
+      cy.button("Update filter").click();
+    });
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(16);
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is on Nov 18, 2024")
+      .should("be.visible");
+  });
+});
+
 describe("issue 19894", () => {
   beforeEach(() => {
     restore();
@@ -1522,5 +1580,53 @@ describe("issue 44668", () => {
       cy.findByText("Add another series").should("not.exist");
       cy.findByText("Add series breakout").should("not.exist");
     });
+  });
+});
+
+describe("issue 38989", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should be impossible to join with a table or question which is not in the same database (metabase#38989)", () => {
+    createQuestion(
+      {
+        query: {
+          "source-table": PEOPLE_ID,
+          fields: [
+            ["field", PEOPLE.ID, { "base-type": "type/Number" }],
+            ["field", PEOPLE.EMAIL, { "base-type": "type/Text" }],
+          ],
+          joins: [
+            {
+              fields: "all",
+              alias: "Orders",
+              // This is not a valid table ID in the Sample Database
+              "source-table": 123,
+              strategy: "left-join",
+              condition: [
+                "=",
+                ["field", PEOPLE.ID, null],
+                ["field", ORDERS.USER_ID, { "join-alias": "Orders" }],
+              ],
+            },
+          ],
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+
+    cy.findByTestId("query-builder-main")
+      .findByText("Show error details")
+      .click();
+
+    cy.findByTestId("query-builder-main")
+      .findByText(
+        /either it does not exist, or it belongs to a different Database/,
+      )
+      .should("exist");
   });
 });

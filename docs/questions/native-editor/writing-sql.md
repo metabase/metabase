@@ -44,6 +44,12 @@ Questions asked using SQL can be saved, downloaded, converted to models, and add
 
 You can also [refer to models and saved questions][ref-models] in your SQL queries.
 
+## Use `??` instead of `?` operator
+
+If you're using the `?` JSON operator in PostgreSQL, use the equivalent `??` operator instead.
+
+This is due to limitations of JDBC that interprets a single question mark `?` as a parameter placeholder.
+
 ## Format SQL queries
 
 You can format your SQL queries by clicking on the "document" icon in the editor sidebar.

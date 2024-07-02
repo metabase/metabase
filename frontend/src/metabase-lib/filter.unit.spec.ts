@@ -800,6 +800,7 @@ describe("filter", () => {
               operator,
               column,
               values,
+              hasTime: false,
             }),
           );
 
@@ -807,9 +808,35 @@ describe("filter", () => {
             operator,
             column: expect.anything(),
             values,
+            hasTime: false,
           });
           expect(columnInfo?.name).toBe(columnName);
           expect(bucketInfo).toBe(null);
+        },
+      );
+
+      it.each<Lib.SpecificDateFilterOperatorName>(["=", ">", "<"])(
+        'should be able to create and destructure a specific datetime filter with "%s" operator and 1 value',
+        operator => {
+          const values = [new Date(2018, 2, 10, 20, 30)];
+          const { filterParts, columnInfo, bucketInfo } = addSpecificDateFilter(
+            query,
+            Lib.specificDateFilterClause(query, 0, {
+              operator,
+              column,
+              values,
+              hasTime: true,
+            }),
+          );
+
+          expect(filterParts).toMatchObject({
+            operator,
+            column: expect.anything(),
+            values,
+            hasTime: true,
+          });
+          expect(columnInfo?.name).toBe(columnName);
+          expect(bucketInfo?.shortName).toBe("minute");
         },
       );
 
@@ -822,6 +849,7 @@ describe("filter", () => {
             operator: "between",
             column,
             values,
+            hasTime: false,
           }),
         );
 
@@ -829,6 +857,7 @@ describe("filter", () => {
           operator: "between",
           column: expect.anything(),
           values,
+          hasTime: false,
         });
         expect(columnInfo?.name).toBe(columnName);
         expect(bucketInfo).toBe(null);
@@ -847,6 +876,7 @@ describe("filter", () => {
                 findTemporalBucket(query, column, "Day"),
               ),
               values,
+              hasTime: false,
             }),
           );
 
@@ -854,6 +884,7 @@ describe("filter", () => {
             operator,
             column: expect.anything(),
             values,
+            hasTime: false,
           });
           expect(columnInfo?.name).toBe(columnName);
           expect(bucketInfo).toBe(null);
@@ -871,6 +902,7 @@ describe("filter", () => {
               findTemporalBucket(query, column, "Hour"),
             ),
             values,
+            hasTime: false,
           }),
         );
 
@@ -878,6 +910,7 @@ describe("filter", () => {
           operator: "between",
           column: expect.anything(),
           values,
+          hasTime: false,
         });
         expect(columnInfo?.name).toBe(columnName);
         expect(bucketInfo).toBe(null);
@@ -886,13 +919,14 @@ describe("filter", () => {
       it.each<Lib.SpecificDateFilterOperatorName>(["=", ">", "<"])(
         'should set "minute" temporal bucket with "%s" operator and 1 value if there are time parts',
         operator => {
-          const values = [new Date(2018, 2, 10, 30)];
+          const values = [new Date(2018, 2, 10, 8)];
           const { filterParts, columnInfo, bucketInfo } = addSpecificDateFilter(
             query,
             Lib.specificDateFilterClause(query, 0, {
               operator,
               column,
               values,
+              hasTime: true,
             }),
           );
 
@@ -900,6 +934,7 @@ describe("filter", () => {
             operator,
             column: expect.anything(),
             values,
+            hasTime: true,
           });
           expect(columnInfo?.name).toBe(columnName);
           expect(bucketInfo?.shortName).toBe("minute");
@@ -914,6 +949,7 @@ describe("filter", () => {
             operator: "between",
             column,
             values,
+            hasTime: true,
           }),
         );
 
@@ -921,31 +957,32 @@ describe("filter", () => {
           operator: "between",
           column: expect.anything(),
           values,
+          hasTime: true,
         });
         expect(columnInfo?.name).toBe(columnName);
         expect(bucketInfo?.shortName).toBe("minute");
       });
 
-      it.each([
-        ["yyyy-MM-DDTHH:mm:ssZ", "2020-01-05T10:20:00+01:00"],
-        ["yyyy-MM-DDTHH:mm:ss", "2020-01-05T10:20:00"],
-        ["yyyy-MM-DD", "2020-01-05"],
-      ])("should support %s date format", (format, arg) => {
-        const { filterParts } = addSpecificDateFilter(
-          query,
-          Lib.expressionClause("=", [column, arg]),
-        );
-        expect(filterParts).toMatchObject({
-          operator: "=",
-          column: expect.anything(),
-          values: [expect.any(Date)],
-        });
+      it.each([["2020-01-05", new Date(2020, 1, 5)]])(
+        "should support %s date format",
+        arg => {
+          const { filterParts } = addSpecificDateFilter(
+            query,
+            Lib.expressionClause("=", [column, arg]),
+          );
+          expect(filterParts).toMatchObject({
+            operator: "=",
+            column: expect.anything(),
+            values: [expect.any(Date)],
+            hasTime: false,
+          });
 
-        const value = filterParts?.values[0];
-        expect(value?.getFullYear()).toBe(2020);
-        expect(value?.getMonth()).toBe(0);
-        expect(value?.getDate()).toBe(5);
-      });
+          const value = filterParts?.values[0];
+          expect(value?.getFullYear()).toBe(2020);
+          expect(value?.getMonth()).toBe(0);
+          expect(value?.getDate()).toBe(5);
+        },
+      );
 
       it.each([
         ["2020-01-05T00:00:00.000", new Date(2020, 0, 5, 0, 0, 0, 0)],
@@ -965,6 +1002,7 @@ describe("filter", () => {
           operator: "=",
           column: expect.anything(),
           values: [expect.any(Date)],
+          hasTime: true,
         });
 
         const value = filterParts?.values[0];
@@ -1009,6 +1047,7 @@ describe("filter", () => {
             operator: "=",
             column: findColumn(query, tableName, "PRICE"),
             values: [new Date(2020, 1, 1)],
+            hasTime: false,
           }),
         );
 
