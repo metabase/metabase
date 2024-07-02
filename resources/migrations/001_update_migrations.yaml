@@ -8010,6 +8010,44 @@ databaseChangeLog:
             tableName: login_history
             indexName: idx_user_id_device_id
 
+  - changeSet:
+      id: v51.2024-07-02T16:48:21
+      author: adam-james
+      comment: Remove existing user_parameter_value entries as we want to add dashboard_id, and can't easily backfill
+      changes:
+        - delete:
+           tableName: user_parameter_value
+
+  - changeSet:
+      id: v51.2024-07-02T16:49:29
+      author: adam-james
+      comment: Add dashboard_id column to user_parameter_value to keep values unique per dashboard
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The ID of the dashboard
+                  constraints:
+                    nullable: false
+                    references: report_dashboard(id)
+                    foreignKeyName: fk_user_parameter_value_dashboard_id
+                    deleteCascade: true
+            tableName: user_parameter_value
+
+  - changeSet:
+      id: v51.2024-07-02T17:07:15
+      author: adam-james
+      comment: Index user_parameter_value.dashboard_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: user_parameter_value
+            indexName: idx_user_parameter_value_dashboard_id
+            columns:
+              column:
+                name: dashboard_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
