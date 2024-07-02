@@ -16,7 +16,7 @@
 (defn archive-url
   "Return an appropriate URL to view the archive page."
   []
-  (str (site-url) "/archive"))
+  (str (site-url) "/trash"))
 
 (defn dashboard-url
   "Return an appropriate URL for a `Dashboard` with ID.
