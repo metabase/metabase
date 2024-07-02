@@ -47,8 +47,19 @@ export const PublicOrEmbeddedQuestion = ({
   const [parameterValues, setParameterValues] = useState<ParameterValuesMap>(
     {},
   );
+  const {
+    bordered,
+    hide_download_button,
+    hide_parameters,
+    theme,
+    titled,
+    downloads,
+  } = useEmbedFrameOptions({ location });
 
-  const downloadsEnabled = PLUGIN_RESOURCE_DOWNLOADS.areDownloadsEnabled();
+  const downloadsEnabled = PLUGIN_RESOURCE_DOWNLOADS.areDownloadsEnabled({
+    hide_download_button,
+    downloads,
+  });
 
   useMount(async () => {
     if (uuid) {
@@ -167,9 +178,6 @@ export const PublicOrEmbeddedQuestion = ({
     );
   };
 
-  const { bordered, hide_download_button, hide_parameters, theme, titled } =
-    useEmbedFrameOptions({ location });
-
   return (
     <PublicOrEmbeddedQuestionView
       initialized={initialized}
@@ -183,7 +191,6 @@ export const PublicOrEmbeddedQuestion = ({
       setParameterValue={setParameterValue}
       setParameterValueToDefault={setParameterValueToDefault}
       bordered={bordered}
-      hide_download_button={hide_download_button}
       hide_parameters={hide_parameters}
       theme={theme}
       titled={titled}

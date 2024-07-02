@@ -125,7 +125,6 @@ const InteractiveDashboardInner = ({
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
         parameterQueryParams={initialParameterValues}
-        hideDownloadButton={displayOptions.hideDownloadButton}
         hideParameters={displayOptions.hideParameters}
         titled={displayOptions.titled}
         cardTitled={withCardTitle}
@@ -138,6 +137,7 @@ const InteractiveDashboardInner = ({
         font={font}
         bordered={displayOptions.bordered}
         navigateToNewCardFromDashboard={handleNavigateToNewCardFromDashboard}
+        downloads={false}
       />
     </Box>
   );

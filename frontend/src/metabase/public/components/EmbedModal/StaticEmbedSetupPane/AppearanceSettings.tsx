@@ -157,9 +157,8 @@ export const AppearanceSettings = ({
             )}
           </DisplayOptionSection>
 
-          {canWhitelabel && resourceType === "question" && (
+          {canWhitelabel && (
             // We only show the "Download Data" toggle if the users are pro/enterprise
-            // and they're sharing a question metabase#23477
             <DisplayOptionSection
               title={t`Download data`}
               titleId={downloadDataId}
@@ -170,11 +169,11 @@ export const AppearanceSettings = ({
                 labelPosition="left"
                 size="sm"
                 variant="stretch"
-                checked={!displayOptions.hide_download_button}
+                checked={displayOptions.downloads ?? true}
                 onChange={e =>
                   onChangeDisplayOptions({
                     ...displayOptions,
-                    hide_download_button: !e.target.checked,
+                    downloads: e.target.checked,
                   })
                 }
               />
