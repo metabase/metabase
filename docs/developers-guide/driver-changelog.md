@@ -20,17 +20,22 @@ title: Driver interface changelog
 
   - The `metabase.driver.sql.util.unprepare/unprepare-value` method has been replaced by the new method
     `metabase.driver.sql.query-processor/inline-value`. The signatures of these two functions are the same, and you
-    should be able to simply change the all of your `unprepare-value` implementations to `inline-value` instead.
+    should be able to simply change the all of your `unprepare-value` implementations to `inline-value` instead. See
+    [PR #45008](https://github.com/metabase/metabase/pull/45008) for examples of this change.
 
     For the time being, implementations of `unprepare-value` are used as implementations of `inline-value`
     automatically, but `unprepare-value` is slated for removal in 0.54.0.
 
+  - `metabase.driver.sql.query-processor/format-honeysql` is now a multimethod, mainly so you can bind
+    `*compile-with-inline-parameters*` if you need to always compile without parameterization.
+
   - The dynamic variable `metabase.driver/*compile-with-inline-parameters*` (default `false`) has been added; drivers
     that can generate parameterized queries should look at its value in their implementation of
-    `metabase.driver/mbql->native` and adjust their output accordingly. For `:sql`-based drivers, this is handled in
-    the shared `metabase.driver.sql.query-processor` code, so you shouldn't need to adjust anything here. For `:sql`
-    drivers that do not support JDBC-style parameterized queries you can implement `mbql->native`, bind
-    `*compile-with-inline-parameters*` to something truthy, then call the default `:sql` implementation.
+    `metabase.driver/mbql->native` and adjust their output accordingly. For `:sql-jdbc`-based drivers that support
+    parameterization, this is handled in the shared `metabase.driver.sql.query-processor` code, so you shouldn't need
+    to adjust anything here. For `:sql` drivers that do not support JDBC-style parameterized queries you can implement
+    `format-honeysql` and bind `*compile-with-inline-parameters*` as discussed above. See the `:athena` driver for an
+    example of how to do this.
 
   - `metabase.driver.sql.util.unprepare/unprepare`, which took a parameterized SQL string and de-parameterized or
     "unprepared" it, has been removed. Instead, if you need a query with parameters spliced directly into the SQL,

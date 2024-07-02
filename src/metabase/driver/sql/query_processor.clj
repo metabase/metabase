@@ -1542,9 +1542,15 @@
                 sql/*inline*       driver/*compile-with-inline-parameters*]
         (sql/format-expr honeysql-form {:nested true})))))
 
-(defn format-honeysql
-  "Compile a `honeysql-form` to a vector of `[sql & params]`. `honeysql-form` can either be a map (for a top-level
-  query), or some sort of expression."
+(defmulti format-honeysql
+  "Compile `honeysql-form` to a `[sql & args]` vector. Prior to 0.51.0, this was a plain function, but was made a
+  multimethod in 0.51.0 to support drivers that need to always
+  specify [[metabase.driver/*compile-with-inline-parameters*]]."
+  {:arglists '([driver honeysql-form]), :added "0.51.0"}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod format-honeysql :sql
   [driver honeysql-form]
   (let [dialect (quote-style driver)]
     (try

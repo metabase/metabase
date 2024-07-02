@@ -436,7 +436,13 @@
      (let [metadata (.getMetaData conn)]
        {:tables (fast-active-tables driver metadata details)}))))
 
-(defmethod driver/mbql->native :athena
-  [driver query]
+(defmethod sql.qp/format-honeysql :athena
+  [driver honeysql-form]
   (binding [driver/*compile-with-inline-parameters* true]
-    ((get-method driver/mbql->native :sql) driver query)))
+    ((get-method sql.qp/format-honeysql :sql) driver honeysql-form)))
+
+(defmethod driver/execute-reducible-query :athena
+  [driver query context respond]
+  (assert (empty? (get-in query [:native :params]))
+          "Athena queries should not be parameterized; they should have been compiled with metabase.driver/*compile-with-inline-parameters*")
+  ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond))

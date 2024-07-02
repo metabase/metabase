@@ -85,8 +85,9 @@
       ;; we have code in place to work around that.
       (let [timestamp-tz [:raw "timestamp '2022-11-16 04:21:00 US/Pacific'"]
             time         [:raw "time '5:03:00'"]
-            [sql & args] (sql/format {:select [[timestamp-tz :timestamp-tz]
-                                               [time :time]]})
+            [sql & args] (sql.qp/format-honeysql :athena {:select [[timestamp-tz :timestamp-tz]
+                                                                   [time :time]]})
+            _            (assert (empty? args))
             query        (-> (mt/native-query {:query sql, :params args})
                              (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query

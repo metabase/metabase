@@ -167,11 +167,17 @@
         query       (assoc outer-query :native inner-query)]
     ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond)))
 
-(defmethod driver/mbql->native :sparksql
-  [driver query]
+(defmethod sql.qp/format-honeysql :sparksql
+  [driver honeysql-form]
   (binding [driver/*compile-with-inline-parameters* true
             hive-like/*inline-param-style*          :paranoid]
-    ((get-method driver/mbql->native :hive-like) driver query)))
+    ((get-method sql.qp/format-honeysql :hive-like) driver honeysql-form)))
+
+(defmethod driver/execute-reducible-query :sparksql
+  [driver query context respond]
+  (assert (empty? (get-in query [:native :params]))
+          "Spark SQL queries should not be parameterized; they should have been compiled with metabase.driver/*compile-with-inline-parameters*")
+  ((get-method driver/execute-reducible-query :hive-like) driver query context respond))
 
 ;; 1.  SparkSQL doesn't support `.supportsTransactionIsolationLevel`
 ;; 2.  SparkSQL doesn't support session timezones (at least our driver doesn't support it)
