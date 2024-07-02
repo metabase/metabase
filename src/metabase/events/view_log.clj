@@ -30,6 +30,7 @@
                        (update-vals items #(map :id %)))]
       (doseq [[model ids] model->ids]
         (doseq [[cnt ids] (group-by-frequency ids)]
+          (log/debugf "Incrementing view count of %d and %s" (count ids) (pr-str (t2/select model :id [:in ids])))
           (t2/query {:update (t2/table-name model)
                      :set    {:view_count [:+ :view_count [:inline cnt]]}
                      :where  [:in :id ids]}))))

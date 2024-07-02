@@ -655,6 +655,7 @@
   metabase.test/with-temp-empty-app-db                                                 clojure.core/let
   metabase.test/with-temp-file                                                         clojure.core/let
   metabase.test/with-user-in-groups                                                    clojure.core/let
+  metabase.test/with-grouper-realize!                                                  clojure.core/fn
   metabase.upload-test/with-upload-table!                                              clojure.core/let
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let
   metabase.util.malli.defn/defn                                                        schema.core/defn

@@ -732,74 +732,77 @@
 
 (deftest update-dashboard-test
   (testing "PUT /api/dashboard/:id"
-    (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
-      (with-dashboards-in-writeable-collection [dashboard-id]
-        (testing "GET before update"
-          (is (= (merge dashboard-defaults {:name          "Test Dashboard"
-                                            :creator_id    (mt/user->id :rasta)
-                                            :collection    false
-                                            :collection_id true})
-                 (dashboard-response (t2/select-one Dashboard :id dashboard-id)))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-grouper-realize! [realize]
+        (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
+          (with-dashboards-in-writeable-collection [dashboard-id]
+            (testing "GET before update"
+              (is (= (merge dashboard-defaults {:name          "Test Dashboard"
+                                                :creator_id    (mt/user->id :rasta)
+                                                :collection    false
+                                                :collection_id true})
+                     (dashboard-response (t2/select-one Dashboard :id dashboard-id)))))
 
-        (testing "PUT response"
-          (let [put-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                                   {:name        "My Cool Dashboard"
-                                                    :description "Some awesome description"
-                                                    :cache_ttl   1234
-                                                    ;; these things should fail to update
-                                                    :creator_id  (mt/user->id :trashbird)})
-                get-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))]
-            (is (=? (merge dashboard-defaults {:name           "My Cool Dashboard"
-                                               :dashcards      []
-                                               :tabs           []
-                                               :description    "Some awesome description"
-                                               :creator_id     (mt/user->id :rasta)
-                                               :cache_ttl      1234
-                                               :last-edit-info {:timestamp true :id true :first_name "Rasta"
-                                                                :last_name "Toucan" :email "rasta@metabase.com"}
-                                               :collection     true
-                                               :collection_id  true})
-                    (dashboard-response put-response)))
-            (testing "A PUT should return the updated value so a follow-on GET is not needed (#34828)"
-              (is (= (update put-response :last-edit-info dissoc :timestamp)
-                     (update get-response :last-edit-info dissoc :timestamp))))))
+            (testing "PUT response"
+              (let [put-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                                       {:name        "My Cool Dashboard"
+                                                        :description "Some awesome description"
+                                                        :cache_ttl   1234
+                                                        ;; these things should fail to update
+                                                        :creator_id  (mt/user->id :trashbird)})
+                    get-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))]
+                (is (=? (merge dashboard-defaults {:name           "My Cool Dashboard"
+                                                   :dashcards      []
+                                                   :tabs           []
+                                                   :description    "Some awesome description"
+                                                   :creator_id     (mt/user->id :rasta)
+                                                   :cache_ttl      1234
+                                                   :last-edit-info {:timestamp true :id true :first_name "Rasta"
+                                                                    :last_name "Toucan" :email "rasta@metabase.com"}
+                                                   :collection     true
+                                                   :collection_id  true})
+                        (dashboard-response put-response)))
+                (testing "A PUT should return the updated value so a follow-on GET is not needed (#34828)"
+                  (is (= (update put-response :last-edit-info dissoc :timestamp)
+                         (update get-response :last-edit-info dissoc :timestamp))))))
 
-        (testing "GET after update"
-          (is (= (merge dashboard-defaults {:name          "My Cool Dashboard"
-                                            :description   "Some awesome description"
-                                            :cache_ttl     1234
-                                            :creator_id    (mt/user->id :rasta)
-                                            :collection    false
-                                            :collection_id true
-                                            :view_count    1})
-                 (dashboard-response (t2/select-one Dashboard :id dashboard-id)))))
+            (testing "GET after update"
+              (realize)
+              (is (= (merge dashboard-defaults {:name          "My Cool Dashboard"
+                                                :description   "Some awesome description"
+                                                :cache_ttl     1234
+                                                :creator_id    (mt/user->id :rasta)
+                                                :collection    false
+                                                :collection_id true
+                                                :view_count    1})
+                     (dashboard-response (t2/select-one Dashboard :id dashboard-id)))))
 
-        (testing "No-op PUT: Do not return 500"
-          (t2.with-temp/with-temp [Card {card-id :id} {}
-                                   DashboardCard dashcard {:card_id card-id, :dashboard_id dashboard-id}]
-            ;; so, you can't actually set `:cards` with THIS endpoint (you have to use PUT /api/dashboard/:id/cards)
-            ;; but the e2e tests are trying to do it. With Toucan 1, it would silently do nothing and return truthy for
-            ;; whatever reason (I'm guessing it was a bug?) if you did something like (update! Dashboard 1 {}). Toucan 2
-            ;; returns falsey, since it doesn't do anything, which is what Toucan 1 SAID it was supposed to do.
-            ;;
-            ;; In the interest of un-busting the e2e tests let's just check to make sure the endpoint no-ops
-            (is (=? {:id dashboard-id}
-                    (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                          {:cards [(select-keys dashcard [:id :card_id :row_col :size_x :size_y])]})))))))
-   (testing "auto_apply_filters test"
-     (doseq [enabled? [true false]]
-       (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:name               "Test Dashboard"
-                                                              :auto_apply_filters enabled?}]
-         (testing "Can set it"
-           (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                 {:auto_apply_filters (not enabled?)})
-           (is (= (not enabled?)
-                  (t2/select-one-fn :auto_apply_filters Dashboard :id dashboard-id))))
-         (testing "If not in put it is not changed"
-           (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                 {:description "foo"})
-           (is (= (not enabled?)
-                  (t2/select-one-fn :auto_apply_filters Dashboard :id dashboard-id)))))))))
+            (testing "No-op PUT: Do not return 500"
+              (t2.with-temp/with-temp [Card {card-id :id} {}
+                                       DashboardCard dashcard {:card_id card-id, :dashboard_id dashboard-id}]
+                ;; so, you can't actually set `:cards` with THIS endpoint (you have to use PUT /api/dashboard/:id/cards)
+                ;; but the e2e tests are trying to do it. With Toucan 1, it would silently do nothing and return truthy for
+                ;; whatever reason (I'm guessing it was a bug?) if you did something like (update! Dashboard 1 {}). Toucan 2
+                ;; returns falsey, since it doesn't do anything, which is what Toucan 1 SAID it was supposed to do.
+                ;;
+                ;; In the interest of un-busting the e2e tests let's just check to make sure the endpoint no-ops
+                (is (=? {:id dashboard-id}
+                        (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                              {:cards [(select-keys dashcard [:id :card_id :row_col :size_x :size_y])]})))))))
+       (testing "auto_apply_filters test"
+         (doseq [enabled? [true false]]
+           (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:name               "Test Dashboard"
+                                                                  :auto_apply_filters enabled?}]
+             (testing "Can set it"
+               (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                     {:auto_apply_filters (not enabled?)})
+               (is (= (not enabled?)
+                      (t2/select-one-fn :auto_apply_filters Dashboard :id dashboard-id))))
+             (testing "If not in put it is not changed"
+               (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                     {:description "foo"})
+               (is (= (not enabled?)
+                      (t2/select-one-fn :auto_apply_filters Dashboard :id dashboard-id)))))))))))
 
 
 (deftest update-dashboard-guide-columns-test

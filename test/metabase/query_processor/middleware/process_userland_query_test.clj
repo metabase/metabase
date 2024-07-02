@@ -176,26 +176,29 @@
 
 (deftest save-field-usage-test
   (testing "execute an userland query will capture field usages"
-    (mt/with-model-cleanup [:model/FieldUsage]
-      (mt/with-temp [:model/Field {field-id :id} {:table_id (mt/id :products)
-                                                  :name     "very_interesting_field"
-                                                  :base_type :type/Integer}
-                     :model/Card card            {:dataset_query (mt/mbql-query products
-                                                                                {:filter [:> [:field field-id nil] 1]})}]
-        (binding [qp.util/*execute-async?* false
-                  qp.pipeline/*execute*    (fn [_driver _query respond]
-                                             (respond {} []))]
-          (mt/user-http-request :crowberto :post 202 (format "/card/%d/query" (:id card)))
-          (is (=? [{:filter_op                  :>
-                    :breakout_temporal_unit     nil
-                    :breakout_binning_strategy  nil
-                    :breakout_binning_bin_width nil
-                    :breakout_binning_num_bins  nil
-                    :used_in                    :filter
-                    :aggregation_function       nil
-                    :field_id                   field-id
-                    :query_execution_id         (mt/malli=? pos-int?)}]
-                  (t2/select :model/FieldUsage :field_id field-id))))))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-model-cleanup [:model/FieldUsage]
+        (mt/with-grouper-realize! [realize]
+          (mt/with-temp [:model/Field {field-id :id} {:table_id (mt/id :products)
+                                                      :name     "very_interesting_field"
+                                                      :base_type :type/Integer}
+                         :model/Card card            {:dataset_query (mt/mbql-query products
+                                                                                    {:filter [:> [:field field-id nil] 1]})}]
+            (binding [qp.util/*execute-async?* false
+                      qp.pipeline/*execute*    (fn [_driver _query respond]
+                                                 (respond {} []))]
+              (mt/user-http-request :crowberto :post 202 (format "/card/%d/query" (:id card)))
+              (realize)
+              (is (=? [{:filter_op                  :>
+                        :breakout_temporal_unit     nil
+                        :breakout_binning_strategy  nil
+                        :breakout_binning_bin_width nil
+                        :breakout_binning_num_bins  nil
+                        :used_in                    :filter
+                        :aggregation_function       nil
+                        :field_id                   field-id
+                        :query_execution_id         (mt/malli=? pos-int?)}]
+                      (t2/select :model/FieldUsage :field_id field-id))))))))))
 
 (deftest query-result-should-not-contains-preprocessed-query-test
   (let [query (mt/mbql-query venues {:limit 1})]
