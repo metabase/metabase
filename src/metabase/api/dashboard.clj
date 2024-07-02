@@ -1183,6 +1183,7 @@
                       {:dashboard-id dashboard-id
                        :card-id      card-id
                        :dashcard-id  dashcard-id}))
+    (events/publish-event! :event/dashboard-queried {:object-id dashboard-id :user-id api/*current-user-id*})
     (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"

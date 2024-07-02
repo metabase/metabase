@@ -57,6 +57,17 @@
       (catch Throwable e
         (log/warnf e "Failed to process view event. %s" topic)))))
 
+(derive ::dashboard-queried :metabase/event)
+(derive :event/dashboard-queried ::dashboard-queried)
+
+(m/defmethod events/publish-event! ::dashboard-queried
+  "Handle processing for a dashboard query being run"
+  [topic {:keys [object-id] :as _event}]
+  (try
+    (t2/update! :model/Dashboard {:id object-id} {:last_viewed_at :%now})
+    (catch Throwable e
+      (log/warnf e "Failed to process dashboard query event. %s" topic))))
+
 (derive ::collection-read-event :metabase/event)
 (derive :event/collection-read ::collection-read-event)
 
