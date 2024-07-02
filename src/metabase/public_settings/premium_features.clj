@@ -104,6 +104,7 @@
    [:status                         [:string {:min 1}]]
    [:error-details {:optional true} [:maybe [:string {:min 1}]]]
    [:features      {:optional true} [:sequential [:string {:min 1}]]]
+   [:plan-alias    {:optional true} :string]
    [:trial         {:optional true} :boolean]
    [:valid-thru    {:optional true} [:string {:min 1}]]
    [:max-users     {:optional true} pos-int?]
