@@ -1,6 +1,8 @@
-import { useMemo } from "react";
+import querystring from "querystring";
+import { useEffect, useMemo } from "react";
+import _ from "underscore";
 
-import { useSyncedQueryString } from "metabase/hooks/use-synced-query-string";
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import type { ParametersListProps } from "metabase/parameters/components/ParametersList/types";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
@@ -31,7 +33,25 @@ export const SyncedParametersList = ({
     [parameters],
   );
 
-  useSyncedQueryString(queryParams);
+  useEffect(() => {
+    /**
+     * We don't want to sync the query string to the URL because when previewing,
+     * this changes the URL of the iframe by appending the query string to the src.
+     * This causes the iframe to reload when changing the preview hash from appearance
+     * settings because now the base URL (including the query string) is different.
+     */
+    if (IS_EMBED_PREVIEW) {
+      return;
+    }
+    const searchString = buildSearchString(queryParams);
+    if (searchString !== window.location.search) {
+      window.history.replaceState(
+        null,
+        document.title,
+        window.location.pathname + searchString + window.location.hash,
+      );
+    }
+  }, [queryParams]);
 
   return (
     <ParametersList
@@ -53,3 +73,22 @@ export const SyncedParametersList = ({
     />
   );
 };
+
+const QUERY_PARAMS_ALLOW_LIST = ["objectId"];
+
+function buildSearchString(object: Record<string, any>) {
+  const currentSearchParams = querystring.parse(
+    window.location.search.replace("?", ""),
+  );
+  const filteredSearchParams = Object.fromEntries(
+    Object.entries(currentSearchParams).filter(entry =>
+      QUERY_PARAMS_ALLOW_LIST.includes(entry[0]),
+    ),
+  );
+
+  const search = querystring.stringify({
+    ...filteredSearchParams,
+    ...object,
+  });
+  return search ? `?${search}` : "";
+}

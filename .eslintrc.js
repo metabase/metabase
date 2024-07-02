@@ -78,7 +78,7 @@ module.exports = {
     "react/forbid-component-props": [2, { forbid: ["sx"] }],
     "react-hooks/exhaustive-deps": [
       "warn",
-      { additionalHooks: "(useSyncedQueryString|useSafeAsyncFunction)" },
+      { additionalHooks: "(useSafeAsyncFunction)" },
     ],
     "prefer-const": [1, { destructuring: "all" }],
     "no-useless-escape": 0,

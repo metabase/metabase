@@ -31,7 +31,7 @@ interface DownloadQueryResultsParams {
   method: string;
   url: string;
   body?: Record<string, unknown>;
-  params?: URLSearchParams;
+  params?: URLSearchParams | string;
 }
 
 export const downloadQueryResults =
@@ -143,7 +143,10 @@ const getDatasetParams = ({
   };
 };
 
-export function getDatasetDownloadUrl(url: string, params?: URLSearchParams) {
+export function getDatasetDownloadUrl(
+  url: string,
+  params?: URLSearchParams | string,
+) {
   url = url.replace(api.basename, ""); // make url relative if it's not
   if (params) {
     url += `?${params.toString()}`;

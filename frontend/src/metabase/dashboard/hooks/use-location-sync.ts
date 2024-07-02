@@ -79,11 +79,13 @@ export const useLocationSync = <
             [key]: latestValue,
           };
 
-      const hashString = stringifyHashOptions(updatedOptions);
+      const hash = stringifyHashOptions(updatedOptions);
+      const hashString = hash ? `#${hash}` : "";
 
       dispatch(
         replace({
           ...location,
+          query: {},
           hash: hashString ? "#" + hashString : "",
         }),
       );

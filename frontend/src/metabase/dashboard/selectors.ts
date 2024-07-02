@@ -8,6 +8,7 @@ import {
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import * as Urls from "metabase/lib/urls";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
@@ -15,7 +16,10 @@ import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 import Question from "metabase-lib/v1/Question";
-import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
+import {
+  getParameterValuesBySlug,
+  getValuePopulatedParameters as _getValuePopulatedParameters,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
   CardId,
@@ -414,6 +418,21 @@ export const getParameters = createSelector(
   },
 );
 
+export const getValuePopulatedParameters = createSelector(
+  [
+    getParameters,
+    getParameterValues,
+    getDraftParameterValues,
+    getIsAutoApplyFilters,
+  ],
+  (parameters, parameterValues, draftParameterValues, isAutoApplyFilters) => {
+    return _getValuePopulatedParameters({
+      parameters,
+      values: isAutoApplyFilters ? parameterValues : draftParameterValues,
+    });
+  },
+);
+
 export const getMissingRequiredParameters = createSelector(
   [getParameters],
   parameters =>
@@ -489,7 +508,34 @@ export const getSelectedTabId = createSelector(
   },
 );
 
+export const getSelectedTab = createSelector(
+  [getDashboard, getSelectedTabId],
+  (dashboard, selectedTabId) => {
+    if (!dashboard || selectedTabId === null) {
+      return null;
+    }
+    return dashboard.tabs?.find(tab => tab.id === selectedTabId) || null;
+  },
+);
+
 export function getInitialSelectedTabId(dashboard: Dashboard | StoreDashboard) {
+  // TODO handle site-url setting
+  const isDashboardUrl =
+    window.location.pathname.includes("/dashboard/") &&
+    Urls.extractEntityId(
+      window.location.pathname.replace("/dashboard/", ""),
+    ) === dashboard.id;
+
+  if (isDashboardUrl) {
+    const searchParams = new URLSearchParams(window.location.search);
+    const tabParam = searchParams.get("tab");
+    const tabId = tabParam ? parseInt(tabParam, 10) : null;
+    const hasTab = dashboard.tabs?.find?.(tab => tab.id === tabId);
+    if (hasTab) {
+      return tabId;
+    }
+  }
+
   return dashboard.tabs?.[0]?.id || null;
 }
 
