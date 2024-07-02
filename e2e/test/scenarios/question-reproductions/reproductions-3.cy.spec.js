@@ -1677,23 +1677,21 @@ describe("issue 39771", () => {
       .findByText("Created At: Month: Quarter of year")
       .click();
 
-    popover().first().as("popover");
     popover().findByText("by quarter of year").realHover();
 
-    cy.get("@popover").then(([$popover]) => {
+    popover().then(([$popover]) => {
       const popoverStyle = window.getComputedStyle($popover);
       const popoverZindex = parseInt(popoverStyle.zIndex, 10);
 
-      cy.findByRole("tooltip", { name: "by quarter of year" })
-        .should("be.visible") // this assertion passes - it looks like a Cypress bug
-        .parent()
-        .then(([$tooltip]) => {
-          const tooltipStyle = window.getComputedStyle($tooltip);
-          const tooltipZindex = parseInt(tooltipStyle.zIndex, 10);
+      cy.findByTestId("ellipsified-tooltip").within(([$tooltip]) => {
+        cy.findByText("by quarter of year").should("be.visible");
 
-          // resort to asserting zIndex because should("be.visible") passes unexpectedly
-          expect(tooltipZindex).to.be.gte(popoverZindex);
-        });
+        const tooltipStyle = window.getComputedStyle($tooltip);
+        const tooltipZindex = parseInt(tooltipStyle.zIndex, 10);
+
+        // resort to asserting zIndex because should("be.visible") passes unexpectedly
+        expect(tooltipZindex).to.be.gte(popoverZindex);
+      });
     });
   });
 });

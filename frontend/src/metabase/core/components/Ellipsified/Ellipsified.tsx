@@ -42,6 +42,7 @@ export const Ellipsified = ({
 
   return (
     <Tooltip
+      data-testid="ellipsified-tooltip"
       disabled={!isEnabled}
       label={canSkipTooltipRendering ? undefined : tooltip || children || " "}
       position={placement}
