@@ -257,20 +257,32 @@
               (testing "`describe-table` returns the fields anyway"
                 (is (not-empty (:fields (driver/describe-table :athena db table)))))))))))
 
-(deftest ^:parallel column-name-with-question-mark-test
+(deftest column-name-with-question-mark-test
   (testing "Column name with a question mark in it should be compiled correctly (#44915)"
-    (let [metadata-provider (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:fields [{:id   (meta/id :venues :name)
-                                                                                                    :name "name?"}]})
-          query             (-> (lib/query metadata-provider (meta/table-metadata :venues))
-                                (lib/with-fields [(meta/field-metadata :venues :name)])
-                                (lib/limit 1))]
-      (binding [driver/*driver* :athena]
-        (is (=? {:query ["SELECT"
-                         "  \"PUBLIC\".\"VENUES\".\"name?\" AS \"name?\""
-                         "FROM"
-                         "  \"PUBLIC\".\"VENUES\""
-                         "LIMIT"
-                         "  1"]
-                 :params nil}
-                (-> (qp.compile/compile query)
-                    (update :query #(str/split-lines (driver/prettify-native-form :athena %))))))))))
+    (mt/test-driver :athena
+      (let [metadata-provider (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:fields [{:id   (meta/id :venues :name)
+                                                                                                      :name "name?"}]})
+            query             (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                                  (lib/with-fields [(meta/field-metadata :venues :name)])
+                                  (lib/filter (lib/= (meta/field-metadata :venues :name) "BBQ"))
+                                  (lib/limit 1))
+            executed-query    (atom nil)]
+        (with-redefs [sql-jdbc.execute/execute-reducible-query (let [orig sql-jdbc.execute/execute-reducible-query]
+                                                                 (fn [driver query context respond]
+                                                                   (reset! executed-query query)
+                                                                   (orig driver query context respond)))]
+          (try
+            (qp/process-query query)
+            (catch Throwable _))
+          (is (= {:query ["SELECT"
+                          "  \"PUBLIC\".\"VENUES\".\"name?\" AS \"name?\""
+                          "FROM"
+                          "  \"PUBLIC\".\"VENUES\""
+                          "WHERE"
+                          "  \"PUBLIC\".\"VENUES\".\"name?\" = 'BBQ'"
+                          "LIMIT"
+                          "  1"]
+                  :params nil}
+                 (-> @executed-query
+                     :native
+                     (update :query #(str/split-lines (driver/prettify-native-form :athena %)))))))))))
