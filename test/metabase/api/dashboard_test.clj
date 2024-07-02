@@ -199,7 +199,7 @@
            (mt/user-http-request :crowberto :post 400 "dashboard" {:name       "Test"
                                                                    :parameters "abc"})))))
 
-(def ^:private dashboard-defaults
+(def dashboard-defaults
   {:archived                false
    :caveats                 nil
    :collection_id           nil
