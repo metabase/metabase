@@ -418,6 +418,8 @@ describe("scenarios > admin > datamodel > metadata", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+
+    cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
   });
 
   it("should remap FK display value from field ", () => {
@@ -431,6 +433,8 @@ describe("scenarios > admin > datamodel > metadata", () => {
       .clear()
       .type("Remapped Product ID")
       .realPress("Tab");
+
+    cy.wait("@fieldUpdate");
 
     openOrdersTable({ limit: 5 });
 
@@ -448,6 +452,8 @@ describe("scenarios > admin > datamodel > metadata", () => {
       .clear()
       .type("Remapped Product ID")
       .realPress("Tab");
+
+    cy.wait("@fieldUpdate");
 
     openOrdersTable({ limit: 5 });
 
