@@ -53,7 +53,13 @@ export function getListParameterStaticValues(
   parameter: Parameter,
 ): string[] | null {
   if (isStaticListParam(parameter)) {
-    return parameter.values_source_config?.values ?? null;
+    if (!parameter.values_source_config?.values) {
+      return null;
+    }
+
+    return parameter.values_source_config.values
+      .map(v => (Array.isArray(v) ? v[0]?.toString() : v))
+      .filter((v): v is string => v !== undefined);
   }
   return null;
 }
