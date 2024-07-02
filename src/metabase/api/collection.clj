@@ -962,33 +962,40 @@
     (filterv visible-collection-ids all-descendants)))
 
 (api/defendpoint GET "/:id/stale"
-  [id before_date is_recursive sort_column sort_direction limit offset]
-  {id             [:or ms/PositiveInt [:= "root"]]
-   before_date    [:maybe :string] ;; TODO
+  "A flexible endpoint that returns stale entities, in the same shape as collections/items, with the following options:
+  - `before_date` - only return entities that were last edited before this date (default: 6 months ago)
+  - `is_recursive` - if true, return entities from all children of the collection, not just the direct children (default: false)
+  - `sort_column` - the column to sort by (default: name)
+  - `sort_direction` - the direction to sort by (default: asc)"
+  [id before_date is_recursive sort_column sort_direction]
+  {id             [:or ms/PositiveInt [:= :root]]
+   before_date    [:maybe :string]
    is_recursive   [:boolean {:default false}]
    sort_column    [:maybe {:default :name} (into [:enum] (map keyword valid-sort-columns))]
-   sort_direction [:maybe {:default :desc} (into [:enum] (map keyword valid-sort-directions))]}
-  (println limit offset)
+   sort_direction [:maybe {:default :asc} (into [:enum] (map keyword valid-sort-directions))]}
   (let [before-date (if before_date
                       (try (t/local-date "yyyy-MM-dd" before_date)
                            (catch Exception _
-                             (throw (ex-info (str "invalid before_date: '" before_date "' expected format: 'yyyy-MM-dd'")
+                             (throw (ex-info (str "invalid before_date: '"
+                                                  before_date
+                                                  "' expected format: 'yyyy-MM-dd'")
                                              {:status 400}))))
                       (t/minus (t/local-date) (t/months 6)))
-        collection (if (= id "root")
+        collection (if (= id :root)
                      (root-collection nil)
                      (t2/select-one :model/Collection id))
         _ (api/read-check collection)
-        collection-ids (set (if is_recursive
+        collection-ids (->> (if is_recursive
                               (effective-children-ids collection @api/*current-user-permissions-set*)
-                              [id]))
+                              [id])
+                            (mapv (fn root->nil [x] (if (= :root x) nil x)))
+                            set)
         candidates (stale/find-candidates {:collection-ids collection-ids
                                            :cutoff-date before-date
-                                           :limit 10 ;; TODO
-                                           :offset 0 ;; TODO
-                                           :sort-column (or sort_column :name)
-                                           :sort-direction (or sort_direction :asc)})]
-    ;; TODO: format these
+                                           :limit mw.offset-paging/*limit*
+                                           :offset mw.offset-paging/*offset*
+                                           :sort-column sort_column
+                                           :sort-direction sort_direction})]
     candidates))
 
 (api/defendpoint GET "/trash"
