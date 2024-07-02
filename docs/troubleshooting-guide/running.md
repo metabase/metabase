@@ -28,7 +28,7 @@ The JVM can normally figure out how much RAM is available on the system and auto
 java.lang.OutOfMemoryError: Java heap space
 ```
 
-If you are seeing this, you need to set a JVM option to tell Java know explicitly how much memory it should use for the heap. For example, your Java runtime might use the `-X` flag to do this:
+If you are seeing this, you need to set a JVM option to let Java know explicitly how much memory it should use for the heap. For example, your Java runtime might use the `-X` flag to do this:
 
 ```
 java -Xmx2g -jar metabase.jar
