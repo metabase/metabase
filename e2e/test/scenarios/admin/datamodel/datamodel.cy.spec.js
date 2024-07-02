@@ -420,6 +420,40 @@ describe("scenarios > admin > datamodel > metadata", () => {
     cy.signInAsAdmin();
   });
 
+  it("should remap FK display value from field ", () => {
+    cy.wrap(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.PRODUCT_ID}/general`,
+    ).as("ORDERS_PRODUCT_ID_URL");
+
+    visitAlias("@ORDERS_PRODUCT_ID_URL");
+
+    cy.findByPlaceholderText("PRODUCT_ID")
+      .clear()
+      .type("Remapped Product ID")
+      .realPress("Tab");
+
+    openOrdersTable({ limit: 5 });
+
+    cy.findAllByTestId("header-cell").should("contain", "Remapped Product ID");
+  });
+
+  it("should remap FK display value from the table view", () => {
+    cy.wrap(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+    ).as("ORDERS_TABLE_URL");
+
+    visitAlias("@ORDERS_TABLE_URL");
+
+    cy.findByDisplayValue("Product ID")
+      .clear()
+      .type("Remapped Product ID")
+      .realPress("Tab");
+
+    openOrdersTable({ limit: 5 });
+
+    cy.findAllByTestId("header-cell").should("contain", "Remapped Product ID");
+  });
+
   it("should correctly show remapped column value", () => {
     // go directly to Data Model page for Sample Database
     cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
