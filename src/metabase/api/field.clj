@@ -437,7 +437,7 @@
   [id remapped-id values]
   {id          ms/PositiveInt
    remapped-id ms/PositiveInt
-   values      [:maybe (ms/QueryVectorOf ms/NonBlankString)]}
+   values      ms/QueryVectorOf ms/NonBlankString}
   (let [field          (api/read-check Field id)
         remapped-field (api/read-check Field remapped-id)
         values         (parse-query-param-values-for-field field values)]
