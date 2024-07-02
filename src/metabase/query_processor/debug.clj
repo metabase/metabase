@@ -1,9 +1,12 @@
-(ns metabase.query-processor.debug)
+(ns metabase.query-processor.debug
+  "Debug QP stuff as follows:
 
-(comment
-  (defn start-portal! []
-    ((requiring-resolve 'portal.api/start) {:port 4000})
-    (add-tap (requiring-resolve 'portal.api/submit))))
+    ;; start Portal if you have not done so already. Open http://localhost:4000 in your browser
+    (dev.debug-qp/start-portal!)
+
+    ;; run a query with debugging enabled
+    (binding [metabase.query-processor.debug/*debug* true]
+      (metabase.query-processor/process-query query)")
 
 (def ^:dynamic *debug*
   "Whether to enable debug tapping."

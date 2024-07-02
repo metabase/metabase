@@ -57,16 +57,18 @@
   (lib.convert/->legacy-MBQL query))
 
 (defn- ^:deprecated ensure-legacy [middleware-fn]
-  (fn [query]
-    (let [query (cond-> query
-                  (:lib/type query) ->legacy)]
-      (middleware-fn query))))
+  (-> (fn [query]
+        (let [query (cond-> query
+                      (:lib/type query) ->legacy)]
+          (middleware-fn query)))
+      (with-meta (meta middleware-fn))))
 
 (defn- ensure-pmbql [middleware-fn]
-  (fn [query]
-    (let [query (cond->> query
-                  (not (:lib/type query)) (lib.query/query (qp.store/metadata-provider)))]
-      (middleware-fn query))))
+  (-> (fn [query]
+        (let [query (cond->> query
+                      (not (:lib/type query)) (lib.query/query (qp.store/metadata-provider)))]
+          (middleware-fn query)))
+      (with-meta (meta middleware-fn))))
 
 (def ^:private middleware
   "Pre-processing middleware. Has the form
@@ -131,7 +133,12 @@
           (u/prog1 (middleware-fn query)
             (qp.debug/debug>
               (when-not (= <> query)
-                (list middleware-fn '=> <>)))
+                (let [middleware-fn-name (if-let [fn-name (:name (meta middleware-fn))]
+                                           (if-let [fn-ns (:ns (meta middleware-fn))]
+                                             (format "%s/%s" (ns-name fn-ns) fn-name)
+                                             fn-name)
+                                           middleware-fn)]
+                  (list middleware-fn-name '=> <>))))
             ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
             (when-not (map? <>)
               (throw (ex-info (format "Middleware did not return a valid query.")
