@@ -3,14 +3,14 @@ import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
+import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import type {
   Field,
   FieldId,
   FieldReference,
   ModelCacheRefreshStatus,
-  TableColumnOrderSetting,
   TemplateTag,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 type FieldMetadata = {
@@ -148,42 +148,21 @@ export function getModelCacheSchemaName(databaseId: number, siteUUID: string) {
   return `metabase_cache_${firstLetters}_${databaseId}`;
 }
 
-function getFieldIndexFromColumnVizSetting(
-  column: Field,
-  columnSettings: TableColumnOrderSetting[],
-) {
-  return columnSettings.findIndex(columnSetting => {
-    // We have some corrupted visualization settings where both names are mixed
-    // We should settle on `fieldRef`, make it required and remove `field_ref`
-    const fieldRef = columnSetting.fieldRef || columnSetting.field_ref;
-    return isSameField(column.field_ref, fieldRef);
-  });
-}
-
 // Columns in resultsMetadata contain all the necessary metadata
 // orderedColumns contain properly sorted columns, but they only contain field names and refs.
 // Normally, columns in resultsMetadata are ordered too,
 // but they only get updated after running a query (which is not triggered after reordering columns).
 // This ensures metadata rich columns are sorted correctly not to break the "Tab" key navigation behavior.
 export function getSortedModelFields(
-  model: Question,
-  columnMetadata: Field[] | undefined | null,
+  columns: Field[],
+  visualizationSettings: VisualizationSettings,
 ) {
-  if (!Array.isArray(columnMetadata)) {
-    return [];
-  }
-
-  const columnSettings = model.setting("table.columns");
+  const columnSettings = visualizationSettings["table.columns"];
   if (!Array.isArray(columnSettings)) {
-    return columnMetadata;
+    return columns;
   }
 
-  // always return metadata columns even if the corresponding viz settings don't exist
-  return columnMetadata
-    .map(column => ({
-      column,
-      index: getFieldIndexFromColumnVizSetting(column, columnSettings),
-    }))
-    .sort((a, b) => a.index - b.index)
-    .map(({ column }) => column);
+  return findColumnIndexesForColumnSettings(columns, columnSettings)
+    .filter(columnIndex => columnIndex >= 0)
+    .map(columnIndex => columns[columnIndex]);
 }
