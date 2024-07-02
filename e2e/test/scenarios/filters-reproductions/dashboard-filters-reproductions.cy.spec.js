@@ -3306,6 +3306,17 @@ describe("issue 34955", () => {
         .should("have.length", 2);
     });
   });
+
+  function connectFilterToColumn(column) {
+    getDashboardCard().within(() => {
+      cy.findByText("Column to filter on");
+      cy.findByText("Select…").click();
+    });
+
+    popover().within(() => {
+      cy.findByText(column).click();
+    });
+  }
 });
 
 describe("issue 35852", () => {
@@ -3421,14 +3432,3 @@ describe("issue 35852", () => {
     });
   }
 });
-
-function connectFilterToColumn(column) {
-  getDashboardCard().within(() => {
-    cy.findByText("Column to filter on");
-    cy.findByText("Select…").click();
-  });
-
-  popover().within(() => {
-    cy.findByText(column).click();
-  });
-}
