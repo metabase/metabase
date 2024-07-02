@@ -38,8 +38,8 @@ export const fieldApi = Api.injectEndpoints({
       }),
       providesTags: (_, error, fieldId) => provideFieldValuesTags(fieldId),
     }),
-    getRemappedFieldValues: builder.query<
-      FieldValue[],
+    getRemappedFieldValue: builder.query<
+      FieldValue | null,
       GetRemappedFieldValueRequest
     >({
       query: ({ fieldId, remappedFieldId, ...params }) => ({
@@ -119,7 +119,7 @@ export const fieldApi = Api.injectEndpoints({
 export const {
   useGetFieldQuery,
   useGetFieldValuesQuery,
-  useGetRemappedFieldValuesQuery,
+  useGetRemappedFieldValueQuery,
   useSearchFieldValuesQuery,
   useUpdateFieldMutation,
   useUpdateFieldValuesMutation,
