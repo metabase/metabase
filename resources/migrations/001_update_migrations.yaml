@@ -6619,33 +6619,38 @@ databaseChangeLog:
             constraintName: fk_field_parent_ref_field_id
 
   # The following two changesets add a new column `unique_field_helper` to `metabase_field` and a unique constraint
-  # `idx_unique_field`.
+  # `idx_unique_field` for H2 and MySQL.
   # The combination of `unique_field_helper` and `idx_unique_field` achieves two things:
   # 1. It enforces the conditional constraints:
-  #   - if parent_id IS NULL, then (table_id, name) is unique. (Postgres' idx_uniq_field_table_id_parent_id_name)
-  #   - if parent_id IS NOT NULL, then (table_id, name, parent_id) is unique. (Postgres' idx_uniq_field_table_id_parent_id_name_col2)
+  #   - if parent_id IS NULL, then (table_id, name) is unique. (Postgres' idx_uniq_field_table_id_parent_id_name_col2)
+  #   - if parent_id IS NOT NULL, then (table_id, name, parent_id) is unique. (Postgres' idx_uniq_field_table_id_parent_id_name)
   # 2. It only enforces the constraints when is_defective_duplicate = FALSE
+  # `unique_field_helper` is only used in H2 and MySQL but it is added in Postgres so all DBs have the same set of colums.
   - changeSet:
       id: v49.2024-06-27T00:00:07
       author: calherries
       comment: Add unique_field_helper column to metabase_field
       changes:
         - sql:
+            dbms: postgres
+            sql:
+              ALTER TABLE metabase_field ADD COLUMN IF NOT EXISTS unique_field_helper INTEGER;
+        - sql:
             dbms: h2
             sql: >-
-              ALTER TABLE metabase_field ADD COLUMN IF NOT EXISTS unique_field_helper INTEGER AS (
+              ALTER TABLE metabase_field ADD COLUMN IF NOT EXISTS unique_field_helper INTEGER GENERATED ALWAYS AS (
                   CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE (CASE WHEN parent_id IS NULL THEN 0 ELSE parent_id END) END
               );
         - sql:
             dbms: mysql,mariadb
             sql: >-
-              ALTER TABLE metabase_field ADD COLUMN unique_field_helper INTEGER AS (
+              ALTER TABLE metabase_field ADD COLUMN unique_field_helper INTEGER GENERATED ALWAYS AS (
                   CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE (CASE WHEN parent_id IS NULL THEN 0 ELSE parent_id END) END
               ) STORED;
       rollback:
-        - sql:
-            dbms: h2,mysql,mariadb
-            sql: ALTER TABLE metabase_field DROP COLUMN unique_field_helper;
+        - dropColumn:
+            tableName: metabase_field
+            columnName: unique_field_helper
 
   - changeSet:
       id: v49.2024-06-27T00:00:08
