@@ -67,12 +67,8 @@ export function SearchValuePicker({
     );
 
   const options = useMemo(
-    () =>
-      getEffectiveOptions(
-        [...searchFieldValues, ...remappedFieldValues],
-        selectedValues,
-      ),
-    [remappedFieldValues, searchFieldValues, selectedValues],
+    () => getEffectiveOptions([...searchFieldValues, ...remappedFieldValues]),
+    [remappedFieldValues, searchFieldValues],
   );
 
   const handleSearchChange = (newSearchValue: string) => {
