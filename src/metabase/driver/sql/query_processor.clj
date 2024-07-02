@@ -1538,8 +1538,9 @@
       ;; https://github.com/seancorfield/honeysql/issues/456
       (binding [sql/*dialect*      (sql/get-dialect dialect)
                 sql/*quoted*       true
-                sql/*quoted-snake* false]
-        (sql/format-expr honeysql-form {:nested true, :inline driver/*compile-with-inline-parameters*})))))
+                sql/*quoted-snake* false
+                sql/*inline*       driver/*compile-with-inline-parameters*]
+        (sql/format-expr honeysql-form {:nested true})))))
 
 (defn format-honeysql
   "Compile a `honeysql-form` to a vector of `[sql & params]`. `honeysql-form` can either be a map (for a top-level
