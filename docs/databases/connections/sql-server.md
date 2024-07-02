@@ -44,10 +44,6 @@ The password for the username that you use to connect to the database.
 
 Metabase automatically tries to connect to databases with SSL first, then without if that doesn't work. If it's possible to connect to your database with an SSL connection, Metabase will make that the default setting for your database. If you prefer to connect without this layer of security, you can always change this setting later, but we highly recommend keeping SSL turned on to keep your data secure.
 
-### ROWCOUNT Override
-
-If left empty, Metabase will apply a 2000 row limit to query results. You can set a different limit here, or set to 0 for "unconstrained".
-
 ### Use an SSH tunnel
 
 See our [guide to SSH tunneling](../ssh-tunnel.md).
