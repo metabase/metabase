@@ -532,7 +532,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: true,
                 font: "instance",
                 theme: "light",
-                hide_download_button: resource === "question" ? false : null,
+                hide_download_button: null,
               },
             });
 
@@ -550,7 +550,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: true,
                 font: "instance",
                 theme: "light",
-                hide_download_button: resource === "question" ? false : null,
+                hide_download_button: null,
               },
             });
 
@@ -575,7 +575,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: true,
                 font: "instance",
                 theme: "light",
-                hide_download_button: resource === "question" ? false : null,
+                hide_download_button: null,
               },
             });
 
@@ -620,7 +620,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: false,
                 font: "custom",
                 theme: "night",
-                hide_download_button: resource === "question" ? true : null,
+                hide_download_button: null,
               },
             });
           });
