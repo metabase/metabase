@@ -6633,13 +6633,13 @@ databaseChangeLog:
         - sql:
             dbms: h2
             sql: >-
-              ALTER TABLE metabase_field ADD COLUMN IF NOT EXISTS unique_field_helper INTEGER GENERATED ALWAYS AS (
+              ALTER TABLE metabase_field ADD COLUMN IF NOT EXISTS unique_field_helper INTEGER AS (
                   CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE (CASE WHEN parent_id IS NULL THEN 0 ELSE parent_id END) END
               );
         - sql:
             dbms: mysql,mariadb
             sql: >-
-              ALTER TABLE metabase_field ADD COLUMN unique_field_helper INTEGER GENERATED ALWAYS AS (
+              ALTER TABLE metabase_field ADD COLUMN unique_field_helper INTEGER AS (
                   CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE (CASE WHEN parent_id IS NULL THEN 0 ELSE parent_id END) END
               ) STORED;
       rollback:
