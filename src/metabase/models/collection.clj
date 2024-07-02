@@ -352,20 +352,12 @@
          (filter has-permission?)
          (merge root-map))))
 
-(def ^:private IncludeArchivedItems
-  [:enum :only :exclude :all])
-(def ^:private IncludeTrashCollection
-  [:boolean])
-(def ^:private ArchiveOperationId
-  [:maybe :string])
-(def ^:private PermissionLevel
-  [:enum :read :write])
 (def ^:private CollectionVisibilityConfig
   [:map
-   [:include-trash-collection? {:optional true} IncludeTrashCollection]
-   [:include-archived-items {:optional true} IncludeArchivedItems]
-   [:archive-operation-id {:optional true} ArchiveOperationId]
-   [:permission-level {:optional true} PermissionLevel]])
+   [:include-trash-collection? {:optional true} :boolean]
+   [:include-archived-items {:optional true} [:enum :only :exclude :all]]
+   [:archive-operation-id {:optional true} [:maybe :string]]
+   [:permission-level {:optional true} [:enum :read :write]]])
 
 (defn- should-remove-for-archived? [include-archived-items collection]
   (case include-archived-items

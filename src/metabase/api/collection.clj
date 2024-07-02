@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [compojure.core :refer [GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
+   [java-time.api :as t]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
@@ -31,6 +32,7 @@
     :as premium-features
     :refer [defenterprise]]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.stale :as stale]
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -951,6 +953,43 @@
   [id]
   {id ms/PositiveInt}
   (collection-detail (api/read-check Collection id)))
+
+(defn- effective-children-ids
+  "Returns effective children ids for collection."
+  [collection permissions-set]
+  (let [visible-collection-ids (set (collection/permissions-set->visible-collection-ids permissions-set))
+        all-descendants (map :id (collection/descendants-flat collection))]
+    (filterv visible-collection-ids all-descendants)))
+
+(api/defendpoint GET "/:id/stale"
+  [id before_date is_recursive sort_column sort_direction limit offset]
+  {id             [:or ms/PositiveInt [:= "root"]]
+   before_date    [:maybe :string] ;; TODO
+   is_recursive   [:boolean {:default false}]
+   sort_column    [:maybe {:default :name} (into [:enum] (map keyword valid-sort-columns))]
+   sort_direction [:maybe {:default :desc} (into [:enum] (map keyword valid-sort-directions))]}
+  (println limit offset)
+  (let [before-date (if before_date
+                      (try (t/local-date "yyyy-MM-dd" before_date)
+                           (catch Exception _
+                             (throw (ex-info (str "invalid before_date: '" before_date "' expected format: 'yyyy-MM-dd'")
+                                             {:status 400}))))
+                      (t/minus (t/local-date) (t/months 6)))
+        collection (if (= id "root")
+                     (root-collection nil)
+                     (t2/select-one :model/Collection id))
+        _ (api/read-check collection)
+        collection-ids (set (if is_recursive
+                              (effective-children-ids collection @api/*current-user-permissions-set*)
+                              [id]))
+        candidates (stale/find-candidates {:collection-ids collection-ids
+                                           :cutoff-date before-date
+                                           :limit 10 ;; TODO
+                                           :offset 0 ;; TODO
+                                           :sort-column (or sort_column :name)
+                                           :sort-direction (or sort_direction :asc)})]
+    ;; TODO: format these
+    candidates))
 
 (api/defendpoint GET "/trash"
   "Fetch the trash collection, as in `/api/collection/:trash-id`"

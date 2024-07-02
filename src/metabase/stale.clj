@@ -116,7 +116,11 @@
   {:select [[:%count.* :count]]
    :from [[{:union-all (queries args)} :dummy_alias]]})
 
-(mu/defn find-candidates
+(mu/defn find-candidates :- [:map
+                             [:rows [:sequential
+                                     [:map [:id pos-int?]
+                                      [:model keyword?]]]]
+                             [:total :int]]
   "Find stale content in the given collections.
 
   Arguments:
@@ -139,7 +143,9 @@
   - `:total` (the total count of stale elements that could be found if you iterated through all pages)
   "
   [args :- FindStaleContentArgs]
-  {:rows (->> (t2/query (rows-query args))
-              (map #(select-keys % [:id :model]))
-              (map (fn [v] (update v :model #(keyword "model" %)))))
+  {:rows (into []
+               (comp
+                (map #(select-keys % [:id :model]))
+                (map (fn [v] (update v :model #(keyword "model" %)))))
+               (t2/query (rows-query args)))
    :total (:count (t2/query-one (total-query args)))})
