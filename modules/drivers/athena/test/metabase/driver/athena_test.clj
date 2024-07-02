@@ -9,10 +9,12 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -254,3 +256,21 @@
                                    (jdbc/metadata-result rs))))))))
               (testing "`describe-table` returns the fields anyway"
                 (is (not-empty (:fields (driver/describe-table :athena db table)))))))))))
+
+(deftest ^:parallel column-name-with-question-mark-test
+  (testing "Column name with a question mark in it should be compiled correctly (#44915)"
+    (let [metadata-provider (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:fields [{:id   (meta/id :venues :name)
+                                                                                                    :name "name?"}]})
+          query             (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                                (lib/with-fields [(meta/field-metadata :venues :name)])
+                                (lib/limit 1))]
+      (binding [driver/*driver* :athena]
+        (is (=? {:query ["SELECT"
+                         "  \"PUBLIC\".\"VENUES\".\"name?\" AS \"name?\""
+                         "FROM"
+                         "  \"PUBLIC\".\"VENUES\""
+                         "LIMIT"
+                         "  1"]
+                 :params nil}
+                (-> (qp.compile/compile query)
+                    (update :query #(str/split-lines (driver/prettify-native-form :athena %))))))))))
