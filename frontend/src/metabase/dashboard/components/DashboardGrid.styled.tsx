@@ -3,6 +3,7 @@ import styled from "@emotion/styled";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { MantineTheme } from "metabase/ui";
+import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
 
 import { FIXED_WIDTH } from "./Dashboard/Dashboard.styled";
 
@@ -38,6 +39,13 @@ export const DashboardCardContainer = styled.div<DashboardCardProps>`
     border-radius: 8px;
 
     ${({ theme }) => getDashboardCardShadowOrBorder(theme)}
+  }
+
+  .${SAVING_DOM_IMAGE_CLASS} & .${DashboardS.Card} {
+    // the renderer we use for saving to image/pdf doesn't support box-shadow
+    // so we replace it with a border
+    box-shadow: none;
+    border: 1px solid var(--mb-color-border);
   }
 
   ${props =>

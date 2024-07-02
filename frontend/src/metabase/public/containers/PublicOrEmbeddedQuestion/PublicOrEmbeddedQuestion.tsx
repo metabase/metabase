@@ -1,19 +1,19 @@
 import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import { useMount } from "react-use";
-import _ from "underscore";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { setErrorPage } from "metabase/redux/app";
-import { addParamValues, addFields } from "metabase/redux/metadata";
+import { addFields, addParamValues } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
-  PublicApi,
   EmbedApi,
-  setPublicQuestionEndpoints,
-  setEmbedQuestionEndpoints,
+  PublicApi,
   maybeUsePivotEndpoint,
+  setEmbedQuestionEndpoints,
+  setPublicQuestionEndpoints,
 } from "metabase/services";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
@@ -47,6 +47,8 @@ export const PublicOrEmbeddedQuestion = ({
   const [parameterValues, setParameterValues] = useState<ParameterValuesMap>(
     {},
   );
+
+  const downloadsEnabled = PLUGIN_RESOURCE_DOWNLOADS.areDownloadsEnabled();
 
   useMount(async () => {
     if (uuid) {
@@ -186,6 +188,7 @@ export const PublicOrEmbeddedQuestion = ({
       theme={theme}
       titled={titled}
       setCard={setCard}
+      downloadsEnabled={downloadsEnabled}
     />
   );
 };

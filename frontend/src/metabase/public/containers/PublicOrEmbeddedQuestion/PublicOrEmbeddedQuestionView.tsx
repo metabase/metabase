@@ -37,6 +37,7 @@ export function PublicOrEmbeddedQuestionView({
   theme,
   titled,
   setCard,
+  downloadsEnabled,
 }: {
   initialized: boolean;
   card: Card<DatasetQuery> | null;
@@ -54,9 +55,10 @@ export function PublicOrEmbeddedQuestionView({
   theme: DisplayTheme | undefined;
   titled: boolean;
   setCard: Dispatch<SetStateAction<Card<DatasetQuery> | null>>;
+  downloadsEnabled: boolean;
 }) {
   const question = new Question(card, metadata);
-  const actionButtons = result && (
+  const actionButtons = result && downloadsEnabled && (
     <QueryDownloadWidget
       className={cx(CS.m1, CS.textMediumHover)}
       question={question}

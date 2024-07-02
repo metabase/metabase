@@ -70,16 +70,28 @@ const getDatasetParams = ({
   visualizationSettings,
 }: DownloadQueryResultsOpts): DownloadQueryResultsParams => {
   const cardId = question.id();
-  const isSecureDashboardEmbedding = dashcardId != null && token != null;
+  const isQuestionInStaticEmbedDashboard = dashcardId != null && token != null;
 
   // Formatting is always enabled for Excel
   const format_rows = enableFormatting && type !== "xlsx" ? "true" : "false";
 
-  if (isSecureDashboardEmbedding) {
+  if (isQuestionInStaticEmbedDashboard) {
     return {
       method: "GET",
       url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
       params: Urls.getEncodedUrlSearchParams({ ...params, format_rows }),
+    };
+  }
+
+  const isQuestionInPublicDashboard = dashboardId != null && uuid != null;
+  if (isQuestionInPublicDashboard) {
+    return {
+      method: "POST",
+      url: `/api/public/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/${type}`,
+      params: new URLSearchParams({ format_rows }),
+      body: {
+        parameters: result?.json_query?.parameters ?? [],
+      },
     };
   }
 

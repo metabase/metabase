@@ -2,11 +2,16 @@ import { css } from "@emotion/react";
 
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";
+export const SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS =
+  "saving-dom-image-display-none";
 
 export const saveDomImageStyles = css`
   .${SAVING_DOM_IMAGE_CLASS} {
     .${SAVING_DOM_IMAGE_HIDDEN_CLASS} {
       visibility: hidden;
+    }
+    .${SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS} {
+      display: none;
     }
   }
 `;
