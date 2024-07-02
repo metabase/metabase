@@ -434,13 +434,13 @@
 
 (api/defendpoint GET "/:id/remapping/:remapped-id"
   "Fetch remapped Field values."
-  [id remapped-id value]
+  [id remapped-id values]
   {id          ms/PositiveInt
    remapped-id ms/PositiveInt
-   value       (ms/QueryVectorOf ms/NonBlankString)}
+   values       (ms/QueryVectorOf ms/NonBlankString)}
   (let [field          (api/read-check Field id)
         remapped-field (api/read-check Field remapped-id)
-        values         (parse-query-param-values-for-field field value)]
+        values         (parse-query-param-values-for-field field values)]
     (remapped-values field remapped-field values)))
 
 (api/defendpoint GET "/:id/related"

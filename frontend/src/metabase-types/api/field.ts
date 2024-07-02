@@ -154,7 +154,7 @@ export interface GetFieldValuesResponse {
 export interface GetRemappedFieldValuesRequest {
   fieldId: FieldId;
   searchFieldId: FieldId;
-  value: string[];
+  values: string[];
 }
 
 export interface SearchFieldValuesRequest {

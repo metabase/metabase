@@ -43,7 +43,7 @@ export function SearchValuePicker({
       {
         fieldId,
         searchFieldId,
-        value: selectedValues,
+        values: selectedValues,
       },
       {
         skip: searchValue.length > 0 || selectedValues.length === 0,
