@@ -4,6 +4,8 @@
 ;; regular Clojure mode. For some reason I couldn't get Macrovich to do what I wanted here
 ;;
 ;; this is done in a preposterous way so that Cloverage doesn't trip up trying to compile it
+;; TODO: Try to get this working again. The issue was likely that Macrovich's `case` doesn't work outside `defmacro`.
+;; It can't be in a helper function.
 (when-let [assert-expr (try
                          (requiring-resolve 'cljs.test/assert-expr)
                          (catch Throwable _))]

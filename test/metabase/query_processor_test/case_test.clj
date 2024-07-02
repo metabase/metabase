@@ -1,7 +1,7 @@
 (ns metabase.query-processor-test.case-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Metric Segment]]
+   [metabase.models :refer [Card Segment]]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -12,38 +12,64 @@
            ffirst
            double))
 
-(deftest test-case-aggregations
+(deftest ^:parallel test-case-aggregations
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= 116.0 (test-case [:sum [:case [[[:< [:field (mt/id :venues :price) nil] 2] 2]
-                                          [[:< [:field (mt/id :venues :price) nil] 4] 1]]]])))
+                                          [[:< [:field (mt/id :venues :price) nil] 4] 1]]]])))))
+
+(deftest ^:parallel test-case-aggregations-fields-as-values
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Can we use fields as values"
       (is (= 179.0 (test-case [:sum [:case [[[:< [:field (mt/id :venues :price) nil] 2] [:field (mt/id :venues :price) nil]]
-                                            [[:< [:field (mt/id :venues :price) nil] 4] [:field (mt/id :venues :price) nil]]]]]))))
+                                            [[:< [:field (mt/id :venues :price) nil] 4] [:field (mt/id :venues :price) nil]]]]]))))))
+
+(deftest ^:parallel test-case-aggregations-else
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Test else clause"
       (is (= 122.0 (test-case [:sum [:case [[[:< [:field (mt/id :venues :price) nil] 2] 2]]
-                                     {:default 1}]]))))
+                                     {:default 1}]]))))))
+
+(deftest ^:parallel test-case-aggregations-implicit-else
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Test implicit else (= nil) clause"
       ;; Some DBs return 0 for sum of nulls.
-      (is ((some-fn nil? zero?) (test-case [:sum [:case [[[:> [:field (mt/id :venues :price) nil] 200] 2]]]]))))
+      (is ((some-fn nil? zero?) (test-case [:sum [:case [[[:> [:field (mt/id :venues :price) nil] 200] 2]]]]))))))
 
+(deftest ^:parallel test-case-aggregations-complex-filters
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Test complex filters"
       (is (= 34.0 (test-case [:sum
                               [:case [[[:and [:< [:field (mt/id :venues :price) nil] 4]
                                         [:or [:starts-with [:field (mt/id :venues :name) nil] "M"]
                                          [:ends-with [:field (mt/id :venues :name) nil] "t"]]]
-                                       [:field (mt/id :venues :price) nil]]]]]))))
+                                       [:field (mt/id :venues :price) nil]]]]]))))))
+
+(deftest ^:parallel test-case-aggregations-in-segments
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Can we use segments in case"
       (t2.with-temp/with-temp [Segment {segment-id :id} {:table_id   (mt/id :venues)
                                                          :definition {:source-table (mt/id :venues)
                                                                       :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
-        (is (=  179.0  (test-case [:sum [:case [[[:segment segment-id] [:field (mt/id :venues :price) nil]]]]])))))
+        (is (=  179.0  (test-case [:sum [:case [[[:segment segment-id] [:field (mt/id :venues :price) nil]]]]])))))))
+
+(deftest ^:parallel test-case-aggregations-in-metric
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Can we use case in metric"
-      (t2.with-temp/with-temp [Metric {metric-id :id} {:table_id   (mt/id :venues)
-                                                       :definition {:source-table (mt/id :venues)
-                                                                    :aggregation  [:sum
-                                                                                   [:case [[[:< [:field (mt/id :venues :price) nil] 4]
-                                                                                            [:field (mt/id :venues :price) nil]]]]]}}]
-        (is (= 179.0 (test-case [:metric metric-id])))))
+      (let [dataset-query {:query {:source-table (mt/id :venues)
+                                   :aggregation  [:sum
+                                                  [:case [[[:< [:field (mt/id :venues :price) nil] 4]
+                                                           [:field (mt/id :venues :price) nil]]]]]}
+                           :type :query
+                           :database (mt/id)}]
+        (t2.with-temp/with-temp [Card {metric-id :id} {:type :metric, :dataset_query dataset-query}]
+          (is (= 179.0 (some->> (mt/run-mbql-query venues {:aggregation [[:metric metric-id]]
+                                                           :source-table (str "card__" metric-id)})
+                                mt/rows
+                                ffirst
+                                double))))))))
+
+(deftest ^:parallel test-case-aggregations-in-breakout
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Can we use case with breakout"
       (is (= [[2 0.0]
               [3 0.0]
@@ -63,7 +89,10 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
     (testing "Can we use case in metric expressions"
       (is (= 90.5  (test-case [:+ [:/ [:sum [:case [[[:< [:field (mt/id :venues :price) nil] 4] [:field (mt/id :venues :price) nil]]]
-                                             {:default 0}]] 2] 1]))))
+                                             {:default 0}]] 2] 1]))))))
+
+(deftest ^:parallel test-case-aggregations+expressions-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
     (testing "Can use expressions as values"
       (is (= 194.5 (test-case [:sum [:case [[[:< [:field (mt/id :venues :price) nil] 2] [:+ [:field (mt/id :venues :price) nil] 1]]
                                             [[:< [:field (mt/id :venues :price) nil] 4] [:+ [:/ [:field (mt/id :venues :price) nil] 2] 1]]]]]))))))

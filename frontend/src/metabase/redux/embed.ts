@@ -1,11 +1,10 @@
-import { parseHashOptions, parseSearchOptions } from "metabase/lib/browser";
-import {
-  combineReducers,
-  createAction,
-  handleActions,
-} from "metabase/lib/redux";
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { pick } from "underscore";
 
-export const DEFAULT_EMBED_OPTIONS = {
+import { parseSearchOptions } from "metabase/lib/browser";
+import type { EmbedOptions } from "metabase-types/store";
+
+export const DEFAULT_EMBED_OPTIONS: EmbedOptions = {
   top_nav: true,
   side_nav: "default",
   search: false,
@@ -17,28 +16,50 @@ export const DEFAULT_EMBED_OPTIONS = {
   action_buttons: true,
 } as const;
 
-export const SET_OPTIONS = "metabase/embed/SET_OPTIONS";
-export const setOptions = createAction(
-  SET_OPTIONS,
-  ({ search, hash }: { search: string; hash: string }) => {
-    return {
-      ...parseSearchOptions(search),
-      ...parseHashOptions(hash),
-    };
-  },
-);
+const allowedEmbedOptions = Object.keys(DEFAULT_EMBED_OPTIONS);
 
-const options = handleActions(
-  {
-    [SET_OPTIONS]: (state, { payload }) => ({
-      ...DEFAULT_EMBED_OPTIONS,
-      ...payload,
-    }),
-  },
-  {},
-);
+export const urlParameterToBoolean = (
+  urlParameter: string | string[] | boolean | undefined,
+) => {
+  if (urlParameter === undefined) {
+    return undefined;
+  }
+  if (Array.isArray(urlParameter)) {
+    return Boolean(urlParameter.at(-1));
+  } else {
+    return Boolean(urlParameter);
+  }
+};
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default combineReducers({
-  options,
+const interactiveEmbedSlice = createSlice({
+  name: "interactiveEmbed",
+  initialState: {
+    options: {} as EmbedOptions,
+    isEmbeddingSdk: false,
+  },
+  reducers: {
+    setInitialUrlOptions: (
+      state,
+      action: PayloadAction<{ search: string }>,
+    ) => {
+      const searchOptions = parseSearchOptions(action.payload.search);
+
+      state.options = {
+        ...DEFAULT_EMBED_OPTIONS,
+        ...pick(searchOptions, allowedEmbedOptions),
+      };
+    },
+    setOptions: (state, action: PayloadAction<Partial<EmbedOptions>>) => {
+      state.options = {
+        ...state.options,
+        ...action.payload,
+      };
+    },
+  },
 });
+
+export const { setInitialUrlOptions, setOptions } =
+  interactiveEmbedSlice.actions;
+
+// eslint-disable-next-line import/no-default-export
+export default interactiveEmbedSlice.reducer;

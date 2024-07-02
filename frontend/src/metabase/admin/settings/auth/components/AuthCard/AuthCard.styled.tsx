@@ -6,7 +6,7 @@ import { color } from "metabase/lib/colors";
 export const CardRoot = styled.div`
   flex: 1;
   max-width: 52rem;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   padding-bottom: 2rem;
 `;
 
@@ -18,13 +18,13 @@ export const CardHeader = styled.div`
 `;
 
 export const CardTitle = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1.5rem;
   font-weight: bold;
 `;
 
 export const CardDescription = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 0.875rem;
   line-height: 1.5rem;
   margin-bottom: 1rem;
@@ -36,9 +36,11 @@ interface CardBadgeProps {
 }
 
 export const CardBadge = styled.div<CardBadgeProps>`
-  color: ${props => color(props.isEnabled ? "brand" : "danger")};
+  color: ${props => (props.isEnabled ? color("brand") : color("danger"))};
   background-color: ${props =>
-    color(props.isEnabled ? "brand-lighter" : "bg-light")};
+    props.isEnabled
+      ? "var(--mb-color-brand-lighter)"
+      : "var(--mb-color-bg-light)"};
   padding: 0.25rem 0.375rem;
   border-radius: 0.25rem;
   font-weight: bold;

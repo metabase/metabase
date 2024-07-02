@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { Group, NumberInput, Select } from "metabase/ui";
 
+import { IncludeCurrentSwitch } from "../../IncludeCurrentSwitch";
 import type { DateIntervalValue } from "../../types";
 import { getInterval, getUnitOptions, setInterval } from "../../utils";
 import { setUnit } from "../utils";
@@ -32,19 +33,22 @@ export function SimpleDateIntervalPicker({
   };
 
   return (
-    <Group>
-      <NumberInput
-        value={interval}
-        aria-label={t`Interval`}
-        w="4rem"
-        onChange={handleIntervalChange}
-      />
-      <Select
-        data={unitOptions}
-        value={value.unit}
-        aria-label={t`Unit`}
-        onChange={handleUnitChange}
-      />
-    </Group>
+    <>
+      <Group>
+        <NumberInput
+          value={interval}
+          aria-label={t`Interval`}
+          w="4rem"
+          onChange={handleIntervalChange}
+        />
+        <Select
+          data={unitOptions}
+          value={value.unit}
+          aria-label={t`Unit`}
+          onChange={handleUnitChange}
+        />
+      </Group>
+      <IncludeCurrentSwitch value={value} onChange={onChange} />
+    </>
   );
 }

@@ -393,9 +393,8 @@
 
 (deftest ^:parallel add-correct-metadata-fields-for-deeply-nested-source-queries-test
   (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
-    (is (= (lib.tu.macros/$ids orders
-             [$product-id->products.title
-              [:aggregation 0]])
+    (is (= [[:field "TITLE" {:base-type :type/Text}]
+            [:aggregation 0]]
            (->> (lib.tu.macros/mbql-query orders
                   {:source-query {:source-query {:source-table $$orders
                                                  :filter       [:= $id 1]

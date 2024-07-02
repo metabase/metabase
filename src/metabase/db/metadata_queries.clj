@@ -6,9 +6,8 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.schema.helpers :as helpers]
-   [metabase.models.table :as table]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema.helpers :as helpers]
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
    [metabase.util :as u]
@@ -16,7 +15,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- qp-query [db-id mbql-query]
+(defn- qp-query
+  [db-id mbql-query]
   {:pre [(integer? db-id)]}
   (-> (binding [qp.i/*disable-qp-logging* true]
         (qp/process-query
@@ -36,39 +36,44 @@
       :type/Date     [:> field-form "0001-01-01"]
       :type/DateTime [:> field-form "0001-01-01T00:00:00"])))
 
-(defn- query-with-default-partitioned-field-filter
-  [query table-id]
-  (let [;; In bigquery, range or datetime partitioned table can have only one partioned field,
-        ;; Ingestion time partitioned table can use either _PARTITIONDATE or _PARTITIONTIME as
-        ;; partitioned field
-        partition-field (or (t2/select-one :model/Field
-                                           :table_id table-id
-                                           :database_partitioned true
-                                           :active true
-                                           ;; prefer _PARTITIONDATE over _PARTITIONTIME for ingestion time query
-                                           {:order-by [[:name :asc]]})
-                            (throw (ex-info (format "No partitioned field found for table: %d" table-id)
-                                            {:table_id table-id})))
-        filter-form     (partition-field->filter-form partition-field)]
-    (update query :filter (fn [existing-filter]
-                            (if (some? existing-filter)
-                              [:and existing-filter filter-form]
-                              filter-form)))))
+(defn add-required-filters-if-needed
+  "Add a dummy filter for tables that require filters.
+  Look into tables from source tables and all the joins.
+  Currently this only apply to partitioned tables on bigquery that requires a partition filter.
+  In the future we probably want this to be dispatched by database engine or handled by QP."
+  [query]
+  (let [table-ids              (->> (conj (keep :source-table (:joins query)) (:source-table query))
+                                    (filter pos-int?))
+        required-filter-fields (when (seq table-ids)
+                                 (t2/select :model/Field {:select    [:f.*]
+                                                          :from      [[:metabase_field :f]]
+                                                          :left-join [[:metabase_table :t] [:= :t.id :f.table_id]]
+                                                          :where     [:and
+                                                                      [:= :f.active true]
+                                                                      [:= :f.database_partitioned true]
+                                                                      [:= :t.active true]
+                                                                      [:= :t.database_require_filter true]
+                                                                      [:in :t.id table-ids]]}))
+        update-query-filter-fn (fn [existing-filter new-filter]
+                                (if (some? existing-filter)
+                                  [:and existing-filter new-filter]
+                                  new-filter))]
+    (case (count required-filter-fields)
+      0
+      query
+      1
+      (update query :filter update-query-filter-fn (partition-field->filter-form (first required-filter-fields)))
+      ;; > 1
+      (update query :filter update-query-filter-fn (into [:and] (map partition-field->filter-form required-filter-fields))))))
 
 (defn- field-mbql-query
   [table mbql-query]
-  (cond-> mbql-query
-    true
-    (assoc :source-table (:id table))
+  (-> mbql-query
+      (assoc :source-table (:id table))
+      add-required-filters-if-needed))
 
-    ;; Some table requires a filter to be able to query the data
-    ;; Currently this only applied to Partitioned table in bigquery where the partition field
-    ;; is required as a filter.
-    ;; In the future we probably want this to be dispatched by database engine type
-    (:database_require_filter table)
-    (query-with-default-partitioned-field-filter (:id table))))
-
-(defn- field-query [{table-id :table_id} mbql-query]
+(defn- field-query
+  [{table-id :table_id} mbql-query]
   {:pre [(integer? table-id)]}
   (let [table (t2/select-one :model/Table :id table-id)]
     (qp-query (:db_id table)
@@ -104,6 +109,25 @@
    (field-query field {:breakout [[:field (u/the-id field) nil]]
                        :limit    (min max-results absolute-max-distinct-values-limit)})))
 
+;; I'm not sure whether this field-distinct-values and field-distinct-values belong to this namespace
+;; maybe it's better to keep this in metabase.models.field or metabase.models.field-values
+(defn search-values-query
+ "Generate the MBQL query used to power FieldValues search in [[metabase.api.field/search-values]]. The actual query generated
+  differs slightly based on whether the two Fields are the same Field.
+
+  Note: the generated MBQL query assume that both `field` and `search-field` are from the same table."
+ [field search-field value limit]
+ (field-query field {:filter   (when (some? value)
+                                 [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}])
+                     ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
+                     ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
+                     ;; identifiers/aliases
+                     :breakout (if (= (u/the-id field) (u/the-id search-field))
+                                 [[:field (u/the-id field) nil]]
+                                 [[:field (u/the-id field) nil]
+                                  [:field (u/the-id search-field) nil]])
+                     :limit    limit}))
+
 (defn field-distinct-count
   "Return the distinct count of `field`."
   [field & [limit]]
@@ -132,7 +156,7 @@
    [:map
     [:truncation-size {:optional true} :int]
     [:limit           {:optional true} :int]
-    [:order-by        {:optional true} (helpers/distinct (helpers/non-empty [:sequential mbql.s/OrderBy]))]
+    [:order-by        {:optional true} (helpers/distinct (helpers/non-empty [:sequential ::mbql.s/OrderBy]))]
     [:rff             {:optional true} fn?]]])
 
 (defn- text-field?
@@ -149,10 +173,10 @@
   [table
    fields
    {:keys [truncation-size limit order-by] :or {limit max-sample-rows} :as _opts}]
-  (let [database           (table/database table)
+  (let [database           (t2/select-one :model/Database (:db_id table))
         driver             (driver.u/database->driver database)
         text-fields        (filter text-field? fields)
-        field->expressions (when (and truncation-size (driver/database-supports? driver :expressions database))
+        field->expressions (when (and truncation-size (driver.u/supports? driver :expressions database))
                              (into {} (for [field text-fields]
                                         [field [(str (gensym "substring"))
                                                 [:substring [:field (u/the-id field) nil]
@@ -169,8 +193,8 @@
                    order-by
                    (assoc :order-by order-by)
 
-                   (:database_require_filter table)
-                   (query-with-default-partitioned-field-filter (:id table)))
+                   true
+                   add-required-filters-if-needed)
      :middleware {:format-rows?           false
                   :skip-results-metadata? true}}))
 

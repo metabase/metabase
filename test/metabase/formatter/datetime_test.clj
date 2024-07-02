@@ -9,7 +9,7 @@
 
 (def ^:private now "2020-07-16T18:04:00Z[UTC]")
 
-(deftest determine-time-format-test
+(deftest ^:parallel determine-time-format-test
   (testing "Capture the behaviors of determine-time-format"
     (testing "When :time-enabled is set to nil no time format is returned"
       (is (nil? (#'datetime/determine-time-format {:time-enabled nil}))))
@@ -35,13 +35,13 @@
         (is (= "July, 2020, 6:04 PM"
                (datetime/format-temporal-str "UTC" now {:unit :minute}))))
       (testing :hour
-        (is (= "July, 2020, 6 PM"
+        (is (= "July 16, 2020, 6 PM"
                (datetime/format-temporal-str "UTC" now {:unit :hour}))))
       (testing :day
         (is (= "Thursday, July 16, 2020"
                (datetime/format-temporal-str "UTC" now {:unit :day}))))
       (testing :week
-        (is (= "Week 29 - 2020"
+        (is (= "July 16, 2020 - July 22, 2020"
                (datetime/format-temporal-str "UTC" now {:unit :week}))))
       (testing :month
         (is (= "July, 2020"
@@ -241,3 +241,20 @@
       (let [col {:unit           :default}]
         (is (= "15:30:45Z"
                (datetime/format-temporal-str "UTC" "15:30:45Z" col nil)))))))
+
+(deftest ^:parallel year-in-dates-near-start-or-end-of-year-is-correct-test
+  (testing "When the date is at the start/end of the year, the year is formatted properly. (#40306)"
+    ;; Our datetime formatter relies on the `java-time.api`, for which there are many different, sometimes confusing,
+    ;; formatter patterns: https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatterBuilder.html#appendPattern-java.lang.String-
+    ;; In this case, 'YYYY' is a week-of-year style year, which calculates which week a date falls into before returning the year.
+    ;; Sometimes days near the start/end of a year will fall into a week in the wrong year.
+    ;; For example, apparently 2023-12-31 falls into the 1st week of 2024, which probably not the year you'd expect to see.
+    ;; What we probably do want is 'yyyy' which calculates what day of the year the date is and then returns the year.
+    (let [dates (fn [year] [(format "%s-01-01" year) (format "%s-12-31" year)])
+          fmt (fn [s]
+                (datetime/format-temporal-str "UTC" s {:field_ref      [:column_name "created_at"]
+                                                       :effective_type :type/Date}
+                                              {::mb.viz/column-settings
+                                               {{::mb.viz/column-name "created_at"} {::mb.viz/date-style "YYYY-MM-dd"}}}))]
+      (doseq [the-date (mapcat dates (range 2008 3008))]
+        (is (= the-date (fmt the-date)))))))

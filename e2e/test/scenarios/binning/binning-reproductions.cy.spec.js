@@ -1,6 +1,7 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  entityPickerModal,
   restore,
   popover,
   visualize,
@@ -12,6 +13,9 @@ import {
   openOrdersTable,
   getNotebookStep,
   rightSidebar,
+  chartPathWithFillColor,
+  cartesianChartCircle,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -29,10 +33,10 @@ describe("binning related reproductions", () => {
     });
 
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("16327").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText("16327").click();
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick the metric you want to see").click();
@@ -44,11 +48,11 @@ describe("binning related reproductions", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/CREATED_AT/i).realHover();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("by minute").click({ force: true });
+    cy.findByText("by day").click({ force: true });
 
     // Implicit assertion - it fails if there is more than one instance of the string, which is exactly what we need for this repro
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Month");
+    cy.findByText("Day");
   });
 
   it("should be able to update the bucket size / granularity on a field that has sorting applied to it (metabase#16770)", () => {
@@ -101,8 +105,8 @@ describe("binning related reproductions", () => {
     );
 
     startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Saved Questions").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
       cy.findByText("17975").click();
     });
 
@@ -141,10 +145,8 @@ describe("binning related reproductions", () => {
 
     cy.icon("join_left_outer").click();
 
-    popover().within(() => {
-      cy.findByTextEnsureVisible("Sample Database").click();
-      cy.findByTextEnsureVisible("Raw Data").click();
-      cy.findByTextEnsureVisible("Saved Questions").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
       cy.findByText("18646").click();
     });
 
@@ -177,7 +179,7 @@ describe("binning related reproductions", () => {
     );
 
     visualize();
-    cy.get("circle");
+    cartesianChartCircle();
   });
 
   it("should display date granularity on Summarize when opened from saved question (metabase#10441, metabase#11439)", () => {
@@ -189,8 +191,8 @@ describe("binning related reproductions", () => {
     // it is essential for this repro to find question following these exact steps
     // (for example, visiting `/collection/root` would yield different result)
     startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Saved Questions").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
       cy.findByText("11439").click();
     });
 
@@ -198,7 +200,8 @@ describe("binning related reproductions", () => {
     summarize();
 
     rightSidebar().within(() => {
-      cy.findByRole("listitem", { name: "Created At" })
+      cy.findAllByRole("listitem", { name: "Created At" })
+        .eq(0)
         .findByLabelText("Temporal bucket")
         .click();
     });
@@ -242,7 +245,7 @@ describe("binning related reproductions", () => {
       .click();
     cy.wait("@dataset");
 
-    cy.get(".Visualization").findByText("Count");
+    cy.findByTestId("query-visualization-root").findByText("Count");
 
     cy.findByTestId("sidebar-right")
       .findAllByText("Created At")
@@ -250,8 +253,8 @@ describe("binning related reproductions", () => {
       .click();
     cy.wait("@dataset");
 
-    cy.get(".Visualization").within(() => {
-      // ALl of these are implicit assertions and will fail if there's more than one string
+    cy.findByTestId("query-visualization-root").within(() => {
+      // All of these are implicit assertions and will fail if there's more than one string
       cy.findByText("Count");
       cy.findByText("Created At: Month");
       cy.findByText("June 2022");
@@ -282,7 +285,7 @@ describe("binning related reproductions", () => {
         toBinning: "10 bins",
       });
 
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
     });
 
     it("should work for notebook mode", () => {
@@ -303,7 +306,7 @@ describe("binning related reproductions", () => {
 
       visualize();
 
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
     });
   });
 
@@ -377,8 +380,10 @@ describe("binning related reproductions", () => {
 
 function openSummarizeOptions(questionType) {
   startNewQuestion();
-  cy.findByText("Saved Questions").click();
-  cy.findByText("16379").click();
+  entityPickerModal().within(() => {
+    entityPickerModalTab("Saved questions").click();
+    cy.findByText("16379").click();
+  });
 
   if (questionType === "Simple mode") {
     visualize();

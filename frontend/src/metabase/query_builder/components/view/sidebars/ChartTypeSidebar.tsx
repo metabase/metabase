@@ -1,8 +1,10 @@
+import cx from "classnames";
 import type * as React from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import type { UpdateQuestionOpts } from "metabase/query_builder/actions";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { Icon } from "metabase/ui";
@@ -10,8 +12,8 @@ import visualizations from "metabase/visualizations";
 import { sanatizeResultData } from "metabase/visualizations/shared/utils/data";
 import type { Visualization } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import type Query from "metabase-lib/queries/Query";
+import type Question from "metabase-lib/v1/Question";
+import type Query from "metabase-lib/v1/queries/Query";
 
 import {
   OptionIconContainer,
@@ -95,7 +97,7 @@ const ChartTypeSidebar = ({
   );
 
   const handleClick = useCallback(
-    (display, e) => {
+    (display: string, e: React.MouseEvent) => {
       if (display === question.display()) {
         openChartSettings(e);
       } else {
@@ -105,7 +107,7 @@ const ChartTypeSidebar = ({
           const updatedSettings = visualization.onDisplayUpdate(
             newQuestion.settings(),
           );
-          newQuestion = newQuestion.updateSettings(updatedSettings);
+          newQuestion = newQuestion.setSettings(updatedSettings);
         }
 
         updateQuestion(newQuestion, {
@@ -119,8 +121,9 @@ const ChartTypeSidebar = ({
 
   return (
     <SidebarContent
-      className="full-height px1"
+      className={cx(CS.fullHeight, CS.px1)}
       onDone={() => onCloseChartType()}
+      data-testid="chart-type-sidebar"
     >
       <OptionList data-testid="display-options-sensible">
         {makesSense.map(type => {

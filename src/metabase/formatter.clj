@@ -14,6 +14,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.ui-logic :as ui-logic]
+   [potemkin :as p]
    [potemkin.types :as p.types])
   (:import
    (java.math RoundingMode)
@@ -24,6 +25,11 @@
 
 ;; Fool Eastwood into thinking this namespace is used
 (comment hiccup.util/keep-me)
+
+(p/import-vars
+  [datetime
+   format-temporal-str
+   temporal-string?])
 
 (def RenderedPulseCard
   "Schema used for functions that operate on pulse card contents and their attachments"
@@ -205,15 +211,16 @@
 
 (defn format-geographic-coordinates
   "Format longitude/latitude values as 0.00000000° N|S|E|W"
-  [lon-or-lat ^double v]
-  (let [dir        (case lon-or-lat
+  [lon-or-lat v]
+  (str (when (number? v)
+         (let [v   (double v)
+               dir (case lon-or-lat
                      :type/Latitude (if (neg? v) "S" "N")
                      :type/Longitude (if (neg? v) "W" "E")
-                     nil)
-        base-value (Math/abs v)]
-    (if dir
-      (format "%.8f° %s" base-value dir)
-      (str v))))
+                     nil)]
+           (if dir
+             (format "%.8f° %s" (Math/abs v) dir)
+             v)))))
 
 (mu/defn create-formatter
   "Create a formatter for a column based on its timezone, column metadata, and visualization-settings"

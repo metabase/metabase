@@ -7,7 +7,6 @@
    [metabase.config :as config]
    [metabase.server.protocols :as server.protocols]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [ring.adapter.jetty :as ring-jetty]
    [ring.util.jakarta.servlet :as servlet])
@@ -29,7 +28,7 @@
     :trust-password  (config/config-str :mb-jetty-ssl-truststore-password)
     :client-auth     (when (config/config-bool :mb-jetty-ssl-client-auth)
                        :need)
-    :sni-host-check? (when (config/config-str :mb-jetty-skip-sni)
+    :sni-host-check? (when (config/config-bool :mb-jetty-skip-sni)
                        false)}))
 
 (defn- jetty-config []
@@ -68,11 +67,11 @@
                                     (.setTimeout timeout))
             request-map           (servlet/build-request-map request)
             raise                 (fn raise [^Throwable e]
-                                    (log/error e (trs "Unexpected exception in endpoint"))
+                                    (log/error e "Unexpected exception in endpoint")
                                     (try
                                       (.sendError response 500 (.getMessage e))
                                       (catch Throwable e
-                                        (log/error e (trs "Unexpected exception writing error response"))))
+                                        (log/error e "Unexpected exception writing error response")))
                                     (.complete context))]
         (try
           (handler
@@ -85,7 +84,7 @@
                                                              :response-map  response-map}))
            raise)
           (catch Throwable e
-            (log/error e (trs "Unexpected Exception in API request handler"))
+            (log/error e "Unexpected Exception in API request handler")
             (raise e))
           (finally
             (.setHandled base-request true)))))))
@@ -126,6 +125,6 @@
   []
   (let [[^Server old-server] (reset-vals! instance* nil)]
     (when old-server
-      (log/info (trs "Shutting Down Embedded Jetty Webserver"))
+      (log/info "Shutting Down Embedded Jetty Webserver")
       (.stop old-server)
       :stopped)))

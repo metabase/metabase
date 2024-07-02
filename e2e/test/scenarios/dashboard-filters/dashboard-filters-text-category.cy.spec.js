@@ -1,12 +1,10 @@
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_DASHBOARD_DASHCARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
   clearFilterWidget,
   filterWidget,
+  getDashboardCard,
   editDashboard,
   saveDashboard,
   setFilter,
@@ -27,39 +25,92 @@ import {
 
 import { DASHBOARD_TEXT_FILTERS } from "./shared/dashboard-filters-text-category";
 
+const { ORDERS_ID } = SAMPLE_DATABASE;
+
 describe("scenarios > dashboard > filters > text/category", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
-    visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.createQuestionAndDashboard({
+      questionDetails: {
+        query: { "source-table": ORDERS_ID, limit: 5 },
+      },
+      cardDetails: {
+        size_x: 24,
+        size_y: 8,
+      },
+    }).then(({ body: { id, dashboard_id } }) => {
+      cy.wrap(id).as("dashCardId");
+      visitDashboard(dashboard_id);
+      editDashboard();
+    });
+  });
 
-    editDashboard();
+  it.skip("should drill to a question with multi-value 'contains' filter applied (metabase#42999)", () => {
+    setFilter("Text or Category", "Contains");
+    cy.findAllByRole("radio", { name: "Multiple values" }).should("be.checked");
+    cy.findByTestId("visualization-root").findByText("Select…").click();
+    popover().contains("Source").click();
+    saveDashboard();
+    waitDashboardCardQuery();
+
+    filterWidget().eq(0).click();
+    applyFilterByType("Contains", "oo,aa");
+    waitDashboardCardQuery();
+
+    getDashboardCard().findByText("test question").click();
+
+    cy.location("href").should("contain", "/question#");
+    cy.findByTestId("filter-pill").should(
+      "contain.text",
+      "User → Source contains 2 selections",
+    );
+    cy.findByTestId("app-bar").should(
+      "contain.text",
+      "Started from test question",
+    );
   });
 
   it("should work when set through the filter widget", () => {
-    Object.entries(DASHBOARD_TEXT_FILTERS).forEach(([filter]) => {
-      cy.log(`Make sure we can connect ${filter} filter`);
-      setFilter("Text or Category", filter);
+    DASHBOARD_TEXT_FILTERS.forEach(({ operator, single }) => {
+      cy.log(`Make sure we can connect ${operator} filter`);
+      setFilter("Text or Category", operator);
+      cy.findAllByRole("radio", { name: "Multiple values" }).should(
+        "be.checked",
+      );
+
+      if (single) {
+        cy.findAllByRole("radio", { name: "A single value" })
+          .click()
+          .should("be.checked");
+      }
 
       cy.findByText("Select…").click();
       popover().contains("Source").click();
     });
-
     saveDashboard();
+    waitDashboardCardQuery();
 
-    Object.entries(DASHBOARD_TEXT_FILTERS).forEach(
-      ([filter, { value, representativeResult }], index) => {
+    DASHBOARD_TEXT_FILTERS.forEach(
+      (
+        { operator, value, representativeResult, single, negativeAssertion },
+        index,
+      ) => {
         filterWidget().eq(index).click();
-        applyFilterByType(filter, value);
+        applyFilterByType(operator, value);
+        waitDashboardCardQuery();
+        filterWidget()
+          .eq(index)
+          .contains(single ? value.replace(/"/g, "") : /\d selections/);
 
-        cy.log(`Make sure ${filter} filter returns correct result`);
-        cy.get(".Card").within(() => {
-          cy.contains(representativeResult);
-        });
+        cy.log(`Make sure ${operator} filter returns correct result`);
+        cy.findByTestId("dashcard")
+          .should("contain", representativeResult)
+          .and("not.contain", negativeAssertion);
 
         clearFilterWidget(index);
-        cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
+        waitDashboardCardQuery();
       },
     );
   });
@@ -75,9 +126,11 @@ describe("scenarios > dashboard > filters > text/category", () => {
     popover().contains("Source").click();
 
     saveDashboard();
-    filterWidget().click();
+    waitDashboardCardQuery();
 
+    filterWidget().click();
     applyFilterByType(filterType, filterValue);
+    waitDashboardCardQuery();
 
     filterWidget().click();
     cy.log("uncheck all values");
@@ -85,6 +138,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     popover().within(() => {
       cy.findByText(filterValue).click();
       cy.button("Update filter").click();
+      waitDashboardCardQuery();
     });
 
     filterWidget().within(() => {
@@ -111,29 +165,27 @@ describe("scenarios > dashboard > filters > text/category", () => {
     popover().contains("User ID").click();
 
     saveDashboard();
-    cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
+    waitDashboardCardQuery();
 
     cy.location("search").should("eq", "?text=Organic&id=");
-    cy.get(".Card").within(() => {
-      cy.contains("39.58");
-    });
+    cy.findByTestId("dashcard").contains("39.58");
 
     // This part reproduces metabase#13960
     // Remove default filter (category)
     cy.get("fieldset .Icon-close").click();
-    cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
+    waitDashboardCardQuery();
 
     cy.location("search").should("eq", "?text=&id=");
 
     filterWidget().contains("ID").click();
     cy.findByPlaceholderText("Enter an ID").type("4{enter}").blur();
     cy.button("Add filter").click();
-    cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
+    waitDashboardCardQuery();
 
     cy.location("search").should("eq", "?text=&id=4");
 
     cy.reload();
-    cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
+    waitDashboardCardQuery();
 
     cy.location("search").should("eq", "?text=&id=4");
     filterWidget().contains("Text");
@@ -164,13 +216,16 @@ describe("scenarios > dashboard > filters > text/category", () => {
     // Updates the filter value
     selectDefaultValueFromPopover("Twitter", { buttonLabel: "Update filter" });
     saveDashboard();
+    waitDashboardCardQuery();
     ensureDashboardCardHasText("37.65");
 
     // Resets the value back by clicking widget icon
     toggleFilterWidgetValues(["Google", "Organic"], {
       buttonLabel: "Update filter",
     });
+    waitDashboardCardQuery();
     resetFilterWidgetToDefault();
+    waitDashboardCardQuery();
     filterWidget().findByText("Twitter");
 
     // Removing value resets back to default
@@ -180,3 +235,9 @@ describe("scenarios > dashboard > filters > text/category", () => {
     filterWidget().findByText("Twitter");
   });
 });
+
+function waitDashboardCardQuery() {
+  cy.get("@dashCardId").then(id => {
+    cy.wait(`@dashcardQuery${id}`);
+  });
+}

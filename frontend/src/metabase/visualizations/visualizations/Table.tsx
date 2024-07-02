@@ -3,10 +3,12 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import * as DataGrid from "metabase/lib/data_grid";
 import { formatColumn } from "metabase/lib/formatting";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
-import ChartSettingsTableFormatting, {
+import {
+  ChartSettingsTableFormatting,
   isFormattable,
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import {
@@ -23,9 +25,9 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import { isNative } from "metabase-lib/queries/utils/card";
-import { findColumnIndexesForColumnSettings } from "metabase-lib/queries/utils/dataset";
+import Question from "metabase-lib/v1/Question";
+import { isNative } from "metabase-lib/v1/queries/utils/card";
+import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import {
   isMetric,
   isDimension,
@@ -34,7 +36,7 @@ import {
   isEmail,
   isImageURL,
   isAvatarURL,
-} from "metabase-lib/types/utils/isa";
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   DatasetData,
@@ -58,7 +60,7 @@ interface TableState {
 class Table extends Component<TableProps, TableState> {
   static uiName = t`Table`;
   static identifier = "table";
-  static iconName = "table";
+  static iconName = "table2";
   static canSavePng = false;
 
   static minSize = getMinSize("table");
@@ -411,8 +413,14 @@ class Table extends Component<TableProps, TableState> {
       return (
         <div
           className={cx(
-            "flex-full px1 pb1 text-centered flex flex-column layout-centered",
-            { "text-slate-light": isDashboard, "text-slate": !isDashboard },
+            CS.flexFull,
+            CS.px1,
+            CS.pb1,
+            CS.textCentered,
+            CS.flex,
+            CS.flexColumn,
+            CS.layoutCentered,
+            { [CS.textSlateLight]: isDashboard, [CS.textSlate]: !isDashboard },
           )}
         >
           <img
@@ -422,9 +430,11 @@ class Table extends Component<TableProps, TableState> {
               app/assets/img/hidden-field.png     1x,
               app/assets/img/hidden-field@2x.png  2x
             "
-            className="mb2"
+            className={CS.mb2}
           />
-          <span className="h4 text-bold">{t`Every field is hidden right now`}</span>
+          <span
+            className={cx(CS.h4, CS.textBold)}
+          >{t`Every field is hidden right now`}</span>
         </div>
       );
     }

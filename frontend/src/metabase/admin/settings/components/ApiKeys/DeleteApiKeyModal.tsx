@@ -1,30 +1,29 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { useDeleteApiKeyMutation } from "metabase/api";
 import {
   FormProvider,
   Form,
   FormSubmitButton,
   FormErrorMessage,
 } from "metabase/forms";
-import { ApiKeysApi } from "metabase/services";
 import { Text, Button, Group, Modal, Stack } from "metabase/ui";
 import type { ApiKey } from "metabase-types/api";
 
 export const DeleteApiKeyModal = ({
   onClose,
-  refreshList,
   apiKey,
 }: {
   onClose: () => void;
-  refreshList: () => void;
   apiKey: ApiKey;
 }) => {
+  const [deleteApiKey] = useDeleteApiKeyMutation();
+
   const handleDelete = useCallback(async () => {
-    await ApiKeysApi.delete({ id: apiKey.id });
-    refreshList();
+    await deleteApiKey(apiKey.id);
     onClose();
-  }, [refreshList, onClose, apiKey.id]);
+  }, [onClose, apiKey.id, deleteApiKey]);
 
   return (
     <Modal

@@ -1,87 +1,34 @@
-:global(.hide) {
+.hide {
   display: none !important;
 }
 
-:global(.show) {
+.show {
   display: inherit;
 }
 
-:global(.hidden) {
+.hidden {
   visibility: hidden;
 }
 
-:global(.sm-show),
-:global(.md-show),
-:global(.lg-show),
-:global(.xl-show) {
+.smShow {
   display: none;
-}
-
-/* extra-small */
-
-@media screen and (--breakpoint-min-xs) {
-  :global(.xs-hide) {
-    display: none !important;
-  }
-}
-
-@media screen and (--breakpoint-min-xs) {
-  :global(.xs-show) {
-    display: inherit !important;
-  }
 }
 
 /* small */
 
 @media screen and (--breakpoint-min-sm) {
-  :global(.sm-hide) {
-    display: none !important;
-  }
-}
-
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-show) {
+  .smShow {
     display: inherit !important;
   }
 }
 
-/* medium */
-
-@media screen and (--breakpoint-min-md) {
-  :global(.md-hide) {
-    display: none !important;
-  }
+.TableInteractiveDetailButton {
+  color: var(--mb-color-brand);
+  transition: opacity 0.2s ease-in-out;
+  margin: 0 4px;
+  opacity: 0;
 }
 
-@media screen and (--breakpoint-min-md) {
-  :global(.md-show) {
-    display: inherit !important;
-  }
-}
-
-/* large */
-
-@media screen and (--breakpoint-min-lg) {
-  :global(.lg-hide) {
-    display: none !important;
-  }
-}
-
-@media screen and (--breakpoint-min-lg) {
-  :global(.lg-show) {
-    display: inherit !important;
-  }
-}
-
-/* xl */
-@media screen and (--breakpoint-min-xl) {
-  :global(.xl-hide) {
-    display: none !important;
-  }
-}
-
-@media screen and (--breakpoint-min-xl) {
-  :global(.xl-show) {
-    display: inherit !important;
-  }
+.show .TableInteractiveDetailButton {
+  opacity: 1;
 }

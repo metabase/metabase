@@ -92,8 +92,8 @@
 
 (defonce ^{:doc "The main `test-data` dataset, but only the `users` table, and with `last_login_date` and
   `last_login_time` instead of `last_login`."}
-  test-data-with-time
-  (tx/transformed-dataset-definition "test-data-with-time" test-data
+  time-test-data
+  (tx/transformed-dataset-definition "time-test-data" test-data
     (tx/transform-dataset-only-tables "users")
     (tx/transform-dataset-update-table "users"
       :table
@@ -112,8 +112,8 @@
           [username (date-only last-login) (time-only last-login) password-text])))))
 
 (defonce ^{:doc "The main `test-data` dataset, with an additional (all-null) `null_only_date` Field."}
-  test-data-with-null-date-checkins
-  (tx/transformed-dataset-definition "test-data-with-null-date-checkins" test-data
+  test-data-null-date
+  (tx/transformed-dataset-definition "test-data-null-date" test-data
     (tx/transform-dataset-update-table "checkins"
       :table
       (fn [tabledef]
@@ -131,8 +131,8 @@
           [date nil user-id venue-id])))))
 
 (defonce ^{:doc "The main `test-data` dataset, but `last_login` has a base type of `:type/DateTimeWithTZ`."}
-  test-data-with-timezones
-  (tx/transformed-dataset-definition "test-data-with-timezones" test-data
+  tz-test-data
+  (tx/transformed-dataset-definition "tz-test-data" test-data
     (tx/transform-dataset-update-table "users"
       :table
       (fn [tabledef]

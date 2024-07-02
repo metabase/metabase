@@ -1,7 +1,7 @@
 import type * as React from "react";
 import { t } from "ttag";
 
-import { isDimension } from "metabase-lib/types/utils/isa";
+import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { PivotTableSettingLabel } from "./PivotTable.styled";

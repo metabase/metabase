@@ -1,8 +1,10 @@
+import cx from "classnames";
 import type React from "react";
 import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { Button, TextInput, Icon } from "metabase/ui";
 
 type DefaultRenderInputProps = {
@@ -133,17 +135,20 @@ export const MappingEditor = ({
           });
           return (
             <tr key={index}>
-              <td className="pb1" style={{ verticalAlign: "bottom" }}>
+              <td className={CS.pb1} style={{ verticalAlign: "bottom" }}>
                 {!swapKeyAndValue ? keyInput : valueInput}
               </td>
-              <td className="pb1 px1" style={{ verticalAlign: "middle" }}>
+              <td
+                className={cx(CS.pb1, CS.px1)}
+                style={{ verticalAlign: "middle" }}
+              >
                 {divider}
               </td>
-              <td className="pb1" style={{ verticalAlign: "bottom" }}>
+              <td className={CS.pb1} style={{ verticalAlign: "bottom" }}>
                 {!swapKeyAndValue ? valueInput : keyInput}
               </td>
               {canDelete && (
-                <td className="pb1" style={{ verticalAlign: "bottom" }}>
+                <td className={CS.pb1} style={{ verticalAlign: "bottom" }}>
                   <Button
                     leftIcon={<Icon name="close" />}
                     variant="subtle"

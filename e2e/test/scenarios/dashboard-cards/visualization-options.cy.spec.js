@@ -10,7 +10,7 @@ import {
   saveDashboard,
   getDashboardCardMenu,
   getDraggableElements,
-  moveDnDKitColumnVertical,
+  moveDnDKitElement,
 } from "e2e/support/helpers";
 
 describe("scenarios > dashboard cards > visualization options", () => {
@@ -32,7 +32,7 @@ describe("scenarios > dashboard cards > visualization options", () => {
     cy.icon("palette").click();
 
     modal().within(() => {
-      cy.findByDisplayValue(originalCardTitle).click().clear();
+      cy.findByDisplayValue(originalCardTitle).click().clear().blur();
       cy.button("Done").click();
     });
 
@@ -51,7 +51,9 @@ describe("scenarios > dashboard cards > visualization options", () => {
     getDashboardCard().realHover();
     cy.findByLabelText("Show visualization options").click();
     cy.findByTestId("chartsettings-sidebar").within(() => {
-      moveDnDKitColumnVertical(getDraggableElements().contains("ID"), 100);
+      moveDnDKitElement(getDraggableElements().contains("ID"), {
+        vertical: 100,
+      });
 
       /**
        * When this issue gets fixed, it should be safe to uncomment the following assertion.
@@ -65,10 +67,7 @@ describe("scenarios > dashboard cards > visualization options", () => {
     });
 
     // The table preview should get updated immediately, reflecting the changes in columns ordering.
-    cy.get(".Modal")
-      .findAllByTestId("column-header")
-      .first()
-      .contains("User ID");
+    modal().findAllByTestId("column-header").first().contains("User ID");
   });
 
   it("should refelct column settings accurately when changing (metabase#30966)", () => {

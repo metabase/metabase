@@ -2,8 +2,9 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import type * as React from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
-import type Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
   computeFilterTimeRange,
   getTimeComponent,
@@ -11,7 +12,7 @@ import {
   setTimeComponent,
   TIME_SELECTOR_DEFAULT_HOUR,
   TIME_SELECTOR_DEFAULT_MINUTE,
-} from "metabase-lib/queries/utils/query-time";
+} from "metabase-lib/v1/queries/utils/query-time";
 
 import { Container, Interval, ToggleButton } from "./DatePickerFooter.styled";
 
@@ -34,7 +35,7 @@ const getIntervalString = (filter: Filter) => {
   return start.format(formatString) + " - " + end.format(formatString);
 };
 
-const DatePickerFooter: React.FC<Props> = ({
+const DatePickerFooter: React.FC<React.PropsWithChildren<Props>> = ({
   filter,
   primaryColor,
   onFilterChange,
@@ -98,7 +99,7 @@ const DatePickerFooter: React.FC<Props> = ({
     const interval = getIntervalString(filter);
     content = interval ? (
       <Interval>
-        <Icon className="mr1" name="calendar" />
+        <Icon className={CS.mr1} name="calendar" />
         <div>{interval}</div>
       </Interval>
     ) : null;

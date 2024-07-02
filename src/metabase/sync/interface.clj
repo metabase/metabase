@@ -2,17 +2,21 @@
   "Schemas and constants used by the sync code."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::DatabaseMetadataTable
-  [:map
-   [:name           ::lib.schema.common/non-blank-string]
-   [:schema         [:maybe ::lib.schema.common/non-blank-string]]
-   [:require-filter {:optional true} :boolean]
+  [:map {:closed true}
+   [:name                                     ::lib.schema.common/non-blank-string]
+   [:schema                                   [:maybe ::lib.schema.common/non-blank-string]]
+   ;; for databases that store an estimated row count in system tables (e.g: postgres)
+   [:estimated_row_count     {:optional true} [:maybe :int]]
+   ;; for databases that support forcing query to include a filter (e.g: partitioned table on bigquery)
+   [:database_require_filter {:optional true} [:maybe :boolean]]
    ;; `:description` in this case should be a column/remark on the Table, if there is one.
-   [:description    {:optional true} [:maybe :string]]])
+   [:description             {:optional true} [:maybe :string]]])
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."
@@ -38,7 +42,7 @@
    [:effective-type             {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:coercion-strategy          {:optional true} [:maybe ms/CoercionStrategy]]
    [:field-comment              {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:pk?                        {:optional true} :boolean]
+   [:pk?                        {:optional true} :boolean] ; optional for databases that don't support PKs
    [:nested-fields              {:optional true} [:set [:ref ::TableMetadataField]]]
    [:json-unfolding             {:optional true} :boolean]
    [:nfc-path                   {:optional true} [:any]]
@@ -65,16 +69,14 @@
   "Schema for a given Table as provided in [[metabase.driver/describe-table-indexes]]."
   [:ref ::TableIndexMetadata])
 
-(mr/def ::TableMetadata
-  [:map
-   [:name                         ::lib.schema.common/non-blank-string]
-   [:schema                       [:maybe ::lib.schema.common/non-blank-string]]
-   [:fields                       [:set TableMetadataField]]
-   [:description {:optional true} [:maybe :string]]])
+(mr/def ::FieldMetadataEntry
+  (-> (mr/schema ::TableMetadataField)
+      (mut/assoc :table-schema [:maybe ::lib.schema.common/non-blank-string])
+      (mut/assoc :table-name   ::lib.schema.common/non-blank-string)))
 
-(def TableMetadata
-  "Schema for the expected output of [[metabase.driver/describe-table]]."
-  [:ref ::TableMetadata])
+(def FieldMetadataEntry
+  "Schema for an item in the expected output of [[metabase.driver/describe-fields]]."
+  [:ref ::FieldMetadataEntry])
 
 ;;; not actually used; leaving here for now because it serves as documentation
 (comment
@@ -82,7 +84,7 @@
     "Schema for the expected output of [[metabase.driver.sql-jdbc.sync/describe-nested-field-columns]]."
     [:maybe [:set TableMetadataField]]))
 
-(mr/def ::FKMetadataEntry
+(mr/def ::TableFKMetadataEntry
   [:map
    [:fk-column-name   ::lib.schema.common/non-blank-string]
    [:dest-table       [:map
@@ -90,16 +92,22 @@
                        [:schema [:maybe ::lib.schema.common/non-blank-string]]]]
    [:dest-column-name ::lib.schema.common/non-blank-string]])
 
-(def FKMetadataEntry
+(def TableFKMetadataEntry
   "Schema for an individual entry in `FKMetadata`."
+  [:ref ::TableFKMetadataEntry])
+
+(mr/def ::FKMetadataEntry
+  [:map
+   [:fk-table-name    ::lib.schema.common/non-blank-string]
+   [:fk-table-schema  [:maybe ::lib.schema.common/non-blank-string]]
+   [:fk-column-name   ::lib.schema.common/non-blank-string]
+   [:pk-table-name    ::lib.schema.common/non-blank-string]
+   [:pk-table-schema  [:maybe ::lib.schema.common/non-blank-string]]
+   [:pk-column-name   ::lib.schema.common/non-blank-string]])
+
+(def FKMetadataEntry
+  "Schema for an entry in the expected output of [[metabase.driver/describe-fks]]."
   [:ref ::FKMetadataEntry])
-
-(mr/def ::FKMetadata
-  [:maybe [:set FKMetadataEntry]])
-
-(def FKMetadata
-  "Schema for the expected output of `describe-table-fks`."
-  [:ref ::FKMetadata])
 
 ;; These schemas are provided purely as conveniences since adding `:import` statements to get the corresponding
 ;; classes from the model namespaces also requires a `:require`, which `clj-refactor` seems more than happy to strip
@@ -141,94 +149,6 @@
 (def FieldInstance
   "Schema for a valid instance of a Metabase Field."
   [:ref ::FieldInstance])
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                            SAMPLING & FINGERPRINTS                                             |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(mr/def ::Percent
-  [:and
-   number?
-   [:fn
-    {:error/message "Valid percentage between (inclusive) 0 and 1."}
-    #(<= 0 % 1)]])
-
-(def Percent
-  "Schema for something represting a percentage. A floating-point value between (inclusive) 0 and 1."
-  [:ref ::Percent])
-
-(mr/def ::GlobalFingerprint
-  [:map
-   [:distinct-count {:optional true} :int]
-   [:nil%           {:optional true} [:maybe Percent]]])
-
-(def GlobalFingerprint
-  "Fingerprint values that Fields of all types should have."
-  [:ref ::GlobalFingerprint])
-
-(mr/def ::NumberFingerprint
-  [:map
-   [:min {:optional true} [:maybe number?]]
-   [:max {:optional true} [:maybe number?]]
-   [:avg {:optional true} [:maybe number?]]
-   [:q1  {:optional true} [:maybe number?]]
-   [:q3  {:optional true} [:maybe number?]]
-   [:sd  {:optional true} [:maybe number?]]])
-
-(def NumberFingerprint
-  "Schema for fingerprint information for Fields deriving from `:type/Number`."
-  [:ref ::NumberFingerprint])
-
-(mr/def ::TextFingerprint
-  [:map
-   [:percent-json   {:optional true} [:maybe Percent]]
-   [:percent-url    {:optional true} [:maybe Percent]]
-   [:percent-email  {:optional true} [:maybe Percent]]
-   [:percent-state  {:optional true} [:maybe Percent]]
-   [:average-length {:optional true} [:maybe number?]]])
-
-(def TextFingerprint
-  "Schema for fingerprint information for Fields deriving from `:type/Text`."
-  [:ref ::TextFingerprint])
-
-(mr/def ::TemporalFingerprint
-  [:map
-   [:earliest {:optional true} [:maybe :string]]
-   [:latest   {:optional true} [:maybe :string]]])
-
-(def TemporalFingerprint
-  "Schema for fingerprint information for Fields deriving from `:type/Temporal`."
-  [:ref ::TemporalFingerprint])
-
-(mr/def ::TypeSpecificFingerprint
-  [:and
-   [:map
-    [:type/Number   {:optional true} NumberFingerprint]
-    [:type/Text     {:optional true} TextFingerprint]
-    ;; temporal fingerprints are keyed by `:type/DateTime` for historical reasons. `DateTime` used to be the parent of
-    ;; all temporal MB types.
-    [:type/DateTime {:optional true} TemporalFingerprint]]
-   [:fn
-    {:error/message "Type-specific fingerprint with exactly one key"}
-    (fn [m]
-      (= 1 (count (keys m))))]])
-
-(def TypeSpecificFingerprint
-  "Schema for type-specific fingerprint information."
-  [:ref ::TypeSpecificFingerprint])
-
-(mr/def ::Fingerprint
-  [:map
-   [:global       {:optional true} GlobalFingerprint]
-   [:type         {:optional true} TypeSpecificFingerprint]
-   [:experimental {:optional true} :map]])
-
-(def Fingerprint
-  "Schema for a Field 'fingerprint' generated as part of the analysis stage. Used to power the 'classification'
-   sub-stage of analysis. Stored as the `fingerprint` column of Field."
-  [:ref ::Fingerprint])
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             FINGERPRINT VERSIONING                                             |

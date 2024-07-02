@@ -1,14 +1,15 @@
 import { assocIn, merge } from "icepick";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import {
   inferAndUpdateEntityPermissions,
   updateFieldsPermission,
-  updateNativePermission,
   updateSchemasPermission,
   updateTablesPermission,
   updatePermission,
+  restrictNativeQueryPermissionsIfNeeded,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import Group from "metabase/entities/groups";
@@ -28,7 +29,12 @@ import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { CollectionsApi, PermissionsApi } from "metabase/services";
 
 import { trackPermissionChange } from "./analytics";
+import { DataPermissionType, DataPermission } from "./types";
 import { isDatabaseEntityId } from "./utils/data-entity-id";
+import {
+  getModifiedGroupsPermissionsGraphParts,
+  mergeGroupsPermissionsUpdates,
+} from "./utils/graph/partial-updates";
 
 const INITIALIZE_DATA_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";
@@ -104,13 +110,26 @@ export const limitDatabasePermission = createThunkAction(
       dispatch(
         updateDataPermission({
           groupId,
-          permission: { type: "access", permission: "data" },
+          permission: {
+            type: DataPermissionType.ACCESS,
+            permission: DataPermission.VIEW_DATA,
+          },
           value: newValue,
           entityId,
+          skipTracking: true,
         }),
       );
     }
 
+    dispatch(navigateToGranularPermissions(groupId, entityId));
+  },
+);
+
+export const NAVIGATE_TO_GRANULAR_PERMISSIONS =
+  "metabase/admin/permissions/NAVIGATE_TO_GRANULAR_PERMISSIONS";
+export const navigateToGranularPermissions = createThunkAction(
+  NAVIGATE_TO_GRANULAR_PERMISSIONS,
+  (groupId, entityId) => dispatch => {
     dispatch(push(getGroupFocusPermissionsUrl(groupId, entityId)));
   },
 );
@@ -119,7 +138,14 @@ export const UPDATE_DATA_PERMISSION =
   "metabase/admin/permissions/UPDATE_DATA_PERMISSION";
 export const updateDataPermission = createThunkAction(
   UPDATE_DATA_PERMISSION,
-  ({ groupId, permission: permissionInfo, value, entityId, view }) => {
+  ({
+    groupId,
+    permission: permissionInfo,
+    value,
+    entityId,
+    view,
+    skipTracking,
+  }) => {
     return (dispatch, getState) => {
       if (isDatabaseEntityId(entityId)) {
         dispatch(
@@ -137,6 +163,8 @@ export const updateDataPermission = createThunkAction(
           entityId,
           groupId,
           view,
+          value,
+          getState,
         );
         if (action) {
           dispatch(action);
@@ -144,12 +172,14 @@ export const updateDataPermission = createThunkAction(
         }
       }
 
-      trackPermissionChange(
-        entityId,
-        permissionInfo.permission,
-        permissionInfo.type === "native",
-        value,
-      );
+      if (!skipTracking) {
+        trackPermissionChange(
+          entityId,
+          permissionInfo.permission,
+          permissionInfo.type === DataPermissionType.NATIVE,
+          value,
+        );
+      }
 
       return { groupId, permissionInfo, value, metadata, entityId };
     };
@@ -162,27 +192,38 @@ export const saveDataPermissions = createThunkAction(
   SAVE_DATA_PERMISSIONS,
   () => async (_dispatch, getState) => {
     MetabaseAnalytics.trackStructEvent("Permissions", "save");
-    const { dataPermissions, dataPermissionsRevision } =
-      getState().admin.permissions;
+    const state = getState();
+    const allGroupIds = Object.keys(state.entities.groups);
+    const {
+      originalDataPermissions,
+      dataPermissions,
+      dataPermissionsRevision,
+    } = state.admin.permissions;
 
-    const extraData =
+    const advancedPermissions =
       PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.reduce(
         (data, selector) => {
+          const [extraData, modifiedGroupIds] = selector(state);
           return {
-            ...data,
-            ...selector(getState()),
+            permissions: { ...data.permissions, ...extraData },
+            modifiedGroupIds: [...data.modifiedGroupIds, ...modifiedGroupIds],
           };
         },
-        {},
+        { modifiedGroupIds: [], permissions: {} },
       );
 
-    const permissionsGraph = {
-      groups: dataPermissions,
-      revision: dataPermissionsRevision,
-      ...extraData,
-    };
+    const modifiedGroups = getModifiedGroupsPermissionsGraphParts(
+      dataPermissions,
+      originalDataPermissions,
+      allGroupIds,
+      advancedPermissions.modifiedGroupIds,
+    );
 
-    return await PermissionsApi.updateGraph(permissionsGraph);
+    return await PermissionsApi.updateGraph({
+      groups: modifiedGroups,
+      revision: dataPermissionsRevision,
+      ...advancedPermissions.permissions,
+    });
   },
 );
 
@@ -256,7 +297,10 @@ const dataPermissions = handleActions(
     [LOAD_DATA_PERMISSIONS_FOR_DB]: {
       next: (state, { payload }) => merge(payload.groups, state),
     },
-    [SAVE_DATA_PERMISSIONS]: { next: (_state, { payload }) => payload.groups },
+    [SAVE_DATA_PERMISSIONS]: {
+      next: (state, { payload }) =>
+        mergeGroupsPermissionsUpdates(state, payload.groups),
+    },
     [UPDATE_DATA_PERMISSION]: {
       next: (state, { payload }) => {
         if (payload == null) {
@@ -267,21 +311,22 @@ const dataPermissions = handleActions(
 
         const database = metadata.database(entityId.databaseId);
 
-        if (permissionInfo.type === "details") {
+        if (permissionInfo.type === DataPermissionType.DETAILS) {
           return updatePermission(
             state,
             groupId,
-            [entityId.databaseId, permissionInfo.type],
+            entityId.databaseId,
+            DataPermission.DETAILS,
+            [],
             value,
           );
         }
 
-        if (permissionInfo.type === "native") {
-          const updateFn =
-            PLUGIN_DATA_PERMISSIONS.updateNativePermission ??
-            updateNativePermission;
-
-          return updateFn(
+        if (
+          permissionInfo.type === DataPermissionType.NATIVE &&
+          PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded
+        ) {
+          state = PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded(
             state,
             groupId,
             entityId,
@@ -291,7 +336,17 @@ const dataPermissions = handleActions(
           );
         }
 
-        const shouldDowngradeNative = permissionInfo.type === "access";
+        state = restrictNativeQueryPermissionsIfNeeded(
+          state,
+          groupId,
+          entityId,
+          permissionInfo.permission,
+          value,
+          database,
+        );
+
+        const shouldDowngradeNative =
+          permissionInfo.type === DataPermissionType.ACCESS;
 
         if (entityId.tableId != null) {
           const updatedPermissions = updateFieldsPermission(
@@ -350,7 +405,8 @@ const originalDataPermissions = handleActions(
       next: (state, { payload }) => merge(payload.groups, state),
     },
     [SAVE_DATA_PERMISSIONS]: {
-      next: (_state, { payload }) => payload.groups,
+      next: (state, { payload }) =>
+        mergeGroupsPermissionsUpdates(state, payload.groups),
     },
   },
   null,
@@ -409,7 +465,7 @@ const originalCollectionPermissions = handleActions(
       next: (_state, { payload }) => payload.groups,
     },
     [SAVE_COLLECTION_PERMISSIONS]: {
-      next: (_state, { payload }) => payload.groups,
+      next: (state, { payload }) => payload.groups,
     },
   },
   null,

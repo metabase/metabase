@@ -90,8 +90,8 @@ function setup({
 }
 
 async function setOperator(operator: string) {
-  userEvent.click(screen.getByLabelText("Filter operator"));
-  userEvent.click(await screen.findByText(operator));
+  await userEvent.click(screen.getByLabelText("Filter operator"));
+  await userEvent.click(await screen.findByText(operator));
 }
 
 describe("NumberFilterPicker", () => {
@@ -100,15 +100,16 @@ describe("NumberFilterPicker", () => {
       setup();
 
       expect(screen.getByText("Total")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("Equal to")).toBeInTheDocument();
-      expect(screen.getByPlaceholderText("Enter a number")).toHaveValue("");
+      expect(screen.getByDisplayValue("Between")).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("Min")).toHaveValue("");
+      expect(screen.getByPlaceholderText("Max")).toHaveValue("");
       expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
     });
 
     it("should list operators", async () => {
       setup();
 
-      userEvent.click(screen.getByLabelText("Filter operator"));
+      await userEvent.click(screen.getByLabelText("Filter operator"));
       const listbox = await screen.findByRole("listbox");
       const options = within(listbox).getAllByRole("option");
 
@@ -125,11 +126,11 @@ describe("NumberFilterPicker", () => {
           const { getNextFilterParts, getNextFilterColumnName } = setup();
 
           await setOperator("Greater than");
-          userEvent.type(
+          await userEvent.type(
             screen.getByPlaceholderText("Enter a number"),
             String(value),
           );
-          userEvent.click(screen.getByText("Add filter"));
+          await userEvent.click(screen.getByText("Add filter"));
 
           const filterParts = getNextFilterParts();
           expect(filterParts).toMatchObject({
@@ -147,10 +148,10 @@ describe("NumberFilterPicker", () => {
 
         await setOperator("Greater than");
         const input = screen.getByPlaceholderText("Enter a number");
-        userEvent.type(input, "{enter}");
+        await userEvent.type(input, "{enter}");
         expect(onChange).not.toHaveBeenCalled();
 
-        userEvent.type(input, "15{enter}");
+        await userEvent.type(input, "15{enter}");
         expect(onChange).toHaveBeenCalled();
         expect(getNextFilterParts()).toMatchObject({
           operator: ">",
@@ -173,9 +174,9 @@ describe("NumberFilterPicker", () => {
           await setOperator("Between");
           const leftInput = screen.getByPlaceholderText("Min");
           const rightInput = screen.getByPlaceholderText("Max");
-          userEvent.type(leftInput, String(leftValue));
-          userEvent.type(rightInput, String(rightValue));
-          userEvent.click(addFilterButton);
+          await userEvent.type(leftInput, String(leftValue));
+          await userEvent.type(rightInput, String(rightValue));
+          await userEvent.click(addFilterButton);
 
           const filterParts = getNextFilterParts();
           expect(filterParts).toMatchObject({
@@ -196,9 +197,9 @@ describe("NumberFilterPicker", () => {
         await setOperator("Between");
         const leftInput = screen.getByPlaceholderText("Min");
         const rightInput = screen.getByPlaceholderText("Max");
-        userEvent.type(leftInput, "5");
-        userEvent.type(rightInput, "-10.5");
-        userEvent.click(addFilterButton);
+        await userEvent.type(leftInput, "5");
+        await userEvent.type(rightInput, "-10.5");
+        await userEvent.click(addFilterButton);
 
         const filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
@@ -216,8 +217,8 @@ describe("NumberFilterPicker", () => {
         await setOperator("Between");
         const leftInput = screen.getByPlaceholderText("Min");
         const rightInput = screen.getByPlaceholderText("Max");
-        userEvent.type(leftInput, "5");
-        userEvent.type(rightInput, "-10.5{enter}");
+        await userEvent.type(leftInput, "5");
+        await userEvent.type(rightInput, "-10.5{enter}");
 
         expect(onChange).toHaveBeenCalled();
         expect(getNextFilterParts()).toMatchObject({
@@ -233,11 +234,13 @@ describe("NumberFilterPicker", () => {
       it("should add a filter with many values", async () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup();
 
+        await userEvent.click(screen.getByDisplayValue("Between"));
+        await userEvent.click(screen.getByText("Equal to"));
         const input = screen.getByPlaceholderText("Enter a number");
-        userEvent.type(input, "-5");
-        userEvent.tab();
-        userEvent.type(input, "10");
-        userEvent.click(screen.getByText("Add filter"));
+        await userEvent.type(input, "-5");
+        await userEvent.tab();
+        await userEvent.type(input, "10");
+        await userEvent.click(screen.getByText("Add filter"));
 
         const filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
@@ -254,7 +257,7 @@ describe("NumberFilterPicker", () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup();
 
         await setOperator("Is empty");
-        userEvent.click(screen.getByText("Add filter"));
+        await userEvent.click(screen.getByText("Add filter"));
 
         const filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
@@ -269,7 +272,9 @@ describe("NumberFilterPicker", () => {
     it("should handle invalid input", async () => {
       setup();
 
-      userEvent.type(
+      await userEvent.click(screen.getByDisplayValue("Between"));
+      await userEvent.click(screen.getByText("Equal to"));
+      await userEvent.type(
         screen.getByPlaceholderText("Enter a number"),
         "Twenty four",
       );
@@ -277,9 +282,9 @@ describe("NumberFilterPicker", () => {
       expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
     });
 
-    it("should go back", () => {
+    it("should go back", async () => {
       const { onBack, onChange } = setup();
-      userEvent.click(screen.getByLabelText("Back"));
+      await userEvent.click(screen.getByLabelText("Back"));
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
     });
@@ -314,12 +319,11 @@ describe("NumberFilterPicker", () => {
             }),
           );
 
+          const input = screen.getByPlaceholderText("Enter a number");
           await setOperator("Greater than");
-          userEvent.type(
-            screen.getByPlaceholderText("Enter a number"),
-            `{selectall}{backspace}${value}`,
-          );
-          userEvent.click(screen.getByText("Update filter"));
+          await userEvent.clear(input);
+          await userEvent.type(input, `${value}`);
+          await userEvent.click(screen.getByText("Update filter"));
 
           const filterParts = getNextFilterParts();
           expect(filterParts).toMatchObject({
@@ -371,11 +375,13 @@ describe("NumberFilterPicker", () => {
           await setOperator("Between");
           const leftInput = screen.getByPlaceholderText("Min");
           const rightInput = screen.getByPlaceholderText("Max");
-          userEvent.type(leftInput, `{selectall}{backspace}${leftValue}`);
+          await userEvent.clear(leftInput);
+          await userEvent.type(leftInput, `${leftValue}`);
           expect(updateButton).toBeEnabled();
 
-          userEvent.type(rightInput, `{selectall}{backspace}${rightValue}`);
-          userEvent.click(updateButton);
+          await userEvent.clear(rightInput);
+          await userEvent.type(rightInput, `${rightValue}`);
+          await userEvent.click(updateButton);
 
           const filterParts = getNextFilterParts();
           expect(filterParts).toMatchObject({
@@ -394,8 +400,8 @@ describe("NumberFilterPicker", () => {
           createQueryWithNumberFilter({ operator: "=", values: [1, 2] }),
         );
 
-        userEvent.type(screen.getByLabelText("Filter value"), "3");
-        userEvent.click(screen.getByText("Update filter"));
+        await userEvent.type(screen.getByLabelText("Filter value"), "3");
+        await userEvent.click(screen.getByText("Update filter"));
 
         const filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
@@ -424,7 +430,7 @@ describe("NumberFilterPicker", () => {
         );
 
         await setOperator("Is empty");
-        userEvent.click(screen.getByText("Update filter"));
+        await userEvent.click(screen.getByText("Update filter"));
 
         const filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
@@ -439,7 +445,7 @@ describe("NumberFilterPicker", () => {
     it("should list operators", async () => {
       setup(createQueryWithNumberFilter({ operator: "<" }));
 
-      userEvent.click(screen.getByDisplayValue("Less than"));
+      await userEvent.click(screen.getByDisplayValue("Less than"));
       const listbox = await screen.findByRole("listbox");
       const options = within(listbox).getAllByRole("option");
 
@@ -458,7 +464,7 @@ describe("NumberFilterPicker", () => {
       );
 
       await setOperator("Greater than");
-      userEvent.click(screen.getByText("Update filter"));
+      await userEvent.click(screen.getByText("Update filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
@@ -503,9 +509,9 @@ describe("NumberFilterPicker", () => {
       expect(updateButton).toBeDisabled();
     });
 
-    it("should go back", () => {
+    it("should go back", async () => {
       const { onBack, onChange } = setup(createQueryWithNumberFilter());
-      userEvent.click(screen.getByLabelText("Back"));
+      await userEvent.click(screen.getByLabelText("Back"));
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
     });

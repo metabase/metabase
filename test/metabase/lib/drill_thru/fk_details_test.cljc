@@ -16,9 +16,10 @@
   (testing "FK details is available for cell clicks on non-NULL FKs"
     (canned/canned-test
       :drill-thru/fk-details
-      (fn [_test-case context {:keys [click column-type]}]
+      (fn [test-case context {:keys [click column-type]}]
         (and (= click :cell)
              (= column-type :fk)
+             (not (:native? test-case))
              (not= (:value context) :null))))))
 
 (deftest ^:parallel returns-fk-details-test-1
@@ -187,6 +188,7 @@
                             :column          (m/find-first #(= (:name %) "PRODUCT_ID") (lib/returned-columns query))
                             :object-id       venue-id
                             ;; TODO: This field actually refers to the source table, not the target one. Is that right?
+                            ;; Tech Debt Issue: #39409
                             :many-pks?       false}
            :expected-query {:stages [{:filters [[:= {} [:field {} (meta/id :checkins :venue-id)] venue-id]]}]}}))
 

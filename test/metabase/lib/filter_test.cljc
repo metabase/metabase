@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -12,6 +13,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.matrix :as matrix]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -215,7 +217,7 @@
             [:ends-with
              {:lib/uuid "953597df-a96d-4453-a57b-665e845abc69"}
              [:field {:lib/uuid "be28f393-538a-406b-90da-bac5f8ef565e"} (meta/id :venues :name)]
-             "t"]))) ))
+             "t"])))))
 
 (deftest ^:parallel filterable-columns-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
@@ -280,6 +282,24 @@
                  "Venues__PRICE" {"="       {:display-name "=", :long-display-name "Equal to"}
                                   "is-null" {:display-name "Is empty", :long-display-name "Is empty"}}}
                 display-info-by-type-and-op))))))
+
+(deftest ^:parallel filterable-columns-excludes-offset-expressions-test
+  (testing "filterable-columns should exclude expressions which contain :offset"
+    (let [query (-> lib.tu/venues-query
+                    (lib/order-by (meta/field-metadata :venues :id) :asc)
+                    (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
+                    (lib/expression "Nested Offset"
+                                    (lib/* 100 (lib/offset (meta/field-metadata :venues :price) -1))))]
+      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
+        (is (=? [{:id (meta/id :venues :id) :name "ID"}
+                 {:id (meta/id :venues :name) :name "NAME"}
+                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
+                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
+                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
+                 {:id (meta/id :venues :price) :name "PRICE"}
+                 {:id (meta/id :categories :id) :name "ID"}
+                 {:id (meta/id :categories :name) :name "NAME"}]
+                (lib/filterable-columns query)))))))
 
 (deftest ^:parallel filter-clause-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users)))
@@ -352,16 +372,38 @@
               :database-type "BOOLEAN",
               :effective-type :type/Boolean,
               :fk-target-field-id nil,
-              :operators [{:lib/type :operator/filter, :short :=, :display-name-variant :default}
-                          {:lib/type :operator/filter, :short :is-null, :display-name-variant :is-empty}
-                          {:lib/type :operator/filter, :short :not-null, :display-name-variant :not-empty}],
               :id 14,
               :parent-id nil,
               :visibility-type :normal,
               :lib/desired-column-alias "TRIAL_CONVERTED",
               :display-name "Trial Converted",
               :position 10,
-              :fingerprint {:global {:distinct-count 2, :nil% 0.0}}})))))
+              :fingerprint {:global {:distinct-count 2, :nil% 0.0}}}))))
+  (testing "should return text-like operators for text-like PKs and FKs"
+    (doseq [semantic-type [:type/PK :type/FK]
+            :let [column {:description nil,
+                          :lib/type :metadata/column,
+                          :base-type :type/MongoBSONID,
+                          :semantic-type semantic-type
+                          :table-id 7,
+                          :name "ID",
+                          :coercion-strategy nil,
+                          :lib/source :source/table-defaults,
+                          :lib/source-column-alias "ID",
+                          :settings nil,
+                          :lib/source-uuid "ad9a276f-3af8-4e5a-b17e-d8170273ec0a",
+                          :nfc-path nil,
+                          :database-type "STRING",
+                          :effective-type :type/MongoBSONID,
+                          :fk-target-field-id nil,
+                          :id 14,
+                          :parent-id nil,
+                          :visibility-type :normal,
+                          :lib/desired-column-alias "ID",
+                          :display-name "ID",
+                          :position 10}]]
+        (is (= [:= :!= :is-null :not-null :is-empty :not-empty]
+               (mapv :short (lib.filter.operator/filter-operators column)))))))
 
 (deftest ^:parallel replace-filter-clause-test
   (testing "Make sure we are able to replace a filter clause using the lib functions for manipulating filters."
@@ -417,9 +459,8 @@
         (let [filter-clause (assoc first-filter 2 43)]
           (is (nil? (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL filter-clause))))))
       (testing "ambiguous match"
-        (let [query (lib/filter query (-> first-filter
-                                          (assoc-in [1 :lib/uuid] (str (random-uuid)))
-                                          (assoc-in [2 1 :lib/uuid] (str (random-uuid)))))]
+        ;; don't use lib/filter because it will ignore duplicate filters.
+        (let [query (lib.util/update-query-stage query -1 update :filters conj (lib.util/fresh-uuids first-filter))]
           (is (thrown-with-msg?
                #?(:clj Exception :cljs :default) #"Multiple matching filters found"
                (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL (first filter-clauses))))))))))
@@ -572,12 +613,17 @@
        {:clause [:!= nam "A" "B" "C"], :name "Name is not 3 selections"}
        {:clause [:contains nam "ABC"], :name "Name contains ABC"}
        {:clause [:contains nam "ABC"], :options {:case-sensitive true}, :name "Name contains ABC"}
+       {:clause [:contains nam "ABC"], :options {:case-sensitive false}, :name "Name contains ABC"}
+       {:clause [:contains nam "ABC" "HJK" "XYZ"], :name "Name contains 3 selections"}
        {:clause [:does-not-contain nam "ABC"], :name "Name does not contain ABC"}
+       {:clause [:does-not-contain nam "ABC" "HJK" "XYZ"], :name "Name does not contain 3 selections"}
        {:clause [:is-empty nam], :name "Name is empty"}
        {:clause [:not-empty nam], :name "Name is not empty"}
        {:clause [:does-not-contain nam "ABC"], :name "Name does not contain ABC"}
        {:clause [:starts-with nam "ABC"], :name "Name starts with ABC"}
-       {:clause [:ends-with nam "ABC"], :name "Name ends with ABC"}])))
+       {:clause [:starts-with nam "ABC" "HJK" "XYZ"], :name "Name starts with 3 selections"}
+       {:clause [:ends-with nam "ABC"], :name "Name ends with ABC"}
+       {:clause [:ends-with nam "ABC" "HJK" "XYZ"], :name "Name ends with 3 selections"}])))
 
 (deftest ^:parallel boolean-frontend-filter-display-names-test
   (check-display-names
@@ -627,8 +673,8 @@
                  (lib/expression-clause :+
                                         [created-at
                                          (lib/expression-clause :interval [1 :month] nil)] nil)
-                  (lib/expression-clause :relative-datetime [-1 :month] nil)
-                  (lib/expression-clause :relative-datetime [0 :month] nil)],
+                 (lib/expression-clause :relative-datetime [-1 :month] nil)
+                 (lib/expression-clause :relative-datetime [0 :month] nil)],
         :name "Created At is in the previous month, starting 1 month ago"}
        {:clause [:time-interval created-at :current :day], :name "Created At is today"}
        {:clause [:time-interval created-at :current :week], :name "Created At is this week"}
@@ -753,3 +799,53 @@
               parts))
       (is (=? [:= {} (lib.options/update-options (lib/ref col) dissoc :lib/uuid) v]
               (lib/expression-clause (:operator parts) (:args parts) nil))))))
+
+(deftest ^:parallel add-filters-to-stage-test
+  (testing "Don't add empty :filters"
+    (is (= {:lib/type :mbql.stage/mbql}
+           (lib.filter/add-filters-to-stage {:lib/type :mbql.stage/mbql} nil)
+           (lib.filter/add-filters-to-stage {:lib/type :mbql.stage/mbql} []))))
+  (testing "Ignore duplicate filters"
+    (is (= {:lib/type :mbql.stage/mbql
+            :filters [[:=
+                       {:lib/uuid "00000000-0000-0000-0000-000000000001"}
+                       [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 1]
+                       1]
+                      [:=
+                       {:lib/uuid "00000000-0000-0000-0000-000000000003"}
+                       [:field {:lib/uuid "00000000-0000-0000-0000-000000000004"} 1]
+                       2]]}
+           (lib.filter/add-filters-to-stage
+            {:lib/type :mbql.stage/mbql
+             :filters [[:=
+                        {:lib/uuid "00000000-0000-0000-0000-000000000001"}
+                        [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 1]
+                        1]
+                       [:=
+                        {:lib/uuid "00000000-0000-0000-0000-000000000003"}
+                        [:field {:lib/uuid "00000000-0000-0000-0000-000000000004"} 1]
+                        2]]}
+            [[:=
+              {:lib/uuid "00000000-0000-0000-0000-000000000005"}
+              [:field {:lib/uuid "00000000-0000-0000-0000-000000000006"} 1]
+              1]])))))
+
+(deftest ^:parallel flatten-compound-filters-in-stage-test
+  (is (= {:lib/type :mbql.stage/mbql
+          :filters
+          [[:= {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1 2]
+           [:= {:lib/uuid "00000000-0000-0000-0000-000000000002"} 3 4]
+           [:= {:lib/uuid "00000000-0000-0000-0000-000000000003"} 5 6]
+           [:= {:lib/uuid "00000000-0000-0000-0000-000000000005"} 7 8]
+           [:= {:lib/uuid "00000000-0000-0000-0000-000000000006"} 9 10]]}
+         (lib.filter/flatten-compound-filters-in-stage
+          {:lib/type :mbql.stage/mbql
+           :filters  [[:= {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1 2]
+                      [:and
+                       {:lib/uuid "00000000-0000-0000-0000-000000000001"}
+                       [:= {:lib/uuid "00000000-0000-0000-0000-000000000002"} 3 4]
+                       [:= {:lib/uuid "00000000-0000-0000-0000-000000000003"} 5 6]
+                       [:and
+                        {:lib/uuid "00000000-0000-0000-0000-000000000004"}
+                        [:= {:lib/uuid "00000000-0000-0000-0000-000000000005"} 7 8]
+                        [:= {:lib/uuid "00000000-0000-0000-0000-000000000006"} 9 10]]]]}))))

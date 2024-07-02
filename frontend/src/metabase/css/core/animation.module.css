@@ -1,6 +1,5 @@
 /* TODO - ideally this would be more reusable and not hardcode a value */
-/* stylelint-disable-next-line selector-type-no-unknown */
-:global @keyframes progress-bar {
+@keyframes progress-bar {
   from {
     transform: translate3d(0, 0, 0, 0);
   }
@@ -8,4 +7,22 @@
   to {
     transform: translate3d(1000px, 0, 0);
   }
+}
+
+.ProgressBarAnimation {
+  animation: progress-bar 1.5s linear infinite;
+}
+
+.ProgressBarNoAnimation {
+  animation: none;
+}
+
+.SpinOut {
+  transform-style: preserve-3d;
+  transform-origin: center;
+  transition: transform 1s;
+}
+
+.SpinOutActive {
+  transform: rotateY(180deg);
 }

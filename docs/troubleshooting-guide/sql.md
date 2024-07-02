@@ -15,14 +15,18 @@ title: Troubleshooting SQL questions
 ## SQL variables and field filters
 
 - [Filter widget doesn't display a dropdown menu of values](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter).
-- [SQL query contains table aliases](../questions/native-editor/sql-parameters.md#table-aliases).
-- [SQL syntax error: missing `FROM` clause](../questions/native-editor/sql-parameters.md#include-dependencies-in-your-query).
+- [SQL query contains table aliases](../questions/native-editor/sql-parameters.md#field-filters-dont-work-with-table-aliases).
+- [SQL syntax error: missing `FROM` clause](../questions/native-editor/sql-parameters.md#field-filters-must-be-connected-to-fields-included-in-the-query).
 - [No option to display a filter widget](../questions/native-editor/sql-parameters.md#field-filter-compatible-types).
 - [I don't know the SQL variable type](https://www.metabase.com/learn/sql-questions/sql-variables#the-different-types-of-variables-available-for-native-sql-queries).
 
 ## SQL syntax errors
 
 For some common error messages, see [error messages](./error-message.md).
+
+## Working with JSON in SQL
+
+Using the `?` operator for working with JSON in SQL may cause queries to fail. On PostgreSQL, you can use `??` instead.
 
 ## Are you still stuck?
 

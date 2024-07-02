@@ -12,13 +12,13 @@ You can also skip to the [complete list of expressions][expression-list].
 
 ## Custom expressions to create filters, metrics, and custom columns
 
-To use custom expression, create a __Custom Column__ (where the custom expression is used as a Field Formula to calculate values for the new column), or click on __Filter__ or __Summarize__ and select __Custom Expression__.
+To use custom expression, create a **Custom Column** (where the custom expression is used as a Field Formula to calculate values for the new column), or click on **Filter** or **Summarize** and select **Custom Expression**.
 
 When using the query builder, you can use expressions to create new:
 
-- **Filters**. The expression `= contains([comment], "Metabase")` would filter for rows where the `comment` field contained the word "Metabase".
-- **Metrics**. Also known as summaries or aggregations. `= share([Total] > 50)` would return the percentage of orders with totals greater than 50 dollars.
 - **Custom columns**. You could use `= [Subtotal] / [Quantity]` to create a new column, which you could name "Item price".
+- **Filters**. The expression `= contains([comment], "Metabase")` would filter for rows where the `comment` field contained the word "Metabase".
+- **Summaries**. Also known as metrics or aggregations. `= Share([Total] > 50)` would return the percentage of orders with totals greater than 50 dollars.
 
 This page covers the basics of expressions. You can check out a [full list of expressions][expression-list] in Metabase, or walk through a tutorial that shows you how you can use [custom expressions in the notebook editor][custom-expressions].
 
@@ -40,7 +40,7 @@ Use `+`, `-`, `*` (multiply), `/` (divide) on numeric columns with numeric value
 
 For example, you could create a new column that calculates the difference between the total and subtotal of a order: `= [Total] - [Subtotal]`.
 
-You can't currently do math on timestamp columns (we're working on adding new date functions soon, so stay tuned).
+To do math on timestamp columns, you can use [Date functions](expressions-list.md#date-functions) like [dateDiff](./expressions/datetimediff.md).
 
 ## Conditional operators
 
@@ -52,7 +52,7 @@ For example, you could create a filter for customers from California or Vermont:
 
 You can refer to columns in the current table, or to columns that are linked via a foreign key relationship. Column names should be included inside of square brackets, like this: `[Name of Column]`. Columns in connected tables can be referred to like this: `[ConnectedTableName.Column]`.
 
-## Referencing Segments and metrics
+## Referencing Segments and Metrics
 
 You can refer to saved [Segments or Metrics](../../data-modeling/segments-and-metrics.md) that are present in the currently selected table. You write these out the same as with columns, like this: `[Valid User Sessions]`.
 
@@ -61,7 +61,7 @@ You can refer to saved [Segments or Metrics](../../data-modeling/segments-and-me
 Some things to keep in mind about filter expressions and conditionals:
 
 - Filter expressions are different in that they must return a Boolean value (something that's either true or false). For example, you could write `[Subtotal] + [Tax] < 100`. Metabase would look at each row, add its subtotal and tax, the check if that sum is greater than 100. If it is, the statement evaluates as true, and Metabase will include the row in the result. If instead you were to (incorrectly) write `[Subtotal] + [Tax]`, Metabase wouldn't know what to do, as that expression doesn't evaluate to true or false.
-- You can use functions inside of the conditional portion of the `Countif` and `Sumif` aggregations, like so: `countif( round([Subtotal]) > 100 OR floor([Tax]) < 10 )`.
+- You can use functions inside of the conditional portion of the `CountIf` and `SumIf` aggregations, like so: `CountIf( round([Subtotal]) > 100 OR floor([Tax]) < 10 )`.
 
 ## Working with dates in filter expressions
 
@@ -77,7 +77,7 @@ This expression would return rows where `Created At` is between January 1, 2020 
 
 See a full list of [expressions][expression-list].
 
-For a tutorial on expressions, see [Custom expressions in the notebook editor][custom-expressions].
+For a tutorial on expressions, see [Custom expressions in the query builder][custom-expressions].
 
 [aggregations]: ./expressions-list.md#aggregations
 [custom-expressions]: https://www.metabase.com/learn/questions/custom-expressions

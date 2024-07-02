@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { getIn } from "icepick";
 import PropTypes from "prop-types";
 import { Component } from "react";
@@ -8,13 +9,13 @@ import Revision from "metabase/admin/datamodel/components/revisions/Revision";
 import EmptyState from "metabase/components/EmptyState";
 import S from "metabase/components/List/List.module.css";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import { assignUserColors } from "metabase/lib/formatting";
 import * as metadataActions from "metabase/redux/metadata";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import {
   getSegmentRevisions,
-  getMetric,
   getSegment,
   getTables,
   getUser,
@@ -29,7 +30,6 @@ const emptyStateData = {
 const mapStateToProps = (state, props) => {
   return {
     revisions: getSegmentRevisions(state, props),
-    metric: getMetric(state, props),
     segment: getSegment(state, props),
     tables: getTables(state, props),
     user: getUser(state, props),
@@ -46,7 +46,6 @@ class SegmentRevisions extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,
     revisions: PropTypes.object.isRequired,
-    metric: PropTypes.object.isRequired,
     segment: PropTypes.object.isRequired,
     tables: PropTypes.object.isRequired,
     user: PropTypes.object.isRequired,
@@ -55,18 +54,10 @@ class SegmentRevisions extends Component {
   };
 
   render() {
-    const {
-      style,
-      revisions,
-      metric,
-      segment,
-      tables,
-      user,
-      loading,
-      loadingError,
-    } = this.props;
+    const { style, revisions, segment, tables, user, loading, loadingError } =
+      this.props;
 
-    const entity = metric.id ? metric : segment;
+    const entity = segment;
 
     const userColorAssignments =
       user && Object.keys(revisions).length > 0
@@ -79,7 +70,7 @@ class SegmentRevisions extends Component {
         : {};
 
     return (
-      <div style={style} className="full">
+      <div style={style} className={CS.full}>
         <ReferenceHeader
           name={t`Revision history for ${this.props.segment.name}`}
           headerIcon="segment"
@@ -90,8 +81,16 @@ class SegmentRevisions extends Component {
         >
           {() =>
             Object.keys(revisions).length > 0 && tables[entity.table_id] ? (
-              <div className="wrapper">
-                <div className="px3 py3 mb4 bg-white bordered">
+              <div className={CS.wrapper}>
+                <div
+                  className={cx(
+                    CS.px3,
+                    CS.py3,
+                    CS.mb4,
+                    CS.bgWhite,
+                    CS.bordered,
+                  )}
+                >
                   <div>
                     {Object.values(revisions)
                       .map(revision =>

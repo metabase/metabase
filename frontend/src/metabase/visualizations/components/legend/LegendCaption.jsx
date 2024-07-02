@@ -1,8 +1,12 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 import LegendActions from "./LegendActions";
 import {
@@ -17,6 +21,7 @@ const propTypes = {
   className: PropTypes.string,
   title: PropTypes.string,
   description: PropTypes.string,
+  href: PropTypes.string,
   icon: PropTypes.object,
   actionButtons: PropTypes.node,
   onSelectTitle: PropTypes.func,
@@ -32,6 +37,7 @@ const LegendCaption = ({
   className,
   title,
   description,
+  href,
   icon,
   actionButtons,
   onSelectTitle,
@@ -41,7 +47,12 @@ const LegendCaption = ({
     <LegendCaptionRoot className={className} data-testid="legend-caption">
       {icon && <LegendLabelIcon {...icon} />}
       <LegendLabel
-        className="fullscreen-normal-text fullscreen-night-text"
+        className={cx(
+          DashboardS.fullscreenNormalText,
+          DashboardS.fullscreenNightText,
+          EmbedFrameS.fullscreenNightText,
+        )}
+        href={href}
         onClick={onSelectTitle}
       >
         <Ellipsified data-testid="legend-caption-title">{title}</Ellipsified>
@@ -56,7 +67,9 @@ const LegendCaption = ({
             }
             maxWidth="22em"
           >
-            <LegendDescriptionIcon className="hover-child hover-child--smooth" />
+            <LegendDescriptionIcon
+              className={cx(CS.hoverChild, CS.hoverChildSmooth)}
+            />
           </Tooltip>
         )}
         {actionButtons && <LegendActions>{actionButtons}</LegendActions>}

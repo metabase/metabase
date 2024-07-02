@@ -2,10 +2,9 @@ import { useState } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import { color } from "metabase/lib/colors";
-import { useSelector } from "metabase/lib/redux";
 import type { LLMIndicatorProps } from "metabase/plugins/types";
-import { getSetting } from "metabase/selectors/settings";
 import { Button, Icon, Tooltip } from "metabase/ui";
 import { AutoDescribeApi } from "metabase-enterprise/services";
 
@@ -17,9 +16,7 @@ export const LLMSuggestQuestionInfo = ({
 }: LLMIndicatorProps) => {
   const [acceptedSuggestion, setAcceptedSuggestion] = useState(false);
 
-  const isActive = useSelector(
-    state => !!getSetting(state, "ee-openai-api-key"),
-  );
+  const isActive = useSetting("ee-ai-features-enabled");
 
   const { loading, value } = useAsync(async () => {
     if (!isActive) {
@@ -48,7 +45,7 @@ export const LLMSuggestQuestionInfo = ({
     : t`Description generated. Click to auto-fill.`;
 
   const className = loading ? "llm-pulse-icon" : undefined;
-  const iconColor = loading ? color("text-medium") : color("brand");
+  const iconColor = loading ? color("text-medium") : "var(--mb-color-brand)";
 
   return (
     <Tooltip label={tooltip} position="top-end">

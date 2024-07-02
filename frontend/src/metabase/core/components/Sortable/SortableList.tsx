@@ -9,6 +9,7 @@ import { SortableContext, arrayMove } from "@dnd-kit/sortable";
 import { useState, useMemo, useEffect } from "react";
 import _ from "underscore";
 
+import GrabberS from "metabase/css/components/grabber.module.css";
 import { isNotNull } from "metabase/lib/types";
 
 type ItemId = number | string;
@@ -18,12 +19,12 @@ export type DragEndEvent = {
   itemIds: ItemId[];
 };
 
-interface RenderItemProps<T> {
+export type RenderItemProps<T> = {
   item: T;
   id: ItemId;
   isDragOverlay?: boolean;
-}
-interface useSortableListProps<T> {
+};
+type useSortableListProps<T> = {
   items: T[];
   getId: (item: T) => ItemId;
   renderItem: ({ item, id, isDragOverlay }: RenderItemProps<T>) => JSX.Element;
@@ -32,7 +33,7 @@ interface useSortableListProps<T> {
   sensors?: SensorDescriptor<any>[];
   modifiers?: Modifier[];
   useDragOverlay?: boolean;
-}
+};
 
 export const SortableList = <T,>({
   items,
@@ -45,7 +46,9 @@ export const SortableList = <T,>({
   useDragOverlay = true,
 }: useSortableListProps<T>) => {
   const [itemIds, setItemIds] = useState<ItemId[]>([]);
-  const [indexedItems, setIndexedItems] = useState<Record<ItemId, T>>({});
+  const [indexedItems, setIndexedItems] = useState<Partial<Record<ItemId, T>>>(
+    {},
+  );
   const [activeItem, setActiveItem] = useState<T | null>(null);
 
   useEffect(() => {
@@ -77,7 +80,7 @@ export const SortableList = <T,>({
   };
 
   const handleDragStart = (event: DragStartEvent) => {
-    document.body.classList.add("grabbing");
+    document.body.classList.add(GrabberS.grabbing);
 
     onSortStart?.(event);
 
@@ -88,7 +91,7 @@ export const SortableList = <T,>({
   };
 
   const handleDragEnd = () => {
-    document.body.classList.remove("grabbing");
+    document.body.classList.remove(GrabberS.grabbing);
     if (activeItem && onSortEnd) {
       onSortEnd({
         id: getId(activeItem),

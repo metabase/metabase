@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.names :as names]
    [metabase-enterprise.serialization.test-util :as ts]
-   [metabase.models :refer [Card Collection Dashboard Database Field Metric NativeQuerySnippet Segment Table]]
+   [metabase.models :refer [Card Collection Dashboard Database Field NativeQuerySnippet Segment Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -30,7 +30,6 @@
                     (t2/select-one Card :id card-id-nested)
                     (t2/select-one Table :id table-id)
                     (t2/select-one Field :id category-field-id)
-                    (t2/select-one Metric :id metric-id)
                     (t2/select-one Segment :id segment-id)
                     (t2/select-one Collection :id collection-id)
                     (t2/select-one Collection :id collection-id-nested)
@@ -39,7 +38,7 @@
                     (t2/select-one NativeQuerySnippet :id snippet-id)]]
       (testing (class object)
         (let [context (names/fully-qualified-name->context (names/fully-qualified-name object))
-              id-fn   (some-fn :snippet :field :metric :segment :card :dashboard :collection :table :database)]
+              id-fn   (some-fn :snippet :field :segment :card :dashboard :collection :table :database)]
           (is (= (u/the-id object)
                  (id-fn context))))))))
 

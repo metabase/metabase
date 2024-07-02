@@ -35,7 +35,7 @@ describe("scenarios > visualizations > rows", () => {
           { visitQuestion: true },
         );
 
-        cy.get(".Visualization").within(() => {
+        cy.findByTestId("query-visualization-root").within(() => {
           ["a", "b", "c", "d", "e", "f"].forEach(letter => {
             cy.findByText(letter);
           });
@@ -70,7 +70,7 @@ describe("scenarios > visualizations > rows", () => {
       { visitQuestion: true },
     );
 
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("query-visualization-root").within(() => {
       ["a", "b", "c", "d", "e", "f"].forEach(letter => {
         cy.findByText(letter);
       });
@@ -79,5 +79,18 @@ describe("scenarios > visualizations > rows", () => {
       });
       cy.findByText("COLUMN_TWO");
     });
+
+    // Verify hovering bars does not change their size (metabase#43631)
+    cy.findAllByRole("graphics-symbol").eq(0).as("firstBar");
+    cy.get("@firstBar")
+      .invoke("width")
+      .then(prevWidth => {
+        cy.get("@firstBar")
+          .realHover()
+          .invoke("width")
+          .then(newWidth => {
+            expect(prevWidth).eq(newWidth);
+          });
+      });
   });
 });

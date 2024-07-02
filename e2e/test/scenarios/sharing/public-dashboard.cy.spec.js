@@ -11,6 +11,8 @@ import {
   goToTab,
   assertDashboardFixedWidth,
   assertDashboardFullWidth,
+  describeEE,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -77,48 +79,52 @@ const USERS = {
   "anonymous user": () => cy.signOut(),
 };
 
+const prepareDashboard = () => {
+  cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+
+  cy.intercept("/api/dashboard/*/public_link").as("publicLink");
+
+  cy.createNativeQuestionAndDashboard({
+    questionDetails,
+    dashboardDetails,
+  }).then(
+    ({
+      body: { id, card_id, dashboard_id, dashboard_tab_id },
+      dashboardTabs,
+    }) => {
+      cy.wrap(dashboard_id).as("dashboardId");
+      // Connect filter to the card
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        tabs: dashboardTabs,
+        dashcards: [
+          {
+            id,
+            dashboard_tab_id,
+            card_id,
+            row: 0,
+            col: 0,
+            size_x: 8,
+            size_y: 6,
+            parameter_mappings: [
+              {
+                parameter_id: textFilter.id,
+                card_id,
+                target: ["dimension", ["template-tag", "c"]],
+              },
+            ],
+          },
+        ],
+      });
+    },
+  );
+};
+
 describe("scenarios > public > dashboard", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
-    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
-
-    cy.intercept("/api/dashboard/*/public_link").as("publicLink");
-
-    cy.createNativeQuestionAndDashboard({
-      questionDetails,
-      dashboardDetails,
-    }).then(
-      ({
-        body: { id, card_id, dashboard_id, dashboard_tab_id },
-        dashboardTabs,
-      }) => {
-        cy.wrap(dashboard_id).as("dashboardId");
-        // Connect filter to the card
-        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-          tabs: dashboardTabs,
-          dashcards: [
-            {
-              id,
-              dashboard_tab_id,
-              card_id,
-              row: 0,
-              col: 0,
-              size_x: 8,
-              size_y: 6,
-              parameter_mappings: [
-                {
-                  parameter_id: textFilter.id,
-                  card_id,
-                  target: ["dimension", ["template-tag", "c"]],
-                },
-              ],
-            },
-          ],
-        });
-      },
-    );
+    prepareDashboard();
   });
 
   it("should allow users to create public dashboards", () => {
@@ -169,7 +175,7 @@ describe("scenarios > public > dashboard", () => {
           );
         });
 
-        cy.get(".ScalarValue").should("have.text", COUNT_ALL);
+        cy.findByTestId("scalar-value").should("have.text", COUNT_ALL);
 
         filterWidget().click();
         popover().within(() => {
@@ -177,7 +183,7 @@ describe("scenarios > public > dashboard", () => {
           cy.button("Add filter").click();
         });
 
-        cy.get(".ScalarValue").should("have.text", COUNT_DOOHICKEY);
+        cy.findByTestId("scalar-value").should("have.text", COUNT_DOOHICKEY);
       });
     }),
   );
@@ -191,7 +197,7 @@ describe("scenarios > public > dashboard", () => {
       visitPublicDashboard(id);
     });
 
-    cy.get(".ScalarValue").should("have.text", COUNT_ALL);
+    cy.findByTestId("scalar-value").should("have.text", COUNT_ALL);
     cy.button("Apply").should("not.exist");
 
     filterWidget().click();
@@ -200,11 +206,11 @@ describe("scenarios > public > dashboard", () => {
       cy.button("Add filter").click();
     });
 
-    cy.get(".ScalarValue").should("have.text", COUNT_ALL);
+    cy.findByTestId("scalar-value").should("have.text", COUNT_ALL);
 
     cy.button("Apply").should("be.visible").click();
     cy.button("Apply").should("not.exist");
-    cy.get(".ScalarValue").should("have.text", COUNT_DOOHICKEY);
+    cy.findByTestId("scalar-value").should("have.text", COUNT_DOOHICKEY);
   });
 
   it("should only display filters mapped to cards on the selected tab", () => {
@@ -244,5 +250,40 @@ describe("scenarios > public > dashboard", () => {
     });
 
     assertDashboardFullWidth();
+  });
+
+  it("should render when a filter passed with value starting from '0' (metabase#41483)", () => {
+    cy.get("@dashboardId").then(id => {
+      visitPublicDashboard(id, {
+        params: { text: "002" },
+      });
+    });
+
+    cy.url().should("include", "text=002");
+
+    filterWidget().findByText("002").should("be.visible");
+  });
+});
+
+describeEE("scenarios [EE] > public > dashboard", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    prepareDashboard();
+
+    setTokenFeatures("all");
+  });
+
+  it("should set the window title to `{dashboard name} · {application name}`", () => {
+    cy.request("PUT", "/api/setting/application-name", {
+      value: "Custom Application Name",
+    });
+
+    cy.get("@dashboardId").then(id => {
+      visitPublicDashboard(id);
+
+      cy.title().should("eq", "Test Dashboard · Custom Application Name");
+    });
   });
 });

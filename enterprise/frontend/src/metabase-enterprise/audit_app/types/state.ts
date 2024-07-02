@@ -1,15 +1,7 @@
-import type { DashboardId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import type { CardId, CollectionId, DashboardId } from "metabase-types/api";
 
-export interface AuditInfoState extends State {
-  plugins: {
-    auditInfo: {
-      isLoading: boolean;
-      isComplete: boolean;
-      data: {
-        dashboard_overview: DashboardId;
-        question_overview: number;
-      };
-    };
-  };
+export interface AuditInfo {
+  dashboard_overview: DashboardId;
+  question_overview: CardId;
+  custom_reports: CollectionId;
 }

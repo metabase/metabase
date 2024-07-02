@@ -11,21 +11,21 @@ export const ToastCard = styled(Card)`
 `;
 
 export const ToastMessage = styled.span`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: bold;
 `;
 
 export const TabIcon = styled(Icon)`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   margin-right: ${space(1)};
 `;
 
 export const CloseIcon = styled(Icon)`
   margin-left: ${space(2)};
-  color: ${color("bg-dark")};
+  color: var(--mb-color-bg-dark);
   cursor: pointer;
 
   :hover {
-    color: ${lighten(color("bg-dark"), 0.3)};
+    color: ${() => lighten(color("bg-dark"), 0.3)};
   }
 `;

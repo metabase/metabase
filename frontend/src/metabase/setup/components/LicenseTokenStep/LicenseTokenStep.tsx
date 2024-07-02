@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useStep } from "metabase/setup/useStep";
@@ -14,20 +13,22 @@ import type { NumberedStepProps } from "../types";
 import { LicenseTokenForm } from "./LicenseTokenForm";
 
 export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
-  const { isStepActive, isStepCompleted, handleStepSelect, isSetupCompleted } =
-    useStep("license_token");
+  const { isStepActive, isStepCompleted } = useStep("license_token");
 
   const storeToken = useSelector(state => state.setup.licenseToken);
 
   const dispatch = useDispatch();
 
-  const handleValidSubmit = (token: string | null) => {
-    dispatch(
-      addUndo({
-        message: t`Your license is activated`,
-      }),
-    );
-    dispatch(submitLicenseToken(token));
+  const handleSubmit = async (token: string | null) => {
+    try {
+      await dispatch(submitLicenseToken(token)).unwrap();
+      dispatch(addUndo({ message: t`Your license is activated` }));
+    } catch (err) {
+      console.error(err);
+      throw new Error(
+        t`This token doesn’t seem to be valid. Double-check it, then contact support if you think it should be working.`,
+      );
+    }
   };
 
   const skipStep = () => {
@@ -43,8 +44,6 @@ export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
         })}
         label={stepLabel}
         isStepCompleted={isStepCompleted}
-        isSetupCompleted={isSetupCompleted}
-        onStepSelect={handleStepSelect}
       />
     );
   }
@@ -53,11 +52,11 @@ export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
     <ActiveStep title={t`Activate your commercial license`} label={stepLabel}>
       <Text
         mb="lg"
-        color={color("text-light")}
+        color="text-light"
       >{t`Unlock access to your paid features before starting`}</Text>
 
       <LicenseTokenForm
-        onValidSubmit={handleValidSubmit}
+        onSubmit={handleSubmit}
         onSkip={skipStep}
         initialValue={storeToken ?? ""}
       />

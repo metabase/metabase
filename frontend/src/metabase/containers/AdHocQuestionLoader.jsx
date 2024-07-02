@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { deserializeCardFromUrl } from "metabase/lib/card";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 
 // type annotations
 

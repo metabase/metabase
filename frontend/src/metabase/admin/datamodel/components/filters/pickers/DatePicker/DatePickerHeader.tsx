@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import type Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 
 import type { DateOperator } from "./DatePicker";
 import { DATE_OPERATORS } from "./DatePicker";

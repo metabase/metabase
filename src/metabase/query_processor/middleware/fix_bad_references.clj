@@ -2,10 +2,9 @@
   (:require
    [clojure.walk :as walk]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
 (defn- find-source-table [{:keys [source-table source-query]}]
@@ -34,7 +33,7 @@
    (fix-bad-references* inner-query inner-query (find-source-table inner-query)))
 
   ([inner-query form source-table & sources]
-   (mbql.u/replace form
+   (lib.util.match/replace form
      ;; don't replace anything inside source metadata.
      (_ :guard (constantly ((set &parents) :source-metadata)))
      &match
@@ -57,16 +56,16 @@
       (opts :guard (complement :join-alias))]
      (let [{:keys [table-id], :as field} (lib.metadata/field (qp.store/metadata-provider) id)
            {join-alias :alias}           (find-join-against-table inner-query table-id)]
-       (log/warn (u/colorize 'yellow (str (trs "Bad :field clause {0} for field {1} at {2}: clause should have a :join-alias."
-                                               (pr-str &match)
-                                               (pr-str (format "%s.%s"
-                                                               (:name (table table-id))
-                                                               (:name field)))
-                                               (pr-str &parents))
-                                          " "
-                                          (if join-alias
-                                            (trs "Guessing join {0}" (pr-str join-alias))
-                                            (trs "Unable to infer an appropriate join. Query may not work as expected.")))))
+       (log/warn (u/colorize :yellow (str
+                                      (format
+                                       "Bad :field clause %s for field %s at %s: clause should have a :join-alias."
+                                       (pr-str &match)
+                                       (pr-str (format "%s.%s" (:name (table table-id)) (:name field)))
+                                       (pr-str &parents))
+                                      " "
+                                      (if join-alias
+                                        (format "Guessing join %s" (pr-str join-alias))
+                                        "Unable to infer an appropriate join. Query may not work as expected."))))
        (*bad-field-reference-fn* &match)
        (if join-alias
          [:field id (assoc opts :join-alias join-alias)]

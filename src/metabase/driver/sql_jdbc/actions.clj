@@ -5,21 +5,24 @@
    [clojure.string :as str]
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
-   [metabase.actions :as actions]
+   [metabase.actions.core :as actions]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr])
   (:import
    (java.sql Connection SQLException)))
 
@@ -59,7 +62,7 @@
      ;; Catch errors in parse-sql-error and log them so more errors in the future don't break the entire action.
      ;; We'll still get the original unparsed error message.
      (catch Throwable new-e
-       (log/error new-e (trs "Error parsing SQL error message {0}: {1}" (pr-str (ex-message e)) (ex-message new-e)))
+       (log/errorf new-e "Error parsing SQL error message %s: %s" (pr-str (ex-message e)) (ex-message new-e))
        nil))))
 
 (defn- do-with-auto-parse-sql-error
@@ -101,11 +104,14 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defn- cast-values
+(mu/defn ^:private cast-values :- ::lib.schema.actions/row
   "Certain value types need to have their honeysql form updated to work properly during update/creation. This function
   uses honeysql casting to wrap values in the map that need to be cast with their column's type, and passes through
   types that do not need casting like integer or string."
-  [driver column->value database-id table-id]
+  [driver        :- :keyword
+   column->value :- ::lib.schema.actions/row
+   database-id   :- ::lib.schema.id/database
+   table-id      :- ::lib.schema.id/table]
   (let [type->sql-type (base-type->sql-type-map driver)
         column->field  (actions/cached-value
                         [::cast-values table-id]
@@ -221,8 +227,7 @@
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/update]
   [driver action database {database-id :database :keys [update-row] :as query}]
-  (let [update-row   (update-keys update-row keyword)
-        raw-hsql     (mbql-query->raw-hsql driver query)
+  (let [raw-hsql     (mbql-query->raw-hsql driver query)
         target-table (first (:from raw-hsql))
         update-hsql  (-> raw-hsql
                          (select-keys [:where])
@@ -251,10 +256,13 @@
     (driver/dispatch-on-initialized-driver driver))
   :hierarchy #'driver/hierarchy)
 
+(mr/def ::created-row
+  [:map-of :string :any])
+
 ;;; H2 and MySQL are dumb and `RETURN_GENERATED_KEYS` only returns the ID of
 ;;; the newly created row. This function will `SELECT` the newly created row
 ;;; assuming that `result` is a map from column names to the generated values.
-(defmethod select-created-row :default
+(mu/defmethod select-created-row :default :- [:maybe ::created-row]
   [driver create-hsql conn result]
   (let [select-hsql     (-> create-hsql
                             (dissoc :insert-into :values)
@@ -267,12 +275,14 @@
         select-sql-args (sql.qp/format-honeysql driver select-hsql)]
     (log/tracef ":row/create SELECT HoneySQL:\n\n%s" (u/pprint-to-str select-hsql))
     (log/tracef ":row/create SELECT SQL + args:\n\n%s" (u/pprint-to-str select-sql-args))
-    (first (jdbc/query {:connection conn} select-sql-args {:identifiers identity, :transaction? false}))))
+    (first (jdbc/query {:connection conn} select-sql-args {:identifiers identity, :transaction? false, :keywordize? false}))))
 
-(defmethod actions/perform-action!* [:sql-jdbc :row/create]
-  [driver action database {database-id :database :keys [create-row] :as query}]
-  (let [create-row  (update-keys create-row keyword)
-        raw-hsql    (mbql-query->raw-hsql driver query)
+(mu/defmethod actions/perform-action!* [:sql-jdbc :row/create] :- [:map [:created-row [:maybe ::created-row]]]
+  [driver
+   action
+   database
+   {database-id :database :keys [create-row] :as query} :- ::mbql.s/Query]
+  (let [raw-hsql    (mbql-query->raw-hsql driver query)
         create-hsql (-> raw-hsql
                         (assoc :insert-into (first (:from raw-hsql)))
                         (assoc :values [(cast-values driver create-row database-id (get-in query [:query :source-table]))])
@@ -283,7 +293,10 @@
     (log/tracef ":row/create SQL + args:\n\n%s" (u/pprint-to-str sql-args))
     (with-jdbc-transaction [conn database-id]
       (let [result (with-auto-parse-sql-exception driver database action
-                     (jdbc/execute! {:connection conn} sql-args {:return-keys true, :identifiers identity, :transaction? false}))
+                     (jdbc/execute! {:connection conn} sql-args {:return-keys  true
+                                                                 :identifiers  identity
+                                                                 :transaction? false
+                                                                 :keywordize?  false}))
             _      (log/tracef ":row/create INSERT returned\n\n%s" (u/pprint-to-str result))
             row    (select-created-row driver create-hsql conn result)]
         (log/tracef ":row/create returned row %s" (pr-str row))
@@ -344,8 +357,14 @@
 
 ;;;; `:bulk/create`
 
-(defmethod actions/perform-action!* [:sql-jdbc :bulk/create]
-  [driver _action database {:keys [table-id rows]}]
+(mu/defmethod actions/perform-action!* [:sql-jdbc :bulk/create]
+  [driver                  :- :keyword
+   _action
+   database                :- [:map
+                               [:id ::lib.schema.id/database]]
+   {:keys [table-id rows]} :- [:map
+                               [:table-id ::lib.schema.id/table]
+                               [:rows     [:sequential ::lib.schema.actions/row]]]]
   (log/tracef "Inserting %d rows" (count rows))
   (perform-bulk-action-with-repeated-single-row-actions!
    {:driver   driver
@@ -472,7 +491,7 @@
 
 (mu/defn ^:private check-row-has-all-pk-columns
   "Return a 400 if `row` doesn't have all the required PK columns."
-  [row      :- [:map-of :string :any]
+  [row      :- ::lib.schema.actions/row
    pk-names :- [:set :string]]
   (doseq [pk-key pk-names
           :when  (not (contains? row pk-key))]
@@ -483,7 +502,7 @@
 
 (mu/defn ^:private check-row-has-some-non-pk-columns
   "Return a 400 if `row` doesn't have any non-PK columns to update."
-  [row      :- [:map-of :string :any]
+  [row      :- ::lib.schema.actions/row
    pk-names :- [:set :string]]
   (let [non-pk-names (set/difference (set (keys row)) pk-names)]
     (when (empty? non-pk-names)

@@ -4,7 +4,8 @@
    [metabase.api.common :as api]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.moderation :as moderation]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (api/defendpoint POST "/"
   "Create a new `ModerationReview`."
@@ -19,7 +20,7 @@
                      :moderated_item_type moderated_item_type
                      :moderator_id        api/*current-user-id*
                      :status              status}]
-    (api/check-404 (moderation/moderated-item review-data))
+    (api/check-404 (t2/exists? (get moderation/moderated-item-type->model moderated_item_type) moderated_item_id))
     (moderation-review/create-review! review-data)))
 
 (api/define-routes)

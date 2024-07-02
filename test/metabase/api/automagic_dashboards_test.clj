@@ -3,23 +3,23 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.automagic-dashboards :as api.magic]
-   [metabase.automagic-dashboards.util :as magic.util]
    [metabase.models
-    :refer [Card Collection Dashboard Metric ModelIndex ModelIndexValue Segment]]
+    :refer [Card Collection Dashboard LegacyMetric ModelIndex ModelIndexValue Segment]]
    [metabase.models.model-index :as model-index]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]
-   [metabase.test.domain-entities :as test.de]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.transforms :as transforms.test]
-   [metabase.transforms.core :as tf]
-   [metabase.transforms.materialize :as tf.materialize]
-   [metabase.transforms.specs :as tf.specs]
    [metabase.util :as u]
+   [metabase.xrays.automagic-dashboards.util :as magic.util]
+   [metabase.xrays.test-util.automagic-dashboards :refer [with-dashboard-cleanup!]]
+   [metabase.xrays.test-util.domain-entities :as test.de]
+   [metabase.xrays.test-util.transforms :as transforms.test]
+   [metabase.xrays.transforms.core :as tf]
+   [metabase.xrays.transforms.materialize :as tf.materialize]
+   [metabase.xrays.transforms.specs :as tf.specs]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -48,7 +48,7 @@
 
   ([template args revoke-fn validation-fn]
    (mt/with-test-user :rasta
-     (with-dashboard-cleanup
+     (with-dashboard-cleanup!
        (mt/with-full-data-perms-for-all-users!
          (let [api-endpoint (apply format (str "automagic-dashboards/" template) args)
                resp         (mt/user-http-request :rasta :get 200 api-endpoint)
@@ -89,8 +89,8 @@
 
 (deftest metric-xray-test
   (testing "GET /api/automagic-dashboards/metric/:id"
-    (t2.with-temp/with-temp [Metric {metric-id :id} {:table_id   (mt/id :venues)
-                                                     :definition {:query {:aggregation ["count"]}}}]
+    (t2.with-temp/with-temp [LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
+                                                           :definition {:query {:aggregation ["count"]}}}]
       (is (some? (api-call! "metric/%s" [metric-id]))))))
 
 (deftest segment-xray-test
@@ -247,8 +247,8 @@
 (deftest transforms-test
   (testing "GET /api/automagic-dashboards/transform/:id"
     (mt/with-test-user :crowberto
-      (transforms.test/with-test-transform-specs
-        (test.de/with-test-domain-entity-specs
+      (transforms.test/with-test-transform-specs!
+        (test.de/with-test-domain-entity-specs!
           (mt/with-model-cleanup [Card Collection]
             (tf/apply-transform! (mt/id) "PUBLIC" (first @tf.specs/transform-specs))
             (is (= [[1 "Red Medicine" 4 10.065 -165.374 3 1.5 4 3 2 1]
@@ -266,6 +266,13 @@
                                        :card
                                        :dataset_query
                                        qp/process-query))))))))))))
+
+(deftest cards-have-can-run-adhoc-query-test
+  (api-call! "table/%s" [(mt/id :venues)]
+             (constantly true)
+             (fn [dashboard]
+               (is (every? #(get-in % [:card :can_run_adhoc_query])
+                           (filter :card (:dashcards dashboard)))))))
 
 ;;; ------------------- Index Entities Xrays -------------------
 
@@ -482,11 +489,11 @@
 ;; ------------------------------------------------ `show` limit test  -------------------------------------------------
 ;; Historically, the used params are `nil` and "all", so this tests the integer case.
 
-(defn- card-count-check
+(defn- card-count-check!
   "Create a dashboard via API twice, once with a limit and once without, and return the results."
   [limit template args]
   (mt/with-test-user :crowberto
-    (with-dashboard-cleanup
+    (with-dashboard-cleanup!
       (let [api-endpoint  (apply format (str "automagic-dashboards/" template) args)
             resp          (mt/user-http-request :crowberto :get 200 api-endpoint)
             slimmed       (mt/user-http-request :crowberto :get 200 api-endpoint :show limit)
@@ -497,7 +504,7 @@
 (deftest table-show-param-test
   (testing "x-ray of a table with show set reduces the number of returned cards"
     (let [show-limit 1
-          {:keys [base-count show-count]} (card-count-check show-limit "table/%s" [(mt/id :venues)])]
+          {:keys [base-count show-count]} (card-count-check! show-limit "table/%s" [(mt/id :venues)])]
       (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
         (is (< show-count base-count)))
       (testing "Only \"limit\" cards are produced"
@@ -505,10 +512,10 @@
 
 (deftest metric-xray-show-param-test
   (testing "x-ray of a metric with show set reduces the number of returned cards"
-    (t2.with-temp/with-temp [Metric {metric-id :id} {:table_id   (mt/id :venues)
-                                                     :definition {:query {:aggregation ["count"]}}}]
+    (t2.with-temp/with-temp [LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
+                                                           :definition {:query {:aggregation ["count"]}}}]
       (let [show-limit 1
-            {:keys [base-count show-count]} (card-count-check show-limit "metric/%s" [metric-id])]
+            {:keys [base-count show-count]} (card-count-check! show-limit "metric/%s" [metric-id])]
         (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
           (is (< show-count base-count)))
         (testing "Only \"limit\" cards are produced"
@@ -519,7 +526,7 @@
     (t2.with-temp/with-temp [Segment {segment-id :id} {:table_id   (mt/id :venues)
                                                        :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
       (let [show-limit 1
-            {:keys [base-count show-count]} (card-count-check show-limit "segment/%s" [segment-id])]
+            {:keys [base-count show-count]} (card-count-check! show-limit "segment/%s" [segment-id])]
         (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
           (is (< show-count base-count)))
         (testing "Only \"limit\" cards are produced"
@@ -528,7 +535,7 @@
 (deftest field-xray-show-param-test
   (testing "x-ray of a field with show set reduces the number of returned cards"
     (let [show-limit 1
-          {:keys [base-count show-count]} (card-count-check show-limit "field/%s" [(mt/id :venues :price)])]
+          {:keys [base-count show-count]} (card-count-check! show-limit "field/%s" [(mt/id :venues :price)])]
       (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
         (is (< show-count base-count)))
       (testing "Only \"limit\" cards are produced"
@@ -541,7 +548,7 @@
                                                                   {:filter [:> $price 10]})}]
       (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])
             show-limit 2
-            {:keys [base-count show-count]} (card-count-check show-limit "question/%s/cell/%s" [card-id cell-query])]
+            {:keys [base-count show-count]} (card-count-check! show-limit "question/%s/cell/%s" [card-id cell-query])]
         (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
           (is (< show-count base-count)))
         (testing "Only \"limit\" cards are produced"
@@ -551,7 +558,7 @@
   (testing "x-ray of a comparison with show set reduces the number of returned cards"
     (t2.with-temp/with-temp [Segment {segment-id :id} @segment]
       (let [show-limit 1
-            {:keys [base-count show-count]} (card-count-check show-limit
+            {:keys [base-count show-count]} (card-count-check! show-limit
                                                               "adhoc/%s/cell/%s/compare/segment/%s"
                                                               [(->> (mt/mbql-query venues
                                                                       {:filter [:> $price 10]})
@@ -562,3 +569,14 @@
         (testing "The slimmed dashboard produces less than the base dashboard"
           ;;NOTE - Comparisons produce multiple dashboards and merge the results, so you don't get exactly `show-limit` cards
           (is (< show-count base-count)))))))
+
+(deftest query-metadata-test
+  (is (=?
+        {:tables (sort-by :id [{:id (mt/id :venues)}
+                               {:id (mt/id :categories)}])}
+        (-> (mt/user-http-request :crowberto :get 200 (str "automagic-dashboards/table/" (mt/id :venues) "/query_metadata"))
+            ;; The output is so large, these help debugging
+            #_#_#_
+            (update :fields #(map (fn [x] (select-keys x [:id])) %))
+            (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
+            (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))

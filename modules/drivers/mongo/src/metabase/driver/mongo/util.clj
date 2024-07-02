@@ -70,7 +70,7 @@
          skip (.skip skip)
          batch-size (.batchSize (int batch-size))
          sort-criteria (.sort (mongo.conversion/to-document (ordered-map/ordered-map sort-criteria))))
-       (mapv #(mongo.conversion/from-document % opts))))
+       (map #(mongo.conversion/from-document % opts))))
 
 (defn create-index
   "Create index."

@@ -1,25 +1,18 @@
 import styled from "@emotion/styled";
 
 import {
-  QueryColumnInfoIcon as _QueryColumnInfoIcon,
+  QueryColumnInfoIcon,
   HoverParent,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
-import { color, alpha, darken } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
 
 export const ItemTitle = styled.div`
   min-width: 10ch;
 `;
 
-export const ItemIcon = styled(Icon)`
+export const ItemIcon = styled(QueryColumnInfoIcon)`
   margin: 0 0.5em;
   margin-left: 0.75em;
-  color: ${color("text-dark")};
-`;
-
-export const QueryColumnInfoIcon = styled(_QueryColumnInfoIcon)`
-  color: ${alpha(darken(color("brand"), 0.6), 0.8)};
-  margin-left: auto;
+  color: var(--mb-color-text-light);
 `;
 
 export const ItemList = styled.ul`
@@ -27,8 +20,7 @@ export const ItemList = styled.ul`
 `;
 
 export const ToggleItem = styled.li`
-  border-bottom: 1px solid ${color("border")};
-  padding-bottom: 0.5em;
+  border-bottom: 1px solid var(--mb-color-border);
   margin-bottom: 0.5em;
 
   ${ItemTitle} {
@@ -43,12 +35,9 @@ export const Label = styled(HoverParent)`
   padding-right: 0;
   border-radius: 6px;
   cursor: pointer;
+  min-height: 2.25rem;
 
   &:hover {
-    background: ${color("bg-medium")};
-  }
-
-  ${ToggleItem} & {
-    padding: 0.5em;
+    background: var(--mb-color-bg-medium);
   }
 `;

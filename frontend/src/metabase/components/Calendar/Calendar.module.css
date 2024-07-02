@@ -1,33 +1,33 @@
-:global(.Calendar-weeks) {
+.CalendarWeeks {
   padding-bottom: 14px;
 }
 
-:global(.Calendar-week) {
+.CalendarWeek {
   display: flex;
   padding-left: 12px;
   padding-right: 12px;
 }
 
-:global(.Calendar-header) {
+.CalendarHeader {
   padding: 14px;
   margin-bottom: 8px;
 }
 
-:global(.Calendar-header h4) {
+.CalendarHeader h4 {
   font-weight: 700;
 }
 
-:global(.Calendar-day-names) {
+.CalendarDayNames {
   opacity: 0.12;
 }
 
-:global(.Calendar-day),
-:global(.Calendar-day-name) {
+.CalendarDay,
+.CalendarDayName {
   flex: 1;
 }
 
-:global(.Calendar-day) {
-  color: var(--color-text-light);
+.CalendarDay {
+  color: var(--mb-color-text-light);
   position: relative;
   border-radius: 99px;
   font-weight: 700;
@@ -36,36 +36,36 @@
   padding: 10px;
 }
 
-:global(.Calendar-day-name) {
+.CalendarDayName {
   cursor: inherit;
   color: inherit !important;
 }
 
-:global(.Calendar-day--this-month) {
+.CalendarDayThisMonth {
   color: currentcolor;
 }
 
-:global(.Calendar--range .Calendar-day--selected) {
+.CalendarRange .CalendarDaySelected {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
 
-:global(.Calendar--range .Calendar-day--selected-end) {
+.CalendarRange .CalendarDaySelectedEnd {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
 }
 
-:global(.Calendar-day--in-range) {
+.CalendarDayInRange {
   border-radius: 0;
-  background-color: var(--color-bg-medium);
+  background-color: var(--mb-color-bg-medium);
 }
 
-:global(.Calendar--noContext .Calendar-day) {
+.CalendarNoContext.CalendarDay {
   visibility: hidden;
   pointer-events: none;
 }
 
-:global(.Calendar--noContext .Calendar-day--this-month) {
+.CalendarNoContext.CalendarDayThisMonth {
   visibility: visible;
   pointer-events: all;
 }

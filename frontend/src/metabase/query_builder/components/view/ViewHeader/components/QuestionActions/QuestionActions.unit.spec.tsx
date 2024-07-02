@@ -8,7 +8,7 @@ import {
   screen,
 } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { Card, Database } from "metabase-types/api";
 import {
   createMockCard,
@@ -29,8 +29,8 @@ const ICON_CASES_LABELS = [
   { label: "bookmark icon", tooltipText: "Bookmark" },
   { label: "info icon", tooltipText: "More info" },
   {
-    label: "Move, archive, and more...",
-    tooltipText: "Move, archive, and more...",
+    label: "Move, trash, and more...",
+    tooltipText: "Move, trash, and more...",
   },
 ];
 
@@ -92,7 +92,7 @@ describe("QuestionActions", () => {
       }),
     });
 
-    userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(getIcon("ellipsis"));
     await screen.findByRole("dialog");
 
     expect(screen.getByText("Edit query definition")).toBeInTheDocument();
@@ -107,7 +107,7 @@ describe("QuestionActions", () => {
       }),
     });
 
-    userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(getIcon("ellipsis"));
     await screen.findByRole("dialog");
 
     expect(screen.queryByText("Edit query definition")).not.toBeInTheDocument();

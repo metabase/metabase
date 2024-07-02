@@ -5,18 +5,15 @@ import App from "metabase/App.tsx";
 import getAccountRoutes from "metabase/account/routes";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import getAdminRoutes from "metabase/admin/routes";
-import { ArchiveApp } from "metabase/archive/containers/ArchiveApp";
 import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
 import { ResetPassword } from "metabase/auth/components/ResetPassword";
-import { BrowseApp } from "metabase/browse/components/BrowseApp";
-import SchemaBrowser from "metabase/browse/components/SchemaBrowser";
-import TableBrowser from "metabase/browse/containers/TableBrowser";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
-import MoveCollectionModal from "metabase/collections/containers/MoveCollectionModal";
+import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
+import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
-import { Unauthorized } from "metabase/containers/ErrorPages";
+import { Unauthorized } from "metabase/components/ErrorPages";
 import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/containers/Unsubscribe";
 import { UserCollectionList } from "metabase/containers/UserCollectionList";
@@ -35,8 +32,6 @@ import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
-import PublicDashboard from "metabase/public/containers/PublicDashboard";
-import { PublicQuestion } from "metabase/public/containers/PublicQuestion";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
@@ -46,10 +41,6 @@ import FieldListContainer from "metabase/reference/databases/FieldListContainer"
 import TableDetailContainer from "metabase/reference/databases/TableDetailContainer";
 import TableListContainer from "metabase/reference/databases/TableListContainer";
 import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer";
-import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer";
-import MetricListContainer from "metabase/reference/metrics/MetricListContainer";
-import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer";
-import MetricRevisionsContainer from "metabase/reference/metrics/MetricRevisionsContainer";
 import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
 import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
 import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
@@ -60,7 +51,10 @@ import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
-import { BrowseRedirect } from "./browse/components/BrowseRedirect";
+import { BrowseDatabases } from "./browse/components/BrowseDatabases";
+import { BrowseModels } from "./browse/components/BrowseModels";
+import BrowseSchemas from "./browse/components/BrowseSchemas";
+import { BrowseTables } from "./browse/components/BrowseTables";
 import {
   CanAccessMetabot,
   CanAccessSettings,
@@ -88,12 +82,6 @@ export const getRoutes = store => {
           trackPageView(nextState.location.pathname);
         }}
       />
-
-      {/* PUBLICLY SHARED LINKS */}
-      <Route path="public">
-        <Route path="question/:uuid" component={PublicQuestion} />
-        <Route path="dashboard/:uuid(/:tabSlug)" component={PublicDashboard} />
-      </Route>
 
       {/* APP */}
       <Route
@@ -138,14 +126,20 @@ export const getRoutes = store => {
           />
 
           <Route path="search" title={t`Search`} component={SearchApp} />
-          <Route path="archive" title={t`Archive`} component={ArchiveApp} />
+          {/* Send historical /archive route to trash - can remove in v52 */}
+          <Redirect path="archive" to="trash" replace />
+          <Route
+            path="trash"
+            title={t`Trash`}
+            component={TrashCollectionLanding}
+          />
 
           <Route path="collection/users" component={IsAdmin}>
             <IndexRoute component={UserCollectionList} />
           </Route>
 
           <Route path="collection/:slug" component={CollectionLanding}>
-            <ModalRoute path="move" modal={MoveCollectionModal} />
+            <ModalRoute path="move" modal={MoveCollectionModal} noWrap />
             <ModalRoute path="archive" modal={ArchiveCollectionModal} />
             <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
             {getCollectionTimelineRoutes()}
@@ -156,7 +150,11 @@ export const getRoutes = store => {
             title={t`Dashboard`}
             component={DashboardAppConnected}
           >
-            <ModalRoute path="move" modal={DashboardMoveModalConnected} />
+            <ModalRoute
+              path="move"
+              modal={DashboardMoveModalConnected}
+              noWrap
+            />
             <ModalRoute path="copy" modal={DashboardCopyModalConnected} />
             <ModalRoute path="archive" modal={ArchiveDashboardModalConnected} />
           </Route>
@@ -195,28 +193,24 @@ export const getRoutes = store => {
             <Route path="metabot" component={QueryBuilder} />
           </Route>
 
+          {/* METRICS V2 */}
+          <Route path="/metric">
+            <IndexRoute component={QueryBuilder} />
+            <Route path="notebook" component={QueryBuilder} />
+            <Route path="query" component={QueryBuilder} />
+            <Route path=":slug" component={QueryBuilder} />
+            <Route path=":slug/notebook" component={QueryBuilder} />
+            <Route path=":slug/query" component={QueryBuilder} />
+          </Route>
+
           <Route path="browse">
-            <IndexRoute component={BrowseRedirect} />
-            <Route path="models" component={() => <BrowseApp tab="models" />} />
-            <Route
-              path="databases"
-              component={() => <BrowseApp tab="databases" />}
-            />
-            <Route
-              path="databases/:slug"
-              component={({ params }) => (
-                <BrowseApp tab="databases">
-                  <SchemaBrowser params={params} />
-                </BrowseApp>
-              )}
-            />
+            <IndexRedirect to="/browse/models" />
+            <Route path="models" component={BrowseModels} />
+            <Route path="databases" component={BrowseDatabases} />
+            <Route path="databases/:slug" component={BrowseSchemas} />
             <Route
               path="databases/:dbId/schema/:schemaName"
-              component={({ params }) => (
-                <BrowseApp tab="databases">
-                  <TableBrowser params={params} />
-                </BrowseApp>
-              )}
+              component={BrowseTables}
             />
 
             {/* These two Redirects support legacy paths in v48 and earlier */}
@@ -237,20 +231,6 @@ export const getRoutes = store => {
           {/* REFERENCE */}
           <Route path="/reference" title={t`Data Reference`}>
             <IndexRedirect to="/reference/databases" />
-            <Route path="metrics" component={MetricListContainer} />
-            <Route path="metrics/:metricId" component={MetricDetailContainer} />
-            <Route
-              path="metrics/:metricId/edit"
-              component={MetricDetailContainer}
-            />
-            <Route
-              path="metrics/:metricId/questions"
-              component={MetricQuestionsContainer}
-            />
-            <Route
-              path="metrics/:metricId/revisions"
-              component={MetricRevisionsContainer}
-            />
             <Route path="segments" component={SegmentListContainer} />
             <Route
               path="segments/:segmentId"

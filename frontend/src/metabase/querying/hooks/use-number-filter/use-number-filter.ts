@@ -9,6 +9,7 @@ import {
   getOptionByOperator,
   getFilterClause,
   isValidFilter,
+  getDefaultOperator,
 } from "./utils";
 
 interface UseNumberFilterProps {
@@ -16,7 +17,6 @@ interface UseNumberFilterProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
-  defaultOperator?: Lib.NumberFilterOperatorName;
 }
 
 export function useNumberFilter({
@@ -24,7 +24,6 @@ export function useNumberFilter({
   stageIndex,
   column,
   filter,
-  defaultOperator = "=",
 }: UseNumberFilterProps) {
   const filterParts = useMemo(
     () => (filter ? Lib.numberFilterParts(query, stageIndex, filter) : null),
@@ -37,7 +36,7 @@ export function useNumberFilter({
   );
 
   const [operator, setOperator] = useState(
-    filterParts?.operator ?? defaultOperator,
+    () => filterParts?.operator ?? getDefaultOperator(column),
   );
 
   const [values, setValues] = useState(() =>

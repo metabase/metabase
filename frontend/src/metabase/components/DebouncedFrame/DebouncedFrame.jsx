@@ -4,6 +4,7 @@ import { Component } from "react";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
+import CS from "metabase/css/core/index.css";
 
 const DEBOUNCE_PERIOD = 300;
 
@@ -89,14 +90,14 @@ class DebouncedFrame extends Component {
     return (
       <div
         ref={r => (this._container = r)}
-        className={cx(className, "relative")}
+        className={cx(className, CS.relative)}
         style={{
           overflow: "hidden",
           transition: "opacity 0.25s",
           ...style,
         }}
       >
-        <div className="absolute" style={{ width, height }}>
+        <div className={CS.absolute} style={{ width, height }}>
           {children}
         </div>
       </div>

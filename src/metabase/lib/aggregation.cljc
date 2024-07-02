@@ -23,7 +23,7 @@
 
 (mu/defn column-metadata->aggregation-ref :- :mbql.clause/aggregation
   "Given `:metadata/column` column metadata for an aggregation, construct an `:aggregation` reference."
-  [metadata :- lib.metadata/ColumnMetadata]
+  [metadata :- ::lib.schema.metadata/column]
   (let [options {:lib/uuid        (str (random-uuid))
                  :effective-type  ((some-fn :effective-type :base-type) metadata)
                  :lib/source-name (:name metadata)}
@@ -95,8 +95,8 @@
 (defmethod lib.metadata.calculation/column-name-method ::count-aggregation
   [_query _stage-number [tag :as _clause]]
   (case tag
-    :count     "count"
-    :cum-count "cum_count"
+    :count       "count"
+    :cum-count   "count"
     :count-where "count_where"))
 
 (defmethod lib.metadata.calculation/metadata-method ::quantity-aggregation
@@ -245,7 +245,7 @@
   [:or
    ::lib.schema.aggregation/aggregation
    ::lib.schema.common/external-op
-   lib.metadata/MetricMetadata])
+   ::lib.schema.metadata/metric])
 
 (mu/defn aggregate :- ::lib.schema/query
   "Adds an aggregation to query."
@@ -269,7 +269,7 @@
     stage-number :- :int]
    (not-empty (:aggregation (lib.util/query-stage query stage-number)))))
 
-(mu/defn aggregations-metadata :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+(mu/defn aggregations-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get metadata about the aggregations in a given stage of a query."
   ([query]
    (aggregations-metadata query -1))
@@ -288,7 +288,7 @@
   [:merge
    ::lib.schema.aggregation/operator
    [:map
-    [:columns {:optional true} [:sequential lib.metadata/ColumnMetadata]]]])
+    [:columns {:optional true} [:sequential ::lib.schema.metadata/column]]]])
 
 (defmethod lib.metadata.calculation/display-name-method :operator/aggregation
   [_query _stage-number {:keys [display-info]} _display-name-style]
@@ -301,7 +301,7 @@
                  :requires-column requires-column?)
     (some? selected?) (assoc :selected selected?)))
 
-(mu/defn aggregation-operator-columns :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+(mu/defn aggregation-operator-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Returns the columns for which `aggregation-operator` is applicable."
   [aggregation-operator :- OperatorWithColumns]
   (:columns aggregation-operator))
@@ -359,7 +359,7 @@
   [:merge
    ::lib.schema.aggregation/operator
    [:map
-    [:columns {:optional true} [:sequential lib.metadata/ColumnMetadata]]
+    [:columns {:optional true} [:sequential ::lib.schema.metadata/column]]
     [:selected? {:optional true} :boolean]]])
 
 (mu/defn selected-aggregation-operators :- [:maybe [:sequential SelectedOperatorWithColumns]]

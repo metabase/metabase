@@ -5,19 +5,17 @@ import { useMount, usePrevious } from "react-use";
 import { useDashboardQuery } from "metabase/common/hooks";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { isTableDisplay } from "metabase/lib/click-behavior";
-import type { UiParameter } from "metabase-lib/parameters/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   canSaveClickBehavior,
   clickBehaviorIsValid,
-} from "metabase-lib/parameters/utils/click-behavior";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+} from "metabase-lib/v1/parameters/utils/click-behavior";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   Dashboard,
   QuestionDashboardCard,
   DashCardId,
-  CardId,
   ClickBehavior,
-  DatasetData,
   DatasetColumn,
 } from "metabase-types/api";
 
@@ -34,7 +32,6 @@ type VizSettings = Record<string, unknown>;
 interface Props {
   dashboard: Dashboard;
   dashcard: QuestionDashboardCard;
-  dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
   parameters: UiParameter[];
   hideClickBehaviorSidebar: () => void;
   onUpdateDashCardColumnSettings: (
@@ -55,7 +52,6 @@ interface Props {
 export function ClickBehaviorSidebar({
   dashboard,
   dashcard,
-  dashcardData,
   parameters,
   hideClickBehaviorSidebar,
   onUpdateDashCardColumnSettings,
@@ -75,7 +71,7 @@ export function ClickBehaviorSidebar({
   >(null);
 
   const [originalColumnVizSettings, setOriginalColumnVizSettings] = useState<
-    VizSettings | undefined | null
+    Partial<ClickBehavior> | undefined | null
   >(null);
 
   const previousDashcard = usePrevious(dashcard);
@@ -110,7 +106,7 @@ export function ClickBehaviorSidebar({
   );
 
   const handleChangeSettings = useCallback(
-    nextClickBehavior => {
+    (nextClickBehavior: Partial<ClickBehavior> | undefined | null) => {
       const { id } = dashcard;
 
       if (selectedColumn == null) {
@@ -142,7 +138,7 @@ export function ClickBehaviorSidebar({
   );
 
   const handleColumnSelected = useCallback(
-    column => {
+    (column: DatasetColumn) => {
       const originalColumnVizSettings = getClickBehaviorForColumn(
         dashcard,
         column,
@@ -213,7 +209,6 @@ export function ClickBehaviorSidebar({
         <ClickBehaviorSidebarContent
           dashboard={dashboard}
           dashcard={dashcard}
-          dashcardData={dashcardData}
           parameters={parameters}
           clickBehavior={clickBehavior}
           isTypeSelectorVisible={isTypeSelectorVisible}

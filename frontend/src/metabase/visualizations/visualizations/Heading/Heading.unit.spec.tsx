@@ -1,8 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { color } from "metabase/lib/colors";
-import { buildTextTagTarget } from "metabase-lib/parameters/utils/targets";
+import { renderWithProviders } from "__support__/ui";
+import { buildTextTagTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   QuestionDashboardCard,
   Dashboard,
@@ -16,6 +16,7 @@ import {
   createMockDashboard,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
+import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { Heading } from "../Heading";
 
@@ -45,8 +46,14 @@ const defaultProps = {
   parameterValues: {},
 };
 
-const setup = (options: Options) => {
-  render(<Heading {...defaultProps} {...options} />);
+const setup = ({ parameterValues, ...options }: Options) => {
+  renderWithProviders(<Heading {...defaultProps} {...options} />, {
+    storeInitialState: {
+      dashboard: createMockDashboardState({
+        parameterValues,
+      }),
+    },
+  });
 };
 
 describe("Text", () => {
@@ -98,8 +105,8 @@ describe("Text", () => {
           screen.getByTestId("editing-dashboard-heading-preview"),
         ).toHaveTextContent("Heading");
         expect(screen.getByTestId("editing-dashboard-heading-container"))
-          .toHaveStyle(`border: 1px solid ${color("brand")};
-                        color: ${color("text-light")};`);
+          .toHaveStyle(`border: 1px solid var(--mb-color-brand);
+                        color: var(--mb-color-text-light);`);
       });
 
       it("should preview with text when it has content", () => {
@@ -139,14 +146,14 @@ describe("Text", () => {
     });
 
     describe("Edit/Focused", () => {
-      it("should display and focus input when clicked", () => {
+      it("should display and focus input when clicked", async () => {
         const options = {
           settings: getSettingsWithText(""),
           isEditing: true,
         };
         setup(options);
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByTestId("editing-dashboard-heading-preview"),
         );
         expect(
@@ -154,33 +161,33 @@ describe("Text", () => {
         ).toHaveFocus();
       });
 
-      it("should have input placeholder when it has no content", () => {
+      it("should have input placeholder when it has no content", async () => {
         const options = {
           settings: getSettingsWithText(""),
           isEditing: true,
         };
         setup(options);
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByTestId("editing-dashboard-heading-preview"),
         );
         expect(screen.getByPlaceholderText("Heading")).toBeInTheDocument();
       });
 
-      it("should render input text when it has content", () => {
+      it("should render input text when it has content", async () => {
         const options = {
           settings: getSettingsWithText("Example Heading"),
           isEditing: true,
         };
         setup(options);
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByTestId("editing-dashboard-heading-preview"),
         );
         expect(screen.getByDisplayValue("Example Heading")).toBeInTheDocument();
       });
 
-      it("should show input without replacing mapped variables with parameter values", () => {
+      it("should show input without replacing mapped variables with parameter values", async () => {
         const variableName = "variable";
         const text = `Variable: {{${variableName}}}`;
 
@@ -199,7 +206,7 @@ describe("Text", () => {
         setup(options);
 
         // show input by focusing the card
-        userEvent.click(
+        await userEvent.click(
           screen.getByTestId("editing-dashboard-heading-preview"),
         );
         expect(
@@ -207,7 +214,7 @@ describe("Text", () => {
         ).toBeInTheDocument();
       });
 
-      it("should call onUpdateVisualizationSettings on blur", () => {
+      it("should call onUpdateVisualizationSettings on blur", async () => {
         const mockOnUpdateVisualizationSettings = jest.fn();
         const options = {
           settings: getSettingsWithText("text"),
@@ -216,11 +223,11 @@ describe("Text", () => {
         };
         setup(options);
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByTestId("editing-dashboard-heading-preview"),
         );
-        userEvent.type(screen.getByRole("textbox"), "foo");
-        userEvent.tab();
+        await userEvent.type(screen.getByRole("textbox"), "foo");
+        await userEvent.tab();
 
         expect(mockOnUpdateVisualizationSettings).toHaveBeenCalledTimes(1);
         expect(mockOnUpdateVisualizationSettings).toHaveBeenCalledWith({

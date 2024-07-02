@@ -12,10 +12,20 @@ import {
   getTableId,
   visitPublicQuestion,
   visitPublicDashboard,
+  createQuestion,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
-  SAMPLE_DATABASE;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+  REVIEWS,
+  REVIEWS_ID,
+} = SAMPLE_DATABASE;
 
 const FIRST_ORDER_ID = 9676;
 const SECOND_ORDER_ID = 10874;
@@ -45,7 +55,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.signInAsAdmin();
   });
 
-  it("shows correct object detail card for questions with joins (metabase #27094)", () => {
+  it("shows correct object detail card for questions with joins (metabase#27094)", () => {
     const questionDetails = {
       name: "14775",
       query: {
@@ -72,6 +82,87 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByTestId("object-detail").within(() => {
       cy.get("h2").should("contain", "Order").should("contain", 1);
     });
+  });
+
+  it("shows correct object detail card for questions with joins after clicking on view details (metabase#39477)", () => {
+    const questionDetails = {
+      name: "39477",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+            ],
+            alias: "Products",
+          },
+        ],
+        limit: 5,
+      },
+    };
+
+    createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.log("check click on 1st row");
+
+    cy.get("[data-testid=cell-data]").contains("37.65").realHover();
+    cy.findByTestId("detail-shortcut").findByRole("button").click();
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.get("h2").should("contain", "Order").should("contain", 1);
+      cy.findByTestId("object-detail-close-button").click();
+    });
+
+    cy.log("check click on 3rd row");
+
+    cy.get("[data-testid=cell-data]").contains("52.72").realHover();
+    cy.findByTestId("detail-shortcut").findByRole("button").click();
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.get("h2").should("contain", "Order").should("contain", 3);
+      cy.findByText("52.72");
+    });
+  });
+
+  it("applies correct filter (metabase#34070)", () => {
+    const questionDetails = {
+      name: "34070",
+      query: {
+        "source-table": PRODUCTS_ID,
+        fields: [["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }]],
+        joins: [
+          {
+            fields: [["field", REVIEWS.RATING, { "join-alias": "Products" }]],
+            alias: "Products",
+            condition: [
+              "=",
+              ["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }],
+              [
+                "field",
+                REVIEWS.PRODUCT_ID,
+                { "base-type": "type/BigInteger", "join-alias": "Products" },
+              ],
+            ],
+            "source-table": REVIEWS_ID,
+          },
+        ],
+        limit: 10,
+      },
+    };
+
+    createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.findByRole("gridcell", { name: "3" }).should("be.visible").click();
+
+    cy.findByRole("dialog").findByTestId("fk-relation-orders").click();
+
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Product ID is 3")
+      .should("be.visible");
   });
 
   it("handles browsing records by PKs", () => {
@@ -212,7 +303,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByTestId("object-detail").findByText("Searsboro").click();
   });
 
-  it("should work with non-numeric IDs (metabse#22768)", () => {
+  it("should work with non-numeric IDs (metabase#22768)", () => {
     cy.request("PUT", `/api/field/${PRODUCTS.ID}`, {
       semantic_type: null,
     });
@@ -278,11 +369,11 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 });
 
 function drillPK({ id }) {
-  cy.get(".Table-ID").contains(id).first().click();
+  cy.get(".test-Table-ID").contains(id).first().click();
 }
 
 function drillFK({ id }) {
-  cy.get(".Table-FK").contains(id).first().click();
+  cy.get(".test-Table-FK").contains(id).first().click();
   popover().findByText("View details").click();
 }
 
@@ -314,7 +405,7 @@ function getNextObjectDetailButton() {
 
 function changeSorting(columnName, direction) {
   const icon = direction === "asc" ? "arrow_up" : "arrow_down";
-  cy.findByText(columnName).click();
+  tableHeaderClick(columnName);
   popover().within(() => {
     cy.icon(icon).click();
   });

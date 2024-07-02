@@ -1,20 +1,25 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import {
+  QuestionPickerModal,
+  type QuestionPickerValueItem,
+} from "metabase/common/components/QuestionPicker";
 import { replaceCard } from "metabase/dashboard/actions";
-import { QuestionPickerModal } from "metabase/dashboard/components/QuestionPickerModal";
 import { useDispatch } from "metabase/lib/redux";
 import { Flex, Button } from "metabase/ui";
-import type { CardId, VirtualDashboardCard } from "metabase-types/api";
+import type { Dashboard, VirtualDashboardCard } from "metabase-types/api";
 
 import type { VisualizationProps } from "../types";
 
 type Props = VisualizationProps & {
   dashcard: VirtualDashboardCard;
+  dashboard: Dashboard;
   isEditingParameter?: boolean;
 };
 
 function DashCardPlaceholderInner({
+  dashboard,
   dashcard,
   isDashboard,
   isEditing,
@@ -23,8 +28,9 @@ function DashCardPlaceholderInner({
   const [isQuestionPickerOpen, setQuestionPickerOpen] = useState(false);
   const dispatch = useDispatch();
 
-  const handleSelectQuestion = (nextCardId: CardId) => {
-    dispatch(replaceCard({ dashcardId: dashcard.id, nextCardId }));
+  const handleSelectQuestion = (nextCard: QuestionPickerValueItem) => {
+    dispatch(replaceCard({ dashcardId: dashcard.id, nextCardId: nextCard.id }));
+    setQuestionPickerOpen(false);
   };
 
   if (!isDashboard) {
@@ -50,11 +56,22 @@ function DashCardPlaceholderInner({
           >{t`Select question`}</Button>
         )}
       </Flex>
-      <QuestionPickerModal
-        opened={isQuestionPickerOpen}
-        onSelect={handleSelectQuestion}
-        onClose={() => setQuestionPickerOpen(false)}
-      />
+      {isQuestionPickerOpen && (
+        <QuestionPickerModal
+          title={t`Pick what you want to replace this with`}
+          value={
+            dashboard.collection_id
+              ? {
+                  id: dashboard.collection_id,
+                  model: "collection",
+                }
+              : undefined
+          }
+          models={["card", "dataset", "metric"]}
+          onChange={handleSelectQuestion}
+          onClose={() => setQuestionPickerOpen(false)}
+        />
+      )}
     </>
   );
 }

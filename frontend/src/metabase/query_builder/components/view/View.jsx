@@ -1,16 +1,25 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import { Motion, spring } from "react-motion";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { deletePermanently } from "metabase/archive/actions";
+import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
-import { rememberLastUsedDatabase } from "metabase/query_builder/actions";
+import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
+import Bookmarks from "metabase/entities/bookmarks";
+import Questions from "metabase/entities/questions";
+import {
+  rememberLastUsedDatabase,
+  setArchivedQuestion,
+} from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { TimeseriesChrome } from "metabase/querying";
+import { Transition } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import DatasetEditor from "../DatasetEditor";
@@ -23,8 +32,7 @@ import { SnippetSidebar } from "../template_tags/SnippetSidebar";
 import { TagEditorSidebar } from "../template_tags/TagEditorSidebar";
 
 import NewQuestionHeader from "./NewQuestionHeader";
-import NewQuestionView from "./View/NewQuestionView";
-import QueryViewNotebook from "./View/QueryViewNotebook";
+import { NotebookContainer } from "./View/NotebookContainer";
 import {
   BorderedViewTitleHeader,
   NativeQueryEditorContainer,
@@ -43,6 +51,12 @@ import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
 
+const fadeIn = {
+  in: { opacity: 1 },
+  out: { opacity: 0 },
+  transitionProperty: "opacity",
+};
+
 class View extends Component {
   getLeftSidebar = () => {
     const {
@@ -53,8 +67,28 @@ class View extends Component {
     } = this.props;
 
     if (isShowingChartSettingsSidebar) {
+      const {
+        question,
+        result,
+        addField,
+        initialChartSetting,
+        onReplaceAllVisualizationSettings,
+        onOpenChartType,
+        visualizationSettings,
+        showSidebarTitle,
+      } = this.props;
       return (
-        <ChartSettingsSidebar {...this.props} onClose={onCloseChartSettings} />
+        <ChartSettingsSidebar
+          question={question}
+          result={result}
+          addField={addField}
+          initialChartSetting={initialChartSetting}
+          onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
+          onOpenChartType={onOpenChartType}
+          visualizationSettings={visualizationSettings}
+          showSidebarTitle={showSidebarTitle}
+          onClose={onCloseChartSettings}
+        />
       );
     }
 
@@ -197,29 +231,40 @@ class View extends Component {
   };
 
   renderHeader = () => {
-    const { question } = this.props;
+    const { question, onUnarchive, onMove, onDeletePermanently } = this.props;
     const query = question.query();
+    const card = question.card();
     const { isNative } = Lib.queryDisplayInfo(query);
 
     const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
 
     return (
-      <Motion
-        defaultStyle={isNewQuestion ? { opacity: 0 } : { opacity: 1 }}
-        style={isNewQuestion ? { opacity: spring(0) } : { opacity: spring(1) }}
-      >
-        {({ opacity }) => (
-          <QueryBuilderViewHeaderContainer>
-            <BorderedViewTitleHeader {...this.props} style={{ opacity }} />
-            {opacity < 1 && (
-              <NewQuestionHeader
-                className="spread"
-                style={{ opacity: 1 - opacity }}
-              />
-            )}
-          </QueryBuilderViewHeaderContainer>
+      <QueryBuilderViewHeaderContainer>
+        {card.archived && (
+          <ArchivedEntityBanner
+            name={card.name}
+            entityType={card.type}
+            canWrite={card.can_write}
+            canRestore={card.can_restore}
+            canDelete={card.can_delete}
+            onUnarchive={() => onUnarchive(question)}
+            onMove={collection => onMove(question, collection)}
+            onDeletePermanently={() => onDeletePermanently(card.id)}
+          />
         )}
-      </Motion>
+
+        <BorderedViewTitleHeader
+          {...this.props}
+          style={{
+            transition: "opacity 300ms linear",
+            opacity: isNewQuestion ? 0 : 1,
+          }}
+        />
+        {/*This is used so that the New Question Header is unmounted after the animation*/}
+        <Transition mounted={isNewQuestion} transition={fadeIn} duration={300}>
+          {style => <NewQuestionHeader className={CS.spread} style={style} />}
+        </Transition>
+      </QueryBuilderViewHeaderContainer>
     );
   };
 
@@ -302,16 +347,16 @@ class View extends Component {
           <QueryVisualization
             {...this.props}
             noHeader
-            className="spread"
+            className={CS.spread}
             mode={queryMode}
           />
         </StyledDebouncedFrame>
         <TimeseriesChrome
           question={this.props.question}
           updateQuestion={this.props.updateQuestion}
-          className="flex-no-shrink"
+          className={CS.flexNoShrink}
         />
-        <ViewFooter {...this.props} className="flex-no-shrink" />
+        <ViewFooter {...this.props} className={CS.flexNoShrink} />
       </QueryBuilderMain>
     );
   };
@@ -329,31 +374,29 @@ class View extends Component {
       isShowingToaster,
       isHeaderVisible,
       updateQuestion,
+      reportTimezone,
+      readOnly,
+      isDirty,
+      isRunnable,
+      isResultDirty,
+      hasVisualizeButton,
+      runQuestionQuery,
+      setQueryBuilderMode,
     } = this.props;
 
     // if we don't have a question at all or no databases then we are initializing, so keep it simple
     if (!question || !databases) {
-      return <LoadingAndErrorWrapper className="full-height" loading />;
+      return <LoadingAndErrorWrapper className={CS.fullHeight} loading />;
     }
 
     const query = question.query();
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
     const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
+    const isModelOrMetric =
+      question.type() === "model" || question.type() === "metric";
 
-    if (isNewQuestion && queryBuilderMode === "view") {
-      return (
-        <NewQuestionView
-          question={question}
-          updateQuestion={updateQuestion}
-          className="full-height"
-        />
-      );
-    }
-
-    const isModel = question.type() === "model";
-
-    if (isModel && queryBuilderMode === "dataset") {
+    if (isModelOrMetric && queryBuilderMode === "dataset") {
       return (
         <>
           <DatasetEditor {...this.props} />
@@ -372,17 +415,27 @@ class View extends Component {
       : SIDEBAR_SIZES.NORMAL;
 
     return (
-      <div className="full-height">
+      <div className={CS.fullHeight}>
         <QueryBuilderViewRoot
-          className="QueryBuilder"
+          className={QueryBuilderS.QueryBuilder}
           data-testid="query-builder-root"
         >
           {isHeaderVisible && this.renderHeader()}
+
           <QueryBuilderContentContainer>
             {!isNative && (
-              <QueryViewNotebook
-                isNotebookContainerOpen={isNotebookContainerOpen}
-                {...this.props}
+              <NotebookContainer
+                isOpen={isNotebookContainerOpen}
+                updateQuestion={updateQuestion}
+                reportTimezone={reportTimezone}
+                readOnly={readOnly}
+                question={question}
+                isDirty={isDirty}
+                isRunnable={isRunnable}
+                isResultDirty={isResultDirty}
+                hasVisualizeButton={hasVisualizeButton}
+                runQuestionQuery={runQuestionQuery}
+                setQueryBuilderMode={setQueryBuilderMode}
               />
             )}
             <ViewSidebar side="left" isOpen={!!leftSidebar}>
@@ -423,6 +476,20 @@ class View extends Component {
 
 const mapDispatchToProps = dispatch => ({
   onSetDatabaseId: id => dispatch(rememberLastUsedDatabase(id)),
+  onUnarchive: async question => {
+    await dispatch(setArchivedQuestion(question, false));
+    await dispatch(Bookmarks.actions.invalidateLists());
+  },
+  onMove: (question, newCollection) =>
+    dispatch(
+      Questions.actions.setCollection({ id: question.id() }, newCollection, {
+        notify: { undo: false },
+      }),
+    ),
+  onDeletePermanently: id => {
+    const deleteAction = Questions.actions.delete({ id });
+    dispatch(deletePermanently(deleteAction));
+  },
 });
 
 export default _.compose(

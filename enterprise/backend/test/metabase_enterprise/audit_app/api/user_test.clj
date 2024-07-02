@@ -2,14 +2,17 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.permissions-test :as ee-perms-test]
-   [metabase-enterprise.audit-db :as audit-db]
+   [metabase.audit :as audit]
    [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard
                             PulseChannel PulseChannelRecipient User]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest delete-subscriptions-test
   (testing "DELETE /api/ee/audit-app/user/:id/subscriptions"
@@ -94,22 +97,22 @@
     (mt/with-premium-features #{:audit-app}
       (ee-perms-test/install-audit-db-if-needed!)
       (testing "None of the ids show up when perms aren't given"
-        (perms/revoke-collection-permissions! (perms-group/all-users) (audit-db/default-custom-reports-collection))
-        (perms/revoke-collection-permissions! (perms-group/all-users) (audit-db/default-audit-collection))
+        (perms/revoke-collection-permissions! (perms-group/all-users) (audit/default-custom-reports-collection))
+        (perms/revoke-collection-permissions! (perms-group/all-users) (audit/default-audit-collection))
         (is (= #{}
                (->>
                 (mt/user-http-request :rasta :get 200 "/ee/audit-app/user/audit-info")
                 keys
                 (into #{})))))
       (testing "Custom reports collection shows up when perms are given"
-        (perms/grant-collection-read-permissions! (perms-group/all-users) (audit-db/default-custom-reports-collection))
+        (perms/grant-collection-read-permissions! (perms-group/all-users) (audit/default-custom-reports-collection))
         (is (= #{:custom_reports}
                (->>
                 (mt/user-http-request :rasta :get 200 "/ee/audit-app/user/audit-info")
                 keys
                 (into #{})))))
       (testing "Everything shows up when all perms are given"
-        (perms/grant-collection-read-permissions! (perms-group/all-users) (audit-db/default-audit-collection))
+        (perms/grant-collection-read-permissions! (perms-group/all-users) (audit/default-audit-collection))
         (is (= #{:question_overview :dashboard_overview :custom_reports}
                (->>
                 (mt/user-http-request :rasta :get 200 "/ee/audit-app/user/audit-info")

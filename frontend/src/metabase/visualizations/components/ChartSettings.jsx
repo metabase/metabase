@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getVisualizationTransformed,
@@ -23,7 +24,7 @@ import {
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 
 import {
   SectionContainer,
@@ -208,8 +209,7 @@ class ChartSettings extends Component {
     ).some(widget => !widget.hidden);
   }
 
-  getStyleWidget = () => {
-    const widgets = this._getWidgets();
+  getStyleWidget = widgets => {
     const series = this._getTransformedSeries();
     const settings = this._getComputedSettings();
     const { currentWidget } = this.state;
@@ -257,8 +257,7 @@ class ChartSettings extends Component {
     return null;
   };
 
-  getFormattingWidget = () => {
-    const widgets = this._getWidgets();
+  getFormattingWidget = widgets => {
     const { currentWidget } = this.state;
     const widget =
       currentWidget && widgets.find(widget => widget.id === currentWidget.id);
@@ -383,7 +382,7 @@ class ChartSettings extends Component {
       <ChartSettingsRoot className={className}>
         <ChartSettingsMenu data-testid="chartsettings-sidebar">
           {showSectionPicker && sectionPicker}
-          <ChartSettingsListContainer className="scroll-show">
+          <ChartSettingsListContainer className={CS.scrollShow}>
             <ChartSettingsWidgetList
               widgets={visibleWidgets}
               extraWidgetProps={extraWidgetProps}
@@ -395,7 +394,7 @@ class ChartSettings extends Component {
             <SectionWarnings warnings={this.state.warnings} size={20} />
             <ChartSettingsVisualizationContainer>
               <Visualization
-                className="spread"
+                className={CS.spread}
                 rawSeries={rawSeries}
                 showTitle
                 isEditing
@@ -417,9 +416,10 @@ class ChartSettings extends Component {
         )}
         <ChartSettingsWidgetPopover
           anchor={popoverRef}
-          widgets={[this.getFormattingWidget(), this.getStyleWidget()].filter(
-            widget => !!widget,
-          )}
+          widgets={[
+            this.getFormattingWidget(widgets),
+            this.getStyleWidget(widgets),
+          ].filter(widget => !!widget)}
           handleEndShowWidget={this.handleEndShowWidget}
         />
       </ChartSettingsRoot>

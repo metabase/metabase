@@ -2,10 +2,11 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { DEFAULT_METABASE_COMPONENT_THEME } from "embedding-sdk/lib/theme";
 import { sumArray } from "metabase/lib/arrays";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { measureText } from "metabase/lib/measure-text";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   Card,
   DatasetColumn,
@@ -19,7 +20,6 @@ import {
   CELL_PADDING,
   MIN_HEADER_CELL_WIDTH,
   MAX_HEADER_CELL_WIDTH,
-  PIVOT_TABLE_FONT_SIZE,
   MAX_ROWS_TO_MEASURE,
   LEFT_HEADER_LEFT_SPACING,
   CELL_HEIGHT,
@@ -96,15 +96,20 @@ interface GetLeftHeaderWidthsProps {
   rowIndexes: number[];
   getColumnTitle: (columnIndex: number) => string;
   leftHeaderItems?: HeaderItem[];
-  fontFamily?: string;
+  font: { fontFamily?: string; fontSize?: string };
 }
 
 export function getLeftHeaderWidths({
   rowIndexes,
   getColumnTitle,
   leftHeaderItems = [],
-  fontFamily = "Lato",
+  font,
 }: GetLeftHeaderWidthsProps) {
+  const {
+    fontFamily = "var(--mb-default-font-family)",
+    fontSize = DEFAULT_METABASE_COMPONENT_THEME.pivotTable.cell.fontSize,
+  } = font ?? {};
+
   const cellValues = getColumnValues(leftHeaderItems);
 
   const widths = rowIndexes.map((rowIndex, depthIndex) => {
@@ -112,7 +117,7 @@ export function getLeftHeaderWidths({
       measureText(getColumnTitle(rowIndex), {
         weight: "bold",
         family: fontFamily,
-        size: PIVOT_TABLE_FONT_SIZE,
+        size: fontSize,
       }).width + ROW_TOGGLE_ICON_WIDTH,
     );
 
@@ -124,7 +129,7 @@ export function getLeftHeaderWidths({
             measureText(value, {
               weight: "normal",
               family: fontFamily,
-              size: PIVOT_TABLE_FONT_SIZE,
+              size: fontSize,
             }).width +
             (cellValues[rowIndex]?.hasSubtotal ? ROW_TOGGLE_ICON_WIDTH : 0),
         ) ?? [0]),

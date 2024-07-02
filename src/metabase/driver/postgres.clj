@@ -7,8 +7,10 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
+   [honey.sql.helpers :as sql.helpers]
+   [honey.sql.pg-ops :as sql.pg-ops]
    [java-time.api :as t]
-   [metabase.db.spec :as mdb.spec]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.postgres.actions :as postgres.actions]
@@ -18,6 +20,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
@@ -50,20 +53,21 @@
 (comment
   ;; method impls live in these namespaces.
   postgres.actions/keep-me
-  postgres.ddl/keep-me)
+  postgres.ddl/keep-me
+  sql.pg-ops/keep-me)
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 ;; Features that are supported by Postgres and all of its child drivers like Redshift
-(doseq [[feature supported?] {:convert-timezone         true
+(doseq [[feature supported?] {:connection-impersonation true
+                              :convert-timezone         true
                               :datetime-diff            true
                               :now                      true
                               :persist-models           true
-                              :table-privileges         true
                               :schemas                  true
-                              :connection-impersonation true}]
+                              :uploads                  true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -73,11 +77,17 @@
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
-                 :uploads
+                 :table-privileges
                  :index-info]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))
+
+(defmethod driver/escape-entity-name-for-metadata :postgres [_driver entity-name]
+  (when entity-name
+    ;; these entities names are used as a pattern for LIKE queries in jdbc
+    ;; so we need to double escape it, first for java, then for sql
+    (str/replace entity-name "\\" "\\\\")))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -203,6 +213,69 @@
 
 (def ^:private ^:dynamic *enum-types* nil)
 
+(defn- get-tables-sql
+  [schemas table-names]
+  ;; Ref: https://github.com/davecramer/pgjdbc/blob/a714bfd/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L1272
+  (sql/format
+   (cond->  {:select    [[:n.nspname :schema]
+                         [:c.relname :name]
+                         [[:case-expr :c.relkind
+                           [:inline "r"] [:inline "TABLE"]
+                           [:inline "p"] [:inline "PARTITIONED TABLE"]
+                           [:inline "v"] [:inline "VIEW"]
+                           [:inline "f"] [:inline "FOREIGN TABLE"]
+                           [:inline "m"] [:inline "MATERIALIZED VIEW"]
+                           :else nil]
+                          :type]
+                         [:d.description :description]
+                         [:stat.n_live_tup :estimated_row_count]]
+             :from      [[:pg_catalog.pg_class :c]]
+             :join      [[:pg_catalog.pg_namespace :n]   [:= :c.relnamespace :n.oid]]
+             :left-join [[:pg_catalog.pg_description :d] [:and [:= :c.oid :d.objoid] [:= :d.objsubid 0] [:= :d.classoid [:raw "'pg_class'::regclass"]]]
+                         [:pg_stat_user_tables :stat]    [:and [:= :n.nspname :stat.schemaname] [:= :c.relname :stat.relname]]]
+             :where     [:and [:= :c.relnamespace :n.oid]
+                         ;; filter out system tables
+                         [(keyword "!~") :n.nspname "^pg_"] [:<> :n.nspname "information_schema"]
+                         ;; only get tables of type: TABLE, PARTITIONED TABLE, VIEW, FOREIGN TABLE, MATERIALIZED VIEW
+                         [:raw "c.relkind in ('r', 'p', 'v', 'f', 'm')"]]
+             :order-by  [:type :schema :name]}
+     (seq schemas)
+     (sql.helpers/where [:in :n.nspname schemas])
+
+     (seq table-names)
+     (sql.helpers/where [:in :c.relname table-names]))
+   {:dialect :ansi}))
+
+(defn- get-tables
+  ;; have it as its own method for ease of testing
+  [database schemas tables]
+  (sql-jdbc.execute/reducible-query database (get-tables-sql schemas tables)))
+
+(defn- describe-syncable-tables
+  [{driver :engine :as database}]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       database
+       nil
+       (fn [^Connection conn]
+         (reduce
+          rf
+          init
+          (when-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
+            (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn driver conn)]
+              (eduction
+               (comp (filter have-select-privilege?)
+                     (map #(dissoc % :type)))
+               (get-tables database syncable-schemas nil))))))))))
+
+(defmethod driver/describe-database :postgres
+  [_driver database]
+  ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
+  ;; memory in a set like this
+  {:tables (into #{} (describe-syncable-tables database))})
+
 ;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
 ;; name, but first fetches database enum types so we have access to them. These are simply binded to the dynamic var
 ;; and used later in `database-type->base-type`, which you will find below.
@@ -216,7 +289,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- ->timestamp [honeysql-form]
-  (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
+  (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "timestamp with time zone" "date"} honeysql-form))
 
 (defn- format-interval
   "Generate a Postgres 'INTERVAL' literal.
@@ -341,7 +414,8 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
-        timestamptz? (h2x/is-of-type? expr "timestamptz")
+        timestamptz? (or (h2x/is-of-type? expr "timestamptz")
+                         (h2x/is-of-type? expr "timestamp with time zone"))
         _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
         expr         [:timezone target-timezone (if (not timestamptz?)
                                                   [:timezone source-timezone expr]
@@ -354,12 +428,29 @@
     (when (some? value)
       (condp #(isa? %2 %1) base-type
         :type/UUID         (when (not= "" value) ; support is-empty/non-empty checks
-                             (UUID/fromString  value))
+                             (try
+                               (UUID/fromString value)
+                               (catch IllegalArgumentException _
+                                 (h2x/with-type-info value {:database-type "text"}))))
         :type/IPAddress    (h2x/cast :inet value)
         :type/PostgresEnum (if (quoted? database-type)
                              (h2x/cast database-type value)
                              (h2x/quoted-cast database-type value))
         (sql.qp/->honeysql driver value)))))
+
+(defmethod sql.qp/->honeysql [:postgres ::cast]
+  [driver [_ expr database-type]]
+  (h2x/maybe-cast database-type (sql.qp/->honeysql driver expr)))
+
+(doseq [op [:= :!= :contains :starts-with :ends-with]]
+  (defmethod sql.qp/->honeysql [:postgres op]
+    [driver [op field arg :as clause]]
+    ((get-method sql.qp/->honeysql [:sql-jdbc op])
+     driver
+     (cond-> clause
+       (and (isa? (:base-type (get field 2)) :type/UUID)
+            (= (:database-type (h2x/type-info (sql.qp/->honeysql driver arg))) "text"))
+       (assoc 1 [::cast field "text"])))))
 
 (defmethod sql.qp/->honeysql [:postgres :median]
   [driver [_ arg]]
@@ -569,7 +660,8 @@
 (def ^:private default-base-types
   "Map of default Postgres column types -> Field base types.
    Add more mappings here as you come across them."
-  {:bigint        :type/BigInteger
+  {:array         :type/*
+   :bigint        :type/BigInteger
    :bigserial     :type/BigInteger
    :bit           :type/*
    :bool          :type/Boolean
@@ -580,6 +672,8 @@
    :cidr          :type/Structured ; IPv4/IPv6 network address
    :circle        :type/*
    :citext        :type/Text ; case-insensitive text
+   :char          :type/Text
+   :character     :type/Text
    :date          :type/Date
    :decimal       :type/Decimal
    :float4        :type/Float
@@ -589,6 +683,7 @@
    :int           :type/Integer
    :int2          :type/Integer
    :int4          :type/Integer
+   :integer       :type/Integer
    :int8          :type/BigInteger
    :interval      :type/*               ; time span
    :json          :type/JSON
@@ -627,7 +722,7 @@
    (keyword "time without time zone")     :type/Time
    ;; TODO postgres also supports `timestamp(p) with time zone` where p is the precision
    ;; maybe we should switch this to use `sql-jdbc.sync/pattern-based-database-type->base-type`
-   (keyword "timestamp with time zone")    :type/DateTimeWithTZ
+   (keyword "timestamp with time zone")    :type/DateTimeWithLocalTZ
    (keyword "timestamp without time zone") :type/DateTime})
 
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
@@ -714,7 +809,7 @@
                 (merge disable-ssl-params props))
         props (as-> props it
                 (set/rename-keys it {:dbname :db})
-                (mdb.spec/spec :postgres it)
+                (mdb/spec :postgres it)
                 (sql-jdbc.common/handle-additional-options it details-map))]
     props))
 
@@ -790,6 +885,15 @@
   [driver]
   (= driver :postgres))
 
+(defmethod sql-jdbc.sync/alter-columns-sql :postgres
+  [driver table-name column-definitions]
+  (first (sql/format {:alter-table  (keyword table-name)
+                      :alter-column (map (fn [[column-name type-and-constraints]]
+                                           (vec (cons column-name (cons :type type-and-constraints))))
+                                         column-definitions)}
+                     :quoted true
+                     :dialect (sql.qp/quote-style driver))))
+
 (defmethod driver/table-name-length-limit :postgres
   [_driver]
   ;; https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
@@ -853,17 +957,17 @@
   ;; KNOWN LIMITATION: this won't return privileges for foreign tables, calling has_table_privilege on a foreign table
   ;; result in a operation not supported error
   (->> (jdbc/query
-         conn-spec
-         (str/join
+        conn-spec
+        (str/join
          "\n"
          ["with table_privileges as ("
           " select"
           "   NULL as role,"
           "   t.schemaname as schema,"
           "   t.objectname as table,"
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'update') as update,"
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'select') as select,"
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'insert') as insert,"
+          "   pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'update') as update,"
+          "   pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'select') as select,"
+          "   pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'insert') as insert,"
           "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'delete') as delete"
           " from ("
           "   select schemaname, tablename as objectname from pg_catalog.pg_tables"
@@ -878,7 +982,7 @@
           ")"
           "select t.*"
           "from table_privileges t"]))
-       (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
+       (filter #(or (:select %) (:update %) (:delete %) (:insert %)))))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 

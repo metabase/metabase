@@ -46,12 +46,12 @@ describe("ForgotPassword", () => {
 
   it("should show a success message when the form is submitted", async () => {
     setup({ isEmailConfigured: true });
-    userEvent.type(screen.getByLabelText("Email address"), TEST_EMAIL);
+    await userEvent.type(screen.getByLabelText("Email address"), TEST_EMAIL);
     await waitFor(() => {
       expect(screen.getByText("Send password reset email")).toBeEnabled();
     });
 
-    userEvent.click(screen.getByText("Send password reset email"));
+    await userEvent.click(screen.getByText("Send password reset email"));
     expect(await screen.findByText(/Check your email/)).toBeInTheDocument();
   });
 

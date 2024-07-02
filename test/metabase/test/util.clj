@@ -12,9 +12,9 @@
    [environ.core :as env]
    [java-time.api :as t]
    [mb.hawk.parallel]
+   [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
-   [metabase.db.util :as mdb.u]
    [metabase.models
     :refer [Card
             Dimension
@@ -28,7 +28,6 @@
             User]]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions.graph :as data-perms.graph]
-   [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -37,6 +36,7 @@
    [metabase.models.timeline-event :as timeline-event]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor.util :as qp.util]
    [metabase.task :as task]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.data :as data]
@@ -56,7 +56,7 @@
    (java.io File FileInputStream)
    (java.net ServerSocket)
    (java.util Locale)
-   (java.util.concurrent TimeoutException)
+   (java.util.concurrent CountDownLatch TimeoutException)
    (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
    (org.quartz.impl StdSchedulerFactory)))
 
@@ -148,10 +148,12 @@
 
    :model/Database
    (fn [_] (default-timestamped
-             {:details   {}
-              :engine    :h2
-              :is_sample false
-              :name      (u.random/random-name)}))
+             {:details                     {}
+              :engine                      :h2
+              :is_sample                   false
+              :name                        (u.random/random-name)
+              :metadata_sync_schedule      "0 50 * * * ? *"
+              :cache_field_values_schedule "0 50 0 * * ? *"}))
 
    :model/Dimension
    (fn [_] (default-timestamped
@@ -172,7 +174,7 @@
             :ip_address         "0:0:0:0:0:0:0:1"
             :timestamp          (t/zoned-date-time)})
 
-   :model/Metric
+   :model/LegacyMetric
    (fn [_] (default-timestamped
              {:creator_id  (rasta-id)
               :definition  {}
@@ -184,6 +186,15 @@
              {:creator_id (user-id :crowberto)
               :name       (u.random/random-name)
               :content    "1 = 1"}))
+
+   :model/QueryExecution
+   (fn [_] {:hash         (qp.util/query-hash {})
+            :running_time 1
+            :result_rows  1
+            :native       false
+            :executor_id  nil
+            :card_id      nil
+            :context      :ad-hoc})
 
    :model/PersistedInfo
    (fn [_] {:question_slug (u.random/random-name)
@@ -234,6 +245,7 @@
               :table_id    (data/id :checkins)}))
 
    ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
+   ;; Tech debt issue: #39329
 
    :model/Table
    (fn [_] (default-timestamped
@@ -248,6 +260,7 @@
        {:db_id      (data/id)
         :task       (u.random/random-name)
         :started_at started
+        :status     :success
         :ended_at   ended
         :duration   (.toMillis (t/duration started ended))}))
 
@@ -279,9 +292,6 @@
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
-    ;; TODO -- we shouldn't need to ignore this, but it's a product of the custom hook defined for Methodical
-    ;; `defmethod`. Fix the hook upstream
-    #_{:clj-kondo/ignore [:redundant-fn-wrapper]}
     (methodical/defmethod t2.with-temp/with-temp-defaults model
       [model]
       (defaults-fn model))))
@@ -401,9 +411,10 @@
   If `raw-setting?` is `true`, this works like [[with-temp*]] against the `Setting` table, but it ensures no exception
   is thrown if the `setting-k` already exists.
 
-  If `skip-init`?` is `true`, this will skip any `:init` function on the setting, and return `nil` if it is not defined.
+  If `skip-init?` is `true`, this will skip any `:init` function on the setting, and return `nil` if it is not defined.
 
-  Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function directly."
+  Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function
+  directly."
   [setting-k value thunk & {:keys [raw-setting? skip-init?]}]
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
   (mb.hawk.parallel/assert-test-is-not-parallel "do-with-temporary-setting-value")
@@ -522,6 +533,8 @@
           :set    original-column->value
           :where  [:= :id (u/the-id object-or-id)]})))))
 
+;;; TODO -- we can make this parallel test safe pretty easily by doing stuff inside a transaction
+;;; unless [[metabase.test/test-helpers-set-global-values!]] is in effect
 (defmacro with-temp-vals-in-db
   "Temporary set values for an `object-or-id` in the application database, execute `body`, and then restore the
   original values. This is useful for cases when you want to test how something behaves with slightly different values
@@ -576,6 +589,8 @@
 ;; Various functions for letting us check that things get scheduled properly. Use these to put a temporary scheduler
 ;; in place and then check the tasks that get scheduled
 
+(def in-memory-scheduler-thread-count 1)
+
 (defn- in-memory-scheduler
   "An in-memory Quartz Scheduler separate from the usual database-backend one we normally use. Every time you call this
   it returns the same scheduler! So make sure you shut it down when you're done using it."
@@ -585,20 +600,24 @@
     (doto (java.util.Properties.)
       (.setProperty StdSchedulerFactory/PROP_SCHED_INSTANCE_NAME (str `in-memory-scheduler))
       (.setProperty StdSchedulerFactory/PROP_JOB_STORE_CLASS (.getCanonicalName org.quartz.simpl.RAMJobStore))
-      (.setProperty (str StdSchedulerFactory/PROP_THREAD_POOL_PREFIX ".threadCount") "1")))))
+      (.setProperty (str StdSchedulerFactory/PROP_THREAD_POOL_PREFIX ".threadCount") (str in-memory-scheduler-thread-count))))))
 
 (defn do-with-unstarted-temp-scheduler [thunk]
   (let [temp-scheduler (in-memory-scheduler)
         already-bound? (identical? @task/*quartz-scheduler* temp-scheduler)]
     (if already-bound?
       (thunk)
-      (binding [task/*quartz-scheduler* (atom temp-scheduler)]
-        (try
-          (assert (not (qs/started? temp-scheduler))
-                  "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
-          (thunk)
-          (finally
-            (qs/shutdown temp-scheduler)))))))
+      (try
+        (assert (not (qs/started? temp-scheduler))
+                "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
+        (binding [task/*quartz-scheduler* (atom temp-scheduler)]
+          (with-redefs [qs/initialize (constantly temp-scheduler)
+                        ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
+                        ;; after it's done, but we need the scheduler for testing
+                        qs/shutdown   (constantly nil)]
+            (thunk)))
+       (finally
+         (qs/shutdown temp-scheduler))))))
 
 (defn do-with-temp-scheduler [thunk]
   ;; not 100% sure we need to initialize the DB anymore since the temp scheduler is in-memory-only now.
@@ -611,8 +630,10 @@
 
 (defmacro with-temp-scheduler
   "Execute `body` with a temporary scheduler in place.
+  This does not initialize the all the jobs for performance reasons, so make sure you init it yourself!
 
     (with-temp-scheduler
+      (task.sync-databases/job-init) ;; init the jobs
       (do-something-to-schedule-tasks)
       ;; verify that the right thing happened
       (scheduler-current-tasks))"
@@ -668,49 +689,54 @@
 (defmethod with-model-cleanup-additional-conditions :model/Database
   [_]
   ;; Don't delete the audit database
-  [:not= :id perms/audit-db-id])
+  [:not= :id audit/audit-db-id])
 
 (defmulti with-max-model-id-additional-conditions
   "Additional conditions applied to the query to find the max ID for a model prior to a test run. This can be used to
   exclude rows which intentionally use non-sequential IDs, like the internal user."
   {:arglists '([model])}
-  mi/model)
+  t2/resolve-model)
 
 (defmethod with-max-model-id-additional-conditions :default
   [_]
-  [:not= :id config/internal-mb-user-id])
+  nil)
 
 (defmethod with-max-model-id-additional-conditions :model/User
   [_]
   [:not= :id config/internal-mb-user-id])
 
 (defmethod with-max-model-id-additional-conditions :model/Database
- [_]
- [:not= :id perms/audit-db-id])
+  [_]
+  [:not= :id audit/audit-db-id])
+
+(defn- model->model&pk [model]
+  (if (vector? model)
+    model
+    [model (first (t2/primary-keys model))]))
 
 (defn do-with-model-cleanup [models f]
-  {:pre [(sequential? models) (every? mdb.u/toucan-model? models)]}
+  {:pre [(sequential? models) (every? #(or (isa? % :metabase/model)
+                                           ;; to support [[:model/Model :updated_at]] syntax
+                                           (isa? (first %) :metabase/model)) models)]}
   (mb.hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
-  (let [model->old-max-id (into {} (for [model models]
-                                     [model (:max-id (t2/select-one [model [(keyword (str "%max." (name (first (t2/primary-keys model)))))
-                                                                            :max-id]]
-                                                                    {:where (with-max-model-id-additional-conditions model)}))]))]
+  (let [models (map model->model&pk models)
+        model->old-max-id (into {} (for [[model pk] models
+                                         :let [conditions (with-max-model-id-additional-conditions model)]]
+                                     [model (:max-id (t2/select-one [model [[:max pk] :max-id]]
+                                                                    {:where (or conditions true)}))]))]
     (try
-      (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name models))) "\n")
+      (testing (str "\n" (pr-str (cons 'with-model-cleanup (map (comp name first) models))) "\n")
         (f))
       (finally
-        (doseq [model models
+        (doseq [[model pk] models
                 ;; might not have an old max ID if this is the first time the macro is used in this test run.
-                :let  [old-max-id            (or (get model->old-max-id model)
-                                                 0)
-                       max-id-condition      [:> (first (t2/primary-keys model)) old-max-id]
+                :let  [old-max-id            (get model->old-max-id model)
+                       max-id-condition      (if old-max-id [:> pk old-max-id] true)
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
           (t2/query-one
            {:delete-from (t2/table-name model)
-            :where       (if (seq additional-conditions)
-                           [:and max-id-condition additional-conditions]
-                           max-id-condition)}))))))
+            :where       [:and max-id-condition additional-conditions]}))))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
@@ -722,6 +748,10 @@
     (with-model-cleanup [Card]
       (create-card-via-api!)
       (is (= ...)))
+
+    (with-model-cleanup [[QueryCache :updated_at]]
+      (created-query-cache!)
+      (is cached?))
 
   Only works for models that have a numeric primary key e.g. `:id`."
   [models & body]
@@ -746,8 +776,8 @@
           (testing "Shouldn't delete other Cards"
             (is (pos? (t2/count Card)))))))))
 
-(defn do-with-verified-cards
-  "Impl for [[with-verified-cards]]."
+(defn do-with-verified-cards!
+  "Impl for [[with-verified-cards!]]."
   [card-or-ids thunk]
   (with-model-cleanup [:model/ModerationReview]
     (doseq [card-or-id card-or-ids]
@@ -760,15 +790,15 @@
           :status              status})))
     (thunk)))
 
-(defmacro with-verified-cards
+(defmacro with-verified-cards!
   "Execute the body with all `card-or-ids` verified."
   [card-or-ids & body]
-  `(do-with-verified-cards ~card-or-ids (fn [] ~@body)))
+  `(do-with-verified-cards! ~card-or-ids (fn [] ~@body)))
 
 (deftest with-verified-cards-test
   (t2.with-temp/with-temp
     [:model/Card {card-id :id} {}]
-    (with-verified-cards [card-id]
+    (with-verified-cards! [card-id]
       (is (=? #{{:moderated_item_id   card-id
                  :moderated_item_type :card
                  :most_recent         true
@@ -790,7 +820,6 @@
                          :moderated_item_id card-id
                          :moderated_item_type "card"))))))
 
-;; TODO - not 100% sure I understand
 (defn call-with-paused-query
   "This is a function to make testing query cancellation eaiser as it can be complex handling the multiple threads
   needed to orchestrate a query cancellation.
@@ -831,7 +860,7 @@
     (deliver pause-query true)
     ::success))
 
-(defmacro throw-if-called
+(defmacro throw-if-called!
   "Redefines `fn-var` with a function that throws an exception if it's called"
   {:style/indent 1}
   [fn-symb & body]
@@ -872,15 +901,15 @@
          pk->original      (atom {})
          method-unique-key (str (random-uuid))
          before-method-fn  (fn [_model row]
-                             (swap! pk->original merge {(u/the-id row) (t2/original row)})
+                             (swap! pk->original assoc (u/the-id row) (t2/original row))
                              row)]
      (methodical/add-aux-method-with-unique-key! #'t2.before-update/before-update :before model before-method-fn method-unique-key)
      (try
       (thunk)
       (finally
        (methodical/remove-aux-method-with-unique-key! #'t2.before-update/before-update :before model method-unique-key)
-       (doseq [[id orignal-val] @pk->original]
-         (t2/update! model id orignal-val)))))
+       (doseq [[id original-val] @pk->original]
+         (t2/update! model id original-val)))))
    (with-discard-model-updates (rest models)
      (thunk))))
 
@@ -1382,3 +1411,15 @@
                   {:order-by [[:id :desc]]
                    :where [:and (when topic [:= :topic (name topic)])
                                 (when model-id [:= :model_id model-id])]})))
+
+(defn repeat-concurrently
+  "Run `f` `n` times concurrently. Returns a vector of the results of each invocation of `f`."
+  [n f]
+  ;; Use a latch to ensure that the functions start as close to simultaneously as possible.
+  (let [latch   (CountDownLatch. n)
+        futures (atom [])]
+    (dotimes [_ n]
+      (swap! futures conj (future (.countDown latch)
+                                  (.await latch)
+                                  (f))))
+    (mapv deref @futures)))

@@ -1,1 +1,4 @@
-export { ExpressionEditorHelpText } from "./ExpressionEditorHelpText";
+export {
+  ExpressionEditorHelpText,
+  ExpressionEditorHelpTextContent,
+} from "./ExpressionEditorHelpText";

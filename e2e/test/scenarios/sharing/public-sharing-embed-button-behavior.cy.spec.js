@@ -4,6 +4,8 @@ import {
   describeEE,
   describeWithSnowplow,
   enableTracking,
+  entityPickerModal,
+  entityPickerModalTab,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
   getEmbedModalSharingPane,
@@ -258,8 +260,8 @@ describe("#39152 sharing an unsaved question", () => {
 
   it("should ask the user to save the question before creating a public link", () => {
     startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Raw Data").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
       cy.findByText("People").click();
     });
     visualize();
@@ -850,7 +852,7 @@ function assertValidPublicLink({ resource, shouldHaveRemoveLink }) {
     cy.findByTestId("public-link-input")
       .should("be.visible")
       .invoke("val")
-      .then(value => {
+      .should(value => {
         expect(value).to.match(regex);
       });
 

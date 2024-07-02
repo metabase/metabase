@@ -144,7 +144,8 @@
 (deftest permissions-test
   (mt/with-temp-copy-of-db
     (mt/with-no-data-perms-for-all-users!
-      (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :unrestricted)
+      (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
       (testing (str "If someone doesn't have native query execution permissions, they shouldn't see the native version of "
                     "the query in the error response")
         (is (=? {:native nil, :preprocessed map?}
@@ -154,7 +155,8 @@
                     (mt/mbql-query venues {:fields [!month.id]})))))))
 
       (testing "They should see it if they have ad-hoc native query perms"
-        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/native-query-editing :yes)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
         ;; this is not actually a valid query
         (is (=? {:native       {:query  (str "SELECT DATE_TRUNC('month', \"PUBLIC\".\"VENUES\".\"ID\") AS \"ID\""
                                              " FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575")

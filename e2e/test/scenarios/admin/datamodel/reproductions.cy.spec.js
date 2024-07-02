@@ -1,13 +1,20 @@
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  visitAlias,
   restore,
   openReviewsTable,
   popover,
   summarize,
+  commandPaletteButton,
+  commandPalette,
+  tableHeaderClick,
+  navigationSidebar,
+  appBar,
 } from "e2e/support/helpers";
 
-const { PEOPLE_ID, PEOPLE, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
+const { PEOPLE_ID, PEOPLE, REVIEWS, REVIEWS_ID, ORDERS, ORDERS_ID } =
+  SAMPLE_DATABASE;
 
 describe("issue 17768", () => {
   beforeEach(() => {
@@ -39,7 +46,7 @@ describe("issue 17768", () => {
 
     popover().within(() => {
       cy.findByText("ID")
-        .closest(".List-section")
+        .closest("[data-element-id=list-section]")
         .realHover()
         .contains("Auto bin")
         .should("not.exist");
@@ -94,15 +101,101 @@ describe("issue 21984", () => {
     cy.visit("/");
 
     cy.findByTestId("home-page").within(() => {
-      cy.findByText("Metabase tips");
-      cy.findByText("Pick up where you left off").should("not.exist");
+      // the table should not be in the recents results
+      cy.findByText("Reviews").should("not.exist");
     });
 
-    cy.findByTestId("app-bar").findByPlaceholderText("Search…").click();
+    commandPaletteButton().click();
+    commandPalette().within(() => {
+      cy.findByText("Recent items").should("not.exist");
+    });
+  });
+});
 
-    cy.findByTestId("search-results-floating-container").within(() => {
-      cy.findByText("Recently viewed");
-      cy.findByText("Nothing here");
+describe("issue 15542", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    cy.wrap(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.PRODUCT_ID}/general`,
+    ).as("ORDERS_PRODUCT_ID_URL");
+    cy.intercept("POST", "/api/field/*/dimension").as("fieldDimensionUpdate");
+  });
+
+  function openOrdersTable() {
+    // Navigate without reloading the page
+    navigationSidebar().findByText("Databases").click({
+      // force the click because the sidebar might be closed but
+      // that is not what we are testing here.
+      force: true,
+    });
+
+    cy.findByText("Sample Database").click();
+    cy.findByText("Orders").click();
+  }
+
+  function exitAdmin() {
+    // Navigate without reloading the page
+    cy.findByText("Exit admin").click();
+  }
+
+  function openOrdersProductIdSettings() {
+    // Navigate without reloading the page
+    appBar().icon("gear").click();
+    popover().findByText("Admin settings").click();
+
+    appBar().findByText("Table Metadata").click();
+    cy.findByText("Orders").click();
+
+    cy.findByTestId("column-PRODUCT_ID").icon("gear").click();
+  }
+
+  function select(name) {
+    return cy.findAllByTestId("select-button").contains(name);
+  }
+
+  it("should be possible to use the foreign key field display values immediately when changing the setting", () => {
+    // This test does manual naviation instead of using openOrdersTable and similar
+    // helpers because they use cy.visit under the hood and that reloads the page,
+    // clearing the in-browser cache, which is what we are testing here.
+
+    visitAlias("@ORDERS_PRODUCT_ID_URL");
+
+    select("Plain input box").click();
+    popover().findByText("A list of all values").click();
+
+    select("Use original value").click();
+    popover().findByText("Use foreign key").click();
+    popover().findByText("Title").click();
+
+    cy.wait("@fieldDimensionUpdate");
+
+    exitAdmin();
+    openOrdersTable();
+
+    tableHeaderClick("Product ID");
+    popover().findByText("Filter by this column").click();
+
+    popover().within(() => {
+      cy.findByText("1").should("not.exist");
+      cy.findByText("Rustic Paper Wallet").should("be.visible");
+    });
+
+    openOrdersProductIdSettings();
+
+    select("Use foreign key").click();
+    popover().findByText("Use original value").click();
+
+    exitAdmin();
+    openOrdersTable();
+
+    tableHeaderClick("Product ID");
+    popover().findByText("Filter by this column").click();
+
+    popover().within(() => {
+      cy.findByText("1").should("be.visible");
+      cy.findByText("Rustic Paper Wallet").should("not.exist");
     });
   });
 });

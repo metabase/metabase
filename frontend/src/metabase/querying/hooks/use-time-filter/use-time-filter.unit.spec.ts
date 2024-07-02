@@ -17,19 +17,19 @@ import { useTimeFilter } from "./use-time-filter";
 interface CreateFilterCase {
   operator: Lib.TimeFilterOperatorName;
   values: Date[];
-  displayName: string;
+  expectedDisplayName: string;
 }
 
 interface UpdateFilterCase {
   expression: Lib.ExpressionClause;
   values: Date[];
-  displayName: string;
+  expectedDisplayName: string;
 }
 
 interface CoerceFilterCase {
   operator: Lib.TimeFilterOperatorName;
   values: Date[];
-  displayName: string;
+  expectedDisplayName: string;
 }
 
 interface ValidateFilterCase {
@@ -76,31 +76,31 @@ describe("useTimeFilter", () => {
     {
       operator: "<",
       values: [TIME_1],
-      displayName: "Time is before 10:20 AM",
+      expectedDisplayName: "Time is before 10:20 AM",
     },
     {
       operator: ">",
       values: [TIME_1],
-      displayName: "Time is after 10:20 AM",
+      expectedDisplayName: "Time is after 10:20 AM",
     },
     {
       operator: "between",
       values: [TIME_1, TIME_3],
-      displayName: "Time is 10:20 AM – 8:15 PM",
+      expectedDisplayName: "Time is 10:20 AM – 8:15 PM",
     },
     {
       operator: "is-null",
       values: [],
-      displayName: "Time is empty",
+      expectedDisplayName: "Time is empty",
     },
     {
       operator: "not-null",
       values: [],
-      displayName: "Time is not empty",
+      expectedDisplayName: "Time is not empty",
     },
   ])(
     'should allow to create a filter for "$operator" operator',
-    ({ operator: newOperator, values: newValues, displayName }) => {
+    ({ operator: newOperator, values: newValues, expectedDisplayName }) => {
       const { result } = renderHook(() =>
         useTimeFilter({
           query: defaultQuery,
@@ -120,7 +120,7 @@ describe("useTimeFilter", () => {
       expect(
         Lib.displayInfo(defaultQuery, stageIndex, newFilter),
       ).toMatchObject({
-        displayName,
+        displayName: expectedDisplayName,
       });
     },
   );
@@ -133,7 +133,7 @@ describe("useTimeFilter", () => {
         values: [TIME_1],
       }),
       values: [TIME_2],
-      displayName: "Time is before 12:45 PM",
+      expectedDisplayName: "Time is before 12:45 PM",
     },
     {
       expression: Lib.timeFilterClause({
@@ -142,7 +142,7 @@ describe("useTimeFilter", () => {
         values: [TIME_1],
       }),
       values: [TIME_2],
-      displayName: "Time is after 12:45 PM",
+      expectedDisplayName: "Time is after 12:45 PM",
     },
     {
       expression: Lib.timeFilterClause({
@@ -151,11 +151,11 @@ describe("useTimeFilter", () => {
         values: [TIME_1, TIME_2],
       }),
       values: [TIME_2, TIME_3],
-      displayName: "Time is 12:45 PM – 8:15 PM",
+      expectedDisplayName: "Time is 12:45 PM – 8:15 PM",
     },
   ])(
     'should allow to update a filter for "$operator" operator',
-    ({ expression, values: newValues, displayName }) => {
+    ({ expression, values: newValues, expectedDisplayName }) => {
       const query = Lib.filter(defaultQuery, stageIndex, expression);
       const [filter] = Lib.filters(query, stageIndex);
 
@@ -176,7 +176,7 @@ describe("useTimeFilter", () => {
       const { operator, values, getFilterClause } = result.current;
       const newFilter = checkNotNull(getFilterClause(operator, values));
       expect(Lib.displayInfo(query, stageIndex, newFilter)).toMatchObject({
-        displayName,
+        displayName: expectedDisplayName,
       });
     },
   );
@@ -185,11 +185,11 @@ describe("useTimeFilter", () => {
     {
       operator: "between",
       values: [TIME_3, TIME_1],
-      displayName: "Time is 10:20 AM – 8:15 PM",
+      expectedDisplayName: "Time is 10:20 AM – 8:15 PM",
     },
   ])(
-    "should allow to coerce a filter: $displayName",
-    ({ operator, values, displayName }) => {
+    "should allow to coerce a filter: $expectedDisplayName",
+    ({ operator, values, expectedDisplayName }) => {
       const { result } = renderHook(() =>
         useTimeFilter({
           query: defaultQuery,
@@ -203,7 +203,7 @@ describe("useTimeFilter", () => {
       expect(
         Lib.displayInfo(defaultQuery, stageIndex, newFilter),
       ).toMatchObject({
-        displayName,
+        displayName: expectedDisplayName,
       });
     },
   );

@@ -3,7 +3,7 @@
   (:require
    [clojure.test :as t]
    [medley.core :as m]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.http-client :as client]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
@@ -93,7 +93,7 @@
 
     (user->id)        ; -> {:rasta 4, ...}
     (user->id :rasta) ; -> 4"
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn
      ([]
       (zipmap usernames (map user->id usernames)))
@@ -178,20 +178,18 @@
                                                                 :user_id user-id}]
         (apply the-client session-id args)))))
 
-(def user-http-request
+(def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
+                    request-options? http-body-map? & {:as query-params}])} user-http-request
   "A version of our test client that issues the request with credentials for a given User. User may be either a
   redefined test User name, e.g. `:rasta`, or any User or User ID.
   The request will be executed with a temporary session id.
 
   Note: this makes a mock API call, not an actual HTTP call, use [[user-real-request]] for that."
-  ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
-                 request-options? http-body-map? & {:as query-params}])}
   (partial user-request client/client))
 
-(def user-real-request
+(def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
+                    request-options? http-body-map? & {:as query-params}])} user-real-request
   "Like `user-http-request` but instead of calling the app handler, this makes an actual http request."
-  ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
-                 request-options? http-body-map? & {:as query-params}])}
   (partial user-request client/real-client))
 
 (defn do-with-test-user [user-kwd thunk]
@@ -202,7 +200,7 @@
 (defmacro with-test-user
   "Call `body` with various `metabase.api.common` dynamic vars like `*current-user*` bound to the predefined test User
   named by `user-kwd`. If you want to bind a non-predefined-test User, use `mt/with-current-user` instead."
-  {:style/indent 1}
+  {:style/indent :defn}
   [user-kwd & body]
   `(do-with-test-user ~user-kwd (fn [] ~@body)))
 

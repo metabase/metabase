@@ -1,133 +1,91 @@
 (ns metabase.lib.normalize
   (:require
-   [metabase.lib.dispatch :as lib.dispatch]
-   [metabase.lib.hierarchy :as lib.hierarchy]))
+   [malli.core :as mc]
+   [malli.transform :as mtx]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]))
 
-(defn- mbql-clause-type [x]
-  (when (and (vector? x)
-             ((some-fn keyword? string?) (first x)))
-    (keyword (first x))))
+(defn- lib-type [x]
+  (when (map? x)
+    (keyword (some #(get x %) [:lib/type "lib/type"]))))
 
-(defn- map-type [m]
-  (when (map? m)
-    (some-> (or
-             (:lib/type m)
-             (get m "lib/type"))
-            keyword)))
+;;; TODO -- we are missing some stuff for sure.
+(def ^:private lib-type->schema
+  {:mbql/query        ::lib.schema/query
+   :mbql.stage/mbql   ::lib.schema/stage.mbql
+   :mbql.stage/native ::lib.schema/stage.native
+   :metadata/database ::lib.schema.metadata/database
+   :metadata/table    ::lib.schema.metadata/table
+   :metadata/column   ::lib.schema.metadata/column
+   :metadata/card     ::lib.schema.metadata/card
+   :metadata/segment  ::lib.schema.metadata/segment
+   :metadata/metric   ::lib.schema.metadata/metric})
 
-(defn- dispatch-value [x]
-  (or
-   (mbql-clause-type x)
-   (map-type x)
-   (keyword (lib.dispatch/dispatch-value x))))
+(defn- infer-schema [x]
+  (cond
+    (map? x)
+    (or (-> x lib-type lib-type->schema)
+        :map)
 
-(defmulti normalize
+    (and (vector? x)
+         ((some-fn simple-keyword? string?) (first x)))
+    (lib.schema.mbql-clause/tag->registered-schema-name (first x))
+
+    :else
+    :any))
+
+(defn- default-error-fn
+  "If normalization errors somewhere, just log the error and return the partially-normalized result. Easier to debug
+  this way."
+  [error]
+  (log/warnf "Error normalizing pMBQL:\n%s" (u/pprint-to-str error))
+  (:value error))
+
+(def ^:private ^:dynamic *error-fn*
+  default-error-fn)
+
+(defn- coercer [schema]
+  (mr/cached ::coercer
+             schema
+             (fn []
+               (let [respond identity
+                     raise   #'*error-fn*] ; capture var rather than the bound value at the time this is eval'ed
+                 (mc/coercer schema (mtx/transformer {:name :normalize}) respond raise)))))
+
+(defn normalize
   "Ensure some part of an MBQL query `x`, e.g. a clause or map, is in the right shape after coming in from JavaScript or
   deserialized JSON (from the app DB or a REST API request). This is intended for things that are already in a
   generally correct pMBQL; to 'normalize' things from legacy MBQL, use [[metabase.lib.convert]].
 
+  Normalization logic is defined in various schemas; grep for `:decode/normalize` in the `metabase.lib.schema*`
+  namespaces.
+
   The default implementation will keywordize keys for maps, and convert some known keys
   using [[default-map-value-fns]]; for MBQL clauses, it will convert the clause name to a keyword and recursively
-  normalize its options and arguments. Implement this method if you need custom behavior for something."
-  {:arglists '([x])}
-  dispatch-value
-  :hierarchy lib.hierarchy/hierarchy)
+  normalize its options and arguments. Implement this method if you need custom behavior for something.
 
-(def default-map-value-fns
-  "Default normalization functions keys when doing map normalization."
-  {:base-type      keyword
-   :effective-type keyword
-   :semantic-type  keyword
-   :type           keyword
-   ;; we can calculate `:field_ref` now using [[metabase.lib.ref/ref]]; `:field_ref` is wrong half of the time anyway,
-   ;; so ignore it.
-   :field_ref      (constantly ::do-not-use-me)
-   :lib/type       keyword
-   :lib/options    normalize})
+  Pass in a `nil` schema to automatically attempt to infer the schema based on `x` itself.
 
-(defn normalize-map
-  "[[normalize]] a map using `key-fn` (default [[clojure.core/keyword]]) for keys and
-  `value-fns` (default [[default-map-value-fns]]; additional functions are merged into this map).
+  By default, does not throw Exceptions -- just logs them and returns what it was able to normalize, but you can pass
+  in the option `{:throw? true}` to have it throw exceptions when normalization fails."
+  ([x]
+   (normalize nil x))
 
-  This is the default implementation for maps. Custom map implementations can call this with a different `key-fn` or
-  additional `value-fns` as needed."
-  ([m]
-   (normalize-map m keyword))
+  ([schema x]
+   (normalize schema x nil))
 
-  ([m key-fn]
-   (normalize-map m key-fn nil))
-
-  ([m key-fn value-fns]
-   (let [value-fns (merge default-map-value-fns value-fns)]
-     (into {}
-           (map (fn [[k v]]
-                  (let [k (key-fn k)]
-                    [k
-                     (if-let [f (get value-fns k)]
-                       (f v)
-                       v)])))
-           m))))
-
-(defmethod normalize :dispatch-type/map
-  [m]
-  (normalize-map m))
-
-(defn- default-normalize-mbql-clause [[tag opts & args]]
-  (into [(keyword tag) (normalize opts)]
-        (map normalize)
-        args))
-
-(defmethod normalize :default
-  [x]
-  (cond
-    (mbql-clause-type x) (default-normalize-mbql-clause x)
-    (map-type x)         (normalize-map x)
-    :else                x))
-
-(defn- maybe-normalize-token
-  [expression k]
-  (cond-> expression
-    (string? (get expression k)) (update k keyword)))
-
-(defmethod normalize :time-interval
-  [[_ _ _ amount _unit :as expression]]
-  (cond-> (default-normalize-mbql-clause expression)
-    (= "current" amount) (update 3 keyword)
-    :always (maybe-normalize-token 4)))
-
-(defmethod normalize :relative-datetime
-  [[_ _ amount _unit :as expression]]
-  (cond-> (default-normalize-mbql-clause expression)
-    (= "current" amount) (update 2 keyword)
-    :always (maybe-normalize-token 3)))
-
-(defmethod normalize :interval
-  [expression]
-  (-> (default-normalize-mbql-clause expression)
-      (maybe-normalize-token 3)))
-
-(defmethod normalize :datetime-add
-  [expression]
-  (-> (default-normalize-mbql-clause expression)
-      (maybe-normalize-token 4)))
-
-(defmethod normalize :datetime-subtract
-  [expression]
-  (-> (default-normalize-mbql-clause expression)
-      (maybe-normalize-token 4)))
-
-(defmethod normalize :get-week
-  [expression]
-  (-> (default-normalize-mbql-clause expression)
-      (maybe-normalize-token 3)))
-
-(defmethod normalize :temporal-extract
-  [expression]
-  (-> (default-normalize-mbql-clause expression)
-      (maybe-normalize-token 3)
-      (maybe-normalize-token 4)))
-
-(defmethod normalize :datetime-diff
-  [expression]
-  (-> (default-normalize-mbql-clause expression)
-      (maybe-normalize-token 4)))
+  ([schema x {:keys [throw?], :or {throw? false}, :as _options}]
+   (let [schema (or schema (infer-schema x))
+         thunk  (^:once fn* []
+                 ((coercer schema) x))]
+     (if throw?
+       (binding [*error-fn* (fn [error]
+                              (throw (ex-info (i18n/tru "Normalization error")
+                                              {:schema schema, :x x, :error error})))]
+         (thunk))
+       (thunk)))))

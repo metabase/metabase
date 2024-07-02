@@ -30,7 +30,11 @@
                               :type/Float          "FLOAT"
                               :type/Integer        "INTEGER"
                               :type/Text           "TEXT"
-                              :type/Time           "TIME"}]
+                              ;; 3 = millisecond precision. Default is allegedly 9 (nanosecond precision) according to
+                              ;; https://docs.snowflake.com/en/sql-reference/data-types-datetime#time, but it seems like
+                              ;; no matter what I do it ignores everything after seconds anyway. See
+                              ;; https://community.snowflake.com/s/question/0D50Z00008sOM5JSAW/how-can-i-get-milliseconds-precision-on-time-datatype
+                              :type/Time           "TIME(3)"}]
   (defmethod sql.tx/field-base-type->sql-type [:snowflake base-type] [_ _] sql-type))
 
 (def ^:dynamic *database-prefix-fn*
@@ -62,8 +66,14 @@
     ;; this lowercasing this value is part of testing the fix for
     ;; https://github.com/metabase/metabase/issues/9511
     :warehouse           (u/lower-case-en (tx/db-test-env-var-or-throw :snowflake :warehouse))
+    ;;
     ;; SESSION parameters
-    :timezone            "UTC"}
+    ;;
+    :timezone            "UTC"
+    ;; return times with millisecond precision, if we don't set this then Snowflake will only return them with second
+    ;; precision. Important mostly because other DBs use millisecond precision by default and this makes Snowflake test
+    ;; results match up with others
+    :time_output_format  "HH24:MI:SS.FF3"}
    ;; Snowflake JDBC driver ignores this, but we do use it in the `query-db-name` function in
    ;; `metabase.driver.snowflake`
    (when (= context :db)
@@ -98,9 +108,7 @@
          (loop [acc []]
            (if-not (.next rset)
              acc
-             ;; for whatever dumb reason the Snowflake JDBC driver always returns these as uppercase despite us making
-             ;; them all lower-case
-             (let [catalog (u/lower-case-en (.getString rset "TABLE_CAT"))
+             (let [catalog (.getString rset "TABLE_CAT")
                    acc     (cond-> acc
                              (sql.tu.unique-prefix/old-dataset-name? catalog) (conj catalog))]
                (recur acc)))))))))
@@ -192,7 +200,7 @@
 
 (defmethod load-data/load-data! :snowflake
   [& args]
-  (apply load-data/load-data-add-ids-chunked! args))
+  (apply load-data/load-data-maybe-add-ids-chunked! args))
 
 (defmethod tx/aggregate-column-info :snowflake
   ([driver ag-type]

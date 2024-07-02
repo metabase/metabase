@@ -52,7 +52,7 @@
 
 (methodical/defmethod events/publish-event! ::metric-event
   [topic event]
-  (push-revision! :model/Metric event {:is-creation? (= topic :event/metric-create)}))
+  (push-revision! :model/LegacyMetric event {:is-creation? (= topic :event/metric-create)}))
 
 (derive ::segment-event ::event)
 (derive :event/segment-create ::segment-event)

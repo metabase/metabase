@@ -1,14 +1,13 @@
-import { t, ngettext, msgid } from "ttag";
+import { ngettext, msgid } from "ttag";
 
 import type { IconName } from "metabase/ui";
 import { DelayGroup } from "metabase/ui";
-import type Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/v1/metadata/Field";
 
 import {
   NodeListItem,
   NodeListItemLink,
   NodeListItemName,
-  NodeListItemIcon,
   NodeListTitle,
   NodeListContainer,
   NodeListIcon,
@@ -38,13 +37,11 @@ const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
         // field.icon() cannot be annotated to return IconName
         // because metabase-lib cannot import from metabase.
         const iconName = field.icon() as IconName;
-        const tooltip = iconName === "unknown" ? t`Unknown type` : null;
         return (
           <NodeListItem as="li" key={field.getUniqueId()}>
             <NodeListItemLink onClick={() => onFieldClick(field)}>
-              <NodeListItemIcon name={iconName} tooltip={tooltip} />
+              <NodeListInfoIcon field={field} position="left" icon={iconName} />
               <NodeListItemName>{field.name}</NodeListItemName>
-              <NodeListInfoIcon field={field} position="top-end" />
             </NodeListItemLink>
           </NodeListItem>
         );

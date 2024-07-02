@@ -63,3 +63,13 @@
      :cljs
      ;; `Integer/MAX_VALUE`, but I don't know what the Cljs way to do this
      (is (nil? (lib.metadata/table-or-card lib.tu/metadata-provider-with-card 2147483647)))))
+
+(deftest ^:parallel bulk-metadata-preserve-order-test
+  (testing "bulk-metadata should return things in the same order as the IDs passed in"
+    (are [ids expected] (= expected
+                           (map :name (lib.metadata/bulk-metadata meta/metadata-provider :metadata/table (map meta/id ids))))
+      [:venues :orders :people]
+      ["VENUES" "ORDERS" "PEOPLE"]
+
+      [:people :orders :venues]
+      ["PEOPLE" "ORDERS" "VENUES"])))

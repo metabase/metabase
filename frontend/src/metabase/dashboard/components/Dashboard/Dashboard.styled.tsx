@@ -4,15 +4,16 @@ import cx from "classnames";
 import type { ComponentPropsWithoutRef } from "react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import ColorS from "metabase/css/core/colors.module.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { color } from "metabase/lib/colors";
+import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
 
 import { DashCard } from "../DashCard/DashCard";
 
-// Class names are added here because we still use traditional css,
-// see dashboard.css
 export const DashboardLoadingAndErrorWrapper = styled(
   ({
     isFullscreen,
@@ -22,9 +23,11 @@ export const DashboardLoadingAndErrorWrapper = styled(
   }: ComponentPropsWithoutRef<typeof LoadingAndErrorWrapper>) => {
     return (
       <LoadingAndErrorWrapper
-        className={cx(className, "Dashboard", {
-          "Dashboard--fullscreen": isFullscreen,
-          "Dashboard--night": isNightMode,
+        className={cx(className, DashboardS.Dashboard, {
+          [DashboardS.DashboardFullscreen]: isFullscreen,
+          [DashboardS.DashboardNight]: isNightMode,
+          [ParametersS.DashboardNight]: isNightMode,
+          [ColorS.DashboardNight]: isNightMode,
         })}
         {...props}
       />
@@ -69,8 +72,8 @@ export const DashboardHeaderContainer = styled.header<{
   position: relative;
   z-index: 2;
 
-  background-color: ${color("bg-white")};
-  border-bottom: 1px solid ${color("border")};
+  background-color: var(--mb-color-bg-white);
+  border-bottom: 1px solid var(--mb-color-border);
 
   ${({ isFullscreen }) =>
     isFullscreen &&
@@ -82,7 +85,7 @@ export const DashboardHeaderContainer = styled.header<{
   ${({ isNightMode }) =>
     isNightMode &&
     css`
-      color: ${color("text-white")};
+      color: var(--mb-color-text-white);
     `}
 `;
 
@@ -123,7 +126,9 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
     css`
       position: sticky;
       border-bottom: 1px solid
-        ${hasScroll ? color("border") : getParametersWidgetBgColor(isNightMode)};
+        ${hasScroll
+          ? "var(--mb-color-border)"
+          : getParametersWidgetBgColor(isNightMode)};
     `}
 `;
 
@@ -139,6 +144,9 @@ export const ParametersAndCardsContainer = styled.div<{
     overflow-x: clip;
   }
   padding-bottom: 40px;
+  /* Makes sure it doesn't use all the height, so the actual content height could be used in embedding #37437 */
+  align-self: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
+    !shouldMakeDashboardHeaderStickyAfterScrolling && "flex-start"};
 
   &.${SAVING_DOM_IMAGE_CLASS} {
     ${ParametersWidgetContainer} {
@@ -158,7 +166,7 @@ export const ParametersAndCardsContainer = styled.div<{
 
     ${DashCard.root} {
       box-shadow: none;
-      border: 1px solid ${color("border")};
+      border: 1px solid var(--mb-color-border);
     }
   }
 `;

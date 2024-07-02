@@ -6,7 +6,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { render, screen } from "__support__/ui";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 import { createMockColumn } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -105,9 +105,14 @@ const setup = () => {
 describe("table settings", () => {
   it("should allow you to update a column name", async () => {
     setup();
-    userEvent.click(await screen.findByTestId("Category-settings-button"));
-    userEvent.type(await screen.findByDisplayValue("Category"), " Updated");
-    userEvent.click(await screen.findByText("Count"));
+    await userEvent.click(
+      await screen.findByTestId("Category-settings-button"),
+    );
+    await userEvent.type(
+      await screen.findByDisplayValue("Category"),
+      " Updated",
+    );
+    await userEvent.click(await screen.findByText("Count"));
     expect(await screen.findByText("Category Updated")).toBeInTheDocument();
   });
 });

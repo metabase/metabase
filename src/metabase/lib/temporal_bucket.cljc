@@ -181,15 +181,24 @@
             (= unit :day) (assoc :default true)))
         lib.schema.temporal-bucketing/ordered-date-bucketing-units))
 
+(def datetime-bucket-units
+  "The temporal bucketing units for datetime type expressions."
+  (into []
+        (remove hidden-bucketing-options)
+        lib.schema.temporal-bucketing/ordered-datetime-bucketing-units))
+
 (def datetime-bucket-options
   "The temporal bucketing options for datetime type expressions."
-  (into []
-        (comp (remove hidden-bucketing-options)
-              (map (fn [unit]
-                     (cond-> {:lib/type :option/temporal-bucketing
-                              :unit unit}
-                       (= unit :day) (assoc :default true)))))
-        lib.schema.temporal-bucketing/ordered-datetime-bucketing-units))
+  (mapv (fn [unit]
+          (cond-> {:lib/type :option/temporal-bucketing
+                   :unit unit}
+            (= unit :day) (assoc :default true)))
+        datetime-bucket-units))
+
+(defn available-temporal-units
+  "The temporal bucketing units for datetime type expressions."
+  []
+  datetime-bucket-units)
 
 (defmethod lib.metadata.calculation/display-name-method :option/temporal-bucketing
   [_query _stage-number {:keys [unit]} _style]

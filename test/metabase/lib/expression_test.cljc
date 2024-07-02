@@ -11,7 +11,9 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.util :as lib.util]
+   [metabase.util :as u]))
 
 (comment lib/keep-me)
 
@@ -104,7 +106,7 @@
                                  :lib/expression-name "prev_month"}
                                 (lib.tu/field-clause :users :last-login)
                                 [:interval {:lib/uuid (str (random-uuid))} -1 :month]]]
-                :fields      [[:expression {:base-type :type/DateTime, :lib/uuid (str (random-uuid))} "prev_month"]]})]
+                 :fields      [[:expression {:base-type :type/DateTime, :lib/uuid (str (random-uuid))} "prev_month"]]})]
     (is (=? [{:name         "prev_month"
               :display-name "prev_month"
               :base-type    :type/DateTime
@@ -254,7 +256,8 @@
   ;; TODO: This logic was removed as part of fixing #39059. We might want to bring it back for collisions with other
   ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by the
   ;; QP code, and it should be powered by MLv2 in due course.
-  #_(testing "collisions with other column names are detected and rejected"
+  #_
+  (testing "collisions with other column names are detected and rejected"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))
           ex    (try
                   (lib/expression query "ID" (meta/field-metadata :categories :name))
@@ -299,6 +302,24 @@
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 2)))
     (is (= (lib/visible-columns query)
            (lib/expressionable-columns query nil)))))
+
+(deftest ^:parallel expressionable-columns-exclude-expressions-containing-offset
+  (testing "expressionable-columns should filter out expressions which contain :offset"
+    (let [query (-> lib.tu/venues-query
+                    (lib/order-by (meta/field-metadata :venues :id) :asc)
+                    (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
+                    (lib/expression "Nested Offset"
+                                    (lib/* 100 (lib/offset (meta/field-metadata :venues :price) -1))))]
+      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
+        (is (=? [{:id (meta/id :venues :id) :name "ID"}
+                 {:id (meta/id :venues :name) :name "NAME"}
+                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
+                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
+                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
+                 {:id (meta/id :venues :price) :name "PRICE"}
+                 {:id (meta/id :categories :id) :name "ID"}
+                 {:id (meta/id :categories :name) :name "NAME"}]
+                (lib/expressionable-columns query -1 2)))))))
 
 (deftest ^:parallel infix-display-name-with-expressions-test
   (testing "#32063"
@@ -351,7 +372,7 @@
           rating (m/find-first #(= (:id %) (meta/id :products :rating)) cols)
           query  (lib/expression base "bad_product" (lib/< rating 3))
           join   (first (lib/joins query))]
-      ;; TODO: There should probably be a (lib/join-alias join) ;=> "Products" function.
+      ;; TODO: There should probably be a (lib/join-alias join) ;=> "Products" function. (#39368)
       (is (=? [[:< {:lib/expression-name "bad_product"}
                 [:field {:join-alias (:alias join)} (meta/id :products :rating)]
                 3]]
@@ -441,7 +462,10 @@
                             #?(:clj nil :cljs js/undefined)))
       :expression  [:/ [:field 1 nil] 100]
       :aggregation [:sum [:field 1 {:base-type :type/Integer}]]
-      :filter      [:= [:field 1 {:base-type :type/Integer}] 3])
+      :filter      [:= [:field 1 {:base-type :type/Integer}] 3])))
+
+(deftest ^:parallel diagnose-expression-test-2
+  (testing "correct expression are accepted silently"
     (testing "type errors are reported"
       (are [mode expr] (=? {:message #"Type error: .*"}
                            (lib.expression/diagnose-expression
@@ -454,7 +478,10 @@
         ;; because it makes expressions and aggregations mutually recursive
         ;; or requires a large amount of duplication.
         #_#_:aggregation [:sum [:is-empty [:field 1 {:base-type :type/Boolean}]]]
-        :filter      [:sum [:field 1 {:base-type :type/Integer}]]))
+        :filter      [:sum [:field 1 {:base-type :type/Integer}]]))))
+
+(deftest ^:parallel diagnose-expression-test-3
+  (testing "correct expression are accepted silently"
     (testing "editing expressions"
       (let [exprs (update-vals {"a" 1
                                 "c" [:+ 0 1]
@@ -479,10 +506,29 @@
           (are [mode expr]
                (nil? (lib.expression/diagnose-expression query 0 mode expr c-pos))
             :expression  (get exprs "non-circular-c")
-            :aggregation (get exprs "circular-c")
+            :aggregation (-> (get exprs "circular-c")
+                             (assoc 3 (lib/count)))
             :filter      (assoc (get exprs "circular-c") 0 :=)))
         (testing "circular definition"
-          (is (= {:message "Cycle detected: c → x → b → c"}
-                 (lib.expression/diagnose-expression query 0 :expression
-                                                     (get exprs "circular-c")
-                                                     c-pos))))))))
+          (is (=? {:message "Cycle detected: c → x → b → c"}
+                  (lib.expression/diagnose-expression query 0 :expression
+                                                      (get exprs "circular-c")
+                                                      c-pos))))))))
+
+(deftest ^:parallel diagnose-expression-test-4-offset-not-allowed-in-expressions
+  (testing "adding/editing an expression using offset is not allowed"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+      (is (=? {:message "OFFSET is not supported in custom expressions"}
+              (lib.expression/diagnose-expression query 0 :expression
+                                                  (lib/offset (meta/field-metadata :orders :subtotal) -1)
+                                                  nil))))))
+
+(deftest ^:parallel diagnose-expression-test-5-offset-not-allowed-in-filters
+  (testing "adding/editing a filter using offset is not allowed"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+      (is (=? {:message  "OFFSET is not supported in custom filters"
+               :friendly true}
+              (lib.expression/diagnose-expression query 0 :filter
+                                                  (lib/< (lib/offset (meta/field-metadata :orders :subtotal) -1)
+                                                         100)
+                                                  nil))))))

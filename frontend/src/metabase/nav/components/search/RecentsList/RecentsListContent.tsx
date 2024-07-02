@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import EmptyState from "metabase/components/EmptyState";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
+import { getName } from "metabase/lib/name";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import type { WrappedRecentItem } from "metabase/nav/components/search/RecentsList";
 import {
   SearchLoadingSpinner,
   EmptyStateContainer,
@@ -21,11 +21,11 @@ import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import { Group, Loader, Stack, Title } from "metabase/ui";
 import type { RecentItem } from "metabase-types/api";
 
-import { getItemName, getItemUrl, isItemActive } from "./util";
+import { getItemUrl, isItemActive } from "./util";
 
 type RecentsListContentProps = {
   isLoading: boolean;
-  results: WrappedRecentItem[];
+  results: RecentItem[];
   onClick?: (item: RecentItem) => void;
 };
 
@@ -35,11 +35,11 @@ export const RecentsListContent = ({
   onClick,
 }: RecentsListContentProps) => {
   const { getRef, cursorIndex } = useListKeyboardNavigation<
-    WrappedRecentItem,
+    RecentItem,
     HTMLButtonElement
   >({
     list: results,
-    onEnter: (item: WrappedRecentItem) => onClick?.(item),
+    onEnter: (item: RecentItem) => onClick?.(item),
   });
 
   if (isLoading) {
@@ -58,7 +58,13 @@ export const RecentsListContent = ({
   }
 
   return (
-    <Stack spacing="md" px="sm" py="md" data-testid="recents-list-container">
+    <Stack
+      spacing="sm"
+      px="sm"
+      pt="md"
+      pb="sm"
+      data-testid="recents-list-container"
+    >
       <Title order={4} px="sm">{t`Recently viewed`}</Title>
       <Stack spacing={0}>
         {results.map((item, index) => {
@@ -83,7 +89,7 @@ export const RecentsListContent = ({
                     truncate
                     href={onClick ? undefined : getItemUrl(item)}
                   >
-                    {getItemName(item)}
+                    {getName(item)}
                   </ResultTitle>
                   <PLUGIN_MODERATION.ModerationStatusIcon
                     status={getModeratedStatus(item)}
@@ -108,17 +114,20 @@ export const RecentsListContent = ({
   );
 };
 
-const getItemKey = ({ model, model_id }: RecentItem) => {
-  return `${model}:${model_id}`;
+const getItemKey = ({ model, id }: RecentItem) => {
+  return `${model}:${id}`;
 };
 
-const getModeratedStatus = ({ model_object }: RecentItem) => {
-  return model_object.moderated_status;
+const getModeratedStatus = (item: RecentItem) => {
+  return item.model !== "table" && item.moderated_status;
 };
 
-const isItemLoading = ({ model, model_object }: RecentItem) => {
-  if (model !== "table") {
+const isItemLoading = (item: RecentItem) => {
+  if (item.model !== "table") {
     return false;
   }
-  return !isSyncCompleted(model_object);
+  if (!item.database) {
+    return false;
+  }
+  return !isSyncCompleted(item.database);
 };

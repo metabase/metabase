@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.models :refer [Collection Dashboard]]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -30,8 +30,7 @@
             (is (= nil
                    (entity-id)))
             (testing "Should return truthy on success"
-              (is (= true
-                     (v2.entity-ids/seed-entity-ids!))))
+              (is (= true (v2.entity-ids/seed-entity-ids!))))
             (is (= "998b109c"
                    (entity-id))))
           (testing "Error: duplicate entity IDs"
@@ -91,8 +90,8 @@
       (doseq [m     (v2.entity-ids/toucan-models)
               :when (serdes.backfill/has-entity-id? m)
               :let  [table-name  (cond-> (name (t2/table-name m))
-                                   (= :h2 (:db-type mdb.connection/*application-db*)) u/upper-case-en)
-                     column-name (if (= :h2 (:db-type mdb.connection/*application-db*))
+                                   (= :h2 (mdb/db-type)) u/upper-case-en)
+                     column-name (if (= :h2 (mdb/db-type))
                                    "ENTITY_ID"
                                    "entity_id")
                      rs (-> (.getMetaData conn)

@@ -1,0 +1,253 @@
+name: Release Metabase Embedding SDK for React
+
+on:
+  workflow_dispatch:
+    inputs:
+      # TODO: Add a version validation, so the workflow won't fail when publishing to npm
+      sdk_version:
+        description: 'SDK version (e.g. 0.1.3)'
+        type: string
+        required: true
+      git_ref:
+        description: 'A git commit hash that will be used to build the SDK'
+        type: string
+        required: true
+
+concurrency:
+  # We want to ensure only one job is running at a time because
+  # there could be a conflict when updating the readme file.
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  check-git-tag:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      tag: embedding-sdk-${{ inputs.sdk_version }}
+    steps:
+      - name: Check out the code using the provided ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: check tags
+        run: |
+          if [ $(git tag -l | grep $tag$) ]
+          then
+            echo "::error::Tag '${{ env.tag }}' already exists. If you expect to run this workflow with the same tag, please remove the tag first and rerun this workflow again."
+            exit 1
+          else
+            exit 0
+          fi
+
+  test:
+    needs: check-git-tag
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the code using the provided ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref }}
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "release-sdk"
+
+      - name: Run unit tests
+        run: yarn embedding-sdk:test-unit
+
+  build-sdk:
+    needs: test
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the code using the provided ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "release-sdk"
+
+      - name: Update readme
+        run: |
+          ./bin/embedding-sdk/release_utils.bash update_readme ${{ inputs.sdk_version }}
+
+      - name: Bump published npm package version
+        run: |
+          ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
+
+      - name: Update changelog
+        run: |
+          yarn embedding-sdk:generate-changelog -o changelog-diff
+
+      - name: Build SDK bundle
+        run: yarn run build-embedding-sdk
+
+      - name: Generate SDK package.json in the build directory
+        run: yarn run embedding-sdk:generate-package
+
+      - name: Upload built SDK package as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: metabase-sdk
+          path: ./resources/embedding-sdk
+
+      - name: Upload changelog diff
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-changelog-diff
+          path: ./changelog-diff
+
+  build-jar:
+    needs: test
+    uses: ./.github/workflows/uberjar-sdk.yml
+    with:
+      git_ref: ${{ inputs.git_ref }}
+      image_name: embedding-sdk-${{ inputs.sdk_version }}
+    secrets: inherit
+
+  upload-jar:
+    needs: build-jar
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/download-artifact@v4
+        name: Retrieve uberjar artifact
+        with:
+          name: metabase-ee-uberjar
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Upload uberjar to S3
+        env:
+          BUCKET: ${{ vars.AWS_S3_DOWNLOADS_BUCKET }}
+          BUCKET_PATH: sdk/v${{ inputs.sdk_version }}/metabase.jar
+          FILE: ./target/uberjar/metabase.jar
+        shell: bash
+        run: |
+          aws s3 cp $FILE s3://$BUCKET/$BUCKET_PATH
+
+  publish-npm:
+    needs: [build-sdk, upload-jar]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out master to prepare for a SDK version bump PR
+        uses: actions/checkout@v4
+        with:
+          # when we created version update PR, it would only have diff from 2 files SDK readme and SDK package.json template
+          ref: master
+
+      - name: Setup git user
+        run: |
+          git config --global user.email "github-automation@metabase.com"
+          git config --global user.name "Metabase Automation"
+
+      - name: Update readme
+        run: |
+          bash ./bin/embedding-sdk/release_utils.bash update_readme ${{ inputs.sdk_version }}
+
+      - name: Bump published npm package version
+        run: |
+          bash ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
+
+      - name: Retrieve SDK changelog diff
+        uses: actions/download-artifact@v4
+        with:
+          name: sdk-changelog-diff
+
+      - name: Update changelog
+        run: |
+          cat changelog-diff enterprise/frontend/src/embedding-sdk/CHANGELOG.md > new-changelog
+          mv new-changelog enterprise/frontend/src/embedding-sdk/CHANGELOG.md
+
+      - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
+        run: |
+          git checkout -b update-sdk-version-${{ inputs.sdk_version }}
+          git commit -a -m 'Update Readme version references and published npm version to ${{ inputs.sdk_version }}'
+          git push origin HEAD
+          gh pr create --base master\
+                       --assignee "${GITHUB_ACTOR}"\
+                       --title "Update SDK version to ${{ inputs.sdk_version }}"\
+                       --body "Update Readme version references and published npm package version to ${{ inputs.sdk_version }}"
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+
+      - name: Edit PR adding useful information (using Metabase bot app)
+        run: |
+          gh pr edit --add-reviewer @metabase/embedding --add-label no-backport
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Auto approve PR (using GitHub Actions account)
+        run: |
+          gh pr review --approve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
+        run: |
+          gh pr merge --auto --squash
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Retrieve build SDK package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: metabase-sdk
+          path: sdk
+
+      - name: Publish to NPM
+        run: |
+          cd sdk
+          echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
+          npm publish
+
+  git-tag:
+    needs: publish-npm
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      tag: embedding-sdk-${{ inputs.sdk_version }}
+    steps:
+      - name: Check out the code using the provided ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref }}
+
+      # Lightweight tags don't need committer name and email
+      - name: Create a new git tag
+        run: |
+          git tag ${{ env.tag }}
+
+      - name: Push the new tag
+        id : push-tag
+        run: |
+          git push origin ${{ env.tag }}

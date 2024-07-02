@@ -13,6 +13,7 @@
       :drill-thru/summarize-column
       (fn [test-case context {:keys [click]}]
         (and (= click :header)
+             (not (:native? test-case))
              (zero? (:aggregations test-case))
              (zero? (:breakouts test-case))
              (not (lib.types.isa/structured? (:column context))))))))

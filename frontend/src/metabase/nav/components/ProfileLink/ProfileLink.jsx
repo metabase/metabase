@@ -1,3 +1,4 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { useState } from "react";
 import { connect } from "react-redux";
@@ -9,6 +10,7 @@ import { useSetting } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { capitalize } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
@@ -105,25 +107,27 @@ function ProfileLink({ adminItems, onLogout }) {
       />
       {modalOpen === "about" ? (
         <Modal small onClose={closeModal}>
-          <div className="px4 pt4 pb2 text-centered relative">
-            <div className="text-brand pb2">
+          <div
+            className={cx(CS.px4, CS.pt4, CS.pb2, CS.textCentered, CS.relative)}
+          >
+            <div className={cx(CS.textBrand, CS.pb2)}>
               <LogoIcon height={48} />
             </div>
             <h2
               style={{ fontSize: "1.75em" }}
-              className="text-dark"
+              className={CS.textDark}
             >{t`Thanks for using ${applicationName}!`}</h2>
-            <div className="pt2">
-              <h3 className="text-dark mb1">
+            <div className={CS.pt2}>
+              <h3 className={cx(CS.textDark, CS.mb1)}>
                 {t`You're on version`} {tag}
               </h3>
-              <p className="text-medium text-bold">
+              <p className={cx(CS.textMedium, CS.textBold)}>
                 {t`Built on`} {date}
               </p>
               {!/^v\d+\.\d+\.\d+$/.test(tag) && (
                 <div>
                   {_.map(versionExtra, (value, key) => (
-                    <p key={key} className="text-medium text-bold">
+                    <p key={key} className={cx(CS.textMedium, CS.textBold)}>
                       {capitalize(key)}: {value}
                     </p>
                   ))}
@@ -134,11 +138,17 @@ function ProfileLink({ adminItems, onLogout }) {
           {showTrademark && (
             <div
               style={{ borderWidth: "2px" }}
-              className="p2 h5 text-centered text-medium border-top"
+              className={cx(
+                CS.p2,
+                CS.h5,
+                CS.textCentered,
+                CS.textMedium,
+                CS.borderTop,
+              )}
             >
-              <span className="block">
+              <span className={CS.block}>
                 {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}
-                <span className="text-bold">Metabase</span>{" "}
+                <span className={CS.textBold}>Metabase</span>{" "}
                 {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}
                 {t`is a Trademark of`} Metabase, Inc
               </span>

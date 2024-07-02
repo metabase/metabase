@@ -47,6 +47,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v00.00-000
+      validCheckSum: 8:a59595109e74e7a2678a1b0dfd25f74a
       author: qnkhuat
       comment: Initialze metabase
       preConditions:
@@ -75,6 +76,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-001
+      validCheckSum: 8:da99b71a4ac7eb662f6a95e69585935e
       author: snoe
       comment: Added 0.44.0 - writeback
       # This migration was previously numbered v44.00-012 but ultimately was not shipped with 44.
@@ -129,6 +131,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-002
+      validCheckSum: 8:6da7a6285edb138c404de0eeba209570
       author: snoe
       comment: Added 0.44.0 - writeback
       # This migration was previously numbered v44.00-013 but ultimately was not shipped with 44.
@@ -176,6 +179,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-003
+      validCheckSum: 8:512337d6d4af38016aa79585abbe03a1
       author: snoe
       comment: Added 0.44.0 - writeback
       # This migration was previously numbered v44.00-014 but ultimately was not shipped with 44.
@@ -206,6 +210,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-011
+      validCheckSum: 8:dcf1cda9f20dca4b6ff8101b13b98c4a
       author: snoe
       comment: Added 0.44.0 - writeback
       # This migration was previously numbered v44.00-022 but ultimately was not shipped with 44.
@@ -239,6 +244,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-012
+      validCheckSum: 8:aadf28229f585cff7c4b4c1918e558b2
       author: snoe
       comment: Added 0.44.0 - writeback
       # This migration was previously numbered v44.00-031 but ultimately was not shipped with 44.
@@ -300,6 +306,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-013
+      validCheckSum: 8:26dba276b14255d4346507a1a25d117b
       author: snoe
       comment: Added 0.44.0 - writeback
       # This migration was previously numbered v44.00-032 but ultimately was not shipped with 44.
@@ -331,6 +338,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-022
+      validCheckSum: 8:d46fa24e4d75a11b2e92aecbf39c6ee1
       author: snoe
       comment: Added 0.45.0 - add app container
       changes:
@@ -392,6 +400,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-023
+      validCheckSum: 8:c6c1ff9ca3b62d4cda3a2d782dd86f2f
       author: snoe
       comment: Added 0.45.0 - add app container
       changes:
@@ -405,6 +414,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-025
+      validCheckSum: 8:50a43cea3123ecdb602123825f5a7dbf
       author: metamben
       comment: Added 0.45.0 - mark app pages
       changes:
@@ -421,6 +431,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-026
+      validCheckSum: 8:ae77d4086998911877e3207fcf90c9c7
       author: snoe
       comment: Added 0.45.0 - apps add action_id to report_dashboardcard
       changes:
@@ -435,6 +446,7 @@ databaseChangeLog:
   # FK constraint is added separately because deleteCascade doesn't work in addColumn -- see #14321
   - changeSet:
       id: v45.00-027
+      validCheckSum: 8:40c3c8391c1416a3bce09ca3c7237173
       author: snoe
       comment: Added 0.45.0 - apps add fk for action_id to report_dashboardcard
       changes:
@@ -448,6 +460,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-028
+      validCheckSum: 8:f8f68f80627aeb2ef7f28f2af2b5a31b
       author: camsaul
       comment: Added 0.45.0 -- rename DashboardCard sizeX to size_x. See https://github.com/metabase/metabase/issues/16344
       changes:
@@ -459,6 +472,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-029
+      validCheckSum: 8:579957652133eab3ee023dd911162a1e
       author: camsaul
       comment: Added 0.45.0 -- rename DashboardCard size_y to size_y. See https://github.com/metabase/metabase/issues/16344
       changes:
@@ -470,6 +484,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-030
+      validCheckSum: 8:41eda097feb034c4d01b2dbda74753c8
       author: camsaul
       comment: Added 0.45.0 -- add default value to DashboardCard size_x -- this was previously done by Toucan
       changes:
@@ -480,6 +495,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-031
+      validCheckSum: 8:6416e373e335dc1c12c7571af674dede
       author: camsaul
       comment: Added 0.45.0 -- add default value to DashboardCard size_y -- this was previously done by Toucan
       changes:
@@ -490,6 +506,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-032
+      validCheckSum: 8:d97444fe24a2dca618a2804741335f6d
       author: camsaul
       comment: Added 0.45.0 -- add default value for DashboardCard created_at (Postgres/H2)
       dbms: postgresql,h2
@@ -507,6 +524,7 @@ databaseChangeLog:
     # addDefaultValue with defaultValueComputed doesn't work for MySQL/MariaDB so we have to do this the hard way.
   - changeSet:
       id: v45.00-033
+      validCheckSum: 8:34df79fc79e086ab05bb2fd79bb4e322
       author: camsaul
       comment: Added 0.45.0 -- add default value for DashboardCard created_at (MySQL/MariaDB)
       preConditions:
@@ -523,6 +541,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-034
+      validCheckSum: 8:ba0505a87ef876026759cdcb4e704f41
       author: camsaul
       comment: Added 0.45.0 -- add default value for DashboardCard updated_at (Postgres/H2)
       dbms: postgresql,h2
@@ -539,6 +558,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-035
+      validCheckSum: 8:dcee49781d80d9c4be5ad9dd51975a07
       author: camsaul
       comment: Added 0.45.0 -- add default value for DashboardCard updated_at (MySQL/MariaDB)
       preConditions:
@@ -555,6 +575,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-036
+      validCheckSum: 8:cd4009254bd2c56aaf281082038c1f0b
       author: snoe
       comment: Added 0.45.0 - add model action table
       changes:
@@ -617,8 +638,10 @@ databaseChangeLog:
                   name: visualization_settings
                   type: ${text.type}
                   remarks: Settings for rendering the action
+
   - changeSet:
       id: v45.00-037
+      validCheckSum: 8:56f548cc84a53cc6d18302761ee71554
       author: snoe
       comment: Added 0.45.0 - model action
       changes:
@@ -633,6 +656,7 @@ databaseChangeLog:
   # schema migration tests that don't use Toucan, or other manual scripting
   - changeSet:
       id: v45.00-038
+      validCheckSum: 8:c38ddc295206e807c7254581ed9566c3
       author: camsaul
       comment: Added 0.45.0 -- add default value for Database created_at (Postgres/H2)
       dbms: postgresql,h2
@@ -650,6 +674,7 @@ databaseChangeLog:
     # addDefaultValue with defaultValueComputed doesn't work for MySQL/MariaDB so we have to do this the hard way.
   - changeSet:
       id: v45.00-039
+      validCheckSum: 8:2c539d76d3aead7f7366b15333132b30
       author: camsaul
       comment: Added 0.45.0 -- add default value for Database created_at (MySQL/MariaDB)
       preConditions:
@@ -666,6 +691,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-040
+      validCheckSum: 8:00ac7c24cfd3e7ea3a21f21f4e45dbcf
       author: camsaul
       comment: Added 0.45.0 -- add default value for Database updated_at (Postgres/H2)
       dbms: postgresql,h2
@@ -682,6 +708,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-041
+      validCheckSum: 8:82dc368fa3e0163a06929da6e9556fe2
       author: camsaul
       comment: Added 0.45.0 -- add default value for Database updated_at (MySQL/MariaDB)
       preConditions:
@@ -709,6 +736,7 @@ databaseChangeLog:
   # restriction separately; we can use Toucan `pre-insert` to set defaults values when saving things.
   - changeSet:
       id: v45.00-042
+      validCheckSum: 8:d04207471480e335f14094e9a7a5d293
       author: camsaul
       comment: Added 0.45.0 -- add default value for Database with NULL details
       changes:
@@ -719,6 +747,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-043
+      validCheckSum: 8:1d07a5435e51abd0663458d907865a6b
       author: camsaul
       comment: Added 0.45.0 -- make Database details NOT NULL
       changes:
@@ -729,6 +758,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-044
+      validCheckSum: 8:0b23976c5d2248d511ac31b244efef22
       author: metamben
       comment: Added 0.45.0 -- create app permission graph revision table
       changes:
@@ -781,6 +811,7 @@ databaseChangeLog:
   # Add created_at to Collection
   - changeSet:
       id: v45.00-048
+      validCheckSum: 8:0aca8f157f163e62805b7202f8aa202f
       author: camsaul
       comment: Added 0.45.0 -- add created_at to Collection
       changes:
@@ -917,6 +948,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-051
+      validCheckSum: 8:2378c7031da6871dcf1c737bf323d211
       author: qnkhuat
       comment: >-
         Added 0.45.0 - modify type of collection_permission_graph_revision.after from text to ${text.type}
@@ -938,6 +970,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-052
+      validCheckSum: 8:b7343eb9556c3e636b6f8dd70708c0b3
       author: qnkhuat
       comment: >-
         Added 0.45.0 - modify type of collection_permission_graph_revision.before from text to ${text.type}
@@ -959,6 +992,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-053
+      validCheckSum: 8:fa552605d5a587c4fa74e0c6bd358097
       author: qnkhuat
       comment: >-
         Added 0.45.0 - modify type of collection_permission_graph_revision.remark from text to ${text.type}
@@ -980,6 +1014,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-054
+      validCheckSum: 8:60862c4ecf505727e839ac5e94f95528
       author: qnkhuat
       comment: >-
         Added 0.45.0 - modify type of permissions_revision.after from text to ${text.type}
@@ -1001,6 +1036,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-055
+      validCheckSum: 8:717f0c266da5768098a2ead6168f3b18
       author: qnkhuat
       comment: >-
         Added 0.45.0 - modify type of permissions_revision.before from text to ${text.type}
@@ -1022,6 +1058,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-056
+      validCheckSum: 8:a1f364d45a922c90b4fac741a22e66b3
       author: qnkhuat
       comment: >-
         Added 0.45.0 - modify type of permissions_revision.remark from text to ${text.type}
@@ -1043,6 +1080,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v45.00-057
+      validCheckSum: 8:650a5b435f8195765a2ab1e3e4bc7b14
       author: qnkhuat
       comment: >-
         Added 0.45.0 - modify type of secret.value from blob to longblob
@@ -1064,6 +1102,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-000
+      validCheckSum: 8:97251413292221e51490e990b6f683f2
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1090,6 +1129,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-001
+      validCheckSum: 8:4a90c7523749aa7e4e4d2ea9dd6db777
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1103,6 +1143,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-002
+      validCheckSum: 8:b2b112f0df413692631b75822f658de1
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1116,6 +1157,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-003
+      validCheckSum: 8:45b8358f31811335aaa93032726a042b
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1129,6 +1171,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-004
+      validCheckSum: 8:0ce8ff05beffc5c72e2348bcec581eee
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1142,6 +1185,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-005
+      validCheckSum: 8:84cf1fbf435c7c3f794c973de4d62fad
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1152,8 +1196,10 @@ databaseChangeLog:
                   name: parameter_mappings
                   remarks: The saved parameter mappings for this action
                   type: ${text.type}
+
   - changeSet:
       id: v46.00-006
+      validCheckSum: 8:df43ef08b76c33c5626dbf9b226717b5
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1167,6 +1213,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-007
+      validCheckSum: 8:6830901cccc14ad22cdfd86bd3a2afe7
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1179,6 +1226,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-008
+      validCheckSum: 8:6e73a8683d1b757c5f9034513ec8a581
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1192,6 +1240,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-009
+      validCheckSum: 8:2b4fd7cee77d5ed8de22fcc2fba158bc
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1205,6 +1254,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-010
+      validCheckSum: 8:77ca03e5a0dbe370461295da1c77cf0f
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1256,6 +1306,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-012
+      validCheckSum: 8:7e4dffe8bbbb740207001ead696a8557
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1350,6 +1401,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-014
+      validCheckSum: 8:585958ee7e90e23a9cc22ebf7e4228cb
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1360,6 +1412,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-015
+      validCheckSum: 8:9b57260e146618caff3f468116031008
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1384,6 +1437,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-016
+      validCheckSum: 8:cb79eef9f483e73b3d9b571f916b8598
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1401,6 +1455,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-017
+      validCheckSum: 8:90525ade34e7bb883bf75cdf8a2b3340
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1420,6 +1475,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-018
+      validCheckSum: 8:cf3c31a975dc86f1def6ee5d11f5f9dc
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1437,6 +1493,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-019
+      validCheckSum: 8:a9f70163707cc7f798bdd0527a55854b
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1457,6 +1514,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-020
+      validCheckSum: 8:2def45c139267d7424e1187764122669
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1467,6 +1525,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-021
+      validCheckSum: 8:52c8107f4bcc6e9889b270e0a4954921
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1477,6 +1536,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-022
+      validCheckSum: 8:52c8107f4bcc6e9889b270e0a4954921
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1487,6 +1547,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-023
+      validCheckSum: 8:33c91db1b039855af8bf1dc8315bd5d2
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1497,6 +1558,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-024
+      validCheckSum: 8:080ff435bae61f324535393d9e78de38
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1507,6 +1569,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-025
+      validCheckSum: 8:60016f3de98c7382602485f13bc4e04f
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -1575,6 +1638,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-026
+      validCheckSum: 8:948b9653bfbadeb29c847ef41d053dba
       author: metamben
       comment: Added 0.46.0 -- add field for tracking DBMS versions
       changes:
@@ -1588,6 +1652,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-027
+      validCheckSum: 8:5f7773b797a3c85a99cd35cb60cfd0b3
       author: snoe
       comment: Added 0.46.0 -- add last_used_at to FieldValues
       changes:
@@ -1604,6 +1669,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-028
+      validCheckSum: 8:33cc1a038e926acb7dfd7cf29b4fa545
       author: tsmacdonald
       comment: Added 0.46.0 -- Join table connecting cards to dashboards/cards's parameters that need custom filter values from the card
       changes:
@@ -1661,6 +1727,7 @@ databaseChangeLog:
   # See issue #27054.
   - changeSet:
       id: v46.00-029
+      validCheckSum: 8:96336855a4180eaf51d7be4a97f3b1a4
       author: camsaul
       comment: Make Dimension <=> Field a 1t1 relationship. Drop unique constraint on field_id + name. (1/3)
       changes:
@@ -1675,6 +1742,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-030
+      validCheckSum: 8:e1f67579cb8dc1102445df299636cb7b
       author: camsaul
       comment: Make Dimension <=> Field a 1t1 relationship. Delete duplicate entries. (2/3)
       changes:
@@ -1708,6 +1776,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-031
+      validCheckSum: 8:a9b4c86de880b2bc01e208d8d4d8cf64
       author: camsaul
       comment: Make Dimension <=> Field a 1t1 relationship. Add unique constraint on field_id. (3/3)
       changes:
@@ -1719,6 +1788,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-032
+      validCheckSum: 8:2a7de9726282af199737a334395f1068
       author: tsmacdonald
       comment: Added 0.46.0 -- Unique parameter_card
       changes:
@@ -1729,6 +1799,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-033
+      validCheckSum: 8:25bc5b1a806d4b352d43f5b16e7e6e20
       author: tsmacdonald
       comment: Added 0.46.0 -- parameter_card index on connected object
       changes:
@@ -1741,6 +1812,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-034
+      validCheckSum: 8:5a6b5a2cf7160baec4f81f6675de898c
       author: tsmacdonald
       comment: Added 0.46.0 -- parameter_card index on connected card
       changes:
@@ -1753,6 +1825,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-035
+      validCheckSum: 8:0639e4c0939848b4377792290311f239
       author: tsmacdonald
       comment: Added 0.46.0 - parameter_card.card_id foreign key
       changes:
@@ -1766,6 +1839,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-036
+      validCheckSum: 8:39d440f29a481e9f0915532106079a1a
       author: metamben
       comment: App containers are removed in 0.46.0
       changes:
@@ -1818,6 +1892,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-037
+      validCheckSum: 8:dbbe898501c554e3ee74c6b9ef9c1575
       author: metamben
       comment: App pages are removed in 0.46.0
       changes:
@@ -1838,6 +1913,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-038
+      validCheckSum: 8:220a27bae93423a2c9a76f611f10b87b
       author: metamben
       comment: App containers are removed in 0.46.0
       changes:
@@ -1909,6 +1985,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-039
+      validCheckSum: 8:7ed32de11fbe8565148d8491f908ad05
       author: qnkhuat
       comment: Added 0.46.0 - add entity_id to parameter_card
       changes:
@@ -1925,6 +2002,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-040
+      validCheckSum: 8:7fec881cac598cce34b62c98fcf37563
       author: tsmacdonald
       comment: Added 0.46.0 -- Bump default dashcard size to 4x4
       changes:
@@ -1935,6 +2013,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-041
+      validCheckSum: 8:0214a8d0b94a9eb48aad75b1d50dd279
       author: tsmacdonald
       comment: Added 0.46.0 -- Bump default dashcard size to 4x4
       changes:
@@ -1945,6 +2024,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-042
+      validCheckSum: 8:7b91ad83569565517c43e9f7b9bfa29a
       author: tsmacdonald
       comment: Added 0.46.0 -- index query_execution.executor_id
       changes:
@@ -1957,6 +2037,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-043
+      validCheckSum: 8:d9cab29076035068cfc49fb9570832af
       author: tsmacdonald
       comment: Added 0.46.0 -- index query_execution.context
       changes:
@@ -1969,6 +2050,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-045
+      validCheckSum: 8:7a9cabf1c693de8b0c9555f7deb072a4
       author: calherries
       comment: Added 0.46.0 -- add public_uuid to action.
       changes:
@@ -1984,6 +2066,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-051
+      validCheckSum: 8:74e83fc2ee7c1a06a94f07830f361773
       author: calherries
       comment: Added 0.46.0 -- drop defaults for dashcard's position and size
       changes:
@@ -1998,6 +2081,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-052
+      validCheckSum: 8:948c978fcb2d938d272a05b3e56808d1
       author: calherries
       comment: Added 0.46.0 -- drop defaults for dashcard's position and size
       changes:
@@ -2012,6 +2096,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-053
+      validCheckSum: 8:04e092dbffdfda13f28b1e3ea38299a7
       author: calherries
       comment: Added 0.46.0 -- drop defaults for dashcard's position and size
       changes:
@@ -2026,6 +2111,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-054
+      validCheckSum: 8:bc3abf9ab94199aeaebb2be28dea77aa
       author: calherries
       comment: Added 0.46.0 -- drop defaults for dashcard's position and size
       changes:
@@ -2040,6 +2126,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-055
+      validCheckSum: 8:48a516459b84a21e9edbdbfe1bffd671
       author: calherries
       comment: Added 0.46.0 -- add made_public_by_id
       changes:
@@ -2053,6 +2140,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-056
+      validCheckSum: 8:af93ab591b44b5d81d8d8a496600c1bc
       author: calherries
       comment: Added 0.46.0 -- add public_uuid and made_public_by_id to action. public_uuid is indexed
       changes:
@@ -2065,6 +2153,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-057
+      validCheckSum: 8:aff3b0e15dcfc36a4fd97faade0751c0
       author: dpsutton
       comment: Added 0.46.0 -- parameter_card.parameter_id long enough to hold a uuid
       changes:
@@ -2076,6 +2165,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-058
+      validCheckSum: 8:11440c629413c7231e7f156347353761
       author: calherries
       comment: Added 0.46.0 -- add FK constraint for action.made_public_by_id with core_user.id
       changes:
@@ -2089,6 +2179,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-059
+      validCheckSum: 8:6ddec7d622e9200e36bd5e2e2e0a48c2
       author: tsmacdonald
       comment: Added 0.46.0 -- add actions.creator_id
       changes:
@@ -2106,6 +2197,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-060
+      validCheckSum: 8:fc1762a930726afb11131acf3a56312b
       author: tsmacdonald
       comment: Added 0.46.0 -- action.creator_id index
       changes:
@@ -2122,6 +2214,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-061
+      validCheckSum: 8:d57393ae0e96a9b1a0bd7a66597cb485
       author: tsmacdonald
       comment: Added 0.46.0 -- action.creator_id index
       changes:
@@ -2135,6 +2228,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-062
+      validCheckSum: 8:20efdbd79df3c76cbf77318d871a9836
       author: tsmacdonald
       comment: Added 0.46.0 -- add actions.archived
       changes:
@@ -2155,6 +2249,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-064
+      validCheckSum: 8:0ac10ca0d82f1bbe39737eb0a8fdcd7d
       author: noahmoss
       comment: Added 0.46.0 -- rename `group_table_access_policy` to `sandboxes`
       changes:
@@ -2164,6 +2259,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-065
+      validCheckSum: 8:5cbb335952dd1ab7a137d80d6c1ab82e
       author: noahmoss
       comment: Added 0.46.0 -- add `permission_id` to `sandboxes`
       changes:
@@ -2177,6 +2273,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-070
+      validCheckSum: 8:d440a8d0aef0bbfdae24a9c70bd37605
       author: calherries
       comment: Added 0.46.0 - add entity_id column to action
       changes:
@@ -2193,6 +2290,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-074
+      validCheckSum: 8:c1273a3003d82638a0a5413bf2aa6777
       author: metamben
       comment: Added 0.46.0 -- increase precision of updated_at of report_card
       changes:
@@ -2208,6 +2306,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-079
+      validCheckSum: 8:de167f33d3f7670246623466487d2e67
       author: john-metabase
       comment: Added 0.46.0 -- migrates Databases using deprecated and removed presto driver to presto-jdbc
       changes:
@@ -2216,6 +2315,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-080
+      validCheckSum: 8:022a846feb10103f2e9fe4b58cb792d6
       author: noahmoss
       comment: Migrate data permission paths from v1 to v2 (splitting them into separate data and query permissions)
       changes:
@@ -2224,6 +2324,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-084
+      validCheckSum: 8:b4f465ca3be584028e077b907656b804
       author: qnkhuat
       comment: Added 0.46.0 - CASCADE delete for action.model_id
       changes:
@@ -2241,6 +2342,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-085
+      validCheckSum: 8:17fe48c56aa457a6a09775099d44d7a5
       author: qnkhuat
       comment: Added 0.46.0 - CASCADE delete for action.model_id
       changes:
@@ -2254,6 +2356,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-086
+      validCheckSum: 8:677e076d8741275d31a02e97531fd930
       author: calherries
       comment: Added 0.46.0 - Delete the abandonment email task
       changes:
@@ -2262,6 +2365,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-088
+      validCheckSum: 8:ff9defc19920960db55ef71e4d32b4ea
       author: noahmoss
       comment: Added 0.46.5 -- backfill `permission_id` values in `sandboxes`. This is a fixed verison of v46.00-066
                which has been removed, since it had a bug that blocked a customer from upgrading.
@@ -2288,6 +2392,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-089
+      validCheckSum: 8:e0fbd2514cc960cc74106204ac65a3ea
       author: noahmoss
       comment: Added 0.46.5 -- remove orphaned entries in `sandboxes`
       changes:
@@ -2298,6 +2403,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-090
+      validCheckSum: 8:963c0cd3a7bd2858e4dbfd4d4aad95cb
       author: noahmoss
       comment: Add foreign key constraint on sandboxes.permission_id
       preConditions:
@@ -2316,6 +2422,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-001
+      validCheckSum: 8:14bf2732687c04256e9c036ba142aa93
       author: calherries
       comment: Added 0.47.0 -- set base-type to type/JSON for JSON database-types for postgres and mysql
       changes:
@@ -2369,6 +2476,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-002
+      validCheckSum: 8:963690f41f487b122464277c627823f6
       author: calherries
       comment: Added 0.47.0 - Add json_unfolding column to metabase_field
       changes:
@@ -2385,6 +2493,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-003
+      validCheckSum: 8:97bccdf5e9bcdfacd1c315fa1342c167
       author: calherries
       comment: Added 0.47.0 - Populate metabase_field.json_unfolding based on base_type
       changes:
@@ -2397,6 +2506,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-004
+      validCheckSum: 8:58ad79be7de00e413da51fab3c8beea0
       author: qnkhuat
       comment: Added 0.47.0 - Add auto_incremented to metabase_field
       changes:
@@ -2413,6 +2523,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-005
+      validCheckSum: 8:ccf53f27a551fd0799d0103bd65cca99
       author: winlost
       comment: Added 0.47.0 - Add auto_apply_filters to dashboard
       changes:
@@ -2429,6 +2540,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-006
+      validCheckSum: 8:b63ff10d3d121bed42eece1ae3dbb177
       author: qnkhuat
       comment: Added 0.47.0 - Add dashboard_tab table
       changes:
@@ -2489,6 +2601,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-007
+      validCheckSum: 8:e9f7d6b18d65be6fde07c0b5471b8760
       author: qnkhuat
       comment: Added 0.47.0 -- add report_dashboardcard.dashboard_tab_id
       changes:
@@ -2504,6 +2617,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-008
+      validCheckSum: 8:e37c88d202007bd3e6a72b6404d1b0e9
       author: qnkhuat
       comment: Added 0.47.0 -- add report_dashboardcard.dashboard_tab_id fk constraint
       changes:
@@ -2517,6 +2631,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-009
+      validCheckSum: 8:398124b0dd4dd6e117cdc1378152469b
       author: qwef
       comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
       changes:
@@ -2528,6 +2643,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-010
+      validCheckSum: 8:3c4f9fc116fbced18c50952def65b3e0
       author: tsmacdonald
       comment: Added 0.47.0 - Make metabase_table.name long enough for H2 names
       changes:
@@ -2539,6 +2655,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-011
+      validCheckSum: 8:148b982debddfa511cb45b87179b8c46
       author: tsmacdonald
       comment: Added 0.47.0 - Make metabase_table.display_name long enough for H2 names
       changes:
@@ -2550,6 +2667,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-012
+      validCheckSum: 8:bf19ef077bc6bc517c515dd78ca46e3b
       author: qwef
       comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
       changes:
@@ -2569,6 +2687,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-013
+      validCheckSum: 8:044aec6d07049e3c5a45830797189ab0
       author: qwef
       comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
       changes:
@@ -2580,6 +2699,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-014
+      validCheckSum: 8:6a973f3198ad4596ecade95e61b35991
       author: qwef
       comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
       changes:
@@ -2599,6 +2719,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-015
+      validCheckSum: 8:d2d5eea99db75e656709006b3a7749f0
       author: escherize
       comment: added 0.47.0 - Add is_audit to metabase_database
       changes:
@@ -2615,6 +2736,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-016
+      validCheckSum: 8:62290f0389eb2a17170a9c0351ac8a85
       author: calherres
       comment: Added 0.47.0 - Migrate the report_card.visualization_settings.column_settings field refs from legacy format
       changes:
@@ -2623,6 +2745,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-018
+      validCheckSum: 8:7bacd2f60393eebd3bebcfdb0e952ecd
       author: dpsutton
       comment: Indexed Entities information table
       changes:
@@ -2699,6 +2822,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-019
+      validCheckSum: 8:7a5589d70c80b3ffc99a85722f440a91
       author: dpsutton
       comment: Indexed Entities values table
       changes:
@@ -2728,6 +2852,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-020
+      validCheckSum: 8:d32a4cf7b37f012a7db74628cdde48df
       author: dpsutton
       comment: Add unique constraint on index_id and pk
       changes:
@@ -2742,6 +2867,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-023
+      validCheckSum: 8:5d9e81c3e950afad66cb5e9e823b1f03
       author: dpsutton
       comment: Added 0.47.0 -- model_index index
       changes:
@@ -2754,6 +2880,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-024
+      validCheckSum: 8:3079db8d91e54ff2b41050f7dab27936
       author: dpsutton
       comment: Added 0.47.0 -- model_index foriegn key to report_card
       changes:
@@ -2768,6 +2895,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-025
+      validCheckSum: 8:6889e314a2016c9bc017a358b81ed24e
       author: dpsutton
       comment: Added 0.47.0 -- model_index_value foriegn key to model_index
       changes:
@@ -2782,6 +2910,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-026
+      validCheckSum: 8:acf279edf538ee29a4ea9103d809b3da
       author: noahmoss
       comment: Added 0.47.0 - New table for connection impersonation policies
       changes:
@@ -2823,6 +2952,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-027
+      validCheckSum: 8:c720f3de8feed35e592c0ca9b9975a18
       author: calherries
       comment: Added 0.47.0 - Migrate field_ref in report_card.result_metadata from legacy format
       changes:
@@ -2831,6 +2961,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-028
+      validCheckSum: 8:f38598170766acaaa8fd3b20ef683372
       author: calherries
       comment: Added 0.47.0 - Add join-alias to the report_card.visualization_settings.column_settings field refs
       changes:
@@ -2839,6 +2970,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-029
+      validCheckSum: 8:c7625e5018087e915e547f9318b2b8f5
       author: qnkhuat
       comment: Added 0.47.0 - Stack cards vertically for dashboard with tabs on downgrade
       changes:
@@ -2847,6 +2979,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-030
+      validCheckSum: 8:7919d959008457419a09fd3275d3ed00
       author: escherize
       comment: Added 0.47.0 - Type column for collections for instance-analytics
       changes:
@@ -2905,6 +3038,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-033
+      validCheckSum: 8:c4a38673bf2a702e807a2074c0d0b719
       author: calherries
       comment: Added 0.47.0 - Migrate field refs in visualization_settings.column_settings keys from legacy format
       changes:
@@ -2913,6 +3047,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-034
+      validCheckSum: 8:bb77d686c5c204e480a1da5fcfb518e2
       author: calherries
       comment: Added 0.47.0 - Add join-alias to the visualization_settings.column_settings field refs in card revisions
       changes:
@@ -2921,6 +3056,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-035
+      validCheckSum: 8:aeafa7ff310f799eb3fb2e14640a9e06
       author: calherries
       comment: Added 0.47.0 - Drop foreign key constraint on implicit_action.action_id
       changes:
@@ -2938,6 +3074,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-036
+      validCheckSum: 8:e815729b6ebfd4799743b249409558aa
       author: calherries
       comment: Added 0.47.0 - Set primary key to action_id for implicit_action table
       changes:
@@ -2948,6 +3085,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-037
+      validCheckSum: 8:58c705a18bb3441e3ed5d1167ec64fcb
       author: calherries
       comment: Added 0.47.0 - Add foreign key constraint on implicit_action.action_id
       changes:
@@ -2961,6 +3099,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-043
+      validCheckSum: 8:5e030b73be03e7cd8b19a5a46f9b2a4c
       author: calherres
       comment: Added 0.47.0 - Migrate report_dashboardcard.visualization_settings.column_settings field refs from legacy format
       changes:
@@ -2969,6 +3108,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-044
+      validCheckSum: 8:1828d1bd8e2da6eec14ca61e6c01a56f
       author: calherries
       comment: Added 0.47.0 - Add join-alias to the report_dashboardcard.visualization_settings.column_settings field refs
       changes:
@@ -2977,6 +3117,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-045
+      validCheckSum: 8:d7f479a389877010f5af9dc7ec859b51
       author: calherres
       comment: Added 0.47.0 - Migrate dashboard revision dashboard cards' visualization_settings.column_settings field refs from legacy format
       changes:
@@ -2985,6 +3126,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-046
+      validCheckSum: 8:1e43c8712a5b36809a3c3fa9933a523c
       author: calherries
       comment: Added 0.47.0 - Add join-alias to dashboard revision dashboard cards' visualization_settings.column_settings field refs
       changes:
@@ -2993,6 +3135,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-050
+      validCheckSum: 8:a5d516f2b5ea92f401387646b49a9950
       author: tsmacdonald
       comment: Added 0.47.0 - table.is_upload
       changes:
@@ -3009,6 +3152,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-051
+      validCheckSum: 8:83a8b7ad58b2deb0732e671db51fa608
       author: noahmoss
       comment: Added 0.47.0 - Drop foreign key constraint on connection_impersonations.db_id
       changes:
@@ -3026,6 +3170,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-052
+      validCheckSum: 8:d170bef8f707027360cf08fb55e91452
       author: noahmoss
       comment: Added 0.47.0 - Drop foreign key constraint on connection_impersonations.group_id
       changes:
@@ -3043,6 +3188,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-053
+      validCheckSum: 8:3b52631c2c82b88043b840391c7d9ef0
       author: noahmoss
       comment: Added 0.47.0 -- connection_impersonations index for db_id column
       changes:
@@ -3055,6 +3201,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-054
+      validCheckSum: 8:5404d7e3781f0dfcc984676ea434c842
       author: noahmoss
       comment: Added 0.47.0 -- connection_impersonations index for group_id column
       changes:
@@ -3067,6 +3214,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-055
+      validCheckSum: 8:295c4477995058b93eba2857090eb6f6
       author: noahmoss
       comment: Added 0.47.0 - unique constraint for connection impersonations
       changes:
@@ -3081,6 +3229,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-056
+      validCheckSum: 8:bd965141f770a65982ecebab51a565e9
       author: noahmoss
       comment: Added 0.47.0 - re-add foreign key constraint on connection_impersonations.db_id
       changes:
@@ -3094,6 +3243,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-057
+      validCheckSum: 8:fe79acdba9db58709b6fffbb7aac2844
       author: noahmoss
       comment: Added 0.47.0 - re-add foreign key constraint on connection_impersonations.group_id
       changes:
@@ -3107,6 +3257,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-058
+      validCheckSum: 8:05731b3e62deb09c64b60bc10031d206
       author: qnkhuat
       comment: 'Drop parameter_card.entity_id'
       preConditions:
@@ -3132,6 +3283,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-059
+      validCheckSum: 8:123cf42eed168444f88418f071d2730f
       author: piranha
       comment: 'Drops not null from dashboard_tab.entity_id since it breaks drop-entity-ids command'
       changes:
@@ -3143,6 +3295,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-001
+      validCheckSum: 8:c38ceb502af7907aed614f17da6c3f80
       author: qnkhuat
       comment: Added 0.47.0 - Migrate database.options to database.settings
       changes:
@@ -3151,6 +3304,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-002
+      validCheckSum: 8:deceb81591f51f2d7253976f247e36cc
       author: qnkhuat
       comment: Added 0.47.0 - drop metabase_database.options
       changes:
@@ -3168,6 +3322,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-003
+      validCheckSum: 8:da33cde0f1f93eed56c0f6d9ac2007df
       author: qnkhuat
       comment: Added 0.48.0 - drop computation_job_result table
       preConditions:
@@ -3181,6 +3336,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-004
+      validCheckSum: 8:d0b1d7cc179c332b7e31f065325b7275
       author: qnkhuat
       comment: Added 0.48.0 - drop computation_job table
       preConditions:
@@ -3194,6 +3350,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-005
+      validCheckSum: 8:a570f2e1d90a302bc207c00e3776eaaf
       author: qnkhuat
       comment: Added 0.48.0 - Add query_execution.action_id
       changes:
@@ -3207,6 +3364,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-006
+      validCheckSum: 8:cf1413241565a186bf98eece35d519bf
       author: qnkhuat
       comment: Added 0.48.0 - Index query_execution.action_id
       changes:
@@ -3219,6 +3377,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-007
+      validCheckSum: 8:15d05ceba05e5b7d25d351fb6ec5b100
       author: qnkhuat
       comment: Added 0.48.0 - Add revision.most_recent
       changes:
@@ -3235,6 +3394,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-008
+      validCheckSum: 8:c0a512701d6dfd5cc1c4a689919be074
       author: qnkhuat
       comment: Set revision.most_recent = true for latest revisions
       changes:
@@ -3262,9 +3422,9 @@ databaseChangeLog:
               SET r.most_recent = true;
       rollback: # nothing to do since the most_recent will be dropped anyway
 
-
   - changeSet:
       id: v48.00-009
+      validCheckSum: 8:dfd90256380263274ea7f5cc0c5ed413
       author: calherries
       comment: Added 0.48.0 - Create table_privileges table
       changes:
@@ -3322,6 +3482,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-010
+      validCheckSum: 8:da6117039b6e0249b710cc3160af982d
       author: qnkhuat
       comment: Remove ON UPDATE for revision.timestamp on mysql, mariadb
       preConditions:
@@ -3336,6 +3497,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-011
+      validCheckSum: 8:65ef87949a7e9555fabaf69069806ee0
       author: qnkhuat
       comment: Index revision.most_recent
       changes:
@@ -3348,6 +3510,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-013
+      validCheckSum: 8:145eb766e2d49e95f31d8a08df8ff776
       author: qnkhuat
       comment: Index unindexed FKs for postgres
       preConditions:
@@ -3391,6 +3554,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-014
+      validCheckSum: 8:b2c1361f1dc14c2390a1dc25a4a86311
       author: calherries
       comment: Added 0.48.0 - Create table_privileges.table_id index
       preConditions:
@@ -3408,6 +3572,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-015
+      validCheckSum: 8:6f58cf60c8048bb39bbf6128058ff85e
       author: calherries
       comment: Added 0.48.0 - Create table_privileges.role index
       changes:
@@ -3421,6 +3586,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-016
+      validCheckSum: 8:ea2cb901edad5cf3a1250bdd2a9b0866
       author: calherries
       comment: Added 0.48.0 - Change the type of collection.slug to varchar(510)
       changes:
@@ -3436,6 +3602,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-018
+      validCheckSum: 8:efae52e7403f39c1458f53e885b4393d
       author: noahmoss
       comment: Add new recent_views table
       changes:
@@ -3480,6 +3647,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-019
+      validCheckSum: 8:c3866a4b7cfbb49d4b626dc2fd750935
       author: nemanjaglumac
       comment: 'Collection color is removed in 0.48.0'
       changes:
@@ -3497,8 +3665,10 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                   defaultValue: '#31698A'
+
   - changeSet:
       id: v48.00-020
+      validCheckSum: 8:2c410019e1834304131ff57278003d35
       author: noahmoss
       comment: Added 0.48.0 - Create recent_views.user_id index
       changes:
@@ -3512,6 +3682,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-021
+      validCheckSum: 8:a1543239e39c70dc9bab3bbc303242b1
       author: piranha
       comment: 'Cards store Metabase version used to create them'
       changes:
@@ -3525,6 +3696,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-022
+      validCheckSum: 8:0f034d06b1ad5336c3c81b0d22cde259
       author: johnswanson
       comment: Migrate migrate-click-through to a custom migration
       preConditions:
@@ -3538,6 +3710,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-023
+      validCheckSum: 8:f18e5e053b508aab0bdd8c4bf1d7de4b
       author: piranha
       comment: Data migration migrate-remove-admin-from-group-mapping-if-needed
       preConditions:
@@ -3551,6 +3724,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-024
+      validCheckSum: 8:fab2a51d73c66cea059d55a6fea8bb2f
       author: piranha
       comment: All data migrations were transferred to custom_migrations!
       changes:
@@ -3601,6 +3775,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-025
+      validCheckSum: 8:a2fa9ab0913b9e4b97dff91f973344d6
       author: piranha
       comment: 'Revisions store Metabase version used to create them'
       changes:
@@ -3614,6 +3789,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-026
+      validCheckSum: 8:7c8330e861c16997780a9b0881144b26
       author: lbrdnk
       comment: Set semantic_type with value type/Number to null (#18754)
       changes:
@@ -3642,6 +3818,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-028
+      validCheckSum: 8:818119252c2e7877bbf46aec40fab160
       author: noahmoss
       comment: Add new audit_log table
       changes:
@@ -3701,6 +3878,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-029
+      validCheckSum: 8:1994760ab0950e7f591c40e887295e1a
       author: noahmoss
       comment: Added 0.48.0 - new view v_audit_log
       changes:
@@ -3722,6 +3900,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-030
+      validCheckSum: 8:965d6479698fe55f2f6799be552b5edb
       author: noahmoss
       comment: Added 0.48.0 - new view v_content
       changes:
@@ -3743,6 +3922,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-031
+      validCheckSum: 8:721bedb0dd362793a1a216cf3e552f3b
       author: noahmoss
       comment: Added 0.48.0 - new view v_dashboardcard
       changes:
@@ -3755,6 +3935,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-032
+      validCheckSum: 8:64d52462def7bb6981a3b6a40d42e67e
       author: noahmoss
       comment: Added 0.48.0 - new view v_group_members
       changes:
@@ -3767,6 +3948,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-033
+      validCheckSum: 8:7ac57373a0fba4bd9613c242702c863d
       author: noahmoss
       comment: Added 0.48.0 - new view v_subscriptions for postgres
       changes:
@@ -3788,6 +3970,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-034
+      validCheckSum: 8:1c268d93ce69eaee11e3ecdf9951449a
       author: noahmoss
       comment: Added 0.48.0 - new view v_users
       changes:
@@ -3809,6 +3992,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-035
+      validCheckSum: 8:c0276764af3e1b4b5b0c4e5fdc979e60
       author: noahmoss
       comment: Added 0.48.0 - new view v_alerts
       changes:
@@ -3830,6 +4014,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-036
+      validCheckSum: 8:8a35e1bdf0738ccac5da8062d6671dd0
       author: noahmoss
       comment: Added 0.48.0 - new view v_databases
       changes:
@@ -3842,6 +4027,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-037
+      validCheckSum: 8:a4b6ebd594b4663a6a888211f36ce6c3
       author: noahmoss
       comment: Added 0.48.0 - new view v_fields
       changes:
@@ -3863,6 +4049,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-038
+      validCheckSum: 8:a24f4bcd3336e79d1c8ef33ab81c0db3
       author: noahmoss
       comment: Added 0.48.0 - new view v_query_log
       changes:
@@ -3884,6 +4071,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-039
+      validCheckSum: 8:b43481a01df86830c4cb1adb8189d400
       author: noahmoss
       comment: Added 0.48.0 - new view v_tables
       changes:
@@ -3905,6 +4093,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-040
+      validCheckSum: 8:b8842eac1c7cba6e997d4d288306e36c
       author: noahmoss
       comment: Added 0.48.0 - new view v_view_log
       changes:
@@ -3926,6 +4115,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-045
+      validCheckSum: 8:874f14ae26d742448d8dd2b47dc8aa3d
       author: qwef
       comment: Added 0.48.0 - add is_sandboxed to query_execution
       changes:
@@ -3941,6 +4131,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-046
+      validCheckSum: 8:4bb11295621890202e066cd15de93a52
       author: noahmoss
       comment: Added 0.48.0 - new indexes to optimize audit v2 queries
       changes:
@@ -3969,6 +4160,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-047
+      validCheckSum: 8:2b18bed0e1ae18dd7b26a0770dac54c0
       author: noahmoss
       comment: Drop foreign key on recent_views so that it can be recreated with onDelete policy
       changes:
@@ -3986,6 +4178,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-048
+      validCheckSum: 8:872e632a8ffa42eb2969f77823e8bfc8
       author: noahmoss
       comment: Add foreign key on recent_views with onDelete CASCADE
       changes:
@@ -4003,6 +4196,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-049
+      validCheckSum: 8:853f2a24c53470bf2d9e85b1246bab7b
       author: noahmoss
       comment: Migrate data from activity to audit_log
       changes:
@@ -4053,6 +4247,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-050
+      validCheckSum: 8:d41d8cd98f00b204e9800998ecf8427e
       author: noahmoss
       comment: Added 0.48.0 - no-op migration to remove audit DB and collection on downgrade
       changes:
@@ -4063,6 +4258,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-051
+      validCheckSum: 8:5f5d1fd5b6153a6613511fd8f765737d
       author: calherries
       comment: Migrate metabase_field when the fk target field is inactive
       changes:
@@ -4089,6 +4285,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-053
+      validCheckSum: 8:8b41162170f6d712871b2ee9221adc1a
       author: johnswanson
       comment: Increase length of `activity.model` to fit longer model names
       changes:
@@ -4100,6 +4297,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-054
+      validCheckSum: 8:d41d8cd98f00b204e9800998ecf8427e
       author: escherize
       comment: Added 0.48.0 - no-op migration to remove Internal Metabase User on downgrade
       changes:
@@ -4108,8 +4306,8 @@ databaseChangeLog:
         - sql: DELETE FROM core_user WHERE id = 13371338;
 
   - changeSet:
-
       id: v48.00-055
+      validCheckSum: 8:fd36092d50982fbf31ce16757c16e47e
       author: noahmoss
       comment: Added 0.48.0 - new view v_tasks
       changes:
@@ -4131,6 +4329,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-056
+      validCheckSum: 8:229e8058cc8309053b344bbfdb042405
       author: noahmoss
       comment: 'Adjust view_log schema for Audit Log v2'
       changes:
@@ -4146,6 +4345,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-057
+      validCheckSum: 8:8e32153df1031ea12005d58ce1674873
       author: noahmoss
       comment: 'Adjust view_log schema for Audit Log v2'
       changes:
@@ -4161,6 +4361,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-059
+      validCheckSum: 8:fd8b5031dbbf69c4588ce2699eb20f33
       author: qwef
       comment: 'Update the namespace of any audit collections that are already loaded'
       changes:
@@ -4170,6 +4371,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-060
+      validCheckSum: 8:a59027f5494811033ce77cd0ba05d6bd
       author: noahmoss
       comment: Added 0.48.0 - task_history.started_at
       changes:
@@ -4182,6 +4384,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-061
+      validCheckSum: 8:9b9939aad6ca12f7cf4dfa85dae6eb1c
       author: piranha
       comment: 'Adds query_execution.cache_hash -> query_cache.query_hash'
       changes:
@@ -4199,6 +4402,7 @@ databaseChangeLog:
   # in the sql initialization, so we need to recreate one here for new instances running 48+
   - changeSet:
       id: v48.00-067
+      validCheckSum: 8:e7cd8168533c58c865dacf320e819218
       author: qnkhuat
       comment: 'Add unique constraint idx_databasechangelog_id_author_filename'
       preConditions:
@@ -5530,6 +5734,767 @@ databaseChangeLog:
       rollback: # not needed
 
   - changeSet:
+      id: v49.2024-03-26T10:23:12
+      author: adam-james
+      comment: Add pulse_card.format_rows
+      changes:
+        - addColumn:
+            tableName: pulse_card
+            columns:
+              - column:
+                  name: format_rows
+                  type: ${boolean.type}
+                  defaultValue: true
+                  remarks: Whether or not to apply formatting to the rows of the export
+
+  - changeSet:
+      id: v49.2024-03-26T20:27:58
+      author: noahmoss
+      comment: Added 0.46.0 - Delete the truncate audit log task (renamed to truncate audit tables)
+      # Apparently this migration can hang when connection pool is small (#44528). It's also not needed
+      # as of v50 due to #42383 so let's skip it.
+      ignore: true
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteTruncateAuditLogTask"
+
+  - changeSet:
+      id: v49.2024-04-09T10:00:00
+      author: qnkhuat
+      comment: Drop not null constraint on metabase_database.cache_field_values_schedule
+      changes:
+        - dropNotNullConstraint:
+            tableName: metabase_database
+            columnName: cache_field_values_schedule
+            columnDataType: varchar(254)
+      # nothing because it should always be like this
+      rollback:
+
+  - changeSet:
+      id: v49.2024-04-09T10:00:01
+      author: qnkhuat
+      comment: Drop default value on metabase_database.cache_field_values_schedule
+      changes:
+        - dropDefaultValue:
+            tableName: metabase_database
+            columnName: cache_field_values_schedule
+      # nothing because it should always be like this
+      rollback:
+
+  - changeSet:
+      id: v49.2024-04-09T10:00:02
+      author: qnkhuat
+      comment: Add null as default value for metabase_database.cache_field_values_schedule
+      changes:
+        - addDefaultValue:
+            defaultValue: "null"
+            tableName: metabase_database
+            columnName: cache_field_values_schedule
+      # nothing because it should always be like this
+      rollback:
+
+  - changeSet:
+      id: v49.2024-04-09T10:00:03
+      author: qnkhuat
+      comment: This clears the schedule for caching field values for databases with period scanning disabled.
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteScanFieldValuesTriggerForDBThatTurnItOff"
+
+  - changeSet:
+      id: v49.2024-05-07T10:00:00
+      author: qnkhuat
+      comment: Set revision.most_recent = true to latest revision and false to others. A redo of v48.00-008 for mysql
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE revision AS r
+              JOIN (
+                  SELECT inner_revision.id,
+                        ROW_NUMBER() OVER (PARTITION BY inner_revision.model, inner_revision.model_id ORDER BY inner_revision.timestamp DESC, inner_revision.id DESC) AS row_num
+                    FROM revision AS inner_revision
+                    JOIN (
+                          SELECT model, model_id
+                          FROM revision
+                          WHERE most_recent = true
+                          GROUP BY model, model_id
+                          HAVING count(*) > 1
+                        ) AS infected_revision ON inner_revision.model = infected_revision.model AND inner_revision.model_id = infected_revision.model_id
+              ) AS n ON r.id = n.id
+              SET r.most_recent = (n.row_num = 1);
+      rollback: # nothing
+
+  - changeSet:
+      id: v49.2024-05-20T19:10:34
+      author: johnswanson
+      comment: >-
+        Modify type of report_card.collection_preview to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: collection_preview
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: report_card
+            columnName: collection_preview
+            newDataType: boolean
+            defaultValueBoolean: true
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-05-20T20:37:55
+      author: johnswanson
+      comment: Add NOT NULL constraint to report_card.collection_preview
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${boolean.type}
+            tableName: report_card
+            columnName: collection_preview
+            defaultNullValue: true
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+  - changeSet:
+      id: v49.2024-05-20T20:38:34
+      author: johnswanson
+      comment: Add default value to report_card.collection_preview
+      changes:
+        - addDefaultValue:
+            defaultValueBoolean: true
+            tableName: report_card
+            columnName: collection_preview
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-05-29T09:26:20
+      author: johnswanson
+      comment: >-
+        Modify type of report_card.dataset to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: dataset
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: report_card
+            columnName: dataset
+            newDataType: boolean
+            defaultValueBoolean: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-05-29T09:27:15
+      author: johnswanson
+      dbms: mysql,mariadb
+      comment: Add NOT NULL constraint to report_card.dataset
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${boolean.type}
+            tableName: report_card
+            columnName: dataset
+            defaultNullValue: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-05-29T09:28:25
+      author: johnswanson
+      dbms: mysql,mariadb
+      comment: Add default value to report_card.dataset
+      changes:
+        - addDefaultValue:
+            defaultValueBoolean: false
+            tableName: report_card
+            columnName: dataset
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:01:01
+      author: johnswanson
+      comment: >-
+        Modify type of core_user.is_datasetnewb to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: core_user
+            columnName: is_datasetnewb
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: core_user
+            columnName: is_datasetnewb
+            newDataType: boolean
+            defaultValueBoolean: true
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:01:02
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to core_user.is_datasetnewb on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - addNotNullConstraint:
+            tableName: core_user
+            columnName: is_datasetnewb
+            columnDataType: ${boolean.type}
+            defaultNullValue: true
+      rollback:
+        - dropNotNullConstraint:
+            tableName: core_user
+            columnName: is_datasetnewb
+            columnDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:01:03
+      author: johnswanson
+      comment: >-
+        Add default value to core_user.is_datasetnewb on mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: core_user
+            columnName: is_datasetnewb
+            defaultValueBoolean: true
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:02:01
+      author: johnswanson
+      comment: >-
+        Modify type of metabase_field.database_required to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: database_required
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: database_required
+            newDataType: boolean
+            defaultValueBoolean: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:02:02
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to metabase_field.database_required on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - addNotNullConstraint:
+            tableName: metabase_field
+            columnName: database_required
+            columnDataType: ${boolean.type}
+            defaultNullValue: false
+      rollback:
+        - dropNotNullConstraint:
+            tableName: metabase_field
+            columnName: database_required
+            columnDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:02:03
+      author: johnswanson
+      comment: >-
+        Add default value to metabase_field.database_required on mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: metabase_field
+            columnName: database_required
+            defaultValueBoolean: false
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:03:01
+      author: johnswanson
+      comment: >-
+        Modify type of metabase_fieldvalues.has_more_values to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_fieldvalues
+            columnName: has_more_values
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_fieldvalues
+            columnName: has_more_values
+            newDataType: boolean
+            defaultValueBoolean: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:03:03
+      author: johnswanson
+      comment: >-
+        Add default value to metabase_fieldvalues.has_more_values on mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: metabase_fieldvalues
+            columnName: has_more_values
+            defaultValueBoolean: false
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:04:01
+      author: johnswanson
+      comment: >-
+        Modify type of permissions_group_membership.is_group_manager to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: permissions_group_membership
+            columnName: is_group_manager
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: permissions_group_membership
+            columnName: is_group_manager
+            newDataType: boolean
+            defaultValueBoolean: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:04:02
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to permissions_group_membership.is_group_manager on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - addNotNullConstraint:
+            tableName: permissions_group_membership
+            columnName: is_group_manager
+            columnDataType: ${boolean.type}
+            defaultNullValue: false
+      rollback:
+        - dropNotNullConstraint:
+            tableName: permissions_group_membership
+            columnName: is_group_manager
+            columnDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:04:03
+      author: johnswanson
+      comment: >-
+        Add default value to permissions_group_membership.is_group_manager on mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: permissions_group_membership
+            columnName: is_group_manager
+            defaultValueBoolean: false
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:05:01
+      author: johnswanson
+      comment: >-
+        Modify type of persisted_info.active to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: persisted_info
+            columnName: active
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: persisted_info
+            columnName: active
+            newDataType: boolean
+            defaultValueBoolean: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:05:02
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to persisted_info.active on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - addNotNullConstraint:
+            tableName: persisted_info
+            columnName: active
+            columnDataType: ${boolean.type}
+            defaultNullValue: false
+      rollback:
+        - dropNotNullConstraint:
+            tableName: persisted_info
+            columnName: active
+            columnDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:05:03
+      author: johnswanson
+      comment: >-
+        Add default value to persisted_info.active on mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: persisted_info
+            columnName: active
+            defaultValueBoolean: false
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:06:01
+      author: johnswanson
+      comment: >-
+        Modify type of report_card.dataset to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: dataset
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: report_card
+            columnName: dataset
+            newDataType: boolean
+            defaultValueBoolean: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:06:02
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to report_card.dataset on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - addNotNullConstraint:
+            tableName: report_card
+            columnName: dataset
+            columnDataType: ${boolean.type}
+            defaultNullValue: false
+      rollback:
+        - dropNotNullConstraint:
+            tableName: report_card
+            columnName: dataset
+            columnDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:06:03
+      author: johnswanson
+      comment: >-
+        Add default value to report_card.dataset on mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: report_card
+            columnName: dataset
+            defaultValueBoolean: false
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:07:01
+      author: johnswanson
+      comment: >-
+        Modify type of timeline.archived to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: timeline
+            columnName: archived
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: timeline
+            columnName: archived
+            newDataType: boolean
+            defaultValueBoolean: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:07:02
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to timeline.archived on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - addNotNullConstraint:
+            tableName: timeline
+            columnName: archived
+            columnDataType: ${boolean.type}
+            defaultNullValue: false
+      rollback:
+        - dropNotNullConstraint:
+            tableName: timeline
+            columnName: archived
+            columnDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:07:03
+      author: johnswanson
+      comment: >-
+        Add default value to timeline.archived on mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: timeline
+            columnName: archived
+            defaultValueBoolean: false
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:08:01
+      author: johnswanson
+      comment: >-
+        Modify type of timeline.default to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: timeline
+            columnName: default
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: timeline
+            columnName: default
+            newDataType: boolean
+            defaultValueBoolean: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:08:02
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to timeline.default on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - addNotNullConstraint:
+            tableName: timeline
+            columnName: default
+            columnDataType: ${boolean.type}
+            defaultNullValue: false
+      rollback:
+        - dropNotNullConstraint:
+            tableName: timeline
+            columnName: default
+            columnDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:08:03
+      author: johnswanson
+      comment: >-
+        Add default value to timeline.default on mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: timeline
+            columnName: default
+            defaultValueBoolean: false
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:09:01
+      author: johnswanson
+      comment: >-
+        Modify type of timeline_event.archived to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: timeline_event
+            columnName: archived
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: timeline_event
+            columnName: archived
+            newDataType: boolean
+            defaultValueBoolean: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:09:02
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to timeline_event.archived on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - addNotNullConstraint:
+            tableName: timeline_event
+            columnName: archived
+            columnDataType: ${boolean.type}
+            defaultNullValue: false
+      rollback:
+        - dropNotNullConstraint:
+            tableName: timeline_event
+            columnName: archived
+            columnDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:09:03
+      author: johnswanson
+      comment: >-
+        Add default value to timeline_event.archived on mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: timeline_event
+            columnName: archived
+            defaultValueBoolean: false
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:10:01
+      author: johnswanson
+      comment: >-
+        Modify type of timeline_event.time_matters to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: timeline_event
+            columnName: time_matters
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: timeline_event
+            columnName: time_matters
+            newDataType: boolean
+            defaultValueBoolean: NULL
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:10:02
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to timeline_event.time_matters on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - addNotNullConstraint:
+            tableName: timeline_event
+            columnName: time_matters
+            columnDataType: ${boolean.type}
+            defaultNullValue: false
+      rollback:
+        - dropNotNullConstraint:
+            tableName: timeline_event
+            columnName: time_matters
+            columnDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
       id: v50.2024-01-04T13:52:51
       author: noahmoss
       comment: Data permissions table
@@ -5824,13 +6789,1249 @@ databaseChangeLog:
             sql: >-
               DROP VIEW IF EXISTS v_content;
 
+  - changeSet:
+      id: v50.2024-02-26T22:15:54
+      author: noahmoss
+      comment: New `view-data` permission
+      changes:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/view_data.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/mysql_view_data.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: permissions/rollback/view_data.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-02-26T22:15:55
+      author: noahmoss
+      comment: New `create_queries` permission
+      changes:
+        - sqlFile:
+            path: permissions/create_queries.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: permissions/rollback/create_queries.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-02-29T15:06:43
+      author: tsmacdonald
+      comment: Add the query_field join table
+      changes:
+        - createTable:
+            tableName: query_field
+            remarks: Fields used by a card's query
+            columns:
+              - column:
+                  name: id
+                  remarks: PK
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  remarks: referenced card
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_field_card_id
+                    deleteCascade: true
+              - column:
+                  name: field_id
+                  remarks: referenced field
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_field_field_id
+                    deleteCascade: true
+
+  - changeSet:
+      id: v50.2024-02-29T15:07:43
+      author: tsmacdonald
+      comment: Index query_field.card_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: query_field
+            columns:
+              - column:
+                  name: card_id
+            indexName: idx_query_field_card_id
+
+  - changeSet:
+      id: v50.2024-02-29T15:08:43
+      author: tsmacdonald
+      comment: Index query_field.field_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: query_field
+            columns:
+              - column:
+                  name: field_id
+            indexName: idx_query_field_field_id
+
+  - changeSet:
+      id: v50.2024-03-12T17:16:38
+      author: noahmoss
+      comment: Drops the `activity` table which is now unused
+      changes:
+        - dropTable:
+            tableName: activity
+      rollback:
+        - createTable:
+            tableName: activity
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: topic
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_activity_ref_user_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: model
+                  type: varchar(16)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: model_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: database_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: custom_id
+                  type: varchar(48)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: details
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+        - sql:
+            dbms: mysql
+            sql: >
+              CREATE index idx_activity_entity_qualified_id ON activity (
+                (
+                  CASE
+                    WHEN model = 'Dataset' THEN (concat('card_', model_id))
+                    WHEN model_id IS NULL THEN NULL
+                    ELSE (concat(lower(model), '_', model_id))
+                  END
+                )
+              );
+
+  - changeSet:
+      id: v50.2024-03-18T16:00:00
+      author: piranha
+      comment: 'Effective caching #36847'
+      changes:
+        - createTable:
+            tableName: cache_config
+            remarks: Cache Configuration
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model
+                  remarks: Name of an entity model
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  remarks: ID of the said entity
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: Timestamp when the config was inserted
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: Timestamp when the config was updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: strategy
+                  remarks: caching strategy name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: config
+                  remarks: caching strategy configuration
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: state
+                  remarks: state for strategies needing to keep some data between runs
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: invalidated_at
+                  remarks: indicates when a cache was invalidated last time for schedule-based strategies
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: next_run_at
+                  remarks: keeps next time to run for schedule-based strategies
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-03-18T16:00:01
+      author: piranha
+      comment: 'Effective caching #36847'
+      rollback: # will be removed with the table
+      changes:
+        - addUniqueConstraint:
+            remarks: Unique config for cache_config (model, model_id)
+            tableName: cache_config
+            constraintName: idx_cache_config_unique_model
+            columnNames: model, model_id
+
+  - changeSet:
+      id: v50.2024-03-21T17:41:00
+      author: qnkhuat
+      comment: Add metabase_table.estimated_row_count
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: estimated_row_count
+                  type: bigint
+                  remarks: The estimated row count
+
+  - changeSet:
+      id: v50.2024-03-22T00:38:28
+      author: qnkhuat
+      comment: Add field_usage table
+      changes:
+        - createTable:
+            tableName: field_usage
+            remarks: Used to store field usage during query execution
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: field_id
+                  remarks: ID of the field
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
+                    foreignKeyName: fk_field_usage_field_id_metabase_field_id
+                    deleteCascade: true
+              - column:
+                  name: query_execution_id
+                  remarks: referenced query execution
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: query_execution
+                    referencedColumnNames: id
+                    foreignKeyName: fk_field_usage_query_execution_id
+                    deleteCascade: true
+              - column:
+                  name: used_in
+                  remarks: which part of the query the field was used in
+                  type: varchar(25)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: filter_op
+                  remarks: filter's operator that applied to the field
+                  type: varchar(25)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: aggregation_function
+                  remarks: the aggregation function that field applied to
+                  type: varchar(25)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: breakout_temporal_unit
+                  remarks: temporal unit options of the breakout
+                  type: varchar(25)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: breakout_binning_strategy
+                  remarks: the strategy of breakout
+                  type: varchar(25)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: breakout_binning_num_bins
+                  remarks: The numbin option of breakout
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: breakout_binning_bin_width
+                  remarks: The numbin option of breakout
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The time a field usage was recorded
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v50.2024-03-22T00:39:28
+      author: qnkhuat
+      comment: Index field_usage.field_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: field_usage
+            indexName: idx_field_usage_field_id
+            columns:
+              column:
+                name: field_id
+
+  - changeSet:
+      id: v50.2024-03-24T19:34:11
+      author: noahmoss
+      comment: Clean up deprecated view-data and native-query-editing permissions
+      rollback: # handled by the rollbacks for `v50.2024-02-26T22:15:54` and `v50.2024-02-26T22:15:55`
+      changes:
+        - sql:
+            sql: >
+              DELETE FROM data_permissions where perm_type = 'perms/data-access' OR perm_type = 'perms/native-query-editing';
+
+  - changeSet:
+      id: v50.2024-03-25T14:53:00
+      author: tsmacdonald
+      comment: Add query_field.direct_reference
+      changes:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: direct_reference
+                  type: ${boolean.type}
+                  remarks: "Is the Field referenced directly or via a wildcard"
+                  constraints:
+                    nullable: false
+                  defaultValue: true
+
+  - changeSet:
+      id: v50.2024-03-28T16:30:35
+      author: calherries
+      comment: Create internal user
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateInternalUser"
+
+  - changeSet:
+      id: v50.2024-03-29T10:00:00
+      author: piranha
+      comment: 'Granular cache invalidation'
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: cache_invalidated_at
+                  type: ${timestamp_type}
+                  remarks: 'An invalidation time that can supersede cache_config.invalidated_at'
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-04-09T15:55:19
+      author: calherries
+      comment: Add collection.is_sample column
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: is_sample
+                  type: ${boolean.type}
+                  remarks: "Is the collection part of the sample content?"
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+
+  - changeSet:
+      id: v50.2024-04-15T16:30:35
+      author: qnkhuat
+      comment: Add report_card.last_used_at
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: last_used_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the card is last used
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-04-19T17:04:04
+      author: noahmoss
+      comment: Clean up deprecated view-data and native-query-editing permissions (again)
+      rollback: # handled by the rollbacks for `v50.2024-02-26T22:15:54` and `v50.2024-02-26T22:15:55`
+      changes:
+        - sql:
+            sql: >
+              DELETE FROM data_permissions where perm_type = 'perms/data-access' OR perm_type = 'perms/native-query-editing';
+
+  - changeSet:
+      id: v50.2024-04-25T01:04:05
+      author: qnkhuat
+      comment: Delete the old SendPulses job and trigger
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteSendPulsesTask"
+
+  - changeSet:
+      id: v50.2024-04-25T01:04:06
+      author: qnkhuat
+      comment: Delete SendPulse Job on downgrade
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteSendPulseTaskOnDowngrade"
+
+  - changeSet:
+      id: v50.2024-04-25T01:04:07
+      author: qnkhuat
+      comment: Delete InitSendPulseTriggers Job on downgrade
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteInitSendPulseTriggersOnDowngrade"
+
+  - changeSet:
+      id: v50.2024-04-25T03:15:01
+      author: noahmoss
+      comment: Add entity_id to core_user
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  remarks: NanoID tag for each user
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+            tableName: core_user
+
+  - changeSet:
+      id: v50.2024-04-25T03:15:02
+      author: noahmoss
+      comment: Add entity_id to permissions_group
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  remarks: NanoID tag for each user
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+            tableName: permissions_group
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:31
+      author: calherries
+      comment: Add report_card.view_count
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: view_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  remarks: Keeps a running count of card views
+                  constraints:
+                    nullable: false
+            tableName: report_card
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:32
+      author: calherries
+      comment: Populate report_card.view_count
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE report_card c
+              SET c.view_count = (
+                  SELECT COUNT(*)
+                  FROM view_log v
+                  WHERE v.model = 'card'
+                  AND v.model_id = c.id
+              );
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE report_card c
+              SET view_count = (
+                  SELECT count(*)
+                  FROM view_log v
+                  WHERE v.model = 'card'
+                  AND v.model_id = c.id
+              );
+      rollback: # nothing to do, since view_count didn't exist in v49
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:33
+      author: calherries
+      comment: Add report_dashboard.view_count
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: view_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  remarks: Keeps a running count of dashboard views
+                  constraints:
+                    nullable: false
+            tableName: report_dashboard
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:34
+      author: calherries
+      comment: Populate report_dashboard.view_count
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE report_dashboard c
+              SET c.view_count = (
+                  SELECT COUNT(*)
+                  FROM view_log v
+                  WHERE v.model = 'dashboard'
+                  AND v.model_id = c.id
+              );
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE report_dashboard c
+              SET view_count = (
+                  SELECT count(*)
+                  FROM view_log v
+                  WHERE v.model = 'dashboard'
+                  AND v.model_id = c.id
+              );
+      rollback: # nothing to do, since view_count didn't exist in v49
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:35
+      author: calherries
+      comment: Add metabase_table.view_count
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: view_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  remarks: Keeps a running count of card views
+                  constraints:
+                    nullable: false
+            tableName: metabase_table
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:36
+      author: calherries
+      comment: Populate metabase_table.view_count
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_table t
+              SET t.view_count = (
+                  SELECT count(*)
+                  FROM view_log v
+                  WHERE v.model = 'table'
+                  AND v.model_id = t.id
+              );
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE metabase_table t
+              SET view_count = (
+                  SELECT count(*)
+                  FROM view_log v
+                  WHERE v.model = 'table'
+                  AND v.model_id = t.id
+              );
+      rollback: # nothing to do, since view_count didn't exist in v49
+
+  - changeSet:
+      id: v50.2024-04-26T09:19:00
+      author: adam-james
+      comment: Added 0.50.0 - Per-user Dashboard Parameter values table
+      changes:
+        - createTable:
+            tableName: user_parameter_value
+            remarks: Table holding last set value of a parameter per user
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'ID of the User who has set the parameter value'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_user_parameter_value_user_id
+                    deleteCascade: true
+              - column:
+                  name: parameter_id
+                  type: varchar(36)
+                  remarks: "The parameter ID"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: value
+                  type: ${text.type}
+                  remarks: Value of the parameter
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-04-26T09:25:00
+      author: adam-james
+      comment: Index user_parameter_value.user_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: user_parameter_value
+            indexName: idx_user_parameter_value_user_id
+            columns:
+              column:
+                name: user_id
+
+  - changeSet:
+      id: v50.2024-04-30T23:57:23
+      author: noahmoss
+      comment: Add `scope` column to api_key to support SCIM authentication
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: scope
+                  type: varchar(64)
+                  remarks: The scope of the API key, if applicable
+                  constraints:
+                    nullable: true
+            tableName: api_key
+
+  - changeSet:
+      id: v50.2024-04-30T23:58:24
+      author: noahmoss
+      comment: Drop NOT NULL constraint on api_key.user_id to support SCIM-scoped API keys
+      changes:
+        - dropNotNullConstraint:
+            tableName: api_key
+            columnName: user_id
+            columnDataType: integer
+      rollback: # we can't reliably add back the constraint while downgrading
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:00
+      author: qnkhuat
+      comment: Add task_history.status
+      changes:
+        - addColumn:
+            tableName: task_history
+            columns:
+              - column:
+                  name: status
+                  type: varchar(21)
+                  remarks: "the status of task history, could be started, failed, success, unknown"
+                  constraints:
+                    nullable: false
+                  defaultValue: "unknown"
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:01
+      author: qnkhuat
+      comment: Drop default value task_history.status
+      changes:
+        - dropDefaultValue:
+            tableName: task_history
+            columnName: status
+      # the column will be dropped
+      rollback:
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:02
+      author: qnkhuat
+      comment: Add "started" as default value for task_history.status, now that backfill is done.
+      changes:
+        - addDefaultValue:
+            defaultValue: "started"
+            tableName: task_history
+            columnName: status
+      # the column will be dropped
+      rollback:
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:03
+      author: qnkhuat
+      comment: Drop not null constraint for task_history.ended_at
+      changes:
+        - dropNotNullConstraint:
+            tableName: task_history
+            columnDataType: ${timestamp_type}
+            columnName: ended_at
+      rollback: # we can't reliably add back the constraint while downgrading
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:04
+      author: qnkhuat
+      comment: Drop not null constraint for task_history.duration
+      changes:
+        - dropNotNullConstraint:
+            tableName: task_history
+            columnDataType: int
+            columnName: duration
+      rollback: # we can't reliably add back the constraint while downgrading
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:05
+      author: qnkhuat
+      comment: Drop default value task_history.ended_at
+      changes:
+        - dropDefaultValue:
+            tableName: task_history
+            columnName: ended_at
+      rollback:
+        - addDefaultValue:
+            tableName: task_history
+            columnName: ended_at
+            defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:06
+      author: qnkhuat
+      comment: Add null as default value for task_history.ended_at
+      changes:
+        - addDefaultValue:
+            defaultValue: "null"
+            tableName: task_history
+            columnName: ended_at
+      # the migration above will add one
+      rollback:
+
+  - changeSet:
+      id: v50.2024-05-13T16:00:00
+      author: filipesilva
+      comment: Create cloud migration
+      changes:
+        - createTable:
+            tableName: cloud_migration
+            remarks: Migrate to cloud directly from Metabase
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: external_id
+                  remarks: Matching ID in Cloud for this migration
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: upload_url
+                  remarks: URL where the backup will be uploaded to
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: state
+                  remarks: 'Current state of the migration: init, setup, dump, upload, done, error, cancelled'
+                  type: varchar(32)
+                  defaultValue: init
+                  constraints:
+                    nullable: false
+              - column:
+                  name: progress
+                  remarks: Number between 0 to 100 representing progress as a percentage
+                  type: int
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: Timestamp when the config was inserted
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: Timestamp when the config was updated
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v50.2024-05-14T12:42:42
+      author: johnswanson
+      comment: Create the Trash collection
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO collection (name, slug, entity_id, type) VALUES ('Trash', 'trash', 'trashtrashtrashtrasht', 'trash');
+              INSERT INTO permissions (object, group_id)
+              SELECT CONCAT('/collection/', c.id, '/'), pg.id
+              FROM collection c
+              CROSS JOIN permissions_group pg
+              WHERE c.type = 'trash' AND pg.name != 'Administrators';
+
+      rollback:
+        - sql:
+            sql: >-
+              DELETE
+              FROM permissions
+              WHERE permissions.object IN (
+                SELECT CONCAT('/collection/', collection.id, '/') FROM collection WHERE collection.type = 'trash'
+              );
+              DELETE FROM collection WHERE type = 'trash';
+
+  - changeSet:
+      id: v50.2024-05-15T13:13:13
+      author: adam-james
+      comment: Fix visualization settings for stacked area/bar/combo displays
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateStackedAreaBarComboDisplaySettings"
+
+  - changeSet:
+      id: v50.2024-05-17T19:54:23
+      author: calherries
+      comment: Add metabase_database.uploads_enabled column
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: uploads_enabled
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether uploads are enabled for this database
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v50.2024-05-17T19:54:24
+      author: calherries
+      comment: Add metabase_database.uploads_schema_name column
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: uploads_schema_name
+                  type: ${text.type}
+                  remarks: The schema name for uploads
+
+  - changeSet:
+      id: v50.2024-05-17T19:54:25
+      author: calherries
+      comment: Add metabase_database.uploads_table_prefix column
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: uploads_table_prefix
+                  type: ${text.type}
+                  remarks: The prefix for upload table names
+
+  - changeSet:
+      id: v50.2024-05-17T19:54:26
+      author: calherries
+      comment: Update metabase_database.uploads_enabled value
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateUploadsSettings"
+
+  # This migration should be moved whenever the sample content is updated, so that it
+  # matches when the version that the sample content was updated from. See metabase#43200
+  # for an example where the content was updated.
+  - changeSet:
+      id: v50.2024-05-27T15:55:22
+      author: calherries
+      comment: Create sample content
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateSampleContent"
+
+  - changeSet:
+      id: v50.2024-05-29T14:04:47
+      author: johnswanson
+      comment: Add `report_dashboard.archived_directly`
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: archived_directly
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: "Was this thing trashed directly"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v50.2024-05-29T14:04:53
+      author: johnswanson
+      comment: Add `report_card.archived_directly`
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: archived_directly
+                  type: ${boolean.type}
+                  remarks: "Was this thing trashed directly"
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v50.2024-05-29T14:04:58
+      author: johnswanson
+      comment: Add `collection.archive_operation_id`
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: archive_operation_id
+                  type: char(36)
+                  remarks: "The UUID of the trash operation. Each time you trash a collection subtree, you get a unique ID."
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-05-29T14:05:01
+      author: johnswanson
+      comment: Add `collection.archived_directly`
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: archived_directly
+                  type: ${boolean.type}
+                  remarks: "Whether the item was trashed independently or as a subcollection"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-05-29T14:05:03
+      author: johnswanson
+      comment: Populate `archived_directly` and `archive_operation_id` (Postgres)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: trash/postgres.sql
+            relativeToChangelogFile: true
+      rollback: # not needed, columns will be deleted
+
+  - changeSet:
+      id: v50.2024-05-29T18:42:13
+      author: johnswanson
+      comment: Populate `archived_directly` and `archive_operation_id` (H2)
+      changes:
+        - sqlFile:
+            dbms: h2
+            path: trash/h2.sql
+            relativeToChangelogFile: true
+      rollback: # not needed, columns will be deleted
+
+  - changeSet:
+      id: v50.2024-05-29T18:42:14
+      author: johnswanson
+      comment: Populate `archived_directly` and `archive_operation_id` (MySQL)
+      changes:
+        - sqlFile:
+            dbms: mysql
+            path: trash/mysql.sql
+            relativeToChangelogFile: true
+      rollback: # not needed, columns will be deleted
+
+  - changeSet:
+      id: v50.2024-05-29T18:42:15
+      author: johnswanson
+      comment: Populate `archived_directly` and `archive_operation_id` (MariaDB)
+      changes:
+        - sqlFile:
+            dbms: mariadb
+            path: trash/mariadb.sql
+            relativeToChangelogFile: true
+      rollback: # not needed, columns will be deleted
+
+  - changeSet:
+      id: v50.2024-06-12T12:33:07
+      author: piranha
+      comment: 'Decrypt some settings so the next migration runs well'
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DecryptCacheSettings"
+      rollback: # no rollback necessary, they'll be encrypted if you downgrade and touch them
+
+  - changeSet:
+      # this had id `v50.2024-04-12T12:33:09` before #44048
+      id: v50.2024-06-12T12:33:08
+      author: piranha
+      comment: 'Copy old cache configurations to cache_config table'
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: custom_sql/fill_cache_config.pg.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: custom_sql/fill_cache_config.my.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: custom_sql/fill_cache_config.h2.sql
+            relativeToChangelogFile: true
+      rollback: # no rollback necessary, we're not removing the columns yet
+
+  - changeSet:
+      id: v50.2024-06-12T12:33:09
+      author: piranha
+      comment: 'Fix root cache config for mysql if it is wrong'
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: custom_sql/fill_cache_config_root_fix.my.sql
+            relativeToChangelogFile: true
+      rollback: # no rollback necessary here too
+
+  - changeSet:
+      id: v50.2024-06-20T13:21:30
+      author: noahmoss
+      comment: 'Drop permission_id column on sandboxes table to fix down migrations'
+      changes:
+        - dropColumn:
+            tableName: sandboxes
+            columnName: permission_id
+      rollback:
+        - addColumn:
+            tableName: sandboxes
+            columns:
+              - column:
+                  name: permission_id
+                  type: int
+                  remarks: 'The ID of the corresponding permissions path for this sandbox (deprecated)'
+                  constraints:
+                    nullable: true
+                  defaultValue: null
+
+  - changeSet:
+      id: v50.2024-06-28T12:35:50
+      author: piranha
+      comment: 'Clean databasechangelog table of migration that was once deleted'
+      changes:
+        - sql: "DELETE FROM ${databasechangelog.name} WHERE id = 'v50.2024-04-12T12:33:09'"
+      rollback: # nothing to do here
+
+  - changeSet:
+      id: v51.2024-05-13T15:30:57
+      author: metamben
+      comment: Backup of dataset_query rewritten by the metrics v2 migration
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dataset_query_metrics_v2_migration_backup
+                  remarks: The copy of dataset_query before the metrics v2 migration
+                  type: ${text.type}
+
+  - changeSet:
+      id: v51.2024-05-13T16:00:00
+      author: metamben
+      comment: Migrate v1 metrics to v2 metrics
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateMetricsToV2"
+
+  - changeSet:
+      id: v51.2024-05-30T16:04:20
+      author: escherize
+      comment: Add context to recent views table
+      changes:
+        - addColumn:
+            tableName: recent_views
+            columns:
+              - column:
+                  name: context
+                  remarks: The contextual action that netted a recent view.
+                  type: varchar(256)
+                  defaultValue: "view"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-06-07T12:37:36
+      author: crisptrutski
+      comment: Rename query_field.direct_reference to query_field.indirect_reference
+      changes:
+        - renameColumn:
+            tableName: query_field
+            columnDataType: ${boolean.type}
+            oldColumnName: direct_reference
+            newColumnName: explicit_reference
+
+  - changeSet:
+      id: v51.2024-06-12T18:53:02
+      author: noahmoss
+      comment: Drop incorrect index on login_history
+      changes:
+        - dropIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
+      rollback:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
+            columns:
+              - column:
+                  name: session_id
+              - column:
+                  name: device_id
+
+  - changeSet:
+      id: v51.2024-06-12T18:53:03
+      author: noahmoss
+      comment: Create index on login_history (user_id, device_id)
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: device_id
+      rollback:
+        - dropIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
 #
 # ADVICE:
 #
-# 1) Run ./bin/lint-migrations-file.sh to run core.spec checks against any changes you make here. Liquibase is pretty
+# 1) Think through some of these points when writing a migration, learn from our past mistakes:
+#    - Do you really need a migration? Could the feature work without it? Prefer not to if possible.
+#      Data in the wild can be vastly different from what you expect, and it's hard to get right.
+#    - If you still need to, make sure it works when Metabase is encrypted. Fields like `metabase_database.details`
+#      or `setting.value` can be encrypted, so you need to decrypt them in your migration. See #42617, #44048.
+#    - Prefer SQL migrations over custom migrations.
+#    - Still, make sure your migration is backward compatible: it might not be possible to add a constraint back
+#      if you are dropping it in a migration.
+#    - Postgres, MySQL and H2 have their differences. Make sure your migration works for all.
+#    - Custom migrations and their tests demand a high level of reliability. They should only use code from the standard library.
+#      Requiring code from the Metabase codebase is a bad idea because it can change and break your migration.
+#      More in `metabase.db.custom_migrations` namespace doc.
+#    - Custom migrations shouldn't use Toucan models; work directly with the table names.
+#
+# 2) Run ./bin/lint-migrations-file.sh to run core.spec checks against any changes you make here. Liquibase is pretty
 #    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
 #    this check but it's nicer to know now instead of waiting for CI.
 #
@@ -5839,7 +8040,7 @@ databaseChangeLog:
 #       automatically and the migrations linter will check for the presence of rollback where required as
 #       much as possible.
 #
-# 2) Migration IDs should follow the format
+# 3) Migration IDs should follow the format
 #
 #    vMM.TIMESTAMP
 #

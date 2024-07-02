@@ -1,11 +1,13 @@
+import cx from "classnames";
 import type { CSSProperties, ReactNode } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { Icon, Text } from "metabase/ui";
-import type Database from "metabase-lib/metadata/Database";
-import type Field from "metabase-lib/metadata/Field";
-import type Table from "metabase-lib/metadata/Table";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Table from "metabase-lib/v1/metadata/Table";
 
 import {
   TextSchema,
@@ -43,12 +45,15 @@ export function Trigger({
 
   return (
     <span
-      className={className || "px2 py2 text-bold cursor-pointer text-default"}
+      className={
+        className ||
+        cx(CS.px2, CS.py2, CS.textBold, CS.cursorPointer, CS.textDefault)
+      }
       style={style}
     >
       {children}
       {showDropdownIcon && (
-        <Icon className="ml1" name="chevrondown" size={iconSize} />
+        <Icon className={CS.ml1} name="chevrondown" size={iconSize} />
       )}
     </span>
   );
@@ -81,22 +86,29 @@ export function FieldTrigger({
 export function DatabaseTrigger({ database }: { database: Database }) {
   return database ? (
     <span
-      className="text-wrap text-grey no-decoration"
+      className={cx(CS.textWrap, CS.noDecoration)}
       data-testid="selected-database"
     >
       {database.name}
     </span>
   ) : (
-    <span className="text-medium no-decoration">{t`Select a database`}</span>
+    <span
+      className={cx(CS.textMedium, CS.noDecoration)}
+    >{t`Select a database`}</span>
   );
 }
 
 export function TableTrigger({ table }: { table: Table }) {
   return table ? (
-    <span className="text-wrap text-grey no-decoration">
+    <span
+      className={cx(CS.textWrap, CS.noDecoration)}
+      data-testid="selected-table"
+    >
       {table.display_name || table.name}
     </span>
   ) : (
-    <span className="text-medium no-decoration">{t`Select a table`}</span>
+    <span
+      className={cx(CS.textMedium, CS.noDecoration)}
+    >{t`Select a table`}</span>
   );
 }

@@ -9,14 +9,17 @@ interface TimeToggleProps extends ButtonProps {
 }
 
 export function TimeToggle({ hasTime, ...props }: TimeToggleProps) {
+  const label = hasTime ? t`Remove time` : t`Add time`;
+
   return (
     <Button
       c="text-medium"
       variant="subtle"
       leftIcon={<Icon name="clock" />}
+      aria-label={label}
       {...props}
     >
-      {hasTime ? t`Remove time` : t`Add time`}
+      {label}
     </Button>
   );
 }

@@ -10,9 +10,9 @@ import {
   isUploadAborted,
 } from "metabase/lib/uploads";
 import { Box, Stack } from "metabase/ui";
-import type Table from "metabase-lib/metadata/Table";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type { Collection } from "metabase-types/api";
-import type { FileUpload } from "metabase-types/store/upload";
+import { UploadMode, type FileUpload } from "metabase-types/store/upload";
 
 import StatusLarge from "../StatusLarge";
 
@@ -90,9 +90,15 @@ const getTitle = (
   uploadDestination: Collection | Table,
 ) => {
   const isDone = uploads.every(isUploadCompleted);
+  const isOnlyReplace = uploads.every(
+    upload => upload.uploadMode === UploadMode.replace,
+  );
   const isError = uploads.some(isUploadAborted);
 
   if (isDone) {
+    if (isOnlyReplace) {
+      return t`Data replaced in ${uploadDestination.name}`;
+    }
     return t`Data added to ${uploadDestination.name}`;
   } else if (isError) {
     return t`Error uploading your file`;

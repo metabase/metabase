@@ -10,6 +10,11 @@ export const getTooltipOverrides = (): MantineThemeOverride["components"] => ({
         transition: "fade",
         duration: 200,
       },
+      events: {
+        hover: true,
+        focus: true,
+        touch: true,
+      },
     },
     styles: theme => ({
       tooltip: {

@@ -1,86 +1,85 @@
-:global(.scroll-y),
-.scroll-y {
+.scrollY {
   overflow-y: auto;
 }
 
-:global(.scroll-x) {
+.scrollX {
   overflow-x: auto;
 }
 
-:global(.scroll-show::-webkit-scrollbar) {
+.scrollShow::-webkit-scrollbar {
   width: 15px;
   min-height: 10px;
 }
 
-:global(.scroll-show--hover::-webkit-scrollbar) {
+.scrollShowHover::-webkit-scrollbar {
   display: none;
 }
 
-:global(.scroll-show--hover:hover::-webkit-scrollbar) {
+.scrollShowHover:hover::-webkit-scrollbar {
   display: inherit;
 }
 
-:global(.scroll-show::-webkit-scrollbar-thumb) {
+.scrollShow::-webkit-scrollbar-thumb {
   border: 4px solid transparent;
   border-radius: 7px;
   background-clip: padding-box;
-  background-color: var(--color-bg-medium);
+  background-color: var(--mb-color-bg-medium);
 }
 
-:global(.scroll-show::-webkit-scrollbar-button) {
+.scrollShow::-webkit-scrollbar-button {
   width: 0;
   height: 0;
   display: none;
 }
 
-:global(.scroll-show::-webkit-scrollbar-corner) {
+.scrollShow::-webkit-scrollbar-corner {
   background-color: transparent;
 }
 
-:global(.scroll-show:hover::-webkit-scrollbar-thumb) {
-  background-color: var(--color-bg-dark);
+.scrollShow:hover::-webkit-scrollbar-thumb {
+  background-color: var(--mb-color-bg-dark);
 }
 
-:global(.scroll-show::-webkit-scrollbar-thumb:horizontal:hover),
-:global(.scroll-show::-webkit-scrollbar-thumb:vertical:hover) {
-  background-color: var(--color-bg-dark);
+.scrollShow::-webkit-scrollbar-thumb:horizontal:hover,
+.scrollShow::-webkit-scrollbar-thumb:vertical:hover {
+  background-color: var(--mb-color-bg-dark);
 }
 
-:global(.scroll-show::-webkit-scrollbar-thumb:horizontal:active),
-:global(.scroll-show::-webkit-scrollbar-thumb:vertical:active) {
-  background-color: var(--color-bg-dark);
+.scrollShow::-webkit-scrollbar-thumb:horizontal:active,
+.scrollShow::-webkit-scrollbar-thumb:vertical:active {
+  background-color: var(--mb-color-bg-dark);
 }
 
 /* scroll light */
-:global(.scroll-show.scroll--light::-webkit-scrollbar-thumb) {
+.scrollShow.scrollLight::-webkit-scrollbar-thumb {
   border-radius: 0;
-  background-color: var(--color-bg-medium);
+  background-color: var(--mb-color-bg-medium);
 }
 
-:global(.scroll-show.scroll--light::-webkit-scrollbar-thumb:horizontal:hover),
-:global(.scroll-show.scroll--light::-webkit-scrollbar-thumb:vertical:hover),
-:global(.scroll-show.scroll--light::-webkit-scrollbar-thumb:horizontal:active),
-:global(.scroll-show.scroll--light::-webkit-scrollbar-thumb:vertical:active) {
-  background-color: var(--color-bg-medium);
+.scrollShow.scrollLight::-webkit-scrollbar-thumb:horizontal:hover,
+.scrollShow.scrollLight::-webkit-scrollbar-thumb:vertical:hover,
+.scrollShow.scrollLight::-webkit-scrollbar-thumb:horizontal:active,
+.scrollShow.scrollLight::-webkit-scrollbar-thumb:vertical:active {
+  background-color: var(--mb-color-bg-medium);
 }
 
-:global(.scroll-hide) {
+.scrollHide {
   -ms-overflow-style: none; /* IE 10+ */
   overflow: -moz-scrollbars-none; /* Firefox */
 }
 
-:global(.scroll-hide::-webkit-scrollbar) {
+.scrollHide::-webkit-scrollbar {
   display: none; /* Safari and Chrome */
 }
 
-:global(.scroll-hide-all),
-:global(.scroll-hide-all *) {
+.scrollHideAll,
+.scrollHideAll * {
   -ms-overflow-style: none; /* IE 10+ */
   overflow: -moz-scrollbars-none; /* Firefox */
   scrollbar-width: none; /* Firefox */
 }
 
-:global(.scroll-hide-all::-webkit-scrollbar),
-:global(.scroll-hide-all *::-webkit-scrollbar) {
+.scrollHideAll::-webkit-scrollbar,
+.scrollHideAll *::-webkit-scrollbar {
   display: none; /* Safari and Chrome */
 }

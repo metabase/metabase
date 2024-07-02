@@ -8,11 +8,12 @@ import {
 import ActionButton from "metabase/components/ActionButton";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useDispatch } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { MetabaseApi } from "metabase/services";
-import type Database from "metabase-lib/metadata/Database";
-import { getModelCacheSchemaName } from "metabase-lib/metadata/utils/models";
+import type Database from "metabase-lib/v1/metadata/Database";
+import { getModelCacheSchemaName } from "metabase-lib/v1/metadata/utils/models";
 
 import {
   ControlContainer,
@@ -37,13 +38,13 @@ function FeatureDescription({ schemaName }: { schemaName: string }) {
   const docsLink = (
     <ExternalLink
       key="model-caching-link"
-      href={MetabaseSettings.docsUrl("data-modeling/models")}
+      href={MetabaseSettings.docsUrl("data-modeling/model-persistence")}
     >{t`Learn more.`}</ExternalLink>
   );
   return (
     <PopoverContent>
-      <FeatureTitle>{t`Cache models`}</FeatureTitle>
-      <FeatureDescriptionText>{jt`We'll create tables with model data and refresh them on a schedule you define. To enable it, you need to grant this connection credential read and write permissions on the "${schemaName}" schema or grant create schema permissions. ${docsLink}`}</FeatureDescriptionText>
+      <FeatureTitle>{t`Persist models`}</FeatureTitle>
+      <FeatureDescriptionText>{jt`We'll create tables with model data and refresh them on a schedule you define. To enable model persistence, you need to grant this connection's credentials read and write permissions on the "${schemaName}" schema or grant create schema permissions. ${docsLink}`}</FeatureDescriptionText>
     </PopoverContent>
   );
 }
@@ -60,8 +61,8 @@ function ModelCachingControl({ database }: Props) {
   const isEnabled = database.isPersisted();
 
   const normalText = isEnabled
-    ? t`Turn model caching off`
-    : t`Turn model caching on`;
+    ? t`Turn model persistence off`
+    : t`Turn model persistence on`;
 
   const siteUUID = MetabaseSettings.get("site-uuid") || "";
   const cacheSchemaName = getModelCacheSchemaName(databaseId, siteUUID);
@@ -93,7 +94,7 @@ function ModelCachingControl({ database }: Props) {
     <div>
       <ControlContainer>
         <ActionButton
-          className="Button"
+          className={ButtonsS.Button}
           normalText={normalText}
           failedText={t`Failed`}
           successText={t`Done`}

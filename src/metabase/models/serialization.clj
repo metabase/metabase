@@ -16,15 +16,14 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
@@ -338,7 +337,7 @@
 
 (defn- log-and-extract-one
   [model opts instance]
-  (log/info (trs "Extracting {0} {1}" model (:id instance)))
+  (log/infof "Extracting %s %s" model (:id instance))
   (extract-one model opts instance))
 
 (defmethod extract-all :default [model opts]
@@ -351,10 +350,10 @@
   [model {:keys [collection-set]}]
   (if collection-set
     ;; If collection-set is defined, select everything in those collections, or with nil :collection_id.
-    (let [in-colls  (t2/reducible-select model :collection_id [:in collection-set])]
-      (if (contains? collection-set nil)
-        (eduction cat [in-colls (t2/reducible-select model :collection_id nil)])
-        in-colls))
+    (t2/reducible-select model {:where [:or
+                                        [:in :collection_id collection-set]
+                                        (when (contains? collection-set nil)
+                                          [:= :collection_id nil])]})
     ;; If collection-set is nil, just select everything.
     (t2/reducible-select model)))
 
@@ -523,9 +522,9 @@
 
 (def ^:private fields-for-table
   "Given a table name, returns a map of column_name -> column_type"
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn fields-for-table [table-name]
-     (u.conn/app-db-column-types mdb.connection/*application-db* table-name))))
+     (u.conn/app-db-column-types (mdb/app-db) table-name))))
 
 (defn- ->table-name
   "Returns the table name that a particular ingested entity should finally be inserted into."
@@ -894,7 +893,7 @@
   [mbql]
   (-> mbql
       mbql.normalize/normalize-tokens
-      (mbql.u/replace
+      (lib.util.match/replace
         ;; `integer?` guard is here to make the operation idempotent
        [:field (id :guard integer?) opts]
        [:field (*export-field-fk* id) (mbql-id->fully-qualified-name opts)]
@@ -920,7 +919,7 @@
        [:dimension (mbql-id->fully-qualified-name dim)]
 
        [:metric (id :guard integer?)]
-       [:metric (*export-fk* id 'Metric)]
+       [:metric (*export-fk* id 'LegacyMetric)]
 
        [:segment (id :guard integer?)]
        [:segment (*export-fk* id 'Segment)])))
@@ -938,7 +937,7 @@
 
 (defn- ids->fully-qualified-names
   [entity]
-  (mbql.u/replace entity
+  (lib.util.match/replace entity
                   mbql-entity-reference?
                   (mbql-id->fully-qualified-name &match)
 
@@ -984,7 +983,7 @@
 
 (defn- mbql-fully-qualified-names->ids*
   [entity]
-  (mbql.u/replace entity
+  (lib.util.match/replace entity
     ;; handle legacy `:field-id` forms encoded prior to 0.39.0
     ;; and also *current* expresion forms used in parameter mapping dimensions
     ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
@@ -1015,7 +1014,7 @@
                       mbql-fully-qualified-names->ids*) ; Process other keys
 
                   [(:or :metric "metric") (fully-qualified-name :guard portable-id?)]
-                  [:metric (*import-fk* fully-qualified-name 'Metric)]
+                  [:metric (*import-fk* fully-qualified-name 'LegacyMetric)]
 
                   [(:or :segment "segment") (fully-qualified-name :guard portable-id?)]
                   [:segment (*import-fk* fully-qualified-name 'Segment)]
@@ -1067,8 +1066,8 @@
     ["field"    (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
     [:field-id  (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
     ["field-id" (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
-    [:metric    (field :guard portable-id?)] #{[{:model "Metric" :id field}]}
-    ["metric"   (field :guard portable-id?)] #{[{:model "Metric" :id field}]}
+    [:metric    (field :guard portable-id?)] #{[{:model "LegacyMetric" :id field}]}
+    ["metric"   (field :guard portable-id?)] #{[{:model "LegacyMetric" :id field}]}
     [:segment   (field :guard portable-id?)] #{[{:model "Segment" :id field}]}
     ["segment"  (field :guard portable-id?)] #{[{:model "Segment" :id field}]}
     :else (reduce #(cond
@@ -1264,7 +1263,7 @@
           (m/update-existing-in [:pivot_table.column_split :columns] mbql-fully-qualified-names->ids)))
 
 (defn- export-visualizations [entity]
-  (mbql.u/replace
+  (lib.util.match/replace
    entity
    ["field-id" (id :guard number?)]
    ["field-id" (*export-field-fk* id)]
@@ -1325,7 +1324,7 @@
                    (*import-fk* id (link-card-model->toucan-model model)))}))))
 
 (defn- import-visualizations [entity]
-  (mbql.u/replace
+  (lib.util.match/replace
    entity
    [(:or :field-id "field-id") (fully-qualified-name :guard vector?) tail]
    [:field-id (*import-field-fk* fully-qualified-name) (import-visualizations tail)]

@@ -1,7 +1,8 @@
 (ns metabase.lib.schema.util
   (:refer-clojure :exclude [ref])
   (:require
-   [metabase.lib.options :as lib.options]))
+   [metabase.lib.options :as lib.options]
+   [metabase.util.malli.registry :as mr]))
 
 (declare collect-uuids)
 
@@ -11,7 +12,7 @@
           [our-uuid]
           [])
         (comp (remove (fn [[k _v]]
-                        (#{:lib/metadata :lib/stage-metadata :lib/options} k)))
+                        (qualified-keyword? k)))
               (mapcat (fn [[_k v]]
                         (collect-uuids v))))
         m))
@@ -48,8 +49,8 @@
   [x]
   (not (find-duplicate-uuid x)))
 
-(def UniqueUUIDs
-  "Malli schema for to ensure that all `:lib/uuid`s are unique."
+;;; Malli schema for to ensure that all `:lib/uuid`s are unique.
+(mr/def ::unique-uuids
   [:fn
    {:error/message "all :lib/uuids must be unique"
     :error/fn      (fn [{:keys [value]} _]

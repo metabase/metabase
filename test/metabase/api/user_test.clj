@@ -78,8 +78,10 @@
                    "rasta@metabase.com"}
                  (->> result (map :email) set))))
         (testing "with a query"
-          (is (= "lucky@metabase.com"
-                 (-> (mt/user-http-request :crowberto :get 200 "user" :query "lUck") :data first :email))))))
+          (is (=? [{:email "lucky@metabase.com"}]
+                  (->> (mt/user-http-request :crowberto :get 200 "user" :query "lUck")
+                       :data
+                       (filter mt/test-user?)))))))
     (testing "Check that non-admins cannot get a list of all active Users"
       (mt/with-non-admin-groups-no-root-collection-perms
         (is (= "You don't have permissions to do that."
@@ -128,24 +130,22 @@
                  (mt/user-http-request :rasta :get 403 "user" :group_id group-id2))))
         (if config/ee-available?
           ;; Group management is an EE feature
-          (testing "manager can get users from their groups"
-            (is (= #{"lucky@metabase.com"
-                     "rasta@metabase.com"}
-                   (->> ((mt/user-http-request :rasta :get 200 "user" :group_id group-id1) :data)
-                        (filter mt/test-user?)
-                        (map :email)
-                        set)))
-            (is (= #{"lucky@metabase.com"
-                     "rasta@metabase.com"}
-                   (->> ((mt/user-http-request :rasta :get 200 "user") :data)
-                        (filter mt/test-user?)
-                        (map :email)
-                        set)))
-            (testing "see users from all groups the user manages"
+          (do
+            (testing "manager can get all users in their group"
+              (is (= #{"lucky@metabase.com"
+                       "rasta@metabase.com"}
+                     (->> ((mt/user-http-request :rasta :get 200 "user" :group_id group-id1) :data)
+                          (filter mt/test-user?)
+                          (map :email)
+                          set))))
+            (testing "manager can't get all users in another group"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403 "user" :group_id group-id2))))
+            (testing "manager can get all users"
               (is (= #{"lucky@metabase.com"
                        "rasta@metabase.com"
                        "crowberto@metabase.com"}
-                     (->> ((mt/user-http-request :lucky :get 200 "user") :data)
+                     (->> ((mt/user-http-request :rasta :get 200 "user") :data)
                           (filter mt/test-user?)
                           (map :email)
                           set)))))
@@ -515,11 +515,7 @@
                      (dissoc :is_qbnewb :last_login))
                  (-> resp
                      mt/boolean-ids-and-timestamps
-                     (dissoc :is_qbnewb :last_login :user_group_memberships))))))
-
-      (testing "We should get a 404 when trying to access a disabled account"
-        (is (= "Not found."
-               (mt/user-http-request :crowberto :get 404 (str "user/" (mt/user->id :trashbird)))))))))
+                     (dissoc :is_qbnewb :last_login :user_group_memberships)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 
 import type { CreateQueryActionParams } from "metabase/entities/actions";
-import Question from "metabase-lib/Question";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
   ActionFormSettings,
@@ -64,9 +64,11 @@ function convertActionToQuestionCard(
     display: "action",
     visualization_settings:
       action.visualization_settings as VisualizationSettings,
-
     type: "question",
     can_write: true,
+    can_run_adhoc_query: true,
+    can_restore: false,
+    can_delete: false,
     public_uuid: null,
     collection_id: null,
     collection_position: null,

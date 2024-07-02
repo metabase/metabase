@@ -1,13 +1,16 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import d3 from "d3";
+import * as d3 from "d3";
 import L from "leaflet";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
-import { hasLatitudeAndLongitudeColumns } from "metabase-lib/types/utils/isa";
+import { hasLatitudeAndLongitudeColumns } from "metabase-lib/v1/types/utils/isa";
 
 import LeafletGridHeatMap from "./LeafletGridHeatMap";
 import LeafletHeatMap from "./LeafletHeatMap";
@@ -129,9 +132,13 @@ export default class PinMap extends Component {
     ]);
 
     // only use points with numeric coordinates & metric
-    const validPoints = allPoints.map(
-      ([lat, lng, metric]) => lat != null && lng != null && metric != null,
-    );
+    const validPoints = allPoints.map(([lat, lng, metric]) => {
+      if (settings["map.type"] === "pin") {
+        return lat != null && lng != null;
+      }
+
+      return lat != null && lng != null && metric != null;
+    });
     const points = allPoints.filter((_, i) => validPoints[i]);
     const updatedRows = rows.filter((_, i) => validPoints[i]);
 
@@ -184,9 +191,13 @@ export default class PinMap extends Component {
 
     return (
       <div
+        data-element-id="pin-map"
         className={cx(
           className,
-          "PinMap relative hover-parent hover--visibility",
+          DashboardS.PinMap,
+          CS.relative,
+          CS.hoverParent,
+          CS.hoverVisibility,
         )}
         onMouseDownCapture={e => e.stopPropagation() /* prevent dragging */}
       >
@@ -194,7 +205,14 @@ export default class PinMap extends Component {
           <Map
             {...mapProps}
             ref={map => (this._map = map)}
-            className="absolute top left bottom right z1"
+            className={cx(
+              CS.absolute,
+              CS.top,
+              CS.left,
+              CS.bottom,
+              CS.right,
+              CS.z1,
+            )}
             onMapCenterChange={this.onMapCenterChange}
             onMapZoomChange={this.onMapZoomChange}
             lat={lat}
@@ -209,12 +227,29 @@ export default class PinMap extends Component {
             onFiltering={filtering => this.setState({ filtering })}
           />
         ) : null}
-        <div className="absolute top right m1 z2 flex flex-column hover-child">
+        <div
+          className={cx(
+            CS.absolute,
+            CS.top,
+            CS.right,
+            CS.m1,
+            CS.z2,
+            CS.flex,
+            CS.flexColumn,
+            CS.hoverChild,
+          )}
+        >
           {isEditing || !isDashboard ? (
             <div
-              className={cx("PinMapUpdateButton Button Button--small mb1", {
-                "PinMapUpdateButton--disabled": disableUpdateButton,
-              })}
+              className={cx(
+                "PinMapUpdateButton",
+                ButtonsS.Button,
+                ButtonsS.ButtonSmall,
+                CS.mb1,
+                {
+                  [DashboardS.PinMapUpdateButtonDisabled]: disableUpdateButton,
+                },
+              )}
               onClick={this.updateSettings}
             >
               {t`Save as default view`}
@@ -222,7 +257,12 @@ export default class PinMap extends Component {
           ) : null}
           {!isDashboard && (
             <div
-              className={cx("PinMapUpdateButton Button Button--small mb1")}
+              className={cx(
+                "PinMapUpdateButton",
+                ButtonsS.Button,
+                ButtonsS.ButtonSmall,
+                CS.mb1,
+              )}
               onClick={() => {
                 if (
                   !this.state.filtering &&

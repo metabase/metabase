@@ -4,14 +4,14 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.api.testing :as testing]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
 (deftest snapshot-test
-  (when (= (mdb.connection/db-type) :h2)
+  (when (= (mdb/db-type) :h2)
     (let [snapshot-name (mt/random-name)]
       (testing "Just make sure the snapshot endpoint doesn't crash."
         (let [file (io/file (#'testing/snapshot-path-for-name snapshot-name))]
@@ -24,13 +24,13 @@
               (.delete file))))))))
 
 (deftest restore-test
-  (when (= (mdb.connection/db-type) :h2)
+  (when (= (mdb/db-type) :h2)
     (testing "Should throw Exception if file does not exist"
       (is (= "Not found."
              (mt/user-http-request :rasta :post 404 (format "testing/restore/%s" (mt/random-name))))))))
 
 (deftest e2e-test
-  (when (= (mdb.connection/db-type) :h2)
+  (when (= (mdb/db-type) :h2)
     (testing "Should be able to snapshot & restore stuff"
       (let [snapshot-name (munge (u/qualified-name ::test-snapshot))]
         (try
@@ -46,11 +46,11 @@
   ;; `restore-app-db-from-snapshot!` for more details
   (let [snapshot-name (str (random-uuid))]
     (mt/with-temp-empty-app-db [_conn :h2]
-      (jdbc/execute! {:datasource mdb.connection/*application-db*} ["create table test_table (a int)"])
-      (jdbc/execute! {:datasource mdb.connection/*application-db*} ["insert into test_table (a) values (1)"])
-      (jdbc/execute! {:datasource mdb.connection/*application-db*} ["create or replace view test_view as select a from test_table"])
-      (jdbc/execute! {:datasource mdb.connection/*application-db*} ["alter table test_table add column b int"])
+      (jdbc/execute! {:datasource (mdb/app-db)} ["create table test_table (a int)"])
+      (jdbc/execute! {:datasource (mdb/app-db)} ["insert into test_table (a) values (1)"])
+      (jdbc/execute! {:datasource (mdb/app-db)} ["create or replace view test_view as select a from test_table"])
+      (jdbc/execute! {:datasource (mdb/app-db)} ["alter table test_table add column b int"])
       (#'testing/save-snapshot! snapshot-name))
     (mt/with-temp-empty-app-db [_conn :h2]
       (#'testing/restore-snapshot! snapshot-name)
-      (is (= [{:a 1}] (jdbc/query {:datasource mdb.connection/*application-db*} ["select a from test_view"]))))))
+      (is (= [{:a 1}] (jdbc/query {:datasource (mdb/app-db)} ["select a from test_view"]))))))

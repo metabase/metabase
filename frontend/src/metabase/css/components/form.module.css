@@ -1,30 +1,25 @@
-:root {
-  --form-field-border-color: var(--color-border);
-  --input-border-radius: 8px;
-}
-
 ::-webkit-input-placeholder {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
 :-moz-placeholder {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
 :-ms-input-placeholder {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
-:global(.Form-field) {
+.FormField {
   margin-bottom: 1.5em;
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
-:global(.Form-field.Form--fieldError) {
-  color: var(--color-error);
+.FormField.FormFieldError {
+  color: var(--mb-color-error);
 }
 
-:global(.Form-label) {
+.FormLabel {
   display: block;
   font-weight: 900;
   font-size: 0.88em;
@@ -32,33 +27,28 @@
   margin-bottom: 0.5em;
 }
 
-:global(.Form-input) {
-  font-family: var(--default-font-family);
+.FormInput {
+  font-family: var(--mb-default-font-family);
   font-weight: 700;
   font-size: 16px;
-  color: var(--color-text-dark);
-  background-color: var(--color-bg-white);
+  color: var(--mb-color-text-dark);
+  background-color: var(--mb-color-bg-white);
   padding: 0.75em;
-  border: 1px solid var(--form-field-border-color);
-  border-radius: var(--input-border-radius);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 8px;
   outline: none;
 }
 
-:global(.Form-field.Form--fieldError .Form-input) {
-  border-color: var(--color-error);
+.FormField.FormFieldError .FormInput {
+  border-color: var(--mb-color-error);
 }
 
-:global(.Form-input:focus:not(.no-focus)),
-:global(.Form-field:hover .Form-input:not(.no-focus)) {
-  border-color: var(--color-brand);
-  transition: border 300ms ease-in-out;
+.noFocus:focus {
+  outline: 0;
 }
 
-:global(.Form-field .AdminSelect) {
-  border-color: var(--form-field-border-color);
-}
-
-:global(.Form-field .AdminSelect:hover) {
-  border-color: var(--color-brand);
+.FormInput:focus:not(.noFocus),
+.FormField:hover .FormInput:not(.noFocus) {
+  border-color: var(--mb-color-brand);
   transition: border 300ms ease-in-out;
 }

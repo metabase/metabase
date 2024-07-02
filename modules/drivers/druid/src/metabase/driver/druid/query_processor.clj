@@ -4,10 +4,11 @@
    [clojure.string :as str]
    [metabase.driver.common :as driver.common]
    [metabase.driver.druid.js :as druid.js]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.annotate :as annotate]
@@ -15,7 +16,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -314,15 +315,15 @@
 
 (defn- parse-filter [filter-clause]
   ;; strip out all the filters against temporal fields. Those are handled separately, as intervals
-  (-> (mbql.u/replace filter-clause
+  (-> (lib.util.match/replace filter-clause
         [_ [:field _ (_ :guard :temporal-unit)] & _]
         nil)
       mbql.u/simplify-compound-filter
       parse-filter*))
 
-(mu/defn ^:private add-datetime-units* :- mbql.s/DateTimeValue
+(mu/defn ^:private add-datetime-units* :- ::mbql.s/DateTimeValue
   "Return a `relative-datetime` clause with `n` units added to it."
-  [absolute-or-relative-datetime :- mbql.s/DateTimeValue
+  [absolute-or-relative-datetime :- ::mbql.s/DateTimeValue
    n                             :- number?]
   (if (mbql.u/is-clause? :relative-datetime absolute-or-relative-datetime)
     (let [[_ original-n unit] absolute-or-relative-datetime]
@@ -334,7 +335,7 @@
   "Adding `n` `:default` units doesn't make sense. So if an `:absoulte-datetime` has `:default` as its unit, add `n`
   milliseconds, because that is the smallest unit Druid supports."
   [clause n]
-  (mbql.u/replace clause
+  (lib.util.match/replace clause
     [:absolute-datetime t :default]
     [:absolute-datetime (u.date/add t :millisecond n) :millisecond]
 
@@ -342,7 +343,7 @@
     (add-datetime-units* clause n)))
 
 (defn- ->absolute-timestamp ^java.time.temporal.Temporal [clause]
-  (mbql.u/match-one clause
+  (lib.util.match/match-one clause
     [:absolute-datetime t :default]
     t
 
@@ -362,7 +363,7 @@
   clauses, the methods are skipped entirely."
   {:arglists '([filter-clause])}
   (fn [filter-clause]
-    (when (mbql.u/match-one filter-clause [:field _ (_ :guard :temporal-unit)])
+    (when (lib.util.match/match-one filter-clause [:field _ (_ :guard :temporal-unit)])
       (mbql.u/dispatch-by-clause-name-or-class filter-clause))))
 
 (defmethod filter-clause->intervals :default
@@ -419,9 +420,8 @@
     ;; log a warning about all the intervals we filtered out above
     (doseq [intervals subclause-intervals
             :when     (> (count intervals) 1)]
-      (log/warn (tru "WARNING: Don't know how to combine these intervals into a single interval.")
-                "\n"
-                (tru "Ignoring intervals: {0}" intervals)))
+      (log/warnf "WARNING: Don't know how to combine these intervals into a single interval.\nIgnoring intervals: %s"
+                 intervals))
     (reduce
      (fn [[acc] interval]
        [(combine-intervals acc interval)])
@@ -684,9 +684,11 @@
                         {:aggregations [(ag:doubleMax ag-field (or output-name :max))]}])))
 
 (mu/defn ^:private handle-aggregation
-  [query-type ag-clause :- mbql.s/Aggregation druid-query]
+  [query-type
+   ag-clause :- ::mbql.s/Aggregation
+   druid-query]
   (let [output-name               (annotate/aggregation-name *query* ag-clause)
-        [ag-type ag-field & args] (mbql.u/match-one ag-clause
+        [ag-type ag-field & args] (lib.util.match/match-one ag-clause
                                     [:aggregation-options ag & _] #_:clj-kondo/ignore (recur ag)
                                     _                             &match)]
     (if-not (isa? query-type ::ag-query)
@@ -706,7 +708,7 @@
             (update :query (partial merge-with concat) ag-clauses))))))
 
 (defn- deduplicate-aggregation-options [expression]
-  (mbql.u/replace expression
+  (lib.util.match/replace expression
     [:aggregation-options [:aggregation-options ag options-1] options-2]
     [:aggregation-options ag (merge options-1 options-2)]))
 
@@ -720,7 +722,7 @@
 
 (defn- add-expression-aggregation-output-names
   [expression]
-  (mbql.u/replace expression
+  (lib.util.match/replace expression
     [:aggregation-options ag options]
     (deduplicate-aggregation-options [:aggregation-options (add-expression-aggregation-output-names ag) options])
 
@@ -738,7 +740,7 @@
 
 (defn- expression-post-aggregation
   [[operator & args, :as expression]]
-  (mbql.u/match-one expression
+  (lib.util.match/match-one expression
     ;; If it's a named expression, we want to preserve the included name, so recurse, but merge in the name
     [:aggregation-options ag _]
     (merge (expression-post-aggregation (second expression))
@@ -749,7 +751,7 @@
      :name   (annotate/aggregation-name *query* expression)
      :fn     operator
      :fields (vec (for [arg args]
-                    (mbql.u/match-one arg
+                    (lib.util.match/match-one arg
                       number?
                       {:type :constant, :name (str &match), :value &match}
 
@@ -802,7 +804,7 @@
   [query-type {aggregations :aggregation} druid-query]
   (reduce
    (fn [druid-query aggregation]
-     (mbql.u/match-one aggregation
+     (lib.util.match/match-one aggregation
        [:aggregation-options [(_ :guard #{:+ :- :/ :*}) & _] _]
        (handle-expression-aggregation query-type &match druid-query)
 
@@ -960,7 +962,7 @@
 
 (defn- field-clause->name
   [field-clause]
-  (mbql.u/match-one field-clause
+  (lib.util.match/match-one field-clause
     [:field (id :guard integer?) _]
     (:name (lib.metadata/field (qp.store/metadata-provider) id))
 
@@ -999,17 +1001,17 @@
 (defmethod handle-order-by ::query
   [_ _ druid-query]
   (log/warn
-   (u/format-color 'red
-       (tru "Sorting with Druid is only allowed in queries that have one or more breakout columns. Ignoring :order-by clause.")))
+   (u/format-color
+    'red
+    "Sorting with Druid is only allowed in queries that have one or more breakout columns. Ignoring :order-by clause."))
   druid-query)
-
 
 (defmethod handle-order-by ::topN
   [_ {[ag] :aggregation, [breakout-field] :breakout, [[direction field]] :order-by} druid-query]
   (let [field             (->rvalue field)
         breakout-field    (->rvalue breakout-field)
         sort-by-breakout? (= field breakout-field)
-        ag-field          (mbql.u/match-one ag
+        ag-field          (lib.util.match/match-one ag
                             :distinct
                             :distinct___count
 
@@ -1041,7 +1043,7 @@
   datetime"
   [field]
   (when field
-    (mbql.u/match-one field
+    (lib.util.match/match-one field
       [:field _id-or-name (_opts :guard :temporal-unit)]
       true
 
@@ -1053,7 +1055,7 @@
   [_ {[[direction field]] :order-by} druid-query]
   (let [can-sort? (if (temporal-field? field)
                     true
-                    (log/warn (trs "grouped timeseries queries can only be sorted by the ''timestamp'' column.")))]
+                    (log/warn "grouped timeseries queries can only be sorted by the 'timestamp' column."))]
     (cond-> druid-query
       can-sort? (assoc-in [:query :descending] (= direction :desc)))))
 
@@ -1061,10 +1063,10 @@
   [_ {[[direction field]] :order-by, fields :fields} druid-query]
   (let [can-sort? (cond
                     (not (some temporal-field? fields))
-                    (log/warn (trs "scan queries can only be sorted if they include the ''timestamp'' column."))
+                    (log/warn "scan queries can only be sorted if they include the 'timestamp' column.")
 
                     (not (temporal-field? field))
-                    (log/warn (trs "scan queries can only be sorted by the ''timestamp'' column."))
+                    (log/warn "scan queries can only be sorted by the 'timestamp' column.")
 
                     :else
                     true)]
@@ -1086,7 +1088,7 @@
     (log/warn
      (u/format-color 'red
          ;; TODO - this is not really true, is it
-         (tru "WARNING: It only makes sense to specify :fields for a query with no aggregation. Ignoring the clause."))))
+         "WARNING: It only makes sense to specify :fields for a query with no aggregation. Ignoring the clause.")))
   druid-query)
 
 (defmethod handle-fields ::scan
@@ -1137,8 +1139,7 @@
   [_ {limit :limit} druid-query]
   (when limit
     (log/warn
-     (u/format-color 'red
-         (tru "WARNING: Druid does not allow limitSpec in time series queries. Ignoring the LIMIT clause."))))
+     (u/format-color 'red "WARNING: Druid does not allow limitSpec in time series queries. Ignoring the LIMIT clause.")))
   druid-query)
 
 (defmethod handle-limit ::topN
@@ -1185,7 +1186,7 @@
         ts?       (boolean
                    (and
                     ;; Checks whether the query is a timeseries
-                    (mbql.u/match-one (first breakout-fields) [:field _ (_ :guard :temporal-unit)])
+                    (lib.util.match/match-one (first breakout-fields) [:field _ (_ :guard :temporal-unit)])
                     ;; (excludes x-of-y type breakouts)
                     (contains? timeseries-units (:unit (first breakout-fields)))
                     ;; (excludes queries with LIMIT)

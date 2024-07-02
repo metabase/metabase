@@ -1,8 +1,9 @@
+import { skipToken } from "@reduxjs/toolkit/query/react";
 import type { FocusEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useFieldValuesQuery } from "metabase/common/hooks";
+import { useGetFieldValuesQuery } from "metabase/api";
 import { checkNotNull } from "metabase/lib/types";
 import { Center, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -27,11 +28,11 @@ interface FilterValuePickerProps<T> {
   onChange: (newValues: T[]) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
   onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
+  shouldCreate?: (query: string, values: string[]) => boolean;
 }
 
 interface FilterValuePickerOwnProps extends FilterValuePickerProps<string> {
   placeholder: string;
-  canAddValue: (query: string) => boolean;
 }
 
 function FilterValuePicker({
@@ -42,7 +43,7 @@ function FilterValuePicker({
   placeholder,
   autoFocus = false,
   compact = false,
-  canAddValue,
+  shouldCreate,
   onChange,
   onFocus,
   onBlur,
@@ -52,15 +53,15 @@ function FilterValuePicker({
     [query, column],
   );
 
-  const { data: fieldData, isLoading } = useFieldValuesQuery({
-    id: fieldInfo.fieldId ?? undefined,
-    enabled: canLoadFieldValues(fieldInfo),
-  });
+  const { data: fieldData, isLoading } = useGetFieldValuesQuery(
+    fieldInfo.fieldId ?? skipToken,
+    { skip: !canLoadFieldValues(fieldInfo) },
+  );
 
   if (isLoading) {
     return (
       <Center h="2.5rem">
-        <Loader data-testid="loading-spinner" />
+        <Loader data-testid="loading-indicator" />
       </Center>
     );
   }
@@ -71,6 +72,7 @@ function FilterValuePicker({
         fieldValues={fieldData.values}
         selectedValues={selectedValues}
         placeholder={t`Search the list`}
+        shouldCreate={shouldCreate}
         autoFocus={autoFocus}
         compact={compact}
         onChange={onChange}
@@ -88,7 +90,7 @@ function FilterValuePicker({
         fieldValues={fieldData?.values ?? []}
         selectedValues={selectedValues}
         placeholder={t`Search by ${columnInfo.displayName}`}
-        canAddValue={canAddValue}
+        shouldCreate={shouldCreate}
         autoFocus={autoFocus}
         onChange={onChange}
       />
@@ -99,7 +101,7 @@ function FilterValuePicker({
     <StaticValuePicker
       selectedValues={selectedValues}
       placeholder={placeholder}
-      canAddValue={canAddValue}
+      shouldCreate={shouldCreate}
       autoFocus={autoFocus}
       onChange={onChange}
       onFocus={onFocus}
@@ -113,7 +115,7 @@ export function StringFilterValuePicker({
   values,
   ...props
 }: FilterValuePickerProps<string>) {
-  const canAddValue = (query: string) => {
+  const shouldCreate = (query: string, values: string[]) => {
     return query.trim().length > 0 && !values.includes(query);
   };
 
@@ -123,7 +125,7 @@ export function StringFilterValuePicker({
       column={column}
       values={values}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter some text`}
-      canAddValue={canAddValue}
+      shouldCreate={shouldCreate}
     />
   );
 }
@@ -134,9 +136,9 @@ export function NumberFilterValuePicker({
   onChange,
   ...props
 }: FilterValuePickerProps<number>) {
-  const canAddValue = (query: string) => {
+  const shouldCreate = (query: string, values: string[]) => {
     const number = parseFloat(query);
-    return isFinite(number) && !values.includes(number);
+    return isFinite(number) && !values.includes(query);
   };
 
   return (
@@ -145,7 +147,7 @@ export function NumberFilterValuePicker({
       column={column}
       values={values.map(value => String(value))}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter a number`}
-      canAddValue={canAddValue}
+      shouldCreate={shouldCreate}
       onChange={newValue => onChange(newValue.map(value => parseFloat(value)))}
     />
   );

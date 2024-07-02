@@ -46,7 +46,7 @@ The group won't see this collection listed, and they'll lack access to any of th
 
 Collection permissions only apply to viewing and curating existing questions, models, and dashboards. Changing the query on an existing question, or creating a new question, requires that the group have [data permissions](./data.md) for the underlying data.
 
-There is one, important exception: when a group has their data permission set to [Block](./data.md#block-access) for a database or table, the group won't be able to view questions based on that data, even if they have curate access to the collection where those questions are saved.
+There is one, important exception: when a group has their data permission set to [Block](./data.md#blocked-view-data-permission) for a database or table, the group won't be able to view questions based on that data, even if they have curate access to the collection where those questions are saved.
 
 ## Dashboards with questions from multiple collections
 
@@ -86,7 +86,7 @@ People in groups with Curate access to a collection can pin items in the collect
 
 To pin an item, select the **pin icon** next to the item's name.
 
-Note that collections themselves can't be pinned. If you're running on a [paid plan](https://www.metabase.com/pricing), admins can designate [Offical Collections][offical-collections].
+Note that collections themselves can't be pinned. If you're running on a [Pro or Enterprise plan](https://www.metabase.com/pricing), admins can designate [Official Collections][offical-collections].
 
 ## Special collections
 

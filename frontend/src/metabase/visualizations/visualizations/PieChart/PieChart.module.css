@@ -21,18 +21,14 @@
 }
 
 .Value {
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
   font-size: 22px;
   font-weight: bolder;
 }
 
 .Title {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
   font-size: 14px;
   font-weight: bold;
   text-transform: uppercase;
-}
-
-.Donut path {
-  transition: opacity 0.3s linear;
 }

@@ -5,12 +5,7 @@
   border-radius: 3px;
 }
 
-.emojiIcon {
-  text-align: center;
-  font-size: 20px;
-}
-
 .icon {
-  composes: transition-color from "style";
+  composes: transitionColor from "style";
   color: currentColor;
 }

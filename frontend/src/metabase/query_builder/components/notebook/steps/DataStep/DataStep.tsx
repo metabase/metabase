@@ -2,15 +2,14 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { FieldPicker } from "metabase/common/components/FieldPicker";
-import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import { NotebookDataPicker } from "metabase/query_builder/components/notebook/NotebookDataPicker";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
 import type { NotebookStepUiComponentProps } from "../../types";
 
-import { DataStepCell, DataStepIconButton } from "./DataStep.styled";
+import { DataStepIconButton } from "./DataStep.styled";
 
 export const DataStep = ({
   query,
@@ -20,16 +19,8 @@ export const DataStep = ({
   updateQuery,
 }: NotebookStepUiComponentProps) => {
   const { stageIndex } = step;
-
-  const question = step.question;
-  const collectionId = question.collectionId();
-  const databaseId = Lib.databaseID(query);
   const tableId = Lib.sourceTableOrCardId(query);
-  const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : null;
-
-  const pickerLabel = table
-    ? Lib.displayInfo(query, stageIndex, table).displayName
-    : t`Pick your starting data`;
+  const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : undefined;
 
   const isRaw = useMemo(() => {
     return (
@@ -40,11 +31,12 @@ export const DataStep = ({
 
   const canSelectTableColumns = table && isRaw && !readOnly;
 
-  const handleTableSelect = (tableId: TableId, databaseId: DatabaseId) => {
-    const metadata = question.metadata();
-    const metadataProvider = Lib.metadataProvider(databaseId, metadata);
-    const nextTable = Lib.tableOrCardMetadata(metadataProvider, tableId);
-    updateQuery(Lib.queryFromTableOrCardMetadata(metadataProvider, nextTable));
+  const handleTableChange = async (
+    table: Lib.TableMetadata | Lib.CardMetadata,
+    metadataProvider: Lib.MetadataProvider,
+  ) => {
+    const newQuery = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
+    await updateQuery(newQuery);
   };
 
   return (
@@ -65,15 +57,13 @@ export const DataStep = ({
         rightContainerStyle={{ width: 37, height: 37, padding: 0 }}
         data-testid="data-step-cell"
       >
-        <DataSourceSelector
-          hasTableSearch
-          collectionId={collectionId}
-          databaseQuery={{ saved: true }}
-          selectedDatabaseId={databaseId}
-          selectedTableId={tableId}
-          setSourceTableFn={handleTableSelect}
-          isInitiallyOpen={!table}
-          triggerElement={<DataStepCell>{pickerLabel}</DataStepCell>}
+        <NotebookDataPicker
+          title={t`Pick your starting data`}
+          query={query}
+          stageIndex={stageIndex}
+          table={table}
+          hasMetrics
+          onChange={handleTableChange}
         />
       </NotebookCellItem>
     </NotebookCell>

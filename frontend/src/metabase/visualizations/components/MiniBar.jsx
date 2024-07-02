@@ -1,4 +1,7 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
+
+import CS from "metabase/css/core/index.css";
 import { color, alpha } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 
@@ -40,10 +43,10 @@ const MiniBar = ({ value, extent: [min, max], options }) => {
       };
 
   return (
-    <div className="flex align-center currentcolor justify-end relative">
+    <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd, CS.relative)}>
       {/* TEXT VALUE */}
       <div
-        className="text-ellipsis text-bold text-right flex-full"
+        className={cx(CS.textEllipsis, CS.textBold, CS.textRight, CS.flexFull)}
         style={{ minWidth: LABEL_MIN_WIDTH }}
       >
         {formatValue(value, { ...options, jsx: true, type: "cell" })}
@@ -51,7 +54,7 @@ const MiniBar = ({ value, extent: [min, max], options }) => {
       {/* OUTER CONTAINER BAR */}
       <div
         data-testid="mini-bar"
-        className="ml1"
+        className={CS.ml1}
         style={{
           position: "relative",
           width: BAR_WIDTH,
@@ -78,7 +81,7 @@ const MiniBar = ({ value, extent: [min, max], options }) => {
               left: "50%",
               top: 0,
               bottom: 0,
-              borderLeft: `1px solid white`,
+              borderLeft: `1px solid ${color("white")}`,
             }}
           />
         )}

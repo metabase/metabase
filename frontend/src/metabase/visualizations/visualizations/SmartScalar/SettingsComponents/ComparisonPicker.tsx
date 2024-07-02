@@ -4,7 +4,7 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import { Menu, Stack, Text } from "metabase/ui";
+import { rem, Menu, Stack, Text } from "metabase/ui";
 import type {
   DatasetColumn,
   SmartScalarComparison,
@@ -177,7 +177,9 @@ export function ComparisonPicker({
         </ComparisonPickerButton>
       </Menu.Target>
 
-      <Menu.Dropdown miw="21.5rem">{renderMenuDropdownContent()}</Menu.Dropdown>
+      <Menu.Dropdown miw={rem(344)}>
+        {renderMenuDropdownContent()}
+      </Menu.Dropdown>
     </Menu>
   );
 }

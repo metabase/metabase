@@ -12,15 +12,16 @@ import _ from "underscore";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import { GenericError } from "metabase/components/ErrorPages";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { GenericError } from "metabase/containers/ErrorPages";
+import CS from "metabase/css/core/index.css";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import title from "metabase/hoc/Title";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import Database from "metabase-lib/metadata/Database";
+import Database from "metabase-lib/v1/metadata/Database";
 import type {
   Database as DatabaseType,
   DatabaseData,
@@ -33,10 +34,7 @@ import {
   initializeDatabase,
   saveDatabase,
   updateDatabase,
-  syncDatabaseSchema,
   dismissSyncSpinner,
-  rescanDatabaseFields,
-  discardSavedFieldValues,
   deleteDatabase,
   selectEngine,
 } from "../database";
@@ -55,15 +53,12 @@ interface DatabaseEditAppProps {
   params: { databaseId: DatabaseId };
   reset: () => void;
   initializeDatabase: (databaseId: DatabaseId) => void;
-  syncDatabaseSchema: (databaseId: DatabaseId) => Promise<void>;
   dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
-  rescanDatabaseFields: (databaseId: DatabaseId) => Promise<void>;
-  discardSavedFieldValues: (databaseId: DatabaseId) => Promise<void>;
   deleteDatabase: (
     databaseId: DatabaseId,
     isDetailView: boolean,
   ) => Promise<void>;
-  saveDatabase: (database: DatabaseData) => void;
+  saveDatabase: (database: DatabaseData) => Database;
   updateDatabase: (
     database: { id: DatabaseId } & Partial<DatabaseType>,
   ) => Promise<void>;
@@ -92,10 +87,7 @@ const mapDispatchToProps = {
   initializeDatabase,
   saveDatabase,
   updateDatabase,
-  syncDatabaseSchema,
   dismissSyncSpinner,
-  rescanDatabaseFields,
-  discardSavedFieldValues,
   deleteDatabase,
   selectEngine,
   onChangeLocation: push,
@@ -115,10 +107,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
     database,
     deleteDatabase,
     updateDatabase,
-    discardSavedFieldValues,
     initializeError,
-    rescanDatabaseFields,
-    syncDatabaseSchema,
     dismissSyncSpinner,
     isAdmin,
     isModelPersistenceEnabled,
@@ -152,11 +141,12 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
   ];
   const handleSubmit = async (database: DatabaseData) => {
     try {
-      await saveDatabase(database);
-
+      const savedDB = await saveDatabase(database);
       if (addingNewDatabase) {
         scheduleCallback(() => {
-          onChangeLocation("/admin/databases?created=true");
+          onChangeLocation(
+            `/admin/databases?created=true&createdDbId=${savedDB.id}`,
+          );
         });
       }
     } catch (error) {
@@ -168,12 +158,12 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
 
   return (
     <DatabaseEditRoot>
-      <Breadcrumbs className="py4" crumbs={crumbs} />
+      <Breadcrumbs className={CS.py4} crumbs={crumbs} />
 
       <DatabaseEditMain>
         <ErrorBoundary errorComponent={GenericError as ComponentType}>
           <div>
-            <div className="pt0">
+            <div className={CS.pt0}>
               <LoadingAndErrorWrapper
                 loading={!database}
                 error={initializeError}
@@ -202,9 +192,6 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
             isModelPersistenceEnabled={isModelPersistenceEnabled}
             updateDatabase={updateDatabase}
             deleteDatabase={deleteDatabase}
-            discardSavedFieldValues={discardSavedFieldValues}
-            rescanDatabaseFields={rescanDatabaseFields}
-            syncDatabaseSchema={syncDatabaseSchema}
             dismissSyncSpinner={dismissSyncSpinner}
           />
         )}

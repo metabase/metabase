@@ -7,7 +7,7 @@ import { SettingTextInput } from "metabase/admin/settings/components/widgets/Set
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
-  PLUGIN_APP_INIT_FUCTIONS,
+  PLUGIN_APP_INIT_FUNCTIONS,
   PLUGIN_LANDING_PAGE,
   PLUGIN_LOGO_ICON_COMPONENTS,
   PLUGIN_SELECTORS,
@@ -18,16 +18,23 @@ import {
   getApplicationName,
   getIsWhiteLabeling,
   getLoadingMessage,
+  getLoginPageIllustration,
+  getLandingPageIllustration,
   getShowMetabaseLinks,
+  getNoDataIllustration,
+  getNoObjectIllustration,
 } from "metabase-enterprise/settings/selectors";
 
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import FontFilesWidget from "./components/FontFilesWidget";
 import FontWidget from "./components/FontWidget";
 import { HelpLinkSettings } from "./components/HelpLinkSettings";
+import { IllustrationTitle } from "./components/IllustrationTitle";
+import { IllustrationWidget } from "./components/IllustrationWidget";
 import { ImageUpload } from "./components/ImageUpload";
 import { LandingPageWidget } from "./components/LandingPageWidget";
 import LogoIcon from "./components/LogoIcon";
+import { MetabotToggleWidget } from "./components/MetabotToggleWidget";
 import {
   MetabaseLinksToggleDescription,
   SwitchWidget,
@@ -150,48 +157,17 @@ if (hasPremiumFeature("whitelabel")) {
             widget: SettingTextInput,
           },
           {
-            key: "-toggle-group",
-            tab: "conceal-metabase",
-            display_name: t`Homepage, Documentation and References`,
-            // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
-            description: t`Control the display of homepage visuals and greeting message plus other Metabase elements such as links to Metabase documentation and Metabase references in your instance.`,
-            type: "hidden",
-          },
-          {
-            key: "show-lighthouse-illustration",
-            tab: "conceal-metabase",
-            description: null,
-            type: "boolean",
-            defaultValue: true,
-            widget: SwitchWidget,
-            props: {
-              label: t`Show lighthouse illustration on the home and login pages`,
-              mt: "-0.5rem",
-            },
-          },
-          {
             key: "show-metabase-links",
             tab: "conceal-metabase",
-            description: null,
+            display_name: t`Documentation and references`,
+            // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
+            description: t`Control the display of Metabase documentation and Metabase references in your instance.`,
             widget: SwitchWidget,
             props: {
               // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
               label: jt`Show links and references to Metabase ${(
                 <MetabaseLinksToggleDescription key="show-metabase-links-description-tooltip" />
               )}`,
-              mt: "-1rem",
-            },
-          },
-          {
-            key: "show-metabot",
-            tab: "conceal-metabase",
-            description: null,
-            type: "boolean",
-            defaultValue: true,
-            widget: SwitchWidget,
-            props: {
-              label: t`Show metabot and greeting on the homepage`,
-              mt: "-1rem",
             },
           },
           {
@@ -210,6 +186,100 @@ if (hasPremiumFeature("whitelabel")) {
             ),
             widget: HelpLinkSettings,
             defaultValue: "metabase",
+          },
+          {
+            key: "-metabase-illustration",
+            tab: "conceal-metabase",
+            // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
+            display_name: t`Metabase illustrations`,
+            // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
+            description: t`Customize each of the illustrations in Metabase`,
+            type: "hidden",
+          },
+          {
+            key: "show-metabot",
+            tab: "conceal-metabase",
+            display_name: (
+              <Text fw="bold" transform="none">{t`Metabot greeting`}</Text>
+            ),
+            description: null,
+            type: "boolean",
+            defaultValue: true,
+            widget: MetabotToggleWidget,
+          },
+          {
+            key: "login-page-illustration",
+            tab: "conceal-metabase",
+            display_name: (
+              <IllustrationTitle
+                title={t`Login and unsubscribe pages`}
+                errorMessageContainerId="login-page-illustration-error-container"
+              />
+            ),
+            description: null,
+            type: "string",
+            widget: IllustrationWidget,
+            props: {
+              type: "background",
+              customIllustrationSetting: "login-page-illustration-custom",
+              errorMessageContainerId:
+                "login-page-illustration-error-container",
+            },
+          },
+          {
+            key: "landing-page-illustration",
+            tab: "conceal-metabase",
+            display_name: (
+              <IllustrationTitle
+                title={t`Landing page`}
+                errorMessageContainerId="landing-page-illustration-error-container"
+              />
+            ),
+            description: null,
+            type: "string",
+            widget: IllustrationWidget,
+            props: {
+              type: "background",
+              customIllustrationSetting: "landing-page-illustration-custom",
+              errorMessageContainerId:
+                "landing-page-illustration-error-container",
+            },
+          },
+          {
+            key: "no-data-illustration",
+            tab: "conceal-metabase",
+            display_name: (
+              <IllustrationTitle
+                title={t`When calculations return no results`}
+                errorMessageContainerId="no-data-illustration-error-container"
+              />
+            ),
+            description: null,
+            type: "string",
+            widget: IllustrationWidget,
+            props: {
+              type: "icon",
+              customIllustrationSetting: "no-data-illustration-custom",
+              errorMessageContainerId: "no-data-illustration-error-container",
+            },
+          },
+          {
+            key: "no-object-illustration",
+            tab: "conceal-metabase",
+            display_name: (
+              <IllustrationTitle
+                title={t`When no objects can be found`}
+                errorMessageContainerId="no-object-illustration-error-container"
+              />
+            ),
+            description: null,
+            type: "string",
+            widget: IllustrationWidget,
+            props: {
+              type: "icon",
+              customIllustrationSetting: "no-object-illustration-custom",
+              errorMessageContainerId: "no-object-illustration-error-container",
+            },
           },
         ],
       },
@@ -234,7 +304,7 @@ if (hasPremiumFeature("whitelabel")) {
     },
   );
 
-  PLUGIN_APP_INIT_FUCTIONS.push(() => {
+  PLUGIN_APP_INIT_FUNCTIONS.push(() => {
     updateColors();
   });
 
@@ -242,8 +312,12 @@ if (hasPremiumFeature("whitelabel")) {
   PLUGIN_SELECTORS.canWhitelabel = () => true;
 
   // these selectors control whitelabeling UI
-  PLUGIN_SELECTORS.getLoadingMessage = getLoadingMessage;
+  PLUGIN_SELECTORS.getLoadingMessageFactory = getLoadingMessage;
   PLUGIN_SELECTORS.getIsWhiteLabeling = getIsWhiteLabeling;
   PLUGIN_SELECTORS.getApplicationName = getApplicationName;
   PLUGIN_SELECTORS.getShowMetabaseLinks = getShowMetabaseLinks;
+  PLUGIN_SELECTORS.getLoginPageIllustration = getLoginPageIllustration;
+  PLUGIN_SELECTORS.getLandingPageIllustration = getLandingPageIllustration;
+  PLUGIN_SELECTORS.getNoDataIllustration = getNoDataIllustration;
+  PLUGIN_SELECTORS.getNoObjectIllustration = getNoObjectIllustration;
 }

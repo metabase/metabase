@@ -1,10 +1,10 @@
 import type { SelectAll } from "metabase/components/Calendar";
-import type Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
   clearDateFilterTime,
   getDateFilterValue,
   setDateFilterValue,
-} from "metabase-lib/queries/utils/date-filters";
+} from "metabase-lib/v1/queries/utils/date-filters";
 
 import SpecificDatePicker from "./SpecificDatePicker";
 

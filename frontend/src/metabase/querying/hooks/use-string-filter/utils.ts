@@ -24,18 +24,26 @@ export function getOptionByOperator(operator: Lib.StringFilterOperatorName) {
   return OPERATOR_OPTIONS[operator];
 }
 
+export function getDefaultOperator(
+  column: Lib.ColumnMetadata,
+): Lib.StringFilterOperatorName {
+  if (
+    Lib.isPrimaryKey(column) ||
+    Lib.isForeignKey(column) ||
+    Lib.isCategory(column)
+  ) {
+    return "=";
+  } else {
+    return "contains";
+  }
+}
+
 export function getDefaultValues(
   operator: Lib.StringFilterOperatorName,
   values: string[],
 ): string[] {
-  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
-  if (hasMultipleValues) {
-    return values.filter(isNotEmpty);
-  }
-
-  return Array(valueCount)
-    .fill("")
-    .map((value, index) => values[index] ?? value);
+  const { type } = OPERATOR_OPTIONS[operator];
+  return type !== "empty" ? values.filter(isNotEmpty) : [];
 }
 
 export function isValidFilter(
@@ -63,11 +71,8 @@ function getFilterParts(
   values: string[],
   options: Lib.StringFilterOptions,
 ): Lib.StringFilterParts | undefined {
-  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
-  if (!values.every(isNotEmpty)) {
-    return undefined;
-  }
-  if (hasMultipleValues ? values.length === 0 : values.length !== valueCount) {
+  const { type } = OPERATOR_OPTIONS[operator];
+  if (values.length === 0 && type !== "empty") {
     return undefined;
   }
 

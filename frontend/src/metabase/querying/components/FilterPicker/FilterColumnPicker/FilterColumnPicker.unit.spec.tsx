@@ -1,5 +1,5 @@
 import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, fireEvent } from "__support__/ui";
 import type * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 import { SAMPLE_DB_FIELD_VALUES } from "metabase-types/api/mocks/presets";
@@ -26,13 +26,27 @@ function setup({ query, stageIndex }: SetupOpts) {
 }
 
 describe("FilterModal", () => {
-  const query = createQuery();
-  const stageIndex = 0;
-  setup({ query, stageIndex });
+  test("The info icon should exist on each column", () => {
+    const query = createQuery();
+    const stageIndex = 0;
+    setup({ query, stageIndex });
+    expect(screen.getAllByLabelText("More info").length).toBeGreaterThanOrEqual(
+      1,
+    );
+  });
 
-  test("The info icon should exist on each column", async () => {
-    screen.getAllByTestId("dimension-list-item").forEach(function (item) {
-      expect(within(item).getByLabelText("More info")).toBeInTheDocument();
+  test("Searching by displayName should works (#39622)", () => {
+    const query = createQuery();
+    const stageIndex = 0;
+    setup({ query, stageIndex });
+
+    screen.getByText("User").click();
+    fireEvent.change(screen.getByTestId("list-search-field"), {
+      target: { value: "Birth Date" },
     });
+
+    expect(
+      screen.getByRole("option", { name: "Birth Date" }),
+    ).toBeInTheDocument();
   });
 });

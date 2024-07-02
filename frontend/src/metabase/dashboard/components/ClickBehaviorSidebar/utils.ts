@@ -1,7 +1,7 @@
 import { getIn } from "icepick";
 
 import type { IconName } from "metabase/ui";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   ClickBehaviorType,
   QuestionDashboardCard,

@@ -22,10 +22,8 @@ export type ItemWithLastEditInfo = {
 export type Edit = {
   id?: number;
   timestamp: string;
-  first_name?: string;
-  last_name?: string;
   full_name?: string | null;
-};
+} & Partial<NamedUser>;
 
 export const getHowLongAgo = (timestamp: string) => {
   const date = dayjs(timestamp);

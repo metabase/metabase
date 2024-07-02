@@ -40,7 +40,7 @@ podman run -d -p 12345:3000 --name=metabase docker.io/metabase/metabase:latest
 
 ## Pro or Enterprise quick start
 
-Use this quick start if you have a [license token](../paid-features/activating-the-enterprise-edition.md) for a [paid version](https://www.metabase.com/pricing) of Metabase, and you want to run Metabase locally.
+Use this quick start if you have a [license token](../paid-features/activating-the-enterprise-edition.md) for a [Pro or Enterprise version](https://www.metabase.com/pricing) of Metabase, and you want to run Metabase locally.
 
 Assuming you have [Podman](https://podman.io) installed and running, get the latest container image:
 
@@ -88,7 +88,6 @@ createdb metabaseappdb
 
 No need to add any tables; Metabase will create those on startup. And let's assume that database is accessible via `my-database-host:5432` with username `name` and password `password`.
 
-
 Here's an example Podman command that tells Metabase to use that database:
 
 ```
@@ -109,7 +108,6 @@ Keep in mind that Metabase will be connecting from _within_ your Podman containe
 If you've already been running Metabase with the default application database (H2), and want to use a production-ready application database without losing your app data (your questions, dashboards, etc), see [Migrating from H2 to a production database](migrating-from-h2.md).
 
 ## Additional Podman maintenance and configuration
-
 
 - [Running Metabase as a service](#running-metabase-as-a-service)
 - [Customizing the Metabase Jetty server](#customizing-the-metabase-jetty-server)
@@ -139,11 +137,9 @@ sudo systemctl enable metabase
 
 To verify that the system functions correctly, reboot the system. Upon completion of the system initialization process, the Metabase container should be operational as intended.
 
-
 ### Customizing the Metabase Jetty server
 
 You can use any of the custom settings from [Customizing the Metabase Jetty Webserver](../configuring-metabase/customizing-jetty-webserver.md) by setting environment variables in your Podman run command.
-
 
 ### Setting the Java Timezone
 

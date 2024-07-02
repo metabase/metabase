@@ -1,21 +1,21 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color, lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/lib/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
   space,
 } from "metabase/styled-components/theme";
-import { Icon } from "metabase/ui";
+import { Box, type BoxProps, Icon } from "metabase/ui";
 
 import { SidebarLink } from "./SidebarItems";
 
 const openSidebarCSS = css`
   width: ${NAV_SIDEBAR_WIDTH};
 
-  border-right: 1px solid ${color("border")};
+  border-inline-end: 1px solid var(--mb-color-border);
 
   ${breakpointMaxSmall} {
     width: 90vw;
@@ -33,7 +33,7 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   position: relative;
   flex-shrink: 0;
   align-items: center;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
 
   overflow: auto;
   overflow-x: hidden;
@@ -44,7 +44,7 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   ${breakpointMaxSmall} {
     position: absolute;
     top: 0;
-    left: 0;
+    inline-start: 0;
   }
 `;
 
@@ -82,11 +82,11 @@ export const SidebarContentRoot = styled.div`
   justify-content: space-between;
 `;
 
-export const SidebarSection = styled.div`
+export const SidebarSection = styled(Box)<BoxProps>`
   margin-top: ${space(1)};
   margin-bottom: ${space(2)};
-  padding-left: ${space(2)};
-  padding-right: ${space(2)};
+  padding-inline-start: ${space(2)};
+  padding-inline-end: ${space(2)};
 `;
 
 export const SidebarHeadingWrapper = styled.div`
@@ -96,22 +96,22 @@ export const SidebarHeadingWrapper = styled.div`
 `;
 
 export const SidebarHeading = styled.h4`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-weight: 700;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.45px;
-  padding-left: ${space(2)};
+  padding-inline-start: ${space(2)};
 `;
 
 export const CollectionsMoreIconContainer = styled.button`
-  margin-left: auto;
-  margin-right: ${space(1)};
+  margin-inline-start: auto;
+  margin-inline-end: ${space(1)};
   cursor: pointer;
 `;
 
 export const CollectionsMoreIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const CollectionMenuList = styled.ul`
@@ -129,28 +129,28 @@ export const LoadingAndErrorContent = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   text-align: center;
 `;
 
 export const LoadingAndErrorTitle = styled.h2`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   font-weight: 400;
   margin-top: ${space(1)};
 `;
 
 export const PaddedSidebarLink = styled(SidebarLink)`
-  padding-left: 12px;
+  padding-inline-start: 12px;
 `;
 
 export const AddYourOwnDataLink = styled(SidebarLink)`
-  background: ${color("brand")};
+  background: var(--mb-color-brand);
   border-radius: 8px;
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   margin: ${space(1)};
   padding: 2px 6px;
   svg {
-    color: ${color("brand-light")};
+    color: var(--mb-color-brand-light);
   }
   transition: background-color 0.3s linear;
 
@@ -159,11 +159,11 @@ export const AddYourOwnDataLink = styled(SidebarLink)`
   }
 
   &:hover {
-    background: ${lighten("brand", 0.12)};
-    color: ${color("white")};
+    background: ${() => lighten("brand", 0.12)};
+    color: var(--mb-color-text-white);
 
     svg {
-      color: ${color("brand-light")} !important;
+      color: var(--mb-color-brand-light) !important;
     }
   }
 `;

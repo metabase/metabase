@@ -127,7 +127,7 @@
 (deftest ^:parallel field-filter-param-test
   (letfn [(is-count-= [expected-count table field value-type value]
             (let [query (field-filter-count-query table field value-type value)]
-              (testing (format "\nquery = \n%s" (u/pprint-to-str 'cyan query))
+              (mt/with-native-query-testing-context query
                 (is (= expected-count
                        (run-count-query query))))))]
     (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
@@ -135,9 +135,7 @@
         ;; TIMEZONE FIXME — The excluded drivers don't have TIME types, so the `attempted-murders` dataset doesn't
         ;; currently work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still
         ;; load the dataset and run tests using this dataset such as these, which doesn't even use the TIME type.
-        (when (and (mt/supports-time-type? driver/*driver*)
-                   ;; Not sure why it's failing for Snowflake, we'll have to investigate.
-                   (not (= :snowflake driver/*driver*)))
+        (when (mt/supports-time-type? driver/*driver*)
           (mt/dataset attempted-murders
             (doseq [field
                     [:datetime
@@ -209,6 +207,44 @@
                                :target [:dimension [:template-tag "country"]]
                                :value  ["US" "MX"]}]})))))))
 
+(deftest ^:parallel native-with-param-options-different-than-tag-type-test
+  (testing "Overriding the widget type in parameters should drop case-senstive option when incompatible"
+    (mt/dataset airports
+      (is (= {:query  "SELECT NAME FROM COUNTRY WHERE (\"PUBLIC\".\"COUNTRY\".\"NAME\" = 'US')"
+              :params nil}
+             (qp.compile/compile-and-splice-parameters
+               {:type       :native
+                :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
+                             :template-tags {"country"
+                                             {:name         "country"
+                                              :display-name "Country"
+                                              :type         :dimension
+                                              :dimension    [:field (mt/id :country :name) nil]
+                                              :options      {:case-sensitive false}
+                                              :widget-type  :string/contains}}}
+                :database   (mt/id)
+                :parameters [{:type   :string/=
+                              :target [:dimension [:template-tag "country"]]
+                              :value  ["US"]}]})))))
+  (testing "Overriding the widget type in parameters should not drop case-senstive option when compatible"
+    (mt/dataset airports
+      (is (= {:query  "SELECT NAME FROM COUNTRY WHERE (LOWER(\"PUBLIC\".\"COUNTRY\".\"NAME\") LIKE '%us')"
+              :params nil}
+             (qp.compile/compile-and-splice-parameters
+               {:type       :native
+                :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
+                             :template-tags {"country"
+                                             {:name         "country"
+                                              :display-name "Country"
+                                              :type         :dimension
+                                              :dimension    [:field (mt/id :country :name) nil]
+                                              :options      {:case-sensitive false}
+                                              :widget-type  :string/contains}}}
+                :database   (mt/id)
+                :parameters [{:type   :string/ends-with
+                              :target [:dimension [:template-tag "country"]]
+                              :value  ["US"]}]}))))))
+
 (deftest ^:parallel native-with-spliced-params-test-2
   (testing "Make sure we can convert a parameterized query to a native query with spliced params"
     (testing "Comma-separated numbers"
@@ -240,8 +276,7 @@
                         :template-tags {"number_comma"
                                         {:name "number_comma"
                                          :display-name "Number Comma"
-                                         :type :number
-                                         :dimension [:field (mt/id :venues :price) nil]}}}
+                                         :type :number}}}
                :database (mt/id)
                :parameters [{:type "number/="
                              :value ["1,2,3"]
@@ -410,7 +445,6 @@
           query {:database (mt/id)
                  :type     :native
                  :native   {:query         sql
-                            :type          :native
                             :template-tags {"created_at" {:id           "a21ca6d2-f742-a94a-da71-75adf379069c"
                                                           :name         "created_at"
                                                           :display-name "Created At"

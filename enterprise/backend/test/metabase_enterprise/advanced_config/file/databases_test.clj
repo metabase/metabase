@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.driver.h2 :as h2]
    [metabase.models :refer [Database Table]]
    [metabase.test :as mt]
@@ -19,7 +19,7 @@
 
 (deftest init-from-config-file-test
   (mt/with-temporary-setting-values [config-from-file-sync-databases true]
-    (let [db-type     (mdb.connection/db-type)
+    (let [db-type     (mdb/db-type)
           original-db (mt/with-driver db-type (mt/db))]
       (try
         (binding [advanced-config.file/*config* {:version 1

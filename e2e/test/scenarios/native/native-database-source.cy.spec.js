@@ -4,14 +4,17 @@ import {
   popover,
   addPostgresDatabase,
   POPOVER_ELEMENT,
+  setTokenFeatures,
+  openNativeEditor,
 } from "e2e/support/helpers";
 
 const PG_DB_ID = 2;
 const mongoName = "QA Mongo";
 const postgresName = "QA Postgres12";
 const additionalPG = "New Database";
+const ADDITIONAL_PG_DB_ID = 3;
 
-const { DATA_GROUP } = USER_GROUPS;
+const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
 
 describe(
   "scenarios > question > native > database source",
@@ -24,6 +27,14 @@ describe(
 
       restore("postgres-12");
       cy.signInAsAdmin();
+      cy.updatePermissionsGraph({
+        [ALL_USERS_GROUP]: {
+          [PG_DB_ID]: {
+            "view-data": "unrestricted",
+            "create-queries": "query-builder-and-native",
+          },
+        },
+      });
     });
 
     it("smoketest: persisting last used database should work, and it should be user-specific setting", () => {
@@ -132,7 +143,7 @@ describe(
     });
 
     describe("permissions", () => {
-      it("users with 'No self-service' data permissions should be able to choose only the databases they can query against", () => {
+      it("users should be able to choose the databases they can run native queries against", () => {
         cy.signIn("nodata");
 
         startNativeQuestion();
@@ -147,6 +158,14 @@ describe(
         cy.signInAsAdmin();
 
         addPostgresDatabase(additionalPG);
+        cy.updatePermissionsGraph({
+          [ALL_USERS_GROUP]: {
+            [ADDITIONAL_PG_DB_ID]: {
+              "view-data": "unrestricted",
+              "create-queries": "query-builder-and-native",
+            },
+          },
+        });
 
         cy.signIn("nodata");
         startNativeQuestion();
@@ -180,9 +199,13 @@ describe(
 
       cy.signOut();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
       cy.updatePermissionsGraph({
         [DATA_GROUP]: {
-          [SAMPLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+          [SAMPLE_DB_ID]: {
+            "view-data": "blocked",
+            "create-queries": "no",
+          },
         },
       });
 
@@ -219,6 +242,139 @@ describe("mongo as the default database", { tags: "@mongo" }, () => {
 
     assertSelectedDatabase(mongoName);
     cy.findByTestId("native-query-top-bar").should("contain", "Select a table");
+  });
+});
+
+describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
+  const MYSQL_DB_NAME = "QA MySQL8";
+  beforeEach(() => {
+    cy.intercept("POST", "/api/card").as("createQuestion");
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    restore("mysql-8");
+    cy.signInAsAdmin();
+  });
+
+  it("can write a native MySQL query with a field filter", () => {
+    // Write Native query that includes a filter
+    openNativeEditor({ databaseName: MYSQL_DB_NAME }).type(
+      "SELECT TOTAL, CATEGORY FROM ORDERS LEFT JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID [[WHERE PRODUCTS.ID = {{id}}]];",
+      {
+        parseSpecialCharSequences: false,
+      },
+    );
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+
+    cy.wait("@dataset");
+
+    cy.findByTestId("query-visualization-root").as("queryPreview");
+
+    cy.get("@queryPreview").should("be.visible").contains("Widget");
+
+    // Filter by Product ID = 1 (its category is Gizmo)
+    cy.findByPlaceholderText(/Id/i).click().type("1");
+
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+
+    cy.get("@queryPreview").contains("Widget").should("not.exist");
+
+    cy.get("@queryPreview").contains("Gizmo");
+  });
+
+  it("can save a native MySQL query", () => {
+    openNativeEditor({ databaseName: MYSQL_DB_NAME }).type(
+      "SELECT * FROM ORDERS",
+    );
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+
+    cy.wait("@dataset");
+    cy.findByTextEnsureVisible("SUBTOTAL");
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.contains("37.65");
+
+    // Save the query
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.contains("Save").click();
+
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByLabelText("Name").focus().type("sql count");
+      cy.findByText("Save").should("not.be.disabled").click();
+    });
+
+    cy.wait("@createQuestion");
+
+    cy.findByTextEnsureVisible("Not now").click();
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.contains("Save").should("not.exist");
+    cy.url().should("match", /\/question\/\d+-[a-z0-9-]*$/);
+  });
+});
+
+describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
+  const MONGO_DB_NAME = "QA Mongo";
+  const MONGO_DB_ID = 2;
+  before(() => {
+    cy.intercept("POST", "/api/card").as("createQuestion");
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    restore("mongo-5");
+    cy.signInAsAdmin();
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: {
+        [MONGO_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "query-builder-and-native",
+        },
+      },
+    });
+    cy.signInAsNormalUser();
+
+    cy.visit("/");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("New").click();
+    // Reproduces metabase#20499 issue
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Native query").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(MONGO_DB_NAME).click();
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Select a table").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Orders").click();
+  });
+
+  it("can save a native MongoDB query", () => {
+    cy.get(".ace_content")
+      .should("be.visible")
+      .type('[ { $count: "Total" } ]', {
+        parseSpecialCharSequences: false,
+      });
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+
+    cy.wait("@dataset");
+
+    cy.findByTextEnsureVisible("18,760");
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Save").click();
+
+    cy.findByTextEnsureVisible("Save new question");
+
+    cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByLabelText("Name").clear().should("be.empty").type("mongo count");
+
+      cy.findByText("Save").should("not.be.disabled").click();
+    });
+
+    cy.wait("@createQuestion");
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Not now").click();
+
+    cy.url().should("match", /\/question\/\d+-[a-z0-9-]*$/);
   });
 });
 

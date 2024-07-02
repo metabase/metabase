@@ -5,10 +5,11 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
@@ -17,8 +18,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli :as mu])
   (:import
    (java.io ByteArrayInputStream)
    (java.security KeyFactory KeyStore PrivateKey)
@@ -111,8 +111,6 @@
       (contains? message :message) (update :message str)
       (contains? message :errors)  (update :errors update-vals str))))
 
-(comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
-
 ;; This is normally set via the env var `MB_DB_CONNECTION_TIMEOUT_MS`
 (defsetting db-connection-timeout-ms
   "Consider [[metabase.driver/can-connect?]] / [[can-connect-with-details?]] to have failed if they were not able to
@@ -126,7 +124,10 @@
   ;; Don't set the timeout too low -- I've had Circle fail when the timeout was 1000ms on *one* occasion.
   :default    (if config/is-test?
                 3000
-                10000))
+                10000)
+  :doc "Timeout in milliseconds for connecting to databases, both Metabase application database and data connections.
+        In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value
+        as the connections via tunnels have more overhead than connections without.")
 
 (defn- connection-error? [^Throwable throwable]
   (and (some? throwable)
@@ -150,7 +151,7 @@
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
       ;; first
       (catch Throwable e
-        (log/errorf e "Failed to connect to Database")
+        (log/error e "Failed to connect to Database")
         (throw (if-let [humanized-message (some->> (.getMessage e)
                                                    (driver/humanize-connection-error-message driver))]
                  (let [error-data (cond
@@ -167,7 +168,7 @@
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
       (catch Throwable e
-        (log/error e (trs "Failed to connect to database"))
+        (log/error e "Failed to connect to database")
         false))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -181,7 +182,7 @@
          (qp.store/with-metadata-provider db-id
            (:engine (lib.metadata.protocols/database (qp.store/metadata-provider)))))
        (vary-meta assoc ::memoize/args-fn (fn [[db-id]]
-                                            [(mdb.connection/unique-identifier) db-id])))
+                                            [(mdb/unique-identifier) db-id])))
    :ttl/threshold 1000))
 
 (mu/defn database->driver :- :keyword
@@ -208,11 +209,43 @@
 ;;; |                                             Available Drivers Info                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def supports?-timeout-ms
+  "The maximum time in milliseconds that [[supports?]] should take to execute. This should be enough for a driver to
+   query the database and check if it supports a feature under normal circumstances, but not so high that it delays
+   critical metabase features that use this check."
+  5000)
+
+(def ^:dynamic *memoize-supports?*
+  "If true, [[supports?]] is memoized for the application DB. Memoization is disabled in dev and test mode by default to avoid
+   accidental coupling between tests."
+  (not (or config/is-test? config/is-dev?)))
+
+(def ^:private supports?*
+  (fn [driver feature database]
+    (try
+      (u/with-timeout supports?-timeout-ms
+        (driver/database-supports? driver feature database))
+      (catch Throwable e
+        (log/error e (u/format-color 'red "Failed to check feature '%s' for database '%s'" (name feature) (:name database)))
+        false))))
+
+(def ^:private memoized-supports?*
+  (mdb/memoize-for-application-db supports?*))
+
+(defn supports?
+  "A defensive wrapper around [[database-supports?]]. It adds logging, caching, and error handling to avoid crashing the app
+   if this method takes a long time to execute or throws an exception. This is useful because `supports?` is used in so many
+   critical places in the app, and we don't want a single driver to crash the app if it throws an exception, or delay the user
+   if it takes a long time to execute."
+  [driver feature database]
+  (let [f (if *memoize-supports?* memoized-supports?* supports?*)]
+    (f driver feature database)))
+
 (defn features
   "Return a set of all features supported by `driver` with respect to `database`."
   [driver database]
   (set (for [feature driver/features
-             :when (driver/database-supports? driver feature database)]
+             :when (supports? driver feature database)]
          feature)))
 
 (defn available-drivers
@@ -231,8 +264,8 @@
    (semantic-version-gte [4 0 1] [4 1]) => false
    (semantic-version-gte [4 1] [4]) => true
    (semantic-version-gte [3 1] [4]) => false"
-  [xv :- [:maybe [:sequential ms/IntGreaterThanOrEqualToZero]]
-   yv :- [:maybe [:sequential ms/IntGreaterThanOrEqualToZero]]]
+  [xv :- [:maybe [:sequential ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+   yv :- [:maybe [:sequential ::lib.schema.common/int-greater-than-or-equal-to-zero]]]
   (loop [xv (seq xv), yv (seq yv)]
     (or (nil? yv)
         (let [[x & xs] xv
@@ -298,8 +331,7 @@
   (let [content (or placeholder
                     (try (getter)
                          (catch Throwable e
-                           (log/error e (trs "Error invoking getter for connection property {0}"
-                                             (:name conn-prop))))))]
+                           (log/errorf e "Error invoking getter for connection property %s" (:name conn-prop)))))]
     (when (string? content)
       (-> conn-prop
           (assoc :placeholder content)
@@ -469,7 +501,7 @@
   #{"athena"
     "bigquery-cloud-sdk"
     "druid"
-    "googleanalytics"
+    "druid-jdbc"
     "h2"
     "mongo"
     "mysql"
@@ -505,7 +537,7 @@
                                  (->> (driver/connection-properties driver)
                                       (connection-props-server->client driver))
                                  (catch Throwable e
-                                   (log/error e (trs "Unable to determine connection properties for driver {0}" driver))))]
+                                   (log/errorf e "Unable to determine connection properties for driver %s" driver)))]
                  :when  props]
              ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
              [driver {:source {:type (driver-source (name driver))

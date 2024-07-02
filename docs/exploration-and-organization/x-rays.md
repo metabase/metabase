@@ -14,12 +14,16 @@ One great way to explore your data in general in Metabase is to click on points 
 
 ![Automatic insights in the drill-through menu](./images/automatic-insights.png)
 
-Metabase will give you some options: 
+Metabase will give you some options:
 
 - **X-ray**
 - **Compare to the rest**
 
-In both options, Metabase will create a bunch of new questions that look at the selected data in different ways.
+In both cases, Metabase will take a look at the fields in that table or model, and automatically generate charts that summarize the data based on the data types it finds.
+
+Here's an example X-ray:
+
+![Example X-ray of the products table](./images/x-ray-example.png)
 
 ## X-raying models and tables
 

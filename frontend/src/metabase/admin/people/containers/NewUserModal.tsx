@@ -2,7 +2,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
-import User from "metabase/entities/users";
+import Users from "metabase/entities/users";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { User as UserType } from "metabase-types/api";
@@ -19,7 +19,7 @@ export const NewUserModal = ({ onClose }: NewUserModalProps) => {
   const handleSubmit = async (vals: Partial<UserType>) => {
     const {
       payload: { id: userId },
-    } = await dispatch(User.actions.create(vals));
+    } = await dispatch(Users.actions.create(vals));
 
     await dispatch(push(Urls.newUserSuccess(userId)));
   };

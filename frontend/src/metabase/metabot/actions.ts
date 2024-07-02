@@ -7,7 +7,7 @@ import {
   MetabotApi,
   runQuestionQuery as apiRunQuestionQuery,
 } from "metabase/services";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { MetabotFeedbackType } from "metabase-types/api";
 import type {
   Dispatch,

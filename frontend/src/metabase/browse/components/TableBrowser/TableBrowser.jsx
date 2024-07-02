@@ -2,7 +2,7 @@ import PropTypes from "prop-types";
 import { Fragment } from "react";
 import { t } from "ttag";
 
-import BrowserCrumbs from "metabase/components/BrowserCrumbs";
+import { BrowserCrumbs } from "metabase/components/BrowserCrumbs";
 import EntityItem from "metabase/components/EntityItem";
 import Database from "metabase/entities/databases";
 import { color } from "metabase/lib/colors";
@@ -12,7 +12,7 @@ import { Icon } from "metabase/ui";
 import {
   isVirtualCardId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase-lib/metadata/utils/saved-questions";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { trackTableClick } from "../../analytics";
 import { BrowseHeaderContent } from "../BrowseHeader.styled";
@@ -36,7 +36,7 @@ const propTypes = {
   showSchemaInHeader: PropTypes.bool,
 };
 
-const TableBrowser = ({
+export const TableBrowser = ({
   database,
   tables,
   getTableUrl,

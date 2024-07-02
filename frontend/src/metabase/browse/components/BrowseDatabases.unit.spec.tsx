@@ -1,21 +1,17 @@
+import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type Database from "metabase-lib/metadata/Database";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
 import { BrowseDatabases } from "./BrowseDatabases";
 
 const renderBrowseDatabases = (modelCount: number) => {
   const databases = mockDatabases.slice(0, modelCount);
-  return renderWithProviders(
-    <BrowseDatabases
-      databasesResult={{ data: databases, isLoading: false, error: false }}
-    />,
-  );
+  setupDatabasesEndpoints(databases);
+  return renderWithProviders(<BrowseDatabases />);
 };
 
-const mockDatabases = [...Array(100)].map(
-  (_, index) =>
-    createMockDatabase({ id: index, name: `Database ${index}` }) as Database,
+const mockDatabases = [...Array(100)].map((_, index) =>
+  createMockDatabase({ id: index, name: `Database ${index}` }),
 );
 
 describe("BrowseDatabases", () => {

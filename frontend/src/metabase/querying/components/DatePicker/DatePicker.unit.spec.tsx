@@ -31,10 +31,10 @@ function setup({
 }
 
 describe("DatePicker", () => {
-  it("should add a filter via shortcut", () => {
+  it("should add a filter via shortcut", async () => {
     const { onChange } = setup({ isNew: true });
 
-    userEvent.click(screen.getByText("Today"));
+    await userEvent.click(screen.getByText("Today"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
@@ -43,48 +43,51 @@ describe("DatePicker", () => {
     });
   });
 
-  it("should add a specific date filter", () => {
+  it("should add a specific date filter", async () => {
     const { onChange } = setup({ isNew: true });
 
-    userEvent.click(screen.getByText("Specific dates…"));
-    userEvent.click(screen.getByText("After"));
-    userEvent.clear(screen.getByLabelText("Date"));
-    userEvent.type(screen.getByLabelText("Date"), "Feb 15, 2020");
-    userEvent.click(screen.getByText("Add filter"));
+    await userEvent.click(screen.getByText("Specific dates…"));
+    await userEvent.click(screen.getByText("After"));
+    await userEvent.clear(screen.getByLabelText("Date"));
+    await userEvent.type(screen.getByLabelText("Date"), "Feb 15, 2020");
+    await userEvent.click(screen.getByText("Add filter"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "specific",
       operator: ">",
       values: [new Date(2020, 1, 15)],
+      hasTime: false,
     });
   });
 
-  it("should update a specific date filter", () => {
+  it("should update a specific date filter", async () => {
     const { onChange } = setup({
       value: {
         type: "specific",
         operator: ">",
         values: [new Date(2020, 1, 15)],
+        hasTime: false,
       },
     });
 
-    userEvent.click(screen.getByText("20"));
-    userEvent.click(screen.getByText("Update filter"));
+    await userEvent.click(screen.getByText("20"));
+    await userEvent.click(screen.getByText("Update filter"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "specific",
       operator: ">",
       values: [new Date(2020, 1, 20)],
+      hasTime: false,
     });
   });
 
-  it("should add a relative date filter", () => {
+  it("should add a relative date filter", async () => {
     const { onChange } = setup({ isNew: true });
 
-    userEvent.click(screen.getByText("Relative dates…"));
-    userEvent.clear(screen.getByLabelText("Interval"));
-    userEvent.type(screen.getByLabelText("Interval"), "20");
-    userEvent.click(screen.getByText("Add filter"));
+    await userEvent.click(screen.getByText("Relative dates…"));
+    await userEvent.clear(screen.getByLabelText("Interval"));
+    await userEvent.type(screen.getByLabelText("Interval"), "20");
+    await userEvent.click(screen.getByText("Add filter"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
@@ -95,7 +98,7 @@ describe("DatePicker", () => {
     });
   });
 
-  it("should update a relative date filter", () => {
+  it("should update a relative date filter", async () => {
     const { onChange } = setup({
       value: {
         type: "relative",
@@ -106,8 +109,8 @@ describe("DatePicker", () => {
       },
     });
 
-    userEvent.click(screen.getByText("Next"));
-    userEvent.click(screen.getByText("Update filter"));
+    await userEvent.click(screen.getByText("Next"));
+    await userEvent.click(screen.getByText("Update filter"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
@@ -118,13 +121,13 @@ describe("DatePicker", () => {
     });
   });
 
-  it("should add an exclude date filter", () => {
+  it("should add an exclude date filter", async () => {
     const { onChange } = setup({ isNew: true });
 
-    userEvent.click(screen.getByText("Exclude…"));
-    userEvent.click(screen.getByText("Days of the week…"));
-    userEvent.click(screen.getByText("Monday"));
-    userEvent.click(screen.getByText("Add filter"));
+    await userEvent.click(screen.getByText("Exclude…"));
+    await userEvent.click(screen.getByText("Days of the week…"));
+    await userEvent.click(screen.getByText("Monday"));
+    await userEvent.click(screen.getByText("Add filter"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "exclude",
@@ -134,7 +137,7 @@ describe("DatePicker", () => {
     });
   });
 
-  it("should update an exclude date filter", () => {
+  it("should update an exclude date filter", async () => {
     const { onChange } = setup({
       value: {
         type: "exclude",
@@ -144,10 +147,10 @@ describe("DatePicker", () => {
       },
     });
 
-    userEvent.click(screen.getByText("Monday"));
-    userEvent.click(screen.getByText("Wednesday"));
-    userEvent.click(screen.getByText("Friday"));
-    userEvent.click(screen.getByText("Update filter"));
+    await userEvent.click(screen.getByText("Monday"));
+    await userEvent.click(screen.getByText("Wednesday"));
+    await userEvent.click(screen.getByText("Friday"));
+    await userEvent.click(screen.getByText("Update filter"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "exclude",

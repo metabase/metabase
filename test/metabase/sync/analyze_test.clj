@@ -1,18 +1,18 @@
 (ns ^:mb/once metabase.sync.analyze-test
   (:require
    [clojure.test :refer :all]
+   [metabase.analyze.classifiers.category :as classifiers.category]
+   [metabase.analyze.classifiers.name :as classifiers.name]
+   [metabase.analyze.classifiers.no-preview-display
+    :as classifiers.no-preview-display]
+   [metabase.analyze.classifiers.text-fingerprint
+    :as classifiers.text-fingerprint]
+   [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.table :refer [Table]]
    [metabase.sync.analyze :as analyze]
-   [metabase.sync.analyze.classifiers.category :as classifiers.category]
-   [metabase.sync.analyze.classifiers.name :as classifiers.name]
-   [metabase.sync.analyze.classifiers.no-preview-display
-    :as classifiers.no-preview-display]
-   [metabase.sync.analyze.classifiers.text-fingerprint
-    :as classifiers.text-fingerprint]
-   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -44,20 +44,22 @@
 
 ;; ...but they *SHOULD* get analyzed if they ARE newly created (expcept for PK which we skip)
 (deftest analyze-table-test
-  (t2.with-temp/with-temp [Database db    {:engine "h2", :details (:details (data/db))}
-                           Table    table {:name "VENUES", :db_id (u/the-id db)}]
+  (t2.with-temp/with-temp [Database db         {:engine "h2",       :details (:details (data/db))}
+                           Table    categories {:name "CATEGORIES", :db_id (:id db) :schema "PUBLIC"}
+                           Table    venues     {:name "VENUES",     :db_id (:id db) :schema "PUBLIC"}]
+    (sync-metadata/sync-table-metadata! categories)
     ;; sync the metadata, but DON't do analysis YET
-    (sync-metadata/sync-table-metadata! table)
+    (sync-metadata/sync-table-metadata! venues)
     ;; ok, NOW run the analysis process
-    (analyze/analyze-table! table)
+    (analyze/analyze-table! venues)
     ;; fields *SHOULD* have semantic types now
     (is (= #{{:name "LATITUDE", :semantic_type :type/Latitude, :last_analyzed true}
              {:name "ID", :semantic_type :type/PK, :last_analyzed false}
              {:name "PRICE", :semantic_type :type/Category, :last_analyzed true}
              {:name "LONGITUDE", :semantic_type :type/Longitude, :last_analyzed true}
-             {:name "CATEGORY_ID", :semantic_type :type/Category, :last_analyzed true}
+             {:name "CATEGORY_ID", :semantic_type :type/FK, :last_analyzed true}
              {:name "NAME", :semantic_type :type/Name, :last_analyzed true}}
-           (set (for [field (t2/select [Field :name :semantic_type :last_analyzed] :table_id (u/the-id table))]
+           (set (for [field (t2/select [Field :name :semantic_type :last_analyzed] :table_id (:id venues))]
                   (into {} (update field :last_analyzed boolean))))))))
 
 (deftest mark-fields-as-analyzed-test
@@ -97,7 +99,7 @@
 
 (deftest survive-classify-table-errors
   (testing "Make sure we survive table classification failing"
-    (sync-survives-crash? classifiers.name/infer-entity-type)))
+    (sync-survives-crash? classifiers.name/infer-entity-type-by-name)))
 
 (defn- classified-semantic-type [values]
   (let [field (mi/instance Field {:base_type :type/Text})]

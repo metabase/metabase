@@ -2,125 +2,125 @@
   --default-button-border-radius: 6px;
 }
 
-:global(.Button) {
+.Button {
   display: inline-block;
   box-sizing: border-box;
   text-decoration: none;
   padding: 0.5rem 0.75rem;
   background: transparent;
-  border: 1px solid color-mod(var(--color-border) blackness(5%));
-  color: var(--color-text-dark);
+  border: 1px solid color-mix(in srgb, var(--mb-color-border), black 5%);
+  color: var(--mb-color-text-dark);
   cursor: pointer;
   font-weight: bold;
-  font-family: var(--default-font-family), sans-serif;
+  font-family: var(--mb-default-font-family), sans-serif;
   border-radius: var(--default-button-border-radius);
 }
 
-:global(.Button:hover) {
-  color: var(--color-brand);
-  border-color: color-mod(var(--color-border) blackness(12%));
-  background: var(--color-bg-light);
+.Button:hover {
+  color: var(--mb-color-brand);
+  border-color: color-mix(in srgb, var(--mb-color-border), black 12%);
+  background: var(--mb-color-bg-light);
   transition: all 200ms linear;
   transition-property: color, border-color, background-color;
 }
 
-:global(.Button:focus) {
-  outline: 2px solid var(--color-focus);
+.Button:focus {
+  outline: 2px solid var(--mb-color-focus);
 }
 
-:global(.Button:focus:not(:focus-visible)) {
+.Button:focus:not(:focus-visible) {
   outline: none;
 }
 
 @media screen and (--breakpoint-min-lg) {
-  :global(.Button) {
+  .Button {
     padding: 0.75rem 1rem;
   }
 }
 
-:global(.Button--small) {
+.ButtonSmall {
   padding: 0.45rem 1rem;
 }
 
-:global(.Button--medium) {
+.ButtonMedium {
   padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
 }
 
-:global(.Button--large) {
+.ButtonLarge {
   padding: 0.8rem 1.25rem;
   font-size: 1rem;
 }
 
-:global(.Button-normal) {
+.ButtonNormal {
   font-weight: normal;
 }
 
-:global(.Button--round) {
+.ButtonRound {
   border-radius: 99px;
 }
 
-:global(.Button--primary) {
-  color: var(--color-text-white);
-  background: var(--color-brand);
-  border: 1px solid var(--color-brand);
+.ButtonPrimary {
+  color: var(--mb-color-text-white);
+  background: var(--mb-color-brand);
+  border: 1px solid var(--mb-color-brand);
 }
 
-:global(.Button--primary:hover) {
-  color: var(--color-text-white);
-  border-color: var(--color-brand);
-  background-color: var(--color-brand-alpha-88);
+.ButtonPrimary:hover {
+  color: var(--mb-color-text-white);
+  border-color: var(--mb-color-brand);
+  background-color: var(--mb-color-brand-alpha-88);
 }
 
-:global(.Button--warning) {
-  color: var(--color-text-white);
-  background: var(--color-error);
-  border: 1px solid var(--color-error);
+.ButtonWarning {
+  color: var(--mb-color-text-white);
+  background: var(--mb-color-error);
+  border: 1px solid var(--mb-color-error);
 }
 
-:global(.Button--warning:hover) {
-  color: var(--color-text-white);
-  border-color: var(--color-error);
-  background-color: var(--color-error);
+.ButtonWarning:hover {
+  color: var(--mb-color-text-white);
+  border-color: var(--mb-color-error);
+  background-color: var(--mb-color-error);
 }
 
-:global(.Button--cancel) {
+.ButtonCancel {
   border-radius: 99px;
 }
 
-:global(.Button--white) {
+.ButtonWhite {
   background-color: white;
-  color: var(--color-text-dark);
-  border-color: var(--color-border);
+  color: var(--mb-color-text-dark);
+  border-color: var(--mb-color-border);
 }
 
-:global(.Button--borderless) {
+.ButtonBorderless {
   border-color: transparent;
   background: transparent;
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
-:global(.Button--borderless:hover) {
+.ButtonBorderless:hover {
   border-color: transparent;
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
-:global(.Button--onlyIcon) {
+.ButtonOnlyIcon {
   border: none;
   background: transparent;
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
   padding: 0;
 }
 
-:global(.Button-group) {
+.ButtonGroup {
   display: inline-block;
   border-radius: var(--default-button-border-radius);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--mb-color-border);
   overflow: hidden;
   clear: both;
 }
 
-:global(.Button-group .Button) {
+.ButtonGroup .Button {
   margin: 0;
   float: left;
   border-top: none;
@@ -130,59 +130,59 @@
   box-shadow: none;
 }
 
-:global(.Button-group .Button--active) {
-  background-color: var(--color-success);
-  color: var(--color-text-white);
+.ButtonGroup .ButtonActive {
+  background-color: var(--mb-color-success);
+  color: var(--mb-color-text-white);
 }
 
-:global(.Button-group .Button:first-child) {
+.ButtonGroup .Button:first-child {
   border-left: none;
 }
 
-:global(.Button-group--brand) {
+.ButtonGroupBrand {
   border-color: white;
 }
 
-:global(.Button-group--brand .Button) {
+.ButtonGroupBrand .Button {
   border-color: white;
-  color: var(--color-brand);
-  background-color: var(--color-bg-medium);
+  color: var(--mb-color-brand);
+  background-color: var(--mb-color-bg-medium);
 }
 
-:global(.Button-group--brand .Button--active) {
-  background-color: var(--color-brand);
+.ButtonGroupBrand .ButtonActive {
+  background-color: var(--mb-color-brand);
   color: white;
 }
 
-:global(.Button:disabled) {
+.Button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-:global(.Button--danger) {
-  background-color: var(--color-error);
-  border-color: var(--color-error);
-  color: var(--color-text-white);
+.ButtonDanger {
+  background-color: var(--mb-color-error);
+  border-color: var(--mb-color-error);
+  color: var(--mb-color-text-white);
 }
 
-:global(.Button--danger:hover) {
+.ButtonDanger:hover {
   color: white;
-  background-color: var(--color-error);
-  border-color: var(--color-error);
+  background-color: var(--mb-color-error);
+  border-color: var(--mb-color-error);
 }
 
-:global(.Button--success) {
-  background-color: var(--color-success);
-  border-color: var(--color-success);
-  color: var(--color-text-white);
+.ButtonSuccess {
+  background-color: var(--mb-color-success);
+  border-color: var(--mb-color-success);
+  color: var(--mb-color-text-white);
 }
 
-:global(.Button--success:hover) {
-  background-color: var(--color-success);
-  border-color: var(--color-success);
-  color: var(--color-text-white);
+.ButtonSuccess:hover {
+  background-color: var(--mb-color-success);
+  border-color: var(--mb-color-success);
+  color: var(--mb-color-text-white);
 }
 
-:global(.Button--fullWidth) {
+.ButtonFullWidth {
   width: 100%;
 }

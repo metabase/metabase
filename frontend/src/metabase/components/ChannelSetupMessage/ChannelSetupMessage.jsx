@@ -1,9 +1,12 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import Settings from "metabase/lib/settings";
 
 export default class ChannelSetupMessage extends Component {
@@ -26,7 +29,7 @@ export default class ChannelSetupMessage extends Component {
             <Link
               to={"/admin/settings/" + c.toLowerCase()}
               key={c.toLowerCase()}
-              className="Button Button--primary mr1"
+              className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.mr1)}
               target={window.OSX ? null : "_blank"}
             >
               {t`Configure`} {c}
@@ -37,9 +40,9 @@ export default class ChannelSetupMessage extends Component {
     } else {
       const adminEmail = Settings.get("admin-email");
       content = (
-        <div className="mb1">
-          <h4 className="text-medium">{t`Your admin's email address`}:</h4>
-          <a className="h2 link no-decoration" href={"mailto:" + adminEmail}>
+        <div className={CS.mb1}>
+          <h4 className={CS.textMedium}>{t`Your admin's email address`}:</h4>
+          <a className={cx(CS.h2, CS.link)} href={"mailto:" + adminEmail}>
             {adminEmail}
           </a>
         </div>

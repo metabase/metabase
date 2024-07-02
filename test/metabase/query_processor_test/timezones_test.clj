@@ -6,13 +6,13 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models :refer [Field Table]]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
-   [toucan2.core :as t2]))
+   [metabase.util.date-2 :as u.date]))
 
 ;; TIMEZONE FIXME
 (def broken-drivers
@@ -25,7 +25,6 @@
     :bigquery-cloud-sdk
     :oracle
     :redshift
-    :snowflake
     :sparksql
     :vertica})
 
@@ -43,7 +42,7 @@
 
 ;; TODO - we should also do similar tests for timezone-unaware columns
 (deftest result-rows-test
-  (mt/dataset test-data-with-timezones
+  (mt/dataset tz-test-data
     (mt/test-drivers (timezone-aware-column-drivers)
       (is (= [[12 "2014-07-03T01:30:00Z"]
               [10 "2014-07-03T19:30:00Z"]]
@@ -67,7 +66,7 @@
               (format "There should be %d checkins on July 3rd in the %s timezone" (count expected-rows) timezone)))))))
 
 (deftest filter-test
-  (mt/dataset test-data-with-timezones
+  (mt/dataset tz-test-data
     (mt/test-drivers (set-timezone-drivers)
       (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00-07:00"]]
@@ -99,13 +98,14 @@
                    "same as specifying UTC for a report timezone")))))))
 
 (defn- table-identifier [table-key]
-  (let [table-name (t2/select-one-fn :name Table, :id (mt/id table-key))]
-    (apply h2x/identifier :table (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) table-name))))
+  (sql.qp/->honeysql driver/*driver*
+                     (lib.metadata/table (qp.store/metadata-provider) (mt/id table-key))))
 
 (defn- field-identifier [table-key field-key]
-  (let [table-name (t2/select-one-fn :name Table, :id (mt/id table-key))
-        field-name (t2/select-one-fn :name Field, :id (mt/id table-key field-key))]
-    (apply h2x/identifier :field (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) table-name field-name))))
+  (sql.qp/->honeysql driver/*driver*
+                     [:field
+                      (mt/id table-key field-key)
+                      {:metabase.query-processor.util.add-alias-info/source-table (mt/id table-key)}]))
 
 (defn- honeysql->sql [honeysql]
   (first (sql.qp/format-honeysql driver/*driver* honeysql)))
@@ -172,22 +172,25 @@
   ;; parameters always get `date` bucketing so doing something the between stuff we do below is basically just going
   ;; to match anything with a `2014-08-02` date
   (mt/test-drivers (filter
-                     #(isa? driver/hierarchy % :sql)
-                     (set/intersection (set-timezone-drivers)
-                                       (mt/normal-drivers-with-feature :native-parameters)))
-    (mt/dataset test-data-with-timezones
+                    #(isa? driver/hierarchy % :sql)
+                    (set/intersection (set-timezone-drivers)
+                                      (mt/normal-drivers-with-feature :native-parameters)))
+    (mt/dataset tz-test-data
       (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (testing "Native dates should be parsed with the report timezone"
-          (doseq [[params-description query] (native-params-queries)]
-            (testing (format "Query with %s" params-description)
-              (is (= [[6 "Shad Ferdynand"  "2014-08-02T05:30:00-07:00"]
-                      [7 "Conchúr Tihomir" "2014-08-02T02:30:00-07:00"]]
-                     (mt/formatted-rows [int identity identity]
-                                        (qp/process-query
-                                          (merge
-                                            {:database (mt/id)
-                                             :type     :native}
-                                            query))))))))))))
+          (qp.store/with-metadata-provider (mt/id)
+            (doseq [[params-description query] (native-params-queries)]
+              (testing (format "Query with %s" params-description)
+                (mt/with-native-query-testing-context query
+                  (is (= [[6 "Shad Ferdynand"  "2014-08-02T05:30:00-07:00"]
+                          [7 "Conchúr Tihomir" "2014-08-02T02:30:00-07:00"]]
+                         (mt/formatted-rows
+                          [int identity identity]
+                          (qp/process-query
+                           (merge
+                            {:database (mt/id)
+                             :type     :native}
+                            query))))))))))))))
 
 ;; Make sure TIME values are handled consistently (#10366)
 (defn- attempts []
@@ -245,57 +248,69 @@
       (for [i (range 366)]
         [(u.date/add start-date :day i)])]]))
 
+(defmethod driver/database-supports? [::driver/driver ::extract-week-of-year-us]
+  [_driver _feature _database]
+  true)
+
+;;; Snowflake doesn't support extracting week of year US
+(defmethod driver/database-supports? [:snowflake ::extract-week-of-year-us]
+  [_driver _feature _database]
+  false)
+
 (deftest general-timezone-support-test
   (mt/dataset all-dates-leap-year
     (mt/test-drivers (set-timezone-drivers)
-      (let [extract-units (disj u.date/extract-units :day-of-year)
+      (let [extract-units (cond-> (disj u.date/extract-units :day-of-year)
+                            (not (driver.u/supports? driver/*driver* ::extract-week-of-year-us (mt/db)))
+                            (disj :week-of-year))
             ;; :week-of-year-instance is the behavior of u.date/extract (based on public-settings start-of-week)
             extract-translate {:year :year-of-era :week-of-year :week-of-year-us}
-            trunc-units (disj u.date/truncate-units :millisecond :second)]
+            trunc-units (disj u.date/truncate-units :millisecond :second)
+            cols        (concat
+                         (for [extract-unit extract-units]
+                           extract-unit)
+                         (for [trunc-unit trunc-units]
+                           trunc-unit)
+                         [:dt_tz])]
         (doseq [timezone ["Pacific/Honolulu" "America/Los_Angeles" "UTC" "Pacific/Auckland"]
                 :let [expected-rows (for [i (range 366)
                                           :let [expected-datetime (u.date/add #t "2012-01-01T01:30:54Z" :day i)
                                                 in-tz (u.date/with-time-zone-same-instant expected-datetime timezone)]]
-                                      (concat
-                                        (for [extract-unit extract-units]
-                                          [extract-unit (u.date/extract in-tz extract-unit)])
-                                        (for [trunc-unit trunc-units]
-                                          [trunc-unit
-                                           (-> in-tz
-                                               (u.date/truncate trunc-unit)
-                                               u.date/format-sql
-                                               (str/replace #" " "T"))])
-                                        [[:dt_tz
-                                          (-> in-tz
-                                              u.date/format-sql
-                                              (str/replace #" " "T"))]]))]]
+                                      (into {}
+                                            cat
+                                            [(for [extract-unit extract-units]
+                                               [extract-unit (u.date/extract in-tz extract-unit)])
+                                             (for [trunc-unit trunc-units]
+                                               [trunc-unit
+                                                (-> in-tz
+                                                    (u.date/truncate trunc-unit)
+                                                    u.date/format-sql
+                                                    (str/replace #" " "T"))])
+                                             [[:dt_tz
+                                               (-> in-tz
+                                                   u.date/format-sql
+                                                   (str/replace #" " "T"))]]]))]]
           (mt/with-temporary-setting-values [report-timezone timezone]
             (let [rows (->> (mt/run-mbql-query alldates
                               {:expressions (->> extract-units
                                                  (map
-                                                   (fn [extract-unit]
-                                                     [extract-unit [:temporal-extract
-                                                                    [:field (mt/id :alldates :dt) nil]
-                                                                    (get extract-translate extract-unit extract-unit)]]))
+                                                  (fn [extract-unit]
+                                                    [extract-unit [:temporal-extract
+                                                                   [:field (mt/id :alldates :dt) nil]
+                                                                   (get extract-translate extract-unit extract-unit)]]))
                                                  (into {}))
                                :fields (concat
-                                         (for [extract-unit extract-units]
-                                           [:expression extract-unit])
-                                         (for [trunc-unit trunc-units]
-                                           [:field (mt/id :alldates :dt)
-                                            {:temporal-unit trunc-unit}])
-                                         [[:field (mt/id :alldates :dt)]])
+                                        (for [extract-unit extract-units]
+                                          [:expression extract-unit])
+                                        (for [trunc-unit trunc-units]
+                                          [:field (mt/id :alldates :dt)
+                                           {:temporal-unit trunc-unit}])
+                                        [[:field (mt/id :alldates :dt)]])
                                :order-by [[:asc (mt/id :alldates :id)]]})
                             (mt/rows)
                             (map (fn [row]
-                                   (map vector
-                                        (concat
-                                          (for [extract-unit extract-units]
-                                            extract-unit)
-                                          (for [trunc-unit trunc-units]
-                                            trunc-unit)
-                                          [:dt_tz])
-                                        row))))]
+                                   (zipmap cols
+                                           row))))]
               (doseq [[expected-row row] (map vector expected-rows rows)]
                 (is (= expected-row row))))))))))
 
@@ -303,9 +318,9 @@
   (mt/test-drivers (set-timezone-drivers)
     (testing "Relative to current date"
       (let [expected-datetime (u.date/truncate (t/zoned-date-time) :second)]
-        (mt/with-temp-test-data ["relative_filter"
-                                 [{:field-name "created", :base-type :type/DateTimeWithTZ}]
-                                 [[expected-datetime]]]
+        (mt/with-temp-test-data [["relative_filter"
+                                  [{:field-name "created", :base-type :type/DateTimeWithTZ}]
+                                  [[expected-datetime]]]]
           (doseq [timezone ["UTC" "America/Los_Angeles"]]
             (mt/with-temporary-setting-values [report-timezone timezone]
               (let [query (mt/mbql-query relative_filter {:fields [$created]
@@ -327,9 +342,9 @@
   (mt/test-drivers (set-timezone-drivers)
     (testing "Relative to days since"
       (let [expected-datetime (u.date/truncate (u.date/add (t/zoned-date-time) :day -1) :second)]
-        (mt/with-temp-test-data ["relative_filter"
-                                 [{:field-name "created", :base-type :type/DateTimeWithTZ}]
-                                 [[expected-datetime]]]
+        (mt/with-temp-test-data [["relative_filter"
+                                  [{:field-name "created", :base-type :type/DateTimeWithTZ}]
+                                  [[expected-datetime]]]]
           (doseq [timezone ["UTC" "Asia/Hong_Kong" "US/Hawaii" "America/Puerto_Rico"]]
             (mt/with-temporary-setting-values [report-timezone timezone]
               (let [query (mt/mbql-query relative_filter {:fields [$created]
@@ -350,7 +365,7 @@
 (deftest filter-datetime-by-date-in-timezone-fixed-date-test
   (mt/test-drivers (set-timezone-drivers)
     (testing "Fixed date"
-      (mt/dataset test-data-with-timezones
+      (mt/dataset tz-test-data
         (let [expected-datetime #t "2014-07-03T01:30:00Z"]
           (doseq [[timezone date-filter] [["US/Pacific" "2014-07-02"]
                                           ["US/Eastern" "2014-07-02"]

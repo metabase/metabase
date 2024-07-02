@@ -90,7 +90,7 @@ const addGroupsToMapping = (mappingName, groups) => {
       cy.findByText(group).click();
 
       cy.findByText(group)
-        .closest(".List-section")
+        .closest("[data-element-id=list-section]")
         .within(() => {
           cy.icon("check");
         });

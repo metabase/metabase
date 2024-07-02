@@ -35,6 +35,7 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
           },
         },
       },
+      body: { alignItems: "center" },
       inner: {
         width: getSize({ size, sizes: SIZES }),
         height: getSize({ size, sizes: SIZES }),
@@ -64,6 +65,7 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
         color: theme.fn.themeColor("text-dark"),
         fontSize: theme.fontSizes.md,
         lineHeight: theme.lineHeight,
+        cursor: "pointer",
       },
       description: {
         ref: getStylesRef("description"),
@@ -113,7 +115,6 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
           },
         },
         labelWrapper: {
-          psoition: "relative",
           top: rem(-2),
         },
       }),

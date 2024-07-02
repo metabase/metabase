@@ -11,7 +11,7 @@ import FormFooter from "metabase/core/components/FormFooter";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormTextArea from "metabase/core/components/FormTextArea";
-import { DEFAULT_COLLECTION_COLOR_ALIAS } from "metabase/entities/collections";
+import { DEFAULT_COLLECTION_COLOR_ALIAS } from "metabase/entities/collections/constants";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import { Form, FormProvider } from "metabase/forms";
 import { color } from "metabase/lib/colors";
@@ -103,7 +103,7 @@ function SnippetCollectionForm({
   );
 
   const handleSubmit = useCallback(
-    async values => {
+    async (values: SnippetCollectionFormValues) => {
       const nextCollection = isEditing
         ? await handleUpdate({ id: collection.id as CollectionId, ...values })
         : await handleCreate(values);

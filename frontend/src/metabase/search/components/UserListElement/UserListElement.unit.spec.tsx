@@ -28,10 +28,10 @@ describe("UserListElement", () => {
     );
   });
 
-  it("should call the onClick function when clicked", () => {
+  it("should call the onClick function when clicked", async () => {
     const { onClickMock } = setup();
 
-    userEvent.click(screen.getByText("Alice Johnson"));
+    await userEvent.click(screen.getByText("Alice Johnson"));
 
     expect(onClickMock).toHaveBeenCalledTimes(1);
     expect(onClickMock).toHaveBeenCalledWith(TEST_USER_LIST_RESULT);

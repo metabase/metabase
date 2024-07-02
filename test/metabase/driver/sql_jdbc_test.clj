@@ -12,6 +12,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
+   [metabase.test.data.dataset-definition-test :as dataset-definition-test]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -23,63 +24,21 @@
                          {:name table, :schema "PUBLIC", :description nil}))}
          (driver/describe-database :h2 (mt/db)))))
 
-(deftest ^:parallel describe-table-test
-  (is (= {:name   "VENUES"
-          :schema "PUBLIC"
-          :fields #{{:name              "ID"
-                     :database-type     "BIGINT"
-                     :base-type         :type/BigInteger
-                     :pk?               true
-                     :database-position 0
-                     :database-required false
-                     :database-is-auto-increment true
-                     :json-unfolding    false}
-                    {:name              "NAME"
-                     :database-type     "CHARACTER VARYING"
-                     :base-type         :type/Text
-                     :database-position 1
-                     :database-required false
-                     :database-is-auto-increment false
-                     :json-unfolding    false}
-                    {:name              "CATEGORY_ID"
-                     :database-type     "INTEGER"
-                     :base-type         :type/Integer
-                     :database-position 2
-                     :database-required false
-                     :database-is-auto-increment false
-                     :json-unfolding    false}
-                    {:name              "LATITUDE"
-                     :database-type     "DOUBLE PRECISION"
-                     :base-type         :type/Float
-                     :database-position 3
-                     :database-required false
-                     :database-is-auto-increment false
-                     :json-unfolding    false}
-                    {:name              "LONGITUDE"
-                     :database-type     "DOUBLE PRECISION"
-                     :base-type         :type/Float
-                     :database-position 4
-                     :database-required false
-                     :database-is-auto-increment false
-                     :json-unfolding    false}
-                    {:name              "PRICE"
-                     :database-type     "INTEGER"
-                     :base-type         :type/Integer
-                     :database-position 5
-                     :database-required false
-                     :database-is-auto-increment false
-                     :json-unfolding    false}}}
-         (driver/describe-table :h2 (mt/db) (t2/select-one Table :id (mt/id :venues))))))
-
-(deftest ^:parallel describe-table-fks-test
-  (is (= #{{:fk-column-name   "CATEGORY_ID"
-            :dest-table       {:name   "CATEGORIES"
-                               :schema "PUBLIC"}
-            :dest-column-name "ID"}}
-         (driver/describe-table-fks :h2 (mt/db) (t2/select-one Table :id (mt/id :venues))))))
+(deftest describe-fields-sync-with-composite-pks-test
+  (testing "Make sure syncing a table that has a composite pks works"
+    (mt/test-driver (mt/normal-drivers-with-feature :describe-fields)
+      (mt/dataset dataset-definition-test/composite-pk
+        (let [songs (t2/select-one :model/Table (mt/id :songs))
+              fk-metadata (driver/describe-fields :redshift (mt/db)
+                                                  :table-names [(:name songs)]
+                                                  :schema-names [(:schema songs)])]
+          (is (= #{{:name "song_id", :pk? true} {:name "artist_id", :pk? true}}
+                 (into #{}
+                       (map #(select-keys % [:name :pk?]))
+                       fk-metadata))))))))
 
 (deftest ^:parallel table-rows-sample-test
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+  (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
     (is (= [["20th Century Cafe"]
             ["25°"]
             ["33 Taps"]
@@ -93,7 +52,7 @@
                 (take 5))))))
 
 (deftest ^:parallel table-rows-seq-test
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+  (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
     (is (= [{:name "Red Medicine", :price 3, :category_id 4, :id 1}
             {:name "Stout Burgers & Beers", :price 2, :category_id 11, :id 2}
             {:name "The Apple Pan", :price 2, :category_id 11, :id 3}
@@ -192,7 +151,7 @@
 
 (deftest ^:parallel splice-parameters-mbql-test
   (testing "`splice-parameters-into-native-query` should generate a query that works correctly"
-    (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+    (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
       (mt/$ids venues
         (testing "splicing a string"
           (is (= 3
@@ -220,7 +179,7 @@
                  (spliced-count-of :checkins [:= $date "2014-03-05"])))))
       (when (mt/supports-time-type? driver/*driver*)
         (testing "splicing a time"
-          (mt/dataset test-data-with-time
+          (mt/dataset time-test-data
             (is (= 2
                    (mt/$ids users
                      (spliced-count-of :users [:= $last_login_time "09:30"]))))))))))

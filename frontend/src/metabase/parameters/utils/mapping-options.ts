@@ -4,21 +4,21 @@ import { getColumnGroupName } from "metabase/common/utils/column-groups";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 import * as Lib from "metabase-lib";
-import { TemplateTagDimension } from "metabase-lib/Dimension";
-import type { DimensionOptionsSection } from "metabase-lib/DimensionOptions/types";
-import type Question from "metabase-lib/Question";
+import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
+import type { DimensionOptionsSection } from "metabase-lib/v1/DimensionOptions/types";
+import type Question from "metabase-lib/v1/Question";
 import {
-  columnFilterForParameter,
   dimensionFilterForParameter,
   variableFilterForParameter,
-} from "metabase-lib/parameters/utils/filters";
+} from "metabase-lib/v1/parameters/utils/filters";
 import {
   buildColumnTarget,
   buildDimensionTarget,
   buildTemplateTagVariableTarget,
   buildTextTagTarget,
-} from "metabase-lib/parameters/utils/targets";
-import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
+  getParameterColumns,
+} from "metabase-lib/v1/parameters/utils/targets";
+import type TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type {
   BaseDashboardCard,
   Card,
@@ -153,19 +153,12 @@ export function getParameterMappingOptions(
   }
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
-  const isModel = question.type() === "model";
-  if (!isNative || isModel) {
-    // treat the dataset/model question like it is already composed so that we can apply
-    // dataset/model-specific metadata to the underlying dimension options
-    const query = isModel
-      ? question.composeDataset().query()
-      : question.query();
-    const stageIndex = -1;
-    const availableColumns = Lib.filterableColumns(query, stageIndex);
-    const parameterColumns = parameter
-      ? availableColumns.filter(columnFilterForParameter(parameter))
-      : availableColumns;
-    const columnGroups = Lib.groupColumns(parameterColumns);
+  if (!isNative) {
+    const { query, stageIndex, columns } = getParameterColumns(
+      question,
+      parameter ?? undefined,
+    );
+    const columnGroups = Lib.groupColumns(columns);
 
     const options = columnGroups.flatMap(group =>
       buildStructuredQuerySectionOptions(query, stageIndex, group),

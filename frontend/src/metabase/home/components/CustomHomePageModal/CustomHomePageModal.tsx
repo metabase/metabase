@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { trackCustomHomepageDashboardEnabled } from "metabase/admin/settings/analytics";
 import { updateSettings } from "metabase/admin/settings/settings";
-import { isPersonalCollectionOrChild } from "metabase/collections/utils";
 import { DashboardSelector } from "metabase/components/DashboardSelector/DashboardSelector";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
@@ -13,11 +12,11 @@ import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Text } from "metabase/ui";
-import type { Collection, DashboardId } from "metabase-types/api";
+import type { DashboardId } from "metabase-types/api";
 
 const CUSTOM_HOMEPAGE_SETTING_KEY = "custom-homepage";
 const CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY = "custom-homepage-dashboard";
-const CUSTOM_HOMEPAGE_REDIRECT_TOAST_KEY = "dismissed_custom_dashboard_toast";
+const CUSTOM_HOMEPAGE_REDIRECT_TOAST_KEY = "dismissed-custom-dashboard-toast";
 
 interface CustomHomePageModalProps {
   isOpen: boolean;
@@ -47,20 +46,20 @@ export const CustomHomePageModal = ({
           <Box ml="0.5rem" mr="2.5rem">
             <Text
               span
-              c="white"
+              c="text-white"
               fw={700}
             >{t`This dashboard has been set as your homepage.`}</Text>
             <br />
             <Text
               span
-              c="white"
+              c="text-white"
             >{t`You can change this in Admin > Settings > General.`}</Text>
           </Box>
         ),
         icon: "info",
         timeout: 10000,
         id,
-        actions: [dismissUndo(id)],
+        actions: [dismissUndo({ undoId: id })],
         actionLabel: "Got it",
         canDismiss: false,
       }),
@@ -107,15 +106,7 @@ export const CustomHomePageModal = ({
         ]}
       >
         <p>{t`Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, ${applicationName} will redirect them to the default homepage. You can update or reset the homepage at any time in Admin Settings > Settings > General.`}</p>
-        <DashboardSelector
-          value={dashboardId}
-          onChange={handleChange}
-          collectionFilter={(
-            collection: Collection,
-            _index: number,
-            allCollections: Collection[],
-          ) => !isPersonalCollectionOrChild(collection, allCollections)}
-        />
+        <DashboardSelector value={dashboardId} onChange={handleChange} />
       </ModalContent>
     </Modal>
   );

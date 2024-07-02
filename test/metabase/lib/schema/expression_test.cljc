@@ -1,8 +1,9 @@
 (ns metabase.lib.schema.expression-test
-  (:require [clojure.test :refer [deftest are testing]]
-            [metabase.lib.core :as lib]
-            [metabase.lib.schema.expression :as lib.schema.expression]
-            [metabase.lib.test-metadata :as meta]))
+  (:require
+   [clojure.test :refer [deftest are testing]]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.test-metadata :as meta]))
 
 (deftest ^:parallel comparable-expressions?-test
   (let [abs-datetime [:absolute-datetime {:lib/uuid (str (random-uuid))}

@@ -1,15 +1,16 @@
+import type { PropsWithChildren } from "react";
 import { t } from "ttag";
 
+import { isRootTrashCollection } from "metabase/collections/utils";
 import NewItemMenu from "metabase/containers/NewItemMenu";
 import Button from "metabase/core/components/Button";
-import { Text } from "metabase/ui";
+import { color } from "metabase/lib/colors";
+import { Box, Icon, Stack, Text, useMantineTheme } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
 import {
   EmptyStateIconBackground,
   EmptyStateIconForeground,
-  EmptyStateRoot,
-  EmptyStateTitle,
 } from "./CollectionEmptyState.styled";
 
 export interface CollectionEmptyStateProps {
@@ -19,28 +20,71 @@ export interface CollectionEmptyStateProps {
 const CollectionEmptyState = ({
   collection,
 }: CollectionEmptyStateProps): JSX.Element => {
+  const isTrashCollection = !!collection && isRootTrashCollection(collection);
+  const isArchived = !!collection?.archived;
+
+  if (isTrashCollection) {
+    return <TrashEmptyState />;
+  } else if (isArchived) {
+    return <ArchivedCollectionEmptyState />;
+  } else {
+    return <DefaultCollectionEmptyState collection={collection} />;
+  }
+};
+
+const TrashEmptyState = () => {
+  return (
+    <EmptyStateWrapper>
+      <Icon name="trash" size={80} color={color("brand-light")} />
+      <EmptyStateTitle>{t`Nothing here`}</EmptyStateTitle>
+      <EmptyStateSubtitle>
+        {t`Deleted items will appear here.`}
+      </EmptyStateSubtitle>
+    </EmptyStateWrapper>
+  );
+};
+
+const ArchivedCollectionEmptyState = () => {
+  return (
+    <EmptyStateWrapper>
+      <CollectionEmptyIcon />
+      <EmptyStateTitle>{t`This collection is empty`}</EmptyStateTitle>
+    </EmptyStateWrapper>
+  );
+};
+
+const DefaultCollectionEmptyState = ({
+  collection,
+}: CollectionEmptyStateProps) => {
   const canWrite = !!collection?.can_write;
 
   return (
-    <EmptyStateRoot data-testid="collection-empty-state">
+    <EmptyStateWrapper>
       <CollectionEmptyIcon />
       <EmptyStateTitle>{t`This collection is empty`}</EmptyStateTitle>
-      <Text size="1rem" color="text-medium" align="center" mb="1.5rem">
+      <EmptyStateSubtitle>
         {t`Use collections to organize and group dashboards and questions for your team or yourself`}
-      </Text>
+      </EmptyStateSubtitle>
       {canWrite && (
         <NewItemMenu
           trigger={<Button icon="add">{t`Create a new…`}</Button>}
           collectionId={collection?.id}
         />
       )}
-    </EmptyStateRoot>
+    </EmptyStateWrapper>
   );
 };
 
 const CollectionEmptyIcon = (): JSX.Element => {
+  const theme = useMantineTheme();
   return (
-    <svg width="117" height="94" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      viewBox="0 0 117 94"
+      width={theme.other.collectionBrowser.emptyContent.icon.width}
+      height={theme.other.collectionBrowser.emptyContent.icon.height}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
       <EmptyStateIconForeground
         fillRule="evenodd"
         clipRule="evenodd"
@@ -52,6 +96,44 @@ const CollectionEmptyIcon = (): JSX.Element => {
         strokeWidth="2"
       />
     </svg>
+  );
+};
+
+const EmptyStateTitle = ({ children }: PropsWithChildren) => {
+  const theme = useMantineTheme();
+  return (
+    <Box
+      c="text-dark"
+      fz={theme.other.collectionBrowser.emptyContent.title.fontSize}
+      fw="bold"
+      lh="2rem"
+      mt="2.5rem"
+      mb="0.75rem"
+    >
+      {children}
+    </Box>
+  );
+};
+
+const EmptyStateSubtitle = ({ children }: PropsWithChildren) => {
+  const theme = useMantineTheme();
+  return (
+    <Text
+      size={theme.other.collectionBrowser.emptyContent.subtitle.fontSize}
+      color="text-medium"
+      align="center"
+      mb="1.5rem"
+    >
+      {children}
+    </Text>
+  );
+};
+
+const EmptyStateWrapper = ({ children }: PropsWithChildren) => {
+  return (
+    <Stack data-testid="collection-empty-state" align="center" spacing={0}>
+      {children}
+    </Stack>
   );
 };
 

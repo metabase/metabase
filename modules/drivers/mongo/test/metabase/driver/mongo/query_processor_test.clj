@@ -106,8 +106,14 @@
                    (qp.compile/compile
                     (mt/mbql-query attempts
                       {:aggregation [[:count]]
-                       :filter      [:time-interval $datetime :last :month]}))))
+                       :filter      [:time-interval $datetime :last :month]}))))))))))
 
+(deftest ^:parallel no-initial-projection-test-2
+  (mt/test-driver :mongo
+    (testing "Don't need to create initial projections anymore (#4216)"
+      (testing "Don't create an initial projection for datetime-fields that use `:default` bucketing (#14838)"
+        (mt/with-clock #t "2021-02-15T17:33:00-08:00[US/Pacific]"
+          (mt/dataset attempted-murders
             (testing "should still work even with bucketing bucketing"
               (let [tz    (qp.timezone/results-timezone-id :mongo mt/db)
                     query (mt/with-metadata-provider (mt/id)
@@ -147,8 +153,7 @@
                                       {"$project" {"_id"        false
                                                    "datetime"   "$_id.datetime"
                                                    "datetime_2" "$_id.datetime_2"
-                                                   "count"      true}}
-                                      {"$sort" {"datetime" 1}}]
+                                                   "count"      true}}]
                         :collection  "attempts"
                         :mbql?       true}
                        query))
@@ -188,7 +193,7 @@
     (testing "Result timezone is respected when grouping by hour (#11149)"
       (mt/dataset attempted-murders
         (testing "Querying in UTC works"
-          (mt/with-system-timezone-id "UTC"
+          (mt/with-system-timezone-id! "UTC"
             (is (= [["2019-11-20T20:00:00Z" 1]
                     ["2019-11-19T00:00:00Z" 1]
                     ["2019-11-18T20:00:00Z" 1]
@@ -199,7 +204,7 @@
                                :order-by [[:desc [:field %datetime {:temporal-unit :hour}]]]
                                :limit 4}))))))
         (testing "Querying in Kathmandu works"
-          (mt/with-system-timezone-id "Asia/Kathmandu"
+          (mt/with-system-timezone-id! "Asia/Kathmandu"
             (is (= [["2019-11-21T01:00:00+05:45" 1]
                     ["2019-11-19T06:00:00+05:45" 1]
                     ["2019-11-19T02:00:00+05:45" 1]
@@ -268,8 +273,9 @@
       (is (= {:projections ["count" "count_2"]
               :query
               [{"$group" {"_id" nil, "count" {"$addToSet" "$name"}, "count_2" {"$addToSet" "$price"}}}
+               {"$addFields" {"count" {"$size" "$count"} "count_2" {"$size" "$count_2"}}}
                {"$sort" {"_id" 1}}
-               {"$project" {"_id" false, "count" {"$size" "$count"}, "count_2" {"$size" "$count_2"}}}
+               {"$project" {"_id" false, "count" true, "count_2" true}}
                {"$limit" 5}],
               :collection  "venues"
               :mbql?       true}
@@ -278,6 +284,32 @@
                 {:aggregation [[:distinct $name]
                                [:distinct $price]]
                  :limit       5})))))))
+
+(deftest ^:parallel multiple-aggregations-with-distinct-count-expression-test
+  (mt/test-driver
+   :mongo
+   (testing "Should generate correct queries for `:distinct` in expressions (#35425)"
+     (is (= {:projections ["expression" "expression_2"],
+             :query
+             [{"$group"
+               {"_id"                 nil,
+                "expression~count"    {"$addToSet" "$name"},
+                "expression~count1"   {"$addToSet" "$price"},
+                "expression_2~count"  {"$addToSet" "$name"},
+                "expression_2~count1" {"$addToSet" "$price"}}}
+              {"$addFields"
+               {"expression"   {"$add" [{"$size" "$expression~count"} {"$size" "$expression~count1"}]},
+                "expression_2" {"$subtract" [{"$size" "$expression_2~count"} {"$size" "$expression_2~count1"}]}}}
+              {"$sort" {"_id" 1}}
+              {"$project" {"_id" false, "expression" true, "expression_2" true}}
+              {"$limit" 5}],
+             :collection "venues",
+             :mbql? true}
+            (qp.compile/compile
+             (mt/mbql-query venues
+                            {:aggregation [[:+ [:distinct $name] [:distinct $price]]
+                                           [:- [:distinct $name] [:distinct $price]]]
+                             :limit       5})))))))
 
 (defn- extract-projections [projections q]
   (select-keys (get-in q [:query 0 "$project"]) projections))

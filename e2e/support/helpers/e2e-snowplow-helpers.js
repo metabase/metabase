@@ -59,7 +59,10 @@ export function isDeepMatch(objectOrValue, partialObjectOrValue) {
 
   for (const [key, value] of Object.entries(partialObjectOrValue)) {
     if (Array.isArray(value)) {
-      if (!isArrayDeepMatch(objectOrValue[key], value)) {
+      if (
+        !Array.isArray(objectOrValue[key]) ||
+        !isArrayDeepMatch(objectOrValue[key], value)
+      ) {
         return false;
       }
     } else if (!isDeepMatch(objectOrValue[key], value)) {
@@ -91,7 +94,7 @@ export const expectGoodSnowplowEvents = count => {
 };
 
 export const expectNoBadSnowplowEvents = () => {
-  sendSnowplowRequest("micro/bad").its("body").should("have.length", 0);
+  sendSnowplowRequest("micro/bad").its("body").should("deep.equal", []);
 };
 
 const sendSnowplowRequest = url => {

@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { connect } from "react-redux";
@@ -6,14 +7,16 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Link from "metabase/core/components/Link";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
 import * as Urls from "metabase/lib/urls";
 import { getMetadata } from "metabase/selectors/metadata";
-import Query from "metabase-lib/queries/Query";
+import Query from "metabase-lib/v1/queries/Query";
 import {
   getSegmentOrMetricQuestion,
   getDefaultSegmentOrMetricQuestion,
-} from "metabase-lib/queries/utils/segments";
+} from "metabase-lib/v1/queries/utils/segments";
 
 import withTableMetadataLoaded from "../hoc/withTableMetadataLoaded";
 
@@ -55,7 +58,7 @@ class PartialQueryBuilder extends Component {
       return;
     }
 
-    // only set the query if it doesn't already have an aggregation or filter
+    // only set the query if it doesn't already have a filter
     const question = getSegmentOrMetricQuestion(value, table, metadata);
     if (!question.legacyQuery({ useStructuredQuery: true }).isRaw()) {
       return;
@@ -85,23 +88,22 @@ class PartialQueryBuilder extends Component {
     const previewUrl = Urls.serializedQuestion(question.card());
 
     return (
-      <div className="py1">
+      <div className={CS.py1}>
         <GuiQueryEditor
           features={features}
           legacyQuery={legacyQuery}
           query={query}
           setDatasetQuery={this.setDatasetQuery}
           isShowingDataReference={false}
-          supportMultipleAggregations={false}
           canChangeTable={this.props.canChangeTable}
         >
-          <div className="flex align-center mx2 my2">
-            <span className="text-bold px3">{previewSummary}</span>
+          <div className={cx(CS.flex, CS.alignCenter, CS.mx2, CS.my2)}>
+            <span className={cx(CS.textBold, CS.px3)}>{previewSummary}</span>
             <Link
               to={previewUrl}
               target={window.OSX ? null : "_blank"}
               rel="noopener noreferrer"
-              className="Button Button--primary"
+              className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
             >{t`Preview`}</Link>
           </div>
         </GuiQueryEditor>

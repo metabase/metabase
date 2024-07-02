@@ -1,36 +1,38 @@
-import { useUpdate } from "react-use";
+import { useMemo } from "react";
 
-import {
-  useDatabaseListQuery,
-  usePopularItemListQuery,
-  useRecentItemListQuery,
-} from "metabase/common/hooks";
+import { useListRecentsQuery, useListPopularItemsQuery } from "metabase/api";
+import { useDatabaseListQuery, useSetting } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import type Database from "metabase-lib/metadata/Database";
+import { getUser } from "metabase/selectors/user";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { PopularItem, RecentItem, User } from "metabase-types/api";
 
 import { getIsXrayEnabled } from "../../selectors";
-import { isWithinWeeks, shouldShowEmbedHomepage } from "../../utils";
-import { EmbedMinimalHomepage } from "../EmbedMinimalHomepage";
+import { isWithinWeeks } from "../../utils";
+import { EmbedHomepage } from "../EmbedHomepage";
 import { HomePopularSection } from "../HomePopularSection";
-import { HomeRecentSection } from "../HomeRecentSection";
+import { HomeRecentSection, recentsFilter } from "../HomeRecentSection";
 import { HomeXraySection } from "../HomeXraySection";
 
 export const HomeContent = (): JSX.Element | null => {
-  const update = useUpdate();
   const user = useSelector(getUser);
-  const isAdmin = useSelector(getUserIsAdmin);
+  const embeddingHomepage = useSetting("embedding-homepage");
   const isXrayEnabled = useSelector(getIsXrayEnabled);
   const { data: databases, error: databasesError } = useDatabaseListQuery();
-  const { data: recentItems, error: recentItemsError } = useRecentItemListQuery(
-    { reload: true },
+  const { data: recentItemsRaw, error: recentItemsError } = useListRecentsQuery(
+    undefined,
+    { refetchOnMountOrArgChange: true },
   );
   const { data: popularItems, error: popularItemsError } =
-    usePopularItemListQuery({ reload: true });
+    useListPopularItemsQuery(undefined, { refetchOnMountOrArgChange: true });
   const error = databasesError || recentItemsError || popularItemsError;
+
+  const recentItems = useMemo(
+    () => (recentItemsRaw && recentsFilter(recentItemsRaw)) ?? [],
+    [recentItemsRaw],
+  );
 
   if (error) {
     return <LoadingAndErrorWrapper error={error} />;
@@ -40,8 +42,8 @@ export const HomeContent = (): JSX.Element | null => {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  if (isAdmin && shouldShowEmbedHomepage()) {
-    return <EmbedMinimalHomepage onDismiss={update} />;
+  if (embeddingHomepage === "visible" && user.is_superuser) {
+    return <EmbedHomepage />;
   }
 
   if (isPopularSection(user, recentItems, popularItems)) {

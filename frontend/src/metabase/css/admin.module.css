@@ -2,196 +2,170 @@
   --page-header-padding: 2.375rem;
 }
 
-:global(.ContentTable) {
+.ContentTable {
   width: 100%;
   border-collapse: collapse;
   border-spacing: 0;
   text-align: left;
 }
 
-:global(.ContentTable thead) {
-  border-bottom: 1px solid var(--color-border);
+.ContentTable thead {
+  border-bottom: 1px solid var(--mb-color-border);
 }
 
-:global(.PageHeader) {
+.PageHeader {
   padding-top: var(--page-header-padding);
   padding-bottom: var(--page-header-padding);
 }
 
-:global(.PageTitle) {
-  margin: 0;
-}
-
-:global(.Table-actions) {
+.TableActions {
   text-align: right;
 }
 
-:global(.ContentTable .Table-actions) {
+.ContentTable .TableActions {
   opacity: 0;
 }
 
-:global(.ContentTable td),
-:global(.ContentTable th) {
+.ContentTable td,
+.ContentTable th {
   padding: 1em;
 }
 
-:global(.ContentTable th) {
-  color: var(--color-text-dark);
+.ContentTable th {
+  color: var(--mb-color-text-dark);
   padding: 1em;
 }
 
 /* TODO: remove this and apply AdminHoverItem to content rows */
-:global(.ContentTable tbody tr:hover) {
-  background-color: var(--color-brand-alpha-04);
+.ContentTable tbody tr:hover {
+  background-color: var(--mb-color-brand-alpha-04);
 }
 
-:global(.ContentTable tr:hover .Table-actions) {
+.ContentTable tr:hover .TableActions {
   opacity: 1;
   transition: opacity 0.2s linear;
 }
 
-:global(.AdminList) {
-  background-color: var(--color-bg-light);
-  border: var(--border-size) var(--border-style) var(--color-border);
+.AdminList {
+  background-color: var(--mb-color-bg-light);
+  border: var(--border-size) var(--border-style) var(--mb-color-border);
   border-radius: var(--default-border-radius);
   width: 266px;
   min-height: 300px;
-  box-shadow: inset -1px -1px 3px var(--color-shadow);
+  box-shadow: inset -1px -1px 3px var(--mb-color-shadow);
   padding-bottom: 0.75em;
 }
 
-:global(.AdminList-search) {
+.AdminListSearch {
   position: relative;
 }
 
-:global(.AdminList-search .Icon) {
+.AdminListSearch .Icon {
   position: absolute;
   top: 0;
   bottom: 0;
   margin: auto;
   margin-left: 1em;
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
-:global(.AdminList-search .AdminInput) {
+.AdminListSearch .AdminInput {
   padding: 0.5em;
   padding-left: 2em;
   font-size: 18px;
   width: 100%;
   border-top-left-radius: var(--default-border-radius);
   border-top-right-radius: var(--default-border-radius);
-  border-bottom-color: var(--color-border);
+  border-bottom-color: var(--mb-color-border);
 }
 
-:global(.AdminList-item) {
+.AdminListItem {
   padding: 0.75em 1em 0.75em 1em;
   border: var(--border-size) var(--border-style) transparent;
   border-radius: var(--default-border-radius);
   margin-bottom: 0.25em;
 }
 
-:global(.AdminList-item.selected) {
-  color: var(--color-brand);
+.AdminListItem.selected {
+  color: var(--mb-color-brand);
 }
 
-:global(.AdminList-item.selected),
-:global(.AdminList-item:hover) {
+.AdminListItem.selected,
+.AdminListItem:hover {
   background-color: white;
-  border-color: var(--color-border);
+  border-color: var(--mb-color-border);
   margin-left: -0.5em;
   margin-right: -0.5em;
   padding-left: 1.5em;
   padding-right: 1.5em;
-  box-shadow: 0 1px 2px var(--color-shadow);
+  box-shadow: 0 1px 2px var(--mb-color-shadow);
 }
 
-:global(.AdminList-section) {
+.AdminListSection {
   margin-top: 1em;
   padding: 0.5em 1em 0.5em 1em;
   text-transform: uppercase;
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
   font-weight: 700;
   font-size: smaller;
   padding-right: 15px; /* set so that table visibility icons align */
 }
 
-:global(.AdminInput) {
-  color: var(--color-text-dark);
+.AdminInput {
+  color: var(--mb-color-text-dark);
   padding: var(--padding-1);
-  background-color: var(--color-bg-light);
+  background-color: var(--mb-color-bg-light);
   border: 1px solid transparent;
 }
 
-:global(.AdminInput:focus) {
-  border-color: var(--color-brand);
+.AdminInput:focus {
+  border-color: var(--mb-color-brand);
   box-shadow: none;
   outline: 0;
 }
 
-:global(.AdminSelect) {
-  display: inline-block;
-  padding: 0.6em 0.9em;
-  border: 1px solid var(--color-border);
-  background-color: var(--color-bg-white);
-  border-radius: var(--default-border-radius);
-  font-weight: 700;
-  min-width: 104px;
-}
-
-:global(.AdminSelect:hover) {
-  border-color: color-mod(var(--color-border) blackness(10%));
-}
-
-:global(.MetadataTable) {
+.MetadataTable {
   min-width: 800px;
 }
 
-:global(.MetadataTable-title) {
-  background-color: var(--color-bg-white);
-}
-
-:global(.TableEditor-field-description) {
+.TableEditorFieldDescription {
   font-size: 14px;
 }
 
-:global(.TableEditor-field-semantic-type),
-:global(.TableEditor-field-target) {
+.TableEditorFieldSemanticType,
+.TableEditorFieldTarget {
   margin-top: 3px;
 }
 
-:global(.SettingsInput) {
+.SettingsInput {
   width: 400px;
 }
 
-:global(.SettingsPassword) {
+.SettingsPassword {
   width: 200px;
 }
 
-:global(.UserActionsSelect) {
+.UserActionsSelect {
   min-width: 180px;
 }
 
-:global(.AdminTable) {
+.AdminTable {
   border-collapse: collapse;
   border-spacing: 0;
   text-align: left;
 }
 
-:global(.AdminTable th) {
+.AdminTable th {
   text-transform: uppercase;
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
   padding: var(--padding-1);
   font-weight: normal;
 }
 
-:global(.AdminTable thead) {
-  border-bottom: var(--border-size) var(--border-style) var(--color-border);
+.AdminTable thead {
+  border-bottom: var(--border-size) var(--border-style) var(--mb-color-border);
 }
 
-:global(.AdminTable tbody tr:first-child td) {
+.AdminTable tbody tr:first-child td {
   padding-top: var(--margin-1);
-}
-
-:global(.ColumnSortHelper) {
-  box-shadow: 0 7px 20px var(--color-shadow);
 }

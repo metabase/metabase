@@ -1,0 +1,38 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Upsell events",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "settings",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": [
+        "upsell_viewed",
+        "upsell_clicked"
+      ],
+      "maxLength": 1024
+    },
+    "promoted_feature": {
+      "description": "String identifying the product feature being promoted",
+      "type":  "string",
+      "maxLength": 1024
+    },
+    "upsell_location": {
+      "description": "String identifying the product location where the event took place",
+      "type": "string",
+      "maxLength": 1024
+    }
+  },
+  "required": [
+    "event",
+    "upsell_location",
+    "promoted_feature"
+  ],
+  "additionalProperties": false
+}

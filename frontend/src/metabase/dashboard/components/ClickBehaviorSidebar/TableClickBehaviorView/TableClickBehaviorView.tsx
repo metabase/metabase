@@ -1,7 +1,9 @@
+import cx from "classnames";
 import { useMemo, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { hasActionsMenu } from "metabase/lib/click-behavior";
 import type {
   QuestionDashboardCard,
@@ -16,6 +18,14 @@ const COLUMN_SORTING_ORDER_BY_CLICK_BEHAVIOR_TYPE = [
   "link",
   "crossfilter",
   "actionMenu",
+];
+
+type ColumnGroup = [
+  ClickBehaviorType,
+  {
+    column: DatasetColumn;
+    clickBehavior: ClickBehavior;
+  }[],
 ];
 
 function explainClickBehaviorType(
@@ -63,10 +73,16 @@ export function TableClickBehaviorView({
     return _.sortBy(pairs, ([type]) =>
       COLUMN_SORTING_ORDER_BY_CLICK_BEHAVIOR_TYPE.indexOf(type),
     );
-  }, [columns, getClickBehaviorForColumn]);
+  }, [columns, getClickBehaviorForColumn]) as unknown as ColumnGroup[]; // _.groupby swallows the ClickAction type
 
   const renderColumn = useCallback(
-    ({ column, clickBehavior }, index) => {
+    (
+      {
+        column,
+        clickBehavior,
+      }: { column: DatasetColumn; clickBehavior: ClickBehavior },
+      index: number,
+    ) => {
       return (
         <Column
           key={index}
@@ -80,11 +96,11 @@ export function TableClickBehaviorView({
   );
 
   const renderColumnGroup = useCallback(
-    group => {
+    (group: ColumnGroup) => {
       const [clickBehaviorType, columnsWithClickBehavior] = group;
       return (
-        <div key={clickBehaviorType} className="mb2 px4">
-          <h5 className="text-uppercase text-medium my1">
+        <div key={clickBehaviorType} className={cx(CS.mb2, CS.px4)}>
+          <h5 className={cx(CS.textUppercase, CS.textMedium, CS.my1)}>
             {explainClickBehaviorType(clickBehaviorType, dashcard)}
           </h5>
           {columnsWithClickBehavior.map(renderColumn)}

@@ -1,9 +1,9 @@
 import { enabledSearchTypes } from "metabase/search/constants";
-import type { EnabledSearchModelType } from "metabase-types/api";
+import type { EnabledSearchModel } from "metabase-types/api";
 
 export function isEnabledSearchModelType(
   value: unknown,
-): value is EnabledSearchModelType {
+): value is EnabledSearchModel {
   return (
     typeof value === "string" && enabledSearchTypes.some(type => type === value)
   );
@@ -11,6 +11,6 @@ export function isEnabledSearchModelType(
 
 export const filterEnabledSearchTypes = (
   values: unknown[],
-): EnabledSearchModelType[] => {
+): EnabledSearchModel[] => {
   return values.filter(isEnabledSearchModelType);
 };

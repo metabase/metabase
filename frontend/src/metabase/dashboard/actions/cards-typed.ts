@@ -5,6 +5,7 @@ import {
   getPositionForNewDashCard,
 } from "metabase/lib/dashboard_grid";
 import { createAction, createThunkAction } from "metabase/lib/redux";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { getDefaultSize } from "metabase/visualizations";
 import type {
   Card,
@@ -31,7 +32,8 @@ import {
   isVirtualDashCard,
 } from "../utils";
 
-import { autoWireParametersToNewCard } from "./auto-wire-parameters/actions";
+import { showAutoWireToastNewCard } from "./auto-wire-parameters/actions";
+import { closeAddCardAutoWireToasts } from "./auto-wire-parameters/toasts";
 import {
   ADD_CARD_TO_DASH,
   ADD_MANY_CARDS_TO_DASH,
@@ -40,7 +42,6 @@ import {
   setDashCardAttributes,
 } from "./core";
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
-import { loadMetadataForDashboard } from "./metadata";
 import { getExistingDashCards } from "./utils";
 
 export type NewDashCardOpts = {
@@ -53,7 +54,7 @@ type NewDashboardCard = Omit<
   "entity_id" | "created_at" | "updated_at"
 >;
 
-type AddDashCardOpts = NewDashCardOpts & {
+export type AddDashCardOpts = NewDashCardOpts & {
   dashcardOverrides: Partial<NewDashboardCard> & {
     card: Card | VirtualCard;
   };
@@ -136,7 +137,7 @@ export const addSectionToDashboard =
     trackSectionAdded(dashId, sectionLayout.id);
   };
 
-type AddCardToDashboardOpts = NewDashCardOpts & {
+export type AddCardToDashboardOpts = NewDashCardOpts & {
   cardId: CardId;
 };
 
@@ -158,8 +159,8 @@ export const addCardToDashboard =
     );
 
     dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
-    await dispatch(loadMetadataForDashboard([dashcard]));
-    dispatch(autoWireParametersToNewCard({ dashcard_id: dashcardId }));
+    await dispatch(loadMetadataForCard(card));
+    dispatch(showAutoWireToastNewCard({ dashcard_id: dashcardId }));
   };
 
 export const addHeadingDashCardToDashboard =
@@ -233,29 +234,41 @@ export const replaceCard =
     const dashcard = getDashCardById(getState(), dashcardId);
 
     dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
-    await dispatch(loadMetadataForDashboard([dashcard]));
-    dispatch(autoWireParametersToNewCard({ dashcard_id: dashcardId }));
+    await dispatch(loadMetadataForCard(card));
+    dispatch(showAutoWireToastNewCard({ dashcard_id: dashcardId }));
 
     dashboardId && trackQuestionReplaced(dashboardId);
   };
 
-export const removeCardFromDashboard = createThunkAction<
-  [{ dashcardId: DashCardId; cardId: CardId }]
->(REMOVE_CARD_FROM_DASH, ({ dashcardId, cardId }) => dispatch => {
-  // @ts-expect-error — data-fetching.js actions must be converted to TypeScript
-  dispatch(cancelFetchCardData(cardId, dashcardId));
-  return { dashcardId };
-});
+export const removeCardFromDashboard = createThunkAction(
+  REMOVE_CARD_FROM_DASH,
+  ({
+      dashcardId,
+      cardId,
+    }: {
+      dashcardId: DashCardId;
+      cardId: DashboardCard["card_id"];
+    }) =>
+    dispatch => {
+      dispatch(closeAddCardAutoWireToasts());
 
-export const undoRemoveCardFromDashboard = createThunkAction<
-  [{ dashcardId: DashCardId }]
->(UNDO_REMOVE_CARD_FROM_DASH, ({ dashcardId }) => (dispatch, getState) => {
-  const dashcard = getDashCardById(getState(), dashcardId);
-  const card = dashcard.card;
+      // @ts-expect-error — data-fetching.js actions must be converted to TypeScript
+      dispatch(cancelFetchCardData(cardId, dashcardId));
+      return { dashcardId };
+    },
+);
 
-  if (!isVirtualDashCard(dashcard)) {
-    dispatch(fetchCardData(card, dashcard));
-  }
+export const undoRemoveCardFromDashboard = createThunkAction(
+  UNDO_REMOVE_CARD_FROM_DASH,
+  ({ dashcardId }) =>
+    (dispatch, getState) => {
+      const dashcard = getDashCardById(getState(), dashcardId);
+      const card = dashcard.card;
 
-  return { dashcardId };
-});
+      if (!isVirtualDashCard(dashcard)) {
+        dispatch(fetchCardData(card, dashcard));
+      }
+
+      return { dashcardId };
+    },
+);

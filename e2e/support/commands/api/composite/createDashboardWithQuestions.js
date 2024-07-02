@@ -2,15 +2,22 @@ import { cypressWaitAll } from "e2e/support/helpers";
 
 Cypress.Commands.add(
   "createDashboardWithQuestions",
-  ({ dashboardName, questions }) => {
+  ({ dashboardName, dashboardDetails, questions, cards }) => {
     return cy
-      .createDashboard({ name: dashboardName })
+      .createDashboard({ name: dashboardName, ...dashboardDetails })
       .then(({ body: dashboard }) => {
         return cypressWaitAll(
-          questions.map(query =>
-            cy.createQuestionAndAddToDashboard(query, dashboard.id),
+          questions.map((query, index) =>
+            cy.createQuestionAndAddToDashboard(
+              query,
+              dashboard.id,
+              cards ? cards[index] : undefined,
+            ),
           ),
-        ).then(questions => {
+        ).then(dashcardResponses => {
+          const questions = dashcardResponses.map(
+            dashcardResponse => dashcardResponse.body.card,
+          );
           return {
             questions,
             dashboard,

@@ -7,16 +7,16 @@ import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourc
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
-import type Database from "metabase-lib/metadata/Database";
-import type Field from "metabase-lib/metadata/Field";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type Table from "metabase-lib/metadata/Table";
-import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type Table from "metabase-lib/v1/metadata/Table";
+import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
   getDefaultParameterOptions,
   getDefaultParameterWidgetType,
   getParameterOptionsForField,
-} from "metabase-lib/parameters/utils/template-tag-options";
+} from "metabase-lib/v1/parameters/utils/template-tag-options";
 import type {
   DimensionReference,
   FieldId,

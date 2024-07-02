@@ -1,43 +1,82 @@
+import { useCallback } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
-import type { ModelFilterControlsProps } from "metabase/browse/utils";
-import { Switch, Text } from "metabase/ui";
+import type {
+  ActualModelFilters,
+  ModelFilterControlsProps,
+} from "metabase/browse/utils";
+import { useUserSetting } from "metabase/common/hooks";
+import { color } from "metabase/lib/colors";
+import { Button, Icon, Paper, Popover, Switch, Text } from "metabase/ui";
 
 export const ModelFilterControls = ({
   actualModelFilters,
-  handleModelFilterChange,
+  setActualModelFilters,
 }: ModelFilterControlsProps) => {
-  const checked = actualModelFilters.onlyShowVerifiedModels;
+  const [__, setVerifiedFilterStatus] = useUserSetting(
+    "browse-filter-only-verified-models",
+    { shouldRefresh: false },
+  );
+  const setVerifiedFilterStatusDebounced = _.debounce(
+    setVerifiedFilterStatus,
+    200,
+  );
+
+  const handleModelFilterChange = useCallback(
+    (modelFilterName: string, active: boolean) => {
+      // For now, only one filter is supported
+      setVerifiedFilterStatusDebounced(active);
+      setActualModelFilters((prev: ActualModelFilters) => {
+        return { ...prev, [modelFilterName]: active };
+      });
+    },
+    [setActualModelFilters, setVerifiedFilterStatusDebounced],
+  );
+
+  // There's only one filter for now
+  const filters = [actualModelFilters.onlyShowVerifiedModels];
+
+  const areAnyFiltersActive = filters.some(filter => filter);
+
   return (
-    <Switch
-      label={
-        <Text
-          align="right"
-          weight="bold"
-          lh="1rem"
-          px=".75rem"
-        >{t`Only show verified models`}</Text>
-      }
-      role="switch"
-      checked={checked}
-      aria-checked={checked}
-      onChange={e => {
-        handleModelFilterChange("onlyShowVerifiedModels", e.target.checked);
-      }}
-      ml="auto"
-      size="sm"
-      labelPosition="left"
-      styles={{
-        root: { display: "flex", alignItems: "center" },
-        body: {
-          alignItems: "center",
-          // Align with tab labels:
-          position: "relative",
-          top: "-.5px",
-        },
-        labelWrapper: { justifyContent: "center", padding: 0 },
-        track: { marginTop: "-1.5px" },
-      }}
+    <Popover position="bottom-end">
+      <Popover.Target>
+        <Button p="sm" lh={0} variant="subtle" color="text-dark" pos="relative">
+          {areAnyFiltersActive && <Dot />}
+          <Icon name="filter" />
+        </Button>
+      </Popover.Target>
+      <Popover.Dropdown p="lg">
+        <Switch
+          label={
+            <Text
+              align="end"
+              weight="bold"
+            >{t`Show verified models only`}</Text>
+          }
+          role="switch"
+          checked={actualModelFilters.onlyShowVerifiedModels}
+          onChange={e => {
+            handleModelFilterChange("onlyShowVerifiedModels", e.target.checked);
+          }}
+          labelPosition="left"
+        />
+      </Popover.Dropdown>
+    </Popover>
+  );
+};
+
+const Dot = () => {
+  return (
+    <Paper
+      pos="absolute"
+      right="0px"
+      top="7px"
+      radius="50%"
+      bg={color("brand")}
+      w="sm"
+      h="sm"
     />
   );
 };

@@ -9,7 +9,7 @@ import type {
 import {
   getAutomaticDashboardUrl,
   getComparisonDashboardUrl,
-} from "metabase-lib/urls";
+} from "metabase-lib/v1/urls";
 
 export const automaticInsightsDrill: Drill = ({
   question,
@@ -35,8 +35,14 @@ export const automaticInsightsDrill: Drill = ({
     },
   ];
 
-  const DrillPopover = ({ onClick }: ClickActionPopoverProps) => {
-    return <ClickActionsView clickActions={actions} onClick={onClick} />;
+  const DrillPopover = ({ onClose, onClick }: ClickActionPopoverProps) => {
+    return (
+      <ClickActionsView
+        clickActions={actions}
+        close={onClose}
+        onClick={onClick}
+      />
+    );
   };
 
   return [

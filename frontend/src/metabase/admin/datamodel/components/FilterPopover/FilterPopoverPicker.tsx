@@ -1,6 +1,6 @@
 import { Component } from "react";
 
-import type Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 
 import BooleanPicker from "../filters/pickers/BooleanPicker";
 import { DefaultPicker } from "../filters/pickers/DefaultPicker";

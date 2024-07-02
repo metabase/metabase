@@ -1,6 +1,7 @@
 (ns metabase.lib.test-util.mocks-31368
   (:require
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
@@ -34,8 +35,5 @@
                                              :database-id   (meta/id)
                                              :name          "Card 1"
                                              :dataset-query legacy-card-query}
-                                      has-result-metadata? (assoc :result-metadata (legacy-card-metadata)))]})
-        legacy-query      {:database (meta/id)
-                           :type     :query
-                           :query    {:source-card 1}}]
-    (lib/query metadata-provider legacy-query)))
+                                      has-result-metadata? (assoc :result-metadata (legacy-card-metadata)))]})]
+    (lib/query metadata-provider (lib.metadata/card metadata-provider 1))))

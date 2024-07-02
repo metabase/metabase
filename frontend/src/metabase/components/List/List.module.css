@@ -1,7 +1,7 @@
 :root {
-  --title-color: var(--color-text-dark);
-  --subtitle-color: var(--color-text-medium);
-  --muted-color: var(--color-text-light);
+  --title-color: var(--mb-color-text-dark);
+  --subtitle-color: var(--mb-color-text-medium);
+  --muted-color: var(--mb-color-text-light);
 }
 
 .list {
@@ -23,19 +23,12 @@
 }
 
 .headerBody {
-  composes: border-bottom from "style";
+  composes: borderBottom from "style";
   flex: 1 0 auto;
   display: flex;
   align-items: center;
   height: 100%;
-  border-color: var(--color-brand);
-}
-
-.headerLink {
-  composes: ml2 from "style";
-  flex-shrink: 0;
-  color: var(--color-brand);
-  font-size: 14px;
+  border-color: var(--mb-color-brand);
 }
 
 .headerButton {
@@ -64,7 +57,7 @@
 }
 
 .itemTitle {
-  composes: text-bold from "style";
+  composes: textBold from "style";
   max-width: 100%;
   overflow: hidden;
 }
@@ -75,51 +68,18 @@
   font-size: 14px;
 }
 
-.itemSubtitleLight {
-  composes: text-light from "style";
-  font-size: 14px;
-}
-
-.itemSubtitleBold {
-  color: var(--title-color);
-}
-
-.icons {
+.leftIcons {
+  composes: mr2 from "style";
+  align-self: flex-start;
+  flex-shrink: 0;
   flex-direction: row;
   align-items: center;
   display: flex;
 }
 
-.leftIcons {
-  composes: mr2 from "style";
-  align-self: flex-start;
-  flex-shrink: 0;
-  display: flex;
-  composes: icons;
-}
-
-.rightIcons {
-  composes: icons;
-}
-
 .itemIcons {
   composes: leftIcons;
   padding-top: 4px;
-}
-
-.extraIcons {
-  composes: icons;
-  top: 0;
-  position: absolute;
-  height: 100%;
-  right: -40px;
-}
-
-/* hack fix for IE 11 which was hiding the archive icon */
-@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
-  .extraIcons {
-    composes: icons;
-  }
 }
 
 .icon {
@@ -136,36 +96,7 @@
 }
 
 .icon:hover {
-  color: var(--color-brand);
-}
-
-/* ITEM CHECKBOX */
-.itemCheckbox {
-  composes: icon;
-  display: none;
-  visibility: visible !important;
-  margin-left: 10px;
-}
-
-.item:hover .itemCheckbox,
-.item.selected .itemCheckbox {
-  display: inline;
-}
-
-.item.selected .itemCheckbox {
-  color: var(--color-brand);
-}
-
-/* ITEM ICON */
-.itemIcon {
-  composes: icon;
-  visibility: visible !important;
-  position: relative;
-}
-
-.item:hover .itemIcon,
-.item.selected .itemIcon {
-  display: none;
+  color: var(--mb-color-brand);
 }
 
 /* CHART ICON */
@@ -173,16 +104,4 @@
   composes: icon;
   visibility: visible !important;
   position: relative;
-}
-
-/* ACTION ICONS */
-.tagIcon,
-.favoriteIcon,
-.archiveIcon {
-  composes: icon;
-  composes: mx1 from "style";
-}
-
-.trigger {
-  line-height: 0;
 }

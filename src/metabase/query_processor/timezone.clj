@@ -4,9 +4,9 @@
    [java-time.api :as t]
    [metabase.config :as config]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
    (java.time ZonedDateTime)))
@@ -27,7 +27,7 @@
       (t/zone-id timezone-id)
       timezone-id
       (catch Throwable _
-        (log/warn (tru "Invalid timezone ID ''{0}''" timezone-id))
+        (log/warnf "Invalid timezone ID '%s'" timezone-id)
         nil))))
 
 (defn- report-timezone-id* []
@@ -46,7 +46,7 @@
    (report-timezone-id-if-supported driver/*driver* (lib.metadata/database (qp.store/metadata-provider))))
 
   (^String [driver database]
-   (when (driver/database-supports? driver :set-timezone database)
+   (when (driver.u/supports? driver :set-timezone database)
      (valid-timezone-id (report-timezone-id*)))))
 
 (defn database-timezone-id

@@ -1,2 +1,1 @@
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export { default } from "./LimitStep";
+export { LimitStep } from "./LimitStep";

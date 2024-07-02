@@ -2,84 +2,78 @@
   --border-size: 1px;
   --border-size-medium: 2px;
   --border-style: solid;
-  --border-color: var(--color-border);
+  --border-color: var(--mb-color-border);
 }
 
-:global(.bordered),
 .bordered {
-  border: var(--border-size) var(--border-style) var(--color-border);
+  border: var(--border-size) var(--border-style) var(--mb-color-border);
 }
 
-:global(.border-bottom),
-.border-bottom {
-  border-bottom: var(--border-size) var(--border-style) var(--color-border);
+.borderBottom {
+  border-bottom: var(--border-size) var(--border-style) var(--mb-color-border);
 }
 
-/* ensure that a border-top item inside of a bordred element won't double up */
-:global(.bordered > .border-bottom:last-child) {
+/* ensure that a border-top item inside of a bordered element won't double up */
+.bordered > .border-bottom:last-child {
   border-bottom: none;
 }
 
-:global(.border-top),
-.border-top {
-  border-top: var(--border-size) var(--border-style) var(--color-border);
+.borderTop {
+  border-top: var(--border-size) var(--border-style) var(--mb-color-border);
 }
 
-/* ensure that a border-top item inside of a bordred element won't double up */
-:global(.bordered > .border-top:first-child) {
+/* ensure that a border-top item inside of a bordered element won't double up */
+.bordered > .border-top:first-child {
   border-top: none;
 }
 
-:global(.border-row-divider) {
-  border-bottom: var(--border-size) var(--border-style) var(--color-border);
+.borderRowDivider {
+  border-bottom: var(--border-size) var(--border-style) var(--mb-color-border);
 }
 
-:global(.border-row-divider:last-child) {
+.borderRowDivider:last-child {
   border-bottom: none;
 }
 
-:global(.border-right) {
-  border-right: var(--border-size) var(--border-style) var(--color-border);
+.borderRight {
+  border-right: var(--border-size) var(--border-style) var(--mb-color-border);
 }
 
-:global(.border-left) {
-  border-left: var(--border-size) var(--border-style) var(--color-border);
+.borderLeft {
+  border-left: var(--border-size) var(--border-style) var(--mb-color-border);
 }
 
-:global(.border-light) {
-  border-color: color-mod(var(--color-border) alpha(-80%)) !important;
+.borderLight {
+  border-color: color-mix(
+    in srgb,
+    var(--mb-color-border) 20%,
+    transparent
+  ) !important;
 }
 
-:global(.border-error),
-.border-error {
-  border-color: var(--color-error) !important;
+.borderError {
+  border-color: var(--mb-color-error) !important;
 }
 
-:global(.border-success) {
-  border-color: var(--color-success) !important;
+.borderSuccess {
+  border-color: var(--mb-color-success) !important;
 }
 
-:global(.border-brand),
-.border-brand {
-  border-color: var(--color-brand) !important;
+.borderBrand {
+  border-color: var(--mb-color-brand) !important;
 }
 
-:global(.border-transparent) {
+.borderTransparent {
   border-color: transparent;
 }
 
 /* BORDERLESS IS THE DEFAULT */
 /* ONLY USE IF needing to override an existing border! */
 /* ensure there is no border via important */
-:global(.borderless),
 .borderless {
   border: none !important;
 }
 
-.border-bottom {
-  border-bottom: var(--border-size) dashed var(--color-border);
-}
-
-:global(.border-medium) {
+.borderMedium {
   border-width: var(--border-size-medium);
 }

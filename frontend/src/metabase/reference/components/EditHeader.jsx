@@ -3,6 +3,8 @@ import PropTypes from "prop-types";
 import { memo } from "react";
 import { t } from "ttag";
 
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal";
 
 import S from "./EditHeader.module.css";
@@ -15,15 +17,15 @@ const EditHeader = ({
   onSubmit,
   revisionMessageFormField,
 }) => (
-  <div className={cx("EditHeader wrapper py1 px3", S.editHeader)}>
+  <div className={cx(CS.wrapper, CS.py1, CS.px3, S.editHeader)}>
     <div>{t`You are editing this page`}</div>
     <div className={S.editHeaderButtons}>
       <button
         type="button"
         className={cx(
-          "Button",
-          "Button--white",
-          "Button--small",
+          ButtonsS.Button,
+          ButtonsS.ButtonWhite,
+          ButtonsS.ButtonSmall,
           S.cancelButton,
         )}
         onClick={() => {
@@ -42,10 +44,10 @@ const EditHeader = ({
         >
           <button
             className={cx(
-              "Button",
-              "Button--primary",
-              "Button--white",
-              "Button--small",
+              ButtonsS.Button,
+              ButtonsS.ButtonPrimary,
+              ButtonsS.ButtonWhite,
+              ButtonsS.ButtonSmall,
               S.saveButton,
             )}
             type="button"
@@ -57,10 +59,10 @@ const EditHeader = ({
       ) : (
         <button
           className={cx(
-            "Button",
-            "Button--primary",
-            "Button--white",
-            "Button--small",
+            ButtonsS.Button,
+            ButtonsS.ButtonPrimary,
+            ButtonsS.ButtonWhite,
+            ButtonsS.ButtonSmall,
             S.saveButton,
           )}
           type="submit"

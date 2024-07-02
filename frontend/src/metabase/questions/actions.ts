@@ -1,25 +1,23 @@
-import { loadMetadataForDependentItems } from "metabase/redux/metadata";
-import { getMetadata } from "metabase/selectors/metadata";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import type { Card } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
+import Questions from "metabase/entities/questions";
+import Tables from "metabase/entities/tables";
+import type { Card, TableId, UnsavedCard } from "metabase-types/api";
+import { isSavedCard } from "metabase-types/guards";
+import type { Dispatch } from "metabase-types/store";
 
-export interface LoadMetadataOptions {
-  reload?: boolean;
-}
+export const loadMetadataForTable =
+  (tableId: TableId) => async (dispatch: Dispatch) => {
+    try {
+      await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
+    } catch (error) {
+      console.error("Error in loadMetadataForTable", error);
+    }
+  };
 
 export const loadMetadataForCard =
-  (card: Card, options?: LoadMetadataOptions) =>
-  (dispatch: Dispatch, getState: GetState) => {
-    const question = new Question(card, getMetadata(getState()));
-    const queries =
-      question.type() === "question"
-        ? [question.query()]
-        : [question.query(), question.composeDataset().query()];
-    const dependencies = [
-      ...question.dependentMetadata(),
-      ...queries.flatMap(query => Lib.dependentMetadata(query)),
-    ];
-    return dispatch(loadMetadataForDependentItems(dependencies, options));
+  (card: Card | UnsavedCard) => async (dispatch: Dispatch) => {
+    if (isSavedCard(card)) {
+      return dispatch(Questions.actions.fetchMetadata({ id: card.id }));
+    } else if (card.dataset_query.database != null) {
+      return dispatch(Questions.actions.fetchAdhocMetadata(card.dataset_query));
+    }
   };

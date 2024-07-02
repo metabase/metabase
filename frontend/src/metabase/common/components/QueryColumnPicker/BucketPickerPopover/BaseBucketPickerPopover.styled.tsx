@@ -7,9 +7,8 @@ import type { ColorName } from "metabase/lib/colors/types";
 import { Icon } from "metabase/ui";
 
 export const TriggerIcon = styled(Icon)`
-  color: ${color("white")} !important;
+  color: var(--mb-color-text-white) !important;
   flex: 0 0 auto;
-  margin-left: 0.5rem;
 `;
 
 export const ChevronDown = styled(Icon)`
@@ -20,17 +19,17 @@ export const ChevronDown = styled(Icon)`
   opacity: 0.75;
 `;
 
-export const TriggerButton = styled.button<{ hasDot?: boolean }>`
+export const TriggerButton = styled.button`
   display: flex;
   align-items: center;
-  min-width: 0;
+  min-width: 35%;
+  max-width: 50%;
+  gap: 0.5rem;
 
-  color: ${alpha(color("white"), 0.5)};
+  color: ${() => alpha(color("text-white"), 0.5)};
   font-weight: 700;
-  border-left: 2px solid transparent;
+  border-left: 2px solid ${() => alpha(color("border"), 0.1)};
   padding: 0.5rem;
-  border-left: 2px solid
-    ${props => (props.hasDot ? "transparent" : alpha(color("border"), 0.1))};
 
   cursor: pointer;
 
@@ -39,17 +38,8 @@ export const TriggerButton = styled.button<{ hasDot?: boolean }>`
   }
 
   &:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
   }
-`;
-
-export const Dot = styled.div`
-  width: 3px;
-  height: 3px;
-  margin-right: 0.5em;
-  background: currentColor;
-  border-radius: 100%;
-  opacity: 0.25;
 `;
 
 export const SelectListItem = styled(BaseSelectList.Item)<{
@@ -89,7 +79,7 @@ export const MoreButton = styled(Button)`
   }
 
   &:hover {
-    background-color: ${color("brand-lighter")};
+    background-color: var(--mb-color-brand-lighter);
   }
 `;
 

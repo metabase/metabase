@@ -1,21 +1,14 @@
 (ns metabase.lib.schema.literal.jvm
   "JVM-specific literal definitions."
   (:require
+   [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
-(defn instance-of
-  "Convenience for defining a Malli schema for an instance of a particular Class."
-  [^Class klass]
-  [:fn {:error/message (str "instance of " (.getName klass))}
-   #(instance? klass %)])
-
 (mr/def ::big-integer
-  [:or
-   (instance-of java.math.BigInteger)
-   (instance-of clojure.lang.BigInt)])
+  (common/instance-of-class java.math.BigInteger clojure.lang.BigInt))
 
 (defmethod expression/type-of-method java.math.BigInteger
   [_n]
@@ -26,14 +19,14 @@
   :type/BigInteger)
 
 (mr/def ::big-decimal
-  (instance-of java.math.BigDecimal))
+  (common/instance-of-class java.math.BigDecimal))
 
 (defmethod expression/type-of-method java.math.BigDecimal
   [_n]
   :type/Decimal)
 
 (mr/def ::float
-  (instance-of Float))
+  (common/instance-of-class Float))
 
 (defmethod expression/type-of-method java.time.LocalDate
   [_t]

@@ -4,9 +4,9 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.serialization.names :refer [fully-qualified-name]]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
@@ -15,7 +15,6 @@
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :refer [Metric]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
@@ -48,7 +47,7 @@
   [mbql]
   (-> mbql
       mbql.normalize/normalize-tokens
-      (mbql.u/replace
+      (lib.util.match/replace
         ;; `integer?` guard is here to make the operation idempotent
         [:field (id :guard integer?) opts]
         [:field (fully-qualified-name Field id) (mbql-id->fully-qualified-name opts)]
@@ -63,15 +62,12 @@
         {:source-field (id :guard integer?)}
         (assoc &match :source-field (fully-qualified-name Field id))
 
-        [:metric (id :guard integer?)]
-        [:metric (fully-qualified-name Metric id)]
-
         [:segment (id :guard integer?)]
         [:segment (fully-qualified-name Segment id)])))
 
 (defn- ids->fully-qualified-names
   [entity]
-  (mbql.u/replace entity
+  (lib.util.match/replace entity
     mbql-entity-reference?
     (mbql-id->fully-qualified-name &match)
 
@@ -109,7 +105,7 @@
                   :dashboard_id :fields_hash :personal_owner_id :made_public_by_id :collection_id
                   :pulse_id :result_metadata :action_id)
     (not *include-entity-id*)   (dissoc :entity_id)
-    (some #(instance? % entity) (map type [Metric Field Segment])) (dissoc :table_id)))
+    (some #(instance? % entity) (map type [Field Segment])) (dissoc :table_id)))
 
 (defmulti ^:private serialize-one
   {:arglists '([instance])}

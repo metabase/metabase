@@ -3,7 +3,7 @@
    [compojure.core :refer [POST]]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
    [metabase.models.model-index :as model-index :refer [ModelIndex]]
    [metabase.task.index-values :as task.index-values]
@@ -32,6 +32,7 @@
                      :fields      metadata}))))
 
 (api/defendpoint POST "/"
+  "Create ModelIndex."
   [:as {{:keys [model_id pk_ref value_ref] :as _model-index} :body}]
   {model_id  ms/PositiveInt
    pk_ref    any?
@@ -55,6 +56,7 @@
       (t2/select-one ModelIndex :id (:id model-index)))))
 
 (api/defendpoint GET "/"
+  "Retrieve list of ModelIndex."
   [model_id]
   {model_id ms/PositiveInt}
   (let [model (api/read-check Card model_id)]
@@ -65,6 +67,7 @@
     (t2/select ModelIndex :model_id model_id)))
 
 (api/defendpoint GET "/:id"
+  "Retrieve ModelIndex."
   [id]
   {id ms/PositiveInt}
   (let [model-index (api/check-404 (t2/select-one ModelIndex :id id))
@@ -76,6 +79,7 @@
     model-index))
 
 (api/defendpoint DELETE "/:id"
+  "Delete ModelIndex."
   [id]
   {id ms/PositiveInt}
   (api/let-404 [model-index (t2/select-one ModelIndex :id id)]

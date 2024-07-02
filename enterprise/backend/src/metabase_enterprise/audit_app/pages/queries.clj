@@ -3,8 +3,8 @@
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase-enterprise.audit-app.pages.common.cards :as cards]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.models.permissions :as perms]))
+   [metabase.audit :as audit]
+   [metabase.db :as mdb]))
 
 ;; List of all failing questions
 (defmethod audit.i/internal-query ::bad-table
@@ -38,7 +38,7 @@
                     error-substr [:concat
                                   [:substring
                                    :latest_qe.error
-                                   [:inline (if (= (mdb.connection/db-type) :mysql) 1 0)]
+                                   [:inline (if (= (mdb/db-type) :mysql) 1 0)]
                                    [:inline 60]]
                                   "..."]
                     dash-count   [:coalesce :dash_card.count [:inline 0]]]
@@ -73,7 +73,7 @@
                   :where     [:and
                               [:= :card.archived false]
                               [:<> :latest_qe.error nil]
-                              [:not= :card.database_id perms/audit-db-id]]}
+                              [:not= :card.database_id audit/audit-db-id]]}
                  (common/add-search-clause error-filter :latest_qe.error)
                  (common/add-search-clause db-filter :db.name)
                  (common/add-search-clause collection-filter coll-name)

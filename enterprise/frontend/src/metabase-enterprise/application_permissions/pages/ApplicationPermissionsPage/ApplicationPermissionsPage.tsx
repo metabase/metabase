@@ -17,6 +17,7 @@ import {
   getIsDirty,
 } from "metabase-enterprise/application_permissions/selectors";
 import type { ApplicationPermissionsState } from "metabase-enterprise/application_permissions/types/state";
+import type { GroupId } from "metabase-types/api";
 
 const mapDispatchToProps = {
   initialize: initializeApplicationPermissions,
@@ -30,6 +31,8 @@ const mapStateToProps = (state: ApplicationPermissionsState) => {
     isDirty: getIsDirty(state),
   };
 };
+
+type ApplicationPermissionsValue = "yes" | "no";
 
 interface ApplicationPermissionsPageProps {
   isDirty: boolean;
@@ -53,7 +56,11 @@ const ApplicationPermissionsPage = ({
   }, [initialize]);
 
   const handlePermissionChange = useCallback(
-    (item, permission, value) => {
+    (
+      item: { id: GroupId },
+      permission: any,
+      value: ApplicationPermissionsValue,
+    ) => {
       updatePermission({
         groupId: item.id,
         permission,

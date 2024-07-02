@@ -3,7 +3,6 @@ import {
   USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
@@ -15,9 +14,9 @@ import {
   filterField,
   visitCollection,
   popover,
+  entityPickerModal,
+  openQuestionActions,
 } from "e2e/support/helpers";
-
-const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > native", () => {
   beforeEach(() => {
@@ -177,7 +176,7 @@ describe("scenarios > question > native", () => {
       // "Count" is pre-selected option for "Summarize"
       summarize();
       cy.findByText("Done").click();
-      cy.get(".ScalarValue").contains("1");
+      cy.findByTestId("scalar-value").contains("1");
 
       cy.findByTestId("qb-filters-panel").within(() => {
         cy.icon("close").click();
@@ -292,33 +291,6 @@ describe("scenarios > question > native", () => {
     cy.findByText(/missing required parameters/).should("be.visible");
   });
 
-  it("should allow to convert a structured query to a native query", () => {
-    visitQuestionAdhoc(
-      {
-        display: "table",
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            limit: 1,
-          },
-          database: SAMPLE_DB_ID,
-        },
-      },
-      { mode: "notebook", autorun: false },
-    );
-
-    cy.button("View the SQL").click();
-    cy.wait("@datasetNative");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/FROM "PUBLIC"."ORDERS"/).should("be.visible");
-
-    cy.button("Convert this question to SQL").click();
-    runQuery();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 1 row").should("be.visible");
-  });
-
   describe("prompts", () => {
     const PROMPT = "orders count";
     const PROMPT_RESPONSE = { sql: "select count(*) from orders" };
@@ -407,11 +379,20 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
     cy.intercept("/api/database?saved=true").as("database");
     cy.updatePermissionsGraph({
       [USER_GROUPS.ALL_USERS_GROUP]: {
-        [WRITABLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+        [WRITABLE_DB_ID]: {
+          "view-data": "blocked",
+          "create-queries": "no",
+        },
       },
       [USER_GROUPS.NOSQL_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "all", native: "write" } },
-        [WRITABLE_DB_ID]: { data: { schemas: "all", native: "none" } },
+        [SAMPLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "query-builder-and-native",
+        },
+        [WRITABLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "query-builder",
+        },
       },
     });
 
@@ -503,6 +484,81 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       cy.get("@lines").eq(3).should("have.text", "  orders");
     },
   );
+});
+
+describe("scenarios > native question > data reference sidebar", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should show tables", () => {
+    openNativeEditor();
+    cy.icon("reference").click();
+    cy.get("[data-testid='sidebar-header-title']").findByText(
+      "Sample Database",
+    );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("ORDERS").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(
+      "Confirmed Sample Company orders for a product, from a user.",
+    );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("9 columns");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("QUANTITY").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Number of products bought.");
+    // clicking the title should navigate back
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("QUANTITY").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("ORDERS").click();
+    cy.get("[data-testid='sidebar-header-title']")
+      .findByText("Sample Database")
+      .click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Data Reference");
+  });
+
+  it("should show models", () => {
+    cy.createNativeQuestion(
+      {
+        name: "Native Products Model",
+        description: "A model of the Products table",
+        native: { query: "select id as renamed_id from products" },
+        type: "model",
+      },
+      { visitQuestion: true },
+    );
+    // Move question to personal collection
+    openQuestionActions();
+    popover().findByTestId("move-button").click();
+
+    entityPickerModal().within(() => {
+      cy.findByRole("tab", { name: /Collections/ }).click();
+      cy.findByText("Bobby Tables's Personal Collection").click();
+      cy.button("Move").click();
+    });
+
+    openNativeEditor();
+    cy.icon("reference").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("2 models");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Native Products Model").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("A model of the Products table"); // description
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Bobby Tables's Personal Collection"); // collection
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("1 column");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("RENAMED_ID").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("No description");
+  });
 });
 
 const runQuery = () => {

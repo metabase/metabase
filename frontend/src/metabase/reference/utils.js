@@ -5,8 +5,8 @@ import { t } from "ttag";
 import { titleize, humanize } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import { isTypePK } from "metabase-lib/types/utils/isa";
+import Question from "metabase-lib/v1/Question";
+import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 
 export const idsToObjectMap = (ids, objects) =>
   ids
@@ -53,7 +53,6 @@ export const getQuestion = ({
   dbId: databaseId,
   tableId,
   fieldId,
-  metricId,
   segmentId,
   getCount,
   visualization,
@@ -72,10 +71,6 @@ export const getQuestion = ({
 
     if (fieldId) {
       query = breakoutWithDefaultTemporalBucket(query, metadata, fieldId);
-    }
-
-    if (metricId) {
-      query = aggregateByMetricId(query, metricId);
     }
 
     if (segmentId) {
@@ -119,17 +114,6 @@ function filterBySegmentId(query, segmentId) {
   }
 
   return Lib.filter(query, stageIndex, segmentMetadata);
-}
-
-function aggregateByMetricId(query, metricId) {
-  const stageIndex = -1;
-  const metricMetadata = Lib.metricMetadata(query, metricId);
-
-  if (!metricMetadata) {
-    return query;
-  }
-
-  return Lib.aggregate(query, stageIndex, metricMetadata);
 }
 
 export const getQuestionUrl = getQuestionArgs =>

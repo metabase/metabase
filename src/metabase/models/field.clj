@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.data-permissions :as data-perms]
@@ -18,7 +18,7 @@
     :as premium-features
     :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -27,8 +27,6 @@
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
-
-(comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 
 ;;; ------------------------------------------------- Type Mappings --------------------------------------------------
 
@@ -44,7 +42,7 @@
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (def Field
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]]; now it's a reference to the toucan2 model name.
   We'll keep this till we replace all the Field symbol in our codebase."
   :model/Field)
 
@@ -79,7 +77,7 @@
              ancestor-types)
           k
           (do
-            (log/warn (trs "Invalid Field {0} {1}: falling back to {2}" column-name k fallback-type))
+            (log/warnf "Invalid Field %s %s: falling back to %s" column-name k fallback-type)
             fallback-type))))))
 
 (def ^:private transform-field-base-type
@@ -147,12 +145,18 @@
 
 (defmethod mi/can-read? :model/Field
   ([instance]
-   (data-perms/user-has-permission-for-table?
-    api/*current-user-id*
-    :perms/data-access
-    :unrestricted
-    (field->db-id instance)
-    (:table_id instance)))
+   (and (data-perms/user-has-permission-for-table?
+         api/*current-user-id*
+         :perms/view-data
+         :unrestricted
+         (field->db-id instance)
+         (:table_id instance))
+        (data-perms/user-has-permission-for-table?
+         api/*current-user-id*
+         :perms/create-queries
+         :query-builder
+         (field->db-id instance)
+         (:table_id instance))))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
@@ -318,7 +322,7 @@
 
 (def ^{:arglists '([field-id])} field-id->table-id
   "Return the ID of the Table this Field belongs to."
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn [field-id]
      {:pre [(integer? field-id)]}
      (t2/select-one-fn :table_id Field, :id field-id))))
@@ -394,13 +398,15 @@
         (update :dimensions         extract-dimensions)
         (update :table_id           serdes/*export-table-fk*)
         (update :fk_target_field_id serdes/*export-field-fk*)
+        (update :parent_id          serdes/*export-field-fk*)
         (dissoc :fingerprint :last_analyzed :fingerprint_version))))
 
 (defmethod serdes/load-xform "Field"
   [field]
   (-> (serdes/load-xform-basics field)
       (update :table_id           serdes/*import-table-fk*)
-      (update :fk_target_field_id serdes/*import-field-fk*)))
+      (update :fk_target_field_id serdes/*import-field-fk*)
+      (update :parent_id          serdes/*import-field-fk*)))
 
 (defmethod serdes/load-find-local "Field"
   [path]

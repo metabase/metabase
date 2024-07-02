@@ -3,8 +3,6 @@ import _ from "underscore";
 
 import Databases from "metabase/entities/databases";
 import Fields from "metabase/entities/fields";
-import Metrics from "metabase/entities/metrics";
-import Schemas from "metabase/entities/schemas";
 import Segments from "metabase/entities/segments";
 import Tables from "metabase/entities/tables";
 import { createThunkAction, fetchData } from "metabase/lib/redux";
@@ -14,17 +12,6 @@ import { MetabaseApi, RevisionsApi } from "metabase/services";
 // NOTE: All of these actions are deprecated. Use metadata entities directly.
 
 const deprecated = message => console.warn("DEPRECATED: " + message);
-
-export const FETCH_METRICS = Metrics.actions.fetchList.toString();
-export const fetchMetrics = (reload = false) => {
-  deprecated("metabase/redux/metadata fetchMetrics");
-  return Metrics.actions.fetchList(null, { reload });
-};
-
-export const updateMetric = metric => {
-  deprecated("metabase/redux/metadata updateMetric");
-  return Metrics.actions.update(metric);
-};
 
 export const FETCH_SEGMENTS = Segments.actions.fetchList.toString();
 export const fetchSegments = (reload = false) => {
@@ -60,7 +47,6 @@ export const updateTable = table => {
     "fields",
     "fields_lookup",
     "aggregation_operators",
-    "metrics",
     "segments",
   );
   return Tables.actions.update(slimTable);
@@ -141,7 +127,10 @@ export const fetchRevisions = createThunkAction(
         return {
           type,
           id,
-          revisions: await RevisionsApi.get({ id, entity: type }),
+          revisions: await RevisionsApi.get({
+            id,
+            entity: type === "metric" ? "legacy-metric" : type,
+          }),
         };
       };
 
@@ -153,37 +142,6 @@ export const fetchRevisions = createThunkAction(
         getData,
         reload,
       });
-    };
-  },
-);
-
-// for fetches with data dependencies in /reference
-export const FETCH_METRIC_TABLE = "metabase/metadata/FETCH_METRIC_TABLE";
-export const fetchMetricTable = createThunkAction(
-  FETCH_METRIC_TABLE,
-  (metricId, reload = false) => {
-    return async (dispatch, getState) => {
-      await dispatch(fetchMetrics()); // FIXME: fetchMetric?
-      const metric = getIn(getState(), ["entities", "metrics", metricId]);
-      const tableId = metric.table_id;
-      await dispatch(fetchTableMetadata(tableId));
-    };
-  },
-);
-
-export const FETCH_METRIC_REVISIONS =
-  "metabase/metadata/FETCH_METRIC_REVISIONS";
-export const fetchMetricRevisions = createThunkAction(
-  FETCH_METRIC_REVISIONS,
-  (metricId, reload = false) => {
-    return async (dispatch, getState) => {
-      await Promise.all([
-        dispatch(fetchRevisions("metric", metricId)),
-        dispatch(fetchMetrics()),
-      ]);
-      const metric = getIn(getState(), ["entities", "metrics", metricId]);
-      const tableId = metric.table_id;
-      await dispatch(fetchTableMetadata(tableId));
     };
   },
 );
@@ -290,30 +248,3 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
     };
   },
 );
-
-export const loadMetadataForDependentItems =
-  (dependentItems, options) => dispatch => {
-    const uniqueDependentItems = _.uniq(
-      dependentItems,
-      false,
-      ({ type, id }) => type + id,
-    );
-    const promises = uniqueDependentItems.flatMap(({ type, id }) => {
-      switch (type) {
-        case "schema":
-          return [Schemas.actions.fetchList({ dbId: id }, options)];
-        case "table":
-          return [
-            Tables.actions.fetchMetadataAndForeignTables({ id }, options),
-          ];
-        case "field":
-          return [Fields.actions.fetch({ id }, options)];
-        default:
-          return [];
-      }
-    });
-
-    return Promise.all(promises.map(dispatch)).catch(e =>
-      console.error("Failed loading metadata", e),
-    );
-  };

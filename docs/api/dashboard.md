@@ -143,9 +143,9 @@ Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field I
 
 ### PARAMS:
 
-*  **`filtered`** value must be an integer greater than zero., or one or more value must be an integer greater than zero.
+*  **`filtered`** vector of value must be an integer greater than zero.
 
-*  **`filtering`** nullable value must be an integer greater than zero., or one or more value must be an integer greater than zero.
+*  **`filtering`** nullable vector of value must be an integer greater than zero.
 
 ## `GET /api/dashboard/public`
 

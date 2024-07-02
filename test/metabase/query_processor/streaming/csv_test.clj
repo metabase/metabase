@@ -33,7 +33,7 @@
 
 (deftest check-an-empty-date-column
   (testing "NULL values should be written correctly"
-    (mt/dataset defs/test-data-with-null-date-checkins
+    (mt/dataset defs/test-data-null-date
       (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
                                          (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5})))]
         (is (= [["1" "April 7, 2014" "" "5" "12"]

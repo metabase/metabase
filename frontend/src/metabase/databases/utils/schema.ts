@@ -29,7 +29,7 @@ export const getValidationSchema = (
     details: Yup.object(Object.fromEntries(entries)),
     schedules: Yup.object({
       metadata_sync: SCHEDULE_SCHEMA.default(undefined),
-      cache_field_values: SCHEDULE_SCHEMA.default(undefined),
+      cache_field_values: SCHEDULE_SCHEMA.nullable().default(undefined),
     }),
     auto_run_queries: Yup.boolean().nullable().default(true),
     refingerprint: Yup.boolean().nullable().default(false),

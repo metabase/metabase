@@ -204,7 +204,7 @@ describe("scenarios > dashboard card resizing", () => {
 
   it(
     "should display all visualization cards with their default sizes",
-    { requestTimeout: 15000, tags: "@slow" },
+    { requestTimeout: 15000 },
     () => {
       TEST_QUESTIONS.forEach(question => {
         cy.createQuestion(question);
@@ -255,7 +255,7 @@ describe("scenarios > dashboard card resizing", () => {
 
   it(
     "should not allow cards to be resized smaller than min height",
-    { requestTimeout: 15000, tags: "@slow" },
+    { requestTimeout: 15000 },
     () => {
       const cardIds = [];
       TEST_QUESTIONS.forEach(question => {
@@ -280,7 +280,10 @@ describe("scenarios > dashboard card resizing", () => {
         cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
           const dashcards = body.dashcards;
           dashcards.forEach(({ card }) => {
-            const dashcard = cy.contains(".DashCard", card.name);
+            const dashcard = cy.contains(
+              "[data-testid=dashcard-container]",
+              card.name,
+            );
             resizeDashboardCard({
               card: dashcard,
               x: getDefaultSize(card.display).width * 100,
@@ -292,7 +295,10 @@ describe("scenarios > dashboard card resizing", () => {
           editDashboard();
 
           dashcards.forEach(({ card }) => {
-            const dashcard = cy.contains(".DashCard", card.name);
+            const dashcard = cy.contains(
+              "[data-testid=dashcard-container]",
+              card.name,
+            );
             dashcard.within(() => {
               resizeDashboardCard({
                 card: dashcard,

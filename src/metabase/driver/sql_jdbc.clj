@@ -8,6 +8,7 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.metadata :as sql-jdbc.metadata]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
@@ -74,8 +75,8 @@
     ((get-method driver/db-default-timezone :metabase.driver/driver) driver database)))
 
 (defmethod driver/execute-reducible-query :sql-jdbc
-  [driver query chans respond]
-  (sql-jdbc.execute/execute-reducible-query driver query chans respond))
+  [driver query context respond]
+  (sql-jdbc.execute/execute-reducible-query driver query context respond))
 
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]
@@ -93,9 +94,18 @@
   [driver database table]
   (sql-jdbc.sync/describe-table driver database table))
 
+(defmethod driver/describe-fields :sql-jdbc
+  [driver database & {:as args}]
+  (sql-jdbc.sync/describe-fields driver database args))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/describe-table-fks :sql-jdbc
   [driver database table]
   (sql-jdbc.sync/describe-table-fks driver database table))
+
+(defmethod driver/describe-fks :sql-jdbc
+  [driver database & {:as args}]
+  (sql-jdbc.sync/describe-fks driver database args))
 
 (defmethod driver/describe-table-indexes :sql-jdbc
   [driver database table]
@@ -139,6 +149,15 @@
                                :dialect (sql.qp/quote-style driver)))]
     (qp.writeback/execute-write-sql! db-id sql)))
 
+(defmethod driver/truncate! :sql-jdbc
+  [driver db-id table-name]
+  (let [table-name (keyword table-name)
+        sql        (sql/format {:truncate table-name}
+                               :quoted true
+                               :dialect (sql.qp/quote-style driver))]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (jdbc/execute! conn sql))))
+
 (defmethod driver/insert-into! :sql-jdbc
   [driver db-id table-name column-names values]
   (let [table-name (keyword table-name)
@@ -167,14 +186,18 @@
   (mu/validate-throw [:maybe [:cat :keyword]] primary-key) ; we only support adding a single primary key column for now
   (let [primary-key-column (first primary-key)
         sql (first (sql/format {:alter-table (keyword table-name)
-                                :add-column (map (fn [[name type-and-constraints]]
-                                                   (cond-> (vec (cons name type-and-constraints))
-                                                     (= primary-key-column name)
+                                :add-column (map (fn [[column-name type-and-constraints]]
+                                                   (cond-> (vec (cons column-name type-and-constraints))
+                                                     (= primary-key-column column-name)
                                                      (conj :primary-key)))
                                                  column-definitions)}
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
     (qp.writeback/execute-write-sql! db-id sql)))
+
+(defmethod driver/alter-columns! :sql-jdbc
+  [driver db-id table-name column-definitions]
+  (qp.writeback/execute-write-sql! db-id (sql-jdbc.sync/alter-columns-sql driver table-name column-definitions)))
 
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]
@@ -199,3 +222,7 @@
     driver
     (sql-jdbc.conn/db->pooled-connection-spec database)
     args))
+
+(defmethod driver/query-result-metadata :sql-jdbc
+  [driver query]
+  (sql-jdbc.metadata/query-result-metadata driver query))

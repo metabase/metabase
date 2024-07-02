@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { getColumnIcon } from "metabase/common/utils/columns";
 import { Checkbox, DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -11,7 +10,6 @@ import {
   Label,
   ItemTitle,
   ItemIcon,
-  QueryColumnInfoIcon,
 } from "./FieldPicker.styled";
 
 interface FieldPickerProps {
@@ -89,15 +87,14 @@ export const FieldPicker = ({
                 }
                 onChange={event => onToggle(item.column, event.target.checked)}
               />
-
-              <ItemIcon name={getColumnIcon(item.column)} size={18} />
-              <ItemTitle>{item.columnInfo.displayName}</ItemTitle>
-              <QueryColumnInfoIcon
+              <ItemIcon
                 query={query}
                 stageIndex={stageIndex}
                 column={item.column}
-                position="right"
+                position="top-start"
+                size={16}
               />
+              <ItemTitle>{item.columnInfo.displayName}</ItemTitle>
             </Label>
           </li>
         ))}

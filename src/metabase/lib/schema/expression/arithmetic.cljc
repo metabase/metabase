@@ -1,7 +1,6 @@
 (ns metabase.lib.schema.expression.arithmetic
   "Arithmetic expressions like `:+`."
   (:require
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.common :as common]
@@ -17,19 +16,8 @@
                       (isa? expr-type :type/Time)     ::temporal-bucketing/unit.time.interval
                       (isa? expr-type :type/DateTime) ::temporal-bucketing/unit.date-time.interval)]
     (if unit-schema
-      (mc/validate unit-schema unit)
+      (mr/validate unit-schema unit)
       true)))
-
-(mr/def ::args.temporal
-  [:and
-   [:catn
-    [:expr      [:schema [:ref ::expression/temporal]]]
-    [:intervals [:+ [:ref :mbql.clause/interval]]]]
-   [:fn
-    {:error/message "Temporal arithmetic expression with valid interval units for the expression type"}
-    (fn [[expr & intervals]]
-      (let [expr-type (expression/type-of expr)]
-        (every? #(valid-interval-for-type? % expr-type) intervals)))]])
 
 (mr/def ::args.numbers
   [:repeat {:min 2} [:schema [:ref ::expression/number]]])
@@ -53,30 +41,36 @@
                   (str "Cannot add a " unit " interval to a " expr-type " expression")))
               intervals)))))
 
-(defn- plus-minus-temporal-interval-schema
-  "Create a schema for `:+` or `:-` with temporal args: <temporal> ± <interval(s)> in any order"
-  [tag]
+;;; TODO -- doesn't really make sense to say something like `[:- <interval -1 day> "2023-11-23"]`, does it? What does -1
+;;; day minus <date> mean?
+(mr/def ::plus-minus-temporal-interval-schema
   [:and
-   {:error/message (str tag " clause with a temporal expression and one or more :interval clauses")}
+   {:error/message ":+ or :- clause with a temporal expression and one or more :interval clauses"}
    [:cat
-    [:= tag]
+    {:min 4}
+    [:enum :+ :-]
     [:schema [:ref ::common/options]]
     [:repeat [:schema [:ref :mbql.clause/interval]]]
     [:schema [:ref ::expression/temporal]]
     [:repeat [:schema [:ref :mbql.clause/interval]]]]
    [:fn
     {:error/fn (fn [{:keys [value]} _]
-                 (str "Invalid " tag " clause: " (validate-plus-minus-temporal-arithmetic-expression value)))}
+                 (str "Invalid :+ or :- clause: " (validate-plus-minus-temporal-arithmetic-expression value)))}
     (complement validate-plus-minus-temporal-arithmetic-expression)]])
 
-(defn- plus-minus-numeric-schema
-  "Create a schema for `:+` or `:-` with numeric args."
-  [tag]
+(mr/def ::plus-minus-numeric-schema
   [:cat
-   {:error/message (str tag " clause with numeric args")}
-   [:= tag]
+   {:error/message ":+ or :- clause with numeric args"}
+   :keyword
    [:schema [:ref ::common/options]]
    [:repeat {:min 2} [:schema [:ref ::expression/number]]]])
+
+(defn- type-of-numeric-arithmetic-arg [expr]
+  (let [expr-type (expression/type-of expr)]
+    (if (and (isa? expr-type ::expression/type.unknown)
+             (mr/validate :metabase.lib.schema.ref/ref expr))
+      :type/Number
+      expr-type)))
 
 (defn- type-of-numeric-arithmetic-args
   "Given a sequence of args to a numeric arithmetic expression like `:+`, determine the type returned by the expression
@@ -85,17 +79,14 @@
   `:type/Integer` arg; the most-specific common ancestor type is `:type/Number`. For refs without type
   information (e.g. `:field` clauses), assume `:type/Number`."
   [args]
-  ;; Okay to use reduce without an init value here since we know we have >= 2 args
-  #_{:clj-kondo/ignore [:reduce-without-init]}
-  (reduce
-   types/most-specific-common-ancestor
-   (map (fn [expr]
-          (let [expr-type (expression/type-of expr)]
-            (if (and (isa? expr-type ::expression/type.unknown)
-                     (mc/validate :metabase.lib.schema.ref/ref expr))
-              :type/Number
-              expr-type)))
-        args)))
+  (transduce
+   (map type-of-numeric-arithmetic-arg)
+   (completing (fn [x y]
+                 (if (nil? x)
+                   y
+                   (types/most-specific-common-ancestor x y))))
+   nil
+   args))
 
 (defn- type-of-temporal-arithmetic-args
   "Given a temporal value plus one or more intervals `args` passed to an arithmetic expression like `:+`, determine the
@@ -135,25 +126,50 @@
     ;; fall back to numeric args
     :else (type-of-numeric-arithmetic-args args)))
 
-(def ^:private temporal-difference-schema
+(mr/def ::temporal-difference-schema
   [:cat
    {:error/message ":- clause taking the difference of two temporal expressions"}
-   [:= :-]
+   [:= {:decode/normalize common/normalize-keyword} :-]
    [:schema [:ref ::common/options]]
    [:schema [:ref ::expression/temporal]]
    [:schema [:ref ::expression/temporal]]])
 
 (mbql-clause/define-mbql-clause :+
-  [:or
-   (plus-minus-temporal-interval-schema :+)
-   (plus-minus-numeric-schema :+)])
+  [:and
+   {:error/message "valid :+ clause"}
+   [:cat
+    [:= {:decode/normalize common/normalize-keyword} :+]
+    [:schema [:ref ::common/options]]
+    [:+ {:min 2} :any]]
+   [:multi
+    {:dispatch (fn [[_tag _opts & args]]
+                 (if (some #(common/is-clause? :interval %)
+                           args)
+                   :temporal
+                   :numeric))}
+    [:temporal [:ref ::plus-minus-temporal-interval-schema]]
+    [:numeric  [:ref ::plus-minus-numeric-schema]]]])
 
 ;;; TODO -- should `:-` support just a single arg (for numbers)? What about `:+`?
 (mbql-clause/define-mbql-clause :-
-  [:or
-   (plus-minus-temporal-interval-schema :-)
-   temporal-difference-schema
-   (plus-minus-numeric-schema :-)])
+  [:and
+   [:cat
+    [:= {:decode/normalize common/normalize-keyword} :-]
+    [:schema [:ref ::common/options]]
+    [:+ {:min 2} :any]]
+   [:multi
+    {:dispatch (fn [[_tag _opts & args]]
+                 (cond
+                   (some #(common/is-clause? :interval %) args) :temporal
+                   (> (count args) 2)                           :numeric
+                   :else                                        :numeric-or-temporal-difference))}
+    [:temporal [:ref ::plus-minus-temporal-interval-schema]]
+    [:numeric  [:ref ::plus-minus-numeric-schema]]
+    ;; TODO -- figure out a way to know definitively what type of `:-` this should be so we don't need to use `:or`
+    [:numeric-or-temporal-difference
+     [:or
+      [:ref ::plus-minus-numeric-schema]
+      [:ref ::temporal-difference-schema]]]]])
 
 (mbql-clause/define-catn-mbql-clause :*
   [:args ::args.numbers])

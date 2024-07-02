@@ -1,0 +1,486 @@
+[
+  {
+    "card": {
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-05-02T12:43:56.286281+01:00",
+      "parameters": [],
+      "metabase_version": "v0.48.1-SNAPSHOT (f22d112)",
+      "collection": null,
+      "visualization_settings": {
+        "series_settings": {
+          "count": {
+            "display": "area",
+            "line.interpolate": "linear"
+          },
+          "max": {
+            "line.size": "L",
+            "line.style": "dotted",
+            "line.interpolate": "cardinal"
+          },
+          "avg": {
+            "line.size": "S",
+            "line.style": "dashed",
+            "line.marker_enabled": false
+          }
+        },
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["count", "max", "avg"]
+      },
+      "last-edit-info": {
+        "timestamp": "2024-05-02T11:43:56.303Z",
+        "id": 1,
+        "first_name": "Anton",
+        "last_name": "Kulyk",
+        "email": "anton@metabase.test"
+      },
+      "collection_preview": true,
+      "entity_id": "j3oJFRYht3pSMAu6S81AT",
+      "display": "line",
+      "parameter_mappings": [],
+      "id": 30,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [
+            ["count"],
+            [
+              "max",
+              [
+                "field",
+                39,
+                {
+                  "base-type": "type/Integer"
+                }
+              ]
+            ],
+            [
+              "avg",
+              [
+                "field",
+                42,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "quarter"
+              }
+            ]
+          ]
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-05-02T12:43:56.286281+01:00",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": null,
+      "type": "question",
+      "last_used_at": null,
+      "dashboard_count": 0,
+      "last_query_start": null,
+      "name": "All the line settings",
+      "query_type": "query",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 1,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "anton@metabase.test",
+        "first_name": "Anton",
+        "last_login": "2024-04-29T14:02:09.070102+01:00",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Kulyk",
+        "date_joined": "2024-04-29T14:02:08.95827+01:00",
+        "common_name": "Anton Kulyk"
+      },
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "quarter",
+          "name": "CREATED_AT",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "quarter"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 41,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 17,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 57,
+                "q1": 613.25,
+                "q3": 1619.25,
+                "max": 1690,
+                "sd": 569.4296617720948,
+                "avg": 1103.5294117647059
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Max of Quantity",
+          "semantic_type": "type/Quantity",
+          "settings": null,
+          "field_ref": ["aggregation", 1],
+          "name": "max",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 16,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 21,
+                "q1": 31.25,
+                "q3": 82.2247448713916,
+                "max": 100,
+                "sd": 26.16800920747226,
+                "avg": 56.470588235294116
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Average of Total",
+          "semantic_type": null,
+          "settings": null,
+          "field_ref": ["aggregation", 2],
+          "name": "avg",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 17,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 54.64170648979939,
+                "q1": 57.96320116984637,
+                "q3": 87.85432545662479,
+                "max": 89.44907588240132,
+                "sd": 15.579082996747195,
+                "avg": 75.19004391016499
+              }
+            }
+          }
+        }
+      ],
+      "table_id": 5,
+      "collection_position": null,
+      "view_count": 0,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["2022-04-01T00:00:00+01:00", 57, 53, 59.49847706177242],
+        ["2022-07-01T00:00:00+01:00", 235, 82, 59.861296683014224],
+        ["2022-10-01T00:00:00+01:00", 452, 36, 54.64170648979939],
+        ["2023-01-01T00:00:00Z", 667, 21, 54.65356706852181],
+        ["2023-04-01T00:00:00+01:00", 773, 50, 57.24715329305522],
+        ["2023-07-01T00:00:00+01:00", 1004, 60, 56.46080323106693],
+        ["2023-10-01T00:00:00+01:00", 1166, 57, 58.20188379544342],
+        ["2024-01-01T00:00:00Z", 1306, 26, 85.08518974074848],
+        ["2024-04-01T00:00:00+01:00", 1414, 88, 87.6164099386209],
+        ["2024-07-01T00:00:00+01:00", 1522, 100, 87.14273582019462],
+        ["2024-10-01T00:00:00+01:00", 1592, 68, 89.44907588240132],
+        ["2025-01-01T00:00:00Z", 1690, 22, 88.79118786752568],
+        ["2025-04-01T00:00:00+01:00", 1615, 83, 87.77804204658746],
+        ["2025-07-01T00:00:00+01:00", 1641, 83, 87.32703980252516],
+        ["2025-10-01T00:00:00+01:00", 1632, 75, 86.97593760562674],
+        ["2026-01-01T00:00:00Z", 1650, 23, 88.08317568673681],
+        ["2026-04-01T00:00:00+01:00", 344, 33, 89.41706445916441]
+      ],
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "unit": "quarter",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "quarter"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 41,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        },
+        {
+          "semantic_type": "type/Quantity",
+          "name": "max",
+          "settings": null,
+          "source": "aggregation",
+          "field_ref": ["aggregation", 1],
+          "effective_type": "type/Integer",
+          "aggregation_index": 1,
+          "display_name": "Max of Quantity",
+          "base_type": "type/Integer"
+        },
+        {
+          "semantic_type": null,
+          "name": "avg",
+          "settings": null,
+          "source": "aggregation",
+          "field_ref": ["aggregation", 2],
+          "effective_type": "type/Float",
+          "aggregation_index": 2,
+          "display_name": "Average of Total",
+          "base_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('quarter', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS \"CREATED_AT\", COUNT(*) AS \"count\", MAX(\"PUBLIC\".\"ORDERS\".\"QUANTITY\") AS \"max\", AVG(\"PUBLIC\".\"ORDERS\".\"TOTAL\") AS \"avg\" FROM \"PUBLIC\".\"ORDERS\" GROUP BY DATE_TRUNC('quarter', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ORDER BY DATE_TRUNC('quarter', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ASC",
+        "params": null
+      },
+      "format-rows?": true,
+      "results_timezone": "Europe/Lisbon",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "quarter",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "quarter"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 41,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 17,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 57,
+                  "q1": 613.25,
+                  "q3": 1619.25,
+                  "max": 1690,
+                  "sd": 569.4296617720948,
+                  "avg": 1103.5294117647059
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Max of Quantity",
+            "semantic_type": "type/Quantity",
+            "settings": null,
+            "field_ref": ["aggregation", 1],
+            "name": "max",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 16,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 21,
+                  "q1": 31.25,
+                  "q3": 82.2247448713916,
+                  "max": 100,
+                  "sd": 26.16800920747226,
+                  "avg": 56.470588235294116
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Average of Total",
+            "semantic_type": null,
+            "settings": null,
+            "field_ref": ["aggregation", 2],
+            "name": "avg",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 17,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 54.64170648979939,
+                  "q1": 57.96320116984637,
+                  "q3": 87.85432545662479,
+                  "max": 89.44907588240132,
+                  "sd": 15.579082996747195,
+                  "avg": 75.19004391016499
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 1650,
+          "unit": "quarter",
+          "offset": -15195.325563982067,
+          "last-change": -0.7915151515151515,
+          "col": "count",
+          "slope": 0.8225990694646392,
+          "last-value": 344,
+          "best-fit": [
+            "+",
+            -161571.38666957413,
+            ["*", 16441.97170174114, ["log", "x"]]
+          ]
+        },
+        {
+          "previous-value": 23,
+          "unit": "quarter",
+          "offset": 12.06840884827811,
+          "last-change": 0.43478260869565216,
+          "col": "max",
+          "slope": 0.0022409667120979987,
+          "last-value": 33,
+          "best-fit": [
+            "+",
+            -409.94866925360554,
+            ["*", 47.14219264723709, ["log", "x"]]
+          ]
+        },
+        {
+          "previous-value": 88.08317568673681,
+          "unit": "quarter",
+          "offset": -497.9678894730675,
+          "last-change": 0.015143513639557054,
+          "col": "avg",
+          "slope": 0.028927135271704617,
+          "last-value": 89.41706445916441,
+          "best-fit": [
+            "+",
+            -5603.358392492286,
+            ["*", 573.9454794100611, ["log", "x"]]
+          ]
+        }
+      ]
+    }
+  }
+]

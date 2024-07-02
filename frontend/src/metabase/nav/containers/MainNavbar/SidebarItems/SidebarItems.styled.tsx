@@ -2,6 +2,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { TreeNode } from "metabase/components/tree/TreeNode";
+import { ListRoot } from "metabase/components/tree/TreeNodeList.styled";
 import Link from "metabase/core/components/Link";
 import { alpha, color, darken } from "metabase/lib/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
@@ -14,7 +15,7 @@ export const SidebarIcon = styled(Icon)<{
   ${props =>
     !props.color &&
     css`
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     `}
 `;
 
@@ -24,11 +25,11 @@ SidebarIcon.defaultProps = {
 
 export const ExpandToggleButton = styled(TreeNode.ExpandToggleButton)`
   padding: 4px 0 4px 2px;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;
 
 const activeColorCSS = css`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;
 
 function getTextColor(isSelected: boolean) {
@@ -51,11 +52,11 @@ export const NodeRoot = styled(TreeNode.Root)<{
   }
 
   &:hover {
-    background-color: ${alpha("brand", 0.35)};
-    color: ${color("brand")};
+    background-color: ${() => alpha("brand", 0.35)};
+    color: var(--mb-color-brand);
 
     ${ExpandToggleButton} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
 
     ${SidebarIcon} {
@@ -69,12 +70,23 @@ NodeRoot.defaultProps = {
 };
 
 export const collectionDragAndDropHoverStyle = css`
-  color: ${color("text-white")};
-  background-color: ${color("brand")};
+  color: var(--mb-color-text-white);
+  background-color: var(--mb-color-brand);
 `;
 
 export const CollectionNodeRoot = styled(NodeRoot)<{ hovered?: boolean }>`
   ${props => props.hovered && collectionDragAndDropHoverStyle}
+`;
+
+// accommodate for trash collection having margin above
+export const CollectionLinkRoot = styled.div`
+  ${ListRoot} > &:last-child {
+    margin-top: 1rem;
+  }
+
+  ${ListRoot} ${ListRoot} > &:last-child {
+    margin-top: 0;
+  }
 `;
 
 const itemContentStyle = css`
@@ -84,16 +96,17 @@ const itemContentStyle = css`
 `;
 
 export const FullWidthButton = styled.button<{ isSelected: boolean }>`
+  color: inherit;
   cursor: pointer;
 
   ${itemContentStyle}
   ${TreeNode.NameContainer} {
     font-weight: 700;
-    color: ${props => getTextColor(props.isSelected)};
+    color: ${props => (props.isSelected ? color("brand") : "inherit")};
     text-align: start;
 
     &:hover {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
   }
 `;
@@ -107,7 +120,6 @@ const ITEM_NAME_LABEL_WIDTH = Math.round(parseInt(NAV_SIDEBAR_WIDTH, 10) * 0.7);
 
 export const ItemName = styled(TreeNode.NameContainer)`
   width: ${ITEM_NAME_LABEL_WIDTH}px;
-  padding: 6px 3px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

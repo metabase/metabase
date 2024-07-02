@@ -60,7 +60,16 @@
           [status result]  (case status
                              ::ready-to-reduce
                              (try
-                               [::success (transduce identity rf-or-e reducible-rows)]
+                               [::success (transduce (fn [rf]
+                                                       (fn wrapper
+                                                         ([] (rf))
+                                                         ([acc]
+                                                          (some-> *canceled-chan* a/close!)
+                                                          (rf acc))
+                                                         ([acc row]
+                                                          (rf acc row))))
+                                                     rf-or-e
+                                                     reducible-rows)]
                                (catch Throwable e
                                  [::error (ex-info (i18n/tru "Error reducing result rows: {0}" (ex-message e))
                                                    {:type qp.error-type/qp}
@@ -91,7 +100,7 @@
           (when-not (interrupted-exception? e)
             (throw e))
           ;; ok, at this point we know it's an InterruptedException.
-          (log/tracef e "Caught InterruptedException when executing query, this means the query was canceled. Ignoring exception.")
+          (log/trace e "Caught InterruptedException when executing query, this means the query was canceled. Ignoring exception.")
           ;; just to be extra safe and sure that the canceled chan has gotten a message. It's a promise channel so
           ;; duplicate messages don't matter
           (some-> *canceled-chan* (a/>!! ::cancel))

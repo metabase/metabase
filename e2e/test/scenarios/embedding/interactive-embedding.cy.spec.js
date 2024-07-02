@@ -5,6 +5,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   adhocQuestionHash,
+  entityPickerModal,
   popover,
   appBar,
   restore,
@@ -18,8 +19,14 @@ import {
   dashboardGrid,
   createDashboardWithTabs,
   goToTab,
+  visitFullAppEmbeddingUrl,
+  getDashboardCardMenu,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
-import { createMockDashboardCard } from "metabase-types/api/mocks";
+import {
+  createMockDashboardCard,
+  createMockTextDashboardCard,
+} from "metabase-types/api/mocks";
 
 const { ORDERS } = SAMPLE_DATABASE;
 
@@ -158,11 +165,13 @@ describeEE("scenarios > embedding > full app", () => {
   describe("browse data", () => {
     it("should hide the top nav when nothing is shown", () => {
       visitFullAppEmbeddingUrl({
-        url: "/browse",
+        url: "/browse/databases",
         qs: { side_nav: false, logo: false },
       });
-      cy.findByRole("heading", { name: /Browse data/ }).should("be.visible");
-      cy.findByRole("treeitem", { name: /Browse data/ }).should("not.exist");
+      cy.findByRole("heading", { name: /Databases/ }).should("be.visible");
+      cy.findByRole("treeitem", { name: /Browse databases/ }).should(
+        "not.exist",
+      );
       cy.findByRole("treeitem", { name: "Our analytics" }).should("not.exist");
       appBar().should("not.exist");
     });
@@ -231,8 +240,10 @@ describeEE("scenarios > embedding > full app", () => {
 
         cy.button("New").click();
         popover().findByText("Question").click();
-        popover().findByText("Raw Data").click();
-        popover().findByText("Orders").click();
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Tables").click();
+          cy.findByText("Orders").click();
+        });
       });
 
       it("should show the database for a new native question (metabase#21511)", () => {
@@ -458,6 +469,96 @@ describeEE("scenarios > embedding > full app", () => {
         },
       );
     });
+
+    it("should send `frame` message with dashboard height when the dashboard is resized (metabase#37437)", () => {
+      const TAB_1 = { id: 1, name: "Tab 1" };
+      const TAB_2 = { id: 2, name: "Tab 2" };
+      createDashboardWithTabs({
+        tabs: [TAB_1, TAB_2],
+        name: "Dashboard",
+        dashcards: [
+          createMockTextDashboardCard({
+            dashboard_tab_id: TAB_1.id,
+            size_x: 10,
+            size_y: 20,
+            text: "I am a text card",
+          }),
+        ],
+      }).then(dashboard => {
+        visitFullAppEmbeddingUrl({
+          url: `/dashboard/${dashboard.id}`,
+          onBeforeLoad(window) {
+            cy.spy(window.parent, "postMessage").as("postMessage");
+          },
+        });
+      });
+
+      // TODO: Find a way to assert that this is the last call.
+      cy.get("@postMessage").should("have.been.calledWith", {
+        metabase: {
+          type: "frame",
+          frame: {
+            mode: "fit",
+            height: Cypress.sinon.match(value => value > 1000),
+          },
+        },
+      });
+
+      cy.get("@postMessage").invoke("resetHistory");
+      cy.findByRole("tab", { name: TAB_2.name }).click();
+      cy.get("@postMessage").should("have.been.calledWith", {
+        metabase: {
+          type: "frame",
+          frame: {
+            mode: "fit",
+            height: Cypress.sinon.match(value => value < 400),
+          },
+        },
+      });
+
+      cy.get("@postMessage").invoke("resetHistory");
+      cy.findByTestId("app-bar").findByText("Our analytics").click();
+
+      cy.findByRole("heading", { name: "Metabase analytics" }).should(
+        "be.visible",
+      );
+      cy.get("@postMessage").should("have.been.calledWith", {
+        metabase: {
+          type: "frame",
+          frame: {
+            mode: "fit",
+            height: 800,
+          },
+        },
+      });
+    });
+
+    it("should allow downloading question results when logged in via Google SSO (metabase#39848)", () => {
+      const CSRF_TOKEN = "abcdefgh";
+      cy.intercept("GET", "/api/user/current", req => {
+        req.on("response", res => {
+          res.headers["X-Metabase-Anti-CSRF-Token"] = CSRF_TOKEN;
+        });
+      });
+      cy.intercept(
+        "POST",
+        "/api/dashboard/*/dashcard/*/card/*/query/csv?format_rows=true",
+      ).as("CsvDownload");
+      visitDashboardUrl({
+        url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
+      });
+
+      getDashboardCard().realHover();
+      getDashboardCardMenu().click();
+      popover().findByText("Download results").click();
+      popover().findByText(".csv").click();
+
+      cy.wait("@CsvDownload").then(interception => {
+        expect(
+          interception.request.headers["x-metabase-anti-csrf-token"],
+        ).to.equal(CSRF_TOKEN);
+      });
+    });
   });
 
   describe("x-ray dashboards", () => {
@@ -479,18 +580,6 @@ describeEE("scenarios > embedding > full app", () => {
     });
   });
 });
-
-const visitFullAppEmbeddingUrl = ({ url, qs }) => {
-  cy.visit({
-    url,
-    qs,
-    onBeforeLoad(window) {
-      // cypress runs all tests in an iframe and the app uses this property to avoid embedding mode for all tests
-      // by removing the property the app would work in embedding mode
-      window.Cypress = undefined;
-    },
-  });
-};
 
 const visitQuestionUrl = urlOptions => {
   visitFullAppEmbeddingUrl(urlOptions);

@@ -14,11 +14,11 @@ You can create SQL templates by adding variables to your SQL queries in the [Nat
 
 Typing `{% raw %}{{variable_name}}{% endraw %}` in your native query creates a variable called `variable_name`.
 
-Field Filter, a special type of filter, have a [slightly different syntax](#field-filter-syntax).
+Field Filters, a special type of filter, have a [slightly different syntax](#field-filter-syntax).
 
 This example defines a **Text** variable called `category`:
 
-```sql
+```
 {% raw %}
 SELECT
   count(*)
@@ -31,7 +31,7 @@ WHERE
 
 Metabase will read the variable and attach a filter widget to the query, which people can use to change the value inserted into the `cat` variable with quotes. So if someone entered "Gizmo" into the filter widget, the query Metabase would run would be:
 
-```sql
+```
 SELECT
   count(*)
 FROM
@@ -86,103 +86,9 @@ That last variable type, [Field Filter](#the-field-filter-variable-type), is spe
 
 You can include multiple variables in the query, and Metabase will add multiple filter widgets to the question. When you have multiple filter widgets, you can click on a filter widget and drag it around to rearrange the order.
 
-### Optional clauses
-
-You can make a clause optional in a query. For example, you can create an optional `WHERE` clause that contains a SQL variable, so that if no value is supplied to the variable (either in the filter or via the URL), the query will still run as if there were no `WHERE` clause.
-
-To make a clause optional in your native query, type `[[brackets around a {% raw %}{{variable}}{% endraw %}]]`. If you input a value in the filter widget for the `variable`, then the entire clause is placed into the template; otherwise Metabase will ignore the clause.
-
-In this example, if no value is given to `cat`, then the query will just select all the rows from the `products` table. But if `cat` does have a value, like "Widget", then the query will only grab the products with a category type of Widget:
-
-```sql
-{% raw %}
-SELECT
-  count(*)
-FROM
-  products [[WHERE category = {{category}}]]
-{% endraw %}
-```
-
-To use multiple optional clauses, you must include at least one regular `WHERE` clause followed by optional clauses, each starting with `AND`:
-
-```sql
-{% raw %}
-SELECT
-  count(*)
-FROM
-  products
-WHERE
-  TRUE
-  [[AND id = {{id}}]
-  [[AND {{category}}]]
-{% endraw %}
-```
-
-That last clause uses a Field filter (note the lack of a column in the `AND` clause). When using a field filter, you must exclude the column in the query; you need to map the variable in the side panel.
-
-If you're using MongoDB, you can make an clause optional like so:
-
-```
-{% raw %}
-[
-    [[{
-        $match: {category: {{cat}}}
-    },]]
-    {
-        $count: "Total"
-    }
-]
-{% endraw %}
-```
-
-Or with multiple optional filters:
-
-```
-{% raw %}
-[
-    [[{ $match: {{cat}} },]]
-    [[{ $match: { price: { "$gt": {{minprice}} } } },]]
-    {
-        $count: "Total"
-    }
-]
-{% endraw %}
-```
-
-## Setting a default value in the filter widget
-
-In the variables sidebar, you can set a default value for your variable. This value will be inserted into the corresponding filter widget by default (even if the filter widget is empty). You'll need to insert a new value into the filter widget to override the default.
-
-## Setting complex default values in the query
-
-You can also define default values directly in your query by enclosing comment syntax inside the end brackets of an optional parameter.
-
-```sql
-WHERE column = [[ {% raw %}{{ your_parameter }}{% endraw %} --]] your_default_value
-```
-
-The comment will "activate" whenever you pass a value to `your_parameter`.
-
-This is useful when defining complex default values (for example, if your default value is a function like `CURRENT_DATE`). Here's a PostgreSQL example that sets the default value of a Date filter to the current date using `CURRENT_DATE`:
-
-```sql
-{% raw %}
-SELECT
-  *
-FROM
-  orders
-WHERE
-  DATE(created_at) = [[ {{dateOfCreation}} --]] CURRENT_DATE
-{% endraw %}
-```
-
-If you pass a value to the variable, the `WHERE` clause runs, including the comment syntax that comments out the default `CURRENT_DATE` function.
-
-Note that the hash (`--`) used to comment the text might need to be replaced by the comment syntax specific to the database you're using.
-
 ## The Field Filter variable type
 
-Setting a variable to the "Field Filter" type allows you to map the variable to a field in any table in the current database, and lets you create a "smart" filter widget that makes sense for that field.
+Setting a variable to the **Field Filter** type allows you to map the variable to a field in any table in the current database. Field filters let you create a "smart" filter widget that makes sense for that field.
 
 Field Filter variables should be used inside of a `WHERE` clause in SQL, or a `$match` clause in MongoDB.
 
@@ -198,7 +104,7 @@ Field Filters ONLY work with the following field types:
 - State
 - ZIP or Postal Code
 
-The field can also be a date or timestamp, which can be left as "No semantic type" in the Table Metadata.
+The field can also be a date or timestamp, which can be left as "No semantic type" in the [Table Metadata](../../data-modeling/metadata-editing.md).
 
 When you set the **Variable type** to "Field Filter", Metabase will present an option to set the **Field to map to**, as well as the **Filter widget type**. The options available for the Filter widget type depend on the field's type. For example, if you map to a field of type Category, you'll see options for either "Category" or None. If you map to a Date Field, you'll see options for None, Month and year, Quarter and year, Single date, Date range, or Date filter.
 
@@ -212,7 +118,7 @@ Let's say you want to create a Field Filter that filters the `People` table by s
 
 The syntax for Field Filters differs from a Text, Number, or Date variable.
 
-```sql
+```
 {% raw %}
 SELECT
   *
@@ -276,16 +182,7 @@ If however, there are too many different values in that column to display in a d
 
 Some things that could trip you up when trying to set up a Field Filter variable.
 
-## Requiring a value for a filter widget
-
-You can enforce a value of
-
-In the **Variable** settings sidebar, you can toggle the **Always require a value** option. If you turn this on:
-
-- You must enter a default value.
-- The default value will override any optional syntax in your code (like an optional `WHERE` clause). If no value is passed to the filter, Metabase will run the query using the default value. Click on the **Eye** icon in the editor to preview the SQL Metabase will run.
-
-### Table aliases
+### Field Filters don't work with table aliases
 
 You won't be able to select values from field filters in queries that use table aliases for joins or CTEs.
 
@@ -295,11 +192,11 @@ The reason is that field filters generate SQL based on the mapped field; Metabas
 2. Replace CTEs with subqueries.
 3. Create a view in your database, and use the view as the basis of your query.
 
-### Include dependencies in your query
+### Field Filters must be connected to fields included in the query
 
 Your main query should be aware of all the tables that your Field Filter variable is pointing to, otherwise you'll get a SQL syntax error. For example, let's say that your main query includes a field filter like this:
 
-```sql
+```
 {% raw %}
 SELECT
   *
@@ -312,7 +209,7 @@ WHERE
 
 Let's say the `{% raw %}{{ product_category }}{% endraw %}` variable refers to another question that uses the `Products` table. For the field filter to work, you'll need to include a join to `Products` in your main query.
 
-```sql
+```
 {% raw %}
 SELECT
   *
@@ -324,16 +221,186 @@ WHERE
 {% endraw %}
 ```
 
-### SQL syntax
+## Customizing dropdown lists and search box values
 
-Make sure your SQL dialect matches the database you've selected. Common errors:
+With Text and Field filter variables, you can tell Metabase what values people can choose from when using a filter with a dropdown list or search box.
 
-| Database | Do this                    | Avoid                |
-| -------- | -------------------------- | -------------------- |
-| BigQuery | `` FROM `dataset.table` `` | `FROM dataset.table` |
-| Oracle   | `FROM "schema"."table"`    | `FROM schema.table`  |
+1. In the native editor, add a {% raw %}{{variable}}{% endraw %} in double braces.
+2. If the sidebar doesn't open, you can click on the **{x}** icon on the right to open the **Variables** sidebar.
+3. In the **Settings** tab, set the **Variable type** to either "Text" or "Field Filter".
+4. In the sidebar, go to **How should users filter on this variable?** Pick either **Dropdown list** or **Search box**.
+5. Next to the option you chose, click **Edit**.
+6. Metabase will pop up a modal where you can select **Where the values should come from**.
 
-For more help, see [Troubleshooting SQL error messages](../../troubleshooting-guide/error-message.md#sql-editor).
+You can choose:
+
+- **From connected fields** If you selected the Field filter variable type, you'll also have the option to use the connected field.
+- **From another model or question**. If you select this option, you'll need to pick a model or question, then a field from that model or question that Metabase will use to supply the values for that dropdown or search box. For example, if you want the dropdown to list the different plans an account could be on, you could select an "Account" model you created, and select the field "Plan" to power that dropdown. The dropdown would then list all of the distinct plan options that appear in the "Plan" column in the Accounts model.
+- **Custom list**. Enter each item on a line. You can enter any string values you like.
+
+You can also [change a dashboard filter's selectable values](../../dashboards/filters.md#change-a-filters-selectable-values).
+
+## Setting a default value in the filter widget
+
+In the variables sidebar, you can set a default value for your variable. This value will be inserted into the corresponding filter widget by default (even if the filter widget is empty). You'll need to insert a new value into the filter widget to override the default.
+
+## Setting complex default values in the query
+
+You can also define default values directly in your query by enclosing comment syntax inside the end brackets of an optional parameter.
+
+```
+WHERE column = [[ {% raw %}{{ your_parameter }}{% endraw %} --]] your_default_value
+```
+
+The comment will "activate" whenever you pass a value to `your_parameter`.
+
+This is useful when defining complex default values (for example, if your default value is a function like `CURRENT_DATE`). Here's a PostgreSQL example that sets the default value of a Date filter to the current date using `CURRENT_DATE`:
+
+```
+{% raw %}
+SELECT
+  *
+FROM
+  orders
+WHERE
+  DATE(created_at) = [[ {{dateOfCreation}} --]] CURRENT_DATE
+{% endraw %}
+```
+
+If you pass a value to the variable, the `WHERE` clause runs, including the comment syntax that comments out the default `CURRENT_DATE` function.
+
+Note that the hash (`--`) used to comment the text might need to be replaced by the comment syntax specific to the database you're using.
+
+## Requiring a value for a filter widget
+
+In the **Variable** settings sidebar, you can toggle the **Always require a value** option. If you turn this on:
+
+- You must enter a default value.
+- The default value will override any optional syntax in your code (like an optional `WHERE` clause). If no value is passed to the filter, Metabase will run the query using the default value. Click on the **Eye** icon in the editor to preview the SQL Metabase will run.
+
+## Making variables optional
+
+You can make a clause optional in a query. For example, you can create an optional `WHERE` clause that contains a SQL variable, so that if no value is supplied to the variable (either in the filter or via the URL), the query will still run as if there were no `WHERE` clause.
+
+To make a variable optional in your native query, put `[[ .. ]]` brackets around the entire clause containing the `{% raw %}{{variable}}{% endraw %}`. If someone inputs a value in the filter widget for the `variable`, Metabase will place the clause in the template; otherwise Metabase will ignore the clause and run the query as though the clause didn't exist.
+
+In this example, if no value is given to `cat`, then the query will just select all the rows from the `products` table. But if `cat` does have a value, like "Widget", then the query will only grab the products with a category type of Widget:
+
+```
+{% raw %}
+SELECT
+  count(*)
+FROM
+  products
+[[WHERE category = {{cat}}]]
+{% endraw %}
+```
+
+### Your SQL must also be able to run without the optional clause in `[[ ]]`
+
+You need to make sure that your SQL is still valid when no value is passed to the variable in the bracketed clause.
+
+For example, excluding the `WHERE` keyword from the bracketed clause will cause an error if there's no value given for `cat`:
+
+```
+-- this will cause an error:
+{% raw %}
+SELECT
+  count(*)
+FROM
+  products
+WHERE
+  [[category = {{cat}}]]
+{% endraw %}
+```
+
+That's because when no value is given for `cat`, Metabase will try to execute SQL as if the clause in `[[ ]]` didn't exist:
+
+```
+SELECT
+  count(*)
+FROM
+  products
+WHERE
+```
+
+which is not a valid SQL query.
+
+Instead, put the entire `WHERE` clause in `[[ ]]`:
+
+```
+{% raw %}
+SELECT
+  count(*)
+FROM
+  products
+[[WHERE
+  category = {{cat}}]]
+{% endraw %}
+```
+
+When there's no value given for `cat`, Metabase will just execute:
+
+```
+{% raw %}
+SELECT
+  count(*)
+FROM
+  products
+{% endraw %}
+```
+
+which is still a valid query.
+
+### You need at least one `WHERE` when using multiple optional clauses
+
+To use multiple optional clauses, you must include at least one regular `WHERE` clause followed by optional clauses, each starting with `AND`:
+
+```
+{% raw %}
+SELECT
+  count(*)
+FROM
+  products
+WHERE
+  TRUE
+  [[AND id = {{id}}]
+  [[AND {{category}}]]
+{% endraw %}
+```
+
+That last clause uses a Field filter (note the lack of a column in the `AND` clause). When using a field filter, you must exclude the column in the query; you need to map the variable in the side panel.
+
+### Optional variables in MongoDB
+
+If you're using MongoDB, you can make an clause optional like so:
+
+```
+{% raw %}
+[
+    [[{
+        $match: {category: {{cat}}}
+    },]]
+    {
+        $count: "Total"
+    }
+]
+{% endraw %}
+```
+
+Or with multiple optional filters:
+
+```
+{% raw %}
+[
+    [[{ $match: {{cat}} },]]
+    [[{ $match: { price: { "$gt": {{minprice}} } } },]]
+    {
+        $count: "Total"
+    }
+]
+{% endraw %}
+```
 
 ## Connecting a SQL question to a dashboard filter
 

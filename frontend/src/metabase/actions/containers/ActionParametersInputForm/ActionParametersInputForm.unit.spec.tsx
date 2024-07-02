@@ -88,7 +88,7 @@ describe("Actions > ActionParametersInputForm", () => {
   it("should call onCancel when clicking the cancel button", async () => {
     const cancelSpy = jest.fn();
     await setup({ onCancel: cancelSpy });
-    userEvent.click(screen.getByText("Cancel"));
+    await userEvent.click(screen.getByText("Cancel"));
     expect(cancelSpy).toHaveBeenCalled();
   });
 
@@ -98,17 +98,17 @@ describe("Actions > ActionParametersInputForm", () => {
       onSubmit: submitSpy,
     });
 
-    userEvent.type(screen.getByLabelText("Parameter 1"), "uno");
+    await userEvent.type(screen.getByLabelText("Parameter 1"), "uno");
     await waitFor(() =>
       expect(screen.getByLabelText("Parameter 1")).toHaveValue("uno"),
     );
 
-    userEvent.type(screen.getByLabelText("Parameter 2"), "dos");
+    await userEvent.type(screen.getByLabelText("Parameter 2"), "dos");
     await waitFor(() =>
       expect(screen.getByLabelText("Parameter 2")).toHaveValue("dos"),
     );
 
-    userEvent.click(screen.getByText(mockAction.name));
+    await userEvent.click(screen.getByText(mockAction.name));
 
     await waitFor(() => {
       expect(submitSpy).toHaveBeenCalledWith({
@@ -210,11 +210,11 @@ describe("Actions > ActionParametersInputForm", () => {
       const editActionTrigger = getIcon("pencil");
       expect(editActionTrigger).toBeInTheDocument();
 
-      userEvent.hover(editActionTrigger);
+      await userEvent.hover(editActionTrigger);
 
       expect(screen.getByText("Edit this action")).toBeInTheDocument();
 
-      userEvent.click(editActionTrigger);
+      await userEvent.click(editActionTrigger);
 
       expect(onEditMock).toHaveBeenCalledTimes(1);
     });

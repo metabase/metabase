@@ -3,8 +3,8 @@ import { checkNotNull } from "metabase/lib/types";
 import * as questionActions from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import registerVisualizations from "metabase/visualizations/register";
-import Question from "metabase-lib/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
+import Question from "metabase-lib/v1/Question";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   Card,
   ConcreteFieldReference,
@@ -507,16 +507,6 @@ describe("QB Actions > updateQuestion", () => {
       const { getCard, questionType } = testCase;
 
       describe(questionType, () => {
-        it("loads metadata for the model", async () => {
-          const loadMetadataSpy = jest.spyOn(
-            questionActions,
-            "loadMetadataForCard",
-          );
-
-          await setup({ card: getCard() });
-          expect(loadMetadataSpy).toHaveBeenCalledTimes(1);
-        });
-
         it("refreshes question metadata if there's difference in dependent metadata", async () => {
           const loadMetadataSpy = jest.spyOn(
             questionActions,

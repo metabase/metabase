@@ -25,7 +25,7 @@ export function openColumnOptions(column) {
 }
 
 export function renameColumn(oldName, newName) {
-  cy.findByDisplayValue(oldName).clear().type(newName);
+  cy.findByDisplayValue(oldName).clear().type(newName).blur();
 }
 
 export function setColumnType(oldType, newType) {
@@ -41,7 +41,7 @@ export function setColumnType(oldType, newType) {
 
 export function mapColumnTo({ table, column } = {}) {
   cy.findByText("Database column this maps to")
-    .closest(".Form-field")
+    .parent()
     .findByTestId("select-button")
     .click({ force: true });
 

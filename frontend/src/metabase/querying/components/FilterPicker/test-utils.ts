@@ -9,7 +9,7 @@ import {
   createQuery as _createQuery,
   columnFinder,
 } from "metabase-lib/test-helpers";
-import { TYPE } from "metabase-lib/types/constants";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import { createMockField, createMockSegment } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
@@ -240,11 +240,13 @@ export function createQueryWithSpecificDateFilter({
   column = findDateTimeColumn(query),
   operator = "=",
   values = [new Date(2020, 1, 15)],
+  hasTime = false,
 }: SpecificDateFilterOpts = {}) {
   const clause = Lib.specificDateFilterClause(query, 0, {
     operator,
     column,
     values,
+    hasTime,
   });
   return createFilteredQuery(query, clause);
 }

@@ -8,6 +8,7 @@
 
 (deftest properties-token-features-test
   (mt/with-premium-features #{:advanced-permissions
+                              :attached-dwh
                               :audit-app
                               :cache-granular-controls
                               :config-text-file
@@ -29,8 +30,10 @@
                               :sso-jwt
                               :sso-ldap
                               :sso-saml
+                              :upload_management
                               :whitelabel}
           (is (= {:advanced_permissions           true
+                  :attached_dwh                   true
                   :audit_app                      true
                   :cache_granular_controls        true
                   :config_text_file               true
@@ -50,5 +53,6 @@
                   :sso_jwt                        true
                   :sso_ldap                       true
                   :sso_saml                       true
+                  :upload_management              false
                   :whitelabel                     true}
                  (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

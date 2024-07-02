@@ -17,73 +17,100 @@
     {:query {:aggregation [[:count]]
              :page        1}}          false))
 
-(defn- byte-array= {:style/indent 0}
-  ([^bytes a ^bytes b]
-   (java.util.Arrays/equals a b))
-  ([a b & more]
-   (and (byte-array= a b)
-        (apply byte-array= b more))))
+(defn- query-hash-hex [query]
+  (codecs/bytes->hex (qp.util/query-hash query)))
 
 (deftest ^:parallel query-hash-test
   (testing "qp.util/query-hash"
     (testing "should always hash something the same way, every time"
-      (is (byte-array=
-            (byte-array [124 17 52 -28 71 -73 107 4 -108 39 42 -6 15 36 58 46 93 -59 103 -123 101 78 15 63 -10 -110 55 100 91 122 71 -23])
-            (qp.util/query-hash {:query :abc})))
-      (is (byte-array=
-            (qp.util/query-hash {:query :def})
-            (qp.util/query-hash {:query :def}))))
+      (is (= "840eb7aa2a9935de63366bacbe9d97e978a859e93dc792a0334de60ed52f8e99"
+             (query-hash-hex {:query :abc})))
+      (is (= (query-hash-hex {:query :def})
+             (query-hash-hex {:query :def}))))))
 
+(deftest ^:parallel ignore-lib-uuids-test
+  (letfn [(query []
+            {:lib/type :mbql/query
+             :database 1
+             :stages   [{:lib/type     :mbql.stage/mbql
+                         :source-table 1
+                         :filters      [[:=
+                                         {:lib/uuid (str (random-uuid))}
+                                         1
+                                         2]]}]})]
+    (is (= "1494a478589d855b78e4eaf6bfc9d19f080682f89d0eb110c14af6a740436f2e"
+           (query-hash-hex (query))
+           (query-hash-hex (query))))))
+
+(deftest ^:parallel query-hash-test-2
+  (testing "qp.util/query-hash"
     (testing "different queries should produce different hashes"
-      (is (not (byte-array=
-                 (qp.util/query-hash {:query :abc})
-                 (qp.util/query-hash {:query :def}))))
-      (is (not (byte-array=
-                 (qp.util/query-hash {:query :abc, :database 1})
-                 (qp.util/query-hash {:query :abc, :database 2}))))
-      (is (not (byte-array=
-                 (qp.util/query-hash {:query :abc, :type "query"})
-                 (qp.util/query-hash {:query :abc, :type "native"}))))
-      (is (not (byte-array=
-                 (qp.util/query-hash {:query :abc, :parameters [1]})
-                 (qp.util/query-hash {:query :abc, :parameters [2]}))))
-      (is (not (byte-array=
-                 (qp.util/query-hash {:query :abc, :constraints {:max-rows 1000}})
-                 (qp.util/query-hash {:query :abc, :constraints nil})))))
+      (are [x y] (not= (query-hash-hex x)
+                       (query-hash-hex y))
+        {:lib/type :type/query, :stages [{:stage-type :abc}]}
+        {:lib/type :type/query, :stages [{:stage-type :def}]}
 
+        {:lib/type :type/query, :database 1}
+        {:lib/type :type/query, :database 2}
+
+        {:lib/type :type/query, :stages [{:lib/type :mbql.stage/mbql}]}
+        {:lib/type :type/query, :stages [{:lib/type :mbql.stage/native}]}
+
+        {:lib/type :type/query, :parameters [1]}
+        {:lib/type :type/query, :parameters [2]}
+
+        {:lib/type :type/query, :constraints {:max-rows 1000}}
+        {:lib/type :type/query, :constraints nil}))))
+
+(deftest ^:parallel query-hash-test-3
+  (testing "qp.util/query-hash"
     (testing "keys that are irrelevant to the query should be ignored"
-      (is (byte-array=
-            (qp.util/query-hash {:query :abc, :random :def})
-            (qp.util/query-hash {:query :abc, :random :xyz}))))
+      (is (= (query-hash-hex {:query :abc, :random :def})
+             (query-hash-hex {:query :abc, :random :xyz}))))))
 
+(deftest ^:parallel query-hash-test-4
+  (testing "qp.util/query-hash"
     (testing "empty `:parameters` lists should not affect the hash"
-      (is (byte-array=
-            (qp.util/query-hash {:query :abc})
-            (qp.util/query-hash {:query :abc, :parameters []})
-            (qp.util/query-hash {:query :abc, :parameters nil})))
+      (is (= (query-hash-hex {:query :abc})
+             (query-hash-hex {:query :abc, :parameters []})
+             (query-hash-hex {:query :abc, :parameters nil}))))))
 
+(deftest ^:parallel query-hash-test-5
+  (testing "qp.util/query-hash"
+    (testing "empty `:parameters` lists should not affect the hash"
       (testing "...but non-empty ones should"
-        (is (not (byte-array=
-                   (qp.util/query-hash {:query :abc})
-                   (qp.util/query-hash {:query :abc, :parameters ["ABC"]})))))
+        (is (not (= (query-hash-hex {:query :abc})
+                    (query-hash-hex {:query :abc, :parameters ["ABC"]}))))))))
 
+(deftest ^:parallel query-hash-test-6
+  (testing "qp.util/query-hash"
+    (testing "empty `:parameters` lists should not affect the hash"
       (testing (str "the presence of a `nil` value for `:constraints` should produce the same hash as not including "
                     "the key at all")
-        (is (byte-array=
-              (qp.util/query-hash {:query :abc})
-              (qp.util/query-hash {:query :abc, :constraints nil})
-              (qp.util/query-hash {:query :abc, :constraints {}})))))
+        (is (= (query-hash-hex {:query :abc})
+               (query-hash-hex {:query :abc, :constraints nil})
+               (query-hash-hex {:query :abc, :constraints {}})))))))
 
+(deftest ^:parallel query-hash-test-7
+  (testing "qp.util/query-hash"
+    (testing "empty `:parameters` lists should not affect the hash"
+      (testing (str "the presence of a `nil` value for `:constraints` should produce the same hash as not including "
+                    "the key at all")
+        (is (= (query-hash-hex {:query :abc})
+               (query-hash-hex {:query :abc, :constraints nil})
+               (query-hash-hex {:query :abc, :constraints {}})))))))
+
+(deftest ^:parallel query-hash-test-8
+  (testing "qp.util/query-hash"
     (testing "make sure two different native queries have different hashes!"
-      (is (not (byte-array=
-                 (qp.util/query-hash {:database 2
-                                      :type     "native"
-                                      :native   {:query "SELECT pg_sleep(15), 1 AS one"}})
-                 (qp.util/query-hash {:database 2
-                                      :type     "native"
-                                      :native   {:query "SELECT pg_sleep(15), 2 AS two"}})))))))
+      (is (not= (query-hash-hex {:database 2
+                                 :type     :native
+                                 :native   {:query "SELECT pg_sleep(15), 1 AS one"}})
+                (query-hash-hex {:database 2
+                                 :type     :native
+                                 :native   {:query "SELECT pg_sleep(15), 2 AS two"}}))))))
 
 (deftest ^:parallel key-order-should-not-affect-query-hash-test
   (is (= "7e144bc5b43ee850648f353cda978b2911e2f66260ac03c5e1744bce6ca668ff"
-         (codecs/bytes->hex (qp.util/query-hash {:parameters [{:value 1, :name "parameter"}]}))
-         (codecs/bytes->hex (qp.util/query-hash {:parameters [{:name "parameter", :value 1}]})))))
+         (query-hash-hex {:parameters [{:value 1, :name "parameter"}]})
+         (query-hash-hex {:parameters [{:name "parameter", :value 1}]}))))

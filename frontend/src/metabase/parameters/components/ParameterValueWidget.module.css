@@ -4,40 +4,13 @@
   font-weight: 600;
   min-height: 30px;
   min-width: 150px;
-  color: var(--color-text-medium);
-}
-
-.nameInput {
-  align-items: center;
-  display: flex;
-  min-height: 30px;
-  min-width: 150px;
-  color: var(--color-text-medium);
-  border: none;
-  font-size: 1em;
-  font-weight: 600;
-}
-
-.fullscreen {
-  margin-right: 0;
-  margin-left: 0;
-}
-
-.fullscreen .name {
-  font-size: 14px;
-}
-
-.fullscreen .parameter {
-  min-width: 0;
-  min-height: 0;
-  background-color: transparent;
-  font-size: 14px;
+  color: var(--mb-color-text-medium);
 }
 
 .parameter.selected {
   font-weight: bold;
-  color: var(--color-brand);
-  border-color: var(--color-brand);
+  color: var(--mb-color-brand);
+  border-color: var(--mb-color-brand);
 }
 
 .parameter input {
@@ -61,76 +34,38 @@
 
 .parameter.noPopover.selected input {
   font-weight: bold;
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
 }
 
 .parameter.noPopover input:focus {
   outline: none;
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
 }
 
 .parameter.noPopover input::-webkit-input-placeholder {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .parameter.noPopover input:-moz-placeholder {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .parameter.noPopover input::-moz-placeholder {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .parameter.noPopover input:-ms-input-placeholder {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
-:global(.Dashboard--night) .parameter.noPopover input:focus,
-:global(.Theme--night) .parameter.noPopover input:focus {
-  color: var(--color-text-white);
-}
-
-.nameInput:focus,
-.input:focus {
-  outline: none;
+.DashboardNight .parameter.noPopover input:focus,
+.ThemeNight .parameter.noPopover input:focus {
+  color: var(--mb-color-text-white);
 }
 
 .name {
   composes: mr1 from "style";
   font-size: 16px;
   font-weight: bold;
-  color: var(--color-text-medium);
-}
-
-.parameterButtons {
-  display: flex;
-  justify-content: space-around;
-  font-size: smaller;
-}
-
-.editButton,
-.removeButton {
-  cursor: pointer;
-  align-items: center;
-  display: flex;
-}
-
-.editButton:hover {
-  color: var(--color-brand);
-}
-
-.removeButton:hover {
-  color: var(--color-error);
-}
-
-.editNameIconContainer {
-  display: inline-block;
-  height: 0;
-  margin-left: 0.25em;
-  width: 10px;
-}
-
-.editNameIconContainer > svg {
-  position: absolute;
-  top: -6px;
+  color: var(--mb-color-text-medium);
 }

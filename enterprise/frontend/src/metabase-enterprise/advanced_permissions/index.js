@@ -1,6 +1,7 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
@@ -18,20 +19,23 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ImpersonationModal } from "./components/ImpersonationModal";
-import { updateNativePermission } from "./graph";
+import {
+  upgradeViewPermissionsIfNeeded,
+  shouldRestrictNativeQueryPermissions,
+} from "./graph";
 import { getImpersonatedPostAction, advancedPermissionsSlice } from "./reducer";
 import { getImpersonations } from "./selectors";
 
 const IMPERSONATED_PERMISSION_OPTION = {
   label: t`Impersonated`,
-  value: "impersonated",
+  value: DataPermissionValue.IMPERSONATED,
   icon: "database",
   iconColor: "warning",
 };
 
 const BLOCK_PERMISSION_OPTION = {
-  label: t`Block`,
-  value: "block",
+  label: t`Blocked`,
+  value: DataPermissionValue.BLOCKED,
   icon: "close",
   iconColor: "danger",
 };
@@ -87,7 +91,7 @@ if (hasPremiumFeature("advanced_permissions")) {
       value === BLOCK_PERMISSION_OPTION.value ||
       value === IMPERSONATED_PERMISSION_OPTION.value
     ) {
-      return "none";
+      return DataPermissionValue.UNRESTRICTED;
     }
 
     return null;
@@ -96,27 +100,42 @@ if (hasPremiumFeature("advanced_permissions")) {
   PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled = (value, subject) => {
     return (
       ["tables", "fields"].includes(subject) &&
-      [
-        BLOCK_PERMISSION_OPTION.value,
-        IMPERSONATED_PERMISSION_OPTION.value,
-      ].includes(value)
+      [DataPermissionValue.BLOCKED, DataPermissionValue.IMPERSONATED].includes(
+        value,
+      )
     );
   };
 
-  PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS["impersonated"] =
-    getImpersonatedPostAction;
+  PLUGIN_ADVANCED_PERMISSIONS.isRestrictivePermission = value => {
+    return value === DataPermissionValue.BLOCKED;
+  };
+
+  PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn = true;
+
+  PLUGIN_ADVANCED_PERMISSIONS.defaultViewDataPermission =
+    DataPermissionValue.BLOCKED;
+
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS[
+    DataPermissionValue.IMPERSONATED
+  ] = getImpersonatedPostAction;
 
   PLUGIN_REDUCERS.advancedPermissionsPlugin = advancedPermissionsSlice.reducer;
 
-  PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(state => ({
-    impersonations: getImpersonations(state),
-  }));
+  PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(
+    (state, data) => {
+      const impersonations = getImpersonations(state);
+      const impersonationGroupIds = impersonations.map(i => `${i.group_id}`);
+      return [{ impersonations }, impersonationGroupIds];
+    },
+  );
 
   PLUGIN_DATA_PERMISSIONS.hasChanges.push(
     state => getImpersonations(state).length > 0,
   );
 
-  PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS["impersonated"].push({
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS[
+    DataPermissionValue.IMPERSONATED
+  ].push({
     label: t`Edit Impersonated`,
     iconColor: "warning",
     icon: "database",
@@ -124,7 +143,11 @@ if (hasPremiumFeature("advanced_permissions")) {
       push(getEditImpersonationUrl(entityId, groupId, view)),
   });
 
-  PLUGIN_DATA_PERMISSIONS.updateNativePermission = updateNativePermission;
+  PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded =
+    upgradeViewPermissionsIfNeeded;
+
+  PLUGIN_DATA_PERMISSIONS.shouldRestrictNativeQueryPermissions =
+    shouldRestrictNativeQueryPermissions;
 }
 
 const getDatabaseViewImpersonationModalUrl = (entityId, groupId) => {

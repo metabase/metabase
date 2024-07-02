@@ -13,6 +13,7 @@ import _ from "underscore";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import type { SelectButtonProps } from "metabase/core/components/SelectButton";
 import SelectButton from "metabase/core/components/SelectButton";
+import CS from "metabase/css/core/index.css";
 import Uncontrollable from "metabase/hoc/Uncontrollable";
 import { color } from "metabase/lib/colors";
 import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
@@ -53,6 +54,7 @@ export interface SelectProps<TValue, TOption = SelectOption<TValue>> {
   searchCaseInsensitive?: boolean;
   searchPlaceholder?: string;
   searchFuzzy?: boolean;
+  globalSearch?: boolean;
   hideEmptySectionsInSearch?: boolean;
   width?: number;
 
@@ -267,7 +269,7 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
           this.props.triggerElement || (
             <SelectButton
               ref={this.selectButtonRef}
-              className="flex-full"
+              className={CS.flexFull}
               hasValue={selectedNames.length > 0}
               disabled={disabled}
               {...buttonProps}
@@ -286,7 +288,7 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
           )
         }
         onClose={composeEventHandlers(onClose, this.handleClose)}
-        triggerClasses={cx("flex", className)}
+        triggerClasses={cx(CS.flex, className)}
         isInitiallyOpen={isInitiallyOpen}
         disabled={disabled}
         verticalAttachments={["top", "bottom"]}
@@ -314,6 +316,7 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
           searchCaseInsensitive={searchCaseInsensitive}
           searchFuzzy={searchFuzzy}
           searchPlaceholder={searchPlaceholder}
+          globalSearch={this.props.globalSearch}
           hideEmptySectionsInSearch={hideEmptySectionsInSearch}
           data-testid={testId ? `${testId}-list` : null}
         />

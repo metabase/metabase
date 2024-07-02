@@ -1,5 +1,5 @@
 import { visitDashboard } from "./e2e-misc-helpers";
-import { menu, popover } from "./e2e-ui-elements-helpers";
+import { menu, popover, sidebar } from "./e2e-ui-elements-helpers";
 
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(selection, filterName) {
@@ -12,7 +12,7 @@ export function disconnectDashboardFilter(selection) {
 }
 
 export function getDashboardCards() {
-  return cy.get(".DashCard");
+  return cy.findAllByTestId("dashcard-container");
 }
 
 export function getDashboardCard(index = 0) {
@@ -20,7 +20,7 @@ export function getDashboardCard(index = 0) {
 }
 
 export function ensureDashboardCardHasText(text, index = 0) {
-  cy.get(".Card").eq(index).should("contain", text);
+  cy.findAllByTestId("dashcard").eq(index).should("contain", text);
 }
 
 function getDashboardApiUrl(dashId) {
@@ -83,12 +83,14 @@ export function showDashboardCardActions(index = 0) {
  * @returns {Cypress.Chainable<JQuery<HTMLElement>>}
  */
 export function findDashCardAction(dashcardElement, labelText) {
-  return dashcardElement.realHover().findByLabelText(labelText);
+  return dashcardElement
+    .realHover({ scrollBehavior: "bottom" })
+    .findByLabelText(labelText);
 }
 
 export function removeDashboardCard(index = 0) {
   getDashboardCard(index)
-    .realHover({ scrollBehavior: "bottom" })
+    .realHover()
     .findByTestId("dashboardcard-actions-panel")
     .should("be.visible")
     .icon("close")
@@ -124,18 +126,21 @@ export function checkFilterLabelAndValue(label, value) {
   cy.get("fieldset").contains(value);
 }
 
-export function setFilter(type, subType) {
+export function setFilter(type, subType, name) {
   cy.icon("filter").click();
 
   cy.findByText("What do you want to filter?");
 
-  popover().within(() => {
-    cy.findByText(type).click();
+  popover().findByText(type).click();
 
-    if (subType) {
-      cy.findByText(subType).click();
-    }
-  });
+  if (subType) {
+    sidebar().findByText("Filter operator").next().click();
+    popover().findByText(subType).click();
+  }
+
+  if (name) {
+    sidebar().findByLabelText("Label").clear().type(name);
+  }
 }
 
 export function getRequiredToggle() {
@@ -233,11 +238,14 @@ export function resizeDashboardCard({ card, x, y }) {
     const resizeHandle = cy.get(".react-resizable-handle");
     resizeHandle
       .trigger("mousedown", { button: 0 })
+      .wait(200)
       .trigger("mousemove", {
         clientX: x,
         clientY: y,
       })
-      .trigger("mouseup", { force: true });
+      .wait(200)
+      .trigger("mouseup", { force: true })
+      .wait(200);
   });
 }
 
@@ -261,8 +269,12 @@ export function dashboardSaveButton() {
   return cy.findByTestId("edit-bar").findByRole("button", { name: "Save" });
 }
 
+export function dashboardParameterSidebar() {
+  return cy.findByTestId("dashboard-parameter-sidebar");
+}
+
 export function dashboardParametersDoneButton() {
-  return cy.findByTestId("dashboard-parameter-sidebar").button("Done");
+  return dashboardParameterSidebar().button("Done");
 }
 
 /**

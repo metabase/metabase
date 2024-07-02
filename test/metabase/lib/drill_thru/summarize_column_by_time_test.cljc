@@ -20,6 +20,7 @@
       (fn [test-case _context {:keys [click column-type]}]
         (and (= click :header)
              (= column-type :number)
+             (not (:native? test-case))
              (zero? (:aggregations test-case))
              (zero? (:breakouts test-case))
              (some #(or (isa? (:effective-type %) :type/Date)
@@ -78,3 +79,4 @@
 ;; TODO: Bring the fingerprint-based unit selection logic from
 ;; https://github.com/metabase/metabase/blob/0624d8d0933f577cc70c03948f4b57f73fe13ada/frontend/src/metabase-lib/metadata/Field.ts#L397
 ;; into this drill. Currently it always chooses the default date unit of months.
+;; Tech Debt Issue: #39382

@@ -70,7 +70,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     // Default dashboard filter
     cy.location("search").should("eq", "?text=Bar");
 
-    cy.get(".Card").contains("Bar");
+    cy.findByTestId("dashcard").contains("Bar");
 
     cy.findByDisplayValue("Bar");
 
@@ -79,7 +79,9 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     cy.location("search").should("eq", "?text=");
 
     // SQL question defaults
-    cy.get(".Card").contains("There was a problem displaying this chart.");
+    cy.findByTestId("dashcard").contains(
+      "There was a problem displaying this chart.",
+    );
 
     // The empty filter widget
     cy.findByPlaceholderText("Text");
@@ -89,7 +91,9 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     // This part confirms that the issue metabase#13960 has been fixed
     cy.location("search").should("eq", "?text=");
 
-    cy.get(".Card").contains("There was a problem displaying this chart.");
+    cy.findByTestId("dashcard").contains(
+      "There was a problem displaying this chart.",
+    );
 
     // Let's make sure the default dashboard filter is respected upon a subsequent visit from the root
     cy.visit("/collection/root");
@@ -109,8 +113,8 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
 
     saveDashboard();
 
-    // The URL query params should include the parameter with an empty value
-    cy.location("search").should("eq", "?text=");
+    // The URL query params should include the last used parameter value
+    cy.location("search").should("eq", "?text=Bar");
   });
 });
 

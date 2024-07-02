@@ -26,7 +26,6 @@ import {
   getUserIsAdmin,
   canManageSubscriptions,
 } from "metabase/selectors/user";
-import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 
 import * as actions from "../actions";
 import View from "../components/view/View";
@@ -83,7 +82,6 @@ import {
   getCardAutocompleteResultsFn,
   isResultsMetadataDirty,
   getShouldShowUnsavedChangesWarning,
-  getRequiredTemplateTags,
   getEmbeddedParameterVisibility,
 } from "../selectors";
 import { isNavigationAllowed } from "../utils";
@@ -166,11 +164,9 @@ const mapStateToProps = (state, props) => {
     documentTitle: getDocumentTitle(state),
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
-    loadingMessage: getWhiteLabeledLoadingMessage(state),
 
     reportTimezone: getSetting(state, "report-timezone-long"),
 
-    requiredTemplateTags: getRequiredTemplateTags(state),
     getEmbeddedParameterVisibility: slug =>
       getEmbeddedParameterVisibility(state, slug),
   };
@@ -265,7 +261,8 @@ function QueryBuilder(props) {
 
   const handleCreate = useCallback(
     async newQuestion => {
-      const shouldBePinned = newQuestion.type() === "model";
+      const shouldBePinned =
+        newQuestion.type() === "model" || newQuestion.type() === "metric";
       const createdQuestion = await apiCreateQuestion(
         newQuestion.setPinned(shouldBePinned),
       );

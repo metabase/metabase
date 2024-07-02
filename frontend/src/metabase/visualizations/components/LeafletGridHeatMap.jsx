@@ -1,10 +1,10 @@
-import d3 from "d3";
+import * as d3 from "d3";
 import L from "leaflet";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { rangeForValue } from "metabase-lib/queries/utils/range-for-value";
-import { isNumeric, isMetric } from "metabase-lib/types/utils/isa";
+import { rangeForValue } from "metabase-lib/v1/queries/utils/range-for-value";
+import { isNumeric, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { computeNumericDataInverval } from "../lib/numeric";
 
@@ -55,11 +55,12 @@ export default class LeafletGridHeatMap extends LeafletMap {
 
       const { latitudeIndex, longitudeIndex } = this._getLatLonIndexes();
 
-      const colorScale = d3.scale
-        .linear()
-        .domain([min, max])
-        .interpolate(d3.interpolateHcl)
-        .range([d3.rgb(color("success")), d3.rgb(color("error"))]);
+      const successColor = d3.rgb(color("success"));
+      const errorColor = d3.rgb(color("error"));
+
+      const colorScale = d3
+        .scaleLinear([min, max], [successColor, errorColor])
+        .interpolate(d3.interpolateHcl);
 
       const gridSquares = gridLayer.getLayers();
       const totalSquares = Math.max(points.length, gridSquares.length);

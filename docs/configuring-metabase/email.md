@@ -8,6 +8,12 @@ redirect_from:
 
 Once you connect your database to Metabase, you'll want to configure an email account to send system notifications to your organization's users. Metabase uses email to reset passwords, onboard new users, and notify you when something happens.
 
+To edit email settings:
+
+1. Click on the **gear** icon in the upper right.
+2. Select **Admin Settings**.
+3. From the default **Settings** tab, click on **Email** in the left sidebar.
+
 ## Metabase Cloud
 
 Metabase Cloud manages an email server for you, so you don't need to set up email (and you won't see SMTP settings in your Admin console).
@@ -104,7 +110,7 @@ You can also set this property using the environment variable [`MB_SUBSCRIPTION_
 
 ## Suggest recipients on dashboard subscriptions and alerts
 
-{% include plans-blockquote.html feature="Approved domains for notifications" %}
+{% include plans-blockquote.html feature="Configuring suggested recipients" %}
 
 Control which recipients people can see when they create a new [dashboard subscription](../dashboards/subscriptions.md) or [alert](../questions/sharing/alerts.md). For example, you may want to restrict people to viewing potential recipients that belong to the same [groups](../people-and-groups/managing.md#groups) they are a member of.
 
@@ -122,4 +128,4 @@ People who are sandboxed won't see suggestions.
 - [Dashboard subscriptions](../dashboards/subscriptions.md)
 - [Notification permissions](../permissions/notifications.md)
 - [Setting up Slack](./slack.md)
-- [Auditing Metabase](../usage-and-performance-tools/audit.md)
+- [Usage Analytics](../usage-and-performance-tools/usage-analytics.md)

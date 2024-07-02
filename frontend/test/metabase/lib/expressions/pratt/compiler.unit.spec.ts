@@ -1,6 +1,6 @@
 import { compare, compile } from "./common";
 
-describe("metabase-lib/expressions/compiler", () => {
+describe("metabase-lib/v1/expressions/compiler", () => {
   function expr(
     source: string,
     opts: { throwOnError?: boolean; resolverPass?: boolean } = {},

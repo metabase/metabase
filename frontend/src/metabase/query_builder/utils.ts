@@ -4,7 +4,7 @@ import querystring from "querystring";
 import { serializeCardForUrl } from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
@@ -83,13 +83,12 @@ export const isNavigationAllowed = ({
   const { hash, pathname } = destination;
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
-  const isRunningModel = pathname === "/model" && hash.length > 0;
-
   const validSlugs = [question.id(), question.slug()]
     .filter(Boolean)
     .map(String);
 
   if (question.type() === "model") {
+    const isRunningModel = pathname === "/model" && hash.length > 0;
     const allowedPathnames = isNewQuestion
       ? ["/model/query", "/model/metadata"]
       : validSlugs.flatMap(slug => [
@@ -100,6 +99,20 @@ export const isNavigationAllowed = ({
         ]);
 
     return isRunningModel || allowedPathnames.includes(pathname);
+  }
+
+  if (question.type() === "metric") {
+    const isRunningMetric = pathname === "/metric" && hash.length > 0;
+    const allowedPathnames = isNewQuestion
+      ? ["/metric/query", "/metric/metadata"]
+      : validSlugs.flatMap(slug => [
+          `/metric/${slug}`,
+          `/metric/${slug}/query`,
+          `/metric/${slug}/metadata`,
+          `/metric/${slug}/notebook`,
+        ]);
+
+    return isRunningMetric || allowedPathnames.includes(pathname);
   }
 
   if (isNative) {
@@ -116,9 +129,8 @@ export const isNavigationAllowed = ({
   /**
    * New structured questions will be handled in
    * https://github.com/metabase/metabase/issues/34686
-   *
    */
-  if (!isNewQuestion && !isNative) {
+  if (!isNewQuestion) {
     const isRunningQuestion =
       ["/question", "/question/notebook"].includes(pathname) && hash.length > 0;
     const allowedPathnames = validSlugs.flatMap(slug => [
@@ -126,9 +138,7 @@ export const isNavigationAllowed = ({
       `/question/${slug}/notebook`,
     ]);
 
-    return (
-      isRunningModel || isRunningQuestion || allowedPathnames.includes(pathname)
-    );
+    return isRunningQuestion || allowedPathnames.includes(pathname);
   }
 
   return true;

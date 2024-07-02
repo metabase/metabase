@@ -2,16 +2,19 @@
   "A Metric is a saved MBQL query stage snippet with EXACTLY ONE `:aggregation` and optionally a `:filter` (boolean)
   expression. Can be passed into the `:aggregation`s list."
   (:require
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
@@ -20,20 +23,16 @@
     (lib.metadata/metric query metric-id)))
 
 (mu/defn ^:private metric-definition :- [:maybe ::lib.schema/stage.mbql]
-  [{:keys [definition], :as _metric-metadata} :- lib.metadata/MetricMetadata]
-  (when definition
-    (if (:mbql/type definition)
-      definition
-      ;; legacy; needs conversion
-      (->
-        ;; database-id cannot be nil, but gets thrown out
-        (lib.convert/legacy-query-from-inner-query #?(:clj Integer/MAX_VALUE :cljs js/Number.MAX_SAFE_INTEGER) definition)
-        mbql.normalize/normalize
-        lib.convert/->pMBQL
-        (lib.util/query-stage -1)))))
+  [{:keys [dataset-query], :as _metric-metadata} :- ::lib.schema.metadata/metric]
+  (when dataset-query
+    (let [normalized-definition (cond-> dataset-query
+                                  (not (contains? dataset-query :lib/type))
+                                  ;; legacy; needs conversion
+                                  (-> mbql.normalize/normalize lib.convert/->pMBQL))]
+      (lib.util/query-stage normalized-definition -1))))
 
 (defmethod lib.ref/ref-method :metadata/metric
-  [{:keys [id], :as metric-metadata}]
+  [{:keys [id ::lib.join/join-alias], :as metric-metadata}]
   (let [effective-type (or (:effective-type metric-metadata)
                            (:base-type metric-metadata)
                            (when-let [aggregation (first (:aggregation (metric-definition metric-metadata)))]
@@ -41,6 +40,7 @@
                                (when (isa? ag-effective-type :type/*)
                                  ag-effective-type))))
         options (cond-> {:lib/uuid (str (random-uuid))}
+                  join-alias (assoc :join-alias join-alias)
                   effective-type (assoc :effective-type effective-type))]
     [:metric options id]))
 
@@ -91,26 +91,55 @@
         (lib.metadata.calculation/column-name query stage-number metric-metadata))
       "metric"))
 
-(mu/defn available-metrics :- [:maybe [:sequential {:min 1} lib.metadata/MetricMetadata]]
-  "Get a list of Metrics that you may consider using as aggregations for a query. Only Metrics that have the same
-  `table-id` as the `source-table` for this query will be suggested."
+(defn- source-metric
+  "Returns the `:metadata/metric` for the given stage, or nil if this stage is not based on a metric."
+  [metadata-providerable stage]
+  (some->> stage :source-card (lib.metadata/metric metadata-providerable)))
+
+(mu/defn metric-based? :- :boolean
+  "Returns true if this MBQL `query` is based on metrics.
+
+  This is always false for stages other than 0, but accepting the parameter means consumers of the API don't need to
+  know about that.
+
+  Being \"based on metrics\" means the source is a metric."
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (and (zero? (lib.util/canonical-stage-index query stage-number))
+       (not (lib.query/native? query))
+       (source-metric query (lib.util/query-stage query stage-number))))
+
+(mu/defn available-metrics :- [:maybe [:sequential {:min 1} ::lib.schema.metadata/metric]]
+  "Get a list of Metrics that you may consider using as aggregations for a query."
   ([query]
    (available-metrics query -1))
   ([query :- ::lib.schema/query
     stage-number :- :int]
-   (when (zero? (lib.util/canonical-stage-index query stage-number))
-     (when-let [source-table-id (lib.util/source-table-id query)]
-       (let [metrics (lib.metadata.protocols/metrics (lib.metadata/->metadata-provider query) source-table-id)
-             metric-aggregations (into {}
-                                       (keep-indexed (fn [index aggregation-clause]
-                                                       (when (lib.util/clause-of-type? aggregation-clause :metric)
-                                                         [(get aggregation-clause 2) index])))
-                                       (lib.aggregation/aggregations query stage-number))]
-         (cond
-           (empty? metrics)             nil
-           (empty? metric-aggregations) (vec metrics)
-           :else                        (mapv (fn [metric-metadata]
-                                                (let [aggregation-pos (-> metric-metadata :id metric-aggregations)]
-                                                  (cond-> metric-metadata
-                                                    aggregation-pos (assoc :aggregation-position aggregation-pos))))
-                                              metrics)))))))
+   (let [first-stage? (zero? (lib.util/canonical-stage-index query stage-number))
+         metric-aggregations (into {}
+                                   (keep-indexed (fn [index aggregation-clause]
+                                                   (when (lib.util/clause-of-type? aggregation-clause :metric)
+                                                     [[(get aggregation-clause 2)
+                                                       (:join-alias (lib.options/options aggregation-clause))]
+                                                      index])))
+                                   (lib.aggregation/aggregations query stage-number))
+         s-metric (source-metric query (lib.util/query-stage query stage-number))
+         source-table (lib.util/source-table-id query)
+         maybe-add-aggregation-pos (fn [metric-metadata]
+                                     (let [aggregation-pos (-> metric-metadata
+                                                               ((juxt :id ::lib.join/join-alias))
+                                                               metric-aggregations)]
+                                       (cond-> metric-metadata
+                                         aggregation-pos (assoc :aggregation-position aggregation-pos))))]
+     (cond
+       (and first-stage? s-metric)
+       [(maybe-add-aggregation-pos s-metric)]
+
+       (and first-stage? source-table)
+       (let [metrics (lib.metadata/metadatas-for-table query :metadata/metric source-table)]
+         (not-empty
+          (into []
+                (comp (filter (fn [metric-card]
+                                (= 1 (lib.query/stage-count (lib.query/query query (:dataset-query metric-card))))))
+                      (map maybe-add-aggregation-pos))
+                metrics)))))))

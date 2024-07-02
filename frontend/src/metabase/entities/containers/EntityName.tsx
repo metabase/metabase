@@ -1,4 +1,4 @@
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 import EntityObjectLoader from "./EntityObjectLoader";
 
@@ -19,9 +19,9 @@ export const EntityName = ({
   entityId,
   property = "name",
 }: EntityNameProps) => {
-  // This is a special case for questions, because we're returning `metabase-lib/Question`
+  // This is a special case for questions, because we're returning `metabase-lib/v1/Question`
   // from question entity's `getObject` in https://github.com/metabase/metabase/pull/30729.
-  // If we wrap it in `EntityWrapper`, we'd lose all properties from `metabase-lib/Question`.
+  // If we wrap it in `EntityWrapper`, we'd lose all properties from `metabase-lib/v1/Question`.
   if (entityType === "questions") {
     return (
       <EntityObjectLoader

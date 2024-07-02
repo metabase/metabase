@@ -1,25 +1,25 @@
 /* eslint-disable no-console */
+import type { GithubProps, Issue, ReleaseProps } from "./types";
 import {
-  getOSSVersion,
-  isLatestVersion,
+  getMilestoneName,
   getNextVersions,
+  isLatestVersion,
   isValidVersionString,
 } from "./version-helpers";
 
-import type { ReleaseProps, Issue } from "./types";
-
-const getMilestones = async ({
+export const getMilestones = async ({
   github,
   owner,
   repo,
-}: Omit<ReleaseProps, 'version'>) => {
-  const milestones = await github.rest.issues.listMilestones({
+  state = "open",
+}: GithubProps & { state?: 'open' | 'closed' }) => {
+  const milestones = await github.paginate(github.rest.issues.listMilestones, {
     owner,
     repo,
-    state: "open",
+    state,
   });
 
-  return milestones.data;
+  return milestones;
 };
 
 export const findMilestone = async ({
@@ -27,14 +27,10 @@ export const findMilestone = async ({
   github,
   owner,
   repo,
-}: ReleaseProps) => {
-  const milestones = await getMilestones({ github, owner, repo });
-
-  // our milestones don't have the v prefix or a .0 suffix
-  const expectedMilestoneName = getOSSVersion(version)
-    .replace(/^v/, "")
-    .replace(/-rc\d+$/i, "") // RC versions use the major version milestone
-    .replace(/\.0$/, '');
+  state,
+}: ReleaseProps & { state?: 'open' | 'closed'}) => {
+  const milestones = await getMilestones({ github, owner, repo, state });
+  const expectedMilestoneName = getMilestoneName(version);
 
   return milestones.find(
     (milestone: { title: string; number: number }) =>
@@ -69,8 +65,8 @@ export const openNextMilestones = async ({
   repo,
   version,
 }: ReleaseProps) => {
-  const nextMilestones = getNextVersions(version).map(version =>
-    getOSSVersion(version).replace(/^v/, ""),
+  const nextMilestones = getNextVersions(version).map(versionString =>
+    getMilestoneName(versionString),
   );
 
   await Promise.all(
@@ -90,8 +86,9 @@ export const getMilestoneIssues = async ({
   owner,
   repo,
   state = "closed",
-}: ReleaseProps & { state?: "closed" | "open" }): Promise<Issue[]> => {
-  const milestone = await findMilestone({ version, github, owner, repo });
+  milestoneStatus,
+}: ReleaseProps & { state?: "closed" | "open"; milestoneStatus?: 'open' | 'closed' }): Promise<Issue[]> => {
+  const milestone = await findMilestone({ version, github, owner, repo, state: milestoneStatus });
 
   if (!milestone) {
     return [];

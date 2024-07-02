@@ -48,8 +48,8 @@ describe("FormRadio", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormRadio onSubmit={onSubmit} />);
-    userEvent.click(screen.getByRole("radio", { name: "Line" }));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByRole("radio", { name: "Line" }));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       const values = { value: "line" };
@@ -61,8 +61,8 @@ describe("FormRadio", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormRadio initialValue="line" onSubmit={onSubmit} />);
-    userEvent.click(screen.getByRole("radio", { name: "Bar" }));
-    userEvent.tab();
+    await userEvent.click(screen.getByRole("radio", { name: "Bar" }));
+    await userEvent.tab();
 
     expect(await screen.findByText(": error")).toBeInTheDocument();
   });

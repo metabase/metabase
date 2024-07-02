@@ -34,11 +34,16 @@ const setupEnterprise = (opts?: SetupOpts) => {
 };
 
 const sampleToken = "a".repeat(64);
+const airgapToken = "airgap_toucan";
 
 describe("setup (EE, no token)", () => {
+  beforeEach(() => {
+    fetchMock.reset();
+  });
+
   it("default step order should be correct, with the commercial step in place", async () => {
     await setupEnterprise();
-    skipWelcomeScreen();
+    await skipWelcomeScreen();
     expectSectionToHaveLabel("What's your preferred language?", "1");
     expectSectionToHaveLabel("What should we call you?", "2");
     expectSectionToHaveLabel("What will you use Metabase for?", "3");
@@ -52,11 +57,11 @@ describe("setup (EE, no token)", () => {
   describe("License activation step", () => {
     async function setupForLicenseStep() {
       await setupEnterprise();
-      skipWelcomeScreen();
-      skipLanguageStep();
+      await skipWelcomeScreen();
+      await skipLanguageStep();
       await submitUserInfoStep();
-      selectUsageReason("embedding"); // to skip the db connection step
-      clickNextStep();
+      await selectUsageReason("embedding"); // to skip the db connection step
+      await clickNextStep();
 
       expect(
         await screen.findByText(
@@ -67,120 +72,52 @@ describe("setup (EE, no token)", () => {
 
     it("should display an error in case of invalid token", async () => {
       await setupForLicenseStep();
-
       setupForTokenCheckEndpoint({ valid: false });
 
-      userEvent.paste(
-        screen.getByRole("textbox", { name: "Token" }),
-        sampleToken,
-      );
+      await inputToken(sampleToken);
+      await submit();
 
-      screen.getByRole("button", { name: "Activate" }).click();
-
-      expect(
-        await screen.findByText(
-          "This token doesn’t seem to be valid. Double-check it, then contact support if you think it should be working",
-        ),
-      ).toBeInTheDocument();
+      expect(await errMsg()).toBeInTheDocument();
     });
 
-    it("should not send the token if it's invalid", async () => {
+    it("should have the Activate button disabled when the token is not 64 characters long (unless the token begins with 'airgap_')", async () => {
       await setupForLicenseStep();
 
-      setupForTokenCheckEndpoint({ valid: false });
+      await inputToken("a".repeat(63));
+      expect(await submitBtn()).toBeDisabled();
 
-      userEvent.paste(
-        screen.getByRole("textbox", { name: "Token" }),
-        sampleToken,
-      );
+      await userEvent.type(input(), "a"); //64 characters
+      expect(await submitBtn()).toBeEnabled();
 
-      screen.getByRole("button", { name: "Activate" }).click();
+      await userEvent.type(input(), "a"); //65 characters
+      expect(await submitBtn()).toBeDisabled();
 
-      await screen.findByText(
-        "This token doesn’t seem to be valid. Double-check it, then contact support if you think it should be working",
-      );
-
-      userEvent.type(
-        screen.getByRole("textbox", { name: "Token" }),
-        "{backspace}b",
-      );
-
-      expect(
-        screen.queryByText("This token doesn’t seem to be valid.", {
-          exact: false,
-        }),
-      ).not.toBeInTheDocument();
-
-      clickOnSkip();
-
-      expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(false);
-
-      screen.getByRole("button", { name: "Finish" }).click();
-
-      const setupCall = fetchMock.lastCall(`path:/api/setup`);
-      expect(await setupCall?.request?.json()).not.toHaveProperty(
-        "license_token",
-      );
-    });
-
-    it("should have the Activate button disabled when the token is not 64 characters long", async () => {
-      await setupForLicenseStep();
-
-      userEvent.paste(
-        screen.getByRole("textbox", { name: "Token" }),
-        "a".repeat(63),
-      );
-
-      expect(screen.getByRole("button", { name: "Activate" })).toBeDisabled();
-
-      userEvent.type(screen.getByRole("textbox", { name: "Token" }), "a"); //64 characters
-
-      expect(screen.getByRole("button", { name: "Activate" })).toBeEnabled();
-
-      userEvent.type(screen.getByRole("textbox", { name: "Token" }), "a"); //65 characters
-
-      expect(screen.getByRole("button", { name: "Activate" })).toBeDisabled();
+      await userEvent.clear(input());
+      await userEvent.type(input(), "airgap_");
+      expect(await submitBtn()).toBeEnabled();
     });
 
     it("should ignore whitespace around the token", async () => {
       await setupForLicenseStep();
-
-      const token = "a".repeat(64);
-
-      userEvent.paste(
-        screen.getByRole("textbox", { name: "Token" }),
-        `    ${token}   `,
-      );
-
-      expect(screen.getByRole("button", { name: "Activate" })).toBeEnabled();
-
       setupForTokenCheckEndpoint({ valid: true });
 
-      screen.getByRole("button", { name: "Activate" }).click();
+      await inputToken(`    ${sampleToken}   `);
+      expect(input()).toHaveValue(sampleToken);
+      expect(await submitBtn()).toBeEnabled();
+      const submitCall = await submit();
 
-      const url = fetchMock.lastCall(`path:/api/setup/token-check`)?.request
-        ?.url;
-      const sentToken = url?.split("token=")[1];
-      expect(sentToken).toMatch(token);
+      expect(await submitCall?.request?.json()).toEqual({
+        value: sampleToken,
+      });
     });
 
-    it("should go to the next step when activating a valid token", async () => {
+    it("should go to the next step when activating a typical, valid token", async () => {
       await setupForLicenseStep();
 
       setupForTokenCheckEndpoint({ valid: true });
 
-      userEvent.paste(
-        screen.getByRole("textbox", { name: "Token" }),
-        sampleToken,
-      );
-
-      screen.getByRole("button", { name: "Activate" }).click();
-
-      await waitFor(() => {
-        expect(
-          screen.getByRole("button", { name: "Activate" }),
-        ).not.toHaveProperty("data-loading", true);
-      });
+      await inputToken(sampleToken);
+      await submit();
 
       expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(true);
 
@@ -188,18 +125,28 @@ describe("setup (EE, no token)", () => {
         "aria-current",
         "step",
       );
+    });
 
-      screen.getByText("Commercial license active").click();
+    it("should go to the next step when activating an airgap-specific token", async () => {
+      await setupForLicenseStep();
 
-      expect(screen.getByRole("textbox", { name: "Token" })).toHaveValue(
-        sampleToken,
+      setupForTokenCheckEndpoint({ valid: true });
+
+      await inputToken(airgapToken);
+      await submit();
+
+      expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(true);
+
+      expect(getSection("Usage data preferences")).toHaveAttribute(
+        "aria-current",
+        "step",
       );
     });
 
     it("should be possible to skip the step without a token", async () => {
       await setupForLicenseStep();
 
-      clickOnSkip();
+      await clickOnSkip();
 
       expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(false);
 
@@ -209,27 +156,36 @@ describe("setup (EE, no token)", () => {
       );
     });
 
-    it("should pass the token to the setup endpoint", async () => {
+    it("should pass the token to the settings endpoint", async () => {
       await setupForLicenseStep();
-
       setupForTokenCheckEndpoint({ valid: true });
 
-      userEvent.paste(
-        screen.getByRole("textbox", { name: "Token" }),
-        sampleToken,
-      );
+      await inputToken(sampleToken);
+      const submitCall = await submit();
 
-      screen.getByRole("button", { name: "Activate" }).click();
-
-      (await screen.findByRole("button", { name: "Finish" })).click();
-
-      const setupCall = fetchMock.lastCall(`path:/api/setup`);
-      expect(await setupCall?.request?.json()).toMatchObject({
-        license_token: sampleToken,
+      expect(await submitCall?.request?.json()).toEqual({
+        value: sampleToken,
       });
     });
   });
 });
 
-const clickOnSkip = () =>
-  userEvent.click(screen.getByRole("button", { name: "Skip" }));
+const input = () => screen.getByRole("textbox", { name: "Token" });
+
+const inputToken = async (token: string) =>
+  await userEvent.type(input(), token);
+
+const errMsg = () => screen.findByText(/This token doesn’t seem to be valid/);
+
+const submitBtn = () => screen.findByRole("button", { name: "Activate" });
+
+const submit = async () => {
+  (await submitBtn()).click();
+
+  const settingEndpoint = "path:/api/setting/premium-embedding-token";
+  await waitFor(() => expect(fetchMock.done(settingEndpoint)).toBe(true));
+  return fetchMock.lastCall(settingEndpoint);
+};
+
+const clickOnSkip = async () =>
+  await userEvent.click(screen.getByRole("button", { name: "Skip" }));

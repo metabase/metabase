@@ -1,14 +1,20 @@
 import type { ReactNode } from "react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input/Input";
 import { isNotNull } from "metabase/lib/types";
-import type * as Lib from "metabase-lib";
-import { isExpression } from "metabase-lib/expressions";
+import { Button } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import { isExpression } from "metabase-lib/v1/expressions";
 import type { Expression } from "metabase-types/api";
 
+import {
+  trackColumnCombineViaShortcut,
+  trackColumnExtractViaShortcut,
+} from "../../analytics";
+
+import { CombineColumns, hasCombinations } from "./CombineColumns";
 import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";
 import {
   ActionButtonsWrapper,
@@ -19,7 +25,9 @@ import {
   Footer,
   RemoveLink,
 } from "./ExpressionWidget.styled";
+import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
+import { ExtractColumn, hasExtractions } from "./ExtractColumn";
 
 export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   query: Lib.Query;
@@ -38,7 +46,7 @@ export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   startRule?: string;
   reportTimezone?: string;
   header?: ReactNode;
-  expressionPosition?: number;
+  expressionIndex?: number;
 
   onChangeExpression?: (name: string, expression: Expression) => void;
   onChangeClause?: (
@@ -62,7 +70,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     startRule,
     reportTimezone,
     header,
-    expressionPosition,
+    expressionIndex,
     onChangeExpression,
     onChangeClause,
     onRemoveExpression,
@@ -77,8 +85,9 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     initialClause ?? null,
   );
   const [error, setError] = useState<string | null>(null);
+  const [isCombiningColumns, setIsCombiningColumns] = useState(false);
 
-  const helpTextTargetRef = useRef(null);
+  const [isExtractingColumn, setIsExtractingColumn] = useState(false);
 
   const isValidName = withName ? name.trim().length > 0 : true;
   const isValidExpression = isNotNull(expression) && isExpression(expression);
@@ -119,37 +128,114 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     setError(null);
   };
 
+  if (isCombiningColumns) {
+    const handleSubmit = (name: string, clause: Lib.ExpressionClause) => {
+      trackColumnCombineViaShortcut(query);
+      const expression = Lib.legacyExpressionForExpressionClause(
+        query,
+        stageIndex,
+        clause,
+      );
+      handleExpressionChange(expression, clause);
+      setName(name);
+      setIsCombiningColumns(false);
+    };
+
+    const handleCancel = () => {
+      setIsCombiningColumns(false);
+    };
+
+    return (
+      <Container data-testid="expression-editor">
+        <ExpressionWidgetHeader
+          title={t`Select columns to combine`}
+          onBack={handleCancel}
+        />
+        <CombineColumns
+          query={query}
+          stageIndex={stageIndex}
+          onSubmit={handleSubmit}
+        />
+      </Container>
+    );
+  }
+
+  if (isExtractingColumn) {
+    const handleSubmit = (
+      clause: Lib.ExpressionClause,
+      name: string,
+      extraction: Lib.ColumnExtraction,
+    ) => {
+      trackColumnExtractViaShortcut(query, stageIndex, extraction);
+      const expression = Lib.legacyExpressionForExpressionClause(
+        query,
+        stageIndex,
+        clause,
+      );
+      handleExpressionChange(expression, clause);
+      setName(name);
+      setIsExtractingColumn(false);
+    };
+
+    return (
+      <Container data-testid="expression-editor">
+        <ExtractColumn
+          query={query}
+          stageIndex={stageIndex}
+          onCancel={() => setIsExtractingColumn(false)}
+          onSubmit={handleSubmit}
+        />
+      </Container>
+    );
+  }
+
   return (
-    <Container>
+    <Container data-testid="expression-editor">
       {header}
       <ExpressionFieldWrapper>
         <FieldLabel htmlFor="expression-content">
           {t`Expression`}
           <ExpressionWidgetInfo />
         </FieldLabel>
-        <div ref={helpTextTargetRef}>
-          <ExpressionEditorTextfield
-            helpTextTarget={helpTextTargetRef.current}
-            expression={expression}
-            expressionPosition={expressionPosition}
-            clause={clause}
-            startRule={startRule}
-            name={name}
-            query={query}
-            stageIndex={stageIndex}
-            reportTimezone={reportTimezone}
-            textAreaId="expression-content"
-            onChange={handleExpressionChange}
-            onCommit={handleCommit}
-            onError={(errorMessage: string) => setError(errorMessage)}
-          />
-        </div>
+        <ExpressionEditorTextfield
+          expression={expression}
+          expressionIndex={expressionIndex}
+          clause={clause}
+          startRule={startRule}
+          name={name}
+          query={query}
+          stageIndex={stageIndex}
+          reportTimezone={reportTimezone}
+          textAreaId="expression-content"
+          onChange={handleExpressionChange}
+          onCommit={handleCommit}
+          onError={(errorMessage: string) => setError(errorMessage)}
+          shortcuts={[
+            !startRule &&
+              hasCombinations(query, stageIndex) && {
+                shortcut: true,
+                name: t`Combine columns`,
+                action: () => setIsCombiningColumns(true),
+                group: "shortcuts",
+                icon: "combine",
+              },
+            !startRule &&
+              hasExtractions(query, stageIndex) && {
+                shortcut: true,
+                name: t`Extract columns`,
+                icon: "arrow_split",
+                group: "shortcuts",
+                action: () => setIsExtractingColumn(true),
+              },
+          ].filter(Boolean)}
+        />
       </ExpressionFieldWrapper>
       {withName && (
         <FieldWrapper>
           <FieldLabel htmlFor="expression-name">{t`Name`}</FieldLabel>
           <Input
             id="expression-name"
+            data-testid="expression-name"
             type="text"
             value={name}
             placeholder={t`Something nice and descriptive`}
@@ -168,7 +254,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
         <ActionButtonsWrapper>
           {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
           <Button
-            primary={isValid}
+            variant={isValid ? "filled" : "default"}
             disabled={!isValid}
             onClick={() => handleCommit(expression, clause)}
           >

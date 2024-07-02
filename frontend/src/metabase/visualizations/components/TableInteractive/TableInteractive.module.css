@@ -1,148 +1,108 @@
-:root {
-  --table-border-radius: 6px;
-}
-
-:global(.TableInteractive) {
+.TableInteractive {
   color: #4f575d;
   overflow: hidden;
 }
 
-:global(.TableInteractive-headerCellData .cellData) {
+.TableInteractiveHeaderCellData .cellData {
   font-weight: 900;
-  font-size: 10px;
   border: 1px solid transparent;
   padding: 0.25em 0.65em;
   border-radius: 6px;
   min-width: 35px;
-  color: var(--color-brand);
 }
 
-:global(.TableInteractive-headerCellData .cellData:hover) {
+.TableInteractiveHeaderCellData .cellData:hover {
   border: 1px solid transparent;
 }
 
-:global(.TableInteractive-headerCellData .Icon-chevrondown),
-:global(.TableInteractive-headerCellData .Icon-chevronup) {
+.TableInteractiveHeaderCellData :global(.Icon-chevrondown),
+.TableInteractiveHeaderCellData :global(.Icon-chevronup) {
   opacity: 0.5;
 }
 
-:global(.TableInteractive-headerCellData--sorted .Icon-chevrondown),
-:global(.TableInteractive-headerCellData--sorted .Icon-chevronup) {
-  opacity: 1;
-  transition: opacity 0.3s linear;
-}
-
-:global(.TableInteractive-header) {
+.TableInteractiveHeader {
   box-sizing: border-box;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--mb-color-border);
 }
 
-:global(.TableInteractive .TableInteractive-cellWrapper) {
+.TableInteractive .TableInteractiveCellWrapper {
   overflow: hidden;
   display: flex;
   align-items: center;
   border-top: 1px solid transparent;
   border-left: 1px solid transparent;
   border-right: 1px solid transparent;
-  border-bottom: 1px solid color-mod(var(--color-border) alpha(-70%));
+  border-bottom: 1px solid var(--mb-color-border-alpha-30);
 }
 
-:global(.TableInteractive .TableInteractive-cellWrapper--active) {
-  z-index: 1;
-}
-
-:global(.TableInteractive .TableInteractive-header),
-:global(.TableInteractive
-    .TableInteractive-header
-    .TableInteractive-cellWrapper),
-:global(.TableInteractive
-    .TableInteractive-header
-    .TableInteractive-cellWrapper:hover) {
-  background-color: var(--color-bg-white);
+.TableInteractive .TableInteractiveHeader,
+.TableInteractive .TableInteractiveHeader .TableInteractiveCellWrapper,
+.TableInteractive .TableInteractiveHeader .TableInteractiveCellWrapper:hover {
+  background-color: var(--mb-color-bg-white);
   background-image: none;
 }
 
-:global(.TableInteractive .TableInteractive-header),
-:global(.TableInteractive
-    .TableInteractive-header
-    .TableInteractive-cellWrapper) {
-  background-color: var(--color-bg-white);
+.TableInteractive .TableInteractiveHeader,
+.TableInteractive .TableInteractiveHeader .TableInteractiveCellWrapper {
+  background-color: var(--mb-color-bg-white);
 }
 
 /* cell overflow ellipsis */
-:global(.TableInteractive .cellData) {
+.TableInteractive .cellData {
   margin: 0 0.75em;
   display: block;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow-x: hidden;
   font-weight: 700;
-  font-size: 12.5px;
 }
 
 /* pivot */
-:global(.TableInteractive.TableInteractive--pivot
-    .TableInteractive-cellWrapper--firstColumn) {
-  border-right: 1px solid var(--color-border);
+.TableInteractive.TableInteractivePivot
+  .TableInteractiveCellWrapperFirstColumn {
+  border-right: 1px solid var(--mb-color-border);
 }
 
-:global(.PagingButtons) {
-  border: 1px solid var(--color-border);
-}
-
-:global(.TableInteractive
-    .TableInteractive-header
-    .TableInteractive-cellWrapper.tether-enabled
-    .cellData) {
+.TableInteractive
+  .TableInteractiveHeader
+  .TableInteractiveCellWrapper:global(.tether-enabled)
+  .cellData {
   background-color: transparent;
   color: white !important;
 }
 
-:global(.TableInteractive-cellWrapper:hover) {
+.TableInteractiveCellWrapper:hover {
   background-color: transparent;
 }
 
-:global(.Table-ID .cellData) {
+.TableID .cellData {
   border: 1px solid transparent;
-  background-color: transparent;
   padding: 0.25em 0.65em;
   border-radius: 99px;
   min-width: 35px;
   text-align: center;
-  color: var(--color-brand);
 }
 
-:global(.TableInteractive-ID.TableInteractive-cellWrapper:hover),
-:global(.TableInteractive-ID.TableInteractive-cellWrapper.tether-enabled) {
-  background-color: transparent;
+.TableInteractiveHeaderCellDataSorted :global(.Icon-chevrondown),
+.TableInteractiveHeaderCellDataSorted :global(.Icon-chevronup) {
+  opacity: 1;
+  transition: opacity 0.3s linear;
 }
 
-:global(.TableInteractive-ID.TableInteractive-cellWrapper:hover .cellData),
-:global(.TableInteractive-ID.TableInteractive-cellWrapper.tether-enabled
-    .cellData) {
-  background-color: var(--color-brand);
-  color: white;
-}
-
-:global(.TableInteractive-headerCellData--sorted) {
-  color: var(--color-brand);
-}
-
-:global(.TableInteractive-cellWrapper--firstColumn.padLeft) {
+.TableInteractiveCellWrapperFirstColumn.padLeft {
   padding-left: 1.5em;
 }
 
-:global(.TableInteractive-gutter) {
-  background-color: var(--color-bg-white);
+.shortcutsWrapper {
+  position: absolute;
+  z-index: 50;
+  top: 0;
+  background: var(--mb-color-bg-white);
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-:global(.TableInteractive-detailButton) {
-  color: var(--color-brand);
-  transition: opacity 0.2s ease-in-out;
-  margin: 0 4px;
-  opacity: 0;
-}
-
-:global(.show .TableInteractive-detailButton) {
-  opacity: 1;
+.isOverflowing {
+  border-left: 1px solid var(--mb-color-border);
 }

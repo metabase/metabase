@@ -3,7 +3,9 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { DATE_MBQL_FILTER_MAPPING } from "metabase-lib/parameters/constants";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
+import { DATE_MBQL_FILTER_MAPPING } from "metabase-lib/v1/parameters/constants";
 
 type Shortcut = {
   name: string;
@@ -26,8 +28,12 @@ const SHORTCUTS: Shortcut[] = [
     operator: ["=", "<", ">"],
     values: [["relative-datetime", -1, "day"]],
   },
-  { name: t`Past 7 days`, operator: "time-interval", values: [-7, "day"] },
-  { name: t`Past 30 days`, operator: "time-interval", values: [-30, "day"] },
+  { name: t`Previous 7 days`, operator: "time-interval", values: [-7, "day"] },
+  {
+    name: t`Previous 30 days`,
+    operator: "time-interval",
+    values: [-30, "day"],
+  },
 ];
 
 const RELATIVE_SHORTCUTS: ShortcutMap = {
@@ -82,19 +88,25 @@ export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDa
 
   render() {
     return (
-      <div className="p1 pt2">
+      <div className={cx(CS.p1, CS.pt2)}>
         <section>
           {SHORTCUTS.map((s, index) => (
             <span
               key={index}
-              className={cx("inline-block half pb1", { pr1: index % 2 === 0 })}
+              className={cx(CS.inlineBlock, CS.half, CS.pb1, {
+                [CS.pr1]: index % 2 === 0,
+              })}
             >
               <button
                 key={index}
                 aria-selected={this.isSelectedShortcut(s)}
                 className={cx(
-                  "Button Button-normal Button--medium text-normal text-centered full",
-                  { "Button--purple": this.isSelectedShortcut(s) },
+                  ButtonsS.Button,
+                  ButtonsS.ButtonNormal,
+                  ButtonsS.ButtonMedium,
+                  CS.textNormal,
+                  CS.textCentered,
+                  CS.full,
                 )}
                 onClick={() => this.onSetShortcut(s)}
               >
@@ -106,21 +118,24 @@ export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDa
         {Object.keys(RELATIVE_SHORTCUTS).map(sectionName => (
           <section key={sectionName}>
             <div
-              style={{}}
-              className="border-bottom text-uppercase flex layout-centered mb2"
+              className={cx(
+                CS.borderBottom,
+                CS.textUppercase,
+                CS.flex,
+                CS.layoutCentered,
+                CS.mb2,
+              )}
             >
               <h6
                 style={{
-                  position: "relative",
-                  backgroundColor: "white",
                   top: "6px",
                 }}
-                className="px2"
+                className={cx(CS.px2, CS.bgWhite, CS.relative)}
               >
                 {sectionName}
               </h6>
             </div>
-            <div className="flex">
+            <div className={CS.flex}>
               {RELATIVE_SHORTCUTS[sectionName].map((s, index) => (
                 <button
                   key={index}
@@ -132,10 +147,14 @@ export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDa
                     s.name.toLowerCase()
                   }
                   className={cx(
-                    "Button Button-normal Button--medium flex-full mb1",
+                    ButtonsS.Button,
+                    ButtonsS.ButtonNormal,
+                    ButtonsS.ButtonMedium,
+                    CS.flexFull,
+                    CS.mb1,
                     {
-                      "Button--purple": this.isSelectedShortcut(s),
-                      mr1: index !== RELATIVE_SHORTCUTS[sectionName].length - 1,
+                      [CS.mr1]:
+                        index !== RELATIVE_SHORTCUTS[sectionName].length - 1,
                     },
                   )}
                   onClick={() => this.onSetShortcut(s)}
@@ -161,7 +180,7 @@ export class DateRelativeWidget extends Component<DateRelativeWidgetProps> {
   render() {
     const { value, setValue, onClose } = this.props;
     return (
-      <div className="px1" style={{ maxWidth: 300 }}>
+      <div className={CS.px1} style={{ maxWidth: 300 }}>
         <PredefinedRelativeDatePicker
           filter={
             DATE_MBQL_FILTER_MAPPING[value]

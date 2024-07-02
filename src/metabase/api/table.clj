@@ -6,7 +6,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.db.query :as mdb.query]
-   [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
@@ -16,6 +15,7 @@
    [metabase.models.field-values :as field-values :refer [FieldValues]]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.related :as related]
    [metabase.server.middleware.session :as mw.session]
    [metabase.sync :as sync]
@@ -25,7 +25,7 @@
    [metabase.types :as types]
    [metabase.upload :as upload]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -41,12 +41,17 @@
   "Schema for a valid table field ordering."
   (into [:enum] (map name table/field-orderings)))
 
+(defn- fix-schema [table]
+  (update table :schema str))
+
 (api/defendpoint GET "/"
   "Get all `Tables`."
   []
   (as-> (t2/select Table, :active true, {:order-by [[:name :asc]]}) tables
     (t2/hydrate tables :db)
-    (filterv mi/can-read? tables)))
+    (into [] (comp (filter mi/can-read?)
+                   (map fix-schema))
+          tables)))
 
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
@@ -57,7 +62,8 @@
                             api/write-check
                             api/read-check)]
     (-> (api-perm-check-fn Table id)
-        (t2/hydrate :db :pk_field))))
+        (t2/hydrate :db :pk_field)
+        fix-schema)))
 
 (defn- update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
@@ -88,10 +94,10 @@
          (if (binding [h2/*allow-testing-h2-connections* true]
                (driver.u/can-connect-with-details? (:engine database) (:details database)))
            (doseq [table newly-unhidden]
-             (log/info (u/format-color 'green (trs "Table ''{0}'' is now visible. Resyncing." (:name table))))
+             (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
              (sync/sync-table! table))
-           (log/warn (u/format-color 'red (trs "Cannot connect to database ''{0}'' in order to sync unhidden tables"
-                                               (:name database))))))))))
+           (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
+                                     (:name database)))))))))
 
 (defn- update-tables!
   [ids {:keys [visibility_type] :as body}]
@@ -273,7 +279,7 @@
   (dimension-index-for-type :type/Coordinate #(.contains ^String (str (:name %)) (str auto-bin-str))))
 
 (defn- supports-numeric-binning? [db]
-  (and db (driver/database-supports? (:engine db) :binning db)))
+  (and db (driver.u/supports? (:engine db) :binning db)))
 
 ;; TODO: Remove all this when the FE is fully ported to [[metabase.lib.binning/available-binning-strategies]].
 (defn- assoc-field-dimension-options [{:keys [base_type semantic_type fingerprint] :as field} db]
@@ -319,7 +325,7 @@
                 (update field :values field-values/field-values->pairs)
                 field)))))
 
-(defn fetch-query-metadata
+(defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
@@ -332,44 +338,83 @@
         (m/dissoc-in [:db :details])
         (assoc-dimension-options db)
         format-fields-for-response
+        fix-schema
         (update :fields (partial filter (fn [{visibility-type :visibility_type}]
                                           (case (keyword visibility-type)
                                             :hidden    include-hidden-fields?
                                             :sensitive include-sensitive-fields?
                                             true)))))))
 
+(defn batch-fetch-query-metadatas*
+  "Returns the query metadata used to power the Query Builder for the `table`s specified by `ids`."
+  [ids]
+  (when (seq ids)
+    (let [tables (->> (t2/select Table :id [:in ids])
+                      (filter mi/can-read?))
+          tables (t2/hydrate tables
+                             :db
+                             [:fields [:target :has_field_values] :dimensions :has_field_values]
+                             :segments
+                             :metrics)
+          dbs    (when (seq tables)
+                   (t2/select-pk->fn identity Database :id [:in (into #{} (map :db_id) tables)]))]
+      (for [table tables]
+        (-> table
+            (m/dissoc-in [:db :details])
+            (assoc-dimension-options (-> table :db_id dbs))
+            format-fields-for-response
+            fix-schema
+            (update :fields #(remove (comp #{:hidden :sensitive} :visibility_type) %)))))))
+
+(defenterprise fetch-table-query-metadata
+  "Returns the query metadata used to power the Query Builder for the given table `id`. `include-sensitive-fields?`,
+  `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
+  metabase-enterprise.sandbox.api.table
+  [id opts]
+  (fetch-query-metadata* (t2/select-one Table :id id) opts))
+
+(defenterprise batch-fetch-table-query-metadatas
+  "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`."
+  metabase-enterprise.sandbox.api.table
+  [ids]
+  (batch-fetch-query-metadatas* ids))
+
 (api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
 
-  Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`
-  Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.
+   Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`
+   Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.
 
-  Passing `include_editable_data_model=true` will check that the current user has write permissions for the table's
-  data model, while `false` checks that they have data access perms for the table. Defaults to `false`.
+   Passing `include_editable_data_model=true` will check that the current user has write permissions for the table's
+   data model, while `false` checks that they have data access perms for the table. Defaults to `false`.
 
-  These options are provided for use in the Admin Edit Metadata page."
+   These options are provided for use in the Admin Edit Metadata page."
   [id include_sensitive_fields include_hidden_fields include_editable_data_model]
   {id                          ms/PositiveInt
    include_sensitive_fields    [:maybe ms/BooleanValue]
    include_hidden_fields       [:maybe ms/BooleanValue]
    include_editable_data_model [:maybe ms/BooleanValue]}
-  (fetch-query-metadata (t2/select-one Table :id id) {:include-sensitive-fields?    include_sensitive_fields
-                                                      :include-hidden-fields?       include_hidden_fields
-                                                      :include-editable-data-model? include_editable_data_model}))
+  (fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
+                                  :include-hidden-fields?       include_hidden_fields
+                                  :include-editable-data-model? include_editable_data_model}))
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
-   database."
-  [card-id database-id metadata]
-  (let [db (t2/select-one Database :id database-id)
-        underlying (m/index-by :id (when-let [ids (seq (keep :id metadata))]
-                                     (t2/select Field :id [:in ids])))
+   database.
+  `metadata-fields` can be nil."
+  [card-id database-or-id metadata metadata-fields]
+  (let [db (cond->> database-or-id
+             (int? database-or-id) (t2/select-one Database :id))
+        underlying (m/index-by :id (or metadata-fields
+                                       (when-let [ids (seq (keep :id metadata))]
+                                         (-> (t2/select Field :id [:in ids])
+                                             (t2/hydrate [:target :has_field_values] :has_field_values)))))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
                      (update :base_type keyword)
                      (merge (select-keys (underlying col-id)
-                                         [:semantic_type :fk_target_field_id :has_field_values]))
+                                         [:semantic_type :fk_target_field_id :has_field_values :target]))
                      (assoc
                       :table_id     (str "card__" card-id)
                       :id           (or col-id
@@ -379,10 +424,8 @@
                       ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
                       ;; the dimension options
                       :semantic_type (keyword (:semantic_type col)))
-                     (assoc-field-dimension-options db)))
-        field->annotated (let [with-ids (filter (comp number? :id) fields)]
-                           (zipmap with-ids (t2/hydrate with-ids [:target :has_field_values] :has_field_values)))]
-    (map #(field->annotated % %) fields)))
+                     (assoc-field-dimension-options db)))]
+    fields))
 
 (defn root-collection-schema-name
   "Schema name to use for the saved questions virtual database for Cards that are in the root collection (i.e., not in
@@ -393,25 +436,39 @@
 (defn card->virtual-table
   "Return metadata for a 'virtual' table for a `card` in the Saved Questions 'virtual' database. Optionally include
   'virtual' fields as well."
-  [{:keys [database_id] :as card} & {:keys [include-fields?]}]
+  [{:keys [database_id] :as card} & {:keys [include-fields? databases card-id->metadata-fields]}]
   ;; if collection isn't already hydrated then do so
-  (let [card (t2/hydrate card :collection)]
+  (let [card (cond-> card
+               (not (contains? card :collection))
+               (t2/hydrate :collection))
+        card-type (:type card)
+        dataset-query (:dataset_query card)]
     (cond-> {:id               (str "card__" (u/the-id card))
              :db_id            (:database_id card)
              :display_name     (:name card)
              :schema           (get-in card [:collection :name] (root-collection-schema-name))
              :moderated_status (:moderated_status card)
-             :description      (:description card)}
-      include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
-                                                                           database_id
-                                                                           (:result_metadata card))))))
+             :description      (:description card)
+             :type             card-type}
+      (and (= card-type :metric)
+           dataset-query)
+      (assoc :dataset_query dataset-query)
+
+      include-fields?
+      (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
+                                                           (cond-> database_id
+                                                             databases databases)
+                                                           (:result_metadata card)
+                                                           (when card-id->metadata-fields
+                                                             (card-id->metadata-fields (u/the-id card))))))))
 
 (defn- remove-nested-pk-fk-semantic-types
   "This method clears the semantic_type attribute for PK/FK fields of nested queries. Those fields having a semantic
   type confuses the frontend and it can really used in the same way"
-  [{:keys [fields] :as metadata-response}]
+  [{:keys [fields] :as metadata-response} {:keys [trust-semantic-keys?]}]
   (assoc metadata-response :fields (for [{:keys [semantic_type id] :as field} fields]
-                                     (if (and (or (isa? semantic_type :type/PK)
+                                     (if (and (not trust-semantic-keys?)
+                                              (or (isa? semantic_type :type/PK)
                                                   (isa? semantic_type :type/FK))
                                               ;; if they have a user entered id let it stay
                                               (or (nil? id)
@@ -419,13 +476,12 @@
                                        (assoc field :semantic_type nil)
                                        field))))
 
-(api/defendpoint GET "/card__:id/query_metadata"
+(defn fetch-card-query-metadata
   "Return metadata for the 'virtual' table for a Card."
   [id]
-  {id ms/PositiveInt}
   (let [{:keys [database_id] :as card} (api/check-404
                                         (t2/select-one [Card :id :dataset_query :result_metadata :name :description
-                                                        :collection_id :database_id]
+                                                        :collection_id :database_id :type]
                                                        :id id))
         moderated-status              (->> (mdb.query/query {:select   [:status]
                                                              :from     [:moderation_review]
@@ -437,12 +493,68 @@
                                                              :limit    1}
                                                             :id id)
                                            first :status)
-        db (t2/select-one Database :id database_id)]
+        db (t2/select-one Database :id database_id)
+        ;; a native model can have columns with keys as semantic types only if a user configured them
+        trust-semantic-keys? (and (= (:type card) :model)
+                                  (= (-> card :dataset_query :type) :native))]
     (-> (assoc card :moderated_status moderated-status)
         api/read-check
         (card->virtual-table :include-fields? true)
         (assoc-dimension-options db)
-        remove-nested-pk-fk-semantic-types)))
+        (remove-nested-pk-fk-semantic-types {:trust-semantic-keys? trust-semantic-keys?}))))
+
+(defn batch-fetch-card-query-metadatas
+  "Return metadata for the 'virtual' tables for a Cards.
+  Unreadable cards are silently skipped."
+  [ids]
+  (when (seq ids)
+    (let [cards (-> (t2/select Card
+                               {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
+                                            :c.description :c.collection_id :c.database_id :c.type
+                                            [:r.status :moderated_status]]
+                                :from      [[:report_card :c]]
+                                :left-join [[{:select   [:moderated_item_id :status]
+                                              :from     [:moderation_review]
+                                              :where    [:and
+                                                         [:= :moderated_item_type "card"]
+                                                         [:= :most_recent true]]
+                                              :order-by [[:id :desc]]
+                                              :limit    1} :r]
+                                            [:= :r.moderated_item_id :c.id]]
+                                :where     [:in :c.id ids]})
+                    (t2/hydrate :collection))
+          dbs (t2/select-pk->fn identity Database :id [:in (into #{} (map :database_id) cards)])
+          metadata-field-ids (into #{}
+                                   (comp (mapcat :result_metadata)
+                                         (keep :id))
+                                   cards)
+          metadata-fields (if (seq metadata-field-ids)
+                            (-> (t2/select Field :id [:in metadata-field-ids])
+                                (t2/hydrate [:target :has_field_values] :has_field_values)
+                                (->> (m/index-by :id)))
+                            {})
+          card-id->metadata-fields (into {}
+                                         (map (fn [card]
+                                                [(:id card) (into []
+                                                                  (keep (comp metadata-fields :id))
+                                                                  (:result_metadata card))]))
+                                         cards)]
+      (for [card cards :when (mi/can-read? card)]
+        ;; a native model can have columns with keys as semantic types only if a user configured them
+        (let [trust-semantic-keys? (and (= (:type card) :model)
+                                        (= (-> card :dataset_query :type) :native))]
+          (-> card
+              (card->virtual-table :include-fields? true
+                                   :databases dbs
+                                   :card-id->metadata-fields card-id->metadata-fields)
+              (assoc-dimension-options (-> card :database_id dbs))
+              (remove-nested-pk-fk-semantic-types {:trust-semantic-keys? trust-semantic-keys?})))))))
+
+(api/defendpoint GET "/card__:id/query_metadata"
+  "Return metadata for the 'virtual' table for a Card."
+  [id]
+  {id ms/PositiveInt}
+  (fetch-card-query-metadata id))
 
 (api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
@@ -505,28 +617,38 @@
    field_order [:sequential ms/PositiveInt]}
   (-> (t2/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
 
-(mu/defn ^:private append-csv!
-  "This helper function exists to make testing the POST /api/table/:id/append-csv endpoint easier."
-  [{:keys [id file]}
-   :- [:map
-       [:id ms/PositiveInt]
-       [:file (ms/InstanceOfClass java.io.File)]]]
+(mu/defn ^:private update-csv!
+  "This helper function exists to make testing the POST /api/table/:id/{action}-csv endpoints easier."
+  [options :- [:map
+               [:table-id ms/PositiveInt]
+               [:file (ms/InstanceOfClass java.io.File)]
+               [:action upload/update-action-schema]]]
   (try
-    (let [model (upload/append-csv! {:table-id id
-                                     :file     file})]
+    (let [_result (upload/update-csv! options)]
       {:status 200
-       :body   (:id model)})
+       ;; There is scope to return something more interesting.
+       :body   nil})
     (catch Throwable e
       {:status (or (-> e ex-data :status-code)
                    500)
        :body   {:message (or (ex-message e)
                              (tru "There was an error uploading the file"))}})
-    (finally (io/delete-file file :silently))))
+    (finally (io/delete-file (:file options) :silently))))
 
 (api/defendpoint ^:multipart POST "/:id/append-csv"
   "Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by uploading a CSV file."
   [id :as {raw-params :params}]
   {id ms/PositiveInt}
-  (append-csv! {:id id, :file (get-in raw-params ["file" :tempfile])}))
+  (update-csv! {:table-id id
+                :file     (get-in raw-params ["file" :tempfile])
+                :action   ::upload/append}))
+
+(api/defendpoint ^:multipart POST "/:id/replace-csv"
+  "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have been created by uploading a CSV file."
+  [id :as {raw-params :params}]
+  {id ms/PositiveInt}
+  (update-csv! {:table-id id
+                :file     (get-in raw-params ["file" :tempfile])
+                :action   ::upload/replace}))
 
 (api/define-routes)

@@ -5,11 +5,11 @@ const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
 const replay = require("@replayio/cypress");
-const { verifyDownloadTasks } = require("cy-verify-downloads");
 
 const {
   removeDirectory,
-} = require("./commands/downloads/deleteDownloadsFolder");
+  verifyDownloadTasks,
+} = require("./commands/downloads/downloadUtils");
 
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 
@@ -22,6 +22,12 @@ const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
 const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
 const runWithReplay = process.env["CYPRESS_REPLAYIO_ENABLED"];
+/**
+ * CI coerces the value of this env var to a string (even if it's `false` or `0`!
+ * Just omit it from any workflow that doesn't need to upload test recordings,
+ * like we do in the `e2e-stress-test-flake-fix` workflow.
+ */
+const uploadReplayRecordings = !!process.env["CYPRESS_REPLAYIO_ENABLE_UPLOAD"];
 
 const feHealthcheckEnabled = process.env["CYPRESS_FE_HEALTHCHECK"] === "true";
 
@@ -40,7 +46,7 @@ const defaultConfig = {
     if (runWithReplay) {
       on = replay.wrapOn(on);
       replay.default(on, config, {
-        upload: true,
+        upload: uploadReplayRecordings,
         apiKey: process.env.REPLAY_API_KEY,
         filter: r => {
           const hasCrashed = r.status === "crashed";
@@ -70,6 +76,9 @@ const defaultConfig = {
     on(
       "file:preprocessor",
       createBundler({
+        loader: {
+          ".svg": "text",
+        },
         plugins: [NodeModulesPolyfillPlugin()],
         sourcemap: "inline",
       }),
@@ -147,13 +156,13 @@ const defaultConfig = {
   //   1. testFiles and
   //   2. integrationFolder
   specPattern: "e2e/test/**/*.cy.spec.{js,ts}",
+  viewportHeight: 800,
+  viewportWidth: 1280,
 };
 
 const mainConfig = {
   ...defaultConfig,
   projectId: "ywjy9z",
-  viewportHeight: 800,
-  viewportWidth: 1280,
   numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
   reporter: "cypress-multi-reporters",
   reporterOptions: {

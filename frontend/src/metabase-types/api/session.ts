@@ -1,3 +1,3 @@
-export interface PasswordResetTokenInfo {
+export interface PasswordResetTokenStatus {
   valid: boolean;
 }

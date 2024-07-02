@@ -3,15 +3,15 @@
  * doesn't mean that the token is active or that it has all feature flags enabled.
  *
  * `isEE` means enterprise instance without a token and `isOSS` means open-source instance.
- * In the same way, custom `describe` blocks `describeEE` and `describeOSS` are used to
- * conditionally run tests only against a corresponding Metabase instance.
- *
- * There is a subset of UI elements that appear only in an open-source instance. Test those
- * using a `describeOSS` block, and vice-versa.
- *
  */
 export const isEE = Cypress.env("IS_ENTERPRISE");
 export const isOSS = !isEE;
+
+/** run only if the test is running on an EE jar */
+export const onlyOnEE = () => cy.onlyOn(isEE);
+
+/** run only if the test is running on an OSS jar */
+export const onlyOnOSS = () => cy.onlyOn(isOSS);
 
 /**
  *
@@ -20,7 +20,6 @@ export const isOSS = !isEE;
 const conditionalDescribe = cond => (cond ? describe : describe.skip);
 
 export const describeEE = conditionalDescribe(isEE);
-export const describeOSS = conditionalDescribe(isOSS);
 
 /**
  *
@@ -62,6 +61,22 @@ export const setTokenFeatures = featuresScope => {
     failOnStatusCode: false,
     body: {
       value: token,
+    },
+  });
+};
+
+export const deleteToken = () => {
+  if (!isEE) {
+    throw new Error(
+      "You must run Metabase® Enterprise Edition™ for token to make sense.\nMake sure you have `MB_EDITION=ee` in your environment variables.",
+    );
+  }
+  return cy.request({
+    method: "PUT",
+    url: "/api/setting/premium-embedding-token",
+    failOnStatusCode: false,
+    body: {
+      value: null,
     },
   });
 };

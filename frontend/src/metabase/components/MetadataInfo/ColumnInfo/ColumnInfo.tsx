@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
-import type Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/v1/metadata/Field";
 import type { DatasetColumn } from "metabase-types/api";
 
 import {

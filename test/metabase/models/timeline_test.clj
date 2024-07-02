@@ -46,3 +46,8 @@
              (t2/select-one-fn :icon Timeline (u/the-id a))))
       (is (= "cake"
              (t2/select-one-fn :icon Timeline (u/the-id b)))))))
+
+(deftest hydrate-timeline-test
+  (mt/with-temp [Timeline      tl  {:name "tl-a"}
+                 TimelineEvent tle {:timeline_id (:id tl) :name "e-a"}]
+    (is (= tl (:timeline (t2/hydrate tle :timeline))))))

@@ -4,14 +4,14 @@
   (:require
    [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.analyze :as analyze]
    [metabase.db.metadata-queries :as metadata-queries]
-   [metabase.db.util :as mdb.u]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.table :as table]
    [metabase.query-processor.store :as qp.store]
-   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -27,7 +27,7 @@
 
 (mu/defn ^:private save-fingerprint!
   [field       :- i/FieldInstance
-   fingerprint :- [:maybe i/Fingerprint]]
+   fingerprint :- [:maybe analyze/Fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
   ;; All Fields who get new fingerprints should get marked as having the latest fingerprint version, but we'll
   ;; clear their values for `last_analyzed`. This way we know these fields haven't "completed" analysis for the
@@ -63,7 +63,7 @@
    fields :- [:maybe [:sequential i/FieldInstance]]]
   (let [rff (fn [_metadata]
               (redux/post-complete
-               (fingerprinters/fingerprint-fields fields)
+               (analyze/fingerprint-fields fields)
                (fn [fingerprints]
                  (reduce (fn [count-info [field fingerprint]]
                            (cond
@@ -157,10 +157,11 @@
   [:and
    [:= :active true]
    [:or
-    [:not (mdb.u/isa :semantic_type :type/PK)]
+    [:not (mdb.query/isa :semantic_type :type/PK)]
     [:= :semantic_type nil]]
    [:not-in :visibility_type ["retired" "sensitive"]]
-   [:not (mdb.u/isa :base_type :type/Structured)]])
+   [:not= :base_type (u/qualified-name :type/*)]
+   [:not (mdb.query/isa :base_type :type/Structured)]])
 
 (def ^:dynamic *refingerprint?*
   "Whether we are refingerprinting or doing the normal fingerprinting. Refingerprinting should get fields that already
@@ -194,12 +195,14 @@
   "Generate and save fingerprints for all the Fields in `table` that have not been previously analyzed."
   [table :- i/TableInstance]
   (if-let [fields (fields-to-fingerprint table)]
-    (let [stats (sync-util/with-error-handling
-                  (format "Error fingerprinting %s" (sync-util/name-for-logging table))
-                  (fingerprint-table! table fields))]
-      (if (instance? Exception stats)
-        (empty-stats-map 0)
-        stats))
+    (do
+      (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
+      (let [stats (sync-util/with-error-handling
+                    (format "Error fingerprinting %s" (sync-util/name-for-logging table))
+                    (fingerprint-table! table fields))]
+        (if (instance? Exception stats)
+          (empty-stats-map 0)
+          stats)))
     (empty-stats-map 0)))
 
 (def ^:private LogProgressFn
@@ -212,7 +215,6 @@
     log-progress-fn :- LogProgressFn]
    (fingerprint-fields-for-db!* database tables log-progress-fn (constantly true)))
 
-  ;; TODO: Maybe the driver should have a function to tell you if it supports fingerprinting?
   ([database        :- i/DatabaseInstance
     tables          :- [:maybe [:sequential i/TableInstance]]
     log-progress-fn :- LogProgressFn
@@ -220,10 +222,7 @@
    (qp.store/with-metadata-provider (u/the-id database)
      (reduce (fn [acc table]
                (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
-               (let [results (if (= :googleanalytics (:engine database))
-                               (empty-stats-map 0)
-                               (fingerprint-fields! table))
-                     new-acc (merge-with + acc results)]
+               (let [new-acc (merge-with + acc (fingerprint-fields! table))]
                  (if (continue? new-acc)
                    new-acc
                    (reduced new-acc))))
@@ -235,8 +234,9 @@
   [database        :- i/DatabaseInstance
    tables          :- [:maybe [:sequential i/TableInstance]]
    log-progress-fn :- LogProgressFn]
-  ;; TODO: Maybe the driver should have a function to tell you if it supports fingerprinting?
-  (fingerprint-fields-for-db!* database tables log-progress-fn))
+  (if (driver.u/supports? (:engine database) :fingerprint database)
+    (fingerprint-fields-for-db!* database tables log-progress-fn)
+    (empty-stats-map 0)))
 
 (def ^:private max-refingerprint-field-count
   "Maximum number of fields to refingerprint. Balance updating our fingerprinting values while not spending too much

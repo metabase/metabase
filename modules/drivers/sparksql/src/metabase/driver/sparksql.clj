@@ -8,18 +8,16 @@
    [metabase.connection-pool :as connection-pool]
    [metabase.driver :as driver]
    [metabase.driver.hive-like :as hive-like]
-   [metabase.driver.hive-like.fixed-hive-connection
-    :as fixed-hive-connection]
+   [metabase.driver.hive-like.fixed-hive-connection :as fixed-hive-connection]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql.parameters.substitution
-    :as sql.params.substitution]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -211,8 +209,11 @@
                               :native-parameters               true
                               :nested-queries                  true
                               :standard-deviation-aggregations true
-                              :test/jvm-timezone-setting       false}]
-  (defmethod driver/database-supports? [:sparkql feature] [_driver _feature _db] supported?))
+                              :metadata/key-constraints        false
+                              :test/jvm-timezone-setting       false
+                              ;; disabled for now, see issue #40991 to fix this.
+                              :window-functions/cumulative     false}]
+  (defmethod driver/database-supports? [:sparksql feature] [_driver _feature _db] supported?))
 
 ;; only define an implementation for `:foreign-keys` if none exists already. In test extensions we define an alternate
 ;; implementation, and we don't want to stomp over that if it was loaded already

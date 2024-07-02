@@ -5,29 +5,31 @@
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
-   [metabase.driver.sql.parameters.substitution
-    :as sql.params.substitution]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [potemkin :as p]))
 
 (comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
 
 (driver/register! :sql, :abstract? true)
 
-(doseq [feature [:standard-deviation-aggregations
-                 :foreign-keys
-                 :expressions
+(doseq [feature [:advanced-math-expressions
+                 :binning
                  :expression-aggregations
+                 :expressions
+                 :foreign-keys
                  :native-parameters
                  :nested-queries
-                 :binning
-                 :advanced-math-expressions
                  :percentile-aggregations
-                 :regex]]
+                 :regex
+                 :standard-deviation-aggregations
+                 :metadata/key-constraints
+                 :window-functions/cumulative
+                 :window-functions/offset]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
 (doseq [join-feature [:left-join
@@ -53,7 +55,7 @@
   (sql.u/format-sql-and-fix-params driver native-form))
 
 (mu/defmethod driver/substitute-native-parameters :sql
-  [_driver {:keys [query] :as inner-query} :- [:and [:map-of :keyword :any] [:map {:query ms/NonBlankString}]]]
+  [_driver {:keys [query] :as inner-query} :- [:and [:map-of :keyword :any] [:map {:query ::lib.schema.common/non-blank-string}]]]
   (let [[query params] (-> query
                            params.parse/parse
                            (sql.params.substitute/substitute (params.values/query->params-map inner-query)))]
@@ -62,7 +64,7 @@
            :params params)))
 
 ;; `:sql` drivers almost certainly don't need to override this method, and instead can implement
-;; `unprepare/unprepare-value` for specific classes, or, in extereme cases, `unprepare/unprepare` itself.
+;; `unprepare/unprepare-value` for specific classes, or, in extreme cases, `unprepare/unprepare` itself.
 (defmethod driver/splice-parameters-into-native-query :sql
   [driver {:keys [params], sql :query, :as query}]
   (cond-> query

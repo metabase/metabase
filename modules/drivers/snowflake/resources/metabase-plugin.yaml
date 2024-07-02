@@ -8,11 +8,20 @@ driver:
   lazy-load: true
   parent: sql-jdbc
   connection-properties:
+    - name: use-hostname
+      type: section
+      default: false
+    - merge:
+        - host
+        - visible-if:
+            use-hostname: true
     - name: account
       display-name: Account name
       helper-text: Enter your Account ID with the region that your Snowflake cluster is running on e.g. "xxxxxxxx.us-east-2.aws". Some regions don't have this suffix.
       placeholder: xxxxxxxx.us-east-2.aws
       required: true
+      visible-if:
+        use-hostname: false
     - user
     - password
     - name: private-key
@@ -33,7 +42,7 @@ driver:
       type: schema-filters
       display-name: Schemas
     - name: role
-      display-name: Role (required for connection impersonation)
+      display-name: Role (optional, required for connection impersonation)
       helper-text: Specify a role to override the database user’s default role.
       placeholder: user
     - cloud-ip-address-info

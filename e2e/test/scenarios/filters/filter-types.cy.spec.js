@@ -6,6 +6,7 @@ import {
   popover,
   relativeDatePicker,
   restore,
+  selectFilterOperator,
   visualize,
 } from "e2e/support/helpers";
 
@@ -43,6 +44,23 @@ const STRING_CASES = [
     expectedRowCount: 47,
   },
   {
+    title: "contains, multiple options",
+    columnName: "Title",
+    operator: "Contains",
+    values: ["Al", "Me"],
+    expectedDisplayName: "Title contains 2 selections",
+    expectedRowCount: 68,
+  },
+  {
+    title: "contains, multiple options, case sensitive",
+    columnName: "Title",
+    operator: "Contains",
+    values: ["Al", "Me"],
+    options: ["Case sensitive"],
+    expectedDisplayName: "Title contains 2 selections",
+    expectedRowCount: 28,
+  },
+  {
     title: "contains, case sensitive",
     columnName: "Title",
     operator: "Contains",
@@ -58,6 +76,23 @@ const STRING_CASES = [
     values: ["Al"],
     expectedDisplayName: "Title does not contain Al",
     expectedRowCount: 153,
+  },
+  {
+    title: "does not contain, multiple options",
+    columnName: "Title",
+    operator: "Does not contain",
+    values: ["Al", "Me"],
+    expectedDisplayName: "Title does not contain 2 selections",
+    expectedRowCount: 132,
+  },
+  {
+    title: "does not contain, multiple options, case sensitive",
+    columnName: "Title",
+    operator: "Does not contain",
+    values: ["Al", "Me"],
+    options: ["Case sensitive"],
+    expectedDisplayName: "Title does not contain 2 selections",
+    expectedRowCount: 172,
   },
   {
     title: "does not contain, case sensitive",
@@ -77,13 +112,30 @@ const STRING_CASES = [
     expectedRowCount: 11,
   },
   {
+    title: "starts with, multiple options",
+    columnName: "Title",
+    operator: "Starts with",
+    values: ["sm", "Me"],
+    expectedDisplayName: "Title starts with 2 selections",
+    expectedRowCount: 25,
+  },
+  {
+    title: "starts with, multiple options, case sensitive",
+    columnName: "Title",
+    operator: "Starts with",
+    values: ["sm", "Me"],
+    options: ["Case sensitive"],
+    expectedDisplayName: "Title starts with 2 selections",
+    expectedRowCount: 14,
+  },
+  {
     title: "starts with, case sensitive",
     columnName: "Title",
     operator: "Starts with",
-    values: ["Sm"],
+    values: ["sm"],
     options: ["Case sensitive"],
-    expectedDisplayName: "Title starts with Sm",
-    expectedRowCount: 11,
+    expectedDisplayName: "Title starts with sm",
+    expectedRowCount: 0,
   },
   {
     title: "ends with",
@@ -92,6 +144,23 @@ const STRING_CASES = [
     values: ["At"],
     expectedDisplayName: "Title ends with At",
     expectedRowCount: 22,
+  },
+  {
+    title: "ends with, multiple options",
+    columnName: "Title",
+    operator: "Ends with",
+    values: ["At", "es"],
+    expectedDisplayName: "Title ends with 2 selections",
+    expectedRowCount: 38,
+  },
+  {
+    title: "ends with, multiple options, case sensitive",
+    columnName: "Title",
+    operator: "Ends with",
+    values: ["At", "es"],
+    options: ["Case sensitive"],
+    expectedDisplayName: "Title ends with 2 selections",
+    expectedRowCount: 16,
   },
   {
     title: "ends with, case sensitive",
@@ -309,7 +378,7 @@ const RELATIVE_DATE_CASES = [
   // Past
   {
     title: "yesterday",
-    offset: "Past",
+    offset: "Previous",
     unit: "day",
     value: 1,
     expectedDisplayName: "Created At is yesterday",
@@ -317,14 +386,14 @@ const RELATIVE_DATE_CASES = [
   },
   {
     title: "previous 7 days",
-    offset: "Past",
+    offset: "Previous",
     unit: "days",
     value: 7,
     expectedDisplayName: "Created At is in the previous 7 days",
   },
   {
     title: "previous 3 weeks starting a quarter ago",
-    offset: "Past",
+    offset: "Previous",
     unit: "weeks",
     value: 3,
     offsetUnit: "quarter",
@@ -334,7 +403,7 @@ const RELATIVE_DATE_CASES = [
   },
   {
     title: "previous month",
-    offset: "Past",
+    offset: "Previous",
     unit: "month",
     value: 1,
     expectedDisplayName: "Created At is in the previous month",
@@ -342,14 +411,14 @@ const RELATIVE_DATE_CASES = [
   },
   {
     title: "previous 3 months",
-    offset: "Past",
+    offset: "Previous",
     unit: "months",
     value: 3,
     expectedDisplayName: "Created At is in the previous 3 months",
   },
   {
     title: "previous two quarters",
-    offset: "Past",
+    offset: "Previous",
     unit: "quarters",
     value: 2,
     expectedDisplayName: "Created At is in the previous 2 quarters",
@@ -413,10 +482,13 @@ describe("scenarios > filters > filter types", () => {
           filter({ mode: "notebook" });
 
           popover().findByText(columnName).click();
-          selectOperator(operator);
+          selectFilterOperator(operator);
           popover().within(() => {
-            values.forEach((value, index) => {
-              cy.findByLabelText("Filter value").focus().type(value).blur();
+            values.forEach(value => {
+              cy.findByLabelText("Filter value")
+                .focus()
+                .type(`${value},`, { delay: 50 })
+                .blur();
             });
             options.forEach(option => cy.findByText(option).click());
             cy.button("Add filter").click();
@@ -445,12 +517,15 @@ describe("scenarios > filters > filter types", () => {
           filter({ mode: "notebook" });
 
           popover().findByText(columnName).click();
-          selectOperator(operator);
+          selectFilterOperator(operator);
           popover()
             .first()
             .within(() => {
               values.forEach(value => {
-                cy.findByLabelText("Filter value").focus().type(value).blur();
+                cy.findByLabelText("Filter value")
+                  .focus()
+                  .type(`${value},`, { delay: 50 })
+                  .blur();
               });
               cy.button("Add filter").click();
             });
@@ -551,11 +626,6 @@ describe("scenarios > filters > filter types", () => {
     });
   });
 });
-
-function selectOperator(operatorName) {
-  cy.findByLabelText("Filter operator").click();
-  cy.findByText(operatorName).click();
-}
 
 function assertFilterName(filterName, options) {
   getNotebookStep("filter", options)

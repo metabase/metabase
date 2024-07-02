@@ -19,6 +19,7 @@
    [metabase.pulse.render.body :as body]
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.js-svg :as js-svg]
+   [metabase.pulse.util :as pu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.shared.models.visualization-settings :as mb.viz]
@@ -259,7 +260,7 @@
   [card-and-data column-settings]
   (update-in card-and-data [:card :visualization_settings
                             :column_settings]
-             (fn [a b] (merge-with merge a b)) (update-vals column-settings u/snake-keys)))
+             (fn [a b] (merge-with merge a b)) (update-vals column-settings u/deep-snake-keys)))
 
 (defn- make-settings-for-col
   "Make the column-settings map for the given `col` the :card or :data `destination`.
@@ -656,9 +657,30 @@
                                                    {:image-src   s
                                                     :render-type :inline})]
       (let [content (-> (render/render-pulse-card :inline "UTC" card nil results)
-                            :content)]
+                        :content)]
         (-> content
-              (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
-              hiccup/html
-              hik/parse
-              hik/as-hickory)))))
+            (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
+            hiccup/html
+            hik/parse
+            hik/as-hickory)))))
+
+(defn render-dashcard-as-hickory
+  "Render the dashcard with `dashcard-id` using the static-viz rendering pipeline as a hickory data structure.
+  Redefines some internal rendering functions to keep svg from being rendered into a png.
+  Functions from `hickory.select` can be used on the output of this function and are particularly useful for writing test assertions."
+  ([dashcard-id] (render-dashcard-as-hickory dashcard-id []))
+  ([dashcard-id parameters]
+   (let [dashcard                  (t2/select-one :model/DashboardCard :id dashcard-id)
+         card                      (t2/select-one :model/Card :id (:card_id dashcard))
+         {:keys [result dashcard]} (pu/execute-dashboard-subscription-card dashcard parameters)]
+     (with-redefs [js-svg/svg-string->bytes       identity
+                   image-bundle/make-image-bundle (fn [_ s]
+                                                    {:image-src   s
+                                                     :render-type :inline})]
+       (let [content (-> (render/render-pulse-card :inline "UTC" card dashcard result)
+                         :content)]
+         (-> content
+             (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
+             hiccup/html
+             hik/parse
+             hik/as-hickory))))))

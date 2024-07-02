@@ -43,7 +43,34 @@
                                             26
                                             {:source-field 5}]]
                                   :value  ["foo"]})
-           [:starts-with [:field 26 {:source-field 5}] "foo"]))))
+           [:starts-with [:field 26 {:source-field 5}] "foo"]))
+    (testing "with options"
+      (is (= (params.ops/to-clause {:type   :string/starts-with
+                                    :target [:dimension
+                                             [:field
+                                              26
+                                              {:source-field 5}]]
+                                    :value  ["foo"]
+                                    :options {:case-insensitive false}})
+             [:starts-with [:field 26 {:source-field 5}] "foo" {:case-insensitive false}])))
+    (testing "with multiple arguments"
+      (is (= (params.ops/to-clause {:type   :string/starts-with
+                                    :target [:dimension
+                                             [:field
+                                              26
+                                              {:source-field 5}]]
+                                    :value  ["foo" "bar"]})
+             [:starts-with {} [:field 26 {:source-field 5}] "foo" "bar"]))
+
+      (testing "with options"
+        (is (= (params.ops/to-clause {:type   :string/starts-with
+                                      :target [:dimension
+                                               [:field
+                                                26
+                                                {:source-field 5}]]
+                                      :value  ["foo" "bar"]
+                                      :options {:case-insensitive false}})
+               [:starts-with {:case-insensitive false} [:field 26 {:source-field 5}] "foo" "bar"]))))))
 
 (deftest ^:parallel to-clause-test-5
   (testing "string operations"
@@ -68,7 +95,7 @@
                   (is (not result) "Did not throw"))
                 (catch Exception e
                   (ex-data e))))]
-      (doseq [[op values] [[:string/starts-with ["a" "b"]]
+      (doseq [[op values] [[:number/>= [2 4]]
                            [:number/between [1]]
                            [:number/between [1 2 3]]]]
         (is (=? {:param-type  op

@@ -5,30 +5,24 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.api.database :as api.database]
    [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.driver :as driver]
    [metabase.email :as email]
+   [metabase.embed.settings :as embed.settings]
    [metabase.events :as events]
+   [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
-   [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.database :refer [Database]]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.pulse :refer [Pulse]]
    [metabase.models.session :refer [Session]]
    [metabase.models.setting.cache :as setting.cache]
-   [metabase.models.table :refer [Table]]
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.session :as mw.session]
    [metabase.setup :as setup]
-   [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -79,131 +73,71 @@
 (defn- setup-maybe-create-and-invite-user! [{:keys [email] :as user}, invitor]
   (when email
     (if-not (email/email-configured?)
-      (log/error (trs "Could not invite user because email is not configured."))
+      (log/error "Could not invite user because email is not configured.")
       (u/prog1 (user/create-and-invite-user! user invitor true)
         (user/set-permissions-groups! <> [(perms-group/all-users) (perms-group/admin)])
         (events/publish-event! :event/user-invited {:object (assoc <> :invite_method "email")})
         (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id (u/the-id <>)
                                                                              :source          "setup"})))))
 
-(defn- setup-create-database!
-  "Create a new Database. Returns newly created Database."
-  [{:keys [name driver details schedules database creator-id]}]
-  (when driver
-    (when-not (some-> (u/ignore-exceptions (driver/the-driver driver)) driver/available?)
-      (let [msg (tru "Cannot create Database: cannot find driver {0}." driver)]
-        (throw (ex-info msg {:errors {:database {:engine msg}}, :status-code 400}))))
-    (when-let [error (api.database/test-database-connection driver details)]
-      (throw (ex-info (:message error (tru "Cannot connect to Database")) (assoc error :status-code 400))))
-    (first (t2/insert-returning-instances! Database
-                                           (merge
-                                             {:name name, :engine driver, :details details, :creator_id creator-id}
-                                             (u/select-non-nil-keys database #{:is_on_demand :is_full_sync :auto_run_queries})
-                                             (when schedules
-                                               (sync.schedules/schedule-map->cron-strings schedules)))))))
-
-(defn- setup-set-settings! [_request {:keys [email site-name site-locale allow-tracking? license-token]}]
+(defn- setup-set-settings! [{:keys [email site-name site-locale]}]
   ;; set a couple preferences
   (public-settings/site-name! site-name)
   (public-settings/admin-email! email)
-  (when (not (premium-features/premium-embedding-token))
-    (premium-features/premium-embedding-token! license-token))
   (when site-locale
     (public-settings/site-locale! site-locale))
-  ;; default to `true` if allow_tracking isn't specified. The setting will set itself correctly whether a boolean or
-  ;; boolean string is specified
-  (public-settings/anon-tracking-enabled! (or (nil? allow-tracking?)
-                                              allow-tracking?)))
+  ;; default to `true` the setting will set itself correctly whether a boolean or boolean string is specified
+  (public-settings/anon-tracking-enabled! true))
 
 (api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
   returns a session ID. This endpoint can also be used to add a database, create and invite a second admin, and/or
   set specific settings from the setup flow."
   [:as {{:keys                                          [token]
-         {:keys [name engine details
-                 schedules auto_run_queries]
-          :as   database}                               :database
          {:keys [first_name last_name email password]}  :user
          {invited_first_name :first_name,
           invited_last_name  :last_name,
           invited_email      :email}                    :invite
-          license_token                                 :license_token
-         {:keys [allow_tracking site_name site_locale]} :prefs} :body, :as request}]
+         {:keys [site_name site_locale]} :prefs}
+        :body,
+        :as request}]
   {token              SetupToken
-   license_token      [:maybe ms/NonBlankString]
-   site_name          ms/NonBlankString
-   site_locale        [:maybe ms/ValidLocale]
    first_name         [:maybe ms/NonBlankString]
    last_name          [:maybe ms/NonBlankString]
    email              ms/Email
+   password           ms/ValidPassword
    invited_first_name [:maybe ms/NonBlankString]
    invited_last_name  [:maybe ms/NonBlankString]
    invited_email      [:maybe ms/Email]
-   password           ms/ValidPassword
-   allow_tracking     [:maybe [:or :boolean ms/BooleanString]]
-   schedules          [:maybe sync.schedules/ExpandedSchedulesMap]
-   auto_run_queries   [:maybe :boolean]}
+   site_name          ms/NonBlankString
+   site_locale        [:maybe ms/ValidLocale]}
   (letfn [(create! []
             (try
-              (t2/with-transaction [_conn]
-                (let [user-info (setup-create-user!
-                                 {:email email, :first-name first_name, :last-name last_name, :password password})
-                      db        (setup-create-database! {:name name
-                                                         :driver engine
-                                                         :details details
-                                                         :schedules schedules
-                                                         :database database
-                                                         :creator-id (:user-id user-info)})]
+              (t2/with-transaction []
+                (let [user-info (setup-create-user! {:email email
+                                                     :first-name first_name
+                                                     :last-name last_name
+                                                     :password password})]
                   (setup-maybe-create-and-invite-user! {:email invited_email,
                                                         :first_name invited_first_name,
                                                         :last_name invited_last_name}
                                                        {:email email, :first_name first_name})
-                  (setup-set-settings!
-                   request
-                   {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking, :license-token license_token})
-                  (assoc user-info :database db)))
+                  (setup-set-settings! {:email email :site-name site_name :site-locale site_locale})
+                  user-info))
               (catch Throwable e
                 ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this
                 ;; endpoint (such as clearing the setup token) are reverted. We can't use `dosync` here to accomplish
                 ;; this because there is `io!` in this block
                 (setting.cache/restore-cache!)
-                (snowplow/track-event! ::snowplow/database-connection-failed nil {:database engine, :source :setup})
                 (throw e))))]
-    (let [{:keys [user-id session-id database session]} (create!)
+    (let [{:keys [user-id session-id session]} (create!)
           superuser (t2/select-one :model/User :id user-id)]
-      (when database
-        (events/publish-event! :event/database-create {:object database :user-id user-id}))
       (events/publish-event! :event/user-login {:user-id user-id})
       (when-not (:last_login superuser)
         (events/publish-event! :event/user-joined {:user-id user-id}))
       (snowplow/track-event! ::snowplow/new-user-created user-id)
-      (when database
-        (snowplow/track-event! ::snowplow/database-connection-successful
-                               user-id
-                               {:database     engine
-                                :database-id  (u/the-id database)
-                                :source       :setup
-                                :dbms_version (:version (driver/dbms-version (keyword engine) database))}))
       ;; return response with session ID and set the cookie as well
       (mw.session/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
-
-(api/defendpoint POST "/validate"
-  "Validate that we can connect to a database given a set of details."
-  [:as {{{:keys [engine details]} :details, token :token} :body}]
-  {token  SetupToken
-   engine api.database/DBEngineString}
-  (when (setup/has-user-setup)
-    (throw (ex-info (tru "Instance already initialized")
-                    {:status-code 400})))
-  (let [engine       (keyword engine)
-        error-or-nil (api.database/test-database-connection engine details)]
-    (when error-or-nil
-      (snowplow/track-event! ::snowplow/database-connection-failed
-                             nil
-                             {:database engine, :source :setup})
-      {:status 400
-       :body   error-or-nil})))
-
 
 ;;; Admin Checklist
 
@@ -212,9 +146,14 @@
   [:map {:closed true}
    [:db-type [:enum :h2 :mysql :postgres]]
    [:hosted? :boolean]
+   [:embedding [:map
+                [:interested? :boolean]
+                [:done? :boolean]
+                [:app-origin :boolean]]]
    [:configured [:map
                  [:email :boolean]
-                 [:slack :boolean]]]
+                 [:slack :boolean]
+                 [:sso :boolean]]]
    [:counts [:map
              [:user :int]
              [:card :int]
@@ -225,26 +164,40 @@
              [:dashboard :boolean]
              [:pulse :boolean]
              [:hidden-table :boolean]
-             [:collection :boolean]]]])
+             [:collection :boolean]
+             [:embedded-resource :boolean]]]])
 
 (mu/defn ^:private state-for-checklist :- ChecklistState
   []
   {:db-type    (mdb/db-type)
    :hosted?    (premium-features/is-hosted?)
+   :embedding  {:interested? (not (= (embed.settings/embedding-homepage) :hidden))
+                :done?       (= (embed.settings/embedding-homepage) :dismissed-done)
+                :app-origin  (boolean (embed.settings/embedding-app-origin))}
    :configured {:email (email/email-configured?)
-                :slack (slack/slack-configured?)}
-   :counts     {:user  (t2/count User)
-                :card  (t2/count Card)
-                :table (t2/count Table)}
-   :exists     {:non-sample-db (t2/exists? Database, :is_sample false)
-                :dashboard     (t2/exists? Dashboard)
-                :pulse         (t2/exists? Pulse)
-                :hidden-table  (t2/exists? Table, :visibility_type [:not= nil])
-                :collection    (t2/exists? Collection)
-                :model         (t2/exists? Card :type :model)}})
+                :slack (slack/slack-configured?)
+                :sso   (google/google-auth-enabled)}
+   :counts     {:user  (t2/count :model/User {:where (mi/exclude-internal-content-hsql :model/User)})
+                :card  (t2/count :model/Card {:where (mi/exclude-internal-content-hsql :model/Card)})
+                :table (val (ffirst (t2/query {:select [:%count.*]
+                                               :from   [[(t2/table-name :model/Table) :t]]
+                                               :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
+                                               :where  (mi/exclude-internal-content-hsql :model/Database :table-alias :d)})))}
+   :exists     {:non-sample-db     (t2/exists? :model/Database {:where (mi/exclude-internal-content-hsql :model/Database)})
+                :dashboard         (t2/exists? :model/Dashboard {:where (mi/exclude-internal-content-hsql :model/Dashboard)})
+                :pulse             (t2/exists? :model/Pulse)
+                :hidden-table      (t2/exists? :model/Table {:where [:and
+                                                                     [:not= :visibility_type nil]
+                                                                     (mi/exclude-internal-content-hsql :model/Table)]})
+                :collection        (t2/exists? :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
+                :model             (t2/exists? :model/Card {:where [:and
+                                                                    [:= :type "model"]
+                                                                    (mi/exclude-internal-content-hsql :model/Card)]})
+                :embedded-resource (or (t2/exists? :model/Card :enable_embedding true)
+                                       (t2/exists? :model/Dashboard :enable_embedding true))}})
 
 (defn- get-connected-tasks
-  [{:keys [configured counts exists] :as _info}]
+  [{:keys [configured counts exists embedding] :as _info}]
   [{:title       (tru "Add a database")
     :group       (tru "Get connected")
     :description (tru "Connect to your data so your whole team can start to explore.")
@@ -263,6 +216,14 @@
     :link        "/admin/settings/slack"
     :completed   (configured :slack)
     :triggered   :always}
+   {:title       (tru "Setup embedding")
+    :group       (tru "Get connected")
+    :description (tru "Get customizable, flexible, and scalable customer-facing analytics in no time")
+    :link        "/admin/settings/embedding-in-other-applications"
+    :completed   (or (embedding :done?)
+                     (and (configured :sso) (embedding :app-origin))
+                     (exists :embedded-resource))
+    :triggered   (embedding :interested?)}
    {:title       (tru "Invite team members")
     :group       (tru "Get connected")
     :description (tru "Share answers and data with the rest of your team.")
@@ -351,15 +312,5 @@
     (api/check-404 config-token)
     (api/check-403 (= token config-token))
     (dissoc defaults :token)))
-
-(api/defendpoint GET "/token-check"
-  "Check if the token is valid, only available before the initial setup as it's an unauthenticated endpoint"
-  [token]
-  (if (setup/has-user-setup)
-    (throw (ex-info
-            (tru "This endpoint can only be used before the initial setup.")
-            {:status-code 403}))
-    (let [status (premium-features/fetch-token-status token)]
-      {:valid (:valid status)})))
 
 (api/define-routes)

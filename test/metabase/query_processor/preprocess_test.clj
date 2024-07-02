@@ -12,33 +12,31 @@
     ;; make a copy of the `test-data` DB so there will be no cache entries from previous test runs possibly affecting
     ;; this test.
     (mt/with-temp-copy-of-db
-      (mt/with-temporary-setting-values [enable-query-caching  true
-                                         query-caching-min-ttl 0]
-        (let [query            (assoc (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})
-                                      :cache-ttl 10)
-              run-query        (fn []
-                                 (let [results (qp/process-query query)]
-                                   {:cached?  (boolean (:cached (:cache/details results)))
-                                    :num-rows (count (mt/rows results))}))
-              expected-results (qp.preprocess/preprocess query)]
-          (testing "Check preprocess before caching to make sure results make sense"
-            (is (=? {:database (mt/id)}
-                    expected-results)))
-          (testing "Run the query a few of times so we know it's cached"
-            (testing "first run"
-              (is (= {:cached?  false
-                      :num-rows 5}
-                     (run-query))))
-            ;; run a few more times to make sure stuff got a chance to be cached.
-            (run-query)
-            (run-query)
-            (testing "should be cached now"
-              (is (= {:cached?  true
-                      :num-rows 5}
-                     (run-query))))
-            (testing "preprocess should return same results even when query was cached."
-              (is (= expected-results
-                     (qp.preprocess/preprocess query))))))))))
+      (let [query            (assoc (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})
+                                    :cache-strategy {:type             :ttl
+                                                     :multiplier       60
+                                                     :avg-execution-ms 100
+                                                     :min-duration-ms  0})
+            run-query        (fn []
+                               (let [results (qp/process-query query)]
+                                 {:cached?  (boolean (:cached (:cache/details results)))
+                                  :num-rows (count (mt/rows results))}))
+            expected-results (qp.preprocess/preprocess query)]
+        (testing "Check preprocess before caching to make sure results make sense"
+          (is (=? {:database (mt/id)}
+                  expected-results)))
+        (testing "Run the query a few of times so we know it's cached"
+          (testing "first run"
+            (is (= {:cached?  false
+                    :num-rows 5}
+                   (run-query))))
+          (testing "should be cached now"
+            (is (= {:cached?  true
+                    :num-rows 5}
+                   (run-query))))
+          (testing "preprocess should return same results even when query was cached."
+            (is (= expected-results
+                   (qp.preprocess/preprocess query)))))))))
 
 (driver/register! ::custom-escape-spaces-to-underscores :parent :h2)
 

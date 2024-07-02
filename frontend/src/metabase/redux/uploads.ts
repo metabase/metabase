@@ -12,6 +12,9 @@ import { CardApi, MetabaseApi } from "metabase/services";
 import type { CardId, CollectionId, TableId } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 import type { FileUploadState } from "metabase-types/store/upload";
+import { UploadMode } from "metabase-types/store/upload";
+
+export const UPLOAD_DATA_FILE_TYPES = [".csv", ".tsv"];
 
 export const UPLOAD_FILE_TO_COLLECTION = "metabase/collection/UPLOAD_FILE";
 export const UPLOAD_FILE_START = "metabase/collection/UPLOAD_FILE_START";
@@ -42,6 +45,7 @@ export interface UploadFileProps {
   collectionId?: CollectionId;
   tableId?: TableId;
   modelId?: CardId;
+  uploadMode: UploadMode;
   reloadQuestionData?: boolean;
 }
 
@@ -52,6 +56,7 @@ export const uploadFile = createThunkAction(
       collectionId,
       tableId,
       modelId,
+      uploadMode,
       reloadQuestionData,
     }: UploadFileProps) =>
     async (dispatch: Dispatch) => {
@@ -87,13 +92,22 @@ export const uploadFile = createThunkAction(
         formData.append("file", file);
         formData.append("collection_id", String(collectionId));
 
-        const response = await (tableId
-          ? MetabaseApi.tableAppendCSV({ tableId, formData })
-          : CardApi.uploadCSV({ formData }));
+        const response = await (() => {
+          switch (uploadMode) {
+            case UploadMode.append:
+              return MetabaseApi.tableAppendCSV({ tableId, formData });
+            case UploadMode.replace:
+              return MetabaseApi.tableReplaceCSV({ tableId, formData });
+            case UploadMode.create:
+            default:
+              return CardApi.uploadCSV({ formData });
+          }
+        })();
 
         dispatch(
           uploadEnd({
             id,
+            uploadMode,
             modelId: response || modelId,
           }),
         );

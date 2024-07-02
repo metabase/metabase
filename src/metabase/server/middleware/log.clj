@@ -3,16 +3,18 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.async.streaming-response :as streaming-response]
    [metabase.async.streaming-response.thread-pool :as thread-pool]
    [metabase.async.util :as async.u]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.execute.diagnostic
     :as sql-jdbc.execute.diagnostic]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.server :as server]
    [metabase.server.request.util :as req.util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -55,7 +57,7 @@
 
 (defn- stats [diag-info-fn]
   (str
-   (when-let [^PoolBackedDataSource pool (let [data-source (mdb.connection/data-source)]
+   (when-let [^PoolBackedDataSource pool (let [data-source (mdb/data-source)]
                                            (when (instance? PoolBackedDataSource data-source)
                                              data-source))]
      (trs "App DB connections: {0}/{1}"
@@ -92,10 +94,14 @@
              (or (string? body) (coll? body)))
     (str "\n" (u/pprint-to-str body))))
 
+(defn- format-log-context [{:keys [log-context]} _]
+  (pr-str log-context))
+
 (defn- format-info [info opts]
   (str/join " " (filter some? [(format-status-info info)
                                (format-performance-info info)
                                (format-threads-info info opts)
+                               (format-log-context info opts)
                                (format-error-info info opts)])))
 
 
@@ -145,7 +151,7 @@
                 log-options)]
       (log-fn (u/format-color color (format-info info opts))))
     (catch Throwable e
-      (log/error e (trs "Error logging API request")))))
+      (log/error e "Error logging API request"))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -190,11 +196,24 @@
 ;; Actual middleware. Determines whether request should be logged, and, if so, creates the info dictionary and hands
 ;; off to functions above.
 
+(defsetting health-check-logging-enabled
+  (deferred-tru "Whether to log health check requests from session middleware.")
+  :type       :boolean
+  :default    true
+  :visibility :internal
+  :export?    false)
+
+(defn- logging-disabled-uris
+  "The set of URIs that should not be logged."
+  []
+  (cond-> #{"/api/util/logs"}
+    (not (health-check-logging-enabled)) (conj "/api/health")))
+
 (defn- should-log-request? [{:keys [uri], :as request}]
   ;; don't log calls to /health or /util/logs because they clutter up the logs (especially the window in admin) with
   ;; useless lines
   (and (req.util/api-call? request)
-       (not (#{"/api/util/logs"} uri))))
+       (not ((logging-disabled-uris) uri))))
 
 (defn log-api-call
   "Logs info about request such as status code, number of DB calls, and time taken to complete."
@@ -209,7 +228,8 @@
           (let [info           {:request       request
                                 :start-time    (System/nanoTime)
                                 :call-count-fn call-count-fn
-                                :diag-info-fn  diag-info-fn}
+                                :diag-info-fn  diag-info-fn
+                                :log-context   {:metabase-user-id api/*current-user-id*}}
                 response->info (fn [response]
                                  (assoc info :response response))
                 respond        (comp respond logged-response response->info)]

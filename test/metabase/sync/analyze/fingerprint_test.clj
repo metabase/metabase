@@ -2,14 +2,12 @@
   "Basic tests to make sure the fingerprint generatation code is doing something that makes sense."
   (:require
    [clojure.test :refer :all]
-   [malli.core :as mc]
-   [malli.error :as me]
-   [metabase.db.util :as mdb.u]
+   [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
+   [metabase.db.query :as mdb.query]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
-   [metabase.sync.analyze.fingerprint :as fingerprint]
-   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
+   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.interface :as i]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -24,9 +22,9 @@
 ;; Check that our `base-types->descendants` function properly returns a set of descendants including parent type
 (deftest ^:parallel base-type->descendats-test
   (is (= #{"type/URL" "type/ImageURL" "type/AvatarURL"}
-         (#'fingerprint/base-types->descendants #{:type/URL})))
+         (#'sync.fingerprint/base-types->descendants #{:type/URL})))
   (is (= #{"type/ImageURL" "type/AvatarURL"}
-         (#'fingerprint/base-types->descendants #{:type/ImageURL :type/AvatarURL}))))
+         (#'sync.fingerprint/base-types->descendants #{:type/ImageURL :type/AvatarURL}))))
 
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test
   (testing (str "Make sure we generate the correct HoneySQL WHERE clause based on whatever is in "
@@ -35,26 +33,28 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb.u/isa :semantic_type :type/PK)]
+              [:not (mdb.query/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not (mdb.u/isa :base_type :type/Structured)]
+             [:not= :base_type "type/*"]
+             [:not (mdb.query/isa :base_type :type/Structured)]
              [:or
               [:and
                [:< :fingerprint_version 1]
                [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]]]}
            (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* {1 #{:type/URL}}]
-             (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
+             (#'sync.fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
 
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test-2
   (is (= {:where
           [:and
            [:= :active true]
            [:or
-            [:not (mdb.u/isa :semantic_type :type/PK)]
+            [:not (mdb.query/isa :semantic_type :type/PK)]
             [:= :semantic_type nil]]
            [:not-in :visibility_type ["retired" "sensitive"]]
-           [:not (mdb.u/isa :base_type :type/Structured)]
+           [:not= :base_type "type/*"]
+           [:not (mdb.query/isa :base_type :type/Structured)]
            [:or
             [:and
              [:< :fingerprint_version 2]
@@ -65,7 +65,7 @@
              [:in :base_type #{"type/ImageURL" "type/AvatarURL"}]]]]}
          (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* {1 #{:type/ImageURL :type/AvatarURL}
                                                                                    2 #{:type/Float}}]
-           (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating)))))
+           (#'sync.fingerprint/honeysql-for-fields-that-need-fingerprint-updating)))))
 
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test-3
   (testing "our SQL generation code is clever enough to remove version checks when a newer version completely eclipses them"
@@ -73,10 +73,11 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb.u/isa :semantic_type :type/PK)]
+              [:not (mdb.query/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not (mdb.u/isa :base_type :type/Structured)]
+             [:not= :base_type "type/*"]
+             [:not (mdb.query/isa :base_type :type/Structured)]
              [:or
               [:and
                [:< :fingerprint_version 2]
@@ -88,7 +89,7 @@
                [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]]]}
            (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* {1 #{:type/Float :type/URL}
                                                                                      2 #{:type/Float}}]
-             (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
+             (#'sync.fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
 
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test-4
   (testing "our SQL generation code is also clever enough to completely skip completely eclipsed versions"
@@ -96,10 +97,11 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb.u/isa :semantic_type :type/PK)]
+              [:not (mdb.query/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not (mdb.u/isa :base_type :type/Structured)]
+             [:not= :base_type "type/*"]
+             [:not (mdb.query/isa :base_type :type/Structured)]
              [:or
               [:and
                [:< :fingerprint_version 4]
@@ -117,19 +119,20 @@
                                                                                      2 #{:type/Coordinate}
                                                                                      3 #{:type/URL}
                                                                                      4 #{:type/Float}}]
-             (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
+             (#'sync.fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
 
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test-5
   (testing "when refingerprinting doesn't check for versions"
     (is (= {:where [:and
                     [:= :active true]
                     [:or
-                     [:not (mdb.u/isa :semantic_type :type/PK)]
+                     [:not (mdb.query/isa :semantic_type :type/PK)]
                      [:= :semantic_type nil]]
                     [:not-in :visibility_type ["retired" "sensitive"]]
-                    [:not (mdb.u/isa :base_type :type/Structured)]]}
-           (binding [fingerprint/*refingerprint?* true]
-             (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
+                    [:not= :base_type "type/*"]
+                    [:not (mdb.query/isa :base_type :type/Structured)]]}
+           (binding [sync.fingerprint/*refingerprint?* true]
+             (#'sync.fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
 
 
 ;; Make sure that the above functions are used correctly to determine which Fields get (re-)fingerprinted
@@ -139,10 +142,10 @@
       (with-redefs [qp/process-query              (fn process-query
                                                     [_query rff]
                                                     (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
-                    fingerprint/save-fingerprint! (fn [& _] (reset! fingerprinted? true))]
+                    sync.fingerprint/save-fingerprint! (fn [& _] (reset! fingerprinted? true))]
         (t2.with-temp/with-temp [Table table {}
                                  Field _     (assoc field-properties :table_id (u/the-id table))]
-          [(fingerprint/fingerprint-fields! table)
+          [(sync.fingerprint/fingerprint-fields! table)
            @fingerprinted?])))))
 
 (def ^:private default-stat-map
@@ -259,7 +262,7 @@
                       fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
           (is (= {:no-data-fingerprints 0, :failed-fingerprints    0,
                   :updated-fingerprints 1, :fingerprints-attempted 1}
-                 (#'fingerprint/fingerprint-table! (t2/select-one Table :id (data/id :venues)) [field])))
+                 (#'sync.fingerprint/fingerprint-table! (t2/select-one Table :id (data/id :venues)) [field])))
           (is (= {:fingerprint         {:experimental {:fake-fingerprint? true}}
                   :fingerprint_version 3
                   :last_analyzed       nil}
@@ -267,23 +270,15 @@
 
 (deftest test-fingerprint-failure
   (testing "if fingerprinting fails, the exception should not propagate"
-    (with-redefs [fingerprint/fingerprint-table! (fn [_ _] (throw (Exception. "expected")))]
-      (is (= (fingerprint/empty-stats-map 0)
-             (fingerprint/fingerprint-fields! (t2/select-one Table :id (data/id :venues))))))))
-
-(deftest test-fingerprint-skipped-for-ga
-  (testing "Google Analytics doesn't support fingerprinting fields"
-    (let [fake-db (-> (data/db)
-                      (assoc :engine :googleanalytics))]
-      (with-redefs [fingerprint/fingerprint-table! (fn [_] (throw (Exception. "this should not be called!")))]
-        (is (= (fingerprint/empty-stats-map 0)
-               (fingerprint/fingerprint-fields-for-db! fake-db [(t2/select-one Table :id (data/id :venues))] (fn [_ _]))))))))
+    (with-redefs [sync.fingerprint/fingerprint-table! (fn [_ _] (throw (Exception. "expected")))]
+      (is (= (sync.fingerprint/empty-stats-map 0)
+             (sync.fingerprint/fingerprint-fields! (t2/select-one Table :id (data/id :venues))))))))
 
 (deftest fingerprint-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Fingerprints should actually get saved with the correct values"
       (testing "Text fingerprints"
-        (fingerprint/fingerprint-fields! (t2/select-one Table :id (data/id :venues)))
+        (sync.fingerprint/fingerprint-fields! (t2/select-one Table :id (data/id :venues)))
         (is (=? {:global {:distinct-count 100
                           :nil%           0.0}
                  :type   {:type/Text {:percent-json   0.0
@@ -298,9 +293,9 @@
     (doseq [size [4 8 10]]
       (let [table (t2/select-one Table :id (mt/id :categories))
             field (t2/select-one Field :id (mt/id :categories :name))]
-        (binding [fingerprint/*truncation-size* size]
+        (binding [sync.fingerprint/*truncation-size* size]
           (is (=? {:updated-fingerprints 1}
-                  (#'fingerprint/fingerprint-table! table [field])))
+                  (#'sync.fingerprint/fingerprint-table! table [field])))
           (let [field' (t2/select-one [Field :fingerprint] :id (u/id field))
                 fingerprinted-size (get-in field' [:fingerprint :type :type/Text :average-length])]
             (is fingerprinted-size)
@@ -309,30 +304,14 @@
 (deftest refingerprint-fields-for-db!-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "refingerprints up to a limit"
-      (with-redefs [fingerprint/save-fingerprint! (constantly nil)
-                    fingerprint/max-refingerprint-field-count 31] ;; prime number so we don't have exact matches
+      (with-redefs [sync.fingerprint/save-fingerprint! (constantly nil)
+                    sync.fingerprint/max-refingerprint-field-count 31] ;; prime number so we don't have exact matches
         (let [table (t2/select-one Table :id (mt/id :checkins))
-              results (fingerprint/refingerprint-fields-for-db! (mt/db)
-                                                                (repeat (* @#'fingerprint/max-refingerprint-field-count 2) table)
+              results (sync.fingerprint/refingerprint-fields-for-db! (mt/db)
+                                                                (repeat (* @#'sync.fingerprint/max-refingerprint-field-count 2) table)
                                                                 (constantly nil))
               attempted (:fingerprints-attempted results)]
           ;; it can exceed the max field count as our resolution is after each table check it.
-          (is (<= @#'fingerprint/max-refingerprint-field-count attempted))
+          (is (<= @#'sync.fingerprint/max-refingerprint-field-count attempted))
           ;; but it is bounded.
-          (is (< attempted (+ @#'fingerprint/max-refingerprint-field-count 10))))))))
-
-(deftest ^:parallel fingerprint-schema-test
-  (testing "allows for extra keywords"
-    (let [base {:global
-                {:distinct-count 2, :nil% 0.0}}]
-      (doseq [path [[:type :type/Text]
-                    [:type :type/Number]
-                    [:type :type/DateTime]
-                    [:global]
-                    [:experimental]
-                    [:top-level]
-                    []]]
-        (is (not (me/humanize
-                  (mc/explain
-                   i/Fingerprint
-                   (assoc-in base (conj path :extra-key) (rand-nth [3 :extra-value 4.0 {:stuff :stuff}]))))))))))
+          (is (< attempted (+ @#'sync.fingerprint/max-refingerprint-field-count 10))))))))

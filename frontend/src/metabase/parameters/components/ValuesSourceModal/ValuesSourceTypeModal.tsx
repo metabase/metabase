@@ -14,12 +14,12 @@ import SelectButton from "metabase/core/components/SelectButton";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
-import type Question from "metabase-lib/Question";
-import type Field from "metabase-lib/metadata/Field";
-import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
-import type { UiParameter } from "metabase-lib/parameters/types";
-import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
-import { isValidSourceConfig } from "metabase-lib/parameters/utils/parameter-source";
+import type Question from "metabase-lib/v1/Question";
+import type Field from "metabase-lib/v1/metadata/Field";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import { isValidSourceConfig } from "metabase-lib/v1/parameters/utils/parameter-source";
 import type {
   ValuesSourceConfig,
   ValuesSourceType,
@@ -429,7 +429,8 @@ const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
 };
 
 const getSupportedFields = (question: Question) => {
-  const fields = question.composeThisQuery()?.legacyQueryTable()?.fields ?? [];
+  const fields =
+    question.composeQuestionAdhoc().legacyQueryTable()?.fields ?? [];
   return fields.filter(field => field.isString());
 };
 
@@ -505,8 +506,8 @@ export default _.compose(
   Tables.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) =>
       card_id ? getQuestionVirtualTableId(card_id) : undefined,
-    fetchType: "fetchMetadata",
-    requestType: "fetchMetadata",
+    fetchType: "fetchMetadataDeprecated",
+    requestType: "fetchMetadataDeprecated",
     LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
   Questions.load({

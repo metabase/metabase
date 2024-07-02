@@ -12,8 +12,8 @@ export const CurrentContainer = styled.div<{ first?: boolean }>`
 `;
 
 export const CurrentPopover = styled.div`
-  color: ${color("white")};
-  background-color: ${color("black")};
+  color: var(--mb-color-text-white);
+  background-color: var(--mb-color-bg-black);
   padding: ${space(1)} ${space(2)};
 `;
 
@@ -29,7 +29,7 @@ export const CurrentButton = styled(Button)<ButtonProps>`
   background-color: ${({ selected, primaryColor = color("brand") }) =>
     selected ? primaryColor : alpha(primaryColor, 0.1)};
   color: ${({ selected, primaryColor = color("brand") }) =>
-    selected ? "white" : primaryColor};
+    selected ? "var(--mb-color-text-white)" : primaryColor};
 
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};

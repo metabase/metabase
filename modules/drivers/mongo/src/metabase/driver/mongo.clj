@@ -49,7 +49,8 @@
   [_ db-details]
   (mongo.connection/with-mongo-client [^MongoClient c db-details]
     (let [db-names (mongo.util/list-database-names c)
-          db (mongo.util/database c (mongo.db/db-name db-details))
+          db-name (mongo.db/db-name db-details)
+          db (mongo.util/database c db-name)
           db-stats (mongo.util/run-command db {:dbStats 1} :keywordize true)]
       (and
        ;; 1. check db.dbStats command completes successfully
@@ -57,7 +58,7 @@
           1.0)
        ;; 2. check the database is actually on the server
        ;; (this is required because (1) is true even if the database doesn't exist)
-       (boolean (some #(= % (:db db-stats)) db-names))))))
+       (boolean (some #(= % db-name) db-names))))))
 
 (defmethod driver/humanize-connection-error-message
   :mongo
@@ -307,7 +308,8 @@
   (mongo.qp/mbql->native query))
 
 (defmethod driver/execute-reducible-query :mongo
-  [_ query _context respond]
+  [_driver query _context respond]
+  (assert (string? (get-in query [:native :collection])) "Cannot execute MongoDB query without a :collection name")
   (mongo.connection/with-mongo-client [_ (lib.metadata/database (qp.store/metadata-provider))]
     (mongo.execute/execute-reducible-query query respond)))
 

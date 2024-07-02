@@ -1,18 +1,26 @@
 (ns metabase.lib.fe-util
   (:require
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
+   [metabase.shared.formatting.date :as fmt.date]
    [metabase.shared.util.i18n :as i18n]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
@@ -25,6 +33,46 @@
    [:options ::lib.schema.common/options]
    [:args [:sequential :any]]])
 
+(def ^:private expandable-time-units #{:hour})
+
+(def ^:private expandable-date-units #{:week :month :quarter :year})
+
+(def ^:private expandable-temporal-units
+  (into expandable-time-units expandable-date-units))
+
+(defn- expandable-temporal-expression?
+  [[operator _options & [maybe-clause-arg other-arg :as args]]]
+  (boolean (and (= := operator)
+                (= 2 (count args))
+                (lib.util/clause? maybe-clause-arg)
+                (contains? expandable-temporal-units
+                           (:temporal-unit (lib.options/options maybe-clause-arg)))
+                (shared.ut/timestamp-coercible? other-arg))))
+
+(defn- expand-temporal-expression
+  "Modify expression in a way, that its resulting [[expression-parts]] are digestable by filter picker.
+
+   Current filter picker implementation is unable to handle expression parts of expressions of a form
+   `[:= {...} [:field {:temporal-unit :week} 11] \"2024-05-12\"]` -- expresions that check for equality of a column
+   with `:temporal-unit` set to value other than `:day` or `:minute` to some date time value.
+
+   To mitigate that expressions are converted to `:between` form which is handled correctly by filter picker. For more
+   info on the issue see the comment [https://github.com/metabase/metabase/issues/12496#issuecomment-1629317661].
+   This functionality is backend approach to \"smaller solution\"."
+  [[_operator options column-arg dt-arg :as _expression-clause]]
+  (let [temporal-unit (:temporal-unit (lib.options/options column-arg))
+        interval (shared.ut/to-range (shared.ut/coerce-to-timestamp dt-arg) {:unit temporal-unit :n 1})
+        formatter (if (contains? expandable-time-units temporal-unit)
+                    fmt.date/datetime->iso-string
+                    fmt.date/date->iso-string)]
+    (into [:between options column-arg] (map formatter) interval)))
+
+(defn- maybe-expand-temporal-expression
+  [expression-clause]
+  (if (expandable-temporal-expression? expression-clause)
+    (expand-temporal-expression expression-clause)
+    expression-clause))
+
 (mu/defn expression-parts :- ExpressionParts
   "Return the parts of the filter clause `expression-clause` in query `query` at stage `stage-number`."
   ([query expression-clause]
@@ -33,7 +81,7 @@
   ([query :- ::lib.schema/query
     stage-number :- :int
     expression-clause :- ::lib.schema.expression/expression]
-   (let [[op options & args] expression-clause
+   (let [[op options & args] (maybe-expand-temporal-expression expression-clause)
          ->maybe-col #(when (lib.util/ref-clause? %)
                         (lib.filter/add-column-operators
                           (lib.field/extend-column-metadata-from-ref
@@ -79,7 +127,7 @@
                         (temporal? maybe-clause)
                         (lib.util/clause? maybe-clause)
                         (clojure.core/contains? units (:temporal-unit (second maybe-clause)))))))]
-    (mbql.u/match-one filter-clause
+    (lib.util.match/match-one filter-clause
       [:= _ (x :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
       (shared.ut/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil {:include-current true})
 
@@ -110,6 +158,15 @@
       _
       (lib.metadata.calculation/display-name query stage-number filter-clause))))
 
+(defn- query-dependents-foreign-keys
+  [metadata-providerable columns]
+  (for [column columns
+        :let [fk-target-field-id (:fk-target-field-id column)]
+        :when (and fk-target-field-id (lib.types.isa/foreign-key? column))]
+    (if-let [fk-target-field (lib.metadata/field metadata-providerable fk-target-field-id)]
+      {:type :table, :id (:table-id fk-target-field)}
+      {:type :field, :id fk-target-field-id})))
+
 (defn- query-dependents
   [metadata-providerable query-or-join]
   (let [base-stage (first (:stages query-or-join))
@@ -118,18 +175,25 @@
      (when (pos? database-id)
        [{:type :database, :id database-id}
         {:type :schema,   :id database-id}])
-     ;; cf. frontend/src/metabase-lib/queries/NativeQuery.ts
      (when (= (:lib/type base-stage) :mbql.stage/native)
        (for [{tag-type :type, [dim-tag _opts id] :dimension} (vals (:template-tags base-stage))
              :when (and (= tag-type :dimension)
                         (= dim-tag :field)
                         (integer? id))]
          {:type :field, :id id}))
-     ;; cf. frontend/src/metabase-lib/Question.ts and frontend/src/metabase-lib/queries/StructuredQuery.ts
      (when-let [card-id (:source-card base-stage)]
-       [{:type :table, :id (str "card__" card-id)}])
+       (let [card (lib.metadata/card metadata-providerable card-id)
+             definition (:dataset-query card)]
+         (concat [{:type :table, :id (str "card__" card-id)}]
+                 (when-let [card-columns (lib.card/saved-question-metadata metadata-providerable card-id)]
+                   (query-dependents-foreign-keys metadata-providerable card-columns))
+                 (when (and (= (:type card) :metric) definition)
+                   (query-dependents metadata-providerable
+                                     (-> definition mbql.normalize/normalize lib.convert/->pMBQL))))))
      (when-let [table-id (:source-table base-stage)]
-       [{:type :table, :id table-id}])
+       (cons {:type :table, :id table-id}
+             (query-dependents-foreign-keys metadata-providerable
+                                            (lib.metadata/fields metadata-providerable table-id))))
      (for [stage (:stages query-or-join)
            join (:joins stage)
            dependent (query-dependents metadata-providerable join)]
@@ -138,7 +202,7 @@
 (def ^:private DependentItem
   [:and
    [:map
-    [:type [:enum :database :schema :table :field]]]
+    [:type [:enum :database :schema :table :card :field]]]
    [:multi {:dispatch :type}
     [:database [:map [:id ::lib.schema.id/database]]]
     [:schema   [:map [:id ::lib.schema.id/database]]]
@@ -147,6 +211,26 @@
 
 (mu/defn dependent-metadata :- [:sequential DependentItem]
   "Return the IDs and types of entities the metadata about is required
-  for the FE to function properly."
-  [query :- ::lib.schema/query]
-  (into [] (distinct) (query-dependents query query)))
+  for the FE to function properly.  `card-id` is provided
+  when editing the card with that ID and in this case `a-query` is its
+  definition (i.e., the dataset-query). `card-type` specifies the type
+  of the card being created or edited."
+  [query     :- ::lib.schema/query
+   card-id   :- [:maybe ::lib.schema.id/card]
+   card-type :- ::lib.schema.metadata/card.type]
+  (into []
+        (distinct)
+        (concat
+         (query-dependents query query)
+         (when (and (some? card-id)
+                    (#{:model :metric} card-type))
+           (cons {:type :table, :id (str "card__" card-id)}
+                 (when-let [card (lib.metadata/card query card-id)]
+                   (query-dependents query (lib.query/query query card))))))))
+
+
+(mu/defn table-or-card-dependent-metadata :- [:sequential DependentItem]
+  "Return the IDs and types of entities which are needed upfront to create a new query based on a table/card."
+  [_metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   table-id               :- [:or ::lib.schema.id/table :string]]
+  [{:type :table, :id table-id}])

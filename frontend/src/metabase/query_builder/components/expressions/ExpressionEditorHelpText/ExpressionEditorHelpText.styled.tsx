@@ -13,7 +13,7 @@ export const Container = styled.div`
 `;
 
 export const FunctionHelpCode = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-family: ${monospaceFontFamily};
 
   font-size: 0.8125rem;
@@ -21,12 +21,12 @@ export const FunctionHelpCode = styled.div`
 `;
 
 export const FunctionHelpCodeArgument = styled.span`
-  color: ${color("accent3")};
+  color: ${() => color("accent3")};
 `;
 
 export const Divider = styled.div`
   height: 1px;
-  background-color: ${color("border")};
+  background-color: var(--mb-color-border);
   margin: 1.25rem -1rem 1rem -1rem;
 `;
 
@@ -42,7 +42,7 @@ export const ArgumentsGrid = styled.div`
 `;
 
 export const ArgumentTitle = styled.div`
-  color: ${color("accent3")};
+  color: ${() => color("accent3")};
   font-family: ${monospaceFontFamily};
   font-size: 0.8125rem;
   text-align: right;
@@ -51,13 +51,13 @@ export const ArgumentTitle = styled.div`
 export const BlockSubtitleText = styled.div`
   margin-bottom: 0.5rem;
 
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 `;
 
 export const ExampleCode = styled.div`
   padding: 0.5rem;
 
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
   border-radius: 8px;
 
   font-size: 0.8125rem;
@@ -70,7 +70,7 @@ export const DocumentationLink = styled(ExternalLink)`
   align-items: center;
   margin-top: 1rem;
 
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: 700;
 `;
 

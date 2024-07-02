@@ -1,5 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, popover, visitDashboard } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  visitDashboard,
+  multiAutocompleteInput,
+} from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -124,11 +129,13 @@ describe("scenarios > dashboard > OLD parameters", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("City").click();
       popover().within(() => {
-        cy.get("input").type("Flagstaff{enter}");
+        multiAutocompleteInput().type("Flagstaff{enter}");
         cy.findByText("Add filter").click();
       });
 
-      cy.get(".DashCard tbody tr").should("have.length", 1);
+      cy.findByTestId("dashcard-container")
+        .get("tbody tr")
+        .should("have.length", 1);
     });
   });
 

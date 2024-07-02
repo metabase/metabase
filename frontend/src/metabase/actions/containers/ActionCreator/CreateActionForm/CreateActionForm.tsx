@@ -11,7 +11,7 @@ import FormTextArea from "metabase/core/components/FormTextArea";
 import type { CreateQueryActionParams } from "metabase/entities/actions";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import FormModelPicker from "metabase/models/containers/FormModelPicker";
+import { FormModelPicker } from "metabase/models/containers/FormModelPicker";
 
 const ACTION_SCHEMA = Yup.object({
   name: Yup.string()

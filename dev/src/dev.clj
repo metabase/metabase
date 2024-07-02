@@ -12,7 +12,8 @@
 ;;
 ;; - [Getting started with backend development](https://github.com/metabase/metabase/blob/master/docs/developers-guide/devenv.md#backend-development)
 ;; - [Additional notes on using tools.deps](https://github.com/metabase/metabase/wiki/Migrating-from-Leiningen-to-tools.deps)
-;; - [Other tips](https://github.com/metabase/metabase/wiki/Metabase-Backend-Dev-Secrets)
+;; - [Use the dev-scripts repo to run various local DBs](https://github.com/metabase/dev-scripts)
+;; - If you're on a Mac and need a VM to run Windows or Linux, [check out UTM](https://mac.getutm.app/)
 ;;
 ;; ## Important Parts of the Codebase
 ;;
@@ -29,6 +30,20 @@
 ;; - [Liquibase](https://docs.liquibase.com/concepts/changelogs/changeset.html) for database migrations
 ;; - [Compojure](https://github.com/weavejester/compojure) on top of [Ring](https://github.com/ring-clojure/ring) for our API
 ;;
+;; ## Other Helpful Things
+;;
+;; [Tips on our Github wiki](https://github.com/metabase/metabase/wiki/Metabase-Backend-Dev-Secrets)
+;;
+;; ### The Dev Debug Page
+;; If you want an easy way to GET/POST to an endpoint and display the results in a webpage, check out the [Dev Debug
+;; Page](https://github.com/metabase/metabase/pull/40580). Cherry-pick the commit from that PR, modify `DevDebug.jsx` as
+;; you see fit ([here](https://github.com/metabase/metabase/commit/4c5723f44424dca2a68a753b83e31ec8129da0fb) is an
+;; example from the ParseSQL project), and then play with the results at `/dev_debug`. *Don't forget to remove the
+;; commit before merging to `master`!*
+;;
+;; ### Lifecycle of a Query
+;; Dan wrote a nice guide [here](https://www.notion.so/metabase/Lifecycle-of-a-query-58e212402b7e444d937aba7757f9ec06?pvs=4)
+;;
 ;; <hr />
 
 
@@ -40,6 +55,7 @@
    [clojure.test]
    [dev.debug-qp :as debug-qp]
    [dev.explain :as dev.explain]
+   [dev.migrate :as dev.migrate]
    [dev.model-tracking :as model-tracking]
    [hashp.core :as hashp]
    [honey.sql :as sql]
@@ -48,13 +64,14 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.core :as mbc]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.db.env :as mdb.env]
-   [metabase.db.setup :as mdb.setup]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.email :as email]
    [metabase.models.database :refer [Database]]
+   [metabase.models.setting :as setting]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server :as server]
@@ -69,7 +86,8 @@
    [potemkin :as p]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]
-   [toucan2.pipeline :as t2.pipeline]))
+   [toucan2.pipeline :as t2.pipeline]
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
@@ -86,6 +104,10 @@
   pprint-sql]
  [dev.explain
   explain-query]
+ [dev.migrate
+  migrate!
+  rollback!
+  migration-sql-by-id]
  [model-tracking
   track!
   untrack!
@@ -211,7 +233,7 @@
   first arg:
 
     (dev/query-jdbc-db
-     [:sqlserver 'test-data-with-time]
+     [:sqlserver 'time-test-data]
      [\"SELECT * FROM dbo.users WHERE dbo.users.last_login_time > ?\" (java-time/offset-time \"16:00Z\")])"
   {:arglists '([driver sql]            [[driver dataset] sql]
                [driver honeysql-form]  [[driver dataset] honeysql-form]
@@ -242,15 +264,6 @@
       (catch InterruptedException e
         (a/>!! canceled-chan :cancel)
         (throw e)))))
-
-(defn migrate!
-  "Run migrations for the Metabase application database. Possible directions are `:up` (default), `:force`, `:down`, and
-  `:release-locks`. When migrating `:down` pass along a version to migrate to (44+)."
-  ([]
-   (migrate! :up))
-  ([direction & [version]]
-   (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source)
-                       direction version)))
 
 (methodical/defmethod t2.connection/do-with-connection :model/Database
   "Support running arbitrary queries against data warehouse DBs for easy REPL debugging. Only works for SQL+JDBC drivers
@@ -296,6 +309,27 @@
                                  (qp.compile/compile built-query))]
     (into [query] params)))
 
+(methodical/defmethod t2.hydrate/hydrate-with-strategy :around ::t2.hydrate/multimethod-simple
+  "Throws an error if do simple hydrations that make DB call on a sequence."
+  [model strategy k instances]
+  (if (or config/is-prod?
+          (< (count instances) 2)
+          ;; we skip checking these keys because most of the times its call count
+          ;; are from deferencing metabase.api.common/*current-user-permissions-set*
+          (#{:can_write :can_read} k))
+    (next-method model strategy k instances)
+    (t2/with-call-count [call-count]
+      (let [res (next-method model strategy k instances)
+            ;; if it's a lazy-seq then we need to realize it so call-count is counted
+            res (if (instance? clojure.lang.LazySeq res)
+                  (doall res)
+                  res)]
+        ;; only throws an exception if the simple hydration makes a DB call
+        (when (pos-int? (call-count))
+          (throw (ex-info (format "N+1 hydration detected!!! Model %s, key %s]" (pr-str model) k)
+                          {:model model :strategy strategy :k k :items-count (count instances) :db-calls (call-count)})))
+        res))))
+
 (defn app-db-as-data-warehouse
   "Add the application database as a Database. Currently only works if your app DB uses broken-out details!"
   []
@@ -303,11 +337,11 @@
     (or (t2/select-one Database :name "Application Database")
         #_:clj-kondo/ignore
         (let [details (#'metabase.db.env/broken-out-details
-                       (mdb.connection/db-type)
+                       (mdb/db-type)
                        @#'metabase.db.env/env)
               app-db  (first (t2/insert-returning-instances! Database
                                                              {:name    "Application Database"
-                                                              :engine  (mdb.connection/db-type)
+                                                              :engine  (mdb/db-type)
                                                               :details details}))]
           (sync/sync-database! app-db)
           app-db))))
@@ -355,3 +389,25 @@
         (when (failed?)
           (throw (ex-info (format "Test failed after running: `%s`" test)
                           {:test test})))))))
+
+
+(defn setup-email!
+  "Set up email settings for sending emails from Metabase. This is useful for testing email sending in the REPL."
+  [& settings]
+  (let [settings (merge {:host     "localhost"
+                         :port     1025
+                         :user     "metabase"
+                         :pass     "metabase@secret"
+                         :security :none}
+                        settings)]
+    (when (::email/error (email/test-smtp-connection settings))
+      (throw (ex-info "Failed to connect to SMTP server" {:settings settings})))
+    (setting/set-many! (update-keys settings
+                                    {:host        :email-smtp-host,
+                                     :user        :email-smtp-username,
+                                     :pass        :email-smtp-password,
+                                     :port        :email-smtp-port,
+                                     :security    :email-smtp-security,
+                                     :sender-name :email-from-name,
+                                     :sender      :email-from-address,
+                                     :reply-to    :email-reply-to}))))

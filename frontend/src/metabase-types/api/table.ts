@@ -1,6 +1,6 @@
+import type { Card } from "./card";
 import type { Database, DatabaseId, InitialSyncStatus } from "./database";
 import type { Field, FieldDimensionOption, FieldId } from "./field";
-import type { Metric } from "./metric";
 import type { Segment } from "./segment";
 
 export type ConcreteTableId = number;
@@ -20,7 +20,7 @@ export type TableVisibilityType =
 
 export type TableFieldOrder = "database" | "alphabetical" | "custom" | "smart";
 
-export interface Table {
+export type Table = {
   id: TableId;
 
   name: string;
@@ -30,21 +30,24 @@ export interface Table {
   db_id: DatabaseId;
   db?: Database;
 
-  schema: string;
+  schema: SchemaName;
 
   fks?: ForeignKey[];
   fields?: Field[];
-  metrics?: Metric[];
   segments?: Segment[];
+  metrics?: Card[];
   dimension_options?: Record<string, FieldDimensionOption>;
   field_order: TableFieldOrder;
 
   active: boolean;
   visibility_type: TableVisibilityType;
   initial_sync_status: InitialSyncStatus;
+  is_upload: boolean;
   caveats?: string;
   points_of_interest?: string;
-}
+  created_at: string;
+  updated_at: string;
+};
 
 export type SchemaName = string;
 
@@ -56,10 +59,6 @@ export interface Schema {
 export interface SchemaListQuery {
   dbId: DatabaseId;
   include_hidden?: boolean;
-  include_editable_data_model?: boolean;
-}
-
-export interface TableQuery {
   include_editable_data_model?: boolean;
 }
 
@@ -75,6 +74,7 @@ export interface TableListQuery {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
+  skip_fields?: boolean;
 }
 
 export interface ForeignKey {
@@ -83,4 +83,49 @@ export interface ForeignKey {
   destination?: Field;
   destination_id: FieldId;
   relationship: "Mt1";
+}
+
+export interface GetTableRequest {
+  id: TableId;
+  include_editable_data_model?: boolean;
+}
+
+export interface GetTableQueryMetadataRequest {
+  id: TableId;
+  include_sensitive_fields?: boolean;
+  include_hidden_fields?: boolean;
+  include_editable_data_model?: boolean;
+}
+
+export interface UpdateTableRequest {
+  id: TableId;
+  display_name?: string;
+  visibility_type?: TableVisibilityType;
+  description?: string;
+  caveats?: string;
+  points_of_interest?: string;
+  show_in_getting_started?: boolean;
+  field_order?: TableFieldOrder;
+}
+
+export interface UpdateTableListRequest {
+  ids: TableId[];
+  display_name?: string;
+  visibility_type?: TableVisibilityType;
+  description?: string;
+  caveats?: string;
+  points_of_interest?: string;
+  show_in_getting_started?: boolean;
+}
+
+export interface UpdateTableFieldsOrderRequest {
+  id: TableId;
+  field_order: FieldId[];
+}
+
+export type UploadManagementResponse = Table[];
+
+export interface DeleteUploadTableRequest {
+  tableId: TableId;
+  "archive-cards"?: boolean;
 }

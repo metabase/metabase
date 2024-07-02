@@ -1,11 +1,11 @@
 .formula {
   composes: bordered rounded from "style";
-  background-color: var(--color-bg-light);
+  background-color: var(--mb-color-bg-light);
   cursor: pointer;
 }
 
 .formulaHeader {
-  composes: text-brand py1 px2 from "style";
+  composes: textBrand py1 px2 from "style";
   align-items: center;
   display: flex;
 }
@@ -19,25 +19,25 @@
   composes: p2 from "style";
 }
 
-:global(.formulaDefinition) {
+.formulaDefinition {
   overflow: hidden;
 }
 
-:global(.formulaDefinition-enter) {
+.formulaDefinitionEnter {
   max-height: 0;
 }
 
-:global(.formulaDefinition-enter.formulaDefinition-enter-active) {
+.formulaDefinitionEnter.formulaDefinitionEnterActive {
   /* using 100% max-height breaks the transition */
   max-height: 150px;
   transition: max-height 300ms ease-out;
 }
 
-:global(.formulaDefinition-exit) {
+.formulaDefinitionExit {
   max-height: 150px;
 }
 
-:global(.formulaDefinition-exit.formulaDefinition-exit-active) {
+.formulaDefinitionExit.formulaDefinitionExitActive {
   max-height: 0;
   transition: max-height 300ms ease-out;
 }

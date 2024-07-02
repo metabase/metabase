@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import { color } from "metabase/lib/colors";
 
 export const Root = styled.div`
   display: flex;
@@ -13,11 +12,11 @@ export const Root = styled.div`
 
   padding: 0.5rem;
 
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;
 
 export const SlowQueryMessageContainer = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const ShortMessage = styled.span`
@@ -31,5 +30,5 @@ export const Duration = styled.span`
 `;
 
 export const StyledLoadingSpinner = styled(LoadingSpinner)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;

@@ -1,14 +1,24 @@
 import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
+import { Api } from "metabase/api";
 import Questions from "metabase/entities/questions";
 import Schemas from "metabase/entities/schemas";
-import { ROOT_COLLECTION_VIRTUAL_SCHEMA } from "metabase-lib/metadata/utils/saved-questions";
+import {
+  ROOT_COLLECTION_VIRTUAL_SCHEMA,
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+} from "metabase-lib/v1/metadata/utils/saved-questions";
 
 describe("schema entity", () => {
   let store;
   beforeEach(() => {
-    store = getStore();
+    store = getStore(
+      {
+        [Api.reducerPath]: Api.reducer,
+      },
+      {},
+      [Api.middleware],
+    );
   });
 
   it("should save metadata from fetching a schema's tables", async () => {
@@ -251,7 +261,7 @@ describe("schema entity", () => {
       });
     });
 
-    it("should not add question ID when it is unarchived if collection schema is not present in store", () => {
+    it("should add question ID when it is unarchived if collection schema is not present in store", () => {
       const nextState = Schemas.reducer(
         {
           [ROOT_COLLECTION_VIRTUAL_SCHEMA]: {
@@ -264,6 +274,11 @@ describe("schema entity", () => {
       expect(nextState).toEqual({
         [ROOT_COLLECTION_VIRTUAL_SCHEMA]: {
           tables: ["card__123"],
+        },
+        [`${SAVED_QUESTIONS_VIRTUAL_DB_ID}:foo`]: {
+          id: `${SAVED_QUESTIONS_VIRTUAL_DB_ID}:foo`,
+          name: "foo",
+          database: SAVED_QUESTIONS_VIRTUAL_DB_ID,
         },
       });
     });

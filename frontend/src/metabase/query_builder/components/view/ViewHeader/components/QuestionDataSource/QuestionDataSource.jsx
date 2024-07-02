@@ -2,6 +2,7 @@ import PropTypes from "prop-types";
 import { isValidElement } from "react";
 import { t } from "ttag";
 
+import { TableInfoIcon } from "metabase/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import Tooltip from "metabase/core/components/Tooltip";
 import Collections from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
@@ -13,12 +14,12 @@ import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
-} from "metabase-lib/metadata/utils/saved-questions";
-import * as ML_Urls from "metabase-lib/urls";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
+import * as ML_Urls from "metabase-lib/v1/urls";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
 
-import { TablesDivider, TableInfoIcon } from "./QuestionDataSource.styled";
+import { TablesDivider, IconWrapper } from "./QuestionDataSource.styled";
 
 QuestionDataSource.propTypes = {
   question: PropTypes.object,
@@ -36,7 +37,7 @@ function isMaybeBasedOnDataset(question) {
 export function QuestionDataSource({
   question,
   originalQuestion,
-  subHead,
+  subHead = false,
   ...props
 }) {
   if (!question) {
@@ -60,7 +61,7 @@ export function QuestionDataSource({
   if (originalQuestion?.id() === sourceQuestionId) {
     return (
       <SourceDatasetBreadcrumbs
-        model={originalQuestion}
+        question={originalQuestion}
         variant={variant}
         {...props}
       />
@@ -78,10 +79,13 @@ export function QuestionDataSource({
             if (!sourceQuestion || loading) {
               return null;
             }
-            if (sourceQuestion.type() === "model") {
+            if (
+              sourceQuestion.type() === "model" ||
+              sourceQuestion.type() === "metric"
+            ) {
               return (
                 <SourceDatasetBreadcrumbs
-                  model={sourceQuestion}
+                  question={sourceQuestion}
                   collection={collection}
                   variant={variant}
                   {...props}
@@ -118,11 +122,11 @@ function DataSourceCrumbs({ question, variant, isObjectDetail, ...props }) {
 }
 
 SourceDatasetBreadcrumbs.propTypes = {
-  model: PropTypes.object.isRequired,
+  question: PropTypes.object.isRequired,
   collection: PropTypes.object.isRequired,
 };
 
-function SourceDatasetBreadcrumbs({ model, collection, ...props }) {
+function SourceDatasetBreadcrumbs({ question, collection, ...props }) {
   return (
     <HeadBreadcrumbs
       {...props}
@@ -130,12 +134,12 @@ function SourceDatasetBreadcrumbs({ model, collection, ...props }) {
         <HeadBreadcrumbs.Badge
           key="dataset-collection"
           to={Urls.collection(collection)}
-          icon="model"
+          icon={question.type() === "metric" ? "metric" : "model"}
           inactiveColor="text-light"
         >
           {collection?.name || t`Our analytics`}
         </HeadBreadcrumbs.Badge>,
-        model.isArchived() ? (
+        question.isArchived() ? (
           <Tooltip
             key="dataset-name"
             tooltip={t`This model is archived and shouldn't be used.`}
@@ -146,15 +150,15 @@ function SourceDatasetBreadcrumbs({ model, collection, ...props }) {
               inactiveColor="text-light"
               icon={{ name: "warning", color: color("danger") }}
             >
-              {model.displayName()}
+              {question.displayName()}
             </HeadBreadcrumbs.Badge>
           </Tooltip>
         ) : (
           <HeadBreadcrumbs.Badge
-            to={Urls.question(model.card())}
+            to={Urls.question(question.card())}
             inactiveColor="text-light"
           >
-            {model.displayName()}
+            {question.displayName()}
           </HeadBreadcrumbs.Badge>
         ),
       ]}
@@ -162,7 +166,7 @@ function SourceDatasetBreadcrumbs({ model, collection, ...props }) {
   );
 }
 
-QuestionDataSource.shouldRender = ({ question, isObjectDetail }) =>
+QuestionDataSource.shouldRender = ({ question, isObjectDetail = false }) =>
   getDataSourceParts({ question, isObjectDetail }).length > 0;
 
 function getDataSourceParts({ question, subHead, isObjectDetail }) {
@@ -260,7 +264,16 @@ function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
     >
       <span>
         {table.displayName()}
-        <TableInfoIcon table={table} alwaysVisible />
+        {!subHead && (
+          <IconWrapper>
+            <TableInfoIcon
+              table={table}
+              icon="info_filled"
+              size={12}
+              position="bottom"
+            />
+          </IconWrapper>
+        )}
       </span>
     </HeadBreadcrumbs.Badge>
   ));

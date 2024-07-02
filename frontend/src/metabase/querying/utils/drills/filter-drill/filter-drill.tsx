@@ -1,7 +1,7 @@
 import { FilterPickerBody } from "metabase/querying/components/FilterPicker/FilterPickerBody";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 interface FilterPopoverProps {
   question: Question;

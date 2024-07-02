@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
-import type Table from "metabase-lib/metadata/Table";
+import type Table from "metabase-lib/v1/metadata/Table";
 import { createSampleDatabase, ORDERS } from "metabase-types/api/mocks/presets";
 
 import DataSelectorFieldPicker from "./DataSelectorFieldPicker";

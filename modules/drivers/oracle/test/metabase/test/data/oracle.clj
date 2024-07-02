@@ -1,14 +1,12 @@
 (ns metabase.test.data.oracle
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -38,13 +36,15 @@
 ;; Session password is only used when creating session user, not anywhere else
 
 (defn- connection-details []
-  (let [details* {:host         (tx/db-test-env-var-or-throw :oracle :host "localhost")
-                  :port         (Integer/parseInt (tx/db-test-env-var-or-throw :oracle :port "1521"))
-                  :user         (tx/db-test-env-var :oracle :user)
-                  :password     (tx/db-test-env-var :oracle :password)
-                  :sid          (tx/db-test-env-var :oracle :sid)
-                  :service-name (tx/db-test-env-var :oracle :service-name (when-not (tx/db-test-env-var :oracle :sid) "XEPDB1"))
-                  :ssl          (tx/db-test-env-var :oracle :ssl false)}
+  (let [details* {:host                    (tx/db-test-env-var-or-throw :oracle :host "localhost")
+                  :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :oracle :port "1521"))
+                  :user                    (tx/db-test-env-var :oracle :user)
+                  :password                (tx/db-test-env-var :oracle :password)
+                  :sid                     (tx/db-test-env-var :oracle :sid)
+                  :service-name            (tx/db-test-env-var :oracle :service-name (when-not (tx/db-test-env-var :oracle :sid) "XEPDB1"))
+                  :ssl                     (tx/db-test-env-var :oracle :ssl false)
+                  :schema-filters-type     "inclusion"
+                  :schema-filters-patterns session-schema}
         ssl-keys [:ssl-use-truststore :ssl-truststore-options :ssl-truststore-path :ssl-truststore-value
                   :ssl-truststore-password-value
                   :ssl-use-keystore :ssl-keystore-options :ssl-keystore-path :ssl-keystore-value
@@ -59,6 +59,10 @@
 
       (and (nil? (:password details*)) (not (:ssl-use-keystore details*)))
       (assoc :password "password"))))
+
+(defn- dbspec [& _]
+  (let [conn-details (connection-details)]
+    (sql-jdbc.conn/connection-details->spec :oracle conn-details)))
 
 (defmethod tx/dbdef->connection-details :oracle [& _]
   (connection-details))
@@ -77,7 +81,7 @@
                               :type/DateTimeWithZoneOffset "TIMESTAMP WITH TIME ZONE"
                               :type/DateTimeWithZoneID     "TIMESTAMP WITH TIME ZONE"
                               :type/Decimal                "DECIMAL"
-                              :type/Float                  "BINARY_FLOAT"
+                              :type/Float                  "BINARY_DOUBLE"
                               :type/Integer                "INTEGER"
                               :type/Text                   "VARCHAR2(4000)"}]
   (defmethod sql.tx/field-base-type->sql-type [:oracle base-type] [_ _] sql-type))
@@ -118,7 +122,7 @@
 
 (defmethod load-data/load-data! :oracle
   [driver dbdef tabledef]
-  (load-data/load-data-add-ids-chunked! driver dbdef tabledef))
+  (load-data/load-data-maybe-add-ids-chunked! driver dbdef tabledef))
 
 ;; Oracle has weird syntax for inserting multiple rows, it looks like
 ;;
@@ -201,27 +205,6 @@
                (update 0 (partial driver/prettify-native-form :oracle))
                (update 0 str/split-lines))))))
 
-(defn- dbspec [& _]
-  (let [conn-details (connection-details)]
-    (sql-jdbc.conn/connection-details->spec :oracle conn-details)))
-
-(defn- non-session-schemas
-  "Return a set of the names of schemas (users) that are not meant for use in this test session (i.e., ones that should
-  be ignored). (This is used as part of the implementation of `excluded-schemas` for the Oracle driver during tests.)"
-  []
-  (set (map :username (jdbc/query (dbspec) ["SELECT username FROM dba_users WHERE username <> ?" session-schema]))))
-
-(defonce ^:private original-excluded-schemas
-  (get-method sql-jdbc.sync/excluded-schemas :oracle))
-
-(defmethod sql-jdbc.sync/excluded-schemas :oracle
-  [driver]
-  (set/union
-   (original-excluded-schemas driver)
-   ;; This is similar hack we do for Redshift, see the explanation there we just want to ignore all the test
-   ;; "session schemas" that don't match the current test
-   (non-session-schemas)))
-
 
 ;;; Clear out the session schema before and after tests run
 ;; TL;DR Oracle schema == Oracle user. Create new user for session-schema
@@ -242,7 +225,7 @@
 
 (defn drop-user! [username]
   (u/ignore-exceptions
-   (execute! "DROP USER %s CASCADE" username)))
+   (execute! "DROP USER \"%s\" CASCADE" username)))
 
 (defmethod tx/before-run :oracle
   [_]

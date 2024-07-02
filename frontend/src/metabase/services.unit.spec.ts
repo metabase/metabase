@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 import { createMockEntitiesState } from "__support__/store";
 import { defer } from "metabase/lib/promise";
 import { getMetadata } from "metabase/selectors/metadata";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   DashboardId,

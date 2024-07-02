@@ -145,11 +145,21 @@
   (when-let [user-json (env/env :mb-user-defaults)]
     (json/parse-string user-json true)))
 
-(def ^:const audit-db-id
-  "ID of Audit DB which is loaded when running an EE build. ID is placed in OSS code to facilitate permission checks."
-  13371337)
-
 (def ^:const internal-mb-user-id
   "The user-id of the internal metabase user.
    This is needed in the OSS edition to filter out users for setup/has-user-setup."
    13371338)
+
+(def ^:dynamic *disable-setting-cache*
+  "Whether to disable database cache. Here for loading circularity reasons."
+  false)
+
+(defn load-sample-content?
+  "Load sample content on fresh installs?
+  Using this effectively means `MB_LOAD_SAMPLE_CONTENT` defaults to true."
+  []
+  (not (false? (config-bool :mb-load-sample-content))))
+
+(def ^:dynamic *request-id*
+  "A unique identifier for the current request. This is bound by `metabase.server.middleware.request-id/wrap-request-id`."
+  nil)

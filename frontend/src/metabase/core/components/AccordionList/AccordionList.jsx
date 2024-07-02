@@ -62,6 +62,7 @@ export default class AccordionList extends Component {
     sections: PropTypes.array.isRequired,
 
     initiallyOpenSection: PropTypes.number,
+    globalSearch: PropTypes.bool,
     openSection: PropTypes.number,
     onChange: PropTypes.func,
     onChangeSection: PropTypes.func,
@@ -99,11 +100,14 @@ export default class AccordionList extends Component {
 
     itemTestId: PropTypes.string,
     "data-testid": PropTypes.string,
+
+    withBorders: PropTypes.bool,
   };
 
   static defaultProps = {
     style: {},
     width: 300,
+    globalSearch: false,
     searchable: section => section.items && section.items.length > 10,
     searchProp: "name",
     searchCaseInsensitive: true,
@@ -270,7 +274,7 @@ export default class AccordionList extends Component {
   };
 
   checkSectionHasItemsMatchingSearch = (section, searchFilter) => {
-    return section.items.filter(searchFilter).length > 0;
+    return section.items?.filter(searchFilter).length > 0;
   };
 
   getFirstSelectedItemCursor = () => {
@@ -308,7 +312,7 @@ export default class AccordionList extends Component {
         this.getInitialCursor(),
         this.props.sections,
         this.isSectionExpanded,
-        !this.props.alwaysExpanded,
+        this.canSelectSection,
         this.searchFilter,
       );
 
@@ -325,7 +329,7 @@ export default class AccordionList extends Component {
         this.getInitialCursor(),
         this.props.sections,
         this.isSectionExpanded,
-        !this.props.alwaysExpanded,
+        this.canSelectSection,
         this.searchFilter,
       );
 
@@ -390,15 +394,20 @@ export default class AccordionList extends Component {
     itemIsSelected,
     hideEmptySectionsInSearch,
     openSection,
+    _globalSearch,
+    searchText,
   ) => {
+    // if any section is searchable just enable a global search
+    let globalSearch = _globalSearch;
+
     const sectionIsExpanded = sectionIndex =>
-      alwaysExpanded || openSection === sectionIndex;
+      alwaysExpanded ||
+      openSection === sectionIndex ||
+      (globalSearch && searchText?.length > 0);
+
     const sectionIsSearchable = sectionIndex =>
       searchable &&
       (typeof searchable !== "function" || searchable(sections[sectionIndex]));
-
-    // if any section is searchable just enable a global search
-    let globalSearch = false;
 
     const rows = [];
     for (const [sectionIndex, section] of sections.entries()) {
@@ -409,15 +418,25 @@ export default class AccordionList extends Component {
       ) {
         if (
           !searchable ||
-          !hideEmptySectionsInSearch ||
-          this.checkSectionHasItemsMatchingSearch(section, searchFilter)
+          !(hideEmptySectionsInSearch || globalSearch) ||
+          this.checkSectionHasItemsMatchingSearch(section, searchFilter) ||
+          section.type === "action"
         ) {
-          rows.push({
-            type: "header",
-            section,
-            sectionIndex,
-            isLastSection,
-          });
+          if (section.type === "action") {
+            rows.push({
+              type: "action",
+              section,
+              sectionIndex,
+              isLastSection,
+            });
+          } else {
+            rows.push({
+              type: "header",
+              section,
+              sectionIndex,
+              isLastSection,
+            });
+          }
         }
       } else {
         rows.push({
@@ -432,7 +451,8 @@ export default class AccordionList extends Component {
         sectionIsExpanded(sectionIndex) &&
         section.items &&
         section.items.length > 0 &&
-        !section.loading
+        !section.loading &&
+        !globalSearch
       ) {
         if (alwaysExpanded) {
           globalSearch = true;
@@ -480,6 +500,18 @@ export default class AccordionList extends Component {
     }
 
     if (globalSearch) {
+      const isSearching = searchText.length > 0;
+      const isEmpty = rows.filter(row => row.type === "item").length === 0;
+
+      if (isSearching && isEmpty) {
+        rows.unshift({
+          type: "no-results",
+          section: {},
+          sectionIndex: 0,
+          isLastSection: false,
+        });
+      }
+
       rows.unshift({
         type: "search",
         section: {},
@@ -500,7 +532,10 @@ export default class AccordionList extends Component {
       hideSingleSectionTitle,
       itemIsSelected,
       hideEmptySectionsInSearch,
+      globalSearch,
     } = this.props;
+
+    const { searchText } = this.state;
 
     const openSection = this.getOpenSection();
 
@@ -514,6 +549,8 @@ export default class AccordionList extends Component {
       itemIsSelected,
       hideEmptySectionsInSearch,
       openSection,
+      globalSearch,
+      searchText,
     );
   }
 
@@ -540,7 +577,27 @@ export default class AccordionList extends Component {
   isSectionExpanded = sectionIndex => {
     const openSection = this.getOpenSection();
 
-    return this.props.alwaysExpanded || openSection === sectionIndex;
+    return (
+      this.props.alwaysExpanded ||
+      openSection === sectionIndex ||
+      (this.props.globalSearch && this.state.searchText.length > 0)
+    );
+  };
+
+  canSelectSection = sectionIndex => {
+    const section = this.props.sections[sectionIndex];
+    if (!section) {
+      return false;
+    }
+
+    if (section.type === "action") {
+      return true;
+    }
+
+    return (
+      !this.props.alwaysExpanded &&
+      !(this.props.globalSearch && this.state.searchText.length > 0)
+    );
   };
 
   // Because of virtualization, focused search input can be removed which does not trigger blur event.
@@ -556,6 +613,7 @@ export default class AccordionList extends Component {
       className,
       sections,
       role,
+      withBorders,
       "data-testid": testId,
     } = this.props;
     const { cursor, scrollToAlignment } = this.state;
@@ -590,9 +648,14 @@ export default class AccordionList extends Component {
               searchText={this.state.searchText}
               onChangeSearchText={this.handleChangeSearchText}
               sectionIsExpanded={this.isSectionExpanded}
+              alwaysExpanded={
+                this.props.alwaysExpanded ||
+                (this.props.globalSearch && this.state.searchText.length > 0)
+              }
               canToggleSections={this.canToggleSections()}
               toggleSection={this.toggleSection}
               hasCursor={this.isRowSelected(rows[index])}
+              withBorders={withBorders}
             />
           ))}
         </AccordionListRoot>
@@ -664,6 +727,7 @@ export default class AccordionList extends Component {
                   sectionIsExpanded={this.isSectionExpanded}
                   canToggleSections={this.canToggleSections()}
                   toggleSection={this.toggleSection}
+                  withBorders={withBorders}
                 />
               )}
             </CellMeasurer>

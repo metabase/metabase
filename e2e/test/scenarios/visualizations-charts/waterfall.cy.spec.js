@@ -7,6 +7,9 @@ import {
   openNativeEditor,
   visualize,
   summarize,
+  echartsContainer,
+  chartPathWithFillColor,
+  testPairedTooltipValues,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -18,27 +21,15 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   function verifyWaterfallRendering(xLabel = null, yLabel = null) {
-    // a waterfall chart is just a stacked bar chart, with 4 bars
-    // (not all of them will be visible at once, but they should exist)
-    cy.get(".Visualization .sub .chart-body").within(() => {
-      cy.get(".stack._0");
-      cy.get(".stack._1");
-      cy.get(".stack._2");
-      cy.get(".stack._3");
-    });
-    cy.get(".Visualization .axis.x").within(() => {
-      cy.findByText("Total");
-    });
+    chartPathWithFillColor("#88BF4D").should("be.visible");
+    chartPathWithFillColor("#4C5773").should("be.visible");
+    echartsContainer().get("text").contains("Total");
 
     if (xLabel) {
-      cy.get(".Visualization .x-axis-label").within(() => {
-        cy.findByText(xLabel);
-      });
+      echartsContainer().get("text").contains(xLabel);
     }
     if (yLabel) {
-      cy.get(".Visualization .y-axis-label").within(() => {
-        cy.findByText(yLabel);
-      });
+      echartsContainer().get("text").contains(yLabel);
     }
   }
 
@@ -66,18 +57,18 @@ describe("scenarios > visualizations > waterfall", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a field").click();
-    cy.get(".List-item").contains("X").click();
+    cy.get("[data-element-id=list-item]").contains("X").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a field").click();
-    cy.get(".List-item").contains("Y").click();
+    cy.get("[data-element-id=list-item]").contains("Y").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Axes").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Linear").click();
-    cy.get(".List-item").contains("Ordinal").click();
+    cy.get("[data-element-id=list-item]").contains("Ordinal").click();
 
     verifyWaterfallRendering("X", "Y");
   });
@@ -93,10 +84,10 @@ describe("scenarios > visualizations > waterfall", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a field").click();
-    cy.get(".List-item").contains("X").click();
+    cy.get("[data-element-id=list-item]").contains("X").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a field").click();
-    cy.get(".List-item").contains("Y").click();
+    cy.get("[data-element-id=list-item]").contains("Y").click();
 
     verifyWaterfallRendering("X", "Y");
   });
@@ -144,9 +135,7 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.contains("Visualization").click();
     switchToWaterfallDisplay();
 
-    cy.get(".Visualization .axis.x").within(() => {
-      cy.findByText("Total").should("not.exist");
-    });
+    echartsContainer().get("text").contains("Total").should("not.exist");
   });
 
   it("should show error for multi-series questions (metabase#15152)", () => {
@@ -169,8 +158,9 @@ describe("scenarios > visualizations > waterfall", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Waterfall chart does not support multiple series");
 
+    echartsContainer().should("not.exist");
     cy.findByTestId("remove-count").click();
-    cy.get(".CardVisualization svg"); // Chart renders after removing the second metric
+    echartsContainer().should("exist"); // Chart renders after removing the second metric
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Add another/).should("not.exist");
@@ -199,12 +189,12 @@ describe("scenarios > visualizations > waterfall", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a field").click();
-    cy.get(".List-item").contains("Created At").click();
+    cy.get("[data-element-id=list-item]").contains("Created At").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a field").click();
-    cy.get(".List-item").contains("Count").click();
+    cy.get("[data-element-id=list-item]").contains("Count").click();
 
-    cy.get(".CardVisualization svg"); // Chart renders after removing the second metric
+    echartsContainer().should("exist"); // Chart renders after adding a metric
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Add another/).should("not.exist");
@@ -224,7 +214,7 @@ describe("scenarios > visualizations > waterfall", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
     cy.icon("waterfall").click({ force: true });
-    cy.get(".Visualization .bar");
+    chartPathWithFillColor("#88BF4D").should("be.visible");
   });
 
   it("should display correct values when one of them is 0 (metabase#16246)", () => {
@@ -244,7 +234,11 @@ describe("scenarios > visualizations > waterfall", () => {
       },
     });
 
-    cy.get(".value-label").as("labels").eq(-3).invoke("text").should("eq", "0");
+    getWaterfallDataLabels()
+      .as("labels")
+      .eq(-3)
+      .invoke("text")
+      .should("eq", "0");
 
     cy.get("@labels").last().invoke("text").should("eq", "0.1");
   });
@@ -266,9 +260,50 @@ describe("scenarios > visualizations > waterfall", () => {
       },
     });
 
-    cy.get(".value-label").as("labels").eq(-3).invoke("text").should("eq", "");
+    // the null data label which should exist at index -3
+    // should now display no label. so the label at index -3 should be the label
+    // before the null data point
+    getWaterfallDataLabels()
+      .as("labels")
+      .eq(-3)
+      .invoke("text")
+      .should("eq", "0.1");
+
+    // but the x-axis label and area should still be shown for the null data point
+    echartsContainer().findByText("f");
+
+    getWaterfallDataLabels()
+      .as("labels")
+      .eq(-2)
+      .invoke("text")
+      .should("eq", "(2)");
 
     cy.get("@labels").last().invoke("text").should("eq", "0.1");
+  });
+
+  it("should correctly apply column value scaling in tool-tips (metabase#44176)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query:
+            "SELECT * FROM (\nVALUES \n('a',2),\n('b',1),\n('c',-0.5),\n('d',-0.5),\n('e',0.1),\n('f', -2)\n)\n",
+          "template-tags": {},
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "waterfall",
+      visualization_settings: {
+        "graph.show_values": true,
+        column_settings: { '["name","C2"]': { scale: 0.1 } },
+      },
+    });
+
+    getWaterfallDataLabels().first().invoke("text").should("eq", "0.2");
+
+    chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
+
+    testPairedTooltipValues("C2:", "0.2");
   });
 
   describe("scenarios > visualizations > waterfall settings", () => {
@@ -301,26 +336,22 @@ describe("scenarios > visualizations > waterfall", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Show total").next().click();
 
-      cy.get(".Visualization .axis.x").within(() => {
-        cy.findByText("Total").should("not.exist");
-      });
+      echartsContainer().get("text").contains("Total").should("not.exist");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Show total").next().click();
-      cy.get(".Visualization .axis.x").within(() => {
-        cy.findByText("Total");
-      });
+      echartsContainer().get("text").contains("Total").should("exist");
     });
 
     it("should allow toggling of value labels", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
 
-      cy.get(".Visualization .value-label").should("not.exist");
+      echartsContainer().get("text").contains("(4.56)").should("not.exist");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Show values on data points").next().click();
-      cy.get(".Visualization .value-label").contains(4.56).should("be.visible");
+      echartsContainer().get("text").contains("(4.56)").should("be.visible");
     });
   });
 });
@@ -331,3 +362,8 @@ const switchToWaterfallDisplay = () => {
     cy.icon("gear").click();
   });
 };
+
+function getWaterfallDataLabels() {
+  // paint-order='stroke' targets the waterfall labels only
+  return echartsContainer().get("text[paint-order='stroke']");
+}

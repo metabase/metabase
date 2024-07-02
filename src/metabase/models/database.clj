@@ -1,10 +1,11 @@
 (ns metabase.models.database
   (:require
+   [clojure.core.match :refer [match]]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.db.util :as mdb.u]
+   [metabase.audit :as audit]
+   [metabase.db :as mdb]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.util :as driver.u]
@@ -19,12 +20,15 @@
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
+   [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.realize :as t2.realize]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
@@ -52,10 +56,19 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
+(methodical/defmethod t2.with-temp/do-with-temp* :before :model/Database
+  [_model _explicit-attributes f]
+  (fn [temp-object]
+    ;; Grant All Users full perms on the temp-object so that tests don't have to manually set permissions
+    (data-perms/set-database-permission! (perms-group/all-users) temp-object :perms/view-data :unrestricted)
+    (data-perms/set-database-permission! (perms-group/all-users) temp-object :perms/create-queries :query-builder-and-native)
+    (data-perms/set-database-permission! (perms-group/all-users) temp-object :perms/download-results :one-million-rows)
+    (f temp-object)))
+
 (defn- should-read-audit-db?
   "Audit Database should only be fetched if audit app is enabled."
   [database-id]
-  (and (not (premium-features/enable-audit-app?)) (= database-id config/audit-db-id)))
+  (and (not (premium-features/enable-audit-app?)) (= database-id audit/audit-db-id)))
 
 (defmethod mi/can-read? Database
   ([instance]
@@ -63,10 +76,15 @@
   ([_model pk]
    (if (should-read-audit-db? pk)
      false
-     (= :unrestricted (data-perms/most-permissive-database-permission-for-user
-                       api/*current-user-id*
-                       :perms/data-access
-                       pk)))))
+     (and (= :unrestricted (data-perms/full-db-permission-for-user
+                            api/*current-user-id*
+                            :perms/view-data
+                            pk))
+          (contains? #{:query-builder :query-builder-and-native}
+                    (data-perms/most-permissive-database-permission-for-user
+                     api/*current-user-id*
+                     :perms/create-queries
+                     pk))))))
 
 (defenterprise current-user-can-write-db?
   "OSS implementation. Returns a boolean whether the current user can write the given field."
@@ -78,10 +96,34 @@
   ([instance]
    (mi/can-write? :model/Database (u/the-id instance)))
   ([_model pk]
-   (and (not= pk config/audit-db-id)
+   (and (not= pk audit/audit-db-id)
         (current-user-can-write-db? pk))))
 
-(defn- schedule-tasks!
+(defn- infer-db-schedules
+  "Infer database schedule settings based on its options."
+  [{:keys [details is_full_sync is_on_demand cache_field_values_schedule metadata_sync_schedule] :as database}]
+  (match [(boolean (:let-user-control-scheduling details)) is_full_sync is_on_demand]
+    [false _ _]
+    (merge
+     database
+     (sync.schedules/schedule-map->cron-strings
+      (sync.schedules/default-randomized-schedule)))
+
+    ;; "Regularly on a schedule"
+    ;; -> sync both steps, schedule should be provided
+    [true true false]
+    (do
+     (assert (every? some? [cache_field_values_schedule metadata_sync_schedule]))
+     database)
+
+    ;; "Only when adding a new filter" or "Never, I'll do it myself"
+    ;; -> Sync metadata only
+    [true false _]
+    ;; schedules should only contains metadata_sync, but FE might sending both
+    ;; so we just manually nullify it here
+    (assoc database :cache_field_values_schedule nil)))
+
+(defn- check-and-schedule-tasks-for-db!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
   (try
@@ -89,7 +131,7 @@
     (classloader/require 'metabase.task.sync-databases)
     ((resolve 'metabase.task.sync-databases/check-and-schedule-tasks-for-db!) database)
     (catch Throwable e
-      (log/error e (trs "Error scheduling tasks for DB")))))
+      (log/error e "Error scheduling tasks for DB"))))
 
 ;; TODO - something like NSNotificationCenter in Objective-C would be really really useful here so things that want to
 ;; implement behavior when an object is deleted can do it without having to put code here
@@ -101,7 +143,7 @@
     (classloader/require 'metabase.task.sync-databases)
     ((resolve 'metabase.task.sync-databases/unschedule-tasks-for-db!) database)
     (catch Throwable e
-      (log/error e (trs "Error unscheduling tasks for DB.")))))
+      (log/error e "Error unscheduling tasks for DB."))))
 
 (defn- set-new-database-permissions!
   [database]
@@ -109,33 +151,22 @@
     (let [all-users-group  (perms-group/all-users)
           non-magic-groups (perms-group/non-magic-groups)
           non-admin-groups (conj non-magic-groups all-users-group)]
-      ;; We only set native-query-editing and manage-database permissions here, because they are only ever set at the
-      ;; database-level. Perms which can have table-level granularity are set in the `define-after-insert` hook for
-      ;; tables.
       (if (:is_audit database)
         (doseq [group non-admin-groups]
-          (data-perms/set-database-permission! group database :perms/data-access :no-self-service)
-          (data-perms/set-database-permission! group database :perms/native-query-editing :no)
-          (data-perms/set-database-permission! group database :perms/download-results :one-million-rows))
-        (do
-          (data-perms/set-database-permission! all-users-group database :perms/data-access :unrestricted)
-          (data-perms/set-database-permission! all-users-group database :perms/native-query-editing :yes)
-          (data-perms/set-database-permission! all-users-group database :perms/download-results :one-million-rows)
-          (doseq [group non-magic-groups]
-            (data-perms/set-database-permission! group database :perms/download-results :no)
-            (data-perms/set-database-permission! group database :perms/data-access :no-self-service)
-            (data-perms/set-database-permission! group database :perms/native-query-editing :no))))
-
-      (doseq [group non-admin-groups]
-        (data-perms/set-database-permission! group database :perms/manage-table-metadata :no)
-        (data-perms/set-database-permission! group database :perms/manage-database :no)))))
+          (data-perms/set-database-permission! group database :perms/view-data :unrestricted)
+          (data-perms/set-database-permission! group database :perms/create-queries :no)
+          (data-perms/set-database-permission! group database :perms/download-results :one-million-rows)
+          (data-perms/set-database-permission! group database :perms/manage-table-metadata :no)
+          (data-perms/set-database-permission! group database :perms/manage-database :no))
+        (doseq [group non-admin-groups]
+          (data-perms/set-new-database-permissions! group database))))))
 
 (t2/define-after-insert :model/Database
   [database]
   (u/prog1 database
     (set-new-database-permissions! database)
     ;; schedule the Database sync & analyze tasks
-    (schedule-tasks! (t2.realize/realize database))))
+    (check-and-schedule-tasks-for-db! (t2.realize/realize database))))
 
 (def ^:private ^:dynamic *normalizing-details*
   "Track whether we're calling [[driver/normalize-db-details]] already to prevent infinite
@@ -150,7 +181,7 @@
     (cond-> database
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
       (driver.impl/registered? driver)
-      (assoc :features (driver.u/features driver database))
+      (assoc :features (driver.u/features driver (t2.realize/realize database)))
 
       (and (driver.impl/registered? driver)
            (:details database)
@@ -174,9 +205,7 @@
                                     acc))
                                 []
                                 possible-secret-prop-names)]
-        (log/info (trs "Deleting secret ID {0} from app DB because the owning database ({1}) is being deleted"
-                       secret-id
-                       id))
+        (log/infof "Deleting secret ID %s from app DB because the owning database (%s) is being deleted" secret-id id)
         (t2/delete! Secret :id secret-id)))))
 
 (t2/define-before-delete :model/Database
@@ -186,7 +215,7 @@
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
-      (log/error e (trs "Error sending database deletion notification")))))
+      (log/error e "Error sending database deletion notification"))))
 
 (defn- handle-db-details-secret-prop!
   "Helper fn for reducing over a map of all the secret connection-properties, keyed by name. This is side effecting. At
@@ -221,27 +250,27 @@
             (secret/expand-inferred-secret-values conn-prop-nm conn-prop secret*))))))
 
 (defn- handle-secrets-changes [{:keys [details] :as database}]
-  (if (map? details)
-    (let [updated-details (secret/reduce-over-details-secret-values
-                            (driver.u/database->driver database)
-                            details
-                            (partial handle-db-details-secret-prop! database))]
-      (assoc database :details updated-details))
-    database))
+  (let [updated-details (secret/reduce-over-details-secret-values
+                         (driver.u/database->driver database)
+                         details
+                         (partial handle-db-details-secret-prop! database))]
+    (assoc database :details updated-details)))
+
+(defn- handle-uploads-enabled!
+  "This function maintains the invariant that only one database can have uploads_enabled=true."
+  [db]
+  (when (:uploads_enabled db)
+    (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}))
+  db)
 
 (t2/define-before-update :model/Database
   [database]
-  (let [database                  (mi/pre-update-changes database)
-        {new-metadata-schedule    :metadata_sync_schedule,
-         new-fieldvalues-schedule :cache_field_values_schedule,
-         new-engine               :engine
-         new-settings             :settings} database
+  (let [changes                              (t2/changes database)
+        {new-engine               :engine
+         new-settings             :settings} changes
         {is-sample?               :is_sample
-         old-metadata-schedule    :metadata_sync_schedule
-         old-fieldvalues-schedule :cache_field_values_schedule
          existing-settings        :settings
-         existing-engine          :engine
-         existing-name            :name} (t2/original database)
+         existing-engine          :engine}   (t2/original database)
         new-engine                       (some-> new-engine keyword)]
     (if (and is-sample?
              new-engine
@@ -250,48 +279,50 @@
                       {:status-code     400
                        :existing-engine existing-engine
                        :new-engine      new-engine}))
-      (u/prog1 (-> database
-                   (cond->
-                     ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
-                     (and (some? (:details database))
-                          (not (driver/database-supports? (or new-engine existing-engine) :nested-field-columns database)))
-                     (update :details dissoc :json_unfolding))
-                   handle-secrets-changes)
-        ;; TODO - this logic would make more sense in post-update if such a method existed
-        ;; if the sync operation schedules have changed, we need to reschedule this DB
-        (when (or new-metadata-schedule new-fieldvalues-schedule)
-          ;; if one of the schedules wasn't passed continue using the old one
-          (let [new-metadata-schedule    (or new-metadata-schedule old-metadata-schedule)
-                new-fieldvalues-schedule (or new-fieldvalues-schedule old-fieldvalues-schedule)]
-            (when (not= [new-metadata-schedule new-fieldvalues-schedule]
-                        [old-metadata-schedule old-fieldvalues-schedule])
-              (log/info
-                (trs "{0} Database ''{1}'' sync/analyze schedules have changed!" existing-engine existing-name)
-                "\n"
-                (trs "Sync metadata was: ''{0}'' is now: ''{1}''" old-metadata-schedule new-metadata-schedule)
-                "\n"
-                (trs "Cache FieldValues was: ''{0}'', is now: ''{1}''" old-fieldvalues-schedule new-fieldvalues-schedule))
-              ;; reschedule the database. Make sure we're passing back the old schedule if one of the two wasn't supplied
-              (schedule-tasks!
-                (assoc database
-                       :metadata_sync_schedule      new-metadata-schedule
-                       :cache_field_values_schedule new-fieldvalues-schedule)))))
+      (u/prog1 (cond-> database
+                 ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
+                 (and (some? (:details changes))
+                      (not (driver.u/supports? (or new-engine existing-engine) :nested-field-columns database)))
+                 (update :details dissoc :json_unfolding)
+
+                 (or
+                  ;if there is any changes in user control setting
+                  (some? (get-in changes [:details :let-user-control-scheduling]))
+                  ;; if the let user control scheduling is already on, we should always try to re-infer it
+                  (get-in database [:details :let-user-control-scheduling])
+                  ;; if there is a changes in schedules, make sure it respects the settings
+                  (some some? [(:cache_field_values_schedule changes) (:metadata_sync_schedule changes)]))
+                 infer-db-schedules
+
+                 (some? (:details changes))
+                 handle-secrets-changes
+
+                 (:uploads_enabled changes)
+                 handle-uploads-enabled!)
         ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
         ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
         (when (and (:database-enable-actions (or new-settings existing-settings))
-                   (not (driver/database-supports? (or new-engine existing-engine) :actions database)))
+                   (not (driver.u/supports? (or new-engine existing-engine) :actions database)))
           (throw (ex-info (trs "The database does not support actions.")
                           {:status-code     400
                            :existing-engine existing-engine
                            :new-engine      new-engine})))))))
 
+(t2/define-after-update :model/Database
+  [database]
+  (check-and-schedule-tasks-for-db! (t2.realize/realize database)))
+
 (t2/define-before-insert :model/Database
   [{:keys [details initial_sync_status], :as database}]
-  (-> database
+  (-> (merge {:is_full_sync true
+              :is_on_demand false}
+             database)
       (cond->
         (not details)             (assoc :details {})
         (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
-      handle-secrets-changes))
+      handle-secrets-changes
+      handle-uploads-enabled!
+      infer-db-schedules))
 
 (defmethod serdes/hash-fields :model/Database
   [_database]
@@ -304,21 +335,40 @@
   :visibility     :public
   :database-local :only)
 
+(defmethod mi/exclude-internal-content-hsql :model/Database
+  [_model & {:keys [table-alias]}]
+  (let [maybe-alias #(h2x/identifier :field table-alias %)]
+    [:not [:or (maybe-alias :is_sample) (maybe-alias :is_audit)]]))
+
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
-(mi/define-simple-hydration-method tables
-  :tables
+;; only used in tests
+(defn tables
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
   ;; TODO - do we want to include tables that should be `:hidden`?
-  (t2/select 'Table, :db_id id, :active true, {:order-by [[:%lower.display_name :asc]]}))
+  (t2/select :model/Table :db_id id :active true {:order-by [[:%lower.display_name :asc]]}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :tables]
+  "Batch hydrate `Tables` for the given `Database`."
+  [_model k databases]
+  (mi/instances-with-hydrated-data
+   databases k
+   #(group-by :db_id
+              ;; TODO - do we want to include tables that should be `:hidden`?
+              (t2/select :model/Table
+                         :db_id  [:in (map :id databases)]
+                         :active true
+                         {:order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
+   :id
+   {:default []}))
 
 (defn pk-fields
   "Return all the primary key `Fields` associated with this `database`."
   [{:keys [id]}]
   (let [table-ids (t2/select-pks-set 'Table, :db_id id, :active true)]
     (when (seq table-ids)
-      (t2/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.u/isa :type/PK)))))
+      (t2/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.query/isa :type/PK)))))
 
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
@@ -348,28 +398,35 @@
   [db json-generator]
   (next-method
    (let [db (if (not (mi/can-write? db))
-              (dissoc db :details)
-              (update db :details (fn [details]
-                                    (reduce
-                                     #(m/update-existing %1 %2 (constantly protected-password))
-                                     details
-                                     (sensitive-fields-for-db db)))))]
-     (update db :settings (fn [settings]
-                            (when (map? settings)
-                              (m/filter-keys
-                               (fn [setting-name]
-                                 (try
-                                  (setting/can-read-setting? setting-name
-                                                             (setting/current-user-readable-visibilities))
-                                  (catch Throwable e
-                                    ;; there is an known issue with exception is ignored when render API response (#32822)
-                                    ;; If you see this error, you probably need to define a setting for `setting-name`.
-                                    ;; But ideally, we should resovle the above issue, and remove this try/catch
-                                    (log/error e (format "Error checking the readability of %s setting. The setting will be hidden in API response." setting-name))
-                                    ;; let's be conservative and hide it by defaults, if you want to see it,
-                                    ;; you need to define it :)
-                                    false)))
-                               settings)))))
+              (do (log/debug "Fully redacting database details during json encoding.")
+                  (dissoc db :details))
+              (do (log/debug "Redacting sensitive fields within database details during json encoding.")
+                  (update db :details (fn [details]
+                                        (reduce
+                                         #(m/update-existing %1 %2 (constantly protected-password))
+                                         details
+                                         (sensitive-fields-for-db db))))))]
+     (update db :settings
+             (fn [settings]
+               (when (map? settings)
+                 (u/prog1
+                  (m/filter-keys
+                   (fn [setting-name]
+                     (try
+                       (setting/can-read-setting? setting-name
+                                                  (setting/current-user-readable-visibilities))
+                       (catch Throwable e
+                         ;; there is an known issue with exception is ignored when render API response (#32822)
+                         ;; If you see this error, you probably need to define a setting for `setting-name`.
+                         ;; But ideally, we should resovle the above issue, and remove this try/catch
+                         (log/errorf e "Error checking the readability of %s setting. The setting will be hidden in API response."
+                                     setting-name)
+                         ;; let's be conservative and hide it by defaults, if you want to see it,
+                         ;; you need to define it :)
+                         false)))
+                   settings)
+                  (when (not= <> settings)
+                    (log/debug "Redacting non-user-readable database settings during json encoding.")))))))
    json-generator))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
@@ -423,7 +480,7 @@
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn [table-id]
      {:pre [(integer? table-id)]}
      (t2/select-one-fn :db_id :model/Table, :id table-id))))

@@ -2,15 +2,13 @@ import { useCallback, useMemo, useState } from "react";
 
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import type { Query } from "metabase-lib/types";
+import type Question from "metabase-lib/v1/Question";
 
 import NotebookStep from "../NotebookStep";
 import { getQuestionSteps } from "../lib/steps";
 import type { NotebookStep as INotebookStep, OpenSteps } from "../types";
-
-import { Container } from "./NotebookSteps.styled";
 
 interface NotebookStepsProps {
   className?: string;
@@ -35,10 +33,8 @@ function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
   return {};
 }
 
-function NotebookSteps({
-  className,
+export function NotebookSteps({
   question,
-  sourceQuestion,
   reportTimezone,
   updateQuestion,
   readOnly = false,
@@ -92,7 +88,7 @@ function NotebookSteps({
   }
 
   return (
-    <Container className={className}>
+    <>
       {steps.map((step, index) => {
         const isLast = index === steps.length - 1;
         const isLastOpened = lastOpenedStep === step.id;
@@ -104,7 +100,6 @@ function NotebookSteps({
           <NotebookStep
             key={step.id}
             step={step}
-            sourceQuestion={sourceQuestion}
             isLastStep={isLast}
             isLastOpened={isLastOpened}
             reportTimezone={reportTimezone}
@@ -114,9 +109,6 @@ function NotebookSteps({
           />
         );
       })}
-    </Container>
+    </>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default NotebookSteps;

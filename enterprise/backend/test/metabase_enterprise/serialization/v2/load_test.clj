@@ -8,7 +8,7 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.models
     :refer [Action Card Collection Dashboard DashboardCard Database Field
-            FieldValues Metric NativeQuerySnippet Segment Table Timeline
+            FieldValues NativeQuerySnippet Segment Table Timeline
             TimelineEvent User]]
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
@@ -55,7 +55,7 @@
       (ts/with-dbs [source-db dest-db]
         (testing "extraction succeeds"
           (ts/with-db source-db
-            (ts/create! Collection :name "Basic Collection" :entity_id eid1)
+            (ts/create! :model/Collection :name "Basic Collection" :entity_id eid1)
             (reset! serialized (into [] (serdes.extract/extract {})))
             (is (some (fn [{[{:keys [model id]}] :serdes/meta}]
                         (and (= model "Collection") (= id eid1)))
@@ -64,7 +64,8 @@
         (testing "loading into an empty database succeeds"
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-            (let [colls (t2/select Collection)]
+            ;; the trash is serialized and loaded, so restrict to nil type
+            (let [colls (t2/select :model/Collection :type nil)]
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))
@@ -72,7 +73,7 @@
         (testing "loading again into the same database does not duplicate"
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-            (let [colls (t2/select Collection)]
+            (let [colls (t2/select :model/Collection :type nil)]
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))))))
@@ -107,7 +108,7 @@
               (is (some? child-dest))
               (is (some? grandchild-dest))
               (is (not= (:id parent-dest) (:id @parent)) "should have different primary keys")
-              (is (= 4 (t2/count Collection)))
+              (is (= 4 (t2/count Collection :type nil)))
               (is (= "/"
                      (:location parent-dest)))
               (is (= (format "/%d/" (:id parent-dest))
@@ -125,7 +126,8 @@
           t1s        (atom nil)
           t2s        (atom nil)
           f1s        (atom nil)
-          f2s        (atom nil)]
+          f2s        (atom nil)
+          f3s        (atom nil)]
       (ts/with-dbs [source-db dest-db]
         (testing "serializing the two databases"
           (ts/with-db source-db
@@ -135,6 +137,7 @@
             (reset! t2s  (ts/create! Table    :name "posts" :db_id (:id @db2s))) ; Deliberately the same name!
             (reset! f1s  (ts/create! Field    :name "Target Field" :table_id (:id @t1s)))
             (reset! f2s  (ts/create! Field    :name "Foreign Key"  :table_id (:id @t2s) :fk_target_field_id (:id @f1s)))
+            (reset! f3s  (ts/create! Field    :name "Nested Field"   :table_id (:id @t1s) :parent_id (:id @f1s)))
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
         (testing "serialization of databases is based on the :name"
@@ -151,10 +154,16 @@
         (testing "foreign key references are serialized as a field path"
           (is (= ["db1" nil "posts" "Target Field"]
                  (->> @serialized
-                      (filter #(-> % :serdes/meta last :model (= "Field")))
-                      (filter #(-> % :table_id (= ["db2" nil "posts"])))
-                      (keep :fk_target_field_id)
-                      first))))
+                      (u/seek #(and (-> % :serdes/meta last :model (= "Field"))
+                                    (-> % :name (= "Foreign Key"))))
+                      :fk_target_field_id))))
+
+        (testing "Parent field references are serialized as a field path"
+          (is (= ["db1" nil "posts" "Target Field"]
+                 (->> @serialized
+                      (u/seek #(and (-> % :serdes/meta last :model (= "Field"))
+                                    (-> % :name (= "Nested Field"))))
+                      :parent_id))))
 
         (testing "deserialization works properly, keeping the same-named tables apart"
           (ts/with-db dest-db
@@ -169,7 +178,11 @@
             (is (= #{(:id @db1d) (:id @db2d)}
                    (t2/select-fn-set :db_id Table :name "posts")))
             (is (t2/exists? Table :name "posts" :db_id (:id @db1d)))
-            (is (t2/exists? Table :name "posts" :db_id (:id @db2d)))))))))
+            (is (t2/exists? Table :name "posts" :db_id (:id @db2d)))
+            (is (= (t2/select-one-fn :id Field :name (:name @f1s))
+                   (t2/select-one-fn :fk_target_field_id Field :name (:name @f2s))))
+            (is (= (t2/select-one-fn :id Field :name (:name @f1s))
+                   (t2/select-one-fn :parent_id Field :name (:name @f3s))))))))))
 
 (deftest card-dataset-query-test
   ;; Card.dataset_query is a JSON-encoded MBQL query, which contain database, table, and field IDs - these need to be
@@ -334,80 +347,6 @@
                       :filter       [:< [:field (:id @field1d) nil] 18]
                       :aggregation  [[:count]]}
                      (:definition @seg1d))))))))))
-
-(deftest metric-test
-  ;; Metric.definition is a JSON-encoded MBQL query, which contain database, table, and field IDs - these need to be
-  ;; converted to a portable form and read back in.
-  ;; This test has a database, table and fields, that exist on both sides with different IDs, and expects a metric
-  ;; to be correctly loaded with the dest IDs.
-  (testing "embedded MBQL in Metric :definition is portable"
-    (let [serialized (atom nil)
-          coll1s     (atom nil)
-          db1s       (atom nil)
-          table1s    (atom nil)
-          field1s    (atom nil)
-          metric1s   (atom nil)
-          user1s     (atom nil)
-          db1d       (atom nil)
-          table1d    (atom nil)
-          field1d    (atom nil)
-          user1d     (atom nil)
-          metric1d   (atom nil)
-          db2d       (atom nil)
-          table2d    (atom nil)
-          field2d    (atom nil)]
-
-
-      (ts/with-dbs [source-db dest-db]
-        (testing "serializing the original database, table, field and card"
-          (ts/with-db source-db
-            (reset! coll1s   (ts/create! Collection :name "pop! minis"))
-            (reset! db1s     (ts/create! Database :name "my-db"))
-            (reset! table1s  (ts/create! Table :name "orders" :db_id (:id @db1s)))
-            (reset! field1s  (ts/create! Field :name "subtotal"    :table_id (:id @table1s)))
-            (reset! user1s   (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
-            (reset! metric1s (ts/create! Metric :table_id (:id @table1s) :name "Revenue"
-                                         :definition {:source-table (:id @table1s)
-                                                      :aggregation [[:sum [:field (:id @field1s) nil]]]}
-                                         :creator_id (:id @user1s)))
-            (reset! serialized (into [] (serdes.extract/extract {})))))
-
-        (testing "exported form is properly converted"
-          (is (= {:source-table ["my-db" nil "orders"]
-                  :aggregation [[:sum [:field ["my-db" nil "orders" "subtotal"] nil]]]}
-                 (-> @serialized
-                     (by-model "Metric")
-                     first
-                     :definition))))
-
-        (testing "deserializing adjusts the IDs properly"
-          (ts/with-db dest-db
-            ;; A different database and tables, so the IDs don't match.
-            (reset! db2d    (ts/create! Database :name "other-db"))
-            (reset! table2d (ts/create! Table    :name "customers" :db_id (:id @db2d)))
-            (reset! field2d (ts/create! Field    :name "age" :table_id (:id @table2d)))
-            (reset! user1d  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
-
-            ;; Load the serialized content.
-            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-
-            ;; Fetch the relevant bits
-            (reset! db1d     (t2/select-one Database :name "my-db"))
-            (reset! table1d  (t2/select-one Table :name "orders"))
-            (reset! field1d  (t2/select-one Field :table_id (:id @table1d) :name "subtotal"))
-            (reset! metric1d (t2/select-one Metric :name "Revenue"))
-
-            (testing "the main Database, Table, and Field have different IDs now"
-              (is (not= (:id @db1s) (:id @db1d)))
-              (is (not= (:id @table1s) (:id @table1d)))
-              (is (not= (:id @field1s) (:id @field1d))))
-
-            (is (not= (:definition @metric1s)
-                      (:definition @metric1d)))
-            (testing "the Metric's definition is based on the new Database, Table, and Field IDs"
-              (is (= {:source-table (:id @table1d)
-                      :aggregation  [[:sum [:field (:id @field1d) nil]]]}
-                     (:definition @metric1d))))))))))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-card-test
@@ -745,63 +684,47 @@
   ;; used. However, if no such user exists, a new one is created with mostly blank fields.
   (testing "existing users are found and used; missing users are created on the fly"
     (let [serialized (atom nil)
-          metric1s   (atom nil)
-          metric2s   (atom nil)
           user1s     (atom nil)
           user2s     (atom nil)
+          dash1s     (atom nil)
+          dash2s     (atom nil)
           user1d     (atom nil)
-          metric1d   (atom nil)
-          metric2d   (atom nil)]
+          dash1d     (atom nil)
+          dash2d     (atom nil)]
 
       (ts/with-dbs [source-db dest-db]
         (testing "serializing the original entities"
           (ts/with-db source-db
             (reset! user1s    (ts/create! User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! user2s    (ts/create! User :first_name "Neil"  :last_name "Peart"   :email "neil@rush.yyz"))
-            (reset! metric1s  (ts/create! Metric
-                                          :name "Large Users"
-                                          :table_id   (mt/id :venues)
-                                          :creator_id (:id @user1s)
-                                          :definition {:aggregation [[:count]]}))
-            (reset! metric2s  (ts/create! Metric
-                                          :name "Support Headaches"
-                                          :table_id   (mt/id :venues)
-                                          :creator_id (:id @user2s)
-                                          :definition {:aggregation [[:count]]}))
+            (reset! dash1s    (ts/create! Dashboard :name "My Dashboard" :creator_id (:id @user1s)))
+            (reset! dash2s    (ts/create! Dashboard :name "Linked dashboard" :creator_id (:id @user2s)))
             (reset! serialized (into [] (serdes.extract/extract {})))))
-
-        (testing "exported form is properly converted"
-          (is (= "tom@bost.on"
-                 (-> @serialized
-                     (by-model "Metric")
-                     first
-                     :creator_id))))
 
         (testing "deserializing finds the matching user and synthesizes the missing one"
           (ts/with-db dest-db
             ;; Create another random user to change the user IDs.
             (ts/create! User   :first_name "Gideon" :last_name "Nav" :email "griddle@ninth.tomb")
-            ;; Likewise, create some other metrics.
-            (ts/create! Metric :name "Other metric A" :table_id (mt/id :venues))
-            (ts/create! Metric :name "Other metric B" :table_id (mt/id :venues))
-            (ts/create! Metric :name "Other metric C" :table_id (mt/id :venues))
+            ;; Likewise, create some other dashboards.
+            (ts/create! Dashboard :name "Other dashboard A")
+            (ts/create! Dashboard :name "Other dashboard B")
+            (ts/create! Dashboard :name "Other dashboard C")
             (reset! user1d  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
 
             ;; Load the serialized content.
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
 
-            ;; Fetch the relevant bits
-            (reset! metric1d (t2/select-one Metric :name "Large Users"))
-            (reset! metric2d (t2/select-one Metric :name "Support Headaches"))
+            (reset! dash1d (t2/select-one Dashboard :name "My Dashboard"))
+            (reset! dash2d (t2/select-one Dashboard :name "Linked dashboard"))
 
-            (testing "the Metrics and Users have different IDs now"
-              (is (not= (:id @metric1s) (:id @metric1d)))
-              (is (not= (:id @metric2s) (:id @metric2d)))
+            (testing "the Dashboards and Users have different IDs now"
+              (is (not= (:id @dash1s) (:id @dash1d)))
+              (is (not= (:id @dash2s) (:id @dash2d)))
               (is (not= (:id @user1s)   (:id @user1d))))
 
             (testing "both existing User and the new one are set up properly"
-              (is (= (:id @user1d) (:creator_id @metric1d)))
-              (let [user2d-id (:creator_id @metric2d)
+              (is (= (:id @user1d) (:creator_id @dash1d)))
+              (let [user2d-id (:creator_id @dash2d)
                     user2d    (t2/select-one User :id user2d-id)]
                 (is (any? user2d))
                 (is (= (:email @user2s) (:email user2d)))))))))))
@@ -1222,4 +1145,37 @@
             (is (thrown? clojure.lang.ExceptionInfo
                          (serdes.load/load-metabase! (ingestion-in-memory @serialized))))
             (is (= (str "qwe_" (:name coll))
-                   (t2/select-one-fn :name Collection :id (:id card))))))))))
+                   (t2/select-one-fn :name Collection :id (:id coll))))))))))
+
+(deftest circular-links-test
+  (mt/with-empty-h2-app-db
+    (let [coll  (ts/create! Collection :name "coll")
+          card  (ts/create! Card :name "card" :collection_id (:id coll))
+          dash1 (ts/create! Dashboard :name "dash1" :collection_id (:id coll))
+          dash2 (ts/create! Dashboard :name "dash2" :collection_id (:id coll))
+          dash3 (ts/create! Dashboard :name "dash3" :collection_id (:id coll))
+          dc1   (ts/create! DashboardCard :dashboard_id (:id dash1) :card_id (:id card)
+                            :visualization_settings {:click_behavior {:type     "link"
+                                                                      :linkType "dashboard"
+                                                                      :targetId (:id dash2)}})
+          dc2   (ts/create! DashboardCard :dashboard_id (:id dash2) :card_id (:id card)
+                            :visualization_settings {:click_behavior {:type     "link"
+                                                                      :linkType "dashboard"
+                                                                      :targetId (:id dash3)}})
+          dc3   (ts/create! DashboardCard :dashboard_id (:id dash2) :card_id (:id card)
+                            :visualization_settings {:click_behavior {:type     "link"
+                                                                      :linkType "dashboard"
+                                                                      :targetId (:id dash1)}})
+          ser   (atom nil)]
+      (reset! ser (into [] (serdes.extract/extract {:no-settings   true
+                                                    :no-data-model true})))
+      (t2/delete! DashboardCard :id [:in (map :id [dc1 dc2 dc3])])
+      (testing "Circular dependencies are loaded correctly"
+        (is (serdes.load/load-metabase! (ingestion-in-memory @ser)))
+        (let [select-target #(-> % :visualization_settings :click_behavior :targetId)]
+          (is (= (:id dash2)
+                 (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc1))))
+          (is (= (:id dash3)
+                 (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc2))))
+          (is (= (:id dash1)
+                 (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc3)))))))))

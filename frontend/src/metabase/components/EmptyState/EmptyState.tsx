@@ -1,8 +1,8 @@
-import Text from "metabase/components/type/Text";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
-import { Icon, isValidIconName } from "metabase/ui";
+import { Icon, Text, isValidIconName } from "metabase/ui";
 
 import {
   EmptyStateActions,
@@ -14,7 +14,7 @@ import {
 // Don't break existing empty states
 // TODO - remove these and update empty states with proper usage of illustrationElement
 const LegacyIcon = ({ icon }: { icon: IconName }) =>
-  icon ? <Icon name={icon} className="text-light" size={40} /> : null;
+  icon ? <Icon name={icon} className={CS.textLight} size={40} /> : null;
 
 const LegacyImage = ({
   image,
@@ -74,12 +74,12 @@ const EmptyState = ({
         {image && <LegacyImage image={image} {...rest} />}
       </div>
       {title && (
-        <h2 role="status" aria-live="polite" className="text-medium">
+        <h2 role="status" aria-live="polite" className={CS.textMedium}>
           {title}
         </h2>
       )}
       {message && (
-        <Text role="status" color="medium" className="empty-state-message">
+        <Text role="status" color="medium" mt="xs">
           {message}
         </Text>
       )}

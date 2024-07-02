@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
-import PaginationControls from "metabase/components/PaginationControls";
+import { PaginationControls } from "metabase/components/PaginationControls";
 import SelectList from "metabase/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/components/SelectList/BaseSelectListItem";
 import Search from "metabase/entities/search";
@@ -11,7 +11,7 @@ import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type {
   CollectionId,
-  SearchListQuery,
+  SearchRequest,
   SearchResult,
 } from "metabase-types/api";
 import type { WrappedEntity } from "metabase-types/entities";
@@ -61,7 +61,7 @@ export function QuestionList({
 
   const query = createQuery();
 
-  function createQuery(): SearchListQuery {
+  function createQuery(): SearchRequest {
     const baseQuery = isSearching
       ? {
           q: trimmedSearchText,
@@ -73,7 +73,7 @@ export function QuestionList({
 
     return {
       ...baseQuery,
-      models: ["card", "dataset"],
+      models: ["card", "dataset", "metric"],
       offset: queryOffset,
       limit: DEFAULT_SEARCH_LIMIT,
     };

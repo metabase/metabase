@@ -11,11 +11,10 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard-test :as api.dashboard-test]
-   [metabase.api.embed :as api.embed]
+   [metabase.api.embed.common :as api.embed.common]
    [metabase.api.pivots :as api.pivots]
    [metabase.api.public-test :as public-test]
    [metabase.config :as config]
-   [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card Dashboard DashboardCard DashboardCardSeries]]
@@ -159,7 +158,7 @@
 
 ;;; ------------------------------------------- GET /api/embed/card/:token -------------------------------------------
 
-(defn- card-url [card & [additional-token-params]] (str "embed/card/" (card-token card additional-token-params)))
+(defn card-url [card & [additional-token-params]] (str "embed/card/" (card-token card additional-token-params)))
 
 (deftest it-should-be-possible-to-use-this-endpoint-successfully-if-all-the-conditions-are-met
   (with-embedding-enabled-and-new-secret-key
@@ -526,7 +525,7 @@
 
 ;;; ---------------------------------------- GET /api/embed/dashboard/:token -----------------------------------------
 
-(defn- dashboard-url [dashboard & [additional-token-params]]
+(defn dashboard-url [dashboard & [additional-token-params]]
   (str "embed/dashboard/" (dash-token dashboard additional-token-params)))
 
 (deftest it-should-be-possible-to-call-this-endpoint-successfully
@@ -535,17 +534,6 @@
       (is (= successful-dashboard-info
              (dissoc-id-and-name
               (client/client :get 200 (dashboard-url dash))))))))
-
-(deftest embedding-logs-view-test
-  (with-embedding-enabled-and-new-secret-key
-    (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
-      (testing "Viewing an embedding logs the correct view log event."
-        (client/client :get 200 (dashboard-url dash))
-        (is (partial=
-             {:model      "dashboard"
-              :model_id   (:id dash)
-              :has_access true}
-             (view-log-test/latest-view nil (:id dash))))))))
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key
@@ -649,6 +637,52 @@
                      :parameter_mappings
                      count))))))))
 
+(deftest locked-params-removes-values-fields-when-not-used-in-enabled-params
+  (testing "check that locked params are not removed in parameter mappings, param_values, and param_fields when an enabled param uses them (#37914)"
+    (with-embedding-enabled-and-new-secret-key
+      (t2.with-temp/with-temp [Dashboard     dashboard     {:enable_embedding true
+                                                            :embedding_params {:venue_name   "locked"
+                                                                               :venue_name_2 "enabled"}
+                                                            :name             "Test Dashboard"
+                                                            :parameters       [{:name      "venue_name"
+                                                                                :slug      "venue_name"
+                                                                                :id        "foo"
+                                                                                :type      :string/=
+                                                                                :sectionId "string"}
+                                                                               {:name      "venue_name_2"
+                                                                                :slug      "venue_name_2"
+                                                                                :id        "bar"
+                                                                                :type      :string/=
+                                                                                :sectionId "string"}]}
+                               Card          {card-id :id} {:name "Dashboard Test Card"}
+                               DashboardCard {_ :id}       {:dashboard_id       (:id dashboard)
+                                                            :card_id            card-id
+                                                            :parameter_mappings [{:card_id      card-id
+                                                                                  :slug         "venue_name"
+                                                                                  :parameter_id "foo"
+                                                                                  :target       [:dimension
+                                                                                                 [:field (mt/id :venues :name) nil]]}
+                                                                                 {:card_id      card-id
+                                                                                  :slug         "venue_name_2"
+                                                                                  :parameter_id "bar"
+                                                                                  :target       [:dimension
+                                                                                                 [:field (mt/id :venues :name) nil]]}]}]
+        (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
+          (is (some?
+               (-> embedding-dashboard
+                   :param_values
+                   (get (mt/id :venues :name)))))
+          (is (some?
+               (-> embedding-dashboard
+                   :param_fields
+                   (get (mt/id :venues :name)))))
+          (is (= 1
+                 (-> embedding-dashboard
+                     :dashcards
+                     first
+                     :parameter_mappings
+                     count))))))))
+
 (deftest linked-param-to-locked-removes-param-values-test
   (testing "Check that a linked parameter to a locked params we remove the param_values."
     (with-embedding-enabled-and-new-secret-key
@@ -688,7 +722,9 @@
 
 ;;; ---------------------- GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id -----------------------
 
-(defn- dashcard-url [dashcard & [additional-token-params]]
+(defn dashcard-url
+  "The URL for a request to execute a query for a Card on an embedded Dashboard."
+  [dashcard & [additional-token-params]]
   (str "embed/dashboard/" (dash-token (:dashboard_id dashcard) additional-token-params)
        "/dashcard/" (u/the-id dashcard)
        "/card/" (:card_id dashcard)))
@@ -731,7 +767,7 @@
                                     :format-rows? false}
                        :viz-settings {}
                        :async? true
-                       :cache-ttl nil)]
+                       :cache-strategy nil)]
             (process-userland-query-test/with-query-execution [qe query]
               (client/client :get 200 (str (dashcard-url dashcard) "/csv"))
               (is (= :embedded-csv-download
@@ -906,7 +942,7 @@
   (testing (str "parameters that are not in the `embedding-params` map at all should get removed by "
                 "`remove-locked-and-disabled-params`")
     (is (= {:parameters []}
-           (#'api.embed/remove-locked-and-disabled-params {:parameters {:slug "foo"}} {})))))
+           (#'api.embed.common/remove-locked-and-disabled-params {:parameters {:slug "foo"}} {})))))
 
 
 (deftest make-sure-that-multiline-series-word-as-expected---4768-
@@ -1018,13 +1054,13 @@
                      response))))
           (testing "card based param"
             (let [response (dropdown card (:card param-keys))]
-              (is (= {:values          [["Brite Spot Family Restaurant"] ["Red Medicine"]
-                                        ["Stout Burgers & Beers"] ["The Apple Pan"] ["Wurstküche"]]
+              (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
+                                        ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
                       :has_more_values false}
                      response)))
             (let [response (search card (:card param-keys) "red")]
               (is (= {:has_more_values false,
-                      :values          [["Red Medicine"]]}
+                      :values          [["Fred 62"] ["Red Medicine"]]}
                      response)))))))))
 
 ;;; ----------------------------- GET /api/embed/dashboard/:token/field/:field/values nil -----------------------------
@@ -1301,7 +1337,7 @@
   (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is locked"
       (t2/update! Dashboard (:id dashboard)
-        {:embedding_params {"category_id" "locked", "category_name" "locked"}})
+                  {:embedding_params {"category_id" "locked", "category_name" "locked"}})
       (doseq [url [(values-url) (search-url)]]
         (testing (str "\n" url)
           (is (re= #"Cannot search for values: \"category_(?:(?:name)|(?:id))\" is not an enabled parameter."
@@ -1309,7 +1345,7 @@
 
     (testing "Search param enabled\n"
       (t2/update! Dashboard (:id dashboard)
-        {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "locked"}})
+                  {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "locked"}})
 
       (testing "Requests should fail if the token is missing a locked parameter"
         (doseq [url [(values-url) (search-url)]]
@@ -1533,18 +1569,18 @@
 
 (deftest apply-slug->value-test
   (testing "For operator filter types treat a lone value as a one-value sequence (#20438)"
-    (is (= (#'api.embed/apply-slug->value [{:type    :string/=
-                                            :target  [:dimension [:template-tag "NAME"]]
-                                            :name    "Name"
-                                            :slug    "NAME"
-                                            :default nil}]
-                                          {:NAME ["Aaron Hand"]})
-           (#'api.embed/apply-slug->value [{:type    :string/=
-                                            :target  [:dimension [:template-tag "NAME"]]
-                                            :name    "Name"
-                                            :slug    "NAME"
-                                            :default nil}]
-                                          {:NAME "Aaron Hand"})))))
+    (is (= (#'api.embed.common/apply-slug->value [{:type    :string/=
+                                                   :target  [:dimension [:template-tag "NAME"]]
+                                                   :name    "Name"
+                                                   :slug    "NAME"
+                                                   :default nil}]
+                                                 {:NAME ["Aaron Hand"]})
+           (#'api.embed.common/apply-slug->value [{:type    :string/=
+                                                   :target  [:dimension [:template-tag "NAME"]]
+                                                   :name    "Name"
+                                                   :slug    "NAME"
+                                                   :default nil}]
+                                                 {:NAME "Aaron Hand"})))))
 
 (deftest handle-single-params-for-operator-filters-test
   (testing "Query endpoints should work with a single URL parameter for an operator filter (#20438)"
@@ -1597,3 +1633,35 @@
                                             :embedding_params {:qty_locked "locked"}}]
           (is (= [3443]
                  (mt/first-row (client/client :get 202 (card-query-url card "" {:params {:qty_locked 1}}))))))))))
+
+(deftest format-export-middleware-test
+  (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
+    (let [q             {:database (mt/id)
+                         :type     :native
+                         :native   {:query "SELECT 2000 AS number, '2024-03-26'::DATE AS date;"}}
+          output-helper {:csv  (fn [output] (->> output csv/read-csv last))
+                         :json (fn [output] (->> output (map (juxt :NUMBER :DATE)) last))}]
+      (with-embedding-enabled-and-new-secret-key
+        (t2.with-temp/with-temp [Card {card-id :id} {:enable_embedding true
+                                                     :display :table :dataset_query q}
+                                 Dashboard {dashboard-id :id} {:enable_embedding true
+                                                               :embedding_params {:name "enabled"}}
+                                 DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                                  :card_id      card-id}]
+          (doseq [[export-format apply-formatting? expected] [[:csv true ["2,000" "March 26, 2024"]]
+                                                              [:csv false ["2000" "2024-03-26"]]
+                                                              [:json true ["2,000" "March 26, 2024"]]
+                                                              [:json false [2000 "2024-03-26"]]]]
+            (testing (format "export_format %s yields expected output for %s exports." apply-formatting? export-format)
+              (is (= expected
+                     (->> (mt/user-http-request
+                           :crowberto :get 200
+                           (format "embed/card/%s/query/%s?format_rows=%s"
+                                   (card-token card-id) (name export-format) apply-formatting?))
+                          ((get output-helper export-format)))))
+              (is (= expected
+                     (->> (mt/user-http-request
+                           :crowberto :get 200
+                           (format "embed/dashboard/%s/dashcard/%s/card/%s/%s?format_rows=%s"
+                                   (dash-token dashboard-id) dashcard-id card-id (name export-format) apply-formatting?))
+                          ((get output-helper export-format))))))))))))

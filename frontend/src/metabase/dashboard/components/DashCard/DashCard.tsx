@@ -1,33 +1,36 @@
+import cx from "classnames";
 import type { LocationDescriptor } from "history";
 import { getIn } from "icepick";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
+import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
 import {
   getDashcardResultsError,
   isDashcardLoading,
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
+import { color } from "metabase/lib/colors";
+import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
-import type { IconProps } from "metabase/ui";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
+import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import type {
   Card,
   CardId,
+  DashCardId,
   Dashboard,
   DashboardCard,
-  DashCardId,
-  ParameterId,
-  ParameterValueOrArray,
-  VisualizationSettings,
-  DashCardDataMap,
   VirtualCard,
+  VisualizationSettings,
 } from "metabase-types/api";
 import type { StoreDashcard } from "metabase-types/store";
 
@@ -36,8 +39,8 @@ import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPane
 import { DashCardVisualization } from "./DashCardVisualization";
 import type {
   CardSlownessStatus,
-  NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
+  NavigateToNewCardFromDashboardOpts,
 } from "./types";
 
 function preventDragging(event: React.SyntheticEvent) {
@@ -49,11 +52,8 @@ export interface DashCardProps {
   dashcard: StoreDashcard;
   gridItemWidth: number;
   totalNumGridCols: number;
-  dashcardData: DashCardDataMap;
   slowCards: Record<CardId, boolean>;
-  parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  metadata: Metadata;
-  mode?: Mode;
+  mode?: QueryClickActionsMode | Mode;
 
   clickBehaviorSidebarDashcard?: DashboardCard | null;
 
@@ -62,31 +62,34 @@ export interface DashCardProps {
   isFullscreen?: boolean;
   isMobile?: boolean;
   isNightMode?: boolean;
-  isPublic?: boolean;
+  /** If public sharing or static/public embed */
+  isPublicOrEmbedded?: boolean;
   isXray?: boolean;
+  withTitle?: boolean;
 
-  headerIcon?: IconProps;
-
-  onAddSeries: () => void;
-  onReplaceCard: () => void;
-  onRemove: () => void;
+  onAddSeries: (dashcard: StoreDashcard) => void;
+  onReplaceCard: (dashcard: StoreDashcard) => void;
+  onRemove: (dashcard: StoreDashcard) => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
-  onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
-  onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
-  showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
+  onReplaceAllVisualizationSettings: (
+    dashcardId: DashCardId,
+    settings: VisualizationSettings,
+  ) => void;
+  onUpdateVisualizationSettings: (
+    dashcardId: DashCardId,
+    settings: VisualizationSettings,
+  ) => void;
+  showClickBehaviorSidebar: (dashcardId: DashCardId | null) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
 function DashCardInner({
   dashcard,
-  dashcardData,
   dashboard,
   slowCards,
-  metadata,
-  parameterValues,
   gridItemWidth,
   totalNumGridCols,
   mode,
@@ -94,11 +97,11 @@ function DashCardInner({
   isNightMode = false,
   isFullscreen = false,
   isMobile = false,
-  isPublic = false,
+  isPublicOrEmbedded = false,
   isXray = false,
   isEditingParameter,
   clickBehaviorSidebarDashcard,
-  headerIcon,
+  withTitle = true,
   onAddSeries,
   onReplaceCard,
   onRemove,
@@ -109,6 +112,10 @@ function DashCardInner({
   onUpdateVisualizationSettings,
   onReplaceAllVisualizationSettings,
 }: DashCardProps) {
+  const dashcardData = useSelector(state =>
+    getDashcardData(state, dashcard.id),
+  );
+  const href = useSelector(state => getDashcardHref(state, dashcard.id));
   const [isPreviewingCard, setIsPreviewingCard] = useState(false);
   const cardRootRef = useRef<HTMLDivElement>(null);
 
@@ -155,13 +162,13 @@ function DashCardInner({
       }
 
       return {
-        ...getIn(dashcardData, [dashcard.id, card.id]),
+        ...getIn(dashcardData, [card.id]),
         card,
         isSlow,
         isUsuallyFast,
       };
     });
-  }, [cards, dashcard.id, dashcardData, slowCards]);
+  }, [cards, dashcardData, slowCards]);
 
   const isLoading = useMemo(
     () => isDashcardLoading(dashcard, dashcardData),
@@ -185,11 +192,6 @@ function DashCardInner({
 
   const error = useMemo(() => getDashcardResultsError(series), [series]);
   const hasError = !!error;
-
-  const parameterValuesBySlug = useMemo(
-    () => getParameterValuesBySlug(dashboard.parameters, parameterValues),
-    [dashboard.parameters, parameterValues],
-  );
 
   const gridSize = useMemo(
     () => ({ width: dashcard.size_x, height: dashcard.size_y }),
@@ -221,6 +223,30 @@ function DashCardInner({
     );
   }, [isEditing, isAction, mainCard]);
 
+  const headerIcon = useMemo(() => {
+    const { isRegularCollection } = PLUGIN_COLLECTIONS;
+    const isRegularQuestion = isRegularCollection({
+      authority_level: dashcard.collection_authority_level,
+    });
+    const isRegularDashboard = isRegularCollection({
+      authority_level: dashboard.collection_authority_level,
+    });
+    const authorityLevel = dashcard.collection_authority_level;
+    if (isRegularDashboard && !isRegularQuestion && authorityLevel) {
+      const opts = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[authorityLevel];
+      const iconSize = 14;
+      return {
+        name: opts.icon,
+        color: opts.color ? color(opts.color) : undefined,
+        tooltip: opts.tooltips?.belonging,
+        size: iconSize,
+
+        // Workaround: headerIcon on cards in a first column have incorrect offset out of the box
+        targetOffsetX: dashcard.col === 0 ? iconSize : 0,
+      };
+    }
+  }, [dashcard, dashboard.collection_authority_level]);
+
   const isEditingDashboardLayout =
     isEditing && !clickBehaviorSidebarDashcard && !isEditingParameter;
 
@@ -232,32 +258,33 @@ function DashCardInner({
     showClickBehaviorSidebar(dashcard.id);
   }, [dashcard.id, showClickBehaviorSidebar]);
 
-  const changeCardAndRunHandler = useMemo(() => {
-    if (!navigateToNewCardFromDashboard) {
-      return null;
-    }
-
-    const handler: DashCardOnChangeCardAndRunHandler = ({
-      nextCard,
-      previousCard,
-      objectId,
-    }) => {
-      navigateToNewCardFromDashboard({
-        nextCard,
-        previousCard,
-        dashcard,
-        objectId,
-      });
-    };
-
-    return handler;
-  }, [dashcard, navigateToNewCardFromDashboard]);
+  const changeCardAndRunHandler =
+    useCallback<DashCardOnChangeCardAndRunHandler>(
+      ({ nextCard, previousCard, objectId }) => {
+        return navigateToNewCardFromDashboard?.({
+          nextCard,
+          previousCard,
+          dashcard,
+          objectId,
+        });
+      },
+      [dashcard, navigateToNewCardFromDashboard],
+    );
 
   return (
     <ErrorBoundary>
       <DashCardRoot
         data-testid="dashcard"
-        className="Card relative rounded flex flex-column hover-parent hover--visibility"
+        className={cx(
+          DashboardS.Card,
+          EmbedFrameS.Card,
+          CS.relative,
+          CS.rounded,
+          CS.flex,
+          CS.flexColumn,
+          CS.hoverParent,
+          CS.hoverVisibility,
+        )}
         hasHiddenBackground={hasHiddenBackground}
         shouldForceHiddenBackground={shouldForceHiddenBackground}
         isNightMode={isNightMode}
@@ -289,9 +316,6 @@ function DashCardInner({
           dashboard={dashboard}
           dashcard={dashcard}
           series={series}
-          parameterValues={parameterValues}
-          parameterValuesBySlug={parameterValuesBySlug}
-          metadata={metadata}
           mode={mode}
           gridSize={gridSize}
           gridItemWidth={gridItemWidth}
@@ -299,6 +323,7 @@ function DashCardInner({
           headerIcon={headerIcon}
           expectedDuration={expectedDuration}
           error={error}
+          href={navigateToNewCardFromDashboard ? href : undefined}
           isAction={isAction}
           isEmbed={isEmbed}
           isXray={isXray}
@@ -312,10 +337,13 @@ function DashCardInner({
           isFullscreen={isFullscreen}
           isNightMode={isNightMode}
           isMobile={isMobile}
-          isPublic={isPublic}
+          isPublicOrEmbedded={isPublicOrEmbedded}
+          withTitle={withTitle}
           showClickBehaviorSidebar={showClickBehaviorSidebar}
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-          onChangeCardAndRun={changeCardAndRunHandler}
+          onChangeCardAndRun={
+            navigateToNewCardFromDashboard ? changeCardAndRunHandler : null
+          }
           onChangeLocation={onChangeLocation}
         />
       </DashCardRoot>
@@ -323,6 +351,6 @@ function DashCardInner({
   );
 }
 
-export const DashCard = Object.assign(DashCardInner, {
+export const DashCard = Object.assign(memo(DashCardInner), {
   root: DashCardRoot,
 });

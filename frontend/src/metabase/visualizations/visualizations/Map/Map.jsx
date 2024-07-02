@@ -26,7 +26,7 @@ import {
   isMetric,
   isNumeric,
   isState,
-} from "metabase-lib/types/utils/isa";
+} from "metabase-lib/v1/types/utils/isa";
 
 import ChoroplethMap, {
   getColorplethColorScale,

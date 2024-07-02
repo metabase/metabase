@@ -1,7 +1,7 @@
 import { jt } from "ttag";
 
 import { coerceCollectionId } from "metabase/collections/utils";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
 
 import {
@@ -24,6 +24,10 @@ const getMessage = (question: Question, collectionLink: JSX.Element) => {
 
   if (type === "model") {
     return jt`Model moved to ${collectionLink}`;
+  }
+
+  if (type === "metric") {
+    return jt`Metric moved to ${collectionLink}`;
   }
 
   throw new Error(`Unknown question.type(): ${type}`);

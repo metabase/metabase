@@ -144,13 +144,23 @@
   "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time."
   (make-load-data-fn load-data-chunked))
 
-(def ^{:arglists '([driver dbdef tabledef])} load-data-add-ids!
-  "Implementation of `load-data!`. Insert all rows at once; add IDs."
-  (make-load-data-fn load-data-add-ids))
+(defn load-data-maybe-add-ids!
+  "Implementation of `load-data!`. Insert all rows at once;
+  Add IDs if tabledef does not contains PK."
+  [driver dbdef tabledef]
+  (let [load-data! (if-not (some :pk? (:field-definitions tabledef))
+                    (make-load-data-fn load-data-add-ids)
+                    (make-load-data-fn load-data-chunked))]
+    (load-data! driver dbdef tabledef)))
 
-(def ^{:arglists '([driver dbdef tabledef])} load-data-add-ids-chunked!
-  "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time; add IDs."
-  (make-load-data-fn load-data-add-ids load-data-chunked))
+(defn load-data-maybe-add-ids-chunked!
+  "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time;
+  Add IDs if tabledef does not contains PK."
+  [driver dbdef tabledef]
+  (let [load-data! (if-not (some :pk? (:field-definitions tabledef))
+                    (make-load-data-fn load-data-add-ids load-data-chunked)
+                    (make-load-data-fn load-data-chunked))]
+    (load-data! driver dbdef tabledef)))
 
 ;; Default impl
 
@@ -182,6 +192,7 @@
         (log/tracef "[insert] %s" (pr-str sql-args))
         (try
           ;; TODO - why don't we use [[execute/execute-sql!]] here like we do below?
+          ;; Tech Debt Issue: #39375
           (jdbc/execute! spec sql-args {:set-parameters (fn [stmt params]
                                                           (sql-jdbc.execute/set-parameters! driver stmt params))})
           (catch Throwable e
@@ -197,7 +208,7 @@
 (defn create-db!
   "Default implementation of `create-db!` for SQL drivers."
   {:arglists '([driver dbdef & {:keys [skip-drop-db?]}])}
-  [driver {:keys [table-definitions], :as dbdef} & options]
+  [driver {:keys [table-definitions] :as dbdef} & options]
   ;; first execute statements to drop the DB if needed (this will do nothing if `skip-drop-db?` is true)
   (doseq [statement (apply ddl/drop-db-ddl-statements driver dbdef options)]
     (execute/execute-sql! driver :server dbdef statement))

@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { t, c } from "ttag";
 import _ from "underscore";
 
 import {
@@ -7,10 +7,10 @@ import {
 } from "metabase/admin/permissions/utils/data-entity-id";
 import {
   getFieldsPermission,
-  getNativePermission,
   getSchemasPermission,
 } from "metabase/admin/permissions/utils/graph";
-import type Database from "metabase-lib/metadata/Database";
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Group,
   GroupsPermissions,
@@ -18,28 +18,37 @@ import type {
 } from "metabase-types/api";
 
 import type { EntityId } from "../types";
+import { DataPermission, DataPermissionValue } from "../types";
 
 export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>
   t`The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
 
 // these are all the permission levels ordered by level of access
 const PERM_LEVELS = [
-  "write",
-  "read",
-  "all",
-  "impersonated",
-  "controlled",
-  "none",
-  "block",
+  DataPermissionValue.ALL,
+  DataPermissionValue.YES,
+  DataPermissionValue.UNRESTRICTED,
+  DataPermissionValue.FULL,
+  DataPermissionValue.IMPERSONATED,
+  DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+  DataPermissionValue.QUERY_BUILDER,
+  DataPermissionValue.CONTROLLED,
+  DataPermissionValue.SANDBOXED,
+  DataPermissionValue.BLOCKED,
+  DataPermissionValue.LEGACY_NO_SELF_SERVICE,
+  DataPermissionValue.LIMITED,
+  DataPermissionValue.NO,
+  DataPermissionValue.NONE,
 ];
+
 function hasGreaterPermissions(
-  a: string,
-  b: string,
+  a: DataPermissionValue,
+  b: DataPermissionValue,
   descendingPermissions = PERM_LEVELS,
 ) {
   // Avoids scenario where the logic of the PERM_LEVELS ordering suggests that
   // a default group permission of "none" would overrule "block".
-  if (a === "none" && b === "block") {
+  if (a === DataPermissionValue.NO && b === DataPermissionValue.BLOCKED) {
     return false;
   } else {
     return (
@@ -49,33 +58,50 @@ function hasGreaterPermissions(
 }
 
 export function getPermissionWarning(
-  value: string,
-  defaultGroupValue: string,
+  value: DataPermissionValue,
+  defaultGroupValue: DataPermissionValue,
   entityType: string | null,
   defaultGroup: Group,
   groupId: Group["id"],
-  descendingPermissions?: string[],
+  descendingPermissions?: DataPermissionValue[],
 ) {
   if (!defaultGroup || groupId === defaultGroup.id) {
     return null;
   }
 
-  if (value === "controlled" && defaultGroupValue === "controlled") {
+  if (
+    value === DataPermissionValue.CONTROLLED &&
+    defaultGroupValue === DataPermissionValue.CONTROLLED
+  ) {
     return t`The "${defaultGroup.name}" group may have access to a different set of ${entityType} than this group, which may give this group additional access to some ${entityType}.`;
   }
+
+  if (value === DataPermissionValue.LEGACY_NO_SELF_SERVICE) {
+    return t`In a future release, if a group's View data access for a database (or any of its schemas or tables) is still set to No self-service (Deprecated), Metabase will automatically change that group's View data access for the entire database to Blocked. We'll be defaulting to Blocked, the least permissive View data access, to prevent any unintended access to data.`;
+  }
+
   if (hasGreaterPermissions(defaultGroupValue, value, descendingPermissions)) {
     return getDefaultGroupHasHigherAccessText(defaultGroup);
   }
+
   return null;
 }
 
+function getEntityTypeFromId(entityId: EntityId): [string, string] {
+  return isTableEntityId(entityId)
+    ? [t`table`, t`tables`]
+    : isSchemaEntityId(entityId)
+    ? [t`schema`, t`schemas`]
+    : [t`entity`, t`entities`];
+}
+
 export function getPermissionWarningModal(
-  value: string,
-  defaultGroupValue: string,
+  value: DataPermissionValue,
+  defaultGroupValue: DataPermissionValue,
   entityType: string | null,
   defaultGroup: Group,
   groupId: Group["id"],
-  descendingPermissions?: string[],
+  descendingPermissions?: DataPermissionValue[],
 ) {
   const permissionWarning = getPermissionWarning(
     value,
@@ -88,35 +114,44 @@ export function getPermissionWarningModal(
   if (permissionWarning) {
     return {
       title:
-        (value === "controlled" ? t`Limit` : t`Revoke`) +
+        (value === DataPermissionValue.CONTROLLED ? t`Limit` : t`Revoke`) +
         " " +
         t`access even though "${defaultGroup.name}" has greater access?`,
       message: permissionWarning,
       confirmButtonText:
-        value === "controlled" ? t`Limit access` : t`Revoke access`,
+        value === DataPermissionValue.CONTROLLED
+          ? t`Limit access`
+          : t`Revoke access`,
       cancelButtonText: t`Cancel`,
     };
   }
 }
 
-export function getControlledDatabaseWarningModal(
+export function getWillRevokeNativeAccessWarningModal(
   permissions: GroupsPermissions,
-  groupId: Group["id"],
+  groupId: number,
   entityId: EntityId,
 ) {
+  // if the db is set to query builder and native for this group
+  // then warn the user that the change will downgrade native permissions
+  const currDbCreateQueriesPermission = getSchemasPermission(
+    permissions,
+    groupId,
+    { databaseId: entityId.databaseId },
+    DataPermission.CREATE_QUERIES,
+  );
+
   if (
-    getSchemasPermission(permissions, groupId, entityId, "data") !==
-    "controlled"
+    currDbCreateQueriesPermission ===
+    DataPermissionValue.QUERY_BUILDER_AND_NATIVE
   ) {
-    const [entityType, entityTypePlural] = isTableEntityId(entityId)
-      ? [t`table`, t`tables`]
-      : isSchemaEntityId(entityId)
-      ? [t`schema`, t`schemas`]
-      : [t`entity`, t`entities`];
+    const [entityType] = getEntityTypeFromId(entityId);
+
     return {
-      title: t`Change access to this database to granular?`,
-      message: t`Just letting you know that changing the permission setting on this ${entityType} will also update the database permission setting to “Granular” to reflect that some of the database’s ${entityTypePlural} have different permission settings.`,
-      confirmButtonText: t`Change`,
+      title: t`Change access to this database to “Granular”?`,
+      message: t`As part of providing granular permissions for this one ${entityType}, this group's native querying permissions will also be removed from all tables and schemas in this database.`,
+      confirmButtonText: c("This is a verb, for a confirmation button")
+        .t`Change`,
       cancelButtonText: t`Cancel`,
     };
   }
@@ -126,14 +161,30 @@ export function getRawQueryWarningModal(
   permissions: GroupsPermissions,
   groupId: Group["id"],
   entityId: EntityId,
-  value: string,
+  value: DataPermissionValue,
 ) {
+  const nativePermission = getSchemasPermission(
+    permissions,
+    groupId,
+    entityId,
+    DataPermission.CREATE_QUERIES,
+  );
+
+  const viewPermission = getSchemasPermission(
+    permissions,
+    groupId,
+    entityId,
+    DataPermission.VIEW_DATA,
+  );
+
   if (
-    value === "write" &&
-    getNativePermission(permissions, groupId, entityId) !== "write" &&
-    !["all", "impersonated"].includes(
-      getSchemasPermission(permissions, groupId, entityId, "data"),
-    )
+    value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
+    nativePermission !== DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
+    PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&
+    ![
+      DataPermissionValue.UNRESTRICTED,
+      DataPermissionValue.IMPERSONATED,
+    ].includes(viewPermission)
   ) {
     return {
       title: t`Allow native query editing?`,
@@ -152,13 +203,22 @@ export function getRevokingAccessToAllTablesWarningModal(
   permissions: GroupsPermissions,
   groupId: Group["id"],
   entityId: EntityId,
-  value: string,
+  value: DataPermissionValue,
 ) {
   if (
-    value === "none" &&
-    getSchemasPermission(permissions, groupId, entityId, "data") ===
-      "controlled" &&
-    getNativePermission(permissions, groupId, entityId) !== "none"
+    value === DataPermissionValue.NO &&
+    getSchemasPermission(
+      permissions,
+      groupId,
+      entityId,
+      DataPermission.VIEW_DATA,
+    ) === DataPermissionValue.CONTROLLED &&
+    getSchemasPermission(
+      permissions,
+      groupId,
+      entityId,
+      DataPermission.CREATE_QUERIES,
+    ) !== DataPermissionValue.NO
   ) {
     // allTableEntityIds contains tables from all schemas
     const allTableEntityIds = database.getTables().map(table => ({
@@ -171,8 +231,12 @@ export function getRevokingAccessToAllTablesWarningModal(
     const afterChangesNoAccessToAnyTable = _.every(
       allTableEntityIds,
       id =>
-        getFieldsPermission(permissions, groupId, id, "data") === "none" ||
-        _.isEqual(id, entityId),
+        getFieldsPermission(
+          permissions,
+          groupId,
+          id,
+          DataPermission.VIEW_DATA,
+        ) === DataPermissionValue.NO || _.isEqual(id, entityId),
     );
     if (afterChangesNoAccessToAnyTable) {
       return {

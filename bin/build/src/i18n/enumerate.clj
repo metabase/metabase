@@ -20,8 +20,7 @@
                             "/enterprise/backend/src"
                             "/modules/drivers/bigquery-cloud-sdk/src"
                             "/modules/drivers/druid/src"
-                            "/modules/drivers/google/src"
-                            "/modules/drivers/googleanalytics/src"
+                            "/modules/drivers/druid-jdbc/src"
                             "/modules/drivers/mongo/src"
                             "/modules/drivers/oracle/src"
                             "/modules/drivers/presto-jdbc/src"
@@ -39,7 +38,7 @@
                (update override :file (partial str u/project-root-directory))))
         ;; doesn't find the usage in fingerprinters, which is a macro emitting a defmethod. The quoting changes the
         ;; shape of the seq so the spec doesn't match it
-        [{:file "/src/metabase/sync/analyze/fingerprint/fingerprinters.clj"
+        [{:file "/src/metabase/analyze/fingerprint/fingerprinters.clj"
           :message "Error generating fingerprint for {0}"}]))
 
 (defn- strip-roots

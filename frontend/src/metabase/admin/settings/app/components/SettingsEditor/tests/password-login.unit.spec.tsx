@@ -34,7 +34,7 @@ describe("SettingsEditor", () => {
       }),
     });
 
-    userEvent.click(screen.getByText("Authentication"));
+    await userEvent.click(screen.getByText("Authentication"));
     expect(screen.getByText("Sign in with Google")).toBeInTheDocument();
     expect(
       screen.getByText("Enable Password Authentication"),

@@ -6,6 +6,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
+  chartPathWithFillColor,
   createDashboardWithTabs,
   dashboardHeader,
   editDashboard,
@@ -14,6 +15,7 @@ import {
   getHeadingCardDetails,
   getLinkCardDetails,
   getTextCardDetails,
+  cartesianChartCircle,
   modal,
   openStaticEmbeddingModal,
   popover,
@@ -24,6 +26,10 @@ import {
   visitDashboard,
   visitEmbeddedPage,
   visitIframe,
+  entityPickerModal,
+  filterWidget,
+  queryBuilderHeader,
+  removeMultiAutocompleteValue,
 } from "e2e/support/helpers";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import {
@@ -667,7 +673,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     it("allows setting saved question as custom destination and changing it back to default click behavior", () => {
-      cy.createQuestion(TARGET_QUESTION);
+      cy.createQuestion(TARGET_QUESTION, { wrapId: true });
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
@@ -690,13 +696,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.intercept("GET", "/api/collection", cy.spy().as("collections"));
 
       clickLineChartPoint();
-      cy.location().should(({ hash, pathname }) => {
-        expect(pathname).to.equal("/question");
-        const card = deserializeCardFromUrl(hash);
-        expect(card.name).to.deep.equal(TARGET_QUESTION.name);
-        expect(card.display).to.deep.equal(TARGET_QUESTION.display);
-        expect(card.dataset_query.query).to.deep.equal(TARGET_QUESTION.query);
+      cy.get("@questionId").then(questionId => {
+        cy.location()
+          .its("pathname")
+          .should("contain", `/question/${questionId}`);
       });
+      queryBuilderHeader()
+        .findByDisplayValue(TARGET_QUESTION.name)
+        .should("be.visible");
 
       cy.log("Should navigate to question using router (metabase#33379)");
       cy.findByTestId("view-footer").should("contain", "Showing 5 rows");
@@ -960,6 +967,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           );
         });
       });
+
+      cy.log("reset filter state");
+
+      filterWidget().icon("close").click();
 
       testChangingBackToDefaultBehavior();
     });
@@ -1309,6 +1320,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.findAllByTestId("field-set")
         .should("have.length", 2)
         .should("contain.text", POINT_COUNT);
+
       cy.get("@targetDashboardId").then(targetDashboardId => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
@@ -1397,6 +1409,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           customLinkTextInput.type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
             parseSpecialCharSequences: false,
           });
+          customLinkTextInput.blur();
+
           cy.button("Done").click();
         });
 
@@ -1434,7 +1448,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
         cy.button(DASHBOARD_FILTER_TEXT.name).click();
         popover().within(() => {
-          cy.icon("close").click();
+          removeMultiAutocompleteValue(0);
           cy.findByPlaceholderText("Search by Name").type("Dell Adams");
           cy.button("Update filter").click();
         });
@@ -2018,6 +2032,84 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
     });
   });
+
+  it("should not pass through null values to filters in custom url click behavior (metabase#25203)", () => {
+    const DASHBOARD_NAME = "Click Behavior Custom URL Dashboard";
+    const questionDetails = {
+      name: "Orders",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [
+          ["sum", ["field", ORDERS.TOTAL, null]],
+          ["sum", ["field", ORDERS.DISCOUNT, null]],
+        ],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+        filter: ["=", ["field", ORDERS.USER_ID, null], 1],
+      },
+      display: "bar",
+    };
+
+    cy.createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails: {
+        name: DASHBOARD_NAME,
+      },
+      cardDetails: {
+        size_x: 16,
+        size_y: 8,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      cy.wrap(dashboard_id).as("targetDashboardId");
+      visitDashboard(dashboard_id);
+    });
+
+    editDashboard();
+
+    getDashboardCard().realHover().icon("click").click();
+    addUrlDestination();
+
+    modal().within(() => {
+      const urlInput = cy.findAllByRole("textbox").eq(0);
+
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        urlInput.type(
+          `http://localhost:4000/dashboard/${targetDashboardId}?discount={{sum_2}}&total={{sum}}`,
+          {
+            parseSpecialCharSequences: false,
+          },
+        );
+      });
+      cy.button("Done").click();
+    });
+
+    cy.get("aside").button("Done").click();
+
+    saveDashboard();
+
+    // test that normal values still work properly
+    getDashboardCard().within(() => {
+      chartPathWithFillColor("#88BF4D").eq(2).click();
+    });
+    cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.location().should(({ pathname, search }) => {
+        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+        expect(search).to.equal(
+          "?discount=15.070632139056723&total=298.9195210424866",
+        );
+      });
+    });
+
+    // test that null and "empty"s do not get passed through
+    getDashboardCard().within(() => {
+      chartPathWithFillColor("#88BF4D").eq(1).click();
+    });
+    cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.location().should(({ pathname, search }) => {
+        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+        expect(search).to.equal("?discount=&total=420.3189231596888");
+      });
+    });
+  });
 });
 
 /**
@@ -2047,8 +2139,7 @@ const deserializeCardFromUrl = serialized =>
   JSON.parse(b64hash_to_utf8(serialized));
 
 const clickLineChartPoint = () => {
-  cy.findByTestId("dashcard")
-    .get("circle.dot")
+  cartesianChartCircle()
     .eq(POINT_INDEX)
     /**
      * calling .click() here will result in clicking both
@@ -2069,7 +2160,10 @@ const clickLineChartPoint = () => {
 const addDashboardDestination = () => {
   cy.get("aside").findByText("Go to a custom destination").click();
   cy.get("aside").findByText("Dashboard").click();
-  modal().findByText(TARGET_DASHBOARD.name).click();
+  entityPickerModal()
+    .findByRole("tab", { name: /Dashboards/ })
+    .click();
+  entityPickerModal().findByText(TARGET_DASHBOARD.name).click();
 };
 
 const addUrlDestination = () => {
@@ -2080,7 +2174,10 @@ const addUrlDestination = () => {
 const addSavedQuestionDestination = () => {
   cy.get("aside").findByText("Go to a custom destination").click();
   cy.get("aside").findByText("Saved question").click();
-  modal().findByText(TARGET_QUESTION.name).click();
+  entityPickerModal()
+    .findByRole("tab", { name: /Questions/ })
+    .click();
+  entityPickerModal().findByText(TARGET_QUESTION.name).click();
 };
 
 const addSavedQuestionCreatedAtParameter = () => {

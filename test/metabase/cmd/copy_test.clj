@@ -26,12 +26,18 @@
 (def ^:private models-to-exclude
   "Models that should *not* be migrated in `load-from-h2`."
   #{:model/ApiKey
-    :model/TaskHistory
+    :model/CacheConfig
+    :model/CardFavorite
+    :model/CloudMigration
+    :model/DashboardFavorite
+    :model/FieldUsage
+    :model/LegacyMetric
+    :model/LegacyMetricImportantField
     :model/Query
     :model/QueryCache
     :model/QueryExecution
-    :model/CardFavorite
-    :model/DashboardFavorite})
+    :model/QueryField
+    :model/TaskHistory})
 
 (defn- all-model-names []
   (into (sorted-set)

@@ -1,9 +1,10 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import CollapseSection from "metabase/components/CollapseSection";
 import UnstyledEmptyState from "metabase/components/EmptyState";
 import Button from "metabase/core/components/Button";
-import { color, alpha } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const ModelCollapseSection = styled(CollapseSection)`
@@ -18,18 +19,21 @@ export const ActionsList = styled.ul`
 export const ActionItem = styled.li<{ isSelected?: boolean }>`
   display: flex;
   font-weight: bold;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
   margin-bottom: 1px;
   border-radius: ${space(0)};
   cursor: pointer;
 
-  ${({ isSelected }) =>
-    isSelected ? `background-color: ${alpha("brand", 0.2)};` : ""}
+  ${({ isSelected, theme }) =>
+    isSelected &&
+    css`
+      background-color: ${alpha(theme.fn.themeColor("brand"), 0.2)};
+    `}
 
   &:hover {
-    background-color: ${alpha("brand", 0.35)};
+    background-color: ${() => alpha("brand", 0.35)};
   }
 `;
 
@@ -39,12 +43,12 @@ export const EmptyState = styled(UnstyledEmptyState)`
 
 export const EmptyModelStateContainer = styled.div`
   padding: ${space(2)};
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   text-align: center;
 `;
 
 export const EditButton = styled(Button)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   padding: 0 0.5rem;
 `;
 

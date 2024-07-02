@@ -3,13 +3,17 @@
   details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
+   [metabase.audit :as audit]
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection-permission-graph-revision
     :as c-perm-revision
     :refer [CollectionPermissionGraphRevision]]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions :as perms :refer [Permissions]]
-   [metabase.models.permissions-group :as perms-group :as perms-group :refer [PermissionsGroup]]
+   [metabase.models.permissions-group
+    :as perms-group
+    :refer [PermissionsGroup]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -66,6 +70,9 @@
         honeysql-form           {:select [[:id :id]]
                                  :from   [:collection]
                                  :where  (into [:and
+                                                ;; Does 'NULL != "trash"'? Postgres says the answer is undefined, aka
+                                                ;; NULL, which... is falsey. :sob:
+                                                [:or [:= :type nil] [:not= :type "trash"]]
                                                 (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
                                                 [:= :personal_owner_id nil]]
                                                (for [collection-id personal-collection-ids]
@@ -87,7 +94,7 @@
   "In the graph, override the instance analytics collection within the admin group to read."
   [graph]
   (let [admin-group-id      (:id (perms-group/admin))
-        audit-collection-id (:id (perms/default-audit-collection))]
+        audit-collection-id (:id (audit/default-audit-collection))]
     (if (nil? audit-collection-id)
       graph
       (assoc-in graph [:groups admin-group-id audit-collection-id] :read))))
@@ -163,12 +170,14 @@
          new-perms          (into {} (for [[group-id collection-id->perms] new-perms]
                                       [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
          [diff-old changes] (data/diff old-perms new-perms)]
-     (perms/log-permissions-changes diff-old changes)
-     (perms/check-revision-numbers old-graph new-graph)
+     (data-perms.graph/log-permissions-changes diff-old changes)
+     (data-perms.graph/check-revision-numbers old-graph new-graph)
      (when (seq changes)
        (t2/with-transaction [_conn]
          (doseq [[group-id changes] changes]
            (update-audit-collection-permissions! group-id changes)
            (update-group-permissions! collection-namespace group-id changes))
-         (perms/save-perms-revision! CollectionPermissionGraphRevision (:revision old-graph)
-                                      (assoc old-graph :namespace collection-namespace) changes))))))
+         (data-perms.graph/save-perms-revision! CollectionPermissionGraphRevision
+                                                (:revision old-graph)
+                                                (assoc old-graph :namespace collection-namespace)
+                                                changes))))))

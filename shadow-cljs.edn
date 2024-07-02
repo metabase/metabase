@@ -16,12 +16,12 @@
                 :compiler-options {:reader-features #{:cljs-dev}}}
    :compiler-options {:reader-features #{:cljs-release}
                       :source-map      true}
-   :entries    [metabase.domain-entities.queries.util
-                metabase.lib.column-group
+   :closure-defines {goog.debug.LOGGING_ENABLED true}
+   :entries    [metabase.lib.column-group
                 metabase.lib.js
                 metabase.lib.limit
                 metabase.lib.types.isa
-                metabase.mbql.js
+                metabase.legacy-mbql.js
                 metabase.shared.dashboards.constants
                 metabase.shared.formatting.constants
                 metabase.shared.formatting.date
@@ -31,7 +31,8 @@
                 metabase.shared.util.currency
                 metabase.shared.util.time
                 metabase.types
-                metabase.util.devtools]}
+                metabase.util.devtools
+                metabase.xrays.domain-entities.queries.util]}
 
   :test
   {:target    :node-test

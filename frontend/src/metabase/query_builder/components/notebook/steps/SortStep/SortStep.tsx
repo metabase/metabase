@@ -43,6 +43,19 @@ function SortStep({
     updateQuery(nextQuery);
   };
 
+  const handleReorderOrderBy = (
+    sourceClause: Lib.OrderByClause,
+    targetClause: Lib.OrderByClause,
+  ) => {
+    const nextQuery = Lib.swapClauses(
+      query,
+      stageIndex,
+      sourceClause,
+      targetClause,
+    );
+    updateQuery(nextQuery);
+  };
+
   const handleRemoveOrderBy = (clause: Lib.OrderByClause) => {
     const nextQuery = Lib.removeClause(query, stageIndex, clause);
     updateQuery(nextQuery);
@@ -71,6 +84,7 @@ function SortStep({
           onClose={onClose}
         />
       )}
+      onReorder={handleReorderOrderBy}
       onRemove={handleRemoveOrderBy}
     />
   );

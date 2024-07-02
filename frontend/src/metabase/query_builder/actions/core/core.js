@@ -17,13 +17,13 @@ import { openUrl } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
-import Query from "metabase-lib/queries/Query";
+import Question from "metabase-lib/v1/Question";
+import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
+import Query from "metabase-lib/v1/queries/Query";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
-} from "metabase-lib/queries/utils/card";
+} from "metabase-lib/v1/queries/utils/card";
 
 import { trackNewQuestionSaved } from "../../analytics";
 import {
@@ -111,7 +111,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
  *     - `navigateToNewCardInsideQB` is being called (see below)
  */
 export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
-export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
+export const setCardAndRun = (nextCard, { shouldUpdateUrl = true } = {}) => {
   return async (dispatch, getState) => {
     // clone
     const card = copy(nextCard);
@@ -154,7 +154,10 @@ export const navigateToNewCardInsideQB = createThunkAction(
       } else if (cardIsEquivalent(previousCard, nextCard)) {
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
         dispatch(
-          setCardAndRun(await loadCard(nextCard.id, { dispatch, getState })),
+          setCardAndRun(
+            await loadCard(nextCard.id, { dispatch, getState }),
+            {},
+          ),
         );
       } else {
         const card = getCardAfterVisualizationClick(nextCard, previousCard);
@@ -222,7 +225,8 @@ export const apiCreateQuestion = question => {
     dispatch({ type: API_CREATE_QUESTION, payload: card });
 
     const isModel = question.type() === "model";
-    const metadataOptions = { reload: isModel };
+    const isMetric = question.type() === "metric";
+    const metadataOptions = { reload: isModel || isMetric };
     await dispatch(loadMetadataForCard(card, metadataOptions));
 
     return createdQuestion;
@@ -237,6 +241,8 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
 
     const isResultDirty = getIsResultDirty(getState());
     const isModel = question.type() === "model";
+    const isMetric = question.type() === "metric";
+
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
     if (!isNative) {
@@ -277,7 +283,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       await dispatch(ModelIndexes.actions.updateModelIndexes(question));
     }
 
-    const metadataOptions = { reload: isModel };
+    const metadataOptions = { reload: isModel || isMetric };
     await dispatch(loadMetadataForCard(question.card(), metadataOptions));
 
     if (rerunQuery) {

@@ -4,29 +4,28 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.analyze :as analyze]
    [metabase.driver.common :as driver.common]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.mbql.util.match :as mbql.match]
+   [metabase.lib.util :as lib.util]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.humanization :as humanization]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.escape-join-aliases
-    :as escape-join-aliases]
+   [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
-   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]))
 
 (def ^:private Col
   "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."
@@ -37,7 +36,7 @@
    [:name         :string]
    [:display_name :string]
    ;; type of the Field. For Native queries we look at the values in the first 100 rows to make an educated guess
-   [:base_type    ms/FieldType]
+   [:base_type    ::lib.schema.common/base-type]
    ;; effective_type, coercion, etc don't go here. probably best to rename base_type to effective type in the return
    ;; from the metadata but that's for another day
    ;; where this column came from in the original query.
@@ -58,8 +57,8 @@
 (defmethod column-info :default
   [{query-type :type, :as query} _]
   (throw (ex-info (tru "Unknown query type {0}" (pr-str query-type))
-           {:type  qp.error-type/invalid-query
-            :query query})))
+                  {:type  qp.error-type/invalid-query
+                   :query query})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Adding :cols info for native queries                                      |
@@ -72,28 +71,29 @@
     (let [expected-count (count cols)
           actual-count   (count (first rows))]
       (when-not (= expected-count actual-count)
-        (throw (ex-info (str (deferred-tru "Query processor error: number of columns returned by driver does not match results.")
+        (throw (ex-info (str (tru "Query processor error: number of columns returned by driver does not match results.")
                              "\n"
-                             (deferred-tru "Expected {0} columns, but first row of resuls has {1} columns."
-                               expected-count actual-count))
-                 {:expected-columns (map :name cols)
-                  :first-row        (first rows)
-                  :type             qp.error-type/qp}))))))
+                             (tru "Expected {0} columns, but first row of resuls has {1} columns."
+                                  expected-count actual-count))
+                        {:expected-columns (map :name cols)
+                         :first-row        (first rows)
+                         :type             qp.error-type/qp}))))))
 
 (defn- annotate-native-cols [cols]
-  (let [unique-name-fn (mbql.u/unique-name-generator)]
-    (vec (for [{col-name :name, base-type :base_type, :as driver-col-metadata} cols]
-           (let [col-name (name col-name)]
-             (merge
-              {:display_name (u/qualified-name col-name)
-               :source       :native}
-              ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does
-              ;; this for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank
-              ;; names in MBQL `:field` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a
-              ;; valid `:field`, omit the `:field_ref`.
-              (when-not (str/blank? col-name)
-                {:field_ref [:field (unique-name-fn col-name) {:base-type base-type}]})
-              driver-col-metadata))))))
+  (let [unique-name-fn (lib.util/unique-name-generator (qp.store/metadata-provider))]
+    (mapv (fn [{col-name :name, base-type :base_type, :as driver-col-metadata}]
+            (let [col-name (name col-name)]
+              (merge
+               {:display_name (u/qualified-name col-name)
+                :source       :native}
+               ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does
+               ;; this for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank
+               ;; names in MBQL `:field` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a
+               ;; valid `:field`, omit the `:field_ref`.
+               (when-not (str/blank? col-name)
+                 {:field_ref [:field (unique-name-fn col-name) {:base-type base-type}]})
+               driver-col-metadata)))
+          cols)))
 
 (defmethod column-info :native
   [_query {:keys [cols rows] :as _results}]
@@ -107,7 +107,7 @@
 
 (mu/defn ^:private join-with-alias :- [:maybe mbql.s/Join]
   [{:keys [joins source-query]} :- :map
-   join-alias                   :- ms/NonBlankString]
+   join-alias                   :- ::lib.schema.common/non-blank-string]
   (or (some
        (fn [{:keys [alias], :as join}]
          (when (= alias join-alias)
@@ -133,7 +133,7 @@
 (defn- datetime-arithmetics?
   "Helper for [[infer-expression-type]]. Returns true if a given clause returns a :type/DateTime type."
   [clause]
-  (mbql.match/match-one clause
+  (lib.util.match/match-one clause
     #{:datetime-add :datetime-subtract :relative-datetime}
     true
 
@@ -209,30 +209,45 @@
     :else
     {:base_type :type/*}))
 
+(defn- fe-friendly-expression-ref
+  "Apparently the FE viz code breaks for pivot queries if `field_ref` comes back with extra 'non-traditional' MLv2
+  info (`:base-type` or `:effective-type` in `:expression`), so we better just strip this info out to be sure. If you
+  don't believe me remove this and run `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` and you
+  will see."
+  [a-ref]
+  (let [a-ref (mbql.u/remove-namespaced-options a-ref)]
+    (lib.util.match/replace a-ref
+      [:expression expression-name (opts :guard (some-fn :base-type :effective-type))]
+      (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
+        (if (seq fe-friendly-opts)
+          [:expression expression-name fe-friendly-opts]
+          [:expression expression-name])))))
+
 (defn- col-info-for-expression
-  [inner-query [_ expression-name :as clause]]
+  [inner-query [_expression expression-name :as clause]]
   (merge
    (infer-expression-type (mbql.u/expression-with-name inner-query expression-name))
    {:name            expression-name
     :display_name    expression-name
     ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
     :expression_name expression-name
-    :field_ref       clause}))
+    :field_ref       (fe-friendly-expression-ref clause)}))
 
 (mu/defn ^:private col-info-for-field-clause*
-  [{:keys [source-metadata source-card-id], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
-  (let [join                      (when (:join-alias opts)
-                                    (join-with-alias inner-query (:join-alias opts)))
-        join-is-at-current-level? (some #(= (:alias %) (:join-alias opts)) (:joins inner-query))
+  [{:keys [source-metadata], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
+  (let [stage-is-from-source-card? (:qp/stage-had-source-card inner-query)
+        join                       (when (:join-alias opts)
+                                     (join-with-alias inner-query (:join-alias opts)))
+        join-is-at-current-level?  (some #(= (:alias %) (:join-alias opts)) (:joins inner-query))
         ;; record additional information that may have been added by middleware. Sometimes pre-processing middleware
         ;; needs to add extra info to track things that it did (e.g. the
         ;; [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds keys to
         ;; track which Fields it adds or needs to remap, and then the post-processing middleware does the actual
         ;; remapping based on that info)
-        namespaced-options        (not-empty (into {}
-                                                   (filter (fn [[k _v]]
-                                                             (and (keyword? k) (namespace k))))
-                                                   opts))]
+        namespaced-options         (not-empty (into {}
+                                                    (filter (fn [[k _v]]
+                                                              (and (keyword? k) (namespace k))))
+                                                    opts))]
     ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
     ;; level, and one for referring to the Field from the PARENT level.
     (cond-> {:field_ref (mbql.u/remove-namespaced-options clause)}
@@ -249,8 +264,7 @@
                   :display_name (humanization/name->human-readable-name id-or-name)}))
 
       (integer? id-or-name)
-      (merge (let [{:keys [parent-id], :as field} (-> (lib.metadata/field (qp.store/metadata-provider) id-or-name)
-                                                      (dissoc :database-type))]
+      (merge (let [{:keys [parent-id], :as field} (lib.metadata/field (qp.store/metadata-provider) id-or-name)]
                #_{:clj-kondo/ignore [:deprecated-var]}
                (if-not parent-id
                  (qp.store/->legacy-metadata field)
@@ -296,7 +310,7 @@
       ;; If the source query is from a saved question, remove the join alias as the caller should not be aware of joins
       ;; happening inside the saved question. The `not join-is-at-current-level?` check is to ensure that we are not
       ;; removing `:join-alias` from fields from the right side of the join.
-      (and source-card-id
+      (and stage-is-from-source-card?
            (not join-is-at-current-level?))
       (update :field_ref mbql.u/update-field-options dissoc :join-alias))))
 
@@ -305,7 +319,7 @@
   "Return results column metadata for a `:field` or `:expression` clause, in the format that gets returned by QP results"
   [inner-query :- :map
    clause      :- mbql.s/Field]
-  (mbql.u/match-one clause
+  (lib.util.match/match-one clause
     :expression
     (col-info-for-expression inner-query &match)
 
@@ -354,16 +368,19 @@
           (update-keys u/->snake_case_en)
           (dissoc :lib/type)))))
 
+(def ^:private LegacyInnerQuery
+  [:and
+   :map
+   [:fn
+    {:error/message "legacy inner-query with :source-table or :source-query"}
+    (some-fn :source-table :source-query)]])
+
 (mu/defn aggregation-name :- ::lib.schema.common/non-blank-string
   "Return an appropriate aggregation name/alias *used inside a query* for an `:aggregation` subclause (an aggregation
   or expression). Takes an options map as schema won't support passing keypairs directly as a varargs.
 
   These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
-  [inner-query :- [:and
-                   :map
-                   [:fn
-                    {:error/message "legacy inner-query with :source-table or :source-query"}
-                    (some-fn :source-table :source-query)]]
+  [inner-query :- LegacyInnerQuery
    ag-clause]
   (lib/column-name (mlv2-query inner-query) (lib.convert/->pMBQL ag-clause)))
 
@@ -415,12 +432,11 @@
   [source-metadata-col :- [:maybe :map]
    col                 :- [:maybe :map]]
   (merge
-    {} ;; ensure the type is not FieldInstance
-    (when-let [field-id (:id source-metadata-col)]
-      (-> (lib.metadata/field (qp.store/metadata-provider) field-id)
-          (dissoc :database-type)
-          #_{:clj-kondo/ignore [:deprecated-var]}
-          qp.store/->legacy-metadata))
+   {} ; ensure the type is a plain map rather than a Toucan 2 instance or whatever
+   (when-let [field-id (:id source-metadata-col)]
+     (-> (lib.metadata/field (qp.store/metadata-provider) field-id)
+         #_{:clj-kondo/ignore [:deprecated-var]}
+         qp.store/->legacy-metadata))
    source-metadata-col
    col
    ;; pass along the unit from the source query metadata if the top-level metadata has unit `:default`. This way the
@@ -476,30 +492,30 @@
       source-query
       (flow-field-metadata (cols-for-source-query inner-query results) cols model?)
 
-      (every? #(mbql.u/match-one % [:field (field-name :guard string?) _] field-name) fields)
+      (every? #(lib.util.match/match-one % [:field (field-name :guard string?) _] field-name) fields)
       (maybe-merge-source-metadata source-metadata cols)
 
       :else
       cols)))
 
 (defn- restore-cumulative-aggregations
-  [{aggregations :aggregation breakouts :breakout :as inner-query} replaced-indices]
+  [{aggregations :aggregation breakouts :breakout :as inner-query} replaced-indexes]
   (let [offset   (count breakouts)
         restored (reduce (fn [aggregations index]
-                           (mbql.u/replace-in aggregations [(- index offset)]
+                           (lib.util.match/replace-in aggregations [(- index offset)]
                              [:count]       [:cum-count]
                              [:count field] [:cum-count field]
                              [:sum field]   [:cum-sum field]))
                          (vec aggregations)
-                         replaced-indices)]
+                         replaced-indexes)]
     (assoc inner-query :aggregation restored)))
 
 (defmethod column-info :query
   [{inner-query :query,
-    replaced-indices :metabase.query-processor.middleware.cumulative-aggregations/replaced-indices}
+    replaced-indexes :metabase.query-processor.middleware.cumulative-aggregations/replaced-indexes}
    results]
   (u/prog1 (mbql-cols (cond-> inner-query
-                        replaced-indices (restore-cumulative-aggregations replaced-indices))
+                        replaced-indexes (restore-cumulative-aggregations replaced-indexes))
                       results)
     (check-correct-number-of-columns-returned <> results)))
 
@@ -576,11 +592,11 @@
   If the driver returned a base type more specific than :type/*, use that; otherwise look at the sample
   of rows and infer the base type based on the classes of the values"
   [{:keys [cols]}]
-  (apply fingerprinters/col-wise
+  (apply analyze/col-wise
          (for [{driver-base-type :base_type} cols]
            (if (contains? #{nil :type/*} driver-base-type)
              (driver.common/values->base-type)
-             (fingerprinters/constant-fingerprinter driver-base-type)))))
+             (analyze/constant-fingerprinter driver-base-type)))))
 
 (defn- add-column-info-xform
   [query metadata rf]

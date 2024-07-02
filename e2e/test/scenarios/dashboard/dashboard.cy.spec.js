@@ -1,3 +1,6 @@
+import { assoc } from "icepick";
+import _ from "underscore";
+
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -30,6 +33,7 @@ import {
   queryBuilderHeader,
   removeDashboardCard,
   getDashboardCards,
+  getDashboardCard,
   toggleDashboardInfoSidebar,
   dashboardHeader,
   openProductsTable,
@@ -42,6 +46,11 @@ import {
   createDashboardWithTabs,
   entityPickerModal,
   collectionOnTheGoModal,
+  setFilter,
+  commandPaletteButton,
+  commandPalette,
+  describeEE,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import {
@@ -71,12 +80,20 @@ describe("scenarios > dashboard", () => {
       appBar().findByText("New").click();
       popover().findByText("Dashboard").should("be.visible").click();
 
+      cy.log(
+        "pressing escape should only close the entity picker modal, not the new dashboard modal",
+      );
+      modal().findByTestId("collection-picker-button").click();
+      entityPickerModal().findByText("Select a collection");
+      cy.realPress("Escape");
+      modal().findByText("New dashboard").should("be.visible");
+
       cy.log("Create a new dashboard");
       modal().within(() => {
         // Without waiting for this, the test was constantly flaking locally.
         cy.findByText("Our analytics");
 
-        cy.findByLabelText("Name").type(dashboardName);
+        cy.findByPlaceholderText(/name of your dashboard/i).type(dashboardName);
         cy.findByLabelText("Description").type(dashboardDescription, {
           delay: 0,
         });
@@ -102,9 +119,8 @@ describe("scenarios > dashboard", () => {
         .findByRole("link", { name: "ask a new one" })
         .click();
 
-      popover().within(() => {
-        cy.findByPlaceholderText(/Search for some/).type("Pro");
-        // cy.findByText("Sample Database").click();
+      entityPickerModal().within(() => {
+        cy.findByPlaceholderText("Search…").type("Pro");
         cy.findByText("Products").click();
       });
 
@@ -116,7 +132,16 @@ describe("scenarios > dashboard", () => {
       cy.wait("@createQuestion");
       modal().within(() => {
         cy.button("Yes please!").click();
-        cy.findByText(dashboardName).click();
+      });
+
+      entityPickerModal().within(() => {
+        cy.findByRole("tab", { name: /Dashboards/ }).click();
+        cy.findByText(dashboardName)
+          .closest("button")
+          .then($button => {
+            expect($button).to.have.attr("data-active", "true");
+          });
+        cy.button("Select").click();
       });
 
       openQuestionsSidebar();
@@ -153,6 +178,10 @@ describe("scenarios > dashboard", () => {
             .should("have.text", "Our analytics")
             .click();
         });
+
+        entityPickerModal()
+          .findByRole("tab", { name: /Collections/ })
+          .click();
         entityPickerModal()
           .findByText("Create a new collection")
           .click({ force: true });
@@ -202,23 +231,27 @@ describe("scenarios > dashboard", () => {
         cy.button("Yes please!").click();
       });
 
-      modal().findByText("Create a new dashboard").click();
-      modal().within(() => {
-        cy.findByLabelText("Name").type("Foo").blur();
-        cy.button("Create").click();
+      entityPickerModal()
+        .findByRole("tab", { name: /Dashboards/ })
+        .click();
+      entityPickerModal().findByText("Create a new dashboard").click();
+      cy.findByTestId("create-dashboard-on-the-go").within(() => {
+        cy.findByPlaceholderText("My new dashboard").type("Foo");
+        cy.findByText("Create").click();
       });
+      entityPickerModal().button("Select").click();
 
       saveDashboard();
 
       cy.log(
         "Find the originally visited (unrelated) dashboard in search and go to it",
       );
-      appBar()
-        .findByPlaceholderText(/^Search/)
-        .click();
-      cy.findAllByTestId("recently-viewed-item-title")
-        .contains("Orders in a dashboard")
-        .click();
+
+      commandPaletteButton().click();
+      commandPalette().within(() => {
+        cy.findByText("Recent items").should("exist");
+        cy.findByRole("option", { name: "Orders in a dashboard" }).click();
+      });
 
       cy.log("It should not contain an alien card from the other dashboard");
       getDashboardCards().should("have.length", 1).and("contain", "37.65");
@@ -304,8 +337,9 @@ describe("scenarios > dashboard", () => {
         cy.findByTestId("edit-bar").button("Cancel").click();
         openDashboardMenu();
         popover().findByText("Move").click();
-        modal().within(() => {
-          cy.findByRole("heading", { name: myPersonalCollection }).click();
+        entityPickerModal().within(() => {
+          cy.findByRole("tab", { name: /Collections/ }).click();
+          cy.findByText("Bobby Tables's Personal Collection").click();
           cy.button("Move").click();
         });
 
@@ -322,8 +356,9 @@ describe("scenarios > dashboard", () => {
         cy.findByTestId("edit-bar").button("Cancel").click();
         openDashboardMenu();
         popover().findByText("Move").click();
-        modal().within(() => {
-          cy.findByRole("heading", { name: "Our analytics" }).click();
+        entityPickerModal().within(() => {
+          cy.findByRole("tab", { name: /Collections/ }).click();
+          cy.findByText("Our analytics").click();
           cy.button("Move").click();
         });
 
@@ -551,20 +586,16 @@ describe("scenarios > dashboard", () => {
 
   it("should add a filter", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
-    cy.icon("pencil").click();
-    cy.icon("filter").click();
+    editDashboard();
+
     // Adding location/state doesn't make much sense for this case,
     // but we're testing just that the filter is added to the dashboard
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Location").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Is").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select…").click();
+    setFilter("Location", "Is");
 
-    popover().within(() => {
-      cy.findByText("State").click();
-    });
+    getDashboardCard().findByText("Select…").click();
+
+    popover().findByText("State").click();
+
     cy.icon("close");
     cy.button("Done").click();
 
@@ -577,7 +608,7 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
-    // programatically create and save a question as per repro instructions in #11007
+    // programmatically create and save a question as per repro instructions in #11007
     cy.request("POST", "/api/card", {
       name: "11007",
       dataset_query: {
@@ -613,31 +644,21 @@ describe("scenarios > dashboard", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("11007").click();
 
-    // add first filter
-    cy.icon("filter").click();
-    popover().within(() => {
-      cy.findByText("Time").click();
-      cy.findByText("All Options").click();
-    });
+    setFilter("Time", "All Options");
+
     // and connect it to the card
-    selectDashboardFilter(cy.get(".DashCard"), "Created At");
+    selectDashboardFilter(cy.findByTestId("dashcard-container"), "Created At");
 
     // add second filter
-    cy.icon("filter").click();
-    popover().within(() => {
-      cy.findByText("ID").click();
-    });
+    setFilter("ID");
+
     // and connect it to the card
-    selectDashboardFilter(cy.get(".DashCard"), "Product ID");
+    selectDashboardFilter(cy.findByTestId("dashcard-container"), "Product ID");
 
     // add third filter
-    cy.icon("filter").click();
-    popover().within(() => {
-      cy.findByText("Text or Category").click();
-      cy.findByText("Starts with").click();
-    });
+    setFilter("Text or Category", "Starts with");
     // and connect it to the card
-    selectDashboardFilter(cy.get(".DashCard"), "Category");
+    selectDashboardFilter(cy.findByTestId("dashcard-container"), "Category");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
@@ -861,16 +882,17 @@ describe("scenarios > dashboard", () => {
             ],
           });
 
-          cy.intercept("GET", `/api/dashboard/${NEW_DASHBOARD_ID}`).as(
-            "loadDashboard",
-          );
+          cy.intercept(
+            "GET",
+            `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata`,
+          ).as("queryMetadata");
         });
       },
     );
     cy.signInAsNormalUser();
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    cy.wait("@loadDashboard");
+    cy.wait("@queryMetadata");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders in a dashboard");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -993,7 +1015,9 @@ describe("scenarios > dashboard", () => {
 
 describeWithSnowplow("scenarios > dashboard", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/activity/recent_views").as("recentViews");
+    cy.intercept("GET", "/api/activity/recents?context=views").as(
+      "recentViews",
+    );
     resetSnowplow();
     restore();
     cy.signInAsAdmin();
@@ -1151,8 +1175,7 @@ function checkOptionsForFilter(filter) {
     .and("not.contain", "Dashboard filters");
 
   // Get rid of the open popover to be able to select another filter
-  // Uses force: true because the popover is covering this text. This happens
-  // after we introduce the database prompt banner.
+  // Uses force: true because the popover is covering this text.
   cy.findByText("Pick one or more filters to update").click({ force: true });
 }
 
@@ -1162,3 +1185,214 @@ function assertScrollBarExists() {
     cy.window().its("innerWidth").should("be.gte", bodyWidth);
   });
 }
+
+describe("LOCAL TESTING ONLY > dashboard", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  /**
+   * WARNING:
+   *    https://github.com/metabase/metabase/issues/15656
+   *    - We are currently not able to test translations in CI
+   *    - DO NOT unskip this test even after the issue is fixed
+   *    - To be used for local testing only
+   *    - Make sure you have translation resources built first.
+   *        - Run `./bin/i18n/build-translation-resources`
+   *        - Then start the server and Cypress tests
+   */
+
+  it.skip("dashboard filter should not show placeholder for translated languages (metabase#15694)", () => {
+    cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
+      cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
+    });
+    cy.createQuestionAndDashboard({
+      questionDetails: {
+        name: "15694",
+        query: { "source-table": PEOPLE_ID },
+      },
+      dashboardDetails: {
+        parameters: [
+          {
+            name: "Location",
+            slug: "location",
+            id: "5aefc725",
+            type: "string/=",
+            sectionId: "location",
+          },
+        ],
+      },
+    }).then(({ body: { card_id, dashboard_id } }) => {
+      addOrUpdateDashboardCard({
+        card_id,
+        dashboard_id,
+        card: {
+          parameter_mappings: [
+            {
+              parameter_id: "5aefc725",
+              card_id,
+              target: ["dimension", ["field", PEOPLE.STATE, null]],
+            },
+          ],
+        },
+      });
+
+      cy.visit(`/dashboard/${dashboard_id}?location=AK&location=CA`);
+      filterWidget().contains(/\{0\}/).should("not.exist");
+    });
+  });
+});
+
+describeEE("scenarios > dashboard > caching", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+  });
+
+  /**
+   * @note There is a similar test for the cache config form that appears in the question sidebar.
+   * It's in the Cypress describe block labeled "scenarios > question > caching"
+   */
+  it("can configure cache for a dashboard, on an enterprise instance", () => {
+    cy.intercept("PUT", "/api/cache").as("putCacheConfig");
+    visitDashboard(ORDERS_DASHBOARD_ID);
+
+    toggleDashboardInfoSidebar();
+
+    rightSidebar().within(() => {
+      cy.findByText(/Caching policy/).within(() => {
+        cy.findByText(/Use default/).click();
+      });
+      cy.findByRole("heading", { name: /Caching settings/ }).click();
+      cy.findByRole("radio", { name: /Duration/ }).click();
+      cy.findByLabelText("Cache results for this many hours").type("48");
+      cy.findByRole("button", { name: /Save/ }).click();
+      cy.wait("@putCacheConfig");
+      cy.findByText(/Caching policy/).within(() => {
+        cy.log(
+          "Check that the newly chosen cache invalidation policy - Duration - is now visible in the sidebar",
+        );
+        const durationButton = cy.findByRole("button", { name: /Duration/ });
+        durationButton.should("be.visible");
+        cy.log("Open the cache invalidation policy configuration form again");
+        durationButton.click();
+      });
+      cy.findByRole("radio", { name: /Adaptive/ }).click();
+      cy.findByLabelText(/Minimum query duration/).type("999");
+      cy.findByRole("button", { name: /Save/ }).click();
+      cy.wait("@putCacheConfig");
+      cy.findByText(/Caching policy/).within(() => {
+        cy.log(
+          "Check that the newly chosen cache invalidation policy - Adaptive - is now visible in the sidebar",
+        );
+        const policyToken = cy.findByRole("button", { name: /Adaptive/ });
+        policyToken.should("be.visible");
+      });
+    });
+  });
+});
+
+describe("scenarios > dashboard > permissions", () => {
+  let dashboardId;
+
+  beforeEach(() => {
+    restore();
+    // This first test creates a dashboard with two questions.
+    // One is in Our Analytics the other is in a more locked down collection.
+    cy.signInAsAdmin();
+
+    // The setup is a bunch of nested API calls to create the questions, dashboard, dashcards, collections and link them all up together.
+    let firstQuestionId, secondQuestionId;
+
+    cy.request("POST", "/api/collection", {
+      name: "locked down collection",
+      parent_id: null,
+    }).then(({ body: { id: collection_id } }) => {
+      cy.request("GET", "/api/collection/graph").then(
+        ({ body: { revision, groups } }) => {
+          // update the perms for the just-created collection
+          cy.request("PUT", "/api/collection/graph", {
+            revision,
+            groups: _.mapObject(groups, (groupPerms, groupId) =>
+              assoc(
+                groupPerms,
+                collection_id,
+                // 2 is admins, so leave that as "write"
+                groupId === "2" ? "write" : "none",
+              ),
+            ),
+          });
+        },
+      );
+
+      cy.request("POST", "/api/card", {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "native",
+          native: { query: "select 'foo'" },
+        },
+        display: "table",
+        visualization_settings: {},
+        name: "First Question",
+        collection_id,
+      }).then(({ body: { id } }) => (firstQuestionId = id));
+
+      cy.request("POST", "/api/card", {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "native",
+          native: { query: "select 'bar'" },
+        },
+        display: "table",
+        visualization_settings: {},
+        name: "Second Question",
+        collection_id: null,
+      }).then(({ body: { id } }) => (secondQuestionId = id));
+    });
+
+    cy.createDashboard().then(({ body: { id: dashId } }) => {
+      dashboardId = dashId;
+
+      updateDashboardCards({
+        dashboard_id: dashId,
+        cards: [
+          { card_id: firstQuestionId, row: 0, col: 0, size_x: 8, size_y: 6 },
+          { card_id: secondQuestionId, row: 0, col: 6, size_x: 8, size_y: 6 },
+        ],
+      });
+    });
+  });
+
+  it("should let admins view all cards in a dashboard", () => {
+    visitDashboard(dashboardId);
+    // Admin can see both questions
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("First Question");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("foo");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Second Question");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("bar");
+  });
+
+  it("should display dashboards with some cards locked down", () => {
+    cy.signIn("nodata");
+    visitDashboard(dashboardId);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Sorry, you don't have permission to see this card.");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Second Question");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("bar");
+  });
+
+  it("should display an error if they don't have perms for the dashboard", () => {
+    cy.signIn("nocollection");
+    visitDashboard(dashboardId);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Sorry, you don’t have permission to see that.");
+  });
+});

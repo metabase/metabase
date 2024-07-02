@@ -35,6 +35,17 @@ const mockAppendCSV = (valid = true) => {
   );
 };
 
+const mockReplaceCSV = (valid = true) => {
+  fetchMock.post(
+    "glob:*/api/table/*/replace-csv",
+    valid
+      ? "3"
+      : {
+          throws: { data: { message: "It's dead Jim" } },
+        },
+  );
+};
+
 describe("csv uploads", () => {
   describe("actions", () => {
     let dispatch;
@@ -51,14 +62,16 @@ describe("csv uploads", () => {
       jest.useFakeTimers({ advanceTimers: true }).setSystemTime(now);
     });
 
-    afterAll(() => {
+    afterEach(() => {
       jest.useRealTimers();
     });
 
     it("should handle file upload success", async () => {
       mockUploadCSV();
 
-      await uploadFile({ file, collectionId: "root" })(dispatch);
+      await uploadFile({ file, collectionId: "root", uploadMode: "create" })(
+        dispatch,
+      );
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
       expect(dispatch).toHaveBeenCalledWith({
@@ -74,6 +87,7 @@ describe("csv uploads", () => {
         type: UPLOAD_FILE_END,
         payload: {
           id: now,
+          uploadMode: "create",
           modelId: 3,
         },
       });
@@ -89,7 +103,7 @@ describe("csv uploads", () => {
     it("should handle file append success", async () => {
       mockAppendCSV();
 
-      await uploadFile({ file, tableId: 123 })(dispatch);
+      await uploadFile({ file, tableId: 123, uploadMode: "append" })(dispatch);
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
       expect(dispatch).toHaveBeenCalledWith({
@@ -106,6 +120,39 @@ describe("csv uploads", () => {
         payload: {
           id: now,
           modelId: 3,
+          uploadMode: "append",
+        },
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: UPLOAD_FILE_CLEAR,
+        payload: {
+          id: now,
+        },
+      });
+    });
+
+    it("should handle file replace success", async () => {
+      mockReplaceCSV();
+
+      await uploadFile({ file, tableId: 123, uploadMode: "replace" })(dispatch);
+      jest.advanceTimersByTime(NOTIFICATION_DELAY);
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: UPLOAD_FILE_START,
+        payload: {
+          id: now,
+          name: "test.csv",
+          tableId: 123,
+        },
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: UPLOAD_FILE_END,
+        payload: {
+          id: now,
+          modelId: 3,
+          uploadMode: "replace",
         },
       });
 
@@ -120,7 +167,9 @@ describe("csv uploads", () => {
     it("should handle file upload error", async () => {
       mockUploadCSV(false);
 
-      await uploadFile({ file, collectionId: "root" })(dispatch);
+      await uploadFile({ file, collectionId: "root", uploadMode: "create" })(
+        dispatch,
+      );
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
       expect(dispatch).toHaveBeenCalledWith({
@@ -144,7 +193,11 @@ describe("csv uploads", () => {
     it("Error on oversized files", async () => {
       const bigFile = new File([""], "test.csv");
       Object.defineProperty(bigFile, "size", { value: 200 * 1024 * 1024 + 1 });
-      await uploadFile({ file: bigFile, collectionId: "root" })(dispatch);
+      await uploadFile({
+        file: bigFile,
+        collectionId: "root",
+        uploadMode: "create",
+      })(dispatch);
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
       expect(dispatch).toHaveBeenCalledWith({

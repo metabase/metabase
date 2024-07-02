@@ -5,11 +5,11 @@ import type { Route } from "react-router";
 import { replace } from "react-router-redux";
 import _ from "underscore";
 
-import Actions from "metabase/entities/actions";
+import { skipToken, useGetActionQuery } from "metabase/api";
 import Models from "metabase/entities/questions";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { WritebackAction } from "metabase-types/api";
 import type { AppErrorDescriptor, State } from "metabase-types/store";
 
@@ -50,10 +50,9 @@ const mapDispatchToProps = {
 };
 
 function ActionCreatorModal({
-  action,
   model,
   params,
-  loading,
+  loading: isModelLoading,
   route,
   onClose,
   setErrorPage,
@@ -63,9 +62,15 @@ function ActionCreatorModal({
   const modelId = Urls.extractEntityId(params.slug);
   const databaseId = model.databaseId();
 
+  const { isLoading: isActionLoading, data: action } = useGetActionQuery(
+    actionId === undefined ? skipToken : { id: actionId },
+  );
+
+  const loading = isModelLoading || isActionLoading;
+
   useEffect(() => {
     if (loading === false) {
-      const notFound = params.actionId && !action;
+      const notFound = actionId && !action;
       const hasModelMismatch = action != null && action.model_id !== modelId;
 
       if (notFound || action?.archived) {
@@ -94,10 +99,6 @@ function ActionCreatorModal({
   );
 }
 
-function getActionId(state: State, props: OwnProps) {
-  return Urls.extractEntityId(props.params.actionId);
-}
-
 function getModelId(state: State, props: OwnProps) {
   return Urls.extractEntityId(props.params.slug);
 }
@@ -108,6 +109,5 @@ export default _.compose(
     id: getModelId,
     entityAlias: "model",
   }),
-  Actions.load({ id: getActionId, loadingAndErrorWrapper: false }),
   connect(null, mapDispatchToProps),
 )(ActionCreatorModal);

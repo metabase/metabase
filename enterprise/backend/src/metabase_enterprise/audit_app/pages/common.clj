@@ -8,7 +8,6 @@
    [metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries
     :as qp.middleware.audit]
    [metabase.db :as mdb]
-   [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -92,7 +91,7 @@
                   sql-jdbc.sync/db-default-timezone
                   :ttl/threshold (u/hours->ms 1))]
     (fn []
-      (timezone (mdb/db-type) {:datasource mdb.connection/*application-db*}))))
+      (timezone (mdb/db-type) {:datasource (mdb/app-db)}))))
 
 (defn- compile-honeysql [driver honeysql-query]
   (try
@@ -115,7 +114,7 @@
     ;; instead of mocking up a chunk of regular QP pipeline.
     (binding [qp.timezone/*results-timezone-id-override* (application-db-default-timezone)]
       (try
-        (with-open [conn (.getConnection mdb.connection/*application-db*)
+        (with-open [conn (.getConnection (mdb/app-db))
                     stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
                     rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
           (let [rsmeta   (.getMetaData rs)

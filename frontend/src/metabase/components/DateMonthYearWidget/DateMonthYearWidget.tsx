@@ -1,8 +1,10 @@
+import cx from "classnames";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { Component } from "react";
 import _ from "underscore";
 
 import YearPicker from "metabase/components/YearPicker";
+import CS from "metabase/css/core/index.css";
 
 import {
   MonthContainer,
@@ -59,7 +61,7 @@ export class DateMonthYearWidget extends Component<Props, State> {
     const { month, year } = this.state;
     return (
       <div style={{ maxWidth: 320 }}>
-        <div className="border-bottom flex justify-center py1">
+        <div className={cx(CS.borderBottom, CS.flex, CS.justifyCenter, CS.py1)}>
           <YearPicker
             value={year}
             onChange={year => this.setState({ year: year })}

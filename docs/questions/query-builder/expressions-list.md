@@ -6,9 +6,10 @@ redirect_from:
 
 # List of expressions
 
-For an introduction to expressions, check out [Writing expressions in the notebook editor][expressions].
+For an introduction to expressions, check out the [overview of custom expressions][expressions].
 
 - [Aggregations](#aggregations)
+
   - [Average](#average)
   - [Count](#count)
   - [CountIf](./expressions/countif.md)
@@ -24,53 +25,75 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [Sum](#sum)
   - [SumIf](./expressions/sumif.md)
   - [Variance](#variance)
-- [Functions](#functions)
-  - [abs](#abs)
-  - [between](#between)
-  - [case](./expressions/case.md)
-  - [ceil](#ceil)
-  - [coalesce](./expressions/coalesce.md)
-  - [concat](./expressions/concat.md)
-  - [contains](#contains)
-  - [convertTimezone](./expressions/converttimezone.md)
-  - [datetimeAdd](./expressions/datetimeadd.md)
-  - [datetimeDiff](./expressions/datetimediff.md)
-  - [datetimeSubtract](./expressions/datetimesubtract.md)
-  - [day](#day)
-  - [endswith](#endswith)
-  - [exp](#exp)
-  - [floor](#floor)
-  - [hour](#hour)
-  - [interval](#interval)
-  - [isempty](./expressions/isempty.md)
-  - [isnull](./expressions/isnull.md)
-  - [lefttrim](#lefttrim)
-  - [length](#length)
-  - [log](#log)
-  - [lower](#lower)
-  - [minute](#minute)
-  - [month](#month)
-  - [now](./expressions/now.md)
-  - [power](#power)
-  - [quarter](#quarter)
-  - [regexextract](./expressions/regexextract.md)
-  - [replace](#replace)
-  - [righttrim](#righttrim)
-  - [round](#round)
-  - [second](#second)
-  - [sqrt](#sqrt)
-  - [startswith](#startswith)
-  - [substring](./expressions/substring.md)
-  - [trim](#trim)
-  - [upper](#upper)
-  - [week](#week)
-  - [weekday](#weekday)
-  - [year](#year)
-- [Database limitations](#database-limitations)
+
+- Functions
+
+  - [Logical functions](#logical-functions)
+
+    - [between](#between)
+    - [case](./expressions/case.md)
+    - [coalesce](./expressions/coalesce.md)
+    - [isnull](./expressions/isnull.md)
+    - [notnull](#notnull)
+
+  - [Math functions](#math-functions)
+
+    - [abs](#abs)
+    - [ceil](#ceil)
+    - [exp](#exp)
+    - [floor](#floor)
+    - [log](#log)
+    - [power](#power)
+    - [round](#round)
+    - [sqrt](#sqrt)
+
+  - [String functions](#string-functions)
+
+    - [concat](./expressions/concat.md)
+    - [contains](#contains)
+    - [doesNotContain](#doesnotcontain)
+    - [endsWith](#endswith)
+    - [isempty](./expressions/isempty.md)
+    - [ltrim](#ltrim)
+    - [length](#length)
+    - [lower](#lower)
+    - [notempty](#notempty)
+    - [regexextract](./expressions/regexextract.md)
+    - [replace](#replace)
+    - [rtrim](#rtrim)
+    - [startsWith](#startswith)
+    - [substring](./expressions/substring.md)
+    - [trim](#trim)
+    - [upper](#upper)
+
+  - [Date functions](#date-functions)
+
+    - [convertTimezone](./expressions/converttimezone.md)
+    - [datetimeAdd](./expressions/datetimeadd.md)
+    - [datetimeDiff](./expressions/datetimediff.md)
+    - [datetimeSubtract](./expressions/datetimesubtract.md)
+    - [day](#day)
+    - [hour](#hour)
+    - [interval](#interval)
+    - [minute](#minute)
+    - [month](#month)
+    - [now](./expressions/now.md)
+    - [quarter](#quarter)
+    - [relativeDateTime](#relativedatetime)
+    - [second](#second)
+    - [week](#week)
+    - [weekday](#weekday)
+    - [year](#year)
+
+  - [Window functions](#window-functions)
+    - [Offset](#offset)
+
+- [Limitations](#limitations)
+  - [Database limitations](#database-limitations)
 
 ## Aggregations
 
-Aggregation expressions take into account all values in a field. They can only be used in the **Summarize** section of the notebook editor.
+Aggregation expressions take into account all values in a field. They can only be used in the **Summarize** section of the query builder.
 
 ### Average
 
@@ -210,13 +233,9 @@ Related: [StandardDeviation](#standarddeviation), [Average](#average).
 
 Function expressions apply to each individual value. They can be used to alter or filter values in a column, or create new, custom columns.
 
-### abs
+## Logical functions
 
-Returns the absolute (positive) value of the specified column.
-
-Syntax: `abs(column)`
-
-Example: `abs([Debt])`. If `Debt` were -100, `abs(-100)` would return `100`.
+Logical functions determine if a condition is satisfied or determine what value to return based on a condition.
 
 ### between
 
@@ -236,6 +255,46 @@ Syntax: `case(condition, output, …)`
 
 Example: `case([Weight] > 200, "Large", [Weight] > 150, "Medium", "Small")` If a `Weight` is 250, the expression would return "Large". In this case, the default value is "Small", so any `Weight` 150 or less would return "Small".
 
+### [coalesce](./expressions/coalesce.md)
+
+Looks at the values in each argument in order and returns the first non-null value for each row.
+
+Syntax: `coalesce(value1, value2, …)`
+
+Example: `coalesce([Comments], [Notes], "No comments")`. If both the `Comments` and `Notes` columns are null for that row, the expression will return the string "No comments".
+
+### [isnull](./expressions/isnull.md)
+
+Returns true if the column is null.
+
+Syntax: `isnull(column)`
+
+Example: `isnull([Tax])` would return true if no value were present in the column for that row.
+
+Related: [notnull](#notnull), [isempty](#isempty)
+
+### notnull
+
+Returns true if the column contains a value.
+
+Syntax: `notnull(column)`
+
+Example: `notnull([Tax])` would return true if there is a value present in the column for that row.
+
+Related: [isnull](#isnull), [notempty](#notempty)
+
+## Math functions
+
+Math functions implement common mathematical operations.
+
+### abs
+
+Returns the absolute (positive) value of the specified column.
+
+Syntax: `abs(column)`
+
+Example: `abs([Debt])`. If `Debt` were -100, `abs(-100)` would return `100`.
+
 ### ceil
 
 Rounds a decimal up (ceil as in ceiling).
@@ -246,13 +305,71 @@ Example: `ceil([Price])`. `ceil(2.99)` would return 3.
 
 Related: [floor](#floor), [round](#round).
 
-### [coalesce](./expressions/coalesce.md)
+### exp
 
-Looks at the values in each argument in order and returns the first non-null value for each row.
+Returns [Euler's number](<https://en.wikipedia.org/wiki/E_(mathematical_constant)>), e, raised to the power of the supplied number. (Euler sounds like "Oy-ler").
 
-Syntax: `coalesce(value1, value2, …)`
+Syntax: `exp(column)`.
 
-Example: `coalesce([Comments], [Notes], "No comments")`. If both the `Comments` and `Notes` columns are null for that row, the expression will return the string "No comments".
+Example: `exp([Interest Months])`
+
+Related: [power](#power).
+
+### floor
+
+Rounds a decimal number down.
+
+Syntax: `floor(column)`
+
+Example: `floor([Price])`. If the `Price` were 1.99, the expression would return 1.
+
+Related: [ceil](#ceil), [round](#round).
+
+### log
+
+Returns the base 10 log of the number.
+
+Syntax: `log(column)`.
+
+Example: `log([Value])`.
+
+### power
+
+Raises a number to the power of the exponent value.
+
+Syntax: `power(column, exponent)`.
+
+Example: `power([Length], 2)`. If the length were `3`, the expression would return `9` (3 to the second power is 3\*3).
+
+Databases that don't support `power`: SQLite.
+
+Related: [exp](#exp).
+
+### round
+
+Rounds a decimal number either up or down to the nearest integer value.
+
+Syntax: `round(column)`.
+
+Example: `round([Temperature])`. If the temp were `13.5` degrees centigrade, the expression would return `14`.
+
+Example: `round([Temperature] * 10) / 10`. If the temp were `100.75`, the expression would return `100.8`.
+
+### sqrt
+
+Returns the square root of a value.
+
+Syntax: `sqrt(column)`.
+
+Example: `sqrt([Hypotenuse])`.
+
+Databases that don't support `sqrt`: SQLite.
+
+Related: [Power](#power).
+
+## String functions
+
+String functions manipulate or validate string data.
 
 ### [concat](./expressions/concat.md)
 
@@ -264,13 +381,175 @@ Example: `concat([Last Name], ", ", [First Name])` would produce a string of the
 
 ### contains
 
-Checks to see if string1 contains string2 within it.
+Checks to see if `string1` contains `string2` within it.
 
-Syntax: `contains(string1, string2)`
+Performs case-sensitive match by default.
+You can pass an optional parameter `"case-insensitive"` to perform a case-insensitive match.
 
-Example: `contains([Status], "Class")`. If `Status` were "Classified", the expression would return `true`.
+Syntax: `contains(string1, string2)` for case-sensitive match.
 
-Related: [regexextract](#regexextract).
+`contains(string1, string2, "case-insensitive")` for case-insensitive match.
+
+Example: `contains([Status], "Class")`.
+
+If `Status` were "Classified", the expression would return `true`. If the `Status` were "**c**lassified", the expression would return `false`, because the case does not match.
+
+Related: [doesNotContain](#doesnotcontain), [regexextract](#regexextract).
+
+### doesNotContain
+
+Checks to see if `string1` contains `string2` within it.
+
+Performs case-sensitive match by default.
+You can pass an optional parameter `"case-insensitive"` to perform a case-insensitive match.
+
+Syntax: `doesNotContain(string1, string2)` for case-sensitive match.
+
+`doesNotContain(string1, string2, "case-insensitive")` for case-insensitive match.
+
+Example: `doesNotContain([Status], "Class")`. If `Status` were "Classified", the expression would return `false`.
+
+Related: [contains](#contains), [regexextract](#regexextract).
+
+### endsWith
+
+Returns true if the end of the text matches the comparison text.
+
+Performs case-sensitive match by default.
+You can pass an optional parameter `"case-insensitive"` to perform a case-insensitive match.
+
+Syntax: `endsWith(text, comparison)` for case-sensitive match.
+
+`endsWith(text, comparison, "case-insensitive")` for case-insensitive match.
+
+Example: `endsWith([Appetite], "hungry")`
+
+Related: [startsWith](#startswith), [contains](#contains), [doesNotContain](#doesnotcontain).
+
+### [isempty](./expressions/isempty.md)
+
+Returns true if a _string column_ contains an empty string or is null. Calling this function on a non-string column will cause an error. You can use [isnull](#isnull) for non-string columns.
+
+Syntax: `isempty(column)`
+
+Example: `isempty([Feedback])` would return true if `Feedback` was an empty string (`''`) or did not contain a value.
+
+Related: [notempty](#notempty), [isnull](#isnull)
+
+### ltrim
+
+Removes leading whitespace from a string of text.
+
+Syntax: `ltrim(text)`
+
+Example: `ltrim([Comment])`. If the comment were `" I'd prefer not to"`, `ltrim` would return `"I'd prefer not to"`.
+
+Related: [trim](#trim) and [rtrim](#rtrim).
+
+### length
+
+Returns the number of characters in text.
+
+Syntax: `length(text)`
+
+Example: `length([Comment])`. If the `comment` were "wizard", `length` would return 6 ("wizard" has six characters).
+
+### lower
+
+Returns the string of text in all lower case.
+
+Syntax: `lower(text)`.
+
+Example: `lower([Status])`. If the `Status` were "QUIET", the expression would return "quiet".
+
+Related: [upper](#upper).
+
+### notempty
+
+Returns true if a _string column_ contains a value that is not the empty string. Calling this function on a non-string column will cause an error. You can use [notnull](#notnull) on non-string columns.
+
+Syntax: `notempty(column)`
+
+Example: `notempty([Feedback])` would return true if `Feedback` contains a value that isn't the empty string (`''`).
+
+Related: [isempty](#isempty), [isnull](#isnull), [notnull](#notnull)
+
+### [regexextract](./expressions/regexextract.md)
+
+Extracts matching substrings according to a regular expression.
+
+Syntax: `regexextract(text, regular_expression)`.
+
+Example: `regexextract([Address], "[0-9]+")`.
+
+Databases that don't support `regexextract`: H2, SQL Server, SQLite.
+
+Related: [contains](#contains), [doesNotContain](#doesnotcontain), [substring](#substring).
+
+### replace
+
+Replaces all occurrences of a search text in the input text with the replacement text.
+
+Syntax: `replace(text, find, replace)`.
+
+Example: `replace([Title], "Enormous", "Gigantic")`.
+
+### rtrim
+
+Removes trailing whitespace from a string of text.
+
+Syntax: `rtrim(text)`
+
+Example: `rtrim([Comment])`. If the comment were "Fear is the mindkiller. ", the expression would return "Fear is the mindkiller."
+
+Related: [trim](#trim) and [ltrim](#ltrim).
+
+### startsWith
+
+Returns true if the beginning of the text matches the comparison text. Performs case-sensitive match by default.
+You can pass an optional parameter `"case-insensitive"` to perform a case-insensitive match.
+
+Syntax: `startsWith(text, comparison)` for case-sensitive match.
+
+`startsWith(text, comparison, "case-insensitive")` for case-insensitive match.
+
+Example: `startsWith([Course Name], "Computer Science")` would return true for course names that began with "Computer Science", like "Computer Science 101: An introduction".
+
+It would return false for "Computer **s**cience 201: Data structures" because the case of "science" does not match the case in the comparison text.
+
+`startsWith([Course Name], "Computer Science", "case-insensitive")` would return true for both "Computer Science 101: An introduction" and "Computer science 201: Data structures".
+
+Related: [endsWith](#endswith), [contains](#contains), [doesNotContain](#doesnotcontain).
+
+### [substring](./expressions/substring.md)
+
+Returns a portion of the supplied text, specified by a starting position and a length.
+
+Syntax: `substring(text, position, length)`
+
+Example: `substring([Title], 1, 10)` returns the first 10 letters of a string (the string index starts at position 1).
+
+Related: [regexextract](#regexextract), [replace](#replace).
+
+### trim
+
+Removes leading and trailing whitespace from a string of text.
+
+Syntax: `trim(text)`
+
+Example: `trim([Comment])` will remove any whitespace characters on either side of a comment.
+
+### upper
+
+Returns the text in all upper case.
+
+Syntax: `upper(text)`.
+
+Example: `upper([Status])`. If status were "hyper", `upper("hyper")` would return "HYPER".
+
+## Date functions
+
+Date functions manipulate, extract, or create date and time values.
 
 ### [convertTimezone](./expressions/converttimezone.md)
 
@@ -279,6 +558,8 @@ Shifts a date or timestamp value into a specified time zone.
 Syntax: `convertTimezone(column, target, source)`.
 
 Example: `convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")` would return the value `2022-12-28T09:00:00`, displayed as `December 28, 2022, 9:00 AM`.
+
+See the [database limitations](./expressions/converttimezone.md#limitations) for `convertTimezone`.
 
 ### [datetimeAdd](./expressions/datetimeadd.md)
 
@@ -316,36 +597,6 @@ Syntax: `day([datetime column])`.
 
 Example: `day("2021-03-25T12:52:37")` would return the day as an integer, `25`.
 
-### endswith
-
-Returns true if the end of the text matches the comparison text.
-
-Syntax: `endsWith(text, comparison)`
-
-`endsWith([Appetite], "hungry")`
-
-Related: [contains](#contains) and [startswith](#startswith).
-
-### exp
-
-Returns [Euler's number](<https://en.wikipedia.org/wiki/E_(mathematical_constant)>), e, raised to the power of the supplied number. (Euler sounds like "Oy-ler").
-
-Syntax: `exp(column)`.
-
-Example: `exp([Interest Months])`
-
-Related: [power](#power).
-
-### floor
-
-Rounds a decimal number down.
-
-Syntax: `floor(column)`
-
-Example: `floor([Price])`. If the `Price` were 1.99, the expression would return 1.
-
-Related: [ceil](#ceil), [round](#round).
-
 ### hour
 
 Takes a datetime and returns the hour as an integer (0-23).
@@ -363,58 +614,6 @@ Syntax: `interval(column, number, text)`.
 Example: `interval([Created At], -1, "month")`.
 
 Related: [between](#between).
-
-### [isempty](./expressions/isempty.md)
-
-Returns true if the column is empty.
-
-Syntax: `isempty(column)`
-
-Example: `isempty([Discount])` would return true if there were no value in the discount field.
-
-### [isnull](./expressions/isnull.md)
-
-Returns true if the column is null.
-
-Syntax: `isnull(column)`
-
-Example: `isnull([Tax])` would return true if no value were present in the column for that row.
-
-### lefttrim
-
-Removes leading whitespace from a string of text.
-
-Syntax: `ltrim(text)`
-
-Example: `ltrim([Comment])`. If the comment were " I'd prefer not to", `ltrim` would return "I'd prefer not to".
-
-Related: [trim](#trim) and [righttrim](#righttrim).
-
-### length
-
-Returns the number of characters in text.
-
-Syntax: `length(text)`
-
-Example: `length([Comment])` If the `comment` were "wizard", `length` would return 6 ("wizard" has six characters).
-
-### log
-
-Returns the base 10 log of the number.
-
-Syntax: `log(column)`.
-
-Example: `log([Value])`.
-
-### lower
-
-Returns the string of text in all lower case.
-
-Syntax: `lower(text)`.
-
-Example: `lower([Status])`. If the `Status` were "QUIET", the expression would return "quiet".
-
-Related: [upper](#upper).
 
 ### minute
 
@@ -438,18 +637,6 @@ Returns the current date and time using your Metabase [report timezone](../../co
 
 Syntax: `now`.
 
-### power
-
-Raises a number to the power of the exponent value.
-
-Syntax: `power(column, exponent)`.
-
-Example: `power([Length], 2)`. If the length were `3`, the expression would return `9` (3 to the second power is 3\*3).
-
-Databases that don't support `power`: SQLite.
-
-Related: [exp](#exp).
-
 ### quarter
 
 Takes a datetime and returns the number of the quarter in a year (1-4) as an integer.
@@ -458,101 +645,41 @@ Syntax: `quarter([datetime column])`.
 
 Example: `quarter("2021-03-25T12:52:37")` would return `1` for the first quarter.
 
-### [regexextract](./expressions/regexextract.md)
+### relativeDateTime
 
-Extracts matching substrings according to a regular expression.
+Gets a timestamp relative to the current time.
 
-Syntax: `regexextract(text, regular_expression)`.
+Syntax: `relativeDateTime(number, text)`
 
-Example: `regexextract([Address], "[0-9]+")`.
+`number`: Period of interval, where negative values are back in time.
 
-Databases that don't support `regexextract`: H2, SQL Server, SQLite.
+`text`: Type of interval like `"day"`, `"month"`, `"year"`
 
-Related: [contains](#contains), [substring](#substring).
+`relativeDateTime` can only be used as part of a conditional expression.
 
-### replace
+Example: `[Orders → Created At] < relativeDateTime(-30, "day")` will filter for orders created over 30 days ago from current date.
 
-Replaces all occurrences of a search text in the input text with the replacement text.
-
-Syntax: `replace(text, find, replace)`.
-
-Example: `replace([Title], "Enormous", "Gigantic")`.
-
-### righttrim
-
-Removes trailing whitespace from a string of text.
-
-Syntax: `rtrim(text)`
-
-Example: `rtrim([Comment])`. If the comment were "Fear is the mindkiller. ", the expression would return "Fear is the mindkiller."
-
-Related: [trim](#trim) and [lefttrim](#lefttrim).
-
-### round
-
-Rounds a decimal number either up or down to the nearest integer value.
-
-Syntax: `round(column)`.
-
-Example: `round([Temperature])`. If the temp were `13.5` degrees centigrade, the expression would return `14`.
-
-Example: `round([Temperature] * 10) / 10`. If the temp were `100.75`, the expression would return `100.8`.
+Related: [datetimeAdd](#datetimeadd), [datetimeSubtract](#datetimesubtract).
 
 ### second
 
 Takes a datetime and returns the number of seconds in the minute (0-59) as an integer.
 
-Syntax: `second([datetime column)`.
+Syntax: `second([datetime column])`.
 
 Example: `second("2021-03-25T12:52:37")` would return the integer `37`.
 
-### sqrt
+### timeSpan
 
-Returns the square root of a value.
+Gets a time interval of specified length.
 
-Syntax: `sqrt(column)`.
+Syntax: `timeSpan(number, text)`.
 
-Example: `sqrt([Hypotenuse])`.
+`number`: Period of interval, where negative values are back in time.
 
-Databases that don't support `sqrt`: SQLite.
+`text`: Type of interval like `"day"`, `"month"`, `"year"`
 
-Related: [Power](#power).
-
-### startswith
-
-Returns true if the beginning of the text matches the comparison text.
-
-Syntax: `startsWith(text, comparison)`.
-
-Example: `startsWith([Course Name], "Computer Science")` would return true for course names that began with "Computer Science", like "Computer Science 101: An introduction".
-
-Related: [endswith](#endswith), [contains](#contains).
-
-### [substring](./expressions/substring.md)
-
-Returns a portion of the supplied text, specified by a starting position and a length.
-
-Syntax: `substring(text, position, length)`
-
-Example: `substring([Title], 1, 10)` returns the first 10 letters of a string (the string index starts at position 1).
-
-Related: [regexextract](#regexextract), [replace](#replace).
-
-### trim
-
-Removes leading and trailing whitespace from a string of text.
-
-Syntax: `trim(text)`
-
-Example: `trim([Comment])` will remove any whitespace characters on either side of a comment.
-
-### upper
-
-Returns the text in all upper case.
-
-Syntax: `upper(text)`.
-
-Example: `upper([Status])`. If status were "hyper", `upper("hyper")` would return "HYPER".
+Example: `[Orders → Created At] + timeSpan(7, "day")` will return the date 7 days after the `Created At` date.
 
 ### week
 
@@ -580,12 +707,12 @@ Example:
 
 ```
 case(
-  weekday([Created At]) = 1, "Sunday", 
-  weekday([Created At]) = 2, "Monday", 
-  weekday([Created At]) = 3, "Tuesday", 
-  weekday([Created At]) = 4, "Wednesday", 
-  weekday([Created At]) = 5, "Thursday", 
-  weekday([Created At]) = 6, "Friday", 
+  weekday([Created At]) = 1, "Sunday",
+  weekday([Created At]) = 2, "Monday",
+  weekday([Created At]) = 3, "Tuesday",
+  weekday([Created At]) = 4, "Wednesday",
+  weekday([Created At]) = 5, "Thursday",
+  weekday([Created At]) = 6, "Friday",
   weekday([Created At]) = 7, "Saturday")
 ```
 
@@ -597,11 +724,38 @@ Syntax: `year([datetime column])`.
 
 Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer, `2,021`.
 
-## Database limitations
+## Window functions
+
+### Offset
+
+Returns the value of an expression in a different row. `Offset` can only be used in the query builder's Summarize step (you cannot use `Offset` to create a custom column).
+
+Syntax: `Offset(expression, rowOffset)`
+
+The `expression` is the value to get from a different row.
+
+The `rowOffset` is the number relative to the current row. For example, `-1` for the previous row, or `1` for the next row.
+
+Example: `Offset(Sum([Total]), -1)` would get the `Sum([Total])` value from the previous row.
+
+See [Offset](./expressions/offset.md).
+
+## Limitations
+
+- [Aggregation expressions](#aggregations) can only be used in the **Summarize** section of the query builder.
+- Functions that return a boolean value, like [isempty](#isempty) or [contains](#contains), cannot be used to create a custom column. To create a custom column based on one of these functions, you must combine them with another function, like `case`.
+
+  For example, to create a new custom column that contains `true` if `[Title]` contain `'Wallet'`, you can use the custom expression
+
+  ```
+  case(contains([Title], 'Wallet'), true, false)
+  ```
+
+### Database limitations
 
 Limitations are noted for each aggregation and function above, and here there are in summary:
 
-**H2**: `Median`, `Percentile` and `regexextract`
+**H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone` and `regexextract`
 
 **MySQL/MariaDB**: `Median`, `Percentile`.
 
@@ -615,6 +769,6 @@ Additionally, **Presto** only provides _approximate_ results for `Median` and `P
 
 If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
 
-See [Custom expressions in the notebook editor](https://www.metabase.com/learn/questions/custom-expressions) to learn more.
+Check out our tutorial on [custom expressions in the query builder](https://www.metabase.com/learn/questions/custom-expressions) to learn more.
 
 [expressions]: ./expressions.md

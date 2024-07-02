@@ -3,14 +3,13 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
-import { useRevisionListQuery } from "metabase/common/hooks/use-revision-list-query";
-import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
+import { useRevisionListQuery, useUserListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { revertToRevision } from "metabase/query_builder/actions";
 import { getUser } from "metabase/selectors/user";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 import { Timeline, Header } from "./QuestionActivityTimeline.styled";
 

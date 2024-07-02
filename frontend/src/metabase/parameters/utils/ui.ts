@@ -1,11 +1,11 @@
 import _ from "underscore";
 
-import { isEqualsOperator } from "metabase-lib/operators/utils";
-import type { UiParameter } from "metabase-lib/parameters/types";
-import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
-import { getParameterType } from "metabase-lib/parameters/utils/parameter-type";
+import { isEqualsOperator } from "metabase-lib/v1/operators/utils";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
+import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
 
-export function getParameterIconName(parameter: UiParameter) {
+export function getParameterIconName(parameter: UiParameter | string) {
   const type = getParameterType(parameter);
   switch (type) {
     case "date":
@@ -23,7 +23,7 @@ export function getParameterIconName(parameter: UiParameter) {
 }
 
 export function buildHiddenParametersSlugSet(
-  hiddenParameterSlugs: string | undefined,
+  hiddenParameterSlugs: string | null | undefined,
 ) {
   return _.isString(hiddenParameterSlugs)
     ? new Set(hiddenParameterSlugs.split(","))
@@ -32,7 +32,7 @@ export function buildHiddenParametersSlugSet(
 
 export function getVisibleParameters(
   parameters: UiParameter[],
-  hiddenParameterSlugs?: string,
+  hiddenParameterSlugs?: string | null,
 ) {
   const hiddenParametersSlugSet =
     buildHiddenParametersSlugSet(hiddenParameterSlugs);

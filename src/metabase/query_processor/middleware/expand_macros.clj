@@ -1,206 +1,156 @@
 (ns metabase.query-processor.middleware.expand-macros
-  "Middleware for expanding `:metric` and `:segment` 'macros' in *unexpanded* MBQL queries.
+  "Middleware for expanding LEGACY `:segment` 'macros' in *unexpanded* MBQL queries.
 
-  (`:metric` forms are expanded into aggregations and sometimes filter clauses, while `:segment` forms are expanded
-  into filter clauses.)
-
-   TODO - this namespace is ancient and written with MBQL '95 in mind, e.g. it is case-sensitive.
-   At some point this ought to be reworked to be case-insensitive and cleaned up."
+  (`:segment` forms are expanded into filter clauses.)"
   (:require
-   [malli.core :as mc]
-   [malli.error :as me]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.schema.helpers :as helpers]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.filter :as lib.filter]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.util :as lib.util]
+   [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.registry :as mr]))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                    SEGMENTS                                                    |
-;;; +----------------------------------------------------------------------------------------------------------------+
+;;; "legacy macro" as used below means legacy Segment.
+(mr/def ::legacy-macro
+  [:and
+   [:map
+    [:lib/type [:enum :metadata/segment]]]
+   [:multi
+    {:dispatch :lib/type}
+    [:metadata/segment       ::lib.schema.metadata/segment]]])
 
-(defn- segment-clauses->id->definition [segment-clauses]
-  (when-let [segment-ids (not-empty (into #{}
-                                          (comp (map second)
-                                                (filter integer?))
-                                          segment-clauses))]
-    (into {}
-          (map (juxt :id :definition))
-          (qp.store/bulk-metadata :metadata/segment segment-ids))))
+(mr/def ::macro-type
+  [:enum :segment])
 
-(defn- replace-segment-clauses [outer-query segment-id->definition]
-  (mbql.u/replace-in outer-query [:query]
-    [:segment (segment-id :guard (complement mbql.u/ga-id?))]
-    (or (:filter (segment-id->definition segment-id))
-        (throw (IllegalArgumentException. (tru "Segment {0} does not exist, or is invalid." segment-id))))))
+(mu/defn unresolved-legacy-macro-ids :- [:maybe [:set {:min 1} pos-int?]]
+  "Find all the unresolved :segment references in `query`.
 
-(mu/defn ^:private expand-segments :- mbql.s/Query
-  "Recursively expand segments in the `query`."
-  [query :- mbql.s/Query]
-  (loop [{inner-query :query :as outer-query} query
-         depth 0]
-    (if-let [segments (mbql.u/match inner-query [:segment (_ :guard (complement mbql.u/ga-id?))])]
-      (let [segment-id->definition (segment-clauses->id->definition segments)
-            expanded-query (replace-segment-clauses outer-query segment-id->definition)]
-        ;; Following line is in place to avoid infinite recursion caused by mutually recursive
-        ;; segment definitions or other unforseen circumstances. Number 41 is arbitrary.
-        (if (or (= expanded-query outer-query) (= depth 41))
-          (throw (ex-info (tru "Segment expansion failed. Check mutually recursive segment definitions.")
-                          {:type qp.error-type/invalid-query
-                           :original-query query
-                           :expanded-query expanded-query
-                           :segment-id->definition segment-id->definition
-                           :depth depth}))
-          (recur expanded-query (inc depth))))
-      outer-query)))
+  :segment references can appear anywhere a boolean expression is
+  allowed, including `:filters`, join conditions, expression aggregations like `:sum-where`, etc."
+  [macro-type :- ::macro-type
+   query      :- ::lib.schema/query]
+  (let [ids (transient #{})]
+    (lib.walk/walk-stages
+     query
+     (fn [_query _path stage]
+       (lib.util.match/match stage
+         [macro-type _opts (id :guard pos-int?)]
+         (conj! ids id))))
+    (not-empty (persistent! ids))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                    METRICS                                                     |
-;;; +----------------------------------------------------------------------------------------------------------------+
+;;; a legacy Segment has one or more filter clauses.
 
-(defn- metrics
-  "Return a sequence of any (non-GA) `:metric` MBQL clauses in `query`."
-  [query]
-  ;; metrics won't be in a native query but they could be in source-query or aggregation clause
-  (mbql.u/match query [:metric (_ :guard (complement mbql.u/ga-id?))]))
+(mu/defn ^:private legacy-macro-definition->pMBQL :- ::lib.schema/stage.mbql
+  "Get the definition of a macro as a pMBQL stage."
+  [metadata-providerable                            :- ::lib.schema.metadata/metadata-providerable
+   {:keys [definition table-id], :as _legacy-macro} :- ::legacy-macro]
+  (log/tracef "Converting legacy MBQL for macro definition from\n%s" (u/pprint-to-str definition))
+  (u/prog1 (-> {:type     :query
+                :query    (merge {:source-table table-id}
+                                 definition)
+                :database (u/the-id (lib.metadata/database metadata-providerable))}
+               mbql.normalize/normalize
+               lib.convert/->pMBQL
+               (lib.util/query-stage -1))
+    (log/tracef "to pMBQL\n%s" (u/pprint-to-str <>))))
 
-(def ^:private MetricInfo
-  [:map
-   [:id         ms/PositiveInt]
-   [:name       ms/NonBlankString]
-   [:definition [:map
-                 [:aggregation [:tuple mbql.s/Aggregation]]
-                 [:filter {:optional true} [:maybe mbql.s/Filter]]]]])
+(mu/defn ^:private legacy-macro-filters :- [:maybe [:sequential ::lib.schema.expression/boolean]]
+  "Get the filter(s) associated with a Segment."
+  [legacy-macro :- ::legacy-macro]
+  (mapv lib.util/fresh-uuids
+        (get-in legacy-macro [:definition :filters])))
 
-(defn- metric-info-validation-errors [metric-info]
-  (me/humanize (mc/explain MetricInfo metric-info)))
+(mr/def ::id->legacy-macro
+  [:map-of pos-int? ::legacy-macro])
 
-(mu/defn ^:private metric-clauses->id->info :- [:map-of ms/PositiveInt MetricInfo]
-  [metric-clauses :- [:sequential mbql.s/metric]]
-  (when-let [metric-ids (not-empty (into #{} (map second) metric-clauses))]
-    (into {}
-          (comp (remove (fn [metric]
-                          (when-let [errors (metric-info-validation-errors metric)]
-                            (log/warn (trs "Invalid metric: {0} reason: {1}" metric errors))
-                            errors)))
-                (map (juxt :id #(select-keys % [:id :name :definition]))))
-          (qp.store/bulk-metadata :metadata/metric metric-ids))))
+(mu/defn ^:private fetch-legacy-macros :- ::id->legacy-macro
+  [macro-type            :- ::macro-type
+   metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   legacy-macro-ids      :- [:maybe [:set {:min 1} pos-int?]]]
+  (let [metadata-type     (case macro-type ;; left in case we see a :metric here
+                            :segment :metadata/segment)]
+    (u/prog1 (into {}
+                   (map (juxt :id (fn [legacy-macro]
+                                    (assoc legacy-macro :definition (legacy-macro-definition->pMBQL metadata-providerable legacy-macro)))))
+                   (lib.metadata/bulk-metadata-or-throw metadata-providerable metadata-type legacy-macro-ids))
+      ;; make sure all the IDs exist.
+      (doseq [id legacy-macro-ids]
+        (or (get <> id)
+            (throw (ex-info (tru "Segment {0} does not exist, belongs to a different Database, or is invalid."
+                                 id)
+                            {:type qp.error-type/invalid-query, :macro-type macro-type, :id id})))))))
 
-(mu/defn ^:private add-metrics-filters-this-level :- mbql.s/MBQLQuery
-  [inner-query                :- mbql.s/MBQLQuery
-   this-level-metric-id->info :- [:map-of ms/PositiveInt MetricInfo]]
-  (let [filters (for [{{filter-clause :filter} :definition} (vals this-level-metric-id->info)
-                      :when filter-clause]
-                  filter-clause)]
-    (reduce mbql.u/add-filter-clause-to-inner-query inner-query filters)))
+(defmulti ^:private resolve-legacy-macros-in-stage
+  {:arglists '([macro-type stage id->legacy-macro])}
+  (fn [macro-type _stage _id->legacy-macro]
+    macro-type))
 
-(mu/defn ^:private metric-info->ag-clause :- mbql.s/Aggregation
-  "Return an appropriate aggregation clause from `metric-info`."
-  [{{[aggregation] :aggregation} :definition, metric-name :name} :- MetricInfo
-   {:keys [use-metric-name-as-display-name?]}                    :- [:map [:use-metric-name-as-display-name? :boolean]]]
-  (if-not use-metric-name-as-display-name?
-    aggregation
-    ;; try to give the resulting aggregation the name of the Metric it came from, unless it already has a display
-    ;; name in which case keep that name
-    (mbql.u/match-one aggregation
-      [:aggregation-options _ (_ :guard :display-name)]
-      &match
+(mu/defmethod resolve-legacy-macros-in-stage :segment :- ::lib.schema/stage
+  [_macro-type        :- [:= :segment]
+   stage              :- ::lib.schema/stage
+   id->legacy-segment :- ::id->legacy-macro]
+  (-> (lib.util.match/replace stage
+        [:segment _opts (id :guard pos-int?)]
+        (let [legacy-segment (get id->legacy-segment id)
+              filter-clauses (legacy-macro-filters legacy-segment)]
+          (log/debugf "Expanding legacy Segment macro\n%s" (u/pprint-to-str &match))
+          (doseq [filter-clause filter-clauses]
+            (log/tracef "Adding filter clause for legacy Segment %d:\n%s" id (u/pprint-to-str filter-clause)))
+          ;; replace a single segment with a single filter, wrapping them in `:and` if needed... we will unwrap once
+          ;; we've expanded all of the :segment refs.
+          (if (> (count filter-clauses) 1)
+            (apply lib.filter/and filter-clauses)
+            (first filter-clauses))))
+      lib.filter/flatten-compound-filters-in-stage
+      lib.filter/remove-duplicate-filters-in-stage))
 
-      [:aggregation-options ag options]
-      [:aggregation-options ag (assoc options :display-name metric-name)]
+(mu/defn ^:private resolve-legacy-macros :- ::lib.schema/query
+  [macro-type       :- ::macro-type
+   query            :- ::lib.schema/query
+   legacy-macro-ids :- [:maybe [:set {:min 1} pos-int?]]]
+  (log/debugf "Resolving legacy %s macros with IDs %s" macro-type legacy-macro-ids)
+  (let [id->legacy-macro (fetch-legacy-macros macro-type query legacy-macro-ids)]
+    (lib.walk/walk-stages
+     query
+     (fn [_query _path stage]
+       (resolve-legacy-macros-in-stage macro-type stage id->legacy-macro)))))
 
-      _
-      [:aggregation-options &match {:display-name metric-name}])))
-
-(mu/defn ^:private replace-metrics-aggregations-this-level :- mbql.s/MBQLQuery
-  [inner-query                :- mbql.s/MBQLQuery
-   this-level-metric-id->info :- [:map-of ms/PositiveInt MetricInfo]]
-  (letfn [(metric [metric-id]
-            (or (get this-level-metric-id->info metric-id)
-                (throw (ex-info (tru "Metric {0} does not exist, or is invalid." metric-id)
-                                {:type   :invalid-query
-                                 :metric metric-id
-                                 :query  inner-query}))))]
-    (mbql.u/replace-in inner-query [:aggregation]
-      ;; if metric is wrapped in aggregation options that give it a display name, expand the metric but do not name it
-      [:aggregation-options [:metric (metric-id :guard (complement mbql.u/ga-id?))] (options :guard :display-name)]
-      [:aggregation-options
-       (metric-info->ag-clause (metric metric-id) {:use-metric-name-as-display-name? false})
-       options]
-
-      ;; if metric is wrapped in aggregation options that *do not* give it a display name, expand the metric and then
-      ;; merge the options
-      [:aggregation-options [:metric (metric-id :guard (complement mbql.u/ga-id?))] options]
-      (let [[_ ag ag-options] (metric-info->ag-clause (metric metric-id) {:use-metric-name-as-display-name? true})]
-        [:aggregation-options ag (merge ag-options options)])
-
-      ;; otherwise for unwrapped metrics expand them in-place
-      [:metric (metric-id :guard (complement mbql.u/ga-id?))]
-      (metric-info->ag-clause (metric metric-id) {:use-metric-name-as-display-name? true}))))
-
-(mu/defn ^:private metric-ids-this-level :- [:maybe [:set ms/PositiveInt]]
-  [inner-query]
-  (when (map? inner-query)
-    (when-let [aggregations (:aggregation inner-query)]
-      (not-empty
-       (set
-        (mbql.u/match aggregations
-          [:metric (metric-id :guard (complement mbql.u/ga-id?))]
-          metric-id))))))
-
-(mu/defn ^:private expand-metrics-clauses-this-level :- [:and
-                                                         mbql.s/MBQLQuery
-                                                         [:fn
-                                                          {:error/message "Inner MBQL query with no :metric clauses at this level"}
-                                                          (complement metric-ids-this-level)]]
-  [inner-query     :- mbql.s/MBQLQuery
-   metric-id->info :- [:map-of ms/PositiveInt MetricInfo]]
-  (let [this-level-metric-ids      (metric-ids-this-level inner-query)
-        this-level-metric-id->info (select-keys metric-id->info this-level-metric-ids)]
-    (-> inner-query
-        (add-metrics-filters-this-level this-level-metric-id->info)
-        (replace-metrics-aggregations-this-level this-level-metric-id->info))))
-
-(mu/defn ^:private expand-metrics-clauses :- ms/Map
-  "Add appropriate `filter` and `aggregation` clauses for a sequence of Metrics.
-
-    (expand-metrics-clauses {:query {}} [[:metric 10]])
-    ;; -> {:query {:aggregation [[:count]], :filter [:= [:field-id 10] 20]}}"
-  [query :- ms/Map metric-id->info :- (helpers/non-empty [:map-of ms/PositiveInt MetricInfo])]
-  (mbql.u/replace query
-    (m :guard metric-ids-this-level)
-    (-> m
-        ;; expand this this level...
-        (expand-metrics-clauses-this-level metric-id->info)
-        ;; then recursively expand things at any other levels.
-        (expand-metrics-clauses metric-id->info))))
-
-(mu/defn ^:private expand-metrics :- mbql.s/Query
-  [query :- mbql.s/Query]
-  (if-let [metrics (metrics query)]
-    (expand-metrics-clauses query (metric-clauses->id->info metrics))
+(mu/defn ^:private expand-legacy-macros :- ::lib.schema/query
+  [macro-type :- ::macro-type
+   query      :- ::lib.schema/query]
+  (if-let [legacy-macro-ids (not-empty (unresolved-legacy-macro-ids macro-type query))]
+    (resolve-legacy-macros macro-type query legacy-macro-ids)
     query))
 
+(def ^:private max-recursion-depth
+  "Detect infinite recursion for macro expansion."
+  50)
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                   MIDDLEWARE                                                   |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(mu/defn ^:private expand-metrics-and-segments  :- mbql.s/Query
-  "Expand the macros (`segment`, `metric`) in a `query`."
-  [query  :- mbql.s/Query]
-  (-> query
-      expand-metrics
-      expand-segments))
-
-(defn expand-macros
-  "Middleware that looks for `:metric` and `:segment` macros in an unexpanded MBQL query and substitute the macros for
+(mu/defn expand-macros
+  "Middleware that looks for `:segment` macros in an unexpanded MBQL query and substitute the macros for
   their contents."
-  [{query-type :type, :as query}]
-  (if-not (= query-type :query)
-    query
-    (expand-metrics-and-segments query)))
+  ([query  :- ::lib.schema/query]
+   (expand-macros query 0))
+
+  ([query recursion-depth]
+   (when (> recursion-depth max-recursion-depth)
+     (throw (ex-info (tru "Segment expansion failed. Check mutually recursive segment definitions.")
+                     {:type qp.error-type/invalid-query, :query query})))
+   (let [query' (expand-legacy-macros :segment query)]
+     ;; if we expanded anything, we need to recursively try expanding again until nothing is left to expand, in case a
+     ;; Segment references another Segment.
+     (if-not (= query' query)
+       (recur query' (inc recursion-depth))
+       (do
+         (log/trace "No more legacy Segments to expand.")
+         query')))))

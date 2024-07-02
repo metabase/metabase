@@ -19,8 +19,7 @@ import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import type { CollectionItem, RecentItem } from "metabase-types/api";
 import {
   createMockCollectionItem,
-  createMockModelObject,
-  createMockRecentItem,
+  createMockRecentTableItem,
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
@@ -47,9 +46,10 @@ const TEST_RECENT_VIEWS_RESULTS: RecentItem[] = [
   "Recents CDE",
   "Recents DEF",
 ].map((name, index) =>
-  createMockRecentItem({
-    model_object: createMockModelObject({ name }),
-    model_id: index + 1,
+  createMockRecentTableItem({
+    name,
+    display_name: name,
+    id: index + 1,
   }),
 );
 
@@ -90,7 +90,7 @@ describe("SearchBar", () => {
     it("should change URL when user types a query and hits `Enter`", async () => {
       const { history } = setup();
 
-      userEvent.type(getSearchBar(), "BC{enter}");
+      await userEvent.type(getSearchBar(), "BC{enter}");
 
       const location = history.getCurrentLocation();
       expect(location.pathname).toEqual("search");
@@ -100,7 +100,7 @@ describe("SearchBar", () => {
     it("should render 'No Results Found' when the query has no results", async () => {
       setup({ searchResultItems: [] });
       const searchBar = getSearchBar();
-      userEvent.type(searchBar, "XXXXX");
+      await userEvent.type(searchBar, "XXXXX");
       await waitForLoaderToBeRemoved();
 
       expect(screen.getByText("Didn't find anything")).toBeInTheDocument();
@@ -110,13 +110,13 @@ describe("SearchBar", () => {
   describe("focusing on search bar", () => {
     it("should render `Recent Searches` list when clicking the search bar", async () => {
       setup();
-      userEvent.click(getSearchBar());
+      await userEvent.click(getSearchBar());
       expect(await screen.findByText("Recents ABC")).toBeInTheDocument();
     });
 
     it("should render `Nothing here` and a folder icon if there are no recently viewed items", async () => {
       setup({ recentViewsItems: [] });
-      userEvent.click(getSearchBar());
+      await userEvent.click(getSearchBar());
       expect(await screen.findByText("Nothing here")).toBeInTheDocument();
     });
   });
@@ -124,8 +124,8 @@ describe("SearchBar", () => {
   describe("keyboard navigation", () => {
     it("should allow navigation through the search results with the keyboard", async () => {
       setup();
-      userEvent.click(getSearchBar());
-      userEvent.type(getSearchBar(), "BC");
+      await userEvent.click(getSearchBar());
+      await userEvent.type(getSearchBar(), "BC");
 
       // wait for dropdown to open
       await waitForLoaderToBeRemoved();
@@ -143,7 +143,7 @@ describe("SearchBar", () => {
       // There are two search results, each with a link to `Our analytics`,
       // so we want to navigate to the search result, then the collection link.
       for (const cardName of ["Card ABC", "Card BCD"]) {
-        userEvent.tab();
+        await userEvent.tab();
 
         const filteredElement = resultItems.find(element =>
           element.textContent?.includes(cardName),
@@ -152,7 +152,7 @@ describe("SearchBar", () => {
         expect(filteredElement).not.toBeUndefined();
         expect(screen.getByText(cardName)).toHaveFocus();
 
-        userEvent.tab();
+        await userEvent.tab();
 
         expect(
           within(filteredElement as HTMLElement).getByText("Our analytics"),
@@ -180,13 +180,13 @@ describe("SearchBar", () => {
   });
 
   describe("persisting search filters", () => {
-    it("should keep URL search filters when changing the text query", () => {
+    it("should keep URL search filters when changing the text query", async () => {
       const { history } = setup({
         initialRoute: "/search?q=foo&type=card",
       });
 
-      userEvent.clear(getSearchBar());
-      userEvent.type(getSearchBar(), "bar{enter}");
+      await userEvent.clear(getSearchBar());
+      await userEvent.type(getSearchBar(), "bar{enter}");
 
       const location = history.getCurrentLocation();
 
@@ -194,13 +194,13 @@ describe("SearchBar", () => {
       expect(location.search).toEqual("?q=bar&type=card");
     });
 
-    it("should not keep URL search filters when not in the search app", () => {
+    it("should not keep URL search filters when not in the search app", async () => {
       const { history } = setup({
         initialRoute: "/collection/root?q=foo&type=card&type=dashboard",
       });
 
-      userEvent.clear(getSearchBar());
-      userEvent.type(getSearchBar(), "bar{enter}");
+      await userEvent.clear(getSearchBar());
+      await userEvent.type(getSearchBar(), "bar{enter}");
 
       const location = history.getCurrentLocation();
 

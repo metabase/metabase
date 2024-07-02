@@ -4,11 +4,18 @@ import { useMount } from "react-use";
 import { Loader, Flex, Text } from "metabase/ui";
 
 export const LoadingSpinner = ({ text }: { text?: string }) => (
-  <Flex align="center" justify="center" h="100%">
+  <Flex
+    align="center"
+    justify="center"
+    h="100%"
+    data-testid="loading-indicator"
+    gap="md"
+  >
     <Loader size="lg" />
     {!!text && <Text color="text-medium">{text}</Text>}
   </Flex>
 );
+
 // sometimes showing a loading spinner can make things feel slow. This loading spinner
 // will only appear if the component is still loading after a certain delay
 export const DelayedLoadingSpinner = ({
@@ -28,7 +35,8 @@ export const DelayedLoadingSpinner = ({
   });
 
   if (!show) {
-    return null;
+    // make tests aware that things are loading
+    return <span data-testid="loading-indicator" />;
   }
 
   return <LoadingSpinner text={text} />;

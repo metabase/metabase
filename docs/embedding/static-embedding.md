@@ -1,7 +1,7 @@
 ---
 title: Static embedding
 redirect_from:
-- /docs/latest/embedding/signed-embedding
+  - /docs/latest/embedding/signed-embedding
 ---
 
 # Static embedding
@@ -67,7 +67,7 @@ Once you've made a question or dashboard [embeddable](#making-a-question-or-dash
 2. Make any changes and copy the code.
 3. [Preview the code](#previewing-the-code-for-an-embed)
 4. Add the code to the server code that builds your website.
-6. Add the frontend code to the code that generates the page where you want the embedded item to appear.
+5. Add the frontend code to the code that generates the page where you want the embedded item to appear.
 
 For more examples, see our [reference apps repo](https://github.com/metabase/embedding-reference-apps).
 
@@ -115,7 +115,7 @@ You can find a list of all embedded questions and dashboards from **Admin settin
 
 You can change the way an embedded question or dashboard looks in an iframe (which won't change how it looks in your Metabase instance).
 
-From the Click on the **Appearance**, and play around with the different appearance settings.
+When setting up a static embed, click on the **Appearance** tab, and play around with the different appearance settings.
 
 Settings include:
 
@@ -130,6 +130,21 @@ Settings include:
 When you make changes to the embed's appearance, Metabase will highlight the changes it made to the code.
 
 For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
+
+## Auto-refreshing the results of an embedded dashboard
+
+> Auto-refreshing is only available for dashboards, not questions.
+
+To refresh the results of a dashboard at a specific cadence, you can parameterize the embedded URL with `refresh`. For example, to set an embedded dashboard to refresh every 60 seconds, you would append `refresh=60` to the URL.
+
+For example, the following code for generating an iframe URL for a dashboard would display the dashboard's title and refresh its results every 60 seconds.
+
+```js
+var iframeUrl =
+  METABASE_SITE_URL + "/embed/dashboard/" + token + "#titled=true&refresh=60";
+```
+
+For the full list options you can parameterize, see [customizing the appearance of a static embed](./static-embedding-parameters.md#customizing-the-appearance-of-a-static-embed).
 
 ## Removing the "Powered by Metabase" banner
 
@@ -155,6 +170,12 @@ Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automati
 <script src="http://metabase.example.com/app/iframeResizer.js"></script>
 <iframe src="http://metabase.example.com/embed/dashboard/TOKEN" onload="iFrameResize({}, this)"></iframe>
 ```
+
+## Custom destinations on dashboards in static embeds
+
+You can only use the **URL** option for [custom destinations](..//dashboards/interactive.md#custom-destinations) on dashboards with static embedding. External URLs will open in a new tab or window.
+
+You can propagate filter values into the external URL, unless the filter is locked.
 
 ## Further reading
 

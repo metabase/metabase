@@ -42,8 +42,7 @@
                 (let [parse (fn [raw-value]
                               (if-let [parsed (parse-long raw-value)]
                                 parsed
-                                (log/warn (trs "MB_PROMETHEUS_SERVER_PORT value of ''{0}'' is not parseable as an integer."
-                                               raw-value))))]
+                                (log/warnf "MB_PROMETHEUS_SERVER_PORT value of '%s' is not parseable as an integer." raw-value)))]
                   (setting/get-raw-value :prometheus-server-port integer? parse))))
 
 (p.types/defprotocol+ PrometheusActions
@@ -140,8 +139,7 @@
           (doseq [m measurements]
             (.addMetric gauge (List/of (:label m)) (:value m)))
           (.add arr gauge))
-        (log/warn (trs "Unrecognized measurement {0} in prometheus stats"
-                       raw-label))))
+        (log/warnf "Unrecognized measurement %s in prometheus stats" raw-label)))
     arr))
 
 (defn- conn-pool-bean-diag-info [acc ^ObjectName jmx-bean]
@@ -199,7 +197,7 @@
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
   will throw."
   [registry-name]
-  (log/info (trs "Starting prometheus metrics collector"))
+  (log/info "Starting prometheus metrics collector")
   (let [registry (prometheus/collector-registry registry-name)]
     (apply prometheus/register registry
            (concat (jvm-collectors)
@@ -214,7 +212,7 @@
 (defn- start-web-server!
   "Start the prometheus web-server. If [[prometheus-server-port]] is not set it will throw."
   [port registry]
-  (log/info (trs "Starting prometheus metrics web-server on port {0}" (str port)))
+  (log/infof "Starting prometheus metrics web-server on port %s" (str port))
   (when-not port
     (throw (ex-info (trs "Attempting to set up prometheus metrics web-server with no web-server port provided")
                     {})))
@@ -248,9 +246,9 @@
         (try (stop-web-server system)
              (prometheus/clear (.-registry system))
              (alter-var-root #'system (constantly nil))
-             (log/info (trs "Prometheus web-server shut down"))
+             (log/info "Prometheus web-server shut down")
              (catch Exception e
-               (log/warn e (trs "Error stopping prometheus web-server"))))))))
+               (log/warn e "Error stopping prometheus web-server")))))))
 
 (defn inc
   "Call iapetos.core/inc on the metric in the global registry,

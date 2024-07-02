@@ -93,7 +93,7 @@ describe("scenarios > dashboard > filters", () => {
 
     filterWidget().contains("2 selections");
 
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.findAllByText("Awesome Concrete Shoes");
       cy.findAllByText("Awesome Iron Hat");
     });

@@ -23,6 +23,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
           fontSize: theme.fontSizes.md,
           lineHeight: theme.lineHeight,
           overflow: "hidden",
+          ":active": { transform: "none" }, // Remove Mantine's default pressed effect
           [`&:has(.${getStylesRef("label")}:empty)`]: {
             padding: compact ? `${rem(3)} ${rem(3)}` : `${rem(11)} ${rem(11)}`,
             [`.${getStylesRef("leftIcon")}`]: {
@@ -57,7 +58,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
           root: {
             color: theme.fn.themeColor("text-dark"),
             borderColor: theme.fn.themeColor("border"),
-            backgroundColor: theme.white,
+            backgroundColor: theme.fn.themeColor("bg-white"),
             "&:hover": {
               color: primaryColor,
               backgroundColor: theme.fn.themeColor("bg-light"),
@@ -126,7 +127,6 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
       subtle: (theme, { color }: ButtonStylesParams) => {
         const primaryColor = getPrimaryColor(theme, color);
         const hoverColor = getHoverColor(theme, primaryColor);
-
         return {
           root: {
             color: primaryColor,
@@ -134,7 +134,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
               color: hoverColor,
               backgroundColor: "transparent",
             },
-            "&:disabled": {
+            "&:disabled, &[data-disabled=true]": {
               color: theme.fn.themeColor("text-light"),
               borderColor: "transparent",
               backgroundColor: "transparent",

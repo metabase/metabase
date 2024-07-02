@@ -1,10 +1,9 @@
-import type { OptionsType } from "metabase/lib/formatting/types";
 import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import { normalize } from "metabase-lib/queries/utils/normalize";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type {
   DatasetColumn,
   RawSeries,
@@ -14,7 +13,7 @@ import type {
 const getColumnSettings = (
   column: DatasetColumn,
   settings: VisualizationSettings,
-): OptionsType => {
+): Record<string, unknown> => {
   const columnKey = Object.keys(settings.column_settings ?? {}).find(
     possiblyDenormalizedFieldRef =>
       normalize(possiblyDenormalizedFieldRef) === getColumnKey(column),

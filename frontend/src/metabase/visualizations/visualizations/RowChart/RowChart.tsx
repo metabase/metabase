@@ -4,10 +4,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
+import CS from "metabase/css/core/index.css";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
 import {
-  getChartColumns,
+  getCartesianChartColumns,
   hasValidColumnsSelected,
 } from "metabase/visualizations/lib/graph/columns";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
@@ -47,8 +48,8 @@ import {
   getHoverData,
   getLegendClickData,
 } from "metabase/visualizations/visualizations/RowChart/utils/events";
-import { getChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
-import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
+import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import {
@@ -101,6 +102,7 @@ const RowChartVisualization = ({
   actionButtons,
   isFullscreen,
   isQueryBuilder,
+  isDashboard,
   onRender,
   onHoverChange,
   showTitle,
@@ -109,6 +111,7 @@ const RowChartVisualization = ({
   series: multipleSeries,
   fontFamily,
   width,
+  href,
 }: VisualizationProps) => {
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
@@ -129,12 +132,13 @@ const RowChartVisualization = ({
   );
 
   const groupedData = useMemo(
-    () => getGroupedDataset(data.rows, chartColumns, formatColumnValue),
-    [chartColumns, data, formatColumnValue],
+    () =>
+      getGroupedDataset(data.rows, chartColumns, settings, formatColumnValue),
+    [chartColumns, data, settings, formatColumnValue],
   );
   const goal = useMemo(() => getChartGoal(settings), [settings]);
-  const theme = useMemo(getChartTheme, []);
   const stackOffset = getStackOffset(settings);
+  const theme = useRowChartTheme(fontFamily);
 
   const chartWarnings = useMemo(
     () => getChartWarnings(chartColumns, data.rows),
@@ -189,6 +193,9 @@ const RowChartVisualization = ({
 
     onHoverChange?.({
       ...hoverData,
+      // since we already scaled the dataset, we do not want the tool-tip
+      // formatter to apply scaling a second time
+      isAlreadyScaled: true,
       event: event.nativeEvent,
       element: event.currentTarget,
     });
@@ -198,7 +205,6 @@ const RowChartVisualization = ({
     if (onChangeCardAndRun) {
       onChangeCardAndRun({
         nextCard: card,
-        seriesIndex: 0,
       });
     }
   };
@@ -211,12 +217,18 @@ const RowChartVisualization = ({
       chartColumns,
     );
 
+    const areMultipleCards = rawMultipleSeries.length > 1;
+    if (areMultipleCards) {
+      openQuestion();
+      return;
+    }
+
     if ("breakout" in chartColumns && visualizationIsClickable(clickData)) {
       onVisualizationClick({
         ...clickData,
         element: event.currentTarget,
       });
-    } else {
+    } else if (isDashboard) {
       openQuestion();
     }
   };
@@ -234,7 +246,7 @@ const RowChartVisualization = ({
   const description = settings["card.description"];
   const canSelectTitle = !!onChangeCardAndRun;
 
-  const { labels, colors } = useMemo(
+  const legendItems = useMemo(
     () => getLegendItems(series, seriesColors, settings),
     [series, seriesColors, settings],
   );
@@ -275,12 +287,12 @@ const RowChartVisualization = ({
           actionButtons={actionButtons}
           onSelectTitle={canSelectTitle ? openQuestion : undefined}
           width={width}
+          href={href}
         />
       )}
       <RowChartLegendLayout
         hasLegend={hasLegend}
-        labels={labels}
-        colors={colors}
+        items={legendItems}
         actionButtons={!hasTitle ? actionButtons : undefined}
         hovered={hovered}
         onHoverChange={onHoverChange}
@@ -289,7 +301,7 @@ const RowChartVisualization = ({
         onSelectSeries={handleSelectSeries}
       >
         <RowChartRenderer
-          className="flex-full"
+          className={CS.flexFull}
           data={groupedData}
           trimData={trimData}
           series={series}
@@ -366,7 +378,7 @@ RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
     return originalMultipleSeries;
   }
 
-  const chartColumns = getChartColumns(data, settings);
+  const chartColumns = getCartesianChartColumns(data.cols, settings);
 
   const computedSeries = getSeries(
     data,

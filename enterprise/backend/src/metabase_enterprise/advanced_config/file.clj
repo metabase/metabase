@@ -160,11 +160,11 @@
   (let [path* (or (some-> (get *env* :mb-config-file-path) u.files/get-path)
                   (u.files/get-path (System/getProperty "user.dir") "config.yml"))]
     (if (u.files/exists? path*)
-      (log/info (u/colorize :magenta
-                            (trs "Found config file at path {0}; Metabase will be initialized with values from this file"
-                                 (pr-str (str path*))))
+      (log/info (u/format-color :magenta
+                                "Found config file at path %s; Metabase will be initialized with values from this file"
+                                (pr-str (str path*)))
                 (u/emoji "🗄️"))
-      (log/info (u/colorize :yellow (trs "No config file found at path {0}" (pr-str (str path*))))))
+      (log/info (u/format-color :yellow "No config file found at path %s" (pr-str (str path*)))))
     path*))
 
 (def ^:private ^:dynamic *config*
@@ -260,7 +260,7 @@
         (when-not (premium-features/enable-config-text-file?)
           (throw (ex-info (tru "Metabase config files require a Premium token with the :config-text-file feature.")
                           {}))))
-      (log/info (u/colorize :magenta (trs "Initializing {0} from config file..." section-name)) (u/emoji "🗄️"))
+      (log/info (u/format-color :magenta "Initializing %s from config file..." section-name) (u/emoji "🗄️"))
       (advanced-config.file.i/initialize-section! section-name section-config))
-    (log/info (u/colorize :magenta (trs "Done initializing from file.")) (u/emoji "🗄️")))
+    (log/info (u/colorize :magenta "Done initializing from file.") (u/emoji "🗄️")))
   :ok)

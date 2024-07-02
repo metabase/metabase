@@ -13,14 +13,13 @@
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.lib.metadata :as lib.metadata]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.wrap-value-literals
-    :as qp.wrap-value-literals]
-   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
@@ -58,7 +57,8 @@
 (defn- honeysql->prepared-stmt-subs
   "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [driver x]
-  (let [[snippet & args] (sql.qp/format-honeysql driver x)]
+  (let [honeysql         (sql.qp/->honeysql driver x)
+        [snippet & args] (sql.qp/format-honeysql driver honeysql)]
     (make-stmt-subs snippet args)))
 
 (mu/defmethod ->prepared-substitution [:sql nil] :- PreparedStatementSubstitution
@@ -71,7 +71,7 @@
 
 (mu/defmethod ->prepared-substitution [:sql Number] :- PreparedStatementSubstitution
   [driver num]
-  (honeysql->prepared-stmt-subs driver (sql.qp/inline-num num)))
+  (honeysql->prepared-stmt-subs driver num))
 
 (mu/defmethod ->prepared-substitution [:sql Boolean] :- PreparedStatementSubstitution
   [driver b]
@@ -81,14 +81,13 @@
   [driver kwd]
   (honeysql->prepared-stmt-subs driver kwd))
 
-;; TIMEZONE FIXME - remove this since we aren't using `Date` anymore
 (mu/defmethod ->prepared-substitution [:sql Date] :- PreparedStatementSubstitution
   [_driver date]
   (make-stmt-subs "?" [date]))
 
 (mu/defmethod ->prepared-substitution [:sql Temporal] :- PreparedStatementSubstitution
-  [_driver t]
-  (make-stmt-subs "?" [t]))
+  [driver t]
+  (honeysql->prepared-stmt-subs driver t))
 
 (defmulti align-temporal-unit-with-param-type
   "Returns a suitable temporal unit conversion keyword for `field`, `param-type` and the given driver.
@@ -182,9 +181,10 @@
     {:replacement-snippet     (str/join ", " (map :replacement-snippet values))
      :prepared-statement-args (apply concat (map :prepared-statement-args values))}))
 
-(defn- maybe-parse-temporal-literal [x]
+(mu/defn ^:private maybe-parse-temporal-literal :- (lib.schema.common/instance-of-class java.time.temporal.Temporal)
+  [x]
   (condp instance? x
-    String   (u.date/parse x (qp.timezone/report-timezone-id-if-supported))
+    String   (u.date/parse x)
     Temporal x
     (throw (ex-info (tru "Don''t know how to parse {0} {1} as a temporal literal" (class x) (pr-str x))
              {:type      qp.error-type/invalid-parameter
@@ -254,8 +254,8 @@
 
 (mu/defn ^:private field->clause :- mbql.s/field
   [driver     :- :keyword
-   field      :- lib.metadata/ColumnMetadata
-   param-type :- ::mbql.s/ParameterType
+   field      :- ::lib.schema.metadata/column
+   param-type :- ::lib.schema.parameter/type
    value]
   ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
   ;; the [[metabase.query-processor.middleware.resolve-fields/resolve-fields]] middleware that would normally fetch all
@@ -323,7 +323,7 @@
 (mu/defmethod ->replacement-snippet-info [:sql FieldFilter]
   [driver                            :- :keyword
    {:keys [value], :as field-filter} :- [:map
-                                         [:field lib.metadata/ColumnMetadata]
+                                         [:field ::lib.schema.metadata/column]
                                          [:value :any]]]
   (cond
     ;; otherwise if the value isn't present just put in something that will always be true, such as `1` (e.g. `WHERE 1

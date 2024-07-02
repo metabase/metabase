@@ -13,7 +13,7 @@ import {
   createPublicLink,
   deletePublicLink,
 } from "metabase/query_builder/actions";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 import { PublicLinkPopover } from "./PublicLinkPopover";
 import type { ExportFormatType } from "./types";

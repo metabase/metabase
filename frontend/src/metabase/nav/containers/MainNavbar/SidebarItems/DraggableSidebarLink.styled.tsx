@@ -1,7 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 import SidebarLink from "./SidebarLink";
@@ -15,8 +14,6 @@ export const DragIcon = styled(Icon)`
   cursor: grab;
 `;
 
-// Notice that dragged item styles are defined in sortable.css file
-// This is a limitation of react-sortable-hoc library
 export const StyledSidebarLink = styled(SidebarLink)<{ isDragging: boolean }>`
   position: relative;
 
@@ -31,10 +28,10 @@ export const StyledSidebarLink = styled(SidebarLink)<{ isDragging: boolean }>`
     css`
       pointer-events: none;
       &:hover {
-        background: ${color("bg-white")};
+        background: var(--mb-color-bg-white);
 
         ${SidebarLink.Icon}, ${DragIcon} {
-          color: ${color("brand-light")} !important;
+          color: var(--mb-color-brand-light) !important;
         }
 
         ${SidebarLink.RightElement} {

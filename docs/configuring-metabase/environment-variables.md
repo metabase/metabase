@@ -176,7 +176,7 @@ Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Ente
 Type: string<br>
 Default: `"app/assets/img/logo.svg"`
 
-Path or URL to logo file. For best results use SVG format.
+Path or URL to logo file. For best results use SVG format (inline styling and inline scripts are not supported).
 
 ### `MB_APPLICATION_NAME`
 
@@ -199,7 +199,7 @@ Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#m
 Type: integer<br>
 Default: `20`<br>
 
-Limits the number of rows Metabase will include in tables sent as attachments with dashboard subscriptions and alerts. Range: 1-100.
+Limits the number of rows Metabase will display in tables sent with dashboard subscriptions and alerts. Range: 1-100. To limit the total number of rows included in the file attachment for an email dashboard subscription, use [MB_UNAGGREGATED_QUERY_ROW_LIMIT](#mb_unaggregated_query_row_limit).
 
 ### `MB_AUDIT_MAX_RETENTION_DAYS`
 
@@ -898,6 +898,13 @@ Default: `"(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))"`
 
 User lookup filter. The placeholder `{login}` will be replaced by the user supplied login.
 
+### `MB_LOAD_ANALYTICS_CONTENT`
+
+Type: Boolean<br>
+Default: True
+
+If you want to exclude the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection, you can set `MB_LOAD_ANALYTICS_CONTENT=false`. Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.
+
 ### `MB_LOADING_MESSAGE`
 
 Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
@@ -921,6 +928,23 @@ Default: `"substring"`<br>
 Since: v44.1
 
 Matching style for native query editor's autocomplete. Larger instances can have performance issues matching using `substring`, so can use `prefix` matching, or turn autocompletions `off`.
+
+### `MB_NO_SURVEYS`
+
+Type: boolean<br>
+Default: `false`<br>
+
+Metabase will send a sentiment survey to people who create a number of questions and dashboards to gauge how well the product is doing with respect to making things easy for creators.
+
+Metabase will only send these emails to people who have in the past 2 months:
+
+- Created at least 10 questions total
+- Created at least 2 SQL questions
+- Created at least 1 dashboard
+
+If you're whitelabeling Metabase, these survey emails will only be sent to admins for that instance who meet that criteria.
+
+If you don't want Metabase to send these emails, set `MB_NO_SURVEYS=true`.
 
 ### `MB_NOTIFICATION_LINK_BASE_URL`
 
@@ -1340,10 +1364,10 @@ Set the system files channel used by Metabase to store images. This channel has 
 ### `MB_JETTY_SKIP_SNI`
 
 Type: string<br>
-Default: `"true"`<br>
+Default: `"false"`<br>
 Since: v48.4
 
-Setting `MB_JETTY_SKIP_SNI=true` (the default setting) turns off the Server Name Indication (SNI) checks in the Jetty web server. Normally you would leave this enabled. If, however, you're terminating the Transport Layer Security (TLS) connection on Metabase itself, and you're getting an error like `HTTP ERROR 400 Invalid SNI`, consider either setting `MB_JETTY_SKIP_SNI=false`, or use another SSL certificate that exactly matches the domain name of the server.
+Setting `MB_JETTY_SKIP_SNI=false` (the default setting) enables the Server Name Indication (SNI) checks in the Jetty web server. Normally you would leave this default enabled. If, however, you're terminating the Transport Layer Security (TLS) connection on Metabase itself, and you're getting an error like `HTTP ERROR 400 Invalid SNI`, consider either setting `MB_JETTY_SKIP_SNI=true`, or use another SSL certificate that exactly matches the domain name of the server.
 
 ### `MB_SOURCE_ADDRESS_HEADER`
 

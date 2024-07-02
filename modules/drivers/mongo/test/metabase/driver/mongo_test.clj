@@ -4,7 +4,6 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.automagic-dashboards.core :as magic]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.mongo :as mongo]
@@ -14,7 +13,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -26,6 +25,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mongo :as tdm]
    [metabase.util.log :as log]
+   [metabase.xrays.automagic-dashboards.core :as magic]
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -131,7 +131,7 @@
                                 :database (mt/id)})
              (m/dissoc-in [:data :results_metadata] [:data :insights]))))))
 
-(deftest nested-native-query-test
+(deftest ^:parallel nested-native-query-test
   (mt/test-driver :mongo
     (testing "Mbql query with nested native source query _returns correct results_ (#30112)"
       (t2.with-temp/with-temp [Card {:keys [id]} {:dataset_query {:type     :native
@@ -147,7 +147,10 @@
                                        :query      (conj (mongo.qp/parse-query-string native-query)
                                                          {"$limit" 1})}
                          :rows        [[1]]}}
-               (qp/process-query query))))))
+               (qp/process-query query))))))))
+
+(deftest ^:parallel nested-native-query-test-2
+  (mt/test-driver :mongo
     (testing "Mbql query with nested native source query _aggregates_ correctly (#30112)"
       (let [query-str (str "[{\"$project\":\n"
                            "   {\"_id\": \"$_id\",\n"
@@ -245,12 +248,12 @@
          (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :indexed))))
          (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :not-indexed)))))
 
-        (testing "compount index"
-          (mongo.connection/with-mongo-database [db (mt/db)]
-            (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map "first" 1 "second" 1)))
-          (sync/sync-database! (mt/db))
-          (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :first))))
-          (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :second)))))
+       (testing "compount index"
+         (mongo.connection/with-mongo-database [db (mt/db)]
+           (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map "first" 1 "second" 1)))
+         (sync/sync-database! (mt/db))
+         (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :first))))
+         (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :second)))))
 
        (testing "multi key index"
          (mongo.connection/with-mongo-database [db (mt/db)]
@@ -379,16 +382,16 @@
     (with-redefs [metadata-queries/nested-field-sample-limit 2]
       (binding [tdm/*remove-nil?* true]
         (mt/with-temp-test-data
-          ["bird_species"
-           [{:field-name "name", :base-type :type/Text}
-            {:field-name "favorite_snack", :base-type :type/Text}
-            {:field-name "max_wingspan", :base-type :type/Integer}]
-           [["Sharp-shinned Hawk" nil 68]
-            ["Tropicbird" nil 112]
-            ["House Finch" nil nil]
-            ["Mourning Dove" nil nil]
-            ["Common Blackbird" "earthworms" nil]
-            ["Silvereye" "cherries" nil]]]
+          [["bird_species"
+            [{:field-name "name", :base-type :type/Text}
+             {:field-name "favorite_snack", :base-type :type/Text}
+             {:field-name "max_wingspan", :base-type :type/Integer}]
+            [["Sharp-shinned Hawk" nil 68]
+             ["Tropicbird" nil 112]
+             ["House Finch" nil nil]
+             ["Mourning Dove" nil nil]
+             ["Common Blackbird" "earthworms" nil]
+             ["Silvereye" "cherries" nil]]]]
           ;; do a full sync on the DB to get the correct semantic type info
           (sync/sync-database! (mt/db))
           (is (= #{{:name "_id", :database_type "java.lang.Long", :base_type :type/Integer, :semantic_type :type/PK}
@@ -554,7 +557,7 @@
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
       (is (empty?
-           (mbql.u/match-one (->> (magic/automagic-analysis (t2/select-one Field :id (mt/id :venues :price)) {})
+           (lib.util.match/match-one (->> (magic/automagic-analysis (t2/select-one Field :id (mt/id :venues :price)) {})
                                   :dashcards
                                   (mapcat (comp :breakout :query :dataset_query :card)))
              [:field _ (_ :guard :binning)]))))))
@@ -668,14 +671,14 @@
   (mt/test-driver :mongo
     (testing "Negative values in versionArray are ignored (#29678)"
       (with-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
-                                                       "versionArray" [4 0 29 -100]})]
+                                                        "versionArray" [4 0 29 -100]})]
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0 29]}
                (driver/dbms-version :mongo (mt/db))))))
 
     (testing "Any values after rubbish in versionArray are ignored"
       (with-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
-                                                       "versionArray" [4 0 "NaN" 29]})]
+                                                        "versionArray" [4 0 "NaN" 29]})]
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0]}
                (driver/dbms-version :mongo (mt/db))))))))

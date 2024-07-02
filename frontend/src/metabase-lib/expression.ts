@@ -15,6 +15,7 @@ import type {
 
 type ErrorWithMessage = {
   message: string;
+  friendly?: boolean;
 };
 
 export function expression(
@@ -42,22 +43,22 @@ export function expressions(
 export function expressionableColumns(
   query: Query,
   stageIndex?: number,
-  expressionPosition?: number,
+  expressionIndex?: number,
 ): ColumnMetadata[] {
-  return ML.expressionable_columns(query, stageIndex, expressionPosition);
+  return ML.expressionable_columns(query, stageIndex, expressionIndex);
 }
 
 export function expressionParts(
   query: Query,
   stageIndex: number,
-  clause: ExpressionClause | FilterClause | JoinCondition,
+  clause: AggregationClause | ExpressionClause | FilterClause | JoinCondition,
 ): ExpressionParts {
   return ML.expression_parts(query, stageIndex, clause);
 }
 
 export function expressionClause(
   operator: ExpressionOperatorName,
-  args: (ExpressionArg | ExpressionClause)[],
+  args: (ExpressionArg | AggregationClause | ExpressionClause | FilterClause)[],
   options: ExpressionOptions | null = null,
 ): ExpressionClause {
   return ML.expression_clause(operator, args, options);
@@ -89,13 +90,13 @@ export function diagnoseExpression(
   stageIndex: number,
   expressionMode: ExpressionMode,
   mbql: any,
-  expressionPosition?: number,
+  expressionIndex?: number,
 ): ErrorWithMessage | null {
   return ML.diagnose_expression(
     query,
     stageIndex,
     expressionMode,
     mbql,
-    expressionPosition,
+    expressionIndex,
   );
 }

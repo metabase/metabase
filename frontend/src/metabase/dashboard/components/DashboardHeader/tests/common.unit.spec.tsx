@@ -13,7 +13,9 @@ describe("DashboardHeader", () => {
       dashboard: TEST_DASHBOARD,
     });
 
-    userEvent.click(screen.getByLabelText("dashboard-menu-button"));
+    await userEvent.click(
+      await screen.findByLabelText("dashboard-menu-button"),
+    );
     await screen.findByRole("dialog");
 
     const exportPdfButton = within(
@@ -27,7 +29,9 @@ describe("DashboardHeader", () => {
       dashboard: TEST_DASHBOARD_WITH_TABS,
     });
 
-    userEvent.click(screen.getByLabelText("dashboard-menu-button"));
+    await userEvent.click(
+      await screen.findByLabelText("dashboard-menu-button"),
+    );
     await screen.findByRole("dialog");
 
     const exportPdfButton = within(
@@ -53,6 +57,6 @@ describe("DashboardHeader", () => {
       slack: false,
     });
 
-    expect(screen.getByLabelText("subscriptions")).toBeInTheDocument();
+    expect(await screen.findByLabelText("subscriptions")).toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
-import Dimension from "metabase-lib/Dimension";
+import Dimension from "metabase-lib/v1/Dimension";
 import {
   createSampleDatabase,
   PRODUCTS,

@@ -275,7 +275,11 @@ export function waitForSyncToFinish({
   });
 }
 
-export function resyncDatabase({ dbId = 2, tableName = "", tableAlias }) {
+export function resyncDatabase({
+  dbId = 2,
+  tableName = "",
+  tableAlias = undefined, // TS was complaining that this was a required param
+}) {
   // must be signed in as admin to sync
   cy.request("POST", `/api/database/${dbId}/sync_schema`);
   cy.request("POST", `/api/database/${dbId}/rescan_values`);

@@ -32,7 +32,7 @@ describe("NewsletterForm", () => {
     setup();
     expect(screen.getByDisplayValue(USER_EMAIL)).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("Subscribe"));
+    await userEvent.click(screen.getByText("Subscribe"));
     expect(await screen.findByText(/You're subscribed/)).toBeInTheDocument();
     expect(fetchMock.done(SUBSCRIBE_URL)).toBe(true);
   });

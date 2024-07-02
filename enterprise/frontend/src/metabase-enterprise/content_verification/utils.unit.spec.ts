@@ -1,30 +1,10 @@
-import type { CollectionEssentials, SearchResult } from "metabase-types/api";
-import { createMockModelResult } from "metabase-types/api/mocks";
+import { createMockModelResult } from "metabase/browse/test-utils";
 
-import { availableModelFilters, sortCollectionsByVerification } from "./utils";
+import { availableModelFilters } from "./utils";
 
 describe("Utilities related to content verification", () => {
-  it("include a function that sorts verified collections before unverified collections", () => {
-    const unsorted: CollectionEssentials[] = [
-      {
-        id: 99,
-        authority_level: "official",
-        name: "Collection Zulu - verified",
-      },
-      {
-        id: 1,
-        authority_level: null,
-        name: "Collection Alpha - unverified",
-      },
-    ];
-    const sortFunction = (a: CollectionEssentials, b: CollectionEssentials) =>
-      sortCollectionsByVerification(a, b) || a.name.localeCompare(b.name);
-    const sorted = unsorted.sort(sortFunction);
-    expect(sorted[0].name).toBe("Collection Zulu - verified");
-    expect(sorted[1].name).toBe("Collection Alpha - unverified");
-  });
   it("include a constant that defines a filter for only showing verified models", () => {
-    const models: SearchResult[] = [
+    const models = [
       createMockModelResult({
         name: "A verified model",
         moderated_status: "verified",

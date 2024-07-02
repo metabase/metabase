@@ -1,111 +1,13 @@
-:root {
-  --default-font-size: 0.875em;
-  --default-font-color: var(--color-text-dark);
-  --default-bg-color: var(--color-bg-light);
-}
-
-html {
-  height: 100%; /* ensure the entire page will fill the window */
-  width: 100%;
-}
-
-@media print and (orientation: portrait) {
-  html {
-    width: 8.5in;
-  }
-}
-
-@media print and (orientation: landscape) {
-  html {
-    width: 11in;
-  }
-}
-
-body {
-  font-family: var(--default-font-family), sans-serif;
-  font-size: var(--default-font-size);
-  font-weight: 400;
-  font-style: normal;
-  color: var(--color-text-dark);
-  margin: 0;
-  height: 100%; /* ensure the entire page will fill the window */
-  display: flex;
-  flex-direction: column;
-  background-color: var(--color-bg-light);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/*
-  override default padding and margin on lists
-  in most cases we won't be using list-style so
-  the padding isn't necessary
-*/
-ul,
-ol {
-  padding: 0;
-  margin: 0;
-  list-style-type: none;
-}
-
-/*
-  explicitly set the th text alignment to left. this is required for IE
-  which follows the suggested rendering and defaults to center, whereas
-  chrome and others do not
-*/
-th {
-  text-align: left;
-}
-
-/* reset button element */
-button {
-  font-size: 100%;
-  -webkit-appearance: none;
-  border: 0;
-  padding: 0;
-  margin: 0;
-  outline: none;
-  background-color: transparent;
-}
-
-a {
-  color: inherit;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-button,
-input,
-textarea {
-  font-family: var(--default-font-family), "Helvetica Neue", Helvetica,
-    sans-serif;
-}
-
-textarea {
-  min-height: 110px;
-}
-
-:global(.pointer-events-none),
-:global(.pointer-events-none *) {
+.pointerEventsNone,
+.pointerEventsNone * {
   pointer-events: none;
 }
 
-:global(.disabled),
 .disabled {
   pointer-events: none;
   opacity: 0.4;
 }
 
-:global(.faded),
-.faded {
-  opacity: 0.4;
-}
-
-:global(.fade-in-hover:hover) {
-  opacity: 1;
-  transition: opacity 0.3s;
-}
-
-:global(.circle) {
+.circle {
   border-radius: 99px;
 }

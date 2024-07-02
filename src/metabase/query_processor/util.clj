@@ -8,13 +8,16 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-;; TODO - I think most of the functions in this namespace that we don't remove could be moved to [[metabase.mbql.util]]
+;; TODO - I think most of the functions in this namespace that we don't remove could be moved to [[metabase.legacy-mbql.util]]
 
 (defn query-without-aggregations-or-limits?
   "Is the given query an MBQL query without a `:limit`, `:aggregation`, or `:page` clause?"
@@ -28,7 +31,7 @@
    can access the default value."
   [{{:keys [executed-by query-hash], :as _info} :info, query-type :type}]
   (str "Metabase" (when executed-by
-                    (assert (instance? (Class/forName "[B") query-hash))
+                    (assert (bytes? query-hash) "If info includes executed-by it should also include query-hash")
                     (format ":: userID: %s queryType: %s queryHash: %s"
                             executed-by
                             (case (keyword query-type)
@@ -59,7 +62,7 @@
 
 ;;; ------------------------------------------------- Normalization --------------------------------------------------
 
-;; TODO - this has been moved to `metabase.mbql.util`; use that implementation instead.
+;; TODO - this has been moved to `metabase.legacy-mbql.util`; use that implementation instead.
 (mu/defn ^:deprecated normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
@@ -84,23 +87,46 @@
        x))
    x))
 
+(defn- remove-lib-uuids
+  "Two queries should be the same even if they have different :lib/uuids, because they might have both been converted
+  from the same legacy query."
+  [x]
+  (walk/postwalk
+   (fn [x]
+     (if (map? x)
+       (dissoc x :lib/uuid)
+       x))
+   x))
+
 (mu/defn ^:private select-keys-for-hashing
   "Return `query` with only the keys relevant to hashing kept.
   (This is done so irrelevant info or options that don't affect query results doesn't result in the same query
   producing different hashes.)"
-  [query :- :map]
-  (let [{:keys [constraints parameters], :as query} (select-keys query [:database :type :query :native :parameters
-                                                                        :constraints])]
+  [query :- [:maybe :map]]
+  (let [{:keys [constraints parameters], :as query} (select-keys query [:database :lib/type :stages :parameters :constraints])]
     (cond-> query
       (empty? constraints) (dissoc :constraints)
       (empty? parameters)  (dissoc :parameters)
+      true                 remove-lib-uuids
       true                 walk-query-sort-maps)))
 
-#_{:clj-kondo/ignore [:non-arg-vec-return-type-hint]}
-(mu/defn ^"[B" query-hash :- bytes?
+(mu/defn query-hash :- bytes?
   "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
-  [query :- :map]
-  (buddy-hash/sha3-256 (json/generate-string (select-keys-for-hashing query))))
+  ^bytes [query :- [:maybe :map]]
+  ;; convert to pMBQL first if this is a legacy query.
+  (let [query (try
+                ;; Expression type check supression is necessary because coerced fields in `query` may not have
+                ;; `:effective-type` populated. That's the case during call to this function in
+                ;; `process-userland-query-middleware` that occurs before normalization.
+                (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+                  (cond-> query
+                    (#{"query" "native"} (:type query)) (#(lib.convert/->pMBQL (mbql.normalize/normalize %)))
+                    (#{:query :native} (:type query))   lib.convert/->pMBQL))
+                (catch Throwable e
+                  (throw (ex-info "Error hashing query. Is this a valid query?"
+                                  {:query query}
+                                  e))))]
+    (buddy-hash/sha3-256 (json/generate-string (select-keys-for-hashing query)))))
 
 
 ;;; --------------------------------------------- Query Source Card IDs ----------------------------------------------
@@ -122,7 +148,7 @@
   [[tyype identifier]]
   [tyype identifier])
 
-(def field-options-for-identification
+(def ^:private field-options-for-identification
   "Set of FieldOptions that only mattered for identification purposes." ;; base-type is required for field that use name instead of id
   #{:source-field :join-alias :base-type})
 
@@ -167,9 +193,37 @@
   the metadata from a run from the query, and `pre-existing` should be the metadata from the database we wish to
   ensure survives."
   [fresh pre-existing]
-  (let [by-key (m/index-by (comp field-ref->key :field_ref) pre-existing)]
-    (for [{:keys [field_ref source] :as col} fresh]
+  (let [by-name (m/index-by :name pre-existing)]
+    (for [{:keys [source] :as col} fresh]
       (if-let [existing (and (not= :aggregation source)
-                             (get by-key (field-ref->key field_ref)))]
+                             (get by-name (:name col)))]
         (merge col (select-keys existing preserved-keys))
         col))))
+
+(def ^:dynamic *execute-async?*
+  "Used to control `with-execute-async` to whether or not execute its body asynchronously."
+  true)
+
+(defn do-with-execute-async
+  "Impl of `with-execute-async`"
+  [thunk]
+  (if *execute-async?*
+    (.submit clojure.lang.Agent/pooledExecutor ^Runnable thunk)
+    (thunk)))
+
+(defmacro with-execute-async
+  "Execute body asynchronously in a pooled executor.
+
+  Used for side effects during query execution like saving query execution info or capturing FieldUsages."
+  [thunk]
+  `(do-with-execute-async ~thunk))
+
+(mu/defn userland-query? :- :boolean
+  "Returns true if the query is an userland query, else false."
+  [query :- ::qp.schema/qp]
+  (boolean (get-in query [:middleware :userland-query?])))
+
+(mu/defn internal-query? :- :boolean
+  "Returns `true` if query is an internal query."
+  [{query-type :type} :- ::qp.schema/qp]
+  (= :internal (keyword query-type)))

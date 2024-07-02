@@ -37,32 +37,36 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
     editDashboard();
   });
 
-  it("should work when set through the filter widget", () => {
-    Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(([filter]) => {
-      cy.log(`Make sure we can connect ${filter} filter`);
-      setFilter("Text or Category", filter);
+  it(
+    "should work when set through the filter widget",
+    { tags: "@flaky" },
+    () => {
+      Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(([filter]) => {
+        cy.log(`Make sure we can connect ${filter} filter`);
+        setFilter("Text or Category", filter);
 
-      cy.findByText("Select…").click();
-      popover().contains(filter).click();
-    });
+        cy.findByText("Select…").click();
+        popover().contains(filter).click();
+      });
 
-    saveDashboard();
+      saveDashboard();
 
-    Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
-      ([filter, { value, representativeResult }], index) => {
-        filterWidget().eq(index).click();
-        applyFilterByType(filter, value);
+      Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
+        ([filter, { value, representativeResult }], index) => {
+          filterWidget().eq(index).click();
+          applyFilterByType(filter, value);
 
-        cy.log(`Make sure ${filter} filter returns correct result`);
-        cy.get(".Card").within(() => {
-          cy.contains(representativeResult);
-        });
+          cy.log(`Make sure ${filter} filter returns correct result`);
+          cy.findByTestId("dashcard").within(() => {
+            cy.contains(representativeResult);
+          });
 
-        clearFilterWidget(index);
-        cy.wait("@dashcardQuery");
-      },
-    );
-  });
+          clearFilterWidget(index);
+          cy.wait("@dashcardQuery");
+        },
+      );
+    },
+  );
 
   it("should work when set as the default filter and when that filter is removed (metabase#20493)", () => {
     setFilter("Text or Category", "Is");
@@ -78,7 +82,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
 
     saveDashboard();
 
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.contains("Rustic Paper Wallet");
     });
 

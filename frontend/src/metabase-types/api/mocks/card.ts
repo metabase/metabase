@@ -8,6 +8,7 @@ import type {
   NativeDatasetQuery,
   PublicCard,
   TableColumnOrderSetting,
+  CardQueryMetadata,
 } from "metabase-types/api";
 
 import {
@@ -28,6 +29,9 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   result_metadata: [],
   type: "question",
   can_write: true,
+  can_run_adhoc_query: true,
+  can_restore: false,
+  can_delete: false,
   cache_ttl: null,
   collection: null,
   collection_id: null,
@@ -74,6 +78,15 @@ export const createMockUnsavedCard = (
   display: "table",
   dataset_query: createMockStructuredDatasetQuery(),
   visualization_settings: createMockVisualizationSettings(),
+  ...opts,
+});
+
+export const createMockCardQueryMetadata = (
+  opts?: Partial<CardQueryMetadata>,
+): CardQueryMetadata => ({
+  databases: [],
+  tables: [],
+  fields: [],
   ...opts,
 });
 

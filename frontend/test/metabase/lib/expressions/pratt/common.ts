@@ -1,17 +1,18 @@
-import { getMBQLName } from "metabase-lib/expressions/config";
-import type { Expr } from "metabase-lib/expressions/pratt";
+import { getMBQLName } from "metabase-lib/v1/expressions/config";
+import type { Expr } from "metabase-lib/v1/expressions/pratt";
 import {
   lexify,
   parse,
   compile as newCompile,
-} from "metabase-lib/expressions/pratt";
+} from "metabase-lib/v1/expressions/pratt";
 import {
   parse as oldParser,
   useShorthands,
   adjustCase,
+  adjustOffset,
   adjustOptions,
-} from "metabase-lib/expressions/recursive-parser";
-import { resolve } from "metabase-lib/expressions/resolver";
+} from "metabase-lib/v1/expressions/recursive-parser";
+import { resolve } from "metabase-lib/v1/expressions/resolver";
 
 import { generateExpression } from "../generator";
 
@@ -24,14 +25,17 @@ interface Opts {
 
 export function compile(source: string, type: Type, opts: Opts = {}) {
   const { throwOnError } = opts;
-  const passes = [adjustOptions, useShorthands, adjustCase];
+  const passes = [adjustOptions, useShorthands, adjustOffset, adjustCase];
   return newCompile(
     parse(lexify(source), {
       throwOnError,
     }).root,
     {
       passes: opts.resolverPass
-        ? [...passes, expr => resolve(expr, type, mockResolve as any)]
+        ? [
+            ...passes,
+            expression => resolve({ expression, type, fn: mockResolve }),
+          ]
         : passes,
       getMBQLName,
     },
@@ -56,7 +60,7 @@ export function oracle(source: string, type: Type) {
     }
     throw err;
   }
-  return resolve(mbql, type, mockResolve as any);
+  return resolve({ expression: mbql, type, fn: mockResolve });
 }
 
 export function compare(

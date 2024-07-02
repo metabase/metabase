@@ -14,3 +14,4 @@ export const KEYCODE_FORWARD_SLASH = 191;
 
 export const KEY_ESCAPE = "Escape";
 export const KEY_ENTER = "Enter";
+export const KEY_BACKSPACE = "Backspace";

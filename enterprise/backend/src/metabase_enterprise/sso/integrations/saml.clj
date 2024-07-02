@@ -143,7 +143,7 @@
   (let [redirect (get-in req [:params :redirect])
         redirect-url (if (nil? redirect)
                        (do
-                         (log/warn (trs "Warning: expected `redirect` param, but none is present"))
+                         (log/warn "Warning: expected `redirect` param, but none is present")
                          (public-settings/site-url))
                        (if (has-host? redirect)
                          redirect
@@ -173,7 +173,7 @@
       (saml/validate response idp-cert (sp-cert-keystore-details) {:acs-url (acs-url)
                                                                    :issuer  (sso-settings/saml-identity-provider-issuer)})
       (catch Throwable e
-        (log/error e (trs "SAML response validation failed"))
+        (log/error e "SAML response validation failed")
         (throw (ex-info (tru "Unable to log in: SAML response validation failed")
                         {:status-code 401}
                         e))))))
@@ -251,9 +251,11 @@
 
 (defmethod sso.i/sso-handle-slo :saml
   [{:keys [cookies params]}]
-  (let [xml-str (base64-decode (:SAMLResponse params))
-        success? (slo-success? xml-str)]
-    (if-let [metabase-session-id (and success? (get-in cookies [mw.session/metabase-session-cookie :value]))]
-      (do (t2/delete! :model/Session :id metabase-session-id)
-          (mw.session/clear-session-cookie (response/redirect (urls/site-url))))
-      {:status 500 :body "SAML logout failed."})))
+  (if (sso-settings/saml-slo-enabled)
+    (let [xml-str (base64-decode (:SAMLResponse params))
+          success? (slo-success? xml-str)]
+      (if-let [metabase-session-id (and success? (get-in cookies [mw.session/metabase-session-cookie :value]))]
+        (do (t2/delete! :model/Session :id metabase-session-id)
+            (mw.session/clear-session-cookie (response/redirect (urls/site-url))))
+        {:status 500 :body "SAML logout failed."}))
+    (log/warn "SAML SLO is not enabled, not continuing Single Log Out flow.")))

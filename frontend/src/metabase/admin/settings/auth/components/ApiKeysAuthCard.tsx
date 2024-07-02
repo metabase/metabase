@@ -1,17 +1,12 @@
-import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { ApiKeysApi } from "metabase/services";
+import { useCountApiKeysQuery } from "metabase/api";
 
 import { AuthCardBody } from "./AuthCard/AuthCard";
 
 export const ApiKeysAuthCard = () => {
-  const [keyCount, setKeyCount] = useState(0);
-
-  useEffect(() => {
-    ApiKeysApi.count().then(setKeyCount);
-  }, []);
-
+  const { data } = useCountApiKeysQuery();
+  const keyCount = data ?? 0;
   const isConfigured = keyCount > 0;
 
   return (

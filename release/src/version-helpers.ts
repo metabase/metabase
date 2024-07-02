@@ -85,6 +85,16 @@ export const getReleaseBranch = (versionString: string) => {
   return `release-x.${majorVersion}.x`;
 };
 
+export const getVersionFromReleaseBranch = (branch: string) => {
+  const match = /release-x\.(\d+)\.x$/.exec(branch);
+
+  if (!match) {
+    throw new Error(`Invalid release branch: ${branch}`);
+  }
+  const majorVersion = match[1];
+  return `v0.${majorVersion}.0`;
+}
+
 export const isLatestVersion = (thisVersion: string, allVersions: string[]) => {
   if (isRCVersion(thisVersion)) {
     return false;
@@ -121,6 +131,7 @@ export const versionRequirements: Record<
   47: { java: 11, node: 18 },
   48: { java: 11, node: 18 },
   49: { java: 11, node: 18 },
+  50: { java: 11, node: 18 },
 };
 
 export const getBuildRequirements = (version: string) => {
@@ -159,7 +170,6 @@ export const getNextVersions = (versionString: string): string[] => {
   // minor releases -> next minor release
   const [major, minor] = versionString
     .replace(/(v1|v0)\./, "")
-    .replace(/.0$/, "")
     .split(".")
     .map(Number);
 
@@ -176,4 +186,12 @@ export const getNextVersions = (versionString: string): string[] => {
   }
 
   return [];
+};
+
+// our milestones don't have the v prefix or a .0 suffix
+export const getMilestoneName = (version: string) => {
+  return getOSSVersion(version)
+    .replace(/^v/, "")
+    .replace(/-rc\d+$/i, "") // RC versions use the major version milestone
+    .replace(/\.0$/, "");
 };

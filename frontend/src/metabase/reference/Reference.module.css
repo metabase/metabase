@@ -1,24 +1,7 @@
 :root {
-  --title-color: var(--color-text-medium);
-  --subtitle-color: var(--color-text-medium);
+  --title-color: var(--mb-color-text-medium);
+  --subtitle-color: var(--mb-color-text-medium);
   --icon-width: 60px;
-}
-
-.guideEmpty {
-  width: 100%;
-  justify-content: center;
-  display: flex;
-  padding-top: 75px;
-}
-
-.guideEmptyBody {
-  text-align: center;
-  max-width: 400px;
-}
-
-.guideEmptyMessage {
-  composes: text-dark text-paragraph mt3 from "style";
-  text-align: center;
 }
 
 .columnHeader {
@@ -34,7 +17,7 @@
 }
 
 .schemaSeparator {
-  composes: text-light mt2 from "style";
+  composes: textLight mt2 from "style";
   margin-left: var(--icon-width);
   font-size: 18px;
 }
@@ -45,174 +28,9 @@
   line-height: 1.4em;
   letter-spacing: 1px;
   white-space: pre-wrap;
-  color: var(--color-text-medium);
-  background-color: var(--color-bg-light);
-  border: 1px solid var(--color-text-light);
+  color: var(--mb-color-text-medium);
+  background-color: var(--mb-color-bg-light);
+  border: 1px solid var(--mb-color-text-light);
   border-radius: 4px;
   padding: 0.2em 0.4em;
-}
-
-.guideLeftPadded {
-  width: 100%;
-  justify-content: center;
-  display: flex;
-}
-
-.guideLeftPadded::before {
-  /* FIXME: not sure how to share this with other components
-     because we can't use composes here apparently. any workarounds? */
-  content: "";
-  display: block;
-  flex: 0.3;
-  max-width: 250px;
-  margin-right: 50px;
-}
-
-.guideLeftPaddedBody {
-  flex: 0.7;
-  max-width: 550px;
-}
-
-.guideWrapper {
-  margin-bottom: 50px;
-}
-
-.guideTitle {
-  composes: guideLeftPadded;
-  font-size: 24px;
-  margin-top: 50px;
-}
-
-.guideTitleBody {
-  composes: text-dark text-bold from "style";
-  width: 100%;
-  composes: guideLeftPaddedBody;
-}
-
-.guideSeeAll {
-  composes: guideLeftPadded;
-  font-size: 18px;
-}
-
-.guideSeeAllBody {
-  composes: text-dark text-bold mt4 from "style";
-  width: 100%;
-  display: flex;
-  composes: guideLeftPaddedBody;
-}
-
-.guideSeeAllLink {
-  composes: py1 border-top from "style";
-  text-decoration: none;
-  display: block;
-  flex: 1 0 auto;
-}
-
-.guideContact {
-  composes: mt4 from "style";
-  composes: guideLeftPadded;
-  margin-bottom: 100px;
-}
-
-.guideContactBody {
-  width: 100%;
-  composes: guideLeftPaddedBody;
-  font-size: 16px;
-}
-
-.guideEditHeader {
-  composes: text-body my4 from "style";
-  width: 100%;
-  max-width: 550px;
-  color: var(--color-text-dark);
-}
-
-.guideEditHeaderTitle {
-  composes: text-bold mb2 from "style";
-  font-size: 24px;
-}
-
-.guideEditCards {
-  composes: mt2 mb4 from "style";
-}
-
-.guideEditCard {
-  composes: input p4 from "style";
-}
-
-.guideEditLabel {
-  composes: text-bold mb2 from "style";
-  display: block;
-  font-size: 16px;
-  color: var(--title-color);
-}
-
-.guideEditHeaderDescription {
-  font-size: 16px;
-}
-
-.guideEditTitle {
-  composes: text-body text-bold from "style";
-  display: block;
-  color: var(--title-color);
-  font-size: 16px;
-  margin-top: 50px;
-}
-
-.guideEditSubtitle {
-  composes: text-body from "style";
-  color: var(--color-text-light);
-  font-size: 16px;
-  max-width: 700px;
-}
-
-.guideEditAddButton {
-  composes: my2 pl4 from "style";
-  width: 100%;
-  display: flex;
-  padding-right: 3.5rem;
-}
-
-.guideEditAddButton::before {
-  content: "";
-  display: block;
-  flex: 250;
-  max-width: 250px;
-  margin-right: 50px;
-}
-
-.guideEditAddButtonBody {
-  flex: 550;
-  max-width: 550px;
-}
-
-.guideEditTextarea {
-  composes: text-dark input p2 from "style";
-  resize: none;
-  font-size: 16px;
-  width: 100%;
-  max-width: 850px;
-  min-height: 100px;
-}
-
-.guideEditContact {
-  display: flex;
-}
-
-.guideEditContactName {
-  flex: 250;
-  max-width: 250px;
-  margin-right: 50px;
-}
-
-.guideEditContactEmail {
-  flex: 550;
-  max-width: 550px;
-}
-
-.guideEditInput {
-  composes: text-dark input p2 from "style";
-  width: 100%;
-  font-size: 16px;
-  display: block;
 }

@@ -1,10 +1,13 @@
 import type {
+  CardId,
   DatasetColumn,
   DatabaseId,
   FieldId,
   FieldValuesType,
   RowValue,
   TableId,
+  SchemaId,
+  TemporalUnit,
 } from "metabase-types/api";
 
 import type {
@@ -18,6 +21,7 @@ import type {
   RELATIVE_DATE_BUCKETS,
   TIME_FILTER_OPERATORS,
 } from "./constants";
+import type { ColumnExtractionTag } from "./extractions";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -39,7 +43,9 @@ declare const SegmentMetadata: unique symbol;
 export type SegmentMetadata = unknown & { _opaque: typeof SegmentMetadata };
 
 declare const MetricMetadata: unique symbol;
-export type MetricMetadata = unknown & { _opaque: typeof MetricMetadata };
+export type MetricMetadata = unknown & {
+  _opaque: typeof MetricMetadata;
+};
 
 declare const AggregationClause: unique symbol;
 export type AggregationClause = unknown & { _opaque: typeof AggregationClause };
@@ -65,6 +71,8 @@ export type OrderByDirection = "asc" | "desc";
 declare const FilterClause: unique symbol;
 export type FilterClause = unknown & { _opaque: typeof FilterClause };
 
+export type Filterable = FilterClause | ExpressionClause | SegmentMetadata;
+
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };
 
@@ -87,6 +95,16 @@ export type Clause =
   | JoinCondition
   | OrderByClause;
 
+export type ClauseType =
+  | "data"
+  | "joins"
+  | "expressions"
+  | "filters"
+  | "aggregation"
+  | "breakout"
+  | "order-by"
+  | "limit";
+
 export type Limit = number | null;
 
 declare const ColumnMetadata: unique symbol;
@@ -98,21 +116,8 @@ export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
 declare const Bucket: unique symbol;
 export type Bucket = unknown & { _opaque: typeof Bucket };
 
-export type BucketName =
-  | "minute"
-  | "hour"
-  | "day"
-  | "week"
-  | "quarter"
-  | "month"
-  | "year"
-  | "day-of-week"
-  | "month-of-year"
-  | "quarter-of-year"
-  | "hour-of-day";
-
 export type BucketDisplayInfo = {
-  shortName: BucketName;
+  shortName: TemporalUnit;
   displayName: string;
   default?: boolean;
   selected?: boolean;
@@ -125,6 +130,10 @@ export type TableDisplayInfo = {
   isSourceTable: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
+  schema: SchemaId;
+  isQuestion?: boolean;
+  isModel?: boolean;
+  isMetric?: boolean;
 };
 
 export type CardDisplayInfo = TableDisplayInfo;
@@ -222,7 +231,7 @@ export type MetricDisplayInfo = {
   displayName: string;
   longDisplayName: string;
   description: string;
-  selected?: boolean;
+  aggregationPosition?: number;
 };
 
 export type ClauseDisplayInfo = Pick<
@@ -244,6 +253,9 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
 
 export type ExpressionOperatorName =
   | "+"
+  | "-"
+  | "*"
+  | "/"
   | "="
   | "!="
   | ">"
@@ -264,7 +276,8 @@ export type ExpressionOperatorName =
   | "time-interval"
   | "relative-datetime"
   | "inside"
-  | "segment";
+  | "segment"
+  | "offset";
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
@@ -362,6 +375,7 @@ export type SpecificDateFilterParts = {
   operator: SpecificDateFilterOperatorName;
   column: ColumnMetadata;
   values: Date[];
+  hasTime: boolean;
 };
 
 export type RelativeDateFilterParts = {
@@ -420,7 +434,10 @@ export type DrillThru = unknown & { _opaque: typeof DrillThru };
 
 export type DrillThruType =
   | "drill-thru/automatic-insights"
+  | "drill-thru/column-extract"
   | "drill-thru/column-filter"
+  | "drill-thru/combine-columns"
+  | "drill-thru/compare-aggregations"
   | "drill-thru/distribution"
   | "drill-thru/fk-details"
   | "drill-thru/fk-filter"
@@ -437,6 +454,28 @@ export type DrillThruType =
   | "drill-thru/zoom-in.timeseries";
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
+
+declare const ColumnExtraction: unique symbol;
+export type ColumnExtraction = unknown & {
+  _opaque: typeof ColumnExtraction;
+};
+
+export type ColumnExtractionInfo = {
+  tag: ColumnExtractionTag;
+  displayName: string;
+};
+
+export type ColumnExtractDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/column-extract"> & {
+    displayName: string;
+    extractions: ColumnExtractionInfo[];
+  };
+
+export type CompareAggregationsDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/compare-aggregations">;
+
+export type CombineColumnsDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/combine-columns">;
 
 export type QuickFilterDrillThruOperator =
   | "="
@@ -502,6 +541,9 @@ export type ZoomTimeseriesDrillThruInfo =
   };
 
 export type DrillThruDisplayInfo =
+  | ColumnExtractDrillThruInfo
+  | CombineColumnsDrillThruInfo
+  | CompareAggregationsDrillThruInfo
   | QuickFilterDrillThruInfo
   | PKDrillThruInfo
   | ZoomDrillThruInfo
@@ -520,6 +562,10 @@ export type FilterDrillDetails = {
   query: Query;
   stageIndex: number;
   column: ColumnMetadata;
+};
+
+export type AggregationDrillDetails = {
+  aggregation: AggregationClause;
 };
 
 export type PivotType = "category" | "location" | "time";
@@ -541,7 +587,9 @@ export interface ClickObject {
   event?: MouseEvent;
   element?: Element;
   seriesIndex?: number;
+  cardId?: CardId;
   settings?: Record<string, unknown>;
+  columnShortcuts?: boolean;
   origin?: {
     row: RowValue;
     cols: DatasetColumn[];

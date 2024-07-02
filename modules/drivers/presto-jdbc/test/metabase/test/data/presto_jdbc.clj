@@ -162,7 +162,8 @@
 
 (deftest ^:parallel create-table-sql-test
   (testing "Make sure logic to strip out NOT NULL and PRIMARY KEY stuff works as expected"
-    (let [db-def    (tx/get-dataset-definition defs/test-data)
+    (let [db-def    (update (tx/get-dataset-definition defs/test-data)
+                            :table-definitions (partial #'ddl/add-pks-if-needed :presto-jdbc))
           table-def (-> db-def :table-definitions second)]
       (is (= "CREATE TABLE \"test_data\".\"default\".\"test_data_categories\" (\"id\" INTEGER, \"name\" VARCHAR) ;"
              (sql.tx/create-table-sql :presto-jdbc db-def table-def))))))

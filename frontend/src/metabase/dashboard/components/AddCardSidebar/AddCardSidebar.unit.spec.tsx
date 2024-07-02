@@ -186,9 +186,9 @@ describe("AddCardSideBar", () => {
       });
 
       const typedText = "dashboard";
-      userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
+      await userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
       const baseQuery = {
-        models: ["card", "dataset"],
+        models: ["card", "dataset", "metric"],
         offset: 0,
         limit: 50,
       };
@@ -258,9 +258,9 @@ describe("AddCardSideBar", () => {
       });
 
       const typedText = "dashboard";
-      userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
+      await userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
       const baseQuery = {
-        models: ["card", "dataset"],
+        models: ["card", "dataset", "metric"],
         offset: 0,
         limit: 50,
       };
@@ -349,9 +349,9 @@ describe("AddCardSideBar", () => {
       });
 
       const typedText = "dashboard";
-      userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
+      await userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
       const baseQuery = {
-        models: ["card", "dataset"],
+        models: ["card", "dataset", "metric"],
         offset: 0,
         limit: 50,
       };

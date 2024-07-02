@@ -229,7 +229,26 @@
                   :display-name             "Count"
                   :base-type                :type/Integer
                   :lib/source               :source/card
-                  :lib/desired-column-alias "count"}]
+                  :lib/desired-column-alias "count"}
+                 ;; Implicitly joinable columns
+                 {:name                     "ID"
+                  :display-name             "ID"
+                  :base-type                :type/BigInteger
+                  :lib/source               :source/implicitly-joinable
+                  :lib/desired-column-alias "USERS__via__USER_ID__ID"
+                  :fk-field-id              (meta/id :checkins :user-id)}
+                 {:name                     "NAME"
+                  :display-name             "Name"
+                  :base-type                :type/Text
+                  :lib/source               :source/implicitly-joinable
+                  :lib/desired-column-alias "USERS__via__USER_ID__NAME"
+                  :fk-field-id              (meta/id :checkins :user-id)}
+                 {:name                     "LAST_LOGIN"
+                  :display-name             "Last Login"
+                  :base-type                :type/DateTime
+                  :lib/source               :source/implicitly-joinable
+                  :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"
+                  :fk-field-id              (meta/id :checkins :user-id)}]
                 columns))
         (testing `lib/display-info
           (is (=? [{:name                   "USER_ID"
@@ -241,7 +260,32 @@
                     :display-name           "Count"
                     :table                  {:name "My Card", :display-name "My Card"}
                     :is-from-previous-stage false
-                    :is-implicitly-joinable false}]
+                    :is-implicitly-joinable false}
+                   ;; Implicitly joinable columns
+                   {:name                   "ID"
+                    :display-name           "ID"
+                    :long-display-name      "User → ID"
+                    :table                  {:name            "USERS"
+                                             :display-name    "Users"
+                                             :is-source-table false}
+                    :is-from-previous-stage false
+                    :is-implicitly-joinable true}
+                   {:name                   "NAME"
+                    :display-name           "Name"
+                    :long-display-name      "User → Name"
+                    :table                  {:name            "USERS"
+                                             :display-name    "Users"
+                                             :is-source-table false}
+                    :is-from-previous-stage false
+                    :is-implicitly-joinable true}
+                   {:name                   "LAST_LOGIN"
+                    :display-name           "Last Login"
+                    :long-display-name      "User → Last Login"
+                    :table                  {:name            "USERS"
+                                             :display-name    "Users"
+                                             :is-source-table false}
+                    :is-from-previous-stage false
+                    :is-implicitly-joinable true}]
                   (for [col columns]
                     (lib/display-info query col)))))))))
 

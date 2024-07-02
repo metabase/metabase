@@ -36,7 +36,7 @@ function setup({ setting, value, type, normalize }: SetupOpts) {
 }
 
 describe("SettingInput", () => {
-  it("when type=number should allow decimal values", () => {
+  it("when type=number should allow decimal values", async () => {
     const setting = {
       key: "test",
       value: "100",
@@ -45,8 +45,8 @@ describe("SettingInput", () => {
     };
     const { onChange } = setup({ setting, value: 100, type: "number" });
 
-    userEvent.type(screen.getByPlaceholderText("numeric value"), ".25");
-    userEvent.tab(); // blur
+    await userEvent.type(screen.getByPlaceholderText("numeric value"), ".25");
+    await userEvent.tab(); // blur
 
     expect(onChange).toHaveBeenCalledWith(100.25);
   });
@@ -74,34 +74,34 @@ describe("SettingInput", () => {
       expect(screen.getByDisplayValue(value)).toBeInTheDocument();
     });
 
-    it("should call onChange without leading or trailing spaces string", () => {
+    it("should call onChange without leading or trailing spaces string", async () => {
       const value = "/";
       const { onChange } = setup({ setting, value, type: "text", normalize });
 
       const input = screen.getByDisplayValue(value);
-      userEvent.clear(input);
-      userEvent.type(input, "  /  ");
+      await userEvent.clear(input);
+      await userEvent.type(input, "  /  ");
       input.blur();
       expect(onChange).toHaveBeenCalledWith("/");
     });
 
-    it("should call onChange with null", () => {
+    it("should call onChange with null", async () => {
       const value = "/";
       const { onChange } = setup({ setting, value, type: "text", normalize });
 
       const input = screen.getByDisplayValue(value);
-      userEvent.clear(input);
+      await userEvent.clear(input);
       input.blur();
       expect(onChange).toHaveBeenCalledWith(null);
     });
 
-    it("should call onChange with number", () => {
+    it("should call onChange with number", async () => {
       const value = "1";
       const { onChange } = setup({ setting, value, type: "number", normalize });
 
       const input = screen.getByDisplayValue(value);
-      userEvent.clear(input);
-      userEvent.type(input, "2");
+      await userEvent.clear(input);
+      await userEvent.type(input, "2");
       input.blur();
       expect(onChange).toHaveBeenCalledWith(2);
     });

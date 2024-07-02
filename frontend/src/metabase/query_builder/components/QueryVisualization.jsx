@@ -1,119 +1,131 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Component } from "react";
+import { useState } from "react";
+import { useTimeout } from "react-use";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
+import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { useSelector } from "metabase/lib/redux";
+import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
+import * as Lib from "metabase-lib";
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
 import { VisualizationError } from "./VisualizationError";
 import VisualizationResult from "./VisualizationResult";
 import Warnings from "./Warnings";
 
-export default class QueryVisualization extends Component {
-  constructor(props, context) {
-    super(props, context);
-    this.state = {};
-  }
+const SLOW_MESSAGE_TIMEOUT = 4000;
 
-  static defaultProps = {
-    // NOTE: this should be more dynamic from the backend, it's set based on the query lang
-    maxTableRows: HARD_ROW_LIMIT,
-  };
+export default function QueryVisualization(props) {
+  const {
+    className,
+    question,
+    isRunning,
+    isObjectDetail,
+    isResultDirty,
+    isNativeEditorOpen,
+    result,
+    maxTableRows = HARD_ROW_LIMIT,
+  } = props;
 
-  runQuery = () => {
-    const { isResultDirty } = this.props;
-    // ignore the cache if we're hitting "Refresh" (which we only show if isResultDirty = false)
-    this.props.runQuestionQuery({ ignoreCache: !isResultDirty });
-  };
+  const canRun = Lib.canRun(question.query(), question.type());
+  const [warnings, setWarnings] = useState([]);
 
-  handleUpdateWarnings = warnings => {
-    this.setState({ warnings });
-  };
-
-  render() {
-    const {
-      className,
-      question,
-      isRunning,
-      isObjectDetail,
-      isResultDirty,
-      isNativeEditorOpen,
-      result,
-      loadingMessage,
-    } = this.props;
-
-    return (
-      <div className={cx(className, "relative stacking-context full-height")}>
-        {isRunning ? (
-          <VisualizationRunningState
-            className="spread z2"
-            loadingMessage={loadingMessage}
-          />
-        ) : null}
-        <VisualizationDirtyState
-          {...this.props}
-          hidden={!isResultDirty || isRunning || isNativeEditorOpen}
-          className="spread z2"
+  return (
+    <div
+      className={cx(className, CS.relative, CS.stackingContext, CS.fullHeight)}
+    >
+      {isRunning ? (
+        <VisualizationRunningState className={cx(CS.spread, CS.z2)} />
+      ) : null}
+      <VisualizationDirtyState
+        {...props}
+        hidden={!canRun || !isResultDirty || isRunning || isNativeEditorOpen}
+        className={cx(CS.spread, CS.z2)}
+      />
+      {!isObjectDetail && (
+        <Warnings
+          warnings={warnings}
+          className={cx(CS.absolute, CS.top, CS.right, CS.mt2, CS.mr2, CS.z2)}
+          size={18}
         />
-        {!isObjectDetail && (
-          <Warnings
-            warnings={this.state.warnings}
-            className="absolute top right mt2 mr2 z2"
-            size={18}
-          />
+      )}
+      <div
+        className={cx(
+          CS.spread,
+          QueryBuilderS.Visualization,
+          {
+            [QueryBuilderS.VisualizationLoading]: isRunning,
+          },
+          CS.z1,
         )}
-        <div
-          className={cx("spread Visualization z1", {
-            "Visualization--loading": isRunning,
-          })}
-        >
-          {result?.error ? (
-            <VisualizationError
-              className="spread"
-              error={result.error}
-              via={result.via}
-              question={question}
-              duration={result.duration}
-            />
-          ) : result?.data ? (
-            <VisualizationResult
-              {...this.props}
-              className="spread"
-              onUpdateWarnings={this.handleUpdateWarnings}
-            />
-          ) : !isRunning ? (
-            <VisualizationEmptyState className="spread" />
-          ) : null}
-        </div>
+        data-testid="query-visualization-root"
+      >
+        {result?.error ? (
+          <VisualizationError
+            className={CS.spread}
+            error={result.error}
+            via={result.via}
+            question={question}
+            duration={result.duration}
+          />
+        ) : result?.data ? (
+          <VisualizationResult
+            {...props}
+            maxTableRows={maxTableRows}
+            className={CS.spread}
+            onUpdateWarnings={setWarnings}
+          />
+        ) : !isRunning ? (
+          <VisualizationEmptyState className={CS.spread} />
+        ) : null}
       </div>
-    );
-  }
+    </div>
+  );
 }
 
 export const VisualizationEmptyState = ({ className }) => (
-  <div className={cx(className, "flex flex-column layout-centered text-light")}>
+  <div
+    className={cx(
+      className,
+      CS.flex,
+      CS.flexColumn,
+      CS.layoutCentered,
+      CS.textLight,
+    )}
+  >
     <h3>{t`Here's where your results will appear`}</h3>
   </div>
 );
 
-export const VisualizationRunningState = ({
-  className = "",
-  loadingMessage,
-}) => (
-  <div
-    className={cx(
-      className,
-      "Loading flex flex-column layout-centered text-brand",
-    )}
-  >
-    <LoadingSpinner />
-    <h2 className="Loading-message text-brand text-uppercase my3">
-      {loadingMessage}
-    </h2>
-  </div>
-);
+export function VisualizationRunningState({ className = "" }) {
+  const [isSlow] = useTimeout(SLOW_MESSAGE_TIMEOUT);
+
+  const getLoadingMessage = useSelector(getWhiteLabeledLoadingMessageFactory);
+
+  // show the slower loading message only when the loadingMessage is
+  // not customized
+  const message = getLoadingMessage(isSlow());
+
+  return (
+    <div
+      className={cx(
+        className,
+        QueryBuilderS.Loading,
+        CS.flex,
+        CS.flexColumn,
+        CS.layoutCentered,
+        CS.textBrand,
+      )}
+    >
+      <LoadingSpinner />
+      <h2 className={cx(CS.textBrand, CS.textUppercase, CS.my3)}>{message}</h2>
+    </div>
+  );
+}
 
 export const VisualizationDirtyState = ({
   className,
@@ -126,12 +138,17 @@ export const VisualizationDirtyState = ({
   hidden,
 }) => (
   <div
-    className={cx(className, "Loading flex flex-column layout-centered", {
-      "Loading--hidden pointer-events-none": hidden,
-    })}
+    className={cx(
+      className,
+      QueryBuilderS.Loading,
+      CS.flex,
+      CS.flexColumn,
+      CS.layoutCentered,
+      { [QueryBuilderS.LoadingHidden]: hidden },
+    )}
   >
     <RunButtonWithTooltip
-      className="py2 px3 shadowed"
+      className={cx(CS.py2, CS.px3, CS.shadowed)}
       circular
       compact
       result={result}

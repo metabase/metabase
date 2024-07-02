@@ -52,6 +52,7 @@ function CreateCollectionModal({
       size="lg"
       data-testid="new-collection-modal"
     >
+      <Modal.Overlay />
       <Modal.Content p="md">
         <Modal.Header>
           <Modal.Title>{t`New collection`}</Modal.Title>

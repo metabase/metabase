@@ -16,8 +16,7 @@
    [metabase.test.mock.util :as mock.util]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        End-to-end 'MovieDB' Sync Tests                                         |
@@ -26,9 +25,17 @@
 ;; These tests make up a fake driver and then confirm that sync uses the various methods defined by the driver to
 ;; correctly sync appropriate metadata rows (Table/Field/etc.) in the Application DB
 
-(def ^:private sync-test-tables
+(driver/register! ::sync-test, :abstract? true)
+
+(def ^:dynamic *supports-schemas?*
+  "Whether the database supports schemas."
+  true)
+
+(defmethod driver/database-supports? [::sync-test :schemas] [_driver _feature _db] *supports-schemas?*)
+
+(defn- sync-test-tables []
   {"movie"  {:name   "movie"
-             :schema "default"
+             :schema (when *supports-schemas?* "default")
              :fields #{{:name              "id"
                         :database-type     "SERIAL"
                         :base-type         :type/Integer
@@ -51,7 +58,7 @@
                         :database-position 2}}
              :description nil}
    "studio" {:name   "studio"
-             :schema nil
+             :schema (when *supports-schemas?* "public")
              :fields #{{:name              "studio"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
@@ -67,23 +74,22 @@
                         :database-position 1}}
              :description ""}})
 
-(driver/register! ::sync-test, :abstract? true)
-
 (defmethod driver/describe-database ::sync-test
   [& _]
-  {:tables (set (for [table (vals sync-test-tables)]
+  {:tables (set (for [table (vals (sync-test-tables))]
                   (dissoc table :fields)))})
 
 (defmethod driver/describe-table ::sync-test
   [_ _ table]
-  (get sync-test-tables (:name table)))
+  (get (sync-test-tables) (:name table)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/describe-table-fks ::sync-test
   [_ _ table]
   (set (when (= "movie" (:name table))
          #{{:fk-column-name   "studio"
             :dest-table       {:name   "studio"
-                               :schema nil}
+                               :schema (when *supports-schemas?* "public")}
             :dest-column-name "studio"}})))
 
 (defmethod driver/database-supports? [::sync-test :foreign-keys]
@@ -202,51 +208,59 @@
     :database_position 0
     :position          0}))
 
+(defn- expected-movie-table []
+  (merge (table-defaults)
+         {:schema              (when *supports-schemas?* "default")
+          :name                "movie"
+          :display_name        "Movie"
+          :initial_sync_status "complete"
+          :fields              [(field:movie-id) (field:movie-studio) (field:movie-title)]
+          :description         nil}))
+
+(defn- expected-studio-table []
+  (merge (table-defaults)
+         {:schema              (when *supports-schemas?* "public")
+          :name                "studio"
+          :display_name        "Studio"
+          :initial_sync_status "complete"
+          :fields              [(field:studio-name) (field:studio-studio)]
+          :description         ""}))
+
 (deftest sync-database-test
-  (binding [sync-util/*log-exceptions-and-continue?* false]
-    (t2.with-temp/with-temp [Database db {:engine ::sync-test}]
-      (let [results        (sync/sync-database! db)
-            [movie studio] (mapv table-details (t2/select Table :db_id (u/the-id db) {:order-by [:name]}))]
-        (testing "`movie` Table"
-          (is (= (merge
-                  (table-defaults)
-                  {:schema              "default"
-                   :name                "movie"
-                   :display_name        "Movie"
-                   :initial_sync_status "complete"
-                   :fields              [(field:movie-id) (field:movie-studio) (field:movie-title)]})
-                 movie)))
-        (testing "`studio` Table"
-          (is (= (merge
-                  (table-defaults)
-                  {:name                "studio"
-                   :display_name        "Studio"
-                   :initial_sync_status "complete"
-                   :fields              [(field:studio-name) (field:studio-studio)]
-                   :description         ""})
-                 studio)))
-        (testing "Returns results from sync-database step"
-          (is (= ["metadata" "analyze" "field-values"]
-                 (map :name results))))))))
+  (doseq [supports-schemas? [true false]]
+    (testing (str "[[sync/sync-database!]] works if `driver/supports-schemas?` returns " supports-schemas?)
+      (binding [*supports-schemas?*                      supports-schemas?
+                sync-util/*log-exceptions-and-continue?* false]
+        (mt/with-temp [Database db {:engine ::sync-test}]
+          (let [results (sync/sync-database! db)]
+            (testing "Returns results from sync-database step"
+              (is (= ["metadata" "analyze" "field-values"]
+                     (map :name results)))))
+          (let [[movie studio] (mapv table-details (t2/select Table :db_id (u/the-id db) {:order-by [:name]}))]
+            (testing "Tables and Fields are synced"
+              (is (= (expected-movie-table) movie))
+              (is (= (expected-studio-table) studio)))))))))
 
 (deftest sync-table-test
-  (binding [sync-util/*log-exceptions-and-continue?* false]
-    (mt/with-temp [Database db {:engine ::sync-test}
-                   Table    table {:name "movie", :schema "default", :db_id (u/the-id db)}]
-      (sync/sync-table! table)
-      (is (= (merge
-              (table-defaults)
-              {:schema              "default"
-               :name                "movie"
-               :display_name        "Movie"
-               :initial_sync_status "complete"
-               :fields              [(field:movie-id)
-                                     (assoc (field:movie-studio)
-                                            :fk_target_field_id false
-                                            :semantic_type nil
-                                            :has_field_values :auto-list)
-                                     (field:movie-title)]})
-             (table-details (t2/select-one Table :id (:id table))))))))
+  (doseq [supports-schemas? [true false]]
+    (testing (str "[[sync/sync-table!]] works if `driver/supports-schemas? returns " supports-schemas?)
+      (binding [*supports-schemas?*                      supports-schemas?
+                sync-util/*log-exceptions-and-continue?* false]
+        (mt/with-temp [Database db     {:engine ::sync-test}
+                       Table    movie  {:name        "movie"
+                                        :schema      (when *supports-schemas?* "default")
+                                        :db_id       (u/the-id db)
+                                        :description nil}
+                       Table    studio {:name        "studio"
+                                        :schema      (when *supports-schemas?* "public")
+                                        :db_id       (u/the-id db)
+                                        :description ""}]
+          (sync/sync-table! studio)
+          (sync/sync-table! movie)
+          (let [[movie studio] (mapv table-details (t2/select Table :db_id (u/the-id db) {:order-by [:name]}))]
+            (testing "Tables and Fields are synced"
+                (is (= (expected-movie-table) movie))
+                (is (= (expected-studio-table) studio)))))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!

@@ -35,7 +35,7 @@
     (server/start-web-server! test-handler)
     (log/infof "Started test server on port %d" (config/config-int :mb-jetty-port))
     (catch Throwable e
-      (log/fatalf e "Web server failed to start")
+      (log/fatal e "Web server failed to start")
       (when config/is-test?
         (System/exit -2))))
   (init-status/set-complete!)

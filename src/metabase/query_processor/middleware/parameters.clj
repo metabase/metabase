@@ -4,9 +4,10 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.middleware.parameters.mbql :as qp.mbql]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.util :as u]
@@ -56,25 +57,35 @@
    (expand-all outer-query outer-query))
 
   ([outer-query m]
-   (mbql.u/replace m
+   (lib.util.match/replace m
      (_ :guard (every-pred map? (some-fn :parameters :template-tags)))
      (let [expanded (expand-one outer-query &match)]
        ;; now recursively expand any remaining maps that contain `:parameters`
        (expand-all outer-query expanded)))))
 
-(defn- move-top-level-params-to-inner-query
+(mu/defn ^:private move-top-level-params-to-inner-query
   "Move any top-level parameters to the same level (i.e., 'inner query') as the query they affect."
-  [{:keys [parameters], query-type :type, :as outer-query}]
-  {:pre [(#{:query :native} query-type)]}
+  [{:keys [info parameters], query-type :type, :as outer-query} :- [:map [:type [:enum :query :native]]]]
   (cond-> (set/rename-keys outer-query {:parameters :user-parameters})
-    (seq parameters)
-    (assoc-in [query-type :parameters] parameters)))
+    ;; TODO: Native models should be within scope of dashboard filters, by applying the filter on an outer stage.
+    ;; That doesn't work, so the logic below requires MBQL queries only to fix the regression.
+    ;; Native models don't actual get filtered even when linked to dashboard filters, but that's not a regression.
+    ;; This can be fixed properly once this middleware is powered by MLv2. See #40011.
+    (and (seq parameters)
+         (:metadata/model-metadata info)
+         (= query-type :query))          (update query-type (fn [inner-query] {:source-query inner-query}))
+    (seq parameters)                     (assoc-in [query-type :parameters] parameters)))
 
 (defn- expand-parameters
   "Expand parameters in the `outer-query`, and if the query is using a native source query, expand params in that as
   well."
   [outer-query]
-  (-> outer-query move-top-level-params-to-inner-query expand-all))
+  (let [pivot-original-query (get-in outer-query [:info :pivot/original-query])]
+    (cond-> outer-query
+      pivot-original-query (m/dissoc-in [:info :pivot/original-query])
+      true                 move-top-level-params-to-inner-query
+      true                 expand-all
+      pivot-original-query (assoc-in [:info :pivot/original-query] pivot-original-query))))
 
 (mu/defn ^:private substitute-parameters* :- :map
   "If any parameters were supplied then substitute them into the query."
@@ -86,12 +97,11 @@
 
 (defn- assoc-db-in-snippet-tag
   [db template-tags]
-  (->> template-tags
-       (m/map-vals
-        (fn [v]
-          (cond-> v
-            (= (:type v) :snippet) (assoc :database db))))
-       (into {})))
+  (update-vals
+   template-tags
+   (fn [v]
+     (cond-> v
+       (= (:type v) :snippet) (assoc :database db)))))
 
 (defn- hoist-database-for-snippet-tags
   "Assocs the `:database` ID from `query` in all snippet template tags."
@@ -104,7 +114,8 @@
   `:template-tags` and removes those keys, splicing appropriate conditions into the queries they affect.
 
   A SQL query with a param like `{{param}}` will have that part of the query replaced with an appropriate snippet as
-  well as any prepared statement args needed. MBQL queries will have additional filter clauses added."
+  well as any prepared statement args needed. MBQL queries will have additional filter clauses added. (Or in a special
+  case, the temporal bucketing on a breakout altered by a `:temporal-unit` parameter.)"
   [query]
   (-> query
       hoist-database-for-snippet-tags

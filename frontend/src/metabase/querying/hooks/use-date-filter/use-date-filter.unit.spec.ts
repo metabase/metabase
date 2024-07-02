@@ -21,8 +21,8 @@ describe("useDateFilter", () => {
   const testCases = getTestCases(defaultQuery, stageIndex, defaultColumn);
 
   it.each(testCases)(
-    "should allow to create a filter: $displayName",
-    ({ value, displayName }) => {
+    "should allow to create a filter: $expectedDisplayName",
+    ({ value, expectedDisplayName }) => {
       const { result } = renderHook(() =>
         useDateFilter({
           query: defaultQuery,
@@ -37,13 +37,13 @@ describe("useDateFilter", () => {
       expect(
         Lib.displayInfo(defaultQuery, stageIndex, newFilter),
       ).toMatchObject({
-        displayName,
+        displayName: expectedDisplayName,
       });
     },
   );
 
   it.each(testCases)(
-    "should allow to update a filter: $displayName",
+    "should allow to update a filter: $expectedDisplayName",
     ({ value, expression }) => {
       const query = Lib.filter(defaultQuery, stageIndex, expression);
       const [filter] = Lib.filters(query, stageIndex);
@@ -108,7 +108,7 @@ describe("useDateFilter", () => {
 interface TestCase {
   value: DatePickerValue;
   expression: Lib.ExpressionClause;
-  displayName: string;
+  expectedDisplayName: string;
 }
 
 function getTestCases(
@@ -125,52 +125,60 @@ function getTestCases(
         type: "specific",
         operator: "=",
         values: [date1],
+        hasTime: false,
       },
       expression: Lib.specificDateFilterClause(query, stageIndex, {
         operator: "=",
         column,
         values: [date1],
+        hasTime: false,
       }),
-      displayName: "Created At is on Jan 1, 2020",
+      expectedDisplayName: "Created At is on Jan 1, 2020",
     },
     {
       value: {
         type: "specific",
         operator: "<",
         values: [date1],
+        hasTime: false,
       },
       expression: Lib.specificDateFilterClause(query, stageIndex, {
         operator: "<",
         column,
         values: [date1],
+        hasTime: false,
       }),
-      displayName: "Created At is before Jan 1, 2020",
+      expectedDisplayName: "Created At is before Jan 1, 2020",
     },
     {
       value: {
         type: "specific",
         operator: ">",
         values: [date1],
+        hasTime: false,
       },
       expression: Lib.specificDateFilterClause(query, stageIndex, {
         operator: ">",
         column,
         values: [date1],
+        hasTime: false,
       }),
-      displayName: "Created At is after Jan 1, 2020",
+      expectedDisplayName: "Created At is after Jan 1, 2020",
     },
     {
       value: {
         type: "specific",
         operator: "between",
         values: [date1, date2],
+        hasTime: false,
       },
       expression: Lib.specificDateFilterClause(query, stageIndex, {
         operator: "between",
         column,
         values: [date1, date2],
+        hasTime: false,
       }),
-      displayName: "Created At is Jan 1 – Mar 3, 2020",
+      expectedDisplayName: "Created At is Jan 1 – Mar 3, 2020",
     },
     {
       value: {
@@ -189,7 +197,7 @@ function getTestCases(
         offsetBucket: null,
         options: {},
       }),
-      displayName: "Created At is in the previous 10 months",
+      expectedDisplayName: "Created At is in the previous 10 months",
     },
     {
       value: {
@@ -208,7 +216,7 @@ function getTestCases(
         offsetBucket: null,
         options: {},
       }),
-      displayName: "Created At is in the next 10 months",
+      expectedDisplayName: "Created At is in the next 10 months",
     },
     {
       value: {
@@ -227,7 +235,7 @@ function getTestCases(
         offsetBucket: "year",
         options: {},
       }),
-      displayName:
+      expectedDisplayName:
         "Created At is in the previous 10 months, starting 2 years ago",
     },
     {
@@ -247,7 +255,7 @@ function getTestCases(
         offsetBucket: "year",
         options: {},
       }),
-      displayName:
+      expectedDisplayName:
         "Created At is in the next 10 months, starting 2 years from now",
     },
     {
@@ -263,7 +271,7 @@ function getTestCases(
         bucket: "hour-of-day",
         values: [10],
       }),
-      displayName: "Created At excludes the hour of 10 AM",
+      expectedDisplayName: "Created At excludes the hour of 10 AM",
     },
     {
       value: {
@@ -278,7 +286,7 @@ function getTestCases(
         bucket: "day-of-week",
         values: [2],
       }),
-      displayName: "Created At excludes Tuesdays",
+      expectedDisplayName: "Created At excludes Tuesdays",
     },
     {
       value: {
@@ -293,7 +301,7 @@ function getTestCases(
         bucket: "month-of-year",
         values: [2],
       }),
-      displayName: "Created At excludes each Mar",
+      expectedDisplayName: "Created At excludes each Mar",
     },
     {
       value: {
@@ -308,7 +316,7 @@ function getTestCases(
         bucket: "quarter-of-year",
         values: [2],
       }),
-      displayName: "Created At excludes Q2 each year",
+      expectedDisplayName: "Created At excludes Q2 each year",
     },
     {
       value: {
@@ -322,7 +330,7 @@ function getTestCases(
         bucket: null,
         values: [],
       }),
-      displayName: "Created At is empty",
+      expectedDisplayName: "Created At is empty",
     },
     {
       value: {
@@ -336,7 +344,7 @@ function getTestCases(
         bucket: null,
         values: [],
       }),
-      displayName: "Created At is not empty",
+      expectedDisplayName: "Created At is not empty",
     },
   ];
 }

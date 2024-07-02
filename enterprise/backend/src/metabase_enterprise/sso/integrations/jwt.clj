@@ -8,6 +8,7 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
    [metabase.api.session :as api.session]
    [metabase.integrations.common :as integrations.common]
    [metabase.public-settings.premium-features :as premium-features]
@@ -39,13 +40,17 @@
 (def ^:private ^{:arglists '([])} jwt-attribute-lastname  (comp keyword sso-settings/jwt-attribute-lastname))
 (def ^:private ^{:arglists '([])} jwt-attribute-groups    (comp keyword sso-settings/jwt-attribute-groups))
 
+(def ^:private registered-claims
+  "Registered claims in the JWT standard which we should not interpret as login attributes"
+  [:iss :iat :sub :aud :exp :nbf :jti])
+
 (defn- jwt-data->login-attributes [jwt-data]
-  (dissoc jwt-data
-          (jwt-attribute-email)
-          (jwt-attribute-firstname)
-          (jwt-attribute-lastname)
-          :iat
-          :max_age))
+  (apply dissoc
+         jwt-data
+         (jwt-attribute-email)
+         (jwt-attribute-firstname)
+         (jwt-attribute-lastname)
+         registered-claims))
 
 ;; JWTs use seconds since Epoch, not milliseconds since Epoch for the `iat` and `max_age` time. 3 minutes is the time
 ;; used by Zendesk for their JWT SSO, so it seemed like a good place for us to start
@@ -75,7 +80,7 @@
                                                      (group-names->ids group-names)
                                                      (all-mapped-group-ids))))))
 
-(defn- login-jwt-user
+(defn- session-data
   [jwt {{redirect :return_to} :params, :as request}]
   (let [redirect-url (or redirect (URLEncoder/encode "/"))]
     (sso-utils/check-sso-redirect redirect-url)
@@ -93,22 +98,38 @@
           user         (fetch-or-create-user! first-name last-name email login-attrs)
           session      (api.session/create-session! :sso user (req.util/device-info request))]
       (sync-groups! user jwt-data)
-      (mw.session/set-session-cookies request (response/redirect redirect-url) session (t/zoned-date-time (t/zone-id "GMT"))))))
+      {:session session, :redirect-url redirect-url, :jwt-data jwt-data})))
 
 (defn- check-jwt-enabled []
   (api/check (sso-settings/jwt-enabled)
     [400 (tru "JWT SSO has not been enabled and/or configured")]))
 
+(defn ^:private generate-response-token
+  [session jwt-data]
+  (validation/check-embedding-enabled)
+  (response/response {:id  (:id session)
+                      :exp (:exp jwt-data)
+                      :iat (:iat jwt-data)}))
+
+(defn ^:private redirect-to-idp
+  [idp redirect]
+  (let [return-to-param (if (str/includes? idp "?") "&return_to=" "?return_to=")]
+    (response/redirect (str idp (when redirect
+                                  (str return-to-param redirect))))))
+
+(defn ^:private handle-jwt-authentication
+  [{:keys [session redirect-url jwt-data]} token request]
+  (if token
+    (generate-response-token session jwt-data)
+    (mw.session/set-session-cookies request (response/redirect redirect-url) session (t/zoned-date-time (t/zone-id "GMT")))))
+
 (defmethod sso.i/sso-get :jwt
-  [{{:keys [jwt redirect]} :params, :as request}]
+  [{{:keys [jwt redirect token] :or {token nil}} :params, :as request}]
   (premium-features/assert-has-feature :sso-jwt (tru "JWT-based authentication"))
   (check-jwt-enabled)
   (if jwt
-    (login-jwt-user jwt request)
-    (let [idp (sso-settings/jwt-identity-provider-uri)
-          return-to-param (if (str/includes? idp "?") "&return_to=" "?return_to=")]
-      (response/redirect (str idp (when redirect
-                                   (str return-to-param redirect)))))))
+    (handle-jwt-authentication (session-data jwt request) token request)
+    (redirect-to-idp (sso-settings/jwt-identity-provider-uri) redirect)))
 
 (defmethod sso.i/sso-post :jwt
   [_]

@@ -1,25 +1,25 @@
 import { createSelector } from "@reduxjs/toolkit";
+import { normalize } from "normalizr";
 
-import Question from "metabase-lib/Question";
-import Database from "metabase-lib/metadata/Database";
-import Field from "metabase-lib/metadata/Field";
-import ForeignKey from "metabase-lib/metadata/ForeignKey";
-import Metadata from "metabase-lib/metadata/Metadata";
-import Metric from "metabase-lib/metadata/Metric";
-import Schema from "metabase-lib/metadata/Schema";
-import Segment from "metabase-lib/metadata/Segment";
-import Table from "metabase-lib/metadata/Table";
-import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
+import { FieldSchema } from "metabase/schema";
+import Question from "metabase-lib/v1/Question";
+import Database from "metabase-lib/v1/metadata/Database";
+import Field from "metabase-lib/v1/metadata/Field";
+import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
+import Metadata from "metabase-lib/v1/metadata/Metadata";
+import Schema from "metabase-lib/v1/metadata/Schema";
+import Segment from "metabase-lib/v1/metadata/Segment";
+import Table from "metabase-lib/v1/metadata/Table";
+import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   getFieldValues,
   getRemappings,
-} from "metabase-lib/queries/utils/field";
+} from "metabase-lib/v1/queries/utils/field";
 import type {
   Card,
   NormalizedDatabase,
   NormalizedField,
   NormalizedForeignKey,
-  NormalizedMetric,
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
@@ -85,14 +85,12 @@ const getNormalizedFields = createSelector(
     ),
 );
 
-const getNormalizedMetrics = (state: State) => state.entities.metrics;
 const getNormalizedSegments = (state: State) => state.entities.segments;
 const getNormalizedQuestions = (state: State) => state.entities.questions;
 
 export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
 export const getShallowFields = getNormalizedFields;
-export const getShallowMetrics = getNormalizedMetrics;
 export const getShallowSegments = getNormalizedSegments;
 
 export const getMetadata: (
@@ -105,20 +103,10 @@ export const getMetadata: (
     getNormalizedTables,
     getNormalizedFields,
     getNormalizedSegments,
-    getNormalizedMetrics,
     getNormalizedQuestions,
     getSettings,
   ],
-  (
-    databases,
-    schemas,
-    tables,
-    fields,
-    segments,
-    metrics,
-    questions,
-    settings,
-  ) => {
+  (databases, schemas, tables, fields, segments, questions, settings) => {
     const metadata = new Metadata({ settings });
 
     metadata.databases = Object.fromEntries(
@@ -137,9 +125,6 @@ export const getMetadata: (
     );
     metadata.segments = Object.fromEntries(
       Object.values(segments).map(s => [s.id, createSegment(s, metadata)]),
-    );
-    metadata.metrics = Object.fromEntries(
-      Object.values(metrics).map(m => [m.id, createMetric(m, metadata)]),
     );
     metadata.questions = Object.fromEntries(
       Object.values(questions).map(c => [c.id, createQuestion(c, metadata)]),
@@ -168,15 +153,11 @@ export const getMetadata: (
     Object.values(metadata.segments).forEach(segment => {
       segment.table = hydrateSegmentTable(segment, metadata);
     });
-    Object.values(metadata.metrics).forEach(metric => {
-      metric.table = hydrateMetricTable(metric, metadata);
-    });
     Object.values(metadata.fields).forEach(field => {
-      field.table = hydrateFieldTable(field, metadata);
-      field.target = hydrateFieldTarget(field, metadata);
-      field.name_field = hydrateNameField(field, metadata);
-      field.values = getFieldValues(field);
-      field.remapping = new Map(getRemappings(field));
+      hydrateField(field, metadata);
+    });
+    Object.values(metadata.tables).forEach(table => {
+      table.fields?.forEach(field => hydrateField(field, metadata));
     });
 
     return metadata;
@@ -240,12 +221,6 @@ function createForeignKey(
   metadata: Metadata,
 ): ForeignKey {
   const instance = new ForeignKey(foreignKey);
-  instance.metadata = metadata;
-  return instance;
-}
-
-function createMetric(metric: NormalizedMetric, metadata: Metadata): Metric {
-  const instance = new Metric(metric);
   instance.metadata = metadata;
   return instance;
 }
@@ -331,9 +306,27 @@ function hydrateTableSchema(
   return metadata.schema(schemaId) ?? undefined;
 }
 
-function hydrateTableFields(table: Table, metadata: Metadata): Field[] {
-  const fieldIds = table.getPlainObject().fields ?? [];
-  return fieldIds.map(id => metadata.field(id)).filter(isNotNull);
+function hydrateTableFields(entityTable: Table, metadata: Metadata): Field[] {
+  const apiTable = entityTable.getPlainObject();
+
+  if (!apiTable.original_fields) {
+    const fieldIds = apiTable.fields ?? [];
+    return fieldIds.map(id => metadata.field(id)).filter(isNotNull);
+  }
+
+  return apiTable.original_fields.map(apiField => {
+    const { entities, result } = normalize(apiField, FieldSchema);
+    const normalizedField = entities.fields?.[result];
+    return createField(normalizedField, metadata);
+  });
+}
+
+function hydrateField(field: Field, metadata: Metadata) {
+  field.table = hydrateFieldTable(field, metadata);
+  field.target = hydrateFieldTarget(field, metadata);
+  field.name_field = hydrateNameField(field, metadata);
+  field.values = getFieldValues(field);
+  field.remapping = new Map(getRemappings(field));
 }
 
 function hydrateTableForeignKeys(
@@ -353,9 +346,9 @@ function hydrateTableSegments(table: Table, metadata: Metadata): Segment[] {
   return segmentIds.map(id => metadata.segment(id)).filter(isNotNull);
 }
 
-function hydrateTableMetrics(table: Table, metadata: Metadata): Metric[] {
+function hydrateTableMetrics(table: Table, metadata: Metadata): Question[] {
   const metricIds = table.getPlainObject().metrics ?? [];
-  return metricIds.map(id => metadata.metric(id)).filter(isNotNull);
+  return metricIds.map(id => metadata.question(id)).filter(isNotNull);
 }
 
 function hydrateFieldTable(
@@ -386,11 +379,4 @@ function hydrateSegmentTable(
   metadata: Metadata,
 ): Table | undefined {
   return metadata.table(segment.table_id) ?? undefined;
-}
-
-function hydrateMetricTable(
-  metric: Metric,
-  metadata: Metadata,
-): Table | undefined {
-  return metadata.table(metric.table_id) ?? undefined;
 }

@@ -10,7 +10,7 @@
 ;; directly?
 ;;
 ;; TODO -- we need to feature-flag this based on the `:sso-` feature flags
-(compojure/defroutes ^{:doc "Ring routes for auth (SAML) API endpoints."} routes
+(compojure/defroutes ^{:doc "Ring routes for auth (SAML) API endpoints.", :arglists '([request] [request respond raise])} routes
   (compojure/context
     "/auth"
     []

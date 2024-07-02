@@ -10,7 +10,7 @@ import type { TimelineCardProps } from "./TimelineCard";
 import TimelineCard from "./TimelineCard";
 
 describe("TimelineCard", () => {
-  it("should expand and collapse the card", () => {
+  it("should expand and collapse the card", async () => {
     const props = getProps({
       timeline: createMockTimeline({
         name: "Releases",
@@ -21,14 +21,14 @@ describe("TimelineCard", () => {
     render(<TimelineCard {...props} />);
     expect(screen.queryByText("RC")).not.toBeInTheDocument();
 
-    userEvent.click(screen.getByText("Releases"));
+    await userEvent.click(screen.getByText("Releases"));
     expect(screen.getByText("RC")).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("Releases"));
+    await userEvent.click(screen.getByText("Releases"));
     expect(screen.queryByText("RC")).not.toBeInTheDocument();
   });
 
-  it("should toggle visibility of the card", () => {
+  it("should toggle visibility of the card", async () => {
     const props = getProps({
       timeline: createMockTimeline({
         name: "Releases",
@@ -37,7 +37,7 @@ describe("TimelineCard", () => {
     });
 
     render(<TimelineCard {...props} />);
-    userEvent.click(screen.getByRole("checkbox"));
+    await userEvent.click(screen.getByRole("checkbox"));
 
     expect(props.onShowTimelineEvents).toHaveBeenCalled();
   });

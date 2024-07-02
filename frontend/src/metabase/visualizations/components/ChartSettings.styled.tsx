@@ -17,7 +17,7 @@ export const SectionContainer = styled.div<SectionContainerProps>`
     `}
   width: 100%;
   ${Radio.RadioGroupVariants.join(", ")} {
-    border-bottom: 1px solid ${color("border")};
+    border-bottom: 1px solid var(--mb-color-border);
   }
   ${Radio.RadioContainerVariants.join(", ")} {
     padding-left: 0.5rem;
@@ -35,7 +35,7 @@ export const SectionContainer = styled.div<SectionContainerProps>`
 `;
 
 export const SectionWarnings = styled(Warnings)`
-  color: ${color("accent4")};
+  color: ${() => color("accent4")};
   position: absolute;
   top: 2rem;
   right: 2rem;
@@ -64,7 +64,7 @@ export const ChartSettingsPreview = styled.div`
   flex: 2 0 0;
   display: flex;
   flex-direction: column;
-  border-left: 1px solid ${color("border")};
+  border-left: 1px solid var(--mb-color-border);
   padding-top: 1.5rem;
 `;
 

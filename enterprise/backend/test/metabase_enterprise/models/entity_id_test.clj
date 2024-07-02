@@ -36,10 +36,10 @@
     :model/HTTPAction
     :model/ImplicitAction
     :model/QueryAction
-    :model/Activity
     :model/ApplicationPermissionsRevision
     :model/AuditLog
     :model/BookmarkOrdering
+    :model/CacheConfig
     :model/CardBookmark
     :model/CollectionBookmark
     :model/DashboardBookmark
@@ -47,8 +47,10 @@
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
+    :model/FieldUsage
     :model/FieldValues
-    :model/MetricImportantField
+    :model/LegacyMetric
+    :model/LegacyMetricImportantField
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
@@ -64,6 +66,7 @@
     :model/Query
     :model/QueryCache
     :model/QueryExecution
+    :model/QueryField
     :model/RecentViews
     :model/Revision
     :model/Secret
@@ -72,9 +75,11 @@
     :model/TaskHistory
     :model/TimelineEvent
     :model/User
+    :model/UserParameterValue
     :model/ViewLog
     :model/GroupTableAccessPolicy
-    :model/ConnectionImpersonation})
+    :model/ConnectionImpersonation
+    :model/CloudMigration})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (doseq [model (->> (v2.entity-ids/toucan-models)

@@ -126,7 +126,7 @@
            (= export-format :api)
            (dissoc :cached)))))
 
-(deftest streaming-response-test
+(deftest ^:parallel streaming-response-test
   (testing "Test that the actual results going thru the same steps as an API response are correct."
     (compare-results :api (mt/mbql-query venues {:limit 5}))))
 

@@ -6,7 +6,7 @@ import {
   sidebar,
   getDraggableElements,
   popover,
-  moveDnDKitColumnVertical,
+  moveDnDKitElement,
 } from "e2e/support/helpers";
 
 const { PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -45,7 +45,7 @@ describe("scenarios > visualizations > funnel chart", () => {
           .first()
           .should("have.text", name);
 
-        moveDnDKitColumnVertical(getDraggableElements().first(), 100);
+        moveDnDKitElement(getDraggableElements().first(), { vertical: 100 });
 
         getDraggableElements().eq(2).should("have.text", name);
 
@@ -71,7 +71,7 @@ describe("scenarios > visualizations > funnel chart", () => {
   });
 
   it("should handle row items being filterd out and returned gracefully", () => {
-    moveDnDKitColumnVertical(getDraggableElements().first(), 100);
+    moveDnDKitElement(getDraggableElements().first(), { vertical: 100 });
 
     getDraggableElements()
       .eq(1)

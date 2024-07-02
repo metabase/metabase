@@ -2,68 +2,35 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { DATA_BUCKET } from "metabase/containers/DataPicker/constants";
-import Tables from "metabase/entities/tables";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Table from "metabase-lib/metadata/Table";
-import type { TableId } from "metabase-types/api";
 
 import { NotebookCellItem } from "../../../NotebookCell";
+import { NotebookDataPicker } from "../../../NotebookDataPicker";
 
-import {
-  ColumnPickerButton,
-  TablePickerButton,
-} from "./JoinTablePicker.styled";
+import { ColumnPickerButton } from "./JoinTablePicker.styled";
 
 interface JoinTablePickerProps {
   query: Lib.Query;
+  stageIndex: number;
   table: Lib.Joinable | undefined;
-  tableName: string | undefined;
   color: string;
   isReadOnly: boolean;
-  isModelDataSource: boolean;
   columnPicker: ReactNode;
-  onChange?: (table: Lib.Joinable) => void;
+  onChange: (table: Lib.Joinable) => void;
 }
 
 export function JoinTablePicker({
   query,
+  stageIndex,
   table,
-  tableName,
   color,
   isReadOnly,
-  isModelDataSource,
   columnPicker,
   onChange,
 }: JoinTablePickerProps) {
-  const metadata = useSelector(getMetadata);
-  const dispatch = useDispatch();
-
-  const databaseId = useMemo(() => {
-    return Lib.databaseID(query);
-  }, [query]);
-
-  const databases = useMemo(() => {
-    const database = metadata.database(databaseId);
-    return [database, metadata.savedQuestionsDatabase()].filter(Boolean);
-  }, [databaseId, metadata]);
-
-  const pickerInfo = useMemo(() => {
-    return table ? Lib.pickerInfo(query, table) : null;
-  }, [query, table]);
-
-  const tableId = pickerInfo?.tableId ?? pickerInfo?.cardId;
-  const tableFilter = (table: Table) => !tableId || table.db_id === databaseId;
-  const isDisabled = table != null || isReadOnly;
-
-  const handleTableChange = async (tableId: TableId) => {
-    await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
-    onChange?.(Lib.tableOrCardMetadata(query, tableId));
-  };
+  const databaseId = useMemo(() => Lib.databaseID(query), [query]);
+  const isDisabled = isReadOnly;
 
   return (
     <NotebookCellItem
@@ -76,27 +43,19 @@ export function JoinTablePicker({
           <JoinTableColumnPicker columnPicker={columnPicker} />
         ) : null
       }
+      containerStyle={CONTAINER_STYLE}
       rightContainerStyle={RIGHT_CONTAINER_STYLE}
       aria-label={t`Right table`}
     >
-      <DataSourceSelector
-        hasTableSearch
-        canChangeDatabase={false}
-        isInitiallyOpen={!table}
-        databases={databases}
-        selectedDatabaseId={databaseId}
-        selectedTableId={tableId}
-        selectedDataBucketId={getSelectedDataBucketId(
-          pickerInfo,
-          isModelDataSource,
-        )}
-        tableFilter={tableFilter}
-        setSourceTableFn={handleTableChange}
-        triggerElement={
-          <TablePickerButton disabled={isDisabled}>
-            {tableName || t`Pick data…`}
-          </TablePickerButton>
-        }
+      <NotebookDataPicker
+        title={t`Pick data to join`}
+        query={query}
+        stageIndex={stageIndex}
+        table={table}
+        databaseId={databaseId ?? undefined}
+        placeholder={t`Pick data…`}
+        isDisabled={isDisabled}
+        onChange={onChange}
       />
     </NotebookCellItem>
   );
@@ -127,21 +86,12 @@ function JoinTableColumnPicker({ columnPicker }: JoinTableColumnPickerProps) {
   );
 }
 
+const CONTAINER_STYLE = {
+  padding: 0,
+};
+
 const RIGHT_CONTAINER_STYLE = {
   width: 37,
   height: 37,
   padding: 0,
 };
-
-function getSelectedDataBucketId(
-  pickerInfo: Lib.PickerInfo | null,
-  isModelDataSource: boolean,
-) {
-  if (pickerInfo?.tableId != null) {
-    return undefined;
-  }
-  if (isModelDataSource) {
-    return DATA_BUCKET.DATASETS;
-  }
-  return undefined;
-}

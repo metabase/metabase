@@ -8,6 +8,8 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as common]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
@@ -125,7 +127,7 @@
 (mu/defn required-native-extras :- set?
   "Returns the extra keys that are required for this database's native queries, for example `:collection` name is
   needed for MongoDB queries."
-  [metadata-provider :- lib.metadata/MetadataProviderable]
+  [metadata-provider :- ::lib.schema.metadata/metadata-providerable]
   (let [db (lib.metadata/database metadata-provider)]
    (cond-> #{}
     (get-in db [:features :native-requires-specified-collection])
@@ -154,30 +156,30 @@
   "Create a new native query.
 
   Native in this sense means a pMBQL query with a first stage that is a native query."
-  ([metadata-providerable :- lib.metadata/MetadataProviderable
-    inner-query :- ::common/non-blank-string]
-   (native-query metadata-providerable inner-query nil nil))
+  ([metadata-providerable     :- ::lib.schema.metadata/metadata-providerable
+    sql-or-other-native-query :- ::common/non-blank-string]
+   (native-query metadata-providerable sql-or-other-native-query nil nil))
 
-  ([metadata-providerable :- lib.metadata/MetadataProviderable
-    inner-query :- ::common/non-blank-string
-    results-metadata :- [:maybe lib.metadata/StageMetadata]
-    native-extras :- [:maybe ::native-extras]]
-   (let [tags (extract-template-tags inner-query)]
+  ([metadata-providerable     :- ::lib.schema.metadata/metadata-providerable
+    sql-or-other-native-query :- ::common/non-blank-string
+    results-metadata          :- [:maybe ::lib.schema.metadata/stage]
+    native-extras             :- [:maybe ::native-extras]]
+   (let [tags (extract-template-tags sql-or-other-native-query)]
      (-> (lib.query/query-with-stages metadata-providerable
                                       [{:lib/type           :mbql.stage/native
                                         :lib/stage-metadata results-metadata
                                         :template-tags      tags
-                                        :native             inner-query}])
+                                        :native             sql-or-other-native-query}])
          (with-native-extras native-extras)))))
 
 (mu/defn with-different-database :- ::lib.schema/query
   "Changes the database for this query. The first stage must be a native type.
    Native extras must be provided if the new database requires it."
   ([query :- ::lib.schema/query
-    metadata-provider :- lib.metadata/MetadataProviderable]
+    metadata-provider :- ::lib.schema.metadata/metadata-providerable]
    (with-different-database query metadata-provider nil))
   ([query :- ::lib.schema/query
-    metadata-provider :- lib.metadata/MetadataProviderable
+    metadata-provider :- ::lib.schema.metadata/metadata-providerable
     native-extras :- [:maybe ::native-extras]]
    (assert-native-query! (lib.util/query-stage query 0))
    ;; Changing the database should also clean up template tags, see #31926
@@ -219,10 +221,23 @@
   [query :- ::lib.schema/query]
   (:native (lib.util/query-stage query 0)))
 
-(mu/defn template-tags :- ::lib.schema.template-tag/template-tag-map
+(mu/defn template-tags :- [:maybe ::lib.schema.template-tag/template-tag-map]
   "Returns the native query's template tags"
   [query :- ::lib.schema/query]
   (:template-tags (lib.util/query-stage query 0)))
+
+(mu/defn template-tag-card-ids :- [:maybe [:set {:min 1} ::lib.schema.id/card]]
+  "Returns the card IDs from the template tags of the native query of `query`."
+  [query :- ::lib.schema/query]
+  (not-empty (into #{} (keep (fn [[_k m]] (:card-id m))) (template-tags query))))
+
+(mu/defn template-tags-referenced-cards :- [:maybe [:sequential ::lib.schema.metadata/card]]
+  "Returns Card instances referenced by the given native `query`."
+  [query :- ::lib.schema/query]
+  (mapv
+   (fn [card-id]
+     (lib.metadata/card query card-id))
+   (template-tag-card-ids query)))
 
 (mu/defn has-write-permission :- :boolean
   "Returns whether the database has native write permissions.
@@ -233,7 +248,7 @@
   (= :write (:native-permissions (lib.metadata/database query))))
 
 (defmethod lib.query/can-run-method :mbql.stage/native
-  [query]
+  [query _card-type]
   (and
     (set/subset? (required-native-extras query)
                  (set (keys (native-extras query))))

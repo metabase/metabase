@@ -2,16 +2,14 @@ import { assoc, dissoc, assocIn } from "icepick";
 import { parse } from "url";
 
 import { createMockMetadata } from "__support__/metadata";
-import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 import { deserializeCardFromUrl } from "metabase/lib/card";
-import Question from "metabase-lib/Question";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import * as ML_Urls from "metabase-lib/urls";
+import Question from "metabase-lib/v1/Question";
+import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
+import * as ML_Urls from "metabase-lib/v1/urls";
 import {
   createMockColumn,
   createMockDatasetData,
-  createMockMetric,
 } from "metabase-types/api/mocks";
 import {
   createOrdersTable,
@@ -37,18 +35,6 @@ import {
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
-  metrics: [
-    createMockMetric({
-      id: 2,
-      table_id: ORDERS_ID,
-      name: "Total Order Value",
-      definition: {
-        filter: [">", ORDERS.TOTAL, 20],
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-        "source-table": ORDERS_ID,
-      },
-    }),
-  ],
 });
 
 const metadata_without_order_pk = createMockMetadata({
@@ -610,210 +596,6 @@ describe("Question", () => {
     });
   });
 
-  describe("Question.prototype._syncTableColumnSettings", () => {
-    let question;
-    const cols = [
-      {
-        display_name: "num",
-        source: "native",
-        field_ref: [
-          "field",
-          "num",
-          {
-            "base-type": "type/Float",
-          },
-        ],
-        name: "num",
-        base_type: "type/Float",
-      },
-      {
-        display_name: "text",
-        source: "native",
-        field_ref: [
-          "field",
-          "text",
-          {
-            "base-type": "type/Text",
-          },
-        ],
-        name: "text",
-        base_type: "type/Text",
-      },
-    ];
-
-    const vizSettingCols = [
-      {
-        name: "num",
-        fieldRef: ["field", "num", { "base-type": "type/Float" }],
-        enabled: true,
-      },
-      {
-        name: "text",
-        fieldRef: ["field", "text", { "base-type": "type/Text" }],
-        enabled: true,
-      },
-    ];
-
-    beforeEach(() => {
-      question = native_orders_count_question.clone();
-      question.setting = jest.fn();
-      question.updateSettings = jest.fn();
-    });
-
-    describe("when columns have not been defined", () => {
-      it("should do nothing when given no cols", () => {
-        question._syncTableColumnSettings({});
-        question._syncTableColumnSettings({ data: { cols: [] } });
-        question._syncTableColumnSettings({ data: { cols } });
-
-        expect(question.updateSettings).not.toHaveBeenCalled();
-      });
-
-      it("should do nothing when given cols", () => {
-        question._syncTableColumnSettings({ data: { cols } });
-
-        expect(question.updateSettings).not.toHaveBeenCalled();
-      });
-    });
-
-    describe("after vizSetting columns have been defined", () => {
-      beforeEach(() => {
-        question.setting.mockImplementation(property => {
-          if (property === "table.columns") {
-            return vizSettingCols;
-          }
-        });
-      });
-
-      // Adding a column with same name is covered as well, as name is generated at FE and it will
-      // be unique (e.g. foo -> foo_2)
-      it("should handle the addition and removal of columns", () => {
-        question._syncTableColumnSettings({
-          data: {
-            cols: [
-              ...cols.slice(1),
-              {
-                display_name: "foo",
-                source: "native",
-                field_ref: [
-                  "field",
-                  "foo",
-                  {
-                    "base-type": "type/Float",
-                  },
-                ],
-                name: "foo",
-                base_type: "type/Float",
-              },
-            ],
-          },
-        });
-
-        expect(question.updateSettings).toHaveBeenCalledWith({
-          "table.columns": [
-            ...vizSettingCols.slice(1),
-            {
-              name: "foo",
-              key: '["name","foo"]',
-              fieldRef: [
-                "field",
-                "foo",
-                {
-                  "base-type": "type/Float",
-                },
-              ],
-              enabled: true,
-            },
-          ],
-        });
-      });
-
-      it("should handle the mutation of extraneous column props", () => {
-        const updatedColumn = {
-          display_name: "num with mutated display_name",
-          source: "native",
-          field_ref: [
-            "field",
-            "foo",
-            {
-              "base-type": "type/Float",
-            },
-          ],
-          name: "foo",
-          base_type: "type/Float",
-        };
-        question._syncTableColumnSettings({
-          data: {
-            cols: [updatedColumn, ...cols.slice(1)],
-          },
-        });
-
-        expect(question.updateSettings).toHaveBeenCalledWith({
-          "table.columns": [
-            ...vizSettingCols.slice(1),
-            {
-              enabled: true,
-              fieldRef: [
-                "field",
-                "foo",
-                {
-                  "base-type": "type/Float",
-                },
-              ],
-              key: '["name","foo"]',
-              name: "foo",
-            },
-          ],
-        });
-      });
-
-      it("should handle the mutation of a field_ref on an existing column", () => {
-        question._syncTableColumnSettings({
-          data: {
-            cols: [
-              {
-                display_name: "foo",
-                source: "native",
-                field_ref: [
-                  "field",
-                  "foo",
-                  {
-                    "base-type": "type/Integer",
-                  },
-                ],
-                name: "foo",
-                base_type: "type/Integer",
-              },
-              ...cols.slice(1),
-            ],
-          },
-        });
-
-        expect(question.updateSettings).toHaveBeenCalledWith({
-          "table.columns": [
-            ...vizSettingCols.slice(1),
-            {
-              name: "foo",
-              fieldRef: ["field", "foo", { "base-type": "type/Integer" }],
-              key: '["name","foo"]',
-              enabled: true,
-            },
-          ],
-        });
-      });
-
-      it("shouldn't update settings if order of columns has changed", () => {
-        question._syncTableColumnSettings({
-          data: {
-            cols: [cols[1], cols[0]],
-          },
-        });
-
-        expect(question.updateSettings).not.toHaveBeenCalled();
-      });
-    });
-  });
-
   describe("Question.prototype.getResultMetadata", () => {
     it("should return the `result_metadata` property off the underlying card", () => {
       const question = base_question.setResultsMetadata({ columns: [1, 2, 3] });
@@ -823,24 +605,6 @@ describe("Question", () => {
     it("should default to an array", () => {
       const question = base_question.setResultsMetadata(null);
       expect(question.getResultMetadata()).toEqual([]);
-    });
-  });
-
-  describe("Question.prototype.dependentMetadata", () => {
-    it("should return model FK field targets", () => {
-      const question = base_question.setResultsMetadata({
-        columns: [{ semantic_type: SEMANTIC_TYPE.FK, fk_target_field_id: 5 }],
-      });
-
-      expect(question.dependentMetadata()).toEqual([{ type: "field", id: 5 }]);
-    });
-
-    it("should skip FK field targets which are not FKs semantically", () => {
-      const question = base_question.setResultsMetadata({
-        columns: [{ fk_target_field_id: 5 }],
-      });
-
-      expect(question.dependentMetadata()).toEqual([]);
     });
   });
 

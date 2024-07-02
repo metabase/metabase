@@ -54,7 +54,7 @@ const setup = (options?: Partial<DatabaseTablesPaneProps>) => {
 };
 
 describe("DatabaseTablesPane", () => {
-  it("should show tables with initial_sync_status='incomplete' as non-interactive (disabled)", () => {
+  it("should show tables with initial_sync_status='incomplete' as non-interactive (disabled)", async () => {
     setup({
       searchResults: [incompleteTableSearchResult],
     });
@@ -64,10 +64,10 @@ describe("DatabaseTablesPane", () => {
     );
 
     expect(textElement).toBeInTheDocument();
-    expectToBeDisabled(textElement);
+    await expectToBeDisabled(textElement);
   });
 
-  it("should show tables with initial_sync_status='aborted' as non-interactive (disabled)", () => {
+  it("should show tables with initial_sync_status='aborted' as non-interactive (disabled)", async () => {
     setup({
       searchResults: [abortedTableSearchResult],
     });
@@ -77,10 +77,10 @@ describe("DatabaseTablesPane", () => {
     );
 
     expect(textElement).toBeInTheDocument();
-    expectToBeDisabled(textElement);
+    await expectToBeDisabled(textElement);
   });
 
-  it("should show tables with initial_sync_status='complete' as interactive (enabled)", () => {
+  it("should show tables with initial_sync_status='complete' as interactive (enabled)", async () => {
     setup({
       searchResults: [completeTableSearchResult],
     });
@@ -90,7 +90,7 @@ describe("DatabaseTablesPane", () => {
     );
 
     expect(textElement).toBeInTheDocument();
-    expectToBeEnabled(textElement);
+    await expectToBeEnabled(textElement);
   });
 });
 
@@ -103,17 +103,15 @@ describe("DatabaseTablesPane", () => {
  *
  * Clicking the element allows us to detect interactiveness (being enabled/disabled) with certainty.
  */
-function expectToBeDisabled(element: Element) {
-  expect(() => {
-    userEvent.click(element);
-  }).toThrow();
+async function expectToBeDisabled(element: Element) {
+  await expect(userEvent.click(element)).rejects.toThrow(
+    /pointer-events: none/,
+  );
 }
 
 /**
  * @see expectToBeDisabled
  */
-function expectToBeEnabled(element: Element) {
-  expect(() => {
-    userEvent.click(element);
-  }).not.toThrow();
+async function expectToBeEnabled(element: Element) {
+  await expect(userEvent.click(element)).resolves.not.toThrow();
 }

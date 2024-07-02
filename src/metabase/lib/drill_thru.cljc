@@ -1,8 +1,11 @@
 (ns metabase.lib.drill-thru
   (:require
    [metabase.lib.drill-thru.automatic-insights :as lib.drill-thru.automatic-insights]
+   [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
    [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
+   [metabase.lib.drill-thru.combine-columns :as lib.drill-thru.combine-columns]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
+   [metabase.lib.drill-thru.compare-aggregations :as lib.drill-thru.compare-aggregations]
    [metabase.lib.drill-thru.distribution :as lib.drill-thru.distribution]
    [metabase.lib.drill-thru.fk-details :as lib.drill-thru.fk-details]
    [metabase.lib.drill-thru.fk-filter :as lib.drill-thru.fk-filter]
@@ -56,6 +59,9 @@
    {:f #'lib.drill-thru.sort/sort-drill,                                         :return-drills-for-dimensions? true}
    {:f #'lib.drill-thru.summarize-column/summarize-column-drill,                 :return-drills-for-dimensions? true}
    {:f #'lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill, :return-drills-for-dimensions? true}
+   {:f #'lib.drill-thru.column-extract/column-extract-drill,                     :return-drills-for-dimensions? false}
+   {:f #'lib.drill-thru.combine-columns/combine-columns-drill,                   :return-drills-for-dimensions? false}
+   {:f #'lib.drill-thru.compare-aggregations/compare-aggregations-drill,         :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.underlying-records/underlying-records-drill,             :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill,             :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.zoom-in-geographic/zoom-in-geographic-drill,             :return-drills-for-dimensions? true}

@@ -7,7 +7,7 @@
    [metabase.actions.error :as actions.error]
    [metabase.config :as config]
    [metabase.core :as mbc]
-   [metabase.db.spec :as mdb.spec]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.h2.actions :as h2.actions]
@@ -124,18 +124,23 @@
 
 (deftest ^:parallel add-interval-honeysql-form-test
   (testing "Should convert fractional seconds to milliseconds"
-    (is (= [:dateadd
-            (h2x/literal "millisecond")
-            (h2x/with-database-type-info [:cast [:inline 100500.0] [:raw "long"]] "long")
-            (h2x/with-database-type-info [:cast :%now [:raw "datetime"]] "datetime")]
-           (sql.qp/add-interval-honeysql-form :h2 :%now 100.5 :second))))
+    (is (= (h2x/with-database-type-info
+            [:dateadd
+             (h2x/literal "millisecond")
+             [:inline 100500]
+             (h2x/with-database-type-info :%now "timestamp")]
+            "timestamp")
+           (sql.qp/add-interval-honeysql-form :h2 (sql.qp/current-datetime-honeysql-form :h2) 100.5 :second)))))
 
+(deftest ^:parallel add-interval-honeysql-form-test-2
   (testing "Non-fractional seconds should remain seconds, but be cast to longs"
-    (is (= [:dateadd
-            (h2x/literal "second")
-            (h2x/with-database-type-info [:cast [:inline 100.0] [:raw "long"]] "long")
-            (h2x/with-database-type-info [:cast :%now [:raw "datetime"]] "datetime")]
-           (sql.qp/add-interval-honeysql-form :h2 :%now 100.0 :second)))))
+    (is (= (h2x/with-database-type-info
+            [:dateadd
+             (h2x/literal "second")
+             [:inline 100]
+             (h2x/with-database-type-info :%now "timestamp")]
+            "timestamp")
+           (sql.qp/add-interval-honeysql-form :h2 (sql.qp/current-datetime-honeysql-form :h2) 100.0 :second)))))
 
 (deftest ^:parallel clob-test
   (mt/test-driver :h2
@@ -145,29 +150,29 @@
           (is (= [["Conchúr Tihomir"]]
                  (mt/rows results))))
         (testing "cols"
-          (is (= [{:display_name "NAME"
-                   :base_type    :type/Text
-                   :effective_type :type/Text
-                   :source       :native
-                   :field_ref    [:field "NAME" {:base-type :type/Text}]
-                   :name         "NAME"}]
-                 (mt/cols results))))))))
+          (is (=? [{:display_name "NAME"
+                    :base_type    :type/Text
+                    :effective_type :type/Text
+                    :source       :native
+                    :field_ref    [:field "NAME" {:base-type :type/Text}]
+                    :name         "NAME"}]
+                  (mt/cols results))))))))
 
 (deftest ^:parallel native-query-date-trunc-test
   (mt/test-driver :h2
     (testing "A native query that doesn't return a column class name metadata should work correctly (#12150)"
-      (is (= [{:display_name "D"
-               :base_type    :type/Date
-               :effective_type :type/Date
-               :source       :native
-               :field_ref    [:field "D" {:base-type :type/Date}]
-               :name         "D"}]
-             (mt/cols (qp/process-query (mt/native-query {:query "SELECT date_trunc('day', DATE) AS D FROM CHECKINS LIMIT 5;"}))))))))
+      (is (=? [{:display_name "D"
+                :base_type    :type/Date
+                :effective_type :type/Date
+                :source       :native
+                :field_ref    [:field "D" {:base-type :type/Date}]
+                :name         "D"}]
+              (mt/cols (qp/process-query (mt/native-query {:query "SELECT date_trunc('day', DATE) AS D FROM CHECKINS LIMIT 5;"}))))))))
 
 (deftest ^:parallel timestamp-with-timezone-test
   (testing "Make sure TIMESTAMP WITH TIME ZONEs come back as OffsetDateTimes."
     (is (= [{:t #t "2020-05-28T18:06-07:00"}]
-           (jdbc/query (mdb.spec/spec :h2 {:db "mem:test_db"})
+           (jdbc/query (mdb/spec :h2 {:db "mem:test_db"})
                        "SELECT TIMESTAMP WITH TIME ZONE '2020-05-28 18:06:00.000 America/Los_Angeles' AS t")))))
 
 (deftest ^:parallel native-query-parameters-test

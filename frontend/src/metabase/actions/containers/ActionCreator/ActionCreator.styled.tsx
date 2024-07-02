@@ -1,13 +1,12 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { space } from "metabase/styled-components/theme";
 
 export const ActionCreatorBodyContainer = styled.div`
   display: grid;
   grid-template-columns: 4fr 3fr;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
   .react-resizable-handle {
     display: none;
   }
@@ -18,7 +17,7 @@ export const ActionCreatorBodyContainer = styled.div`
 export const EditorContainer = styled.div`
   flex: 1 1 0;
   overflow-y: auto;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 
   .ace_editor {
     margin-left: ${space(2)};
@@ -31,7 +30,7 @@ export const ModalActions = styled.div`
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;
 
 export const ModalRoot = styled.div`
@@ -44,7 +43,7 @@ export const ModalLeft = styled.div`
   position: relative;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid ${color("border")};
+  border-right: 1px solid var(--mb-color-border);
 `;
 
 export const ModalRight = styled.div`
@@ -66,7 +65,7 @@ export const ModalRight = styled.div`
     top: 0;
     padding: 1.5rem 1.5rem 0.5rem 1.5rem;
     margin: 0;
-    background-color: ${color("white")};
+    background-color: var(--mb-color-bg-white);
     z-index: 5;
   }
 `;

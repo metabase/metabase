@@ -40,7 +40,7 @@
   []
   (if *compile-files*
     "Metabase"
-    (binding [setting/*disable-cache* true]
+    (binding [config/*disable-setting-cache* true]
       (application-name))))
 
 (defn- google-auth-enabled? []
@@ -94,7 +94,7 @@
 
 (defsetting site-name
   (deferred-tru "The name used for this instance of {0}."
-                (application-name-for-setting-descriptions))
+    (application-name-for-setting-descriptions))
   :default    "Metabase"
   :audit      :getter
   :visibility :settings-manager
@@ -145,7 +145,7 @@
   :base       setting/uuid-nonce-base)
 
 (defn- normalize-site-url [^String s]
-  (let [ ;; remove trailing slashes
+  (let [;; remove trailing slashes
         s (str/replace s #"/$" "")
         ;; add protocol if missing
         s (if (str/starts-with? s "http")
@@ -162,22 +162,25 @@
 ;; It will also prepend `http://` to the URL if there's no protocol when it comes in
 (defsetting site-url
   (deferred-tru
-   (str "This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, "
-        "so changing it could break functionality or get you locked out of this instance."))
+    (str "This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, "
+         "so changing it could break functionality or get you locked out of this instance."))
   :visibility :public
   :audit      :getter
   :getter     (fn []
                 (try
                   (some-> (setting/get-value-of-type :string :site-url) normalize-site-url)
                   (catch clojure.lang.ExceptionInfo e
-                    (log/error e (trs "site-url is invalid; returning nil for now. Will be reset on next request.")))))
+                    (log/error e "site-url is invalid; returning nil for now. Will be reset on next request."))))
   :setter     (fn [new-value]
                 (let [new-value (some-> new-value normalize-site-url)
                       https?    (some-> new-value (str/starts-with?  "https:"))]
                   ;; if the site URL isn't HTTPS then disable force HTTPS redirects if set
                   (when-not https?
                     (redirect-all-requests-to-https! false))
-                  (setting/set-value-of-type! :string :site-url new-value))))
+                  (setting/set-value-of-type! :string :site-url new-value)))
+  :doc "This URL is critical for things like SSO authentication, email links, embedding and more.
+        Even difference with `http://` vs `https://` can cause problems.
+        Make sure that the address defined is how Metabase is being accessed.")
 
 (defsetting site-locale
   (deferred-tru
@@ -205,26 +208,12 @@
 
 (defsetting anon-tracking-enabled
   (deferred-tru "Enable the collection of anonymous usage data in order to help {0} improve."
-                (application-name-for-setting-descriptions))
+    (application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
+  :encryption :never
   :visibility :public
   :audit      :getter)
-
-(defsetting ga-code
-  (deferred-tru "Google Analytics tracking code.")
-  :default    "UA-60817802-1"
-  :visibility :public
-  :doc        false)
-
-(defsetting ga-enabled
-  (deferred-tru "Boolean indicating whether analytics data should be sent to Google Analytics on the frontend")
-  :type       :boolean
-  :setter     :none
-  :getter     (fn [] (and config/is-prod? (anon-tracking-enabled)))
-  :visibility :public
-  :audit      :never
-  :doc        false)
 
 (defsetting map-tile-server-url
   (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
@@ -273,9 +262,9 @@
   :audit      :getter)
 
 (defsetting enable-query-caching
-  (deferred-tru "Enabling caching will save the results of queries that take a long time to run.")
+  (deferred-tru "Allow caching results of queries that take a long time to run.")
   :type       :boolean
-  :default    false
+  :default    true
   :visibility :authenticated
   :audit      :getter)
 
@@ -307,7 +296,7 @@
   ;; the results as stored will vary somewhat, since this measurement doesn't include metadata returned with the
   ;; results, and doesn't consider whether the results are compressed, as the `:db` backend does.)
   :type    :integer
-  :default 1000
+  :default 2000
   :audit   :getter
   :setter  (fn [new-value]
              (when (and new-value
@@ -325,24 +314,7 @@
 (defsetting query-caching-max-ttl
   (deferred-tru "The absolute maximum time to keep any cached query results, in seconds.")
   :type    :double
-  :default (* 60.0 60.0 24.0 100.0) ; 100 days
-  :audit   :getter)
-
-;; TODO -- this isn't really a TTL at all. Consider renaming to something like `-min-duration`
-(defsetting query-caching-min-ttl
-  (deferred-tru "{0} will cache all saved questions with an average query execution time longer than this many seconds:"
-                 (application-name-for-setting-descriptions))
-  :type    :double
-  :default 60.0
-  :audit   :getter)
-
-(defsetting query-caching-ttl-ratio
-  (deferred-tru
-   (str "To determine how long each saved question''s cached result should stick around, we take the query''s average "
-        "execution time and multiply that by whatever you input here. So if a query takes on average 2 minutes to run, "
-        "and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
-  :type    :integer
-  :default 10
+  :default (* 60.0 60.0 24.0 35.0) ; 35 days
   :audit   :getter)
 
 (defsetting notification-link-base-url
@@ -350,7 +322,9 @@
   :visibility :internal
   :type       :string
   :feature    :whitelabel
-  :audit      :getter)
+  :audit      :getter
+  :doc "The base URL where dashboard notitification links will point to instead of the Metabase base URL.
+        Only applicable for users who utilize interactive embedding and subscriptions.")
 
 (defsetting deprecation-notice-version
   (deferred-tru "Metabase version for which a notice about usage of deprecated features has been shown.")
@@ -374,7 +348,31 @@
   :type       :json
   :feature    :whitelabel
   :default    {}
-  :audit      :getter)
+  :audit      :getter
+  :doc "To change the user interface colors:
+
+```
+{
+ \"brand\":\"#ff003b\",
+ \"filter\":\"#FF003B\",
+ \"summarize\":\"#FF003B\"
+}
+```
+
+To change the chart colors:
+
+```
+{
+ \"accent0\":\"#FF0005\",
+ \"accent1\":\"#E6C367\",
+ \"accent2\":\"#B9E68A\",
+ \"accent3\":\"#8AE69F\",
+ \"accent4\":\"#8AE6E4\",
+ \"accent5\":\"#8AA2E6\",
+ \"accent6\":\"#B68AE6\",
+ \"accent7\":\"#E68AD0\"
+}
+```")
 
 (defsetting application-font
   (deferred-tru "Replace “Lato” as the font family.")
@@ -385,10 +383,10 @@
   :feature    :whitelabel
   :audit      :getter
   :setter     (fn [new-value]
-                  (when new-value
-                    (when-not (u.fonts/available-font? new-value)
-                      (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
-                  (setting/set-value-of-type! :string :application-font new-value)))
+                (when new-value
+                  (when-not (u.fonts/available-font? new-value)
+                    (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
+                (setting/set-value-of-type! :string :application-font new-value)))
 
 (defsetting application-font-files
   (deferred-tru "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.")
@@ -396,7 +394,25 @@
   :export?    true
   :type       :json
   :audit      :getter
-  :feature    :whitelabel)
+  :feature    :whitelabel
+  :doc "Example value:
+
+```
+[
+  {
+    \"src\": \"https://example.com/resources/font-400\",
+    \"fontFormat\": \"ttf\",
+    \"fontWeight\": 400
+  },
+  {
+    \"src\": \"https://example.com/resources/font-700\",
+    \"fontFormat\": \"woff\",
+    \"fontWeight\": 700
+  }
+]
+```
+
+See [fonts](../configuring-metabase/fonts.md).")
 
 (defn application-color
   "The primary color, a.k.a. brand color"
@@ -415,7 +431,8 @@
   :type       :string
   :audit      :getter
   :feature    :whitelabel
-  :default    "app/assets/img/logo.svg")
+  :default    "app/assets/img/logo.svg"
+  :doc "Inline styling and inline scripts are not supported.")
 
 (defsetting application-favicon-url
   (deferred-tru "Upload a file to use as the favicon.")
@@ -435,24 +452,83 @@
   :feature    :whitelabel
   :default    true)
 
-(defsetting show-lighthouse-illustration
-  (deferred-tru "Display the lighthouse illustration on the home and login pages.")
+(defsetting login-page-illustration
+  (deferred-tru "Options for displaying the illustration on the login page.")
   :visibility :public
   :export?    true
-  :type       :boolean
+  :type       :string
   :audit      :getter
   :feature    :whitelabel
-  :default    true)
+  :default    "default")
+
+(defsetting login-page-illustration-custom
+  (deferred-tru "The custom illustration for the login page.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel)
+
+(defsetting landing-page-illustration
+  (deferred-tru "Options for displaying the illustration on the landing page.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel
+  :default    "default")
+
+(defsetting landing-page-illustration-custom
+  (deferred-tru "The custom illustration for the landing page.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel)
+
+(defsetting no-data-illustration
+  (deferred-tru "Options for displaying the illustration when there are no results after running a question.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel
+  :default    "default")
+
+(defsetting no-data-illustration-custom
+  (deferred-tru "The custom illustration for when there are no results after running a question.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel)
+
+(defsetting no-object-illustration
+  (deferred-tru "Options for displaying the illustration when there are no results after searching.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel
+  :default    "default")
+
+(defsetting no-object-illustration-custom
+  (deferred-tru "The custom illustration for when there are no results after searching.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel)
 
 (def ^:private help-link-options
   #{:metabase :hidden :custom})
 
 (defsetting help-link
   (deferred-tru
-   (str
-    "Keyword setting to control whitelabeling of the help link. Valid values are `:metabase`, `:hidden`, and "
-    "`:custom`. If `:custom` is set, the help link will use the URL specified in the `help-link-custom-destination`, "
-    "or be hidden if it is not set."))
+    (str
+     "Keyword setting to control whitelabeling of the help link. Valid values are `:metabase`, `:hidden`, and "
+     "`:custom`. If `:custom` is set, the help link will use the URL specified in the `help-link-custom-destination`, "
+     "or be hidden if it is not set."))
   :type       :keyword
   :audit      :getter
   :visibility :public
@@ -471,11 +547,11 @@
   [url]
   (let [validation-exception (ex-info (tru "Please make sure this is a valid URL")
                                       {:url url})]
-   (if-let [matches (re-matches #"^mailto:(.*)" url)]
-     (when-not (u/email? (second matches))
-       (throw validation-exception))
-     (when-not (u/url? url)
-       (throw validation-exception)))))
+    (if-let [matches (re-matches #"^mailto:(.*)" url)]
+      (when-not (u/email? (second matches))
+        (throw validation-exception))
+      (when-not (u/url? url)
+        (throw validation-exception)))))
 
 (defsetting help-link-custom-destination
   (deferred-tru "Custom URL for the help link.")
@@ -485,8 +561,8 @@
   :feature    :whitelabel
   :setter     (fn [new-value]
                 (let [new-value-string (str new-value)]
-                 (validate-help-url new-value-string)
-                 (setting/set-value-of-type! :string :help-link-custom-destination new-value-string))))
+                  (validate-help-url new-value-string)
+                  (setting/set-value-of-type! :string :help-link-custom-destination new-value-string))))
 
 (defsetting show-metabase-links
   (deferred-tru (str "Whether or not to display Metabase links outside admin settings."))
@@ -523,8 +599,8 @@
 
 (defsetting breakout-bin-width
   (deferred-tru
-   (str "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), "
-        "this number will be used as the default bin width (in degrees)."))
+    (str "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), "
+         "this number will be used as the default bin width (in degrees)."))
   :type    :double
   :default 10.0
   :audit   :getter)
@@ -547,8 +623,8 @@
 
 (defsetting show-homepage-data
   (deferred-tru
-   (str "Whether or not to display data on the homepage. "
-        "Admins might turn this off in order to direct users to better content than raw data"))
+    (str "Whether or not to display data on the homepage. "
+         "Admins might turn this off in order to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated
@@ -567,8 +643,8 @@
 
 (defsetting show-homepage-pin-message
   (deferred-tru
-   (str "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are "
-        "pinned. Admins might hide this to direct users to better content than raw data"))
+    (str "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are "
+         "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated
@@ -635,7 +711,10 @@
   :type       :boolean
   :visibility :public
   :default    nil
-  :audit      :getter)
+  :audit      :getter
+  :doc "The user login session will always expire after the amount of time defined in MAX_SESSION_AGE (by default 2 weeks).
+        This overrides the “Remember me” checkbox when logging in.
+        Also see the Changing session expiration documentation page.")
 
 (defsetting version
   "Metabase's version info"
@@ -649,6 +728,7 @@
   :visibility :public
   :setter     :none
   :getter     (fn [] {:advanced_permissions           (premium-features/enable-advanced-permissions?)
+                      :attached_dwh                   (premium-features/has-attached-dwh?)
                       :audit_app                      (premium-features/enable-audit-app?)
                       :cache_granular_controls        (premium-features/enable-cache-granular-controls?)
                       :config_text_file               (premium-features/enable-config-text-file?)
@@ -667,6 +747,7 @@
                       :sso_jwt                        (premium-features/enable-sso-jwt?)
                       :sso_ldap                       (premium-features/enable-sso-ldap?)
                       :sso_saml                       (premium-features/enable-sso-saml?)
+                      :upload_management              (premium-features/enable-upload-management?)
                       :whitelabel                     (premium-features/enable-whitelabeling?)
                       :llm_autodescription            (premium-features/enable-llm-autodescription?)})
   :doc        false)
@@ -735,46 +816,82 @@
                     ;; frontend should set this value to `true` after the modal has been shown once
                     v))))
 
-(defsetting uploads-enabled
-  (deferred-tru "Whether or not uploads are enabled")
-  :visibility :authenticated
-  :export?    true
-  :type       :boolean
-  :audit      :getter
-  :default    false)
-
 (defn- not-handling-api-request?
   []
   (nil? @api/*current-user*))
 
-(defn set-uploads-database-id!
-  "Sets the :uploads-database-id setting, with an appropriate permission check."
-  [new-id]
-  (if (or (not-handling-api-request?)
-          (mi/can-write? :model/Database new-id))
-    (setting/set-value-of-type! :integer :uploads-database-id new-id)
-    (api/throw-403)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Deprecated uploads settings begin
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; These settings were removed in 50.0 and will be erased from the code in 53.0. They have been left here to explain how
+;; to migrate to the new way to set uploads settings.
+
+(defsetting uploads-enabled
+  (deferred-tru "Whether or not uploads are enabled")
+  :deprecated "0.50.0"
+  :visibility :internal
+  :export?    false
+  :type       :boolean
+  :default    false
+  :getter     (fn [] (throw (Exception. "uploads-enabled has been removed; use 'uploads_enabled' on the database instead")))
+  :setter     (fn [_] (log/warn "'uploads-enabled' has been removed; use 'uploads_enabled' on the database instead")))
 
 (defsetting uploads-database-id
   (deferred-tru "Database ID for uploads")
-  :visibility :authenticated
-  :export?    true
+  :deprecated "0.50.0"
+  :visibility :internal
+  :export?    false
   :type       :integer
-  :audit      :getter
-  :setter     set-uploads-database-id!)
+  :getter     (fn [] (throw (Exception. "uploads-database-id has been removed; use 'uploads_enabled' on the database instead")))
+  :setter     (fn [_] (log/warn "'uploads-database-id' has been removed; use 'uploads_enabled' on the database instead")))
 
 (defsetting uploads-schema-name
   (deferred-tru "Schema name for uploads")
-  :visibility :authenticated
-  :export?    true
+  :deprecated "0.50.0"
+  :visibility :internal
+  :export?    false
   :type       :string
-  :audit      :getter)
+  :getter     (fn [] (throw (Exception. "uploads-schema-name has been removed; use 'uploads_schema_name' on the database instead")))
+  :setter     (fn [_] (log/warn "'uploads-schema-name' has been removed; use 'uploads_schema_name' on the database instead")))
 
 (defsetting uploads-table-prefix
   (deferred-tru "Prefix for upload table names")
-  :visibility :authenticated
+  :deprecated "0.50.0"
+  :visibility :internal
+  :export?    false
   :type       :string
-  :audit      :getter)
+  :getter     (fn [] (throw (Exception. "uploads-table-prefix has been removed; use 'uploads_table_prefix' on the database instead")))
+  :setter     (fn [_] (log/warn "'uploads-table-prefix' has been removed; use 'uploads_table_prefix' on the database instead")))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Deprecated uploads settings end
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defsetting uploads-settings
+  (deferred-tru "Upload settings")
+  :visibility :authenticated
+  :export?    false ; the data is exported with a database export, so we don't need to export a setting
+  :type       :json
+  :audit      :getter
+  :getter     (fn []
+                (let [db (t2/select-one :model/Database :uploads_enabled true)]
+                  {:db_id        (:id db)
+                   :schema_name  (:uploads_schema_name db)
+                   :table_prefix (:uploads_table_prefix db)}))
+  :setter     (fn [{:keys [db_id schema_name table_prefix]}]
+                (cond
+                  (nil? db_id)
+                  (t2/update! :model/Database :uploads_enabled true {:uploads_enabled      false
+                                                                     :uploads_schema_name  nil
+                                                                     :uploads_table_prefix nil})
+                  (or (not-handling-api-request?)
+                      (mi/can-write? :model/Database db_id))
+                  (t2/update! :model/Database db_id {:uploads_enabled      true
+                                                     :uploads_schema_name  schema_name
+                                                     :uploads_table_prefix table_prefix})
+                  :else
+                  (api/throw-403))))
 
 (defsetting attachment-table-row-limit
   (deferred-tru "Maximum number of rows to render in an alert or subscription image.")
@@ -786,4 +903,26 @@
                 (let [value (setting/get-value-of-type :positive-integer :attachment-table-row-limit)]
                   (if-not (pos-int? value)
                     20
-                    value))))
+                    value)))
+  :doc "Range: 1-100. To limit the total number of rows included in the file attachment
+        for an email dashboard subscription, use MB_UNAGGREGATED_QUERY_ROW_LIMIT.")
+
+;; This is used by the embedding homepage
+(defsetting example-dashboard-id
+  (deferred-tru "The ID of the example dashboard.")
+  :visibility :authenticated
+  :export?    false
+  :type       :integer
+  :setter     :none
+  :getter     (fn []
+                (let [id (setting/get-value-of-type :integer :example-dashboard-id)]
+                  (when (and id (t2/exists? :model/Dashboard :id id :archived false))
+                    id)))
+  :doc        false)
+
+(defsetting sql-parsing-enabled
+  (deferred-tru "SQL Parsing is disabled")
+  :visibility :internal
+  :export?    false
+  :default    true
+  :type       :boolean)

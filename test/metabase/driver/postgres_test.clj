@@ -18,6 +18,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.lib.test-metadata :as meta]
@@ -41,7 +42,9 @@
    [metabase.util.log :as log]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -213,7 +216,20 @@
                    (mt/rows (qp/process-query
                              {:database (u/the-id database)
                               :type     :query
-                              :query    {:source-table (t2/select-one-pk Table :name "presents-and-gifts")}}))))))))))
+                              :query    {:source-table (t2/select-one-pk Table :name "presents-and-gifts")}}))))))))
+    (testing "Make sure that Schemas / Tables / Fields with backslashes in their names get escaped properly"
+      (mt/with-empty-db
+        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+          (doseq [stmt ["CREATE SCHEMA \"my\\schema\";"
+                        "CREATE TABLE \"my\\schema\".\"my\\table\" (\"my\\field\" INTEGER);"
+                        "INSERT INTO \"my\\schema\".\"my\\table\" (\"my\\field\") VALUES (42);"]]
+            (jdbc/execute! conn-spec stmt))
+          (sync/sync-database! (mt/db) {:scan :schema})
+          (is (= [[42]]
+                 (mt/rows (qp/process-query
+                           {:database (u/the-id (mt/db))
+                            :type     :query
+                            :query    {:source-table (t2/select-one-pk :model/Table :db_id (:id (mt/db)))}})))))))))
 
 (mt/defdataset duplicate-names
   [["birds"
@@ -235,8 +251,23 @@
                  (mt/run-mbql-query people
                    {:fields [$name $bird_id->birds.name]}))))))))
 
-(defn- default-table-result [table-name]
-  {:name table-name, :schema "public", :description nil})
+(defn- default-table-result
+  ([table-name]
+   (default-table-result table-name {}))
+  ([table-name opts]
+   (merge
+    {:name table-name :schema "public" :description nil
+     ;; estimated-row-count is estimated, so the value can't be known for sure "during" test without
+     ;; VACUUM-ing. So for tests that don't concern the exact value of estimated-row-count, use schema instead
+     :estimated_row_count (mt/malli=? [:maybe :int])}
+    opts)))
+
+(defn- describe-database->tables
+  "Returns a seq of tables sorted by name from calling [[driver/describe-database]]."
+  [& args]
+  (->> (apply driver/describe-database args)
+      :tables
+      (sort-by :name)))
 
 (deftest materialized-views-test
   (mt/test-driver :postgres
@@ -248,9 +279,9 @@
                        ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
                        CREATE MATERIALIZED VIEW test_mview AS
                        SELECT 'Toucans are the coolest type of bird.' AS true_facts;"])
-        (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
-          (is (= {:tables #{(default-table-result "test_mview")}}
-                 (driver/describe-database :postgres database))))))))
+        (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
+          (is (=? [(default-table-result "test_mview" {:estimated_row_count (mt/malli=? int?)})]
+                  (describe-database->tables :postgres database))))))))
 
 (deftest foreign-tables-test
   (mt/test-driver :postgres
@@ -260,7 +291,8 @@
         ;; You need to set `MB_POSTGRESQL_TEST_USER` in order for this to work apparently.
         ;;
         ;; make sure that the details include optional stuff like `:user`. Otherwise the test is going to FAIL. You can
-        ;; set it at run time from the REPL using [[mt/db-test-env-var!]].
+        ;; set it at run time from the REPL using [[mt/db-test-env-var!]]
+        ;; (mt/db-test-env-var! :postgresql :user "postgres").
         (is (mc/coerce [:map
                         [:port :int]
                         [:host :string]
@@ -281,8 +313,9 @@
                                 OPTIONS (user '" (:user details) "');
                               GRANT ALL ON public.local_table to PUBLIC;")])
         (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
-          (is (= {:tables (set (map default-table-result ["foreign_table" "local_table"]))}
-                 (driver/describe-database :postgres database))))))))
+          (is (=? [(default-table-result "foreign_table")
+                   (default-table-result "local_table" {:estimated_row_count (mt/malli=? int?)})]
+                  (describe-database->tables :postgres database))))))))
 
 (deftest recreated-views-test
   (mt/test-driver :postgres
@@ -319,7 +352,7 @@
 (deftest partitioned-table-test
   (mt/test-driver :postgres
     (testing (str "Make sure that partitioned tables (in addition to the individual partitions themselves) are
-                   synced properly (#15049")
+                   synced properly (#15049)")
       (let [db-name "partitioned_table_test"
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -347,8 +380,8 @@
                 ;; now sync the DB
                 (sync!)
                 ;; all three of these tables should appear in the metadata (including, importantly, the "main" table)
-                (is (= {:tables (set (map default-table-result ["part_vals" "part_vals_0" "part_vals_1"]))}
-                       (driver/describe-database :postgres database)))))
+                (is (=? (map default-table-result ["part_vals" "part_vals_0" "part_vals_1"])
+                        (describe-database->tables :postgres database)))))
             (log/warn
              (u/format-color
               'yellow
@@ -481,8 +514,8 @@
     json-alias-mock-metadata-provider
     {:cards [{:name          "Model with JSON"
               :id            123
-              :database-id   (meta/id)
-              :dataset-query {:database (meta/id)
+              :database-id   1
+              :dataset-query {:database 1
                               :type     :query
                               :query    {:source-table 1
                                          :aggregation  [[:count]]
@@ -493,7 +526,7 @@
     (testing "JSON columns in inner queries are referenced properly in outer queries #34930"
       (qp.store/with-metadata-provider json-alias-in-model-mock-metadata-provider
         (let [nested (qp.compile/compile
-                       {:database 1
+                       {:database (meta/id)
                         :type     :query
                         :query    {:source-table "card__123"}})]
           (is (= ["SELECT"
@@ -602,37 +635,78 @@
       (testing "Check that we can filter by a UUID for SQL Field filters (#7955)"
         (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]]
                (mt/rows
-                 (qp/process-query
-                   (assoc (mt/native-query
-                            {:query         "SELECT * FROM users WHERE {{user}}"
-                             :template-tags {:user
-                                             {:name         "user"
-                                              :display_name "User ID"
-                                              :type         "dimension"
-                                              :widget-type  "number"
-                                              :dimension    [:field (mt/id :users :user_id) nil]}}})
-                       :parameters
-                       [{:type   "text"
-                         :target ["dimension" ["template-tag" "user"]]
-                         :value  "4f01dcfd-13f7-430c-8e6f-e505c0851027"}]))))))
+                (qp/process-query
+                 (assoc (mt/native-query
+                          {:query         "SELECT * FROM users WHERE {{user}}"
+                           :template-tags {:user
+                                           {:name         "user"
+                                            :display_name "User ID"
+                                            :type         "dimension"
+                                            :widget-type  "number"
+                                            :dimension    [:field (mt/id :users :user_id) nil]}}})
+                        :parameters
+                        [{:type   "text"
+                          :target ["dimension" ["template-tag" "user"]]
+                          :value  "4f01dcfd-13f7-430c-8e6f-e505c0851027"}]))))))
       (testing "Check that we can filter by multiple UUIDs for SQL Field filters"
         (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
                 [3 #uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]]
                (mt/rows
-                 (qp/process-query
-                   (assoc (mt/native-query
-                            {:query         "SELECT * FROM users WHERE {{user}}"
-                             :template-tags {:user
-                                             {:name         "user"
-                                              :display_name "User ID"
-                                              :type         "dimension"
-                                              :widget-type  :number
-                                              :dimension    [:field (mt/id :users :user_id) nil]}}})
-                       :parameters
-                       [{:type   "text"
-                         :target ["dimension" ["template-tag" "user"]]
-                         :value  ["4f01dcfd-13f7-430c-8e6f-e505c0851027"
-                                  "da1d6ecc-e775-4008-b366-c38e7a2e8433"]}])))))))))
+                (qp/process-query
+                 (assoc (mt/native-query
+                          {:query         "SELECT * FROM users WHERE {{user}}"
+                           :template-tags {:user
+                                           {:name         "user"
+                                            :display_name "User ID"
+                                            :type         "dimension"
+                                            :widget-type  :number
+                                            :dimension    [:field (mt/id :users :user_id) nil]}}})
+                        :parameters
+                        [{:type   "text"
+                          :target ["dimension" ["template-tag" "user"]]
+                          :value  ["4f01dcfd-13f7-430c-8e6f-e505c0851027"
+                                   "da1d6ecc-e775-4008-b366-c38e7a2e8433"]}]))))))
+      (testing "Check that we can filter using string functions on a UUID Field"
+        (testing "= (uuid)"
+          (is (= [[5 #uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]
+                 (mt/rows (mt/run-mbql-query users
+                            {:filter [:=
+                                      [:field %user_id {:base-type :type/UUID}]
+                                      "84ed434e-80b4-41cf-9c88-e334427104ae"]})))))
+        (testing "= (not a uuid)"
+          (is (= []
+                 (mt/rows (mt/run-mbql-query users
+                            {:filter [:= [:field %user_id {:base-type :type/UUID}] "x"]})))))
+        (testing "!="
+          (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
+                  [2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]
+                  [3 #uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]
+                  [4 #uuid "7a5ce4a2-0958-46e7-9685-1a4eaa3bd08a"]
+                  [5 #uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]
+                 (mt/rows (mt/run-mbql-query users
+                            {:filter [:!= [:field %user_id {:base-type :type/UUID}] "x"]
+                             :order-by [[:asc $id]]})))))
+        (testing "contains"
+          (is (= [[2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]
+                  [4 #uuid "7a5ce4a2-0958-46e7-9685-1a4eaa3bd08a"]]
+                 (mt/rows (mt/run-mbql-query users
+                            {:filter [:contains [:field %user_id {:base-type :type/UUID}] "46"]
+                             :order-by [[:asc $id]]})))))
+        (testing "does not contain"
+          (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
+                  [3 #uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]
+                  [5 #uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]
+                 (mt/rows (mt/run-mbql-query users
+                            {:filter [:does-not-contain [:field %user_id {:base-type :type/UUID}] "46"]
+                             :order-by [[:asc $id]]})))))
+        (testing "starts with"
+          (is (= [[2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]]
+                 (mt/rows (mt/run-mbql-query users
+                            {:filter [:starts-with [:field %user_id {:base-type :type/UUID}] "46"]})))))
+        (testing "ends with"
+          (is (= [[3 #uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]]
+                 (mt/rows (mt/run-mbql-query users
+                            {:filter [:ends-with [:field %user_id {:base-type :type/UUID}] "33"]})))))))))
 
 (mt/defdataset ip-addresses
   [["addresses"
@@ -926,9 +1000,9 @@
                         :status-code 400
                         :type        actions.error/violate-unique-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/create (mt/$ids {:create-row {:id      3
-                                                           :column1 "A"
-                                                           :column2 "A"}
+                        :row/create (mt/$ids {:create-row {"id"      3
+                                                           "column1" "A"
+                                                           "column2" "A"}
                                               :database   (:id database)
                                               :query      {:source-table $$mytable}
                                               :type       :query})))))
@@ -939,8 +1013,8 @@
                         :status-code 400
                         :type        actions.error/violate-unique-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/update (mt/$ids {:update-row {:column1 "A"
-                                                           :column2 "A"}
+                        :row/update (mt/$ids {:update-row {"column1" "A"
+                                                           "column2" "A"}
                                               :database   (:id database)
                                               :query      {:source-table $$mytable
                                                            :filter       [:= $mytable.id 2]}
@@ -1034,13 +1108,13 @@
           (is (= [[""]]
                  (mt/rows results))))
         (testing "cols"
-          (is (= [{:display_name "sleep"
-                   :base_type    :type/Text
-                   :effective_type :type/Text
-                   :source       :native
-                   :field_ref    [:field "sleep" {:base-type :type/Text}]
-                   :name         "sleep"}]
-                 (mt/cols results))))))))
+          (is (=? [{:display_name "sleep"
+                    :base_type    :type/Text
+                    :effective_type :type/Text
+                    :source       :native
+                    :field_ref    [:field "sleep" {:base-type :type/Text}]
+                    :name         "sleep"}]
+                  (mt/cols results))))))))
 
 (deftest ^:parallel id-field-parameter-test
   (mt/test-driver :postgres
@@ -1288,12 +1362,18 @@
                                      "CREATE SCHEMA \"dotted.schema\";"
                                      "CREATE TABLE \"dotted.schema\".bar (id INTEGER);"
                                      "CREATE TABLE \"dotted.schema\".\"dotted.table\" (id INTEGER);"
+                                     "CREATE TABLE \"dotted.schema\".\"dotted.partial_select\" (id INTEGER);"
+                                     "CREATE TABLE \"dotted.schema\".\"dotted.partial_update\" (id INTEGER);"
+                                     "CREATE TABLE \"dotted.schema\".\"dotted.partial_insert\" (id INTEGER, text TEXT);"
                                      "CREATE VIEW \"dotted.schema\".\"dotted.view\" AS SELECT 'hello world';"
                                      "CREATE MATERIALIZED VIEW \"dotted.schema\".\"dotted.materialized_view\" AS SELECT 'hello world';"
                                      "DROP ROLE IF EXISTS privilege_rows_test_example_role;"
                                      "CREATE ROLE privilege_rows_test_example_role WITH LOGIN;"
                                      "GRANT SELECT ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
                                      "GRANT UPDATE ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
+                                     "GRANT SELECT (id) ON \"dotted.schema\".\"dotted.partial_select\" TO privilege_rows_test_example_role;"
+                                     "GRANT UPDATE (id) ON \"dotted.schema\".\"dotted.partial_update\" TO privilege_rows_test_example_role;"
+                                     "GRANT INSERT (text) ON \"dotted.schema\".\"dotted.partial_insert\" TO privilege_rows_test_example_role;"
                                      "GRANT SELECT ON \"dotted.schema\".\"dotted.view\" TO privilege_rows_test_example_role;"
                                      "GRANT SELECT ON \"dotted.schema\".\"dotted.materialized_view\" TO privilege_rows_test_example_role;"))
            (testing "check that without USAGE privileges on the schema, nothing is returned"
@@ -1301,27 +1381,26 @@
                     (get-privileges))))
            (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
              (jdbc/execute! conn-spec "GRANT USAGE ON SCHEMA \"dotted.schema\" TO privilege_rows_test_example_role;")
-             (is (= #{{:role   nil
-                       :schema "dotted.schema"
-                       :table  "dotted.materialized_view"
-                       :update false
-                       :select true
-                       :insert false
-                       :delete false}
-                      {:role   nil
-                       :schema "dotted.schema"
-                       :table  "dotted.view"
-                       :update false
-                       :select true
-                       :insert false
-                       :delete false}
-                      {:role   nil
-                       :schema "dotted.schema"
-                       :table  "dotted.table"
-                       :select true
-                       :update true
-                       :insert false
-                       :delete false}}
+             (is (= (into #{}
+                          (map #(merge {:role   nil
+                                        :schema "dotted.schema"
+                                        :update false
+                                        :select false
+                                        :insert false
+                                        :delete false} %)
+                               [{:table  "dotted.materialized_view"
+                                 :select true}
+                                {:table "dotted.view"
+                                 :select true}
+                                {:table "dotted.table"
+                                 :select true
+                                 :update true}
+                                {:table "dotted.partial_select"
+                                 :select true}
+                                {:table "dotted.partial_update"
+                                 :update true}
+                                {:table "dotted.partial_insert"
+                                 :insert true}]))
                     (get-privileges))))
            (finally
             (doseq [stmt ["REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"
@@ -1343,3 +1422,42 @@
     ;; Special characters
     (is (= "SET ROLE \"Role.123\";"   (driver.sql/set-role-statement :postgres "Role.123")))
     (is (= "SET ROLE \"$role\";"      (driver.sql/set-role-statement :postgres "$role")))))
+
+(deftest get-tables-parity-with-jdbc-test
+  (testing "make sure our get-tables return result consistent with jdbc getTables"
+    (mt/test-driver :postgres
+      (mt/with-empty-db
+        (sql-jdbc.execute/do-with-connection-with-options
+         :postgres
+         (mt/db)
+         nil
+         (fn [^Connection conn]
+           (let [do-test (fn [& {:keys [schema-pattern table-pattern schemas tables]
+                                 :or   {schema-pattern "public%" ;; postgres get-tables exclude system tables by default
+                                        schemas        nil
+                                        table-pattern  "%"
+                                        tables         nil}
+                                 :as _opts}]
+                           (is (= (into #{} (#'sql-jdbc.describe-database/jdbc-get-tables
+                                             :postgres (.getMetaData conn) nil schema-pattern table-pattern
+                                             ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))
+                                  (into #{} (map #(dissoc % :estimated_row_count))
+                                        (#'postgres/get-tables (mt/db) schemas tables)))))]
+
+             (doseq [stmt ["CREATE TABLE public.table (id INTEGER, type TEXT);"
+                           "CREATE UNIQUE INDEX idx_table_type ON public.table(type);"
+                           "CREATE TABLE public.partition_table (id INTEGER) PARTITION BY RANGE (id);"
+                           "CREATE UNIQUE INDEX idx_partition_table_id ON public.partition_table(id);"
+                           "CREATE SEQUENCE public.table_id_seq;"
+                           "CREATE VIEW public.view AS SELECT * FROM public.table;"
+                           "CREATE TYPE public.enum_type AS ENUM ('a', 'b', 'c');"
+                           "CREATE MATERIALIZED VIEW public.materialized_view AS SELECT * FROM public.table;"
+                           "CREATE SCHEMA public_2;"
+                           "CREATE TABLE public_2.table (id INTEGER);"]]
+               (next.jdbc/execute! conn [stmt]))
+             (testing "without any filters"
+               (do-test))
+             (testing "filter by schema"
+               (do-test :schema-pattern "private" :schemas ["private"]))
+             (testing "filter by table name"
+               (do-test :table-pattern "table" :tables ["table"])))))))))

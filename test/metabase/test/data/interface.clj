@@ -4,7 +4,8 @@
   Drivers with test extensions know how to load a `DatabaseDefinition` into an actual physical database. This
   functionality allows us to easily test with multiple datasets.
 
-  TODO - We should rename this namespace to `metabase.driver.test-extensions` or something like that."
+  TODO - We should rename this namespace to `metabase.driver.test-extensions` or something like that.
+  Tech debt issue: #39363"
   (:require
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
@@ -61,6 +62,7 @@
     ;; default is nullable
    [:not-null?         {:optional true} [:maybe :boolean]]
    [:unique?           {:optional true} [:maybe :boolean]]
+   [:pk?               {:optional true} [:maybe :boolean]]
    ;; should we create an index for this field?
    [:indexed?          {:optional true} [:maybe :boolean]]
    [:semantic-type     {:optional true} [:maybe ms/FieldSemanticOrRelationType]]
@@ -90,6 +92,7 @@
    (ms/InstanceOfClass DatabaseDefinition)])
 
 ;; TODO - this should probably be a protocol instead
+;; Tech debt issue: #39350
 (defmulti ^DatabaseDefinition get-dataset-definition
   "Return a definition of a dataset, so a test database can be created from it. Returns a map matching
   the [[ValidDatabaseDefinition]] schema."
@@ -210,21 +213,33 @@
   Currently, this only affects `db-qualified-table-name`."
   nil)
 
+(defn- normalize-qualified-name [n]
+  (-> n u/lower-case-en (str/replace #"-" "_")))
+
+(defn- db-qualified-table-name-prefix [db-name]
+  (str (normalize-qualified-name (or *database-name-override* db-name))
+       \_))
+
+(defn qualified-by-db-name?
+  "Is `table-name` qualified by the name of its database? See [[db-qualified-table-name]] for more details."
+  [db-name table-name]
+  (str/starts-with? table-name (db-qualified-table-name-prefix db-name)))
+
 (defn db-qualified-table-name
   "Return a combined table name qualified with the name of its database, suitable for use as an identifier.
   Provided for drivers where testing wackiness makes it hard to actually create separate Databases, such as Oracle,
   where this is disallowed on RDS. (Since Oracle can't create seperate DBs, we just create various tables in the same
-  DB; thus their names must be qualified to differentiate them effectively.)"
+  DB; thus their names must be qualified to differentiate them effectively.)
+
+  Asserts that the resulting name has fewer than 30 characters, because databases like Oracle have limits on the
+  lengths of identifiers."
   ^String [^String database-name, ^String table-name]
-  {:pre [(string? database-name) (string? table-name)]}
-  ;; take up to last 30 characters because databases like Oracle have limits on the lengths of identifiers
-  (-> (or *database-name-override* database-name)
-      (str \_ table-name)
-      u/lower-case-en
-      (str/replace #"-" "_")
-      (->>
-        (take-last 30)
-        (apply str))))
+  {:pre [(string? database-name)
+         (string? table-name)]
+   :post [(qualified-by-db-name? database-name %)
+          (<= (count %) 30)]}
+  (str (db-qualified-table-name-prefix database-name)
+       (normalize-qualified-name table-name)))
 
 (defn single-db-qualified-name-components
   "Implementation of `qualified-name-components` for drivers like Oracle and Redshift that must use a single existing
@@ -273,7 +288,7 @@
   [{:keys [database-name]} driver]
   (assert (string? database-name))
   (assert (keyword? driver))
-  (mdb/setup-db!)
+  (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
   (t2/select-one Database
                  :name    database-name
                  :engine (u/qualified-name driver)
@@ -413,10 +428,14 @@
 (defmethod aggregate-column-info ::test-extensions
   ([_ aggregation-type]
    (assert (#{:count :cum-count} aggregation-type))
-   {:base_type     :type/BigInteger
+   {:base_type     (case aggregation-type
+                     :count     :type/BigInteger
+                     :cum-count :type/Decimal)
     :semantic_type :type/Quantity
     :name          "count"
-    :display_name  "Count"
+    :display_name  (case aggregation-type
+                     :count     "Count"
+                     :cum-count "Cumulative count")
     :source        :aggregation
     :field_ref     [:aggregation 0]})
 
@@ -428,7 +447,7 @@
                                                 :query    {:source-table table-id
                                                            :aggregation  [[aggregation-type [:field-id field-id]]]}}))
     (when (= aggregation-type :cum-count)
-      {:base_type     :type/BigInteger
+      {:base_type     :type/Decimal
        :semantic_type :type/Quantity}))))
 
 
@@ -465,6 +484,7 @@
    [:sequential [:sequential :any]]])
 
 ;; TODO - not sure everything below belongs in this namespace
+;; Tech debt issue: #39363
 
 (mu/defn ^:private dataset-field-definition :- ValidFieldDefinition
   "Parse a Field definition (from a `defdatset` form or EDN file) and return a FieldDefinition instance for
@@ -616,6 +636,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO - maybe this should go in a different namespace
+;; Tech debt issue: #39363
 
 (mu/defn ^:private tabledef-with-name :- ValidTableDefinition
   "Return `TableDefinition` with `table-name` in `dbdef`."
@@ -747,3 +768,28 @@
                                   (name driver)
                                   (u/upper-case-en (str/replace (name driver) #"-" "_"))
                                   (to-system-env-var-str env-var)))))))
+
+(defmulti default-dataset
+  "Enable drivers to define default dataset in tests (when not specified by [[metabase.test/dataset]]).
+
+  Problem is that lot of tests that we have do not specify the dataset. `test-data` is used as default.
+  But some dbs (Druid) can not use that, even though lot of tests could work with those, if there is a way
+  to swap `test-data` for custom dataset.
+
+  At the time of writing eg. [[metabase.driver.sql-jdbc.sync.describe-database-test/dont-leak-resultsets-test]].
+  Implementing this method enables code as follows to work, hence tests as mentioned before could pass without further
+  changes.
+
+  ``` clj
+  (mt/test-driver :druid-jdbc
+    (mt/id))
+  ```"
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod default-dataset ::test-extensions
+  [_]
+  ;; Following cyclic dependency by that requiring resolve.
+  ((requiring-resolve 'metabase.test.data.impl/resolve-dataset-definition)
+   'metabase.test.data.dataset-definitions 'test-data))

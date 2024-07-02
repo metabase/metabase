@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import Mustache from "mustache";
@@ -5,13 +6,14 @@ import type * as React from "react";
 import ReactMarkdown from "react-markdown";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
 import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
 import { renderLinkTextForClick } from "metabase/lib/formatting/link";
 import {
   clickBehaviorIsValid,
   getDataFromClicked,
-} from "metabase-lib/parameters/utils/click-behavior";
-import { rangeForValue } from "metabase-lib/queries/utils/range-for-value";
+} from "metabase-lib/v1/parameters/utils/click-behavior";
+import { rangeForValue } from "metabase-lib/v1/queries/utils/range-for-value";
 import {
   isBoolean,
   isCoordinate,
@@ -20,7 +22,7 @@ import {
   isNumber,
   isTime,
   isURL,
-} from "metabase-lib/types/utils/isa";
+} from "metabase-lib/v1/types/utils/isa";
 
 import { formatDateTimeWithUnit, formatRange } from "./date";
 import { formatEmail } from "./email";
@@ -128,7 +130,7 @@ function formatStringFallback(value: any, options: OptionsType = {}) {
 export function formatValueRaw(
   value: unknown,
   options: OptionsType = {},
-): React.ReactElement | Moment | string | number | null {
+): React.ReactElement | string | number | null {
   options = {
     jsx: false,
     remap: true,
@@ -155,7 +157,10 @@ export function formatValueRaw(
     // Style this like a link if we're in a jsx context.
     // It's not actually a link since we handle the click differently for dashboard and question targets.
     return (
-      <div className="link link--wrappable">
+      <div
+        data-testid="link-formatted-text"
+        className={cx(CS.link, CS.linkWrappable)}
+      >
         {formatValueRaw(value, { ...options, jsx: false })}
       </div>
     );

@@ -2,8 +2,6 @@
   "Tests around the `compile` function."
   (:require
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
-   [metabase.models.permissions :as perms]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -41,33 +39,19 @@
                  :type     :native
                  :native   {:query long-query}})))))))
 
-;; If user permissions are bound, we should do permissions checking when you call `compile`; you should need
-;; native query execution permissions for the DB in question plus the perms needed for the original query in order to
-;; use `compile`
-(defn- compile-with-user-perms
-  [{database-id :database, {source-table-id :source-table} :query, :as query} {:keys [object-perms? native-perms?]}]
-  (binding [api/*current-user-id*              Integer/MAX_VALUE
-            api/*current-user-permissions-set* (delay (cond-> #{}
-                                                        object-perms? (conj (perms/data-perms-path database-id "PUBLIC" source-table-id))
-                                                        native-perms? (conj (perms/adhoc-native-query-path database-id))))]
-    (qp.compile/compile query)))
-
-(deftest ^:parallel permissions-test
+(deftest permissions-test
   (testing "If user permissions are bound, we should still NOT do permissions checking when you call `compile`"
-    (testing "Should work if you have the right perms"
-      (is (compile-with-user-perms
-           (mt/mbql-query venues)
-           {:object-perms? true, :native-perms? true})))
-    (testing "Should still work even WITHOUT the right perms"
-      (is (compile-with-user-perms
-           (mt/mbql-query venues)
-           {:object-perms? false, :native-perms? true})))))
+    (mt/with-test-user :rasta
+      (testing "Should work if you have the right perms"
+        (mt/with-full-data-perms-for-all-users!
+          (is (qp.compile/compile (mt/mbql-query venues)))))
+      (testing "Should still work even WITHOUT the right perms"
+        (mt/with-no-data-perms-for-all-users!
+          (is (qp.compile/compile (mt/mbql-query venues))))))))
 
 (deftest ^:parallel error-test
   (testing "If the query is bad in some way it should return a relevant error (?)"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"\QValid Database metadata\E"
-         (compile-with-user-perms
-          {:database Integer/MAX_VALUE, :type :query, :query {:source-table Integer/MAX_VALUE}}
-          {:object-perms? true, :native-perms? true})))))
+         (qp.compile/compile {:database Integer/MAX_VALUE, :type :query, :query {:source-table Integer/MAX_VALUE}})))))

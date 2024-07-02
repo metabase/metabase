@@ -50,14 +50,16 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.util :as lib.util]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.malli :as mu]))
 
@@ -75,17 +77,10 @@
   To return a uniquified version of `original-alias`. Memoized by `position`, so duplicate calls will result in the
   same unique alias."
   []
-  (let [unique-name-fn (mbql.u/unique-name-generator
-                        ;; some databases treat aliases as case-insensitive so make sure the generated aliases are
-                        ;; unique regardless of case
-                        :name-key-fn u/lower-case-en
-                        ;; TODO -- we should probably limit the length somehow like we do in
-                        ;; [[metabase.query-processor.middleware.add-implicit-joins/join-alias]], and also update this
-                        ;; function and that one to append a short suffix if we are limited by length. See also
-                        ;; [[driver/escape-alias]]
-                        :unique-alias-fn (fn [original suffix]
-                                           (driver/escape-alias driver/*driver* (str original \_ suffix))))]
+  (let [unique-name-fn (lib.util/unique-name-generator (qp.store/metadata-provider))]
     (fn unique-alias-fn [position original-alias]
+      (assert (string? original-alias)
+              (format "unique-alias-fn expected string, got: %s" (pr-str original-alias)))
       (unique-name-fn position (driver/escape-alias driver/*driver* original-alias)))))
 
 ;; TODO -- this should probably limit the resulting alias, and suffix a short hash as well if it gets too long. See also
@@ -104,7 +99,7 @@
   `:qp/refs`. This removes `:source-field` if it is present -- don't use the output of this for anything but internal
   key/distinct comparison purposes."
   [clause]
-  (mbql.u/match-one clause
+  (lib.util.match/match-one clause
     ;; optimization: don't need to rewrite a `:field` clause without any options
     [:field _ nil]
     &match
@@ -145,7 +140,11 @@
      [breakout
       (map-indexed
        (fn [i ag]
-         (mbql.u/replace ag
+         (lib.util.match/replace ag
+           ;; :offset is a special case since it doesn't NEED to get wrapped in aggregation options.
+           [:offset _opts _expr _n]
+           [:aggregation i]
+
            [:aggregation-options wrapped opts]
            [:aggregation i]
 
@@ -169,7 +168,7 @@
   (when join-alias
     ((this-level-join-aliases inner-query) join-alias)))
 
-(mu/defn ^:private field-instance :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn ^:private field-instance :- [:maybe ::lib.schema.metadata/column]
   [[_ id-or-name :as _field-clause] :- mbql.s/field]
   (when (integer? id-or-name)
     (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
@@ -196,7 +195,7 @@
                        :query  inner-query})))))
 
 (defn- exports [query]
-  (into #{} (mbql.u/match (dissoc query :source-query :source-metadata :joins)
+  (into #{} (lib.util.match/match (dissoc query :source-query :source-metadata :joins)
               [(_ :guard #{:field :expression :aggregation-options}) _ (_ :guard (every-pred map? ::position))])))
 
 (defn- join-with-alias [{:keys [joins]} join-alias]
@@ -234,27 +233,38 @@
             (m/find-first (fn [[_field an-id-or-name _opts]]
                             (= an-id-or-name id-or-name))
                           field-exports)))
-        ;; look for a matching expression clause with the same name if still no match
+        ;; otherwise if this is a nominal field literal ref then look for matches based on the string name used
         (when-let [field-name (let [[_ id-or-name] field-clause]
                                 (when (string? id-or-name)
                                   id-or-name))]
-          (or ;; Expressions by exact name.
+          (or ;; First, look for Expressions or fields from the source query stage whose `::desired-alias` matches the
+              ;; name we're searching for.
+              (m/find-first (fn [[tag _id-or-name {::keys [desired-alias], :as _opts} :as _ref]]
+                              (when (#{:expression :field} tag)
+                                (= desired-alias field-name)))
+                            all-exports)
+              ;; Expressions by exact name.
               (m/find-first (fn [[_ expression-name :as _expression-clause]]
                               (= expression-name field-name))
                             (filter (partial mbql.u/is-clause? :expression) all-exports))
-              ;; Expressions whose ::desired-alias matches the name we're searching for.
-              (m/find-first (fn [[_expression _expression-name {::keys [desired-alias]} :as _expression-clause]]
-                              (= desired-alias field-name))
-                            (filter (partial mbql.u/is-clause? :expression) all-exports))
-              (m/find-first (fn [[_ _ opts :as _aggregation-options-clause]]
-                              (= (::source-alias opts) field-name))
-                            (filter (partial mbql.u/is-clause? :aggregation-options) all-exports))))
-        ;; look for a field referenced by the name in source-metadata
-        (let [field-name (second field-clause)]
-          (when (string? field-name)
-            (when-let [column (m/find-first #(= (:name %) field-name) source-metadata)]
-              (let [signature (field-signature (:field_ref column))]
-                (m/find-first #(= (field-signature %) signature) field-exports))))))))
+              ;; aggregation clauses from the previous stage based on their `::desired-alias`. If THAT doesn't work,
+              ;; then try to match based on their `::source-alias` (not 100% sure why we're checking `::source-alias` at
+              ;; all TBH -- Cam)
+              (when-let [ag-clauses (seq (filter (partial mbql.u/is-clause? :aggregation-options) all-exports))]
+                (some (fn [k]
+                        (m/find-first (fn [[_tag _ag-clause opts :as _aggregation-options-clause]]
+                                        (= (get opts k) field-name))
+                                      ag-clauses))
+                      [::desired-alias ::source-alias]))
+              ;; look for a field referenced by the name in source-metadata
+              (when-let [column (m/find-first #(= (:name %) field-name) source-metadata)]
+                (let [signature (field-signature (:field_ref column))]
+                  (or ;; First try to match with the join alias.
+                   (m/find-first #(= (field-signature %) signature) field-exports)
+                   ;; Then just the names, but if the match is ambiguous, warn and return nil.
+                   (let [matches (filter #(= (second %) field-name) field-exports)]
+                     (when (= (count matches) 1)
+                       (first matches)))))))))))
 
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause
@@ -284,7 +294,7 @@
 
 (defn- field-alias-in-source-query
   [inner-query field-clause]
-  (when-let [[_ _ {::keys [desired-alias]}] (matching-field-in-source-query inner-query field-clause)]
+  (when-let [[_tag _id-or-name {::keys [desired-alias]}] (matching-field-in-source-query inner-query field-clause)]
     desired-alias))
 
 (defmulti ^String field-reference
@@ -308,7 +318,7 @@
 
 (mu/defmethod field-reference-mlv2 ::driver/driver
   [driver :- :keyword
-   field  :- lib.metadata/ColumnMetadata]
+   field  :- ::lib.schema.metadata/column]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (if (get-method field-reference driver)
     (do
@@ -371,12 +381,13 @@
   "Determine the appropriate `::desired-alias` for a `field-clause`."
   {:arglists '([inner-query field-clause expensive-field-info])}
   [_inner-query
-   [_ _id-or-name {:keys [join-alias] ::keys [desired-alias]} :as _field-clause]
-   {:keys [field-name alias-from-join alias-from-source-query override-alias?]}]
+   [_ _id-or-name {:keys [join-alias], ::keys [desired-alias], explicit-name :name} :as _field-clause]
+   {:keys [field-name alias-from-join alias-from-source-query override-alias?], :as _expensive-field-info}]
   (cond
     join-alias              (prefix-field-alias join-alias (or alias-from-join field-name))
     ;; JSON fields and similar have to be aliased by the outer field name.
     override-alias?         field-name
+    explicit-name           explicit-name
     desired-alias           desired-alias
     alias-from-source-query alias-from-source-query
     :else                   field-name))
@@ -395,6 +406,29 @@
              {::desired-alias (unique-alias-fn position (field-desired-alias inner-query field-clause expensive-info))
               ::position      position}))))
 
+(defmulti ^:private aggregation-name
+  {:arglists '([mbql-clause])}
+  (fn [x]
+    (when (mbql.u/mbql-clause? x)
+      (first x))))
+
+;;; make sure we have an `:aggregation-options` or other fully-preprocessed aggregation clause (i.e., `:offset`) like we
+;;; expect. This is mostly a precondition check since we should never be running this code on not-preprocessed queries,
+;;; so it's not i18n'ed
+(defmethod aggregation-name :default
+  [ag-clause]
+  (throw (ex-info (format "Expected :aggregation-options or other fully-preprocessed aggregation, got %s."
+                          (pr-str ag-clause))
+                  {:clause ag-clause})))
+
+(mu/defmethod aggregation-name :aggregation-options :- :string
+  [[_aggregation-options _wrapped-ag opts]]
+  (:name opts))
+
+(mu/defmethod aggregation-name :offset :- :string
+  [[_offset opts _expr _n]]
+  (:name opts))
+
 (defmethod clause-alias-info :aggregation
   [{aggregations :aggregation, :as inner-query} unique-alias-fn [_ index _opts :as ag-ref-clause]]
   (let [position (clause->position inner-query ag-ref-clause)]
@@ -405,13 +439,7 @@
                       {:type   qp.error-type/invalid-query
                        :clause ag-ref-clause
                        :query  inner-query})))
-    (let [[_ _ {ag-name :name} :as matching-ag] (nth aggregations index)]
-      ;; make sure we have an `:aggregation-options` clause like we expect. This is mostly a precondition check
-      ;; since we should never be running this code on not-preprocessed queries, so it's not i18n'ed
-      (when-not (mbql.u/is-clause? :aggregation-options matching-ag)
-        (throw (ex-info (format "Expected :aggregation-options, got %s. (Query must be fully preprocessed.)"
-                                (pr-str matching-ag))
-                        {:clause ag-ref-clause, :query inner-query})))
+    (let [ag-name (aggregation-name (nth aggregations index))]
       {::desired-alias (unique-alias-fn position ag-name)
        ::position      position})))
 
@@ -422,14 +450,29 @@
      ::position      position}))
 
 (defn- add-info-to-aggregation-definition
-  [inner-query unique-alias-fn [_ wrapped-ag-clause {original-ag-name :name, :as opts}, :as _ag-clause] ag-index]
-  (let [position     (clause->position inner-query [:aggregation ag-index])
-        unique-alias (unique-alias-fn position original-ag-name)]
-    [:aggregation-options wrapped-ag-clause (assoc opts
-                                                   :name           unique-alias
-                                                   ::source-alias  original-ag-name
-                                                   ::position      position
-                                                   ::desired-alias unique-alias)]))
+  [inner-query unique-alias-fn ag-clause ag-index]
+  (lib.util.match/replace ag-clause
+    [:offset opts expr n]
+    (let [position         (clause->position inner-query [:aggregation ag-index])
+          original-ag-name (:name opts)
+          unique-alias     (unique-alias-fn position original-ag-name)]
+      [:offset (assoc opts
+                      :name           unique-alias
+                      ::source-alias  original-ag-name
+                      ::position      position
+                      ::desired-alias unique-alias)
+       expr
+       n])
+
+    [:aggregation-options wrapped-ag-clause opts, :as _ag-clause]
+    (let [position         (clause->position inner-query [:aggregation ag-index])
+          original-ag-name (:name opts)
+          unique-alias     (unique-alias-fn position original-ag-name)]
+      [:aggregation-options wrapped-ag-clause (assoc opts
+                                                     :name           unique-alias
+                                                     ::source-alias  original-ag-name
+                                                     ::position      position
+                                                     ::desired-alias unique-alias)])))
 
 (defn- add-info-to-aggregation-definitions [{aggregations :aggregation, :as inner-query} unique-alias-fn]
   (cond-> inner-query
@@ -444,7 +487,7 @@
 (defn- add-alias-info* [inner-query]
   (assert (not (:strategy inner-query)) "add-alias-info* should not be called on a join") ; not user-facing
   (let [unique-alias-fn (make-unique-alias-fn)]
-    (-> (mbql.u/replace inner-query
+    (-> (lib.util.match/replace inner-query
           ;; don't rewrite anything inside any source queries or source metadata.
           (_ :guard (constantly (some (partial contains? (set &parents))
                                       [:source-query :source-metadata])))

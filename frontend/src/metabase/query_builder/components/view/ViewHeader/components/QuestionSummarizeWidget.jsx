@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import * as Lib from "metabase-lib";
 
-import { HeaderButton } from "../ViewHeader.styled";
+import { HeaderButton } from "../ViewTitleHeader.styled";
 
 export function QuestionSummarizeWidget({
   isShowingSummarySidebar,
@@ -45,6 +45,7 @@ QuestionSummarizeWidget.shouldRender = ({
     !isNative &&
     isEditable &&
     !isObjectDetail &&
-    isActionListVisible
+    isActionListVisible &&
+    !question.isArchived()
   );
 };

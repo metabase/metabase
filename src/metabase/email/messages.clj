@@ -30,7 +30,6 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -97,7 +96,7 @@
 
 ;;; Various Context Helper Fns. Used to build Stencil template context
 
-(defn- common-context
+(defn common-context
   "Context that is used across multiple email templates, and that is the same for all emails"
   []
   {:applicationName           (public-settings/application-name)
@@ -290,31 +289,22 @@
                :message      (stencil/render-file "metabase/email/follow_up_email" context)}]
     (email/send-message! email)))
 
-(defn- creator-sentiment-blob
-  "Create a blob of instance/user data to be sent to the creator sentiment survey."
-  [instance-data created_at num_dashboards num_questions num_models]
-  (-> {:instance instance-data
-       :user     {:created_at     created_at
-                  :num_dashboards num_dashboards
-                  :num_questions  num_questions
-                  :num_models     num_models}}
-      json/generate-string
-      .getBytes
-      codecs/bytes->b64-str))
-
 (defn send-creator-sentiment-email!
-  "Format and send an email to a creator with a link to a survey. Can include info about the instance and the creator
-  if [[public-settings/anon-tracking-enabled]] is true."
-  [{:keys [email created_at first_name num_dashboards num_questions num_models]} instance-data]
+  "Format and send an email to a creator with a link to a survey. If a [[blob]] is included, it will be turned into json
+  and then base64 encoded."
+  [{:keys [email first_name]} blob]
   {:pre [(u/email? email)]}
-  (let [blob    (when (public-settings/anon-tracking-enabled)
-                  (creator-sentiment-blob instance-data created_at num_dashboards num_questions num_models))
+  (let [encoded-info    (when blob
+                          (-> blob
+                              json/generate-string
+                              .getBytes
+                              codecs/bytes->b64-str))
         context (merge (common-context)
                        {:emailType  "notification"
                         :logoHeader true
                         :first-name first_name
                         :link       (cond-> "https://metabase.com/feedback/creator"
-                                      blob (str "?context=" blob))}
+                                      encoded-info (str "?context=" encoded-info))}
                        (when-not (premium-features/is-hosted?)
                          {:self-hosted (public-settings/site-url)}))
         message {:subject      "Metabase would love your take on something"
@@ -348,9 +338,9 @@
   (let [dashboard-id (:id dashboard)]
    (merge (common-context)
           {:emailType                 "pulse"
-           :title                     (:name pulse)
+           :title                     (:name dashboard)
            :titleUrl                  (pulse-params/dashboard-url dashboard-id (pulse-params/parameters pulse dashboard))
-           :dashboardDescription      (:description dashboard)
+           :dashboardDescription      (markdown/process-markdown (:description dashboard) :html)
            ;; There are legacy pulses that exist without being tied to a dashboard
            :dashboardHasTabs          (when dashboard-id
                                         (boolean (seq (t2/hydrate dashboard :tabs))))
@@ -388,7 +378,7 @@
     {:type         :attachment
      :content-type content-type
      :file-name    (format "%s_%s.%s"
-                           (or (u/slugify card-name) "query_result")
+                           (or card-name "query_result")
                            (u.date/format (t/zoned-date-time))
                            (name export-type))
      :content      (-> attachment-file .toURI .toURL)
@@ -403,39 +393,41 @@
   point in the future; for now, this function is a stopgap.
 
   Results are streamed synchronously. Caller is responsible for closing `os` when this call is complete."
-  [export-format ^OutputStream os {{:keys [rows]} :data, database-id :database_id, :as results}]
+  [export-format format-rows? ^OutputStream os {{:keys [rows]} :data, database-id :database_id, :as results}]
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
   ;; get timezone information when writing results
   (driver/with-driver (driver.u/database->driver database-id)
     (qp.store/with-metadata-provider database-id
-      (binding [qp.xlsx/*parse-temporal-string-values* true]
-        (let [w                           (qp.si/streaming-results-writer export-format os)
-              cols                        (-> results :data :cols)
-              viz-settings                (-> results :data :viz-settings)
-              [ordered-cols output-order] (qp.streaming/order-cols cols viz-settings)
-              viz-settings'               (assoc viz-settings :output-order output-order)]
-          (qp.si/begin! w
-                        (assoc-in results [:data :ordered-cols] ordered-cols)
-                        viz-settings')
-          (dorun
-           (map-indexed
-            (fn [i row]
-              (qp.si/write-row! w row i ordered-cols viz-settings'))
-            rows))
-          (qp.si/finish! w results))))))
+      (let [w                           (qp.si/streaming-results-writer export-format os)
+            cols                        (-> results :data :cols)
+            viz-settings                (-> results :data :viz-settings)
+            [ordered-cols output-order] (qp.streaming/order-cols cols viz-settings)
+            viz-settings'               (assoc viz-settings :output-order output-order)]
+        (qp.si/begin! w
+                      (-> results
+                          (assoc-in [:data :format-rows?] format-rows?)
+                          (assoc-in [:data :ordered-cols] ordered-cols))
+                      viz-settings')
+        (dorun
+         (map-indexed
+          (fn [i row]
+            (qp.si/write-row! w row i ordered-cols viz-settings'))
+          rows))
+        (qp.si/finish! w results)))))
 
 (defn- result-attachment
-  [{{card-name :name :as card} :card {{:keys [rows]} :data :as result} :result}]
+  [{{card-name :name format-rows :format_rows :as card} :card
+    {{:keys [rows]} :data :as result}                   :result}]
   (when (seq rows)
     [(when-let [temp-file (and (:include_csv card)
                                (create-temp-file-or-throw "csv"))]
        (with-open [os (io/output-stream temp-file)]
-         (stream-api-results-to-export-format :csv os result))
+         (stream-api-results-to-export-format :csv format-rows os result))
        (create-result-attachment-map "csv" card-name temp-file))
      (when-let [temp-file (and (:include_xls card)
                                (create-temp-file-or-throw "xlsx"))]
        (with-open [os (io/output-stream temp-file)]
-         (stream-api-results-to-export-format :xlsx os result))
+         (stream-api-results-to-export-format :xlsx format-rows os result))
        (create-result-attachment-map "xlsx" card-name temp-file))]))
 
 (defn- part-attachments [parts]
@@ -518,7 +510,7 @@
   (for [{{result-card-id :id} :card :as result} results
         :let [pulse-card (m/find-first #(= (:id %) result-card-id) (:cards pulse))]]
     (if result-card-id
-      (update result :card merge (select-keys pulse-card [:include_csv :include_xls]))
+      (update result :card merge (select-keys pulse-card [:include_csv :include_xls :format_rows]))
       result)))
 
 (defn render-pulse-email
@@ -586,7 +578,7 @@
   "Returns a string that describes the run schedule of an alert (i.e. how often results are checked),
   for inclusion in the email template. Not translated, since emails in general are not currently translated."
   [channel]
-  (case (:schedule_type channel)
+  (case (keyword (:schedule_type channel))
     :hourly
     "Run hourly"
 
@@ -604,10 +596,13 @@
 (defn- alert-context
   "Context that is applicable only to the actual alert template (not alert management templates)"
   [alert channel non-user-email]
-  (let [{card-id :id, card-name :name} (first-card alert)]
+  (let [{card-id :id card-name :name} (first-card alert)]
     {:title                     card-name
      :titleUrl                  (urls/card-url card-id)
      :alertSchedule             (alert-schedule-text channel)
+     :notificationText          (if (nil? non-user-email)
+                                    "Manage your subscriptions"
+                                    "Unsubscribe")
      :notificationManagementUrl (if (nil? non-user-email)
                                   (urls/notification-management-url)
                                   (str (urls/unsubscribe-url)

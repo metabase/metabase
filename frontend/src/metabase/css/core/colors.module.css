@@ -1,110 +1,116 @@
 /* NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
- * NOTE: KEEP SYNCRONIZED WITH COLORS.JS
+ * NOTE: KEEP SYNCRONIZED WITH:
+ * frontend/src/metabase/ui/utils/colors.ts
+ * frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
+ * frontend/src/metabase/styled-components/theme/css-variables.ts
+ * .storybook/preview-head.html
  */
 :root {
-  --color-admin-navbar: #7172ad;
-  --color-white: #fff;
-  --color-black: #2e353b;
-  --color-success: #84bb4c;
-  --color-error: #ed6e6e;
-  --color-warning: #f9cf48;
-  --color-text-dark: #4c5773;
-  --color-text-medium: #696e7b;
-  --color-text-light: #949aab;
-  --color-text-white: #fff;
-  --color-bg-black: #2e353b;
-  --color-bg-dark: #93a1ab;
-  --color-bg-medium: #edf2f5;
-  --color-bg-light: #f9fbfc;
-  --color-bg-white: #fff;
-  --color-bg-yellow: #fffcf2;
-  --color-shadow: rgba(0, 0, 0, 0.13);
-  --color-border: #eeecec;
+  --mb-color-text-white: #fff;
+  --mb-color-brand: #509ee3;
+  --mb-color-brand-light: #f9fbfc;
+  --mb-color-brand-lighter: #eef6fc;
+  --mb-color-success: #84bb4c;
+  --mb-color-summarize: #88bf4d;
+  --mb-color-error: #ed6e6e;
+  --mb-color-danger: #ed6e6e;
+  --mb-color-text-dark: #4c5773;
+  --mb-color-text-medium: #696e7b;
+  --mb-color-text-light: #949aab;
+  --mb-color-bg-black: #2e353b;
+  --mb-color-bg-dark: #93a1ab;
+  --mb-color-bg-medium: #edf2f5;
+  --mb-color-bg-light: #f9fbfc;
+  --mb-color-bg-white: #fff;
+  --mb-color-bg-error: #ed6e6e55;
+  --mb-color-bg-night: #42484e;
+  --mb-color-shadow: rgba(0, 0, 0, 0.13);
+  --mb-color-border: #eeecec;
+  --mb-color-filter: #7172ad;
+  --mb-color-focus: #cbe2f7;
+  --mb-color-warning: #f9cf48;
 }
 
-:global(.text-default),
-.text-default {
-  color: var(--color-text-dark);
+.textDefault {
+  color: var(--mb-color-text-dark);
 }
 
-:global(.text-default-hover:hover) {
-  color: var(--color-text-dark);
+.textBrand {
+  color: var(--mb-color-brand);
 }
 
-/* brand */
-:global(.text-brand),
-.text-brand {
-  color: var(--color-brand);
-}
-
-/* success */
-
-:global(.text-success) {
-  color: var(--color-success);
+.textSuccess {
+  color: var(--mb-color-success);
 }
 
 /* error */
 
-:global(.text-error),
-.text-error,
-:global(.text-error-hover:hover) {
-  color: var(--color-error);
+.textError,
+.textErrorHover {
+  color: var(--mb-color-error);
 }
 
-:global(.bg-error-hover:hover) {
-  background-color: var(--color-error);
+.bgErrorHover:hover {
+  background-color: var(--mb-color-error);
 }
 
-:global(.bg-error-input) {
-  background-color: var(--color-bg-white);
+.bgErrorInput {
+  background-color: var(--mb-color-bg-white);
 }
 
-:global(.text-slate) {
-  color: var(--color-text-medium);
+.textSlate {
+  color: var(--mb-color-text-medium);
 }
 
-:global(.text-slate-light) {
-  color: var(--color-text-light);
+.textSlateLight {
+  color: var(--mb-color-text-light);
 }
 
-:global(.text-light),
-.text-light {
-  color: var(--color-text-light);
+.textLight {
+  color: var(--mb-color-text-light);
 }
 
-:global(.text-medium),
-.text-medium,
-:global(.text-medium-hover:hover) {
-  color: var(--color-text-medium);
+.textMedium,
+.textMediumHover:hover {
+  color: var(--mb-color-text-medium);
 }
 
-:global(.text-dark),
-.text-dark,
-:global(.text-dark-hover:hover) {
-  color: var(--color-text-dark);
+.textDark,
+.textDarkHover:hover {
+  color: var(--mb-color-text-dark);
 }
 
-:global(.bg-light),
-:global(.bg-light-hover:hover) {
-  background-color: var(--color-bg-light);
+.bgLight,
+.bgLightHover:hover {
+  background-color: var(--mb-color-bg-light);
 }
 
-:global(.bg-medium) {
-  background-color: var(--color-bg-medium);
+.bgMedium {
+  background-color: var(--mb-color-bg-medium);
 }
 
 /* white  - move to bottom for specificity since its often used on hovers, etc */
-:global(.text-white),
-.text-white,
-:global(.text-white-hover:hover) {
-  color: var(--color-text-white);
+.textWhite,
+.textWhiteHover:hover {
+  color: var(--mb-color-text-white);
 }
 
-:global(.bg-white),
-.bg-white {
-  background-color: var(--color-bg-white);
+.bgWhite {
+  background-color: var(--mb-color-bg-white);
 }
 
-:global(.bg-light-blue) {
-  background-color: var(--color-bg-light);
+.bgLightBlue {
+  background-color: var(--mb-color-bg-light);
+}
+
+.DashboardNight .bgLight {
+  background-color: var(--mb-color-bg-black);
+}
+
+.DashboardNight .bgMedium {
+  background-color: #596269;
+}
+
+.DashboardNight .textDark {
+  color: var(--mb-color-bg-light);
 }

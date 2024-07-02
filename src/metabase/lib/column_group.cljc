@@ -8,6 +8,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
@@ -31,7 +32,7 @@
    [:map
     [:lib/type    [:= :metadata/column-group]]
     [::group-type GroupType]
-    [::columns    [:sequential lib.metadata/ColumnMetadata]]]
+    [::columns    [:sequential [:ref ::lib.schema.metadata/column]]]]
    [:multi
     {:dispatch ::group-type}
     [:group-type/main
@@ -153,7 +154,7 @@
 
 (mu/defn ^:private column-group-info :- [:map [::group-type GroupType]]
   "The value we should use to `group-by` inside [[group-columns]]."
-  [column-metadata :- lib.metadata/ColumnMetadata]
+  [column-metadata :- ::lib.schema.metadata/column]
   (column-group-info-method column-metadata))
 
 (defn- column-group-ordering
@@ -191,7 +192,7 @@
   Ordered to put own columns first, then explicit joins alphabetically by join alias, then implicit joins alphabetically
   by FK join alias + FK field name (which is used as the table name). So if the same FK is available multiple times,
   they are ordered: own first, then alphabetically by the join alias for that FK."
-  [column-metadatas :- [:sequential lib.metadata/ColumnMetadata]]
+  [column-metadatas :- [:sequential ::lib.schema.metadata/column]]
   (let [fk-field-names (into {} (comp (filter :id)
                                       (map (juxt :id :name)))
                              column-metadatas)]
@@ -203,7 +204,7 @@
          (sort-by (partial column-group-ordering fk-field-names))
          vec)))
 
-(mu/defn columns-group-columns :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn columns-group-columns :- [:sequential ::lib.schema.metadata/column]
   "Get the columns associated with a column group"
   [column-group :- ColumnGroup]
   (::columns column-group))

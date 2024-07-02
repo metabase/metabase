@@ -5,12 +5,13 @@ import { usePrevious } from "react-use";
 import { TreeNode } from "metabase/components/tree/TreeNode";
 import type { TreeNodeProps } from "metabase/components/tree/types";
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
-import { getCollectionIcon } from "metabase/entities/collections";
+import { getCollectionIcon } from "metabase/entities/collections/utils";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { Collection } from "metabase-types/api";
 
 import {
+  CollectionLinkRoot,
   CollectionNodeRoot,
   ExpandToggleButton,
   FullWidthLink,
@@ -121,7 +122,7 @@ const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
   ) {
     const collection = item as unknown as Collection;
     return (
-      <div data-testid="sidebar-collection-link-root">
+      <CollectionLinkRoot data-testid="sidebar-collection-link-root">
         <CollectionDropTarget collection={collection}>
           {(droppableProps: DroppableProps) => (
             <SidebarCollectionLink
@@ -132,7 +133,7 @@ const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
             />
           )}
         </CollectionDropTarget>
-      </div>
+      </CollectionLinkRoot>
     );
   },
 );

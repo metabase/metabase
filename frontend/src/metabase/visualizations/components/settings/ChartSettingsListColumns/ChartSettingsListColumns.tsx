@@ -4,8 +4,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
-import type Question from "metabase-lib/Question";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import type Question from "metabase-lib/v1/Question";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   ConcreteFieldReference,
   DatasetColumn,
@@ -30,7 +30,7 @@ interface Props {
   columns: DatasetColumn[];
   question: Question;
   onChange: (value: SettingValue) => void;
-  onShowWidget: (config: unknown, targetElement: HTMLElement | null) => void;
+  onShowWidget: (config: unknown, targetElement: Element | null) => void;
 }
 
 type ListColumnSlot = "left" | "right";
@@ -69,7 +69,7 @@ function ChartSettingsListColumns({
   );
 
   const onColumnSettingsClick = useCallback(
-    (fieldIdOrFieldRef, targetElement) => {
+    (fieldIdOrFieldRef: FieldIdOrFieldRef, targetElement: Element) => {
       const column = columns.find(
         column =>
           column.id === fieldIdOrFieldRef ||
@@ -119,7 +119,9 @@ function ChartSettingsListColumns({
             icon="gear"
             onlyIcon
             disabled={fieldIdOrFieldRef === null}
-            onClick={e => onColumnSettingsClick(fieldIdOrFieldRef, e.target)}
+            onClick={(e: React.MouseEvent) =>
+              onColumnSettingsClick(fieldIdOrFieldRef, e.currentTarget)
+            }
           />
         </ColumnItemContainer>
       ))}
@@ -138,7 +140,9 @@ function ChartSettingsListColumns({
             icon="gear"
             onlyIcon
             disabled={fieldIdOrFieldRef === null}
-            onClick={e => onColumnSettingsClick(fieldIdOrFieldRef, e.target)}
+            onClick={e =>
+              onColumnSettingsClick(fieldIdOrFieldRef, e.currentTarget)
+            }
           />
         </ColumnItemContainer>
       ))}

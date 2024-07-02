@@ -12,10 +12,10 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.db.liquibase :as liquibase]
-   [metabase.db.setup :as mdb.setup]
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -24,7 +24,8 @@
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)
    (liquibase LabelExpression)
@@ -122,8 +123,9 @@
 (defn- migration-id-in-range?
   "Whether `id` should be considered to be between `start-id` and `end-id`, inclusive. Handles both legacy plain-integer
   and new-style `vMM.mm-NNN` style IDs."
-  [start-id id end-id & [{:keys [inclusive-end?]
-                          :or   {inclusive-end? true}}]]
+  [start-id id end-id & [{:keys [inclusive-start? inclusive-end?]
+                          :or   {inclusive-start? true
+                                 inclusive-end? true}}]]
 
   (let [start (migration->number start-id)
         id    (migration->number id)
@@ -132,7 +134,9 @@
                 (migration->number end-id)
                 Integer/MAX_VALUE)]
     (and
-     (<= start id)
+     (if inclusive-start?
+       (<= start id)
+       (< start id))
      (if inclusive-end?
        (<= id end)
        (< id end)))))
@@ -171,12 +175,24 @@
     (is (migration-id-in-range? 1 "v42.00-015" "v43.00-014"))
     (is (not (migration-id-in-range? 1 "v43.00-014" "v42.00-015")))))
 
+(defn- range-description [start-id end-id {:keys [inclusive-start? inclusive-end?]}]
+  (let [inclusive-exclusive #(if % "inclusive" "exclusive")]
+    (if end-id
+      (format "between %s (%s) and %s (%s)"
+              start-id (inclusive-exclusive inclusive-start?)
+              end-id (inclusive-exclusive inclusive-end?))
+      (format "from %s (%s) until the end" start-id (inclusive-exclusive inclusive-start?)))))
+
 (defn run-migrations-in-range!
   "Run Liquibase migrations from our migrations YAML file in the range of `start-id` -> `end-id` (inclusive) against a
   DB with `jdbc-spec`."
   {:added "0.41.0", :arglists '([conn [start-id end-id]]
-                                [conn [start-id end-id] {:keys [inclusive-end?], :or {inclusive-end? true}}])}
+                                [conn [start-id end-id] {:keys [inclusive-start? inclusive-end?]
+                                                         :or {inclusive-start? true
+                                                              inclusive-end? true}}])}
   [^java.sql.Connection conn [start-id end-id] & [range-options]]
+  (log/debugf "Finding and running migrations %s" (range-description start-id end-id range-options))
+
   (liquibase/with-liquibase [liquibase conn]
     (let [database (.getDatabase liquibase)
           change-set-filters [(reify ChangeSetFilter
@@ -196,12 +212,12 @@
        (.generateDeploymentId change-log-service)
        (liquibase/update-with-change-log liquibase {:change-set-filters change-set-filters})))))
 
-(defn- test-migrations-for-driver [driver [start-id end-id] f]
+(defn- test-migrations-for-driver! [driver [start-id end-id] f]
   (log/debug (u/format-color 'yellow "Testing migrations for driver %s..." driver))
   (with-temp-empty-app-db [conn driver]
     ;; sanity check: make sure the DB is actually empty
-    (let [metadata (.getMetaData conn)
-          schema (when (= :h2 driver) "PUBLIC")]
+    (let [metadata  (.getMetaData conn)
+          schema    (when (= :h2 driver) "PUBLIC")]
       (with-open [rs (.getTables metadata nil schema "%" (into-array String ["TABLE"]))]
         (let [tables (jdbc/result-set-seq rs)]
           (assert (zero? (count tables))
@@ -209,27 +225,32 @@
                        (u/pprint-to-str tables))))))
     (log/debugf "Finding and running migrations before %s..." start-id)
     (run-migrations-in-range! conn ["v00.00-000" start-id] {:inclusive-end? false})
-    (letfn [(migrate
-              ([]
-               (migrate :up nil))
-              ([direction]
-               (migrate direction nil))
+    (let [restart-id (atom nil)]
+      (letfn [(migrate
+                ([]
+                 (migrate :up nil))
+                ([direction]
+                 (migrate direction nil))
 
-              ([direction version]
-               (case direction
-                 :up
-                 (do
-                  (log/debugf "Finding and running migrations between %s and %s (inclusive)" start-id (or end-id "end"))
-                  (run-migrations-in-range! conn [start-id end-id]))
+                ([direction version]
+                 (case direction
+                   :up
+                   ;; If we have rolled back earlier migrations, it's no longer safe to resume from start-id.
+                   (if-let [start-after @restart-id]
+                     (run-migrations-in-range! conn [start-after end-id] {:inclusive-start? false})
+                     (run-migrations-in-range! conn [start-id end-id]))
 
-                 :down
-                 (do
-                  (assert (int? version), "Downgrade requires a version")
-                  (mdb.setup/migrate! driver (mdb.connection/data-source) :down version)))))]
-     (f migrate)))
+                   :down
+                   (do
+                     (assert (int? version), "Downgrade requires a version")
+                     (mdb/migrate! (mdb/data-source) :down version)
+                     ;; We may have rolled back migrations prior to start-id, so its no longer safe to start from there.
+                     (reset! restart-id (t2/select-one-pk (liquibase/changelog-table-name conn)
+                                                          {:order-by [[:orderexecuted :desc]]}))))))]
+        (f migrate))))
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 
-(defn do-test-migrations
+(defn do-test-migrations!
   [migration-range f]
   ;; make sure the normal Metabase application DB is set up before running the tests so things don't get confused and
   ;; try to initialize it while the mock DB is bound
@@ -239,8 +260,9 @@
                             [migration-range migration-range])]
     (testing (format "Migrations %s thru %s" start-id (or end-id "end"))
       (datasets/test-drivers #{:h2 :mysql :postgres}
-        (test-migrations-for-driver driver/*driver* [start-id end-id] f)))))
+        (test-migrations-for-driver! driver/*driver* [start-id end-id] f)))))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro test-migrations
   "Util macro for running tests for a set of Liquibase schema migration(s).
 
@@ -275,7 +297,7 @@
   either set the `DRIVERS` env var or use [[mt/set-test-drivers!]] from the REPL."
   {:style/indent 2}
   [migration-range [migrate!-binding] & body]
-  `(do-test-migrations
+  `(do-test-migrations!
     ~migration-range
     (fn [~migrate!-binding]
       ~@body)))

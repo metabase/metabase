@@ -10,7 +10,7 @@ import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PermissionsApi } from "metabase/services";
 import { Loader, Center } from "metabase/ui";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, Group } from "metabase-types/api";
 
 import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
@@ -73,6 +73,7 @@ function DataPermissionsPage({
       dbId: params.databaseId,
       include_hidden: true,
       remove_inactive: true,
+      skip_fields: true,
     },
     enabled: params.databaseId !== undefined,
   });

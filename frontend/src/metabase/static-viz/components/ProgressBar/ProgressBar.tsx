@@ -3,7 +3,7 @@ import { Group } from "@visx/group";
 import { scaleLinear } from "@visx/scale";
 import { t } from "ttag";
 
-import type { ColorGetter } from "metabase/static-viz/lib/colors";
+import type { ColorGetter } from "metabase/visualizations/types";
 
 import { formatNumber } from "../../lib/numbers";
 import { Text } from "../Text";
@@ -78,7 +78,11 @@ const ProgressBar = ({
   );
 
   return (
-    <svg width={layout.width} height={layout.height}>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={layout.width}
+      height={layout.height}
+    >
       <ClipPath id="rounded-bar">
         <rect
           width={barWidth}
@@ -101,18 +105,18 @@ const ProgressBar = ({
           <>
             <CheckMarkIcon
               size={layout.iconSize}
-              color="white"
+              color="#ffffff"
               x={10}
               y={(layout.barHeight - layout.iconSize) / 2}
             />
             <Text
               fontSize={layout.fontSize}
               textAnchor="start"
-              color="white"
+              color="#ffffff"
               x={layout.iconSize + 16}
               y={layout.barHeight / 2}
               verticalAnchor="middle"
-              fill="white"
+              fill="#ffffff"
             >
               {barText}
             </Text>

@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { useCreateApiKeyMutation } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
@@ -9,30 +10,25 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { ApiKeysApi } from "metabase/services";
 import { Text, Button, Group, Modal, Stack } from "metabase/ui";
+import type { CreateApiKeyRequest } from "metabase-types/api";
 
 import { SecretKeyModal } from "./SecretKeyModal";
 import { API_KEY_VALIDATION_SCHEMA } from "./utils";
 
-export const CreateApiKeyModal = ({
-  onClose,
-  refreshList,
-}: {
-  onClose: () => void;
-  refreshList: () => void;
-}) => {
+export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
   const [modal, setModal] = useState<"create" | "secretKey">("create");
-  const [secretKey, setSecretKey] = useState<string>("");
+  const [createApiKey, response] = useCreateApiKeyMutation();
+  const secretKey = response?.data?.unmasked_key || "";
 
   const handleSubmit = useCallback(
-    async vals => {
-      const response = await ApiKeysApi.create(vals);
-      setSecretKey(response.unmasked_key);
-      setModal("secretKey");
-      refreshList();
+    async (vals: { group_id: number | null; name: string }) => {
+      if (vals.group_id !== null) {
+        await createApiKey(vals as CreateApiKeyRequest);
+        setModal("secretKey");
+      }
     },
-    [refreshList],
+    [createApiKey],
   );
 
   if (modal === "secretKey") {
@@ -49,7 +45,7 @@ export const CreateApiKeyModal = ({
         title={t`Create a new API Key`}
       >
         <FormProvider
-          initialValues={{ name: "", group_id: "" }}
+          initialValues={{ name: "", group_id: null }}
           validationSchema={API_KEY_VALIDATION_SCHEMA}
           onSubmit={handleSubmit}
         >

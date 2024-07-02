@@ -31,7 +31,7 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
       filterWidget().click();
       addWidgetStringFilter("15");
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("114.42");
       });
     });
@@ -43,7 +43,7 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
 
       saveDashboard();
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("114.42");
       });
     });
@@ -60,7 +60,7 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
       filterWidget().click();
       addWidgetStringFilter("4");
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("47.68");
       });
     });
@@ -72,7 +72,7 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
 
       saveDashboard();
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("47.68");
       });
     });

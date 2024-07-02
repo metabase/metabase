@@ -37,7 +37,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.request.util :as req.util]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.password :as u.password]
@@ -103,7 +103,10 @@
                 (throw (ex-info (tru "Invalid value for session cookie samesite")
                                 {:possible-values possible-session-cookie-samesite-values
                                  :session-cookie-samesite normalized-value
-                                 :http-status 400}))))))
+                                 :http-status 400})))))
+  :doc "See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
+        Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [interactive Embedding](../embedding/interactive-embedding.md).
+        Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).")
 
 (defmulti default-session-cookie-attributes
   "The appropriate cookie attributes to persist a newly created Session to `response`."
@@ -197,9 +200,9 @@
                           {:max-age (* 60 (config/config-int :max-session-age))}))]
     (when (and (= (session-cookie-samesite) :none) (not (req.util/https? request)))
       (log/warn
-       (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions.")
-            " "
-            "https://www.chromestatus.com/feature/5633521622188032")))
+       (str "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection."
+            " Some browsers will reject cookies under these conditions."
+            " https://www.chromestatus.com/feature/5633521622188032")))
     (-> response
         wrap-body-if-needed
         (cond-> (= session-type :full-app-embed)
@@ -338,7 +341,10 @@
 (def ^:private api-key-that-should-never-match (str (random-uuid)))
 (def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
 
-(defn- do-useless-hash []
+(defn do-useless-hash
+  "Password check that will always fail, used to avoid exposing any info about existing users or API keys via timing
+  attacks."
+  []
   (u.password/verify-password api-key-that-should-never-match "" hash-that-should-never-match))
 
 (defn- matching-api-key? [{:keys [api-key] :as _user-data} passed-api-key]
@@ -355,7 +361,7 @@
     (let [user-data (some-> (t2/query-one (cons (user-data-for-api-key-prefix-query
                                                  (premium-features/enable-advanced-permissions?))
                                                 [(api-key/prefix api-key)]))
-                               (update :is-group-manager? boolean))]
+                            (update :is-group-manager? boolean))]
       (when (matching-api-key? user-data api-key)
         (dissoc user-data :api-key)))))
 
@@ -497,17 +503,18 @@
              (let [value (setting/get-value-of-type :json :session-timeout)]
                (if-let [error-key (check-session-timeout value)]
                  (do (log/warn (case error-key
-                                 :amount-must-be-positive            (trs "Session timeout amount must be positive.")
-                                 :amount-must-be-less-than-100-years (trs "Session timeout must be less than 100 years.")))
+                                 :amount-must-be-positive            "Session timeout amount must be positive."
+                                 :amount-must-be-less-than-100-years "Session timeout must be less than 100 years."))
                      nil)
                  value)))
   :setter  (fn [new-value]
              (when-let [error-key (check-session-timeout new-value)]
                (throw (ex-info (case error-key
-                                 :amount-must-be-positive            (tru "Session timeout amount must be positive.")
-                                 :amount-must-be-less-than-100-years (tru "Session timeout must be less than 100 years."))
+                                 :amount-must-be-positive            "Session timeout amount must be positive."
+                                 :amount-must-be-less-than-100-years "Session timeout must be less than 100 years.")
                                {:status-code 400})))
-             (setting/set-value-of-type! :json :session-timeout new-value)))
+             (setting/set-value-of-type! :json :session-timeout new-value))
+  :doc "Has to be in the JSON format `\"{\"amount\":120,\"unit\":\"minutes\"}\"` where the unit is one of \"seconds\", \"minutes\" or \"hours\".")
 
 (defn session-timeout->seconds
   "Convert the session-timeout setting value to seconds."

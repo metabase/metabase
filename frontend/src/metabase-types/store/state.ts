@@ -14,7 +14,10 @@ import type { QueryBuilderState } from "./qb";
 import type { RequestsState } from "./requests";
 import type { SettingsState } from "./settings";
 import type { SetupState } from "./setup";
+import type { UndoState } from "./undo";
 import type { FileUploadState } from "./upload";
+
+type ModalName = null | "collection" | "dashboard" | "action";
 
 export interface State {
   admin: AdminState;
@@ -32,9 +35,11 @@ export interface State {
   settings: SettingsState;
   setup: SetupState;
   upload: FileUploadState;
+  modal: ModalName;
+  undo: UndoState;
 }
 
-export type Dispatch<T = any> = (action: T) => void;
+export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;
 
 export type GetState = () => State;
 

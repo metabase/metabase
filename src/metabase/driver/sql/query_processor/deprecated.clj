@@ -8,7 +8,6 @@
   (:require
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
 ;;; This is unused at this moment in time but we can leave it around in case we want to use it again in the
@@ -21,10 +20,10 @@
     (log-deprecation-warning driver 'my.namespace/method \"v0.42.0\")"
   [driver method-name deprecated-version]
   (letfn [(thunk []
-            (log/warn
-             (u/colorize 'red
-                         (trs "Warning: Driver {0} is using {1}. This method was deprecated in {2} and will be removed in a future release."
-                              driver method-name deprecated-version))))]
+            (log/warn (u/format-color :red
+                                      (str "Warning: Driver %s is using %s. This method was deprecated in %s and will"
+                                           " be removed in a future release.")
+                                      driver method-name deprecated-version)))]
     ;; only log each individual message once for the current QP store; by 'caching' the value with the key it is
     ;; effectively memoized for the rest of the QP run for the current query. The goal here is to avoid blasting the
     ;; logs with warnings about deprecated method calls, but still remind people regularly enough that it gets fixed

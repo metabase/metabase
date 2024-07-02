@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.serialize :as serialize]
    [metabase-enterprise.serialization.test-util :as ts]
-   [metabase.models :refer [Card Collection Dashboard Database Field Metric NativeQuerySnippet
+   [metabase.models :refer [Card Collection Dashboard Database Field NativeQuerySnippet
                             Segment Table]]))
 
 (defn- all-ids-are-fully-qualified-names?
@@ -25,7 +25,6 @@
 (deftest serialization-test
   (ts/with-world
     (doseq [[model id] [[Card card-id]
-                        [Metric metric-id]
                         [Segment segment-id]
                         [Collection collection-id]
                         [Dashboard dashboard-id]

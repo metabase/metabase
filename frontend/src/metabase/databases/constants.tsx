@@ -1,11 +1,12 @@
 import { t } from "ttag";
 
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
 import DatabaseCacheScheduleField from "./components/DatabaseCacheScheduleField";
 import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
 import DatabaseConnectionSectionField from "./components/DatabaseConnectionSectionField";
+import DatabaseHostnameSectionField from "./components/DatabaseHostnameSectionField";
 import DatabaseScheduleToggleField from "./components/DatabaseScheduleToggleField";
 import DatabaseSshDescription from "./components/DatabaseSshDescription";
 import DatabaseSslKeyDescription from "./components/DatabaseSslKeyDescription";
@@ -32,7 +33,6 @@ export const ENGINE_LOGO: Record<string, string> = {
   bigquery: "bigquery.svg",
   "bigquery-cloud-sdk": "bigquery.svg",
   druid: "druid.svg",
-  googleanalytics: "googleanalytics.svg",
   h2: "h2.svg",
   mongo: "mongo.svg",
   mysql: "mysql.svg",
@@ -103,6 +103,9 @@ export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
   },
   "use-conn-uri": {
     type: DatabaseConnectionSectionField,
+  },
+  "use-hostname": {
+    type: DatabaseHostnameSectionField,
   },
   "let-user-control-scheduling": {
     type: DatabaseScheduleToggleField,

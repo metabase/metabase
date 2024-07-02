@@ -63,28 +63,6 @@ jobs:
           token: ${{ github.token }}
           filters: .github/static-viz-sources.yaml
 
-  be-linter-cloverage:
-    needs: files-changed
-    if: (github.ref_name == 'master' && needs.files-changed.outputs.backend_all == 'true')
-        || contains(github.event.pull_request.labels.*.name, 'run-cloverage')
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cloverage"
-      - name: Build static viz frontend
-        run: yarn build-static-viz
-      - name: Collect the test coverage
-        run: clojure -X:dev:ci:ee:ee-dev:test:cloverage
-      - name: Upload coverage to codecov.io
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./target/coverage/codecov.json
-          flags: back-end
-
   be-linter-clj-kondo:
     needs: [files-changed, static-viz-files-changed]
     if: |
@@ -207,7 +185,7 @@ jobs:
         if: matrix.java-version != 21
         run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
 
-      - name: Run tests using Java 21 on `master` only
+      - name: If using Java 21, only run tests on `master`
         id: run-java-tests-21
         if: matrix.java-version == 21 && github.ref_name == 'master'
         run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev

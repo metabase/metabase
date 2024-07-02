@@ -1,4 +1,3 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import _ from "underscore";
 
 // mappings of allowed operators
@@ -30,39 +29,9 @@ function computeExpression(node, x) {
   throw new Error(`Invalid expression: ${node}`);
 }
 
-const msToDays = ms => ms / (24 * 60 * 60 * 1000);
-
-export function getNormalizedStackedTrendDatas(trendDatas) {
-  const count = trendDatas[0].length;
-  const sums = _.range(count).map(i =>
-    trendDatas.reduce((sum, trendData) => sum + trendData[i][1], 0),
-  );
-  return trendDatas.map(trendData =>
-    trendData.map(([x, y], i) => [x, y / sums[i]]),
-  );
-}
-
-export function getTrendDataPointsFromInsight(insight, xDomain, count = 10) {
-  const isTimeseries = moment.isMoment(xDomain[0]);
-
-  let fn;
+export const getTrendLineFunction = insight => {
   if (insight["best-fit"]) {
-    fn = x => computeExpression(insight["best-fit"], x);
-  } else {
-    fn = x => x * insight.slope + insight.offset;
+    return x => computeExpression(insight["best-fit"], x);
   }
-
-  const [start, end] = isTimeseries ? xDomain.map(x => +x) : xDomain;
-  const xValues = getValuesInRange(start, end, count);
-
-  const trendData = isTimeseries
-    ? xValues.map(x => [moment(x), fn(msToDays(x))])
-    : xValues.map(x => [x, fn(x)]);
-
-  return trendData;
-}
-
-function getValuesInRange(start, end, count) {
-  const delta = (end - start) / (count - 1);
-  return _.range(count).map(i => start + delta * i);
-}
+  return x => x * insight.slope + insight.offset;
+};

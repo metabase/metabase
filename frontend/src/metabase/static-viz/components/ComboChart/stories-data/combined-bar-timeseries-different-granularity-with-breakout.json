@@ -1,0 +1,958 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 5,
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "CREATED_AT",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            38,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 38,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "description": "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter",
+          "semantic_type": "type/Source",
+          "coercion_strategy": null,
+          "name": "SOURCE",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            14,
+            {
+              "base-type": "type/Text",
+              "source-field": 40
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 14,
+          "visibility_type": "normal",
+          "display_name": "User → Source",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 7.4084
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "display_name": "Sum of Tax",
+          "settings": null,
+          "field_ref": [
+            "aggregation",
+            0
+          ],
+          "name": "sum",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 25,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 347.36,
+                "q1": 1599.55,
+                "q3": 5152.9825,
+                "max": 5808.99,
+                "sd": 2027.7762957298814,
+                "avg": 2895.5335999999998
+              }
+            }
+          }
+        }
+      ],
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "name": "comb: breakout",
+      "creator_id": 1,
+      "updated_at": "2024-01-16T20:40:03.110272-03:00",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [
+            [
+              "sum",
+              [
+                "field",
+                35,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              38,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "year"
+              }
+            ],
+            [
+              "field",
+              14,
+              {
+                "base-type": "type/Text",
+                "source-field": 40
+              }
+            ]
+          ]
+        }
+      },
+      "id": 161,
+      "parameter_mappings": [],
+      "display": "bar",
+      "entity_id": "bCvU_rZ_zMUWnhUAP04Uf",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.dimensions": [
+          "CREATED_AT",
+          "SOURCE"
+        ],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.metrics": [
+          "sum"
+        ]
+      },
+      "metabase_version": "v1.48.1-SNAPSHOT (6934865)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2024-01-16T19:21:59.928265-03:00",
+      "public_uuid": null
+    },
+    "data": {
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            38,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 38,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "description": "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter",
+          "semantic_type": "type/Source",
+          "table_id": 3,
+          "coercion_strategy": null,
+          "name": "SOURCE",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "fk_field_id": 40,
+          "field_ref": [
+            "field",
+            14,
+            {
+              "base-type": "type/Text",
+              "source-field": 40
+            }
+          ],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 14,
+          "position": 8,
+          "visibility_type": "normal",
+          "display_name": "User → Source",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 7.4084
+              }
+            }
+          },
+          "base_type": "type/Text",
+          "source_alias": "PEOPLE__via__USER_ID"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "sum",
+          "display_name": "Sum of Tax",
+          "source": "aggregation",
+          "field_ref": [
+            "aggregation",
+            0
+          ],
+          "aggregation_index": 0,
+          "effective_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('year', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS \"CREATED_AT\", \"PEOPLE__via__USER_ID\".\"SOURCE\" AS \"PEOPLE__via__USER_ID__SOURCE\", SUM(\"PUBLIC\".\"ORDERS\".\"TAX\") AS \"sum\" FROM \"PUBLIC\".\"ORDERS\" LEFT JOIN \"PUBLIC\".\"PEOPLE\" AS \"PEOPLE__via__USER_ID\" ON \"PUBLIC\".\"ORDERS\".\"USER_ID\" = \"PEOPLE__via__USER_ID\".\"ID\" GROUP BY DATE_TRUNC('year', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\"), \"PEOPLE__via__USER_ID\".\"SOURCE\" ORDER BY DATE_TRUNC('year', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ASC, \"PEOPLE__via__USER_ID\".\"SOURCE\" ASC",
+        "params": null
+      },
+      "viz-settings": {
+        "graph.dimensions": [
+          "CREATED_AT",
+          "SOURCE"
+        ],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.metrics": [
+          "sum"
+        ],
+        "metabase.shared.models.visualization-settings/column-settings": {},
+        "metabase.shared.models.visualization-settings/global-column-settings": {}
+      },
+      "results_timezone": "America/Montevideo",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "year",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              38,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "year"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 38,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "description": "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter",
+            "semantic_type": "type/Source",
+            "coercion_strategy": null,
+            "name": "SOURCE",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              14,
+              {
+                "base-type": "type/Text",
+                "source-field": 40
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 14,
+            "visibility_type": "normal",
+            "display_name": "User → Source",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 7.4084
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Sum of Tax",
+            "settings": null,
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 25,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 347.36,
+                  "q1": 1599.55,
+                  "q3": 5152.9825,
+                  "max": 5808.99,
+                  "sd": 2027.7762957298814,
+                  "avg": 2895.5335999999998
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null,
+      "rows": [
+        [
+          "2022-01-01T00:00:00-03:00",
+          "Affiliate",
+          389.19
+        ],
+        [
+          "2022-01-01T00:00:00-03:00",
+          "Facebook",
+          378.95
+        ],
+        [
+          "2022-01-01T00:00:00-03:00",
+          "Google",
+          404.66
+        ],
+        [
+          "2022-01-01T00:00:00-03:00",
+          "Organic",
+          347.36
+        ],
+        [
+          "2022-01-01T00:00:00-03:00",
+          "Twitter",
+          477.17
+        ],
+        [
+          "2023-01-01T00:00:00-03:00",
+          "Affiliate",
+          1798.6
+        ],
+        [
+          "2023-01-01T00:00:00-03:00",
+          "Facebook",
+          2149.48
+        ],
+        [
+          "2023-01-01T00:00:00-03:00",
+          "Google",
+          1939.64
+        ],
+        [
+          "2023-01-01T00:00:00-03:00",
+          "Organic",
+          2028.79
+        ],
+        [
+          "2023-01-01T00:00:00-03:00",
+          "Twitter",
+          1961.65
+        ],
+        [
+          "2024-01-01T00:00:00-03:00",
+          "Affiliate",
+          4241.11
+        ],
+        [
+          "2024-01-01T00:00:00-03:00",
+          "Facebook",
+          5146.8
+        ],
+        [
+          "2024-01-01T00:00:00-03:00",
+          "Google",
+          4995.08
+        ],
+        [
+          "2024-01-01T00:00:00-03:00",
+          "Organic",
+          5031.66
+        ],
+        [
+          "2024-01-01T00:00:00-03:00",
+          "Twitter",
+          5171.53
+        ],
+        [
+          "2025-01-01T00:00:00-03:00",
+          "Affiliate",
+          5190.27
+        ],
+        [
+          "2025-01-01T00:00:00-03:00",
+          "Facebook",
+          5808.99
+        ],
+        [
+          "2025-01-01T00:00:00-03:00",
+          "Google",
+          5513.9
+        ],
+        [
+          "2025-01-01T00:00:00-03:00",
+          "Organic",
+          5653.39
+        ],
+        [
+          "2025-01-01T00:00:00-03:00",
+          "Twitter",
+          5424.87
+        ],
+        [
+          "2026-01-01T00:00:00-03:00",
+          "Affiliate",
+          1612.56
+        ],
+        [
+          "2026-01-01T00:00:00-03:00",
+          "Facebook",
+          1808.88
+        ],
+        [
+          "2026-01-01T00:00:00-03:00",
+          "Google",
+          1636.35
+        ],
+        [
+          "2026-01-01T00:00:00-03:00",
+          "Organic",
+          1560.52
+        ],
+        [
+          "2026-01-01T00:00:00-03:00",
+          "Twitter",
+          1716.94
+        ]
+      ]
+    }
+  },
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 5,
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "quarter",
+          "name": "CREATED_AT",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            38,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "quarter"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 38,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": [
+            "aggregation",
+            0
+          ],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 7,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 57,
+                "q1": 289.25,
+                "q3": 946.25,
+                "max": 1166,
+                "sd": 400.9530313307699,
+                "avg": 622
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Average of Total",
+          "settings": null,
+          "field_ref": [
+            "aggregation",
+            1
+          ],
+          "name": "avg",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 7,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 54.64170648979939,
+                "q1": 55.10537610915809,
+                "q3": 59.17432874519017,
+                "max": 59.861296683014224,
+                "sd": 2.1190880760151165,
+                "avg": 57.22355537466763
+              }
+            }
+          }
+        }
+      ],
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "name": "comb: two metrics",
+      "creator_id": 1,
+      "updated_at": "2024-01-16T20:40:03.127085-03:00",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [
+            [
+              "count"
+            ],
+            [
+              "avg",
+              [
+                "field",
+                39,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              38,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "quarter"
+              }
+            ]
+          ],
+          "filter": [
+            "time-interval",
+            [
+              "field",
+              38,
+              {
+                "base-type": "type/DateTime"
+              }
+            ],
+            -2,
+            "year"
+          ]
+        }
+      },
+      "id": 160,
+      "parameter_mappings": [],
+      "display": "bar",
+      "entity_id": "kBTU0R4fPg1dSpKh2YAOn",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.dimensions": [
+          "CREATED_AT"
+        ],
+        "stackable.stack_type": null,
+        "graph.metrics": [
+          "count",
+          "avg"
+        ]
+      },
+      "metabase_version": "v1.48.1-SNAPSHOT (6934865)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2024-01-16T19:21:13.672308-03:00",
+      "public_uuid": null
+    },
+    "data": {
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "unit": "quarter",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            38,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "quarter"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 38,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": [
+            "aggregation",
+            0
+          ],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "avg",
+          "display_name": "Average of Total",
+          "source": "aggregation",
+          "field_ref": [
+            "aggregation",
+            1
+          ],
+          "aggregation_index": 1,
+          "effective_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('quarter', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS \"CREATED_AT\", COUNT(*) AS \"count\", AVG(\"PUBLIC\".\"ORDERS\".\"TOTAL\") AS \"avg\" FROM \"PUBLIC\".\"ORDERS\" WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= DATE_TRUNC('year', DATEADD('year', CAST(-2 AS long), CAST(NOW() AS datetime)))) AND (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < DATE_TRUNC('year', NOW())) GROUP BY DATE_TRUNC('quarter', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ORDER BY DATE_TRUNC('quarter', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ASC",
+        "params": null
+      },
+      "viz-settings": {
+        "graph.dimensions": [
+          "CREATED_AT"
+        ],
+        "stackable.stack_type": null,
+        "graph.metrics": [
+          "count",
+          "avg"
+        ],
+        "metabase.shared.models.visualization-settings/column-settings": {},
+        "metabase.shared.models.visualization-settings/global-column-settings": {}
+      },
+      "results_timezone": "America/Montevideo",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "quarter",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              38,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "quarter"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 38,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 7,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 57,
+                  "q1": 289.25,
+                  "q3": 946.25,
+                  "max": 1166,
+                  "sd": 400.9530313307699,
+                  "avg": 622
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Average of Total",
+            "settings": null,
+            "field_ref": [
+              "aggregation",
+              1
+            ],
+            "name": "avg",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 7,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 54.64170648979939,
+                  "q1": 55.10537610915809,
+                  "q3": 59.17432874519017,
+                  "max": 59.861296683014224,
+                  "sd": 2.1190880760151165,
+                  "avg": 57.22355537466763
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 1004,
+          "unit": "quarter",
+          "offset": -38657.297394118905,
+          "last-change": 0.16135458167330677,
+          "col": "count",
+          "slope": 2.029190667215245,
+          "last-value": 1166,
+          "best-fit": [
+            "+",
+            -387102.9708233743,
+            [
+              "*",
+              39280.108565962626,
+              [
+                "log",
+                "x"
+              ]
+            ]
+          ]
+        },
+        {
+          "previous-value": 56.46080323106693,
+          "unit": "quarter",
+          "offset": 118.80288942626203,
+          "last-change": 0.03083697830601316,
+          "col": "avg",
+          "slope": -0.003181223144015157,
+          "last-value": 58.20188379544342,
+          "best-fit": [
+            "+",
+            671.0572529079474,
+            [
+              "*",
+              -62.18700392020229,
+              [
+                "log",
+                "x"
+              ]
+            ]
+          ]
+        }
+      ],
+      "rows": [
+        [
+          "2022-04-01T00:00:00-03:00",
+          57,
+          59.49847706177242
+        ],
+        [
+          "2022-07-01T00:00:00-03:00",
+          235,
+          59.861296683014224
+        ],
+        [
+          "2022-10-01T00:00:00-03:00",
+          452,
+          54.64170648979939
+        ],
+        [
+          "2023-01-01T00:00:00-03:00",
+          667,
+          54.65356706852181
+        ],
+        [
+          "2023-04-01T00:00:00-03:00",
+          773,
+          57.24715329305522
+        ],
+        [
+          "2023-07-01T00:00:00-03:00",
+          1004,
+          56.46080323106693
+        ],
+        [
+          "2023-10-01T00:00:00-03:00",
+          1166,
+          58.20188379544342
+        ]
+      ]
+    }
+  }
+]

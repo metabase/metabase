@@ -1,6 +1,5 @@
 import { Group } from "@visx/group";
 
-import type { ColorGetter } from "metabase/static-viz/lib/colors";
 import {
   getColumnValueStaticFormatter,
   getLabelsStaticFormatter,
@@ -20,7 +19,10 @@ import {
   trimData,
 } from "metabase/visualizations/shared/utils/data";
 import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
-import type { RemappingHydratedChartData } from "metabase/visualizations/types";
+import type {
+  ColorGetter,
+  RemappingHydratedChartData,
+} from "metabase/visualizations/types";
 import {
   getAxesVisibility,
   getLabelledSeries,
@@ -74,6 +76,7 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
   const groupedData = getGroupedDataset(
     remappedColumnsData.rows,
     chartColumns,
+    settings,
     columnValueFormatter,
   );
   const labelsFormatter = getLabelsStaticFormatter(chartColumns, settings);
@@ -88,23 +91,29 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
   const xValueRange = getXValueRange(settings);
   const labelledSeries = getLabelledSeries(settings, series);
 
-  const legend = calculateLegendRows(
-    series.map(series => ({
+  const legend = calculateLegendRows({
+    items: series.map(series => ({
+      key: series.seriesKey,
       name: series.seriesName,
       color: seriesColors[series.seriesKey],
     })),
-    WIDTH,
-    LEGEND_FONT.lineHeight,
-    LEGEND_FONT.size,
-    LEGEND_FONT.weight,
-  );
+    width: WIDTH,
+    lineHeight: LEGEND_FONT.lineHeight,
+    fontSize: LEGEND_FONT.size,
+    fontWeight: LEGEND_FONT.weight,
+  });
 
   const legendHeight = legend != null ? legend.height + CHART_PADDING : 0;
   const fullChartHeight = HEIGHT + legendHeight;
 
   return (
-    <svg width={WIDTH} height={fullChartHeight} fontFamily="Lato">
-      {legend && (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={WIDTH}
+      height={fullChartHeight}
+      fontFamily="Lato"
+    >
+      {legend.items.length > 0 && (
         <Legend
           items={legend.items}
           top={CHART_PADDING}

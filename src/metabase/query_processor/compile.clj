@@ -6,14 +6,21 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
+
+(mr/def ::compiled
+  [:map
+   [:query :any]
+   [:params {:optional true} [:maybe [:sequential :any]]]])
 
 (defn- compile* [{query-type :type, :as query}]
+    (assert (not (:qp/compiled query)) "This query has already been compiled!")
   (if (= query-type :native)
     (:native query)
     (driver/mbql->native driver/*driver* query)))
 
-(mu/defn compile-preprocessed :- :map
+(mu/defn compile-preprocessed :- ::compiled
   "Compile an already-preprocessed query, if needed. Returns just the resulting 'inner' native query.
   `:native` key in a legacy query."
   [preprocessed-query :- :map]
@@ -25,11 +32,21 @@
                         {:query preprocessed-query, :type qp.error-type/driver}
                         e))))))
 
-(mu/defn compile :- :map
+(mu/defn compile :- ::compiled
   "Preprocess and compile a query, if needed. Returns just the resulting 'inner' native query."
   [query :- :map]
   (qp.setup/with-qp-setup [query query]
     (compile-preprocessed (qp.preprocess/preprocess query))))
+
+(mu/defn attach-compiled-query :- :map
+  "If this is an MBQL query, compile it and attach it to the query under the `:qp/compiled` key. Previously, we attached
+  this under `:native`, but that causes the MBQL schema to blow up. We can't just change this to a regular native
+  query outright and remove the MBQL `:query`, because that would break perms checks."
+  [preprocessed :- :map]
+  (let [preprocessed (dissoc preprocessed :qp/compiled)]
+    (case (:type preprocessed)
+      :native preprocessed
+      :query  (assoc preprocessed :qp/compiled (compile-preprocessed preprocessed)))))
 
 (mu/defn compile-and-splice-parameters :- :map
   "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query

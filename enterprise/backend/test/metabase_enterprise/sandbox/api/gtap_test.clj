@@ -26,7 +26,6 @@
    :card_id              true
    :table_id             true
    :group_id             true
-   :permission_id        false
    :attribute_remappings {:foo 1}})
 
 (defmacro ^:private with-gtap-cleanup
@@ -238,19 +237,17 @@
         (with-gtap-cleanup
           (testing "Test that we can create a new sandbox using the permission graph API"
             (let [graph  (-> (data-perms.graph/api-graph)
-                             (assoc-in [:groups group-id (mt/id) :data :schemas "PUBLIC" table-id-1 :query] :segmented)
+                             (assoc-in [:groups group-id (mt/id) :view-data] {"PUBLIC" {table-id-1 :sandboxed}})
                              (assoc :sandboxes [{:table_id             table-id-1
                                                  :group_id             group-id
                                                  :card_id              card-id-1
                                                  :attribute_remappings {"foo" 1}}]))
                   result (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)]
-              (def graph graph)
               (is (=? [{:id                   (mt/malli=? :int)
                         :table_id             table-id-1
                         :group_id             group-id
                         :card_id              card-id-1
-                        :attribute_remappings {:foo 1}
-                        :permission_id        (mt/malli=? [:maybe :int])}]
+                        :attribute_remappings {:foo 1}}]
                       (:sandboxes result)))
               (is (t2/exists? GroupTableAccessPolicy :table_id table-id-1 :group_id group-id))))
 
@@ -276,7 +273,7 @@
                                                   :table_id table-id-1
                                                   :group_id group-id)
                   graph       (-> (data-perms.graph/api-graph)
-                                  (assoc-in [:groups group-id (mt/id) :data :schemas "PUBLIC" table-id-2 :query] :segmented)
+                                  (assoc-in [:groups group-id (mt/id) :view-data] {"PUBLIC" {table-id-2 :sandboxed}})
                                   (assoc :sandboxes [{:id                   sandbox-id
                                                       :card_id              card-id-1
                                                       :attribute_remappings {"foo" 3}}

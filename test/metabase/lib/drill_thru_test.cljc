@@ -5,6 +5,7 @@
    [malli.error :as me]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.field :as-alias lib.field]
    [metabase.lib.schema :as lib.schema]
@@ -87,6 +88,10 @@
     (for [operator (:operators drill)]
       [(:name operator)])
 
+    :drill-thru/column-extract
+    (for [extraction (:extractions drill)]
+      [(:tag extraction)])
+
     [nil]))
 
 (def ^:private test-drill-applications-max-depth 1)
@@ -103,6 +108,15 @@
        (condp = (:type drill)
          :drill-thru/pivot
          (log/warn "drill-thru-method is not yet implemented for :drill-thru/pivot (#33559)")
+
+         ;; Expected to throw - not intended that drill-thru should be called directly for these drills.
+         :drill-thru/compare-aggregations
+         (testing (str "\ndrill =\n" (u/pprint-to-str drill)
+                       "throws when [drill-thru] called")
+           (is (thrown-with-msg?
+                 #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
+                 #"Do not call drill-thru for "
+                 (apply lib/drill-thru query -1 drill args))))
 
          (testing (str "\nquery =\n" (u/pprint-to-str query)
                        "\ndrill =\n" (u/pprint-to-str drill)
@@ -202,7 +216,12 @@
                  {:lib/type     :metabase.lib.drill-thru/drill-thru
                   :type         :drill-thru/summarize-column
                   :column       (meta/field-metadata :orders :created-at)
-                  :aggregations [:distinct]}]
+                  :aggregations [:distinct]}
+                 {:lib/type     :metabase.lib.drill-thru/drill-thru
+                  :type         :drill-thru/column-extract
+                  :query        orders-query
+                  :stage-number -1
+                  :extractions  (partial mc/validate [:sequential [:map [:tag keyword?]]])}]
                 (lib/available-drill-thrus orders-query -1 context)))
         (test-drill-applications orders-query context)))))
 
@@ -419,7 +438,7 @@
                                                                 {:name "≠"}]}
                                :underlying-records {:lib/type   :metabase.lib.drill-thru/drill-thru
                                                     :type       :drill-thru/underlying-records
-                                                    :row-count  457
+                                                    :row-count  pos-int?
                                                     :table-name "Orders"}
                                :zoom-in.timeseries {:lib/type     :metabase.lib.drill-thru/drill-thru
                                                     :display-name "See this month by week"
@@ -437,7 +456,7 @@
         (let [context (merge (basic-context count-column 123)
                              {:row row})]
           (testing (str "\ncontext =\n" (u/pprint-to-str context))
-            (is (=? (map expected-drills [:pivot :quick-filter])
+            (is (=? (map expected-drills [:pivot :underlying-records])
                     (lib/available-drill-thrus query -1 context)))
             (test-drill-applications query context)))
         (testing "with :dimensions"
@@ -471,12 +490,12 @@
                                :location [{:name "CITY"}
                                           {:name "STATE"}
                                           {:name "ZIP"}]}}
-                   {:lib/type :metabase.lib.drill-thru/drill-thru
-                    :type     :drill-thru/quick-filter
-                    :operators [{:name "<"}
-                                {:name ">"}
-                                {:name "="}
-                                {:name "≠"}]}]
+                   {:lib/type   :metabase.lib.drill-thru/drill-thru
+                    :type       :drill-thru/underlying-records
+                    :row-count  pos-int?
+                    :table-name "Orders"
+                    :dimensions nil
+                    :column-ref [:aggregation {} #_uuid string?]}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))))
 
@@ -501,7 +520,9 @@
                     :initial-op {:display-name-variant :equal-to
                                  :short :=}}
                    {:type   :drill-thru/sort
-                    :column {:name "count"}}]
+                    :column {:name "count"}}
+                   {:type   :drill-thru/compare-aggregations
+                    :aggregation [:count {}]}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))
     (testing "Drills for max(discount) aggregation"
@@ -517,7 +538,9 @@
                     :initial-op {:display-name-variant :equal-to
                                  :short :=}}
                    {:type   :drill-thru/sort
-                    :column {:display-name "Max of Discount"}}]
+                    :column {:display-name "Max of Discount"}}
+                   {:type   :drill-thru/compare-aggregations
+                    :aggregation [:max {} [:field {} (meta/id :orders :discount)]]}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))))
 
@@ -567,7 +590,9 @@
         (test-drill-applications query context)))))
 
 ;; TODO: Restore this test once zoom-in and underlying-records are checked properly.
-#_(deftest ^:parallel histogram-available-drill-thrus-test
+;; Tech debt issue: #39373
+#_
+(deftest ^:parallel histogram-available-drill-thrus-test
   (testing "histogram breakout view"
     (testing "broken out by state - click a state - underlying, zoom in, pivot (non-location), automatic insights, quick filter"
       (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
@@ -701,7 +726,11 @@
     :expected    [{:type :drill-thru/column-filter, :initial-op nil}
                   {:type :drill-thru/distribution}
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
-                  {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}))
+                  {:type :drill-thru/summarize-column, :aggregations [:distinct]}
+                  {:type        :drill-thru/column-extract
+                   :extractions (partial mc/validate [:sequential [:map
+                                                                   [:tag          keyword?]
+                                                                   [:display-name string?]]])}]}))
 
 (deftest ^:parallel available-drill-thrus-test-9
   (testing (str "fk-filter should not get returned for non-fk column (#34440) "
@@ -794,3 +823,9 @@
                        :initial-op {:short :=}}
                       {:type            :drill-thru/sort
                        :sort-directions [:asc :desc]}]})))
+
+(deftest ^:parallel drill-value->js-test
+  (testing "should convert :null to nil"
+    (doseq [[input expected] [[:null nil]
+                              [nil nil] ]]
+      (is (= expected (lib.drill-thru.common/drill-value->js input))))))

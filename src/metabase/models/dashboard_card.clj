@@ -90,19 +90,20 @@
   :series
   "Return the `Cards` associated as additional series on this DashboardCard."
   [dashcards]
-  (let [dashcard-ids        (map :id dashcards)
-        dashcard-id->series (when (seq dashcard-ids)
-                              (as-> (t2/select
-                                     [:model/Card :id :name :description :display :dataset_query
-                                      :visualization_settings :collection_id :series.dashboardcard_id]
-                                     {:left-join [[:dashboardcard_series :series] [:= :report_card.id :series.card_id]]
-                                      :where     [:in :series.dashboardcard_id dashcard-ids]
-                                      :order-by  [[:series.position :asc]]}) series
-                               (group-by :dashboardcard_id series)
-                               (update-vals series #(map (fn [card] (dissoc card :dashboardcard_id)) %))))]
-    (map (fn [dashcard]
-           (assoc dashcard :series (get dashcard-id->series (:id dashcard) [])))
-         dashcards)))
+  (when (seq dashcards)
+    (let [dashcard-ids        (map :id dashcards)
+          dashcard-id->series (when (seq dashcard-ids)
+                                (as-> (t2/select
+                                       [:model/Card :id :name :description :display :dataset_query :type :database_id
+                                        :visualization_settings :collection_id :series.dashboardcard_id]
+                                       {:left-join [[:dashboardcard_series :series] [:= :report_card.id :series.card_id]]
+                                        :where     [:in :series.dashboardcard_id dashcard-ids]
+                                        :order-by  [[:series.position :asc]]}) series
+                                  (group-by :dashboardcard_id series)
+                                  (update-vals series #(map (fn [card] (dissoc card :dashboardcard_id)) %))))]
+      (map (fn [dashcard]
+             (assoc dashcard :series (get dashcard-id->series (:id dashcard) [])))
+           dashcards))))
 
 ;;; ---------------------------------------------------- CRUD FNS ----------------------------------------------------
 
@@ -113,17 +114,15 @@
       (t2/hydrate :series)))
 
 (defn dashcard->multi-cards
-  "Return the cards which are other cards with respect to this dashboard card
-  in multiple series display for dashboard
+  "Return the cards which have been added to this dashcard using the 'add series' dashboard feature.
 
-  Dashboard (and dashboard only) has this thing where you're displaying multiple cards entirely.
+  Dashboards allow Line, Area, and Bar dashcards to have other questions (series) added to them
+  so that several Questions are displayed in a single dashcard.
 
-  This is actually completely different from the combo display,
-  which is a visualization type in visualization option.
+  It's important to know that this is different from the combo display,
+  which is its own visualization type for Questions.
 
-  This is also actually completely different from having multiple series display
-  from the visualization with same type (line bar or whatever),
-  which is a separate option in line area or bar visualization"
+  This is also different from having multiple series displayed on Line, Area, or Bar Questions."
   [dashcard]
   (mdb.query/query {:select    [:newcard.*]
                     :from      [[:report_dashboardcard :dashcard]]
@@ -193,16 +192,16 @@
   [:and
    [:map-of :keyword :any]
    [:map
-    ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed
+    ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed (#40021)
     [:parameter_id ms/NonBlankString]
     #_[:target       :any]]])
 
 (def ^:private NewDashboardCard
-  ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys
+  ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys (#40021)
   [:map
    [:dashboard_id                            ms/PositiveInt]
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
-   ;; TODO - use ParamMapping. Breaks too many tests right now tho
+   ;; TODO - use ParamMapping. Breaks too many tests right now tho (#40021)
    [:parameter_mappings     {:optional true} [:maybe [:sequential map?]]]
    [:visualization_settings {:optional true} [:maybe map?]]
    [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])

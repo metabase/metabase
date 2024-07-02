@@ -3,7 +3,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [metabase.actions.error :as actions.error]
+   [metabase.actions.core :as actions]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -42,13 +42,13 @@
         (if (and (or (nil? catalog) (= table_catalog catalog))
                  (or (nil? schema) (= table_schema schema)))
           [(conj columns column_name) table_catalog table_schema]
-          (do (log/warnf "Ambiguous catalog/schema for constraint %s in table %s"
+          (do (log/warnf "Ambiguous catalog/schema for constraint %s in table"
                          constraint-name)
               (reduced nil))))
       [[] nil nil]
       (jdbc/reducible-query jdbc-spec sql-args {:identifers identity, :transaction? false})))))
 
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-not-null-constraint]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions/violate-not-null-constraint]
   [_driver error-type _database _action-type error-message]
   (or
    (when-let [[_ column]
@@ -62,7 +62,7 @@
       :message (tru "{0} must have values." (str/capitalize column))
       :errors  {column (tru "You must provide a value.")}})))
 
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-unique-constraint]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions/violate-unique-constraint]
   [_driver error-type database _action-type error-message]
   (when-let [[_match constraint]
              (re-find #"Duplicate entry '.+' for key '(.+)'" error-message)]
@@ -75,7 +75,7 @@
                         {}
                         columns)})))
 
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-foreign-key-constraint]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions/violate-foreign-key-constraint]
   [_driver error-type _database action-type error-message]
   (or
    (when-let [[_match _ref-table _constraint _fkey-cols column _key-cols]
@@ -102,7 +102,7 @@
                    (tru "Unable to update the record."))
         :errors  {(remove-backticks column) (tru "This {0} does not exist." (str/capitalize (remove-backticks column)))}}))))
 
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/incorrect-value-type]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions/incorrect-value-type]
   [_driver error-type _database _action-type error-message]
   (when-let [[_ expected-type _value _database _table column _row]
              (re-find #"Incorrect (.+?) value: '(.+)' for column (?:(.+)\.)??(?:(.+)\.)?(.+) at row (\d+)"  error-message)]
@@ -155,25 +155,30 @@
 ;;; has no primary key and this query returns multiple rows, then we
 ;;; cannot know which one resulted from this insert, so we log a
 ;;; warning and return nil.
-(defmethod sql-jdbc.actions/select-created-row :mysql
-  [driver create-hsql conn {:keys [insert_id] :as results}]
-  (let [jdbc-spec {:connection conn}
-        table-components (-> create-hsql :insert-into :components)
-        pks (primary-keys driver jdbc-spec table-components)
-        where-clause (if insert_id
-                       [:= (-> pks first keyword) insert_id]
+
+(defn- select-created-row-sql-args
+  [driver create-hsql pks insert-id]
+  (let [where-clause (if insert-id
+                       [:= (-> pks first keyword) insert-id]
                        (into [:and]
-                             (for [[col val] (:insert-into create-hsql)]
+                             (for [[col val] (first (:values create-hsql))]
                                [:= (keyword col) val])))
-        select-hsql (-> create-hsql
-                        (dissoc :insert-into :values)
-                        (assoc :select [:*]
-                               :from [(:insert-into create-hsql)]
-                               :where where-clause))
-        select-sql-args (sql.qp/format-honeysql driver select-hsql)
-        query-results (jdbc/query jdbc-spec
-                                  select-sql-args
-                                  {:identifiers identity, :transaction? false})]
+        select-hsql  (-> create-hsql
+                         (dissoc :insert-into :values)
+                         (assoc :select [:*]
+                                :from [(:insert-into create-hsql)]
+                                :where where-clause))]
+    (sql.qp/format-honeysql driver select-hsql)))
+
+(defmethod sql-jdbc.actions/select-created-row :mysql
+  [driver create-hsql conn {:strs [insert_id] :as results}]
+  (let [jdbc-spec        {:connection conn}
+        table-components (-> create-hsql :insert-into :components)
+        pks              (primary-keys driver jdbc-spec table-components)
+        select-sql-args  (select-created-row-sql-args driver create-hsql pks insert_id)
+        query-results    (jdbc/query jdbc-spec
+                           select-sql-args
+                           {:identifiers identity, :transaction? false, :keywordize? false})]
     (if (next query-results)
       (log/warn "cannot identify row inserted by" create-hsql "using results" results)
       (first query-results))))

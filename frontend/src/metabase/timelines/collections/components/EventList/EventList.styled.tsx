@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const ListRoot = styled.div`
@@ -18,7 +17,7 @@ export const ListFooter = styled.div`
 
 export const ListThread = styled.div`
   height: 100%;
-  border-left: 1px dashed ${color("border")};
+  border-left: 1px dashed var(--mb-color-border);
 `;
 
 export const ListThreadContainer = styled.div`
@@ -31,13 +30,13 @@ export const ListThreadContainer = styled.div`
 `;
 
 export const ListIcon = styled(Icon)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   width: 1.5rem;
   height: 1.5rem;
 `;
 
 export const ListIconText = styled.div`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   margin-top: 0.375rem;
   margin-left: 0.75rem;
 `;

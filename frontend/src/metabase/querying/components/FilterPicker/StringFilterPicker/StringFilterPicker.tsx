@@ -2,8 +2,9 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { OperatorType } from "metabase/querying/hooks/use-string-filter";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
-import { Box, Checkbox, Flex, TextInput } from "metabase/ui";
+import { Box, Checkbox, Flex, MultiAutocomplete } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { StringFilterValuePicker } from "../../FilterValuePicker";
@@ -28,12 +29,10 @@ export function StringFilterPicker({
   );
 
   const {
+    type,
     operator,
     availableOptions,
     values,
-    valueCount,
-    hasMultipleValues,
-    hasCaseSensitiveOption,
     options,
     isValid,
     getDefaultValues,
@@ -86,12 +85,11 @@ export function StringFilterPicker({
           stageIndex={stageIndex}
           column={column}
           values={values}
-          valueCount={valueCount}
-          hasMultipleValues={hasMultipleValues}
+          type={type}
           onChange={setValues}
         />
         <FilterPickerFooter isNew={isNew} canSubmit={isValid}>
-          {hasCaseSensitiveOption && (
+          {type === "partial" && (
             <CaseSensitiveOption
               value={options["case-sensitive"] ?? false}
               onChange={newValue => setOptions({ "case-sensitive": newValue })}
@@ -108,8 +106,7 @@ interface StringValueInputProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   values: string[];
-  valueCount: number;
-  hasMultipleValues?: boolean;
+  type: OperatorType;
   onChange: (values: string[]) => void;
 }
 
@@ -118,13 +115,12 @@ function StringValueInput({
   stageIndex,
   column,
   values,
-  valueCount,
-  hasMultipleValues,
+  type,
   onChange,
 }: StringValueInputProps) {
-  if (hasMultipleValues) {
+  if (type === "exact") {
     return (
-      <Box p="md" mah="16rem" style={{ overflow: "auto" }}>
+      <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
         <StringFilterValuePicker
           query={query}
           stageIndex={stageIndex}
@@ -137,16 +133,17 @@ function StringValueInput({
     );
   }
 
-  if (valueCount === 1) {
+  if (type === "partial") {
     return (
       <Flex p="md">
-        <TextInput
-          value={values[0]}
+        <MultiAutocomplete
+          value={values}
+          data={[]}
           placeholder={t`Enter some text`}
           autoFocus
           w="100%"
           aria-label={t`Filter value`}
-          onChange={event => onChange([event.target.value])}
+          onChange={onChange}
         />
       </Flex>
     );

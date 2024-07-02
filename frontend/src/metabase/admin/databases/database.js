@@ -3,10 +3,10 @@ import { createAction } from "redux-actions";
 import _ from "underscore";
 
 import { updateSetting } from "metabase/admin/settings/settings";
+import { getEngines } from "metabase/databases/selectors";
+import { getDefaultEngineKey } from "metabase/databases/utils/engine";
 import Databases from "metabase/entities/databases";
-import Tables from "metabase/entities/tables";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { getDefaultEngine } from "metabase/lib/engine";
 import {
   combineReducers,
   createThunkAction,
@@ -118,10 +118,11 @@ export const initializeDatabase = function (databaseId) {
         dispatch({ type: INITIALIZE_DATABASE_ERROR, payload: error });
       }
     } else {
+      const engines = getEngines(getState());
       const newDatabase = {
         name: "",
         auto_run_queries: true,
-        engine: getDefaultEngine(),
+        engine: getDefaultEngineKey(engines),
         details: {},
         created: false,
       };
@@ -155,7 +156,8 @@ export const createDatabase = function (database) {
   return async function (dispatch, getState) {
     try {
       dispatch({ type: CREATE_DATABASE_STARTED });
-      await dispatch(Databases.actions.create(database));
+      const action = await dispatch(Databases.actions.create(database));
+      const savedDatabase = Databases.HACK_getObjectFromAction(action);
       MetabaseAnalytics.trackStructEvent(
         "Databases",
         "Create",
@@ -163,6 +165,8 @@ export const createDatabase = function (database) {
       );
 
       dispatch({ type: CREATE_DATABASE });
+
+      return savedDatabase;
     } catch (error) {
       console.error("error creating a database", error);
       MetabaseAnalytics.trackStructEvent(
@@ -188,6 +192,7 @@ export const updateDatabase = function (database) {
       );
 
       dispatch({ type: UPDATE_DATABASE, payload: { database: savedDatabase } });
+      return savedDatabase;
     } catch (error) {
       MetabaseAnalytics.trackStructEvent(
         "Databases",
@@ -206,9 +211,9 @@ export const saveDatabase = function (database) {
   return async function (dispatch, getState) {
     const isUnsavedDatabase = !database.id;
     if (isUnsavedDatabase) {
-      await dispatch(createDatabase(database));
+      return await dispatch(createDatabase(database));
     } else {
-      await dispatch(updateDatabase(database));
+      return await dispatch(updateDatabase(database));
     }
   };
 };
@@ -235,23 +240,6 @@ export const deleteDatabase = function (databaseId, isDetailView = true) {
   };
 };
 
-// syncDatabaseSchema
-export const syncDatabaseSchema = createThunkAction(
-  SYNC_DATABASE_SCHEMA,
-  function (databaseId) {
-    return async function (dispatch, getState) {
-      try {
-        const call = await MetabaseApi.db_sync_schema({ dbId: databaseId });
-        dispatch({ type: Tables.actionTypes.INVALIDATE_LISTS_ACTION });
-        MetabaseAnalytics.trackStructEvent("Databases", "Manual Sync");
-        return call;
-      } catch (error) {
-        console.error("error syncing database", error);
-      }
-    };
-  },
-);
-
 export const dismissSyncSpinner = createThunkAction(
   DISMISS_SYNC_SPINNER,
   function (databaseId) {
@@ -260,38 +248,6 @@ export const dismissSyncSpinner = createThunkAction(
         await MetabaseApi.db_dismiss_sync_spinner({ dbId: databaseId });
       } catch (error) {
         console.error("error dismissing sync spinner for database", error);
-      }
-    };
-  },
-);
-
-// rescanDatabaseFields
-export const rescanDatabaseFields = createThunkAction(
-  RESCAN_DATABASE_FIELDS,
-  function (databaseId) {
-    return async function (dispatch, getState) {
-      try {
-        const call = await MetabaseApi.db_rescan_values({ dbId: databaseId });
-        MetabaseAnalytics.trackStructEvent("Databases", "Manual Sync");
-        return call;
-      } catch (error) {
-        console.error("error syncing database", error);
-      }
-    };
-  },
-);
-
-// discardSavedFieldValues
-export const discardSavedFieldValues = createThunkAction(
-  DISCARD_SAVED_FIELD_VALUES,
-  function (databaseId) {
-    return async function (dispatch, getState) {
-      try {
-        const call = await MetabaseApi.db_discard_values({ dbId: databaseId });
-        MetabaseAnalytics.trackStructEvent("Databases", "Manual Sync");
-        return call;
-      } catch (error) {
-        console.error("error syncing database", error);
       }
     };
   },

@@ -42,6 +42,10 @@ Export Metabase metrics for viewing with Prometheus.
 
 Rest in peace, Internet Explorer.
 
+## [About the anonymous usage data we collect](./information-collection.md).
+
+We collect anonymous Metabase usage data to improve the product. We don't collect your data.
+
 ## [Command line commands](./commands.md)
 
 Metabase's CLI.

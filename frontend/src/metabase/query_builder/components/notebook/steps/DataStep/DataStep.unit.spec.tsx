@@ -1,19 +1,24 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupDatabasesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
+import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
 import {
   columnFinder,
   createQuery,
   findAggregationOperator,
 } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
+import type { CardType } from "metabase-types/api";
 import {
   createSampleDatabase,
+  createSavedStructuredCard,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 
@@ -43,13 +48,14 @@ const createQueryWithBreakout = () => {
   return Lib.breakout(query, 0, column);
 };
 
-const setup = async (
+const setup = (
   step = createMockNotebookStep(),
   { readOnly = false }: { readOnly?: boolean } = {},
 ) => {
   const updateQuery = jest.fn();
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
 
   renderWithProviders(
     <DataStep
@@ -83,8 +89,6 @@ const setup = async (
     return Lib.displayInfo(nextQuery, 0, column);
   };
 
-  await screen.findByText("Orders");
-
   return { getNextQuery, getNextTableName, getNextColumn };
 };
 
@@ -95,22 +99,43 @@ const setupEmptyQuery = () => {
 };
 
 describe("DataStep", () => {
-  it("should render without a table selected", async () => {
-    await setupEmptyQuery();
+  const scrollBy = HTMLElement.prototype.scrollBy;
+  const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
 
-    expect(screen.getByText("Pick your starting data")).toBeInTheDocument();
-
-    // Ensure the table picker is not open
-    expect(screen.getByText("Sample Database")).toBeInTheDocument();
-    expect(screen.getByText("Orders")).toBeInTheDocument();
-    expect(screen.getByText("Products")).toBeInTheDocument();
-    expect(screen.getByText("People")).toBeInTheDocument();
+  beforeAll(() => {
+    HTMLElement.prototype.scrollBy = jest.fn();
+    // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
+    HTMLElement.prototype.getBoundingClientRect = jest
+      .fn()
+      .mockReturnValue({ height: 1, width: 1 });
   });
 
-  it("should render with a selected table", async () => {
-    await setup();
+  afterAll(() => {
+    HTMLElement.prototype.scrollBy = scrollBy;
+    HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
+
+    jest.resetAllMocks();
+  });
+
+  it("should render without a table selected", async () => {
+    setupEmptyQuery();
+
+    const modal = await screen.findByTestId("entity-picker-modal");
+    expect(
+      await within(modal).findByText("Pick your starting data"),
+    ).toBeInTheDocument();
+
+    // Ensure the table picker not open
+    expect(await within(modal).findByText("Orders")).toBeInTheDocument();
+    expect(await within(modal).findByText("Products")).toBeInTheDocument();
+    expect(await within(modal).findByText("People")).toBeInTheDocument();
+  });
+
+  it("should render with a selected table", () => {
+    setup();
 
     expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(getIcon("table")).toBeInTheDocument();
 
     expect(
       screen.queryByText("Pick your starting data"),
@@ -120,19 +145,44 @@ describe("DataStep", () => {
     expect(screen.queryByText("People")).not.toBeInTheDocument();
   });
 
-  it("should change a table", async () => {
-    const { getNextTableName } = await setup();
+  it.each<{ type: CardType; icon: IconName }>([
+    { type: "question", icon: "table2" },
+    { type: "model", icon: "model" },
+    { type: "metric", icon: "metric" },
+  ])("should render with a selected card", ({ type, icon }) => {
+    const card = createSavedStructuredCard({
+      id: 1,
+      type,
+    });
+    const metadata = createMockMetadata({
+      databases: [createSampleDatabase()],
+      questions: [card],
+    });
+    const metadataProvider = Lib.metadataProvider(SAMPLE_DB_ID, metadata);
+    const query = Lib.queryFromTableOrCardMetadata(
+      metadataProvider,
+      Lib.tableOrCardMetadata(metadataProvider, `card__${card.id}`),
+    );
+    const step = createMockNotebookStep({ query });
+    setup(step);
 
-    userEvent.click(screen.getByText("Orders"));
-    userEvent.click(await screen.findByText("Products"));
+    expect(screen.getByText(card.name)).toBeInTheDocument();
+    expect(getIcon(icon)).toBeInTheDocument();
+  });
+
+  it("should change a table", async () => {
+    const { getNextTableName } = setup();
+
+    await userEvent.click(screen.getByText("Orders"));
+    await userEvent.click(await screen.findByText("Products"));
 
     expect(getNextTableName()).toBe("Products");
   });
 
   describe("fields selection", () => {
     it("should render with all columns selected", async () => {
-      await setup();
-      userEvent.click(screen.getByLabelText("Pick columns"));
+      setup();
+      await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select none")).toBeChecked();
       expect(screen.getByLabelText("ID")).toBeChecked();
@@ -143,8 +193,8 @@ describe("DataStep", () => {
 
     it("should render with a single column selected", async () => {
       const query = createQueryWithFields(["ID"]);
-      await setup(createMockNotebookStep({ query }));
-      userEvent.click(screen.getByLabelText("Pick columns"));
+      setup(createMockNotebookStep({ query }));
+      await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
       expect(screen.getByLabelText("ID")).toBeChecked();
@@ -155,8 +205,8 @@ describe("DataStep", () => {
 
     it("should render with multiple columns selected", async () => {
       const query = createQueryWithFields(["ID", "TOTAL"]);
-      await setup(createMockNotebookStep({ query }));
-      userEvent.click(screen.getByLabelText("Pick columns"));
+      setup(createMockNotebookStep({ query }));
+      await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
       expect(screen.getByLabelText("ID")).toBeChecked();
@@ -170,10 +220,10 @@ describe("DataStep", () => {
     it("should allow selecting a column", async () => {
       const query = createQueryWithFields(["ID"]);
       const step = createMockNotebookStep({ query });
-      const { getNextColumn } = await setup(step);
+      const { getNextColumn } = setup(step);
 
-      userEvent.click(screen.getByLabelText("Pick columns"));
-      userEvent.click(screen.getByLabelText("Tax"));
+      await userEvent.click(screen.getByLabelText("Pick columns"));
+      await userEvent.click(screen.getByLabelText("Tax"));
 
       expect(getNextColumn("ID").selected).toBeTruthy();
       expect(getNextColumn("TAX").selected).toBeTruthy();
@@ -181,10 +231,10 @@ describe("DataStep", () => {
     });
 
     it("should allow de-selecting a column", async () => {
-      const { getNextColumn } = await setup();
+      const { getNextColumn } = setup();
 
-      userEvent.click(screen.getByLabelText("Pick columns"));
-      userEvent.click(screen.getByLabelText("Tax"));
+      await userEvent.click(screen.getByLabelText("Pick columns"));
+      await userEvent.click(screen.getByLabelText("Tax"));
 
       expect(getNextColumn("ID").selected).toBeTruthy();
       expect(getNextColumn("TAX").selected).toBeFalsy();
@@ -194,10 +244,10 @@ describe("DataStep", () => {
     it("should allow selecting all columns", async () => {
       const query = createQueryWithFields(["ID"]);
       const step = createMockNotebookStep({ query });
-      const { getNextColumn } = await setup(step);
+      const { getNextColumn } = setup(step);
 
-      userEvent.click(screen.getByLabelText("Pick columns"));
-      userEvent.click(screen.getByLabelText("Select all"));
+      await userEvent.click(screen.getByLabelText("Pick columns"));
+      await userEvent.click(screen.getByLabelText("Select all"));
 
       expect(getNextColumn("ID").selected).toBeTruthy();
       expect(getNextColumn("TAX").selected).toBeTruthy();
@@ -205,22 +255,22 @@ describe("DataStep", () => {
     });
 
     it("should leave one column when de-selecting all columns", async () => {
-      const { getNextQuery } = await setup();
+      const { getNextQuery } = setup();
 
-      userEvent.click(screen.getByLabelText("Pick columns"));
-      userEvent.click(screen.getByLabelText("Select none"));
+      await userEvent.click(screen.getByLabelText("Pick columns"));
+      await userEvent.click(screen.getByLabelText("Select none"));
 
       const nextQuery = getNextQuery();
       expect(Lib.fields(nextQuery, 0)).toHaveLength(1);
     });
 
-    it("should not display fields picker in read-only mode", async () => {
-      await setup(createMockNotebookStep(), { readOnly: true });
+    it("should not display fields picker in read-only mode", () => {
+      setup(createMockNotebookStep(), { readOnly: true });
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
     });
 
-    it("should not display fields picker until a table is selected", async () => {
-      await setupEmptyQuery();
+    it("should not display fields picker until a table is selected", () => {
+      setupEmptyQuery();
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
     });
 

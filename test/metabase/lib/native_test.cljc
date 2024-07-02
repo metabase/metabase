@@ -28,6 +28,7 @@
     #{"snippet:   foo  *#&@"} "SELECT * FROM table WHERE {{snippet:   foo  *#&@}}"
     ;; TODO: This logic should trim the whitespace and unify these two snippet names.
     ;; I think this is a bug in the original code but am aiming to reproduce it exactly for now.
+    ;; Tech debt issue: #39378
     #{"snippet: foo" "snippet:foo"} "SELECT * FROM table WHERE {{snippet: foo}} AND {{snippet:foo}}"))
 
 (deftest ^:parallel card-tag-test
@@ -35,6 +36,7 @@
     #{"#123"} "SELECT * FROM table WHERE {{ #123 }} AND some_field IS NOT NULL"
     ;; TODO: This logic should trim the whitespace and unify these two card tags.
     ;; I think this is a bug in the original code but am aiming to reproduce it exactly for now.
+    ;; Tech debt issue: #39378
     #{"#123" "#123-with-slug"} "SELECT * FROM table WHERE {{ #123 }} AND {{  #123-with-slug  }}"
     #{"#123"} "SELECT * FROM table WHERE {{ #not-this }} AND {{#123}}"
     #{} "{{ #123foo }}"))
@@ -55,6 +57,7 @@
                              :snippet-name "foo"
                              :id           string?}}
             ;; TODO: This should probably be considered a bug - whitespace matters for the name.
+            ;; Tech debt issue: #39378
             (lib.native/extract-template-tags "SELECT * FROM {{snippet: foo}} WHERE {{snippet:foo}}"))))
 
   (testing "renaming a variable"
@@ -273,7 +276,7 @@
           (lib/native-query (lib.tu/mock-metadata-provider
                               meta/metadata-provider
                               {:database (merge (lib.metadata/database meta/metadata-provider) {:native-permissions :write})})
-                                                    "select * from x;")))
+                            "select * from x;")))
     (is (not (lib/has-write-permission
                (lib/native-query (lib.tu/mock-metadata-provider
                                    meta/metadata-provider
@@ -297,19 +300,54 @@
                              :name "foo"
                              :widget-type :text
                              :display-name "foo"
-                             :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})))
-  (is (lib/can-run lib.tu/venues-query))
+                             :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})
+                   :question))
+  (is (lib/can-run lib.tu/venues-query :question))
   (mu/disable-enforcement
-    (is (not (lib/can-run (lib/native-query meta/metadata-provider ""))))
+    (is (not (lib/can-run (lib/native-query meta/metadata-provider "") :question)))
     (is (not (lib/can-run (lib/with-template-tags
                             (lib/native-query meta/metadata-provider "select * {{foo}}")
                             {"foo" {:type :dimension
                                     :id "1"
                                     :name "foo"
                                     :widget-type :text
-                                    :display-name "foo"}}))))
+                                    :display-name "foo"}})
+                          :question)))
     (is (not (lib/can-run (update-in (lib/native-query (metadata-provider-requiring-collection) "select * {{foo}}" nil {:collection "foobar"})
-                                     [:stages 0] dissoc :collection))))))
+                                     [:stages 0] dissoc :collection)
+                          :question)))))
 
 (deftest ^:parallel engine-test
   (is (= :h2 (lib/engine lib.tu/native-query))))
+
+(deftest ^:parallel template-tag-card-ids-test
+  (let [query (lib/query lib.tu/metadata-provider-with-mock-cards
+                         {:database (meta/id)
+                          :type     :native
+                          :native   {:query         {}
+                                     :template-tags {"tag-name-not-important1" {:type         :card
+                                                                                :display-name "X"
+                                                                                :card-id      1}
+                                                     "tag-name-not-important2" {:type         :card
+                                                                                :display-name "Y"
+                                                                                :card-id      2}}}})]
+    (is (= #{1 2}
+           (lib/template-tag-card-ids query)))))
+
+(deftest ^:parallel template-tags-referenced-cards-test
+  (testing "returns Card instances from raw query"
+    (let [query (lib/query lib.tu/metadata-provider-with-mock-cards
+                  {:database (meta/id)
+                   :type     :native
+                   :native   {:query         {}
+                              :template-tags {"tag-name-not-important1" {:type         :card
+                                                                         :display-name "X"
+                                                                         :card-id      1}
+                                              "tag-name-not-important2" {:type         :card
+                                                                         :display-name "Y"
+                                                                         :card-id      2}}}})]
+      (is (=? [{:id            1
+                :dataset-query {}}
+               {:id            2
+                :dataset-query {}}]
+              (lib/template-tags-referenced-cards query))))))

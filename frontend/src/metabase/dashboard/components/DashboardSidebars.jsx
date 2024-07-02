@@ -3,8 +3,14 @@ import { useCallback } from "react";
 import _ from "underscore";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import {
+  getEditingParameter,
+  getParameters,
+} from "metabase/dashboard/selectors";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { useSelector } from "metabase/lib/redux";
 import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
+import { hasMapping } from "metabase/parameters/utils/dashboards";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 
 import { ActionSidebarConnected } from "./ActionSidebar";
@@ -14,18 +20,15 @@ import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
 
 DashboardSidebars.propTypes = {
   dashboard: PropTypes.object,
-  parameters: PropTypes.array,
   showAddParameterPopover: PropTypes.func.isRequired,
   removeParameter: PropTypes.func.isRequired,
   addCardToDashboard: PropTypes.func.isRequired,
-  editingParameter: PropTypes.object,
-  isEditingParameter: PropTypes.bool.isRequired,
   clickBehaviorSidebarDashcard: PropTypes.object, // only defined when click-behavior sidebar is open
   onReplaceAllDashCardVisualizationSettings: PropTypes.func.isRequired,
   onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
   onUpdateDashCardColumnSettings: PropTypes.func.isRequired,
-  setEditingParameter: PropTypes.func.isRequired,
   setParameterName: PropTypes.func.isRequired,
+  setParameterType: PropTypes.func.isRequired,
   setParameterDefaultValue: PropTypes.func.isRequired,
   setParameterIsMultiSelect: PropTypes.func.isRequired,
   setParameterQueryType: PropTypes.func.isRequired,
@@ -33,9 +36,7 @@ DashboardSidebars.propTypes = {
   setParameterSourceConfig: PropTypes.func.isRequired,
   setParameterFilteringParameters: PropTypes.func.isRequired,
   setParameterRequired: PropTypes.func.isRequired,
-  dashcardData: PropTypes.object,
-  isSharing: PropTypes.bool.isRequired,
-  isEditing: PropTypes.bool.isRequired,
+  setParameterTemporalUnits: PropTypes.func.isRequired,
   isFullscreen: PropTypes.bool.isRequired,
   onCancel: PropTypes.func.isRequired,
   params: PropTypes.object,
@@ -46,21 +47,19 @@ DashboardSidebars.propTypes = {
   closeSidebar: PropTypes.func.isRequired,
   setDashboardAttribute: PropTypes.func,
   selectedTabId: PropTypes.number,
-  getEmbeddedParameterVisibility: PropTypes.func.isRequired,
 };
 
 export function DashboardSidebars({
   dashboard,
-  parameters,
   showAddParameterPopover,
   removeParameter,
   addCardToDashboard,
-  editingParameter,
   clickBehaviorSidebarDashcard,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
   setParameterName,
+  setParameterType,
   setParameterDefaultValue,
   setParameterIsMultiSelect,
   setParameterQueryType,
@@ -68,7 +67,7 @@ export function DashboardSidebars({
   setParameterSourceConfig,
   setParameterFilteringParameters,
   setParameterRequired,
-  dashcardData,
+  setParameterTemporalUnits,
   isFullscreen,
   onCancel,
   params,
@@ -76,8 +75,10 @@ export function DashboardSidebars({
   closeSidebar,
   setDashboardAttribute,
   selectedTabId,
-  getEmbeddedParameterVisibility,
 }) {
+  const parameters = useSelector(getParameters);
+  const editingParameter = useSelector(getEditingParameter);
+
   const handleAddCard = useCallback(
     cardId => {
       addCardToDashboard({
@@ -96,7 +97,7 @@ export function DashboardSidebars({
 
   switch (sidebar.name) {
     case SIDEBAR_NAME.addQuestion:
-      return <AddCardSidebar onSelect={handleAddCard} />;
+      return <AddCardSidebar onSelect={handleAddCard} onClose={closeSidebar} />;
     case SIDEBAR_NAME.action: {
       const onUpdateVisualizationSettings = settings =>
         onUpdateDashCardVisualizationSettings(
@@ -119,7 +120,6 @@ export function DashboardSidebars({
           dashboard={dashboard}
           dashcard={clickBehaviorSidebarDashcard}
           parameters={parameters}
-          dashcardData={dashcardData[clickBehaviorSidebarDashcard.id]}
           onUpdateDashCardVisualizationSettings={
             onUpdateDashCardVisualizationSettings
           }
@@ -138,10 +138,10 @@ export function DashboardSidebars({
       );
       return (
         <ParameterSidebar
-          getEmbeddedParameterVisibility={getEmbeddedParameterVisibility}
           parameter={parameter}
           otherParameters={otherParameters}
           onChangeName={setParameterName}
+          onChangeType={setParameterType}
           onChangeDefaultValue={setParameterDefaultValue}
           onChangeIsMultiSelect={setParameterIsMultiSelect}
           onChangeQueryType={setParameterQueryType}
@@ -152,6 +152,8 @@ export function DashboardSidebars({
           onShowAddParameterPopover={showAddParameterPopover}
           onClose={closeSidebar}
           onChangeRequired={setParameterRequired}
+          onChangeTemporalUnits={setParameterTemporalUnits}
+          hasMapping={hasMapping(parameter, dashboard)}
         />
       );
     }

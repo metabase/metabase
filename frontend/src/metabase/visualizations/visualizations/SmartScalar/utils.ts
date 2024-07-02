@@ -4,11 +4,11 @@ import _ from "underscore";
 
 import { formatNumber } from "metabase/lib/formatting/numbers";
 import { measureText } from "metabase/lib/measure-text";
-import { uuid } from "metabase/lib/utils";
+import { uuid } from "metabase/lib/uuid";
 import { isEmpty } from "metabase/lib/validate";
-import { isDate, isNumeric } from "metabase-lib/types/utils/isa";
+import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
-  RelativeDatetimeUnit,
+  DateTimeAbsoluteUnit,
   SmartScalarComparison,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -154,9 +154,11 @@ export function getComparisonOptions(
 ) {
   const [
     {
-      data: { cols, insights = [], rows },
+      data: { cols, rows },
     },
   ] = series;
+
+  const insights = series[0].data.insights ?? [];
 
   const options: ComparisonMenuOption[] = [
     createComparisonMenuOption({ type: COMPARISON_TYPES.PREVIOUS_VALUE }),
@@ -279,7 +281,7 @@ export function getComparisons(
 type getMaxPeriodsAgoParameters = {
   cols: DatasetColumn[];
   rows: RowValues[];
-  dateUnit: RelativeDatetimeUnit;
+  dateUnit: DateTimeAbsoluteUnit;
 };
 
 function getMaxPeriodsAgo({
@@ -324,12 +326,12 @@ type GetComparisonMenuOptionParameters =
     }
   | {
       type: typeof COMPARISON_TYPES.PREVIOUS_PERIOD;
-      dateUnit: RelativeDatetimeUnit;
+      dateUnit: DateTimeAbsoluteUnit;
     }
   | {
       type: typeof COMPARISON_TYPES.PERIODS_AGO;
       maxValue: number;
-      dateUnit: RelativeDatetimeUnit;
+      dateUnit: DateTimeAbsoluteUnit;
     }
   | {
       type: typeof COMPARISON_TYPES.STATIC_NUMBER;
@@ -370,7 +372,7 @@ function createComparisonMenuOption(
   return COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE;
 }
 
-function formatPreviousPeriodOptionName(dateUnit: RelativeDatetimeUnit) {
+function formatPreviousPeriodOptionName(dateUnit: DateTimeAbsoluteUnit) {
   switch (dateUnit) {
     case "minute":
       return t`Previous minute`;
@@ -390,7 +392,7 @@ function formatPreviousPeriodOptionName(dateUnit: RelativeDatetimeUnit) {
   return "";
 }
 
-function formatPeriodsAgoOptionName(dateUnit: RelativeDatetimeUnit) {
+function formatPeriodsAgoOptionName(dateUnit: DateTimeAbsoluteUnit) {
   switch (dateUnit) {
     case "minute":
       return t`minutes ago`;

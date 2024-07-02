@@ -2,6 +2,7 @@
 import cx from "classnames";
 
 import { Option } from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
 
 import { SelectWithHighlightingIcon } from "./ChartSettingSelect.styled";
 
@@ -19,7 +20,7 @@ const ChartSettingSelect = ({
   ...props
 }) => (
   <SelectWithHighlightingIcon
-    className={cx(className, "block")}
+    className={cx(className, CS.block)}
     disabled={
       options.length === 0 ||
       (options.length === 1 && options[0].value === value)

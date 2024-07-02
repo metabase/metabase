@@ -96,7 +96,7 @@ describe("scenarios > question > view", () => {
         cy.findByText("Add filter").click();
       });
 
-      cy.get(".RunButton").last().click();
+      cy.findAllByTestId("run-button").last().click();
 
       cy.findAllByText("Widget");
       cy.findAllByText("Gizmo").should("not.exist");
@@ -122,7 +122,7 @@ describe("scenarios > question > view", () => {
           .type("Balistreri-Muller");
         cy.findByText("Add filter").click();
       });
-      cy.get(".RunButton").first().click();
+      cy.findAllByTestId("run-button").first().click();
       cy.findAllByText("CATEGORY").first().click();
       popover().within(() => {
         cy.findByPlaceholderText("Enter some text")
@@ -131,9 +131,9 @@ describe("scenarios > question > view", () => {
           .type("Widget");
         cy.findByText("Add filter").click();
       });
-      cy.get(".RunButton").last().click();
+      cy.findAllByTestId("run-button").last().click();
 
-      cy.get(".TableInteractive-cellWrapper--firstColumn").should(
+      cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
         "have.length",
         2,
       );

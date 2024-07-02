@@ -4,43 +4,23 @@
   --gap-1: 0.5rem;
 }
 
-:global(.flex),
 .flex {
   display: flex;
 }
 
-:global(.inline-flex),
-.inline-flex {
-  display: inline-flex;
-}
-
-:global(.flex-auto),
-.flex-auto {
+.flexAuto {
   flex: auto;
 }
 
-:global(.flex-full),
-.flex-full {
+.flexFull {
   flex: 1 0 auto;
 }
 
-:global(.flex-half),
-.flex-half {
+.flexHalf {
   flex: 0.5;
 }
 
-:global(.flex-3-quarters),
-.flex-3-quarters {
-  flex: 0.75;
-}
-
-:global(.flex-1-quarter),
-.flex-1-quarter {
-  flex: 0.25;
-}
-
-:global(.flex-no-shrink),
-.flex-no-shrink {
+.flexNoShrink {
   flex-shrink: 0;
 }
 
@@ -55,15 +35,15 @@
  *  As a solution, `flex-basis-auto` should always be used in conjunction with `flex-full` when it is
  *  a desired behavior that the element grows with its contents.
 */
-:global(.flex-basis-auto) {
+.flexBasisAuto {
   flex-basis: auto;
 }
 
-:global(.flex-basis-none) {
+.flexBasisNone {
   flex-basis: 0;
 }
 
-:global(.shrink-below-content-size) {
+.shrinkBelowContentSize {
   /* W3C spec says:
      * By default, flex items won’t shrink below their minimum content size (the length of the longest word or
      * fixed-size element). To change this, set the min-width or min-height property.
@@ -72,194 +52,74 @@
   min-height: 0;
 }
 
-:global(.align-center),
-.align-center {
+.alignCenter {
   align-items: center;
 }
 
-:global(.align-baseline),
-.align-baseline {
-  align-items: baseline;
-}
-
-:global(.justify-center),
-.justify-center {
+.justifyCenter {
   justify-content: center;
 }
 
-:global(.justify-evenly) {
-  justify-content: space-evenly;
-}
-
-:global(.justify-between) {
+.justifyBetween {
   justify-content: space-between;
 }
 
-:global(.justify-end) {
+.justifyEnd {
   justify-content: flex-end;
 }
 
-:global(.align-start) {
+.alignStart {
   align-items: flex-start;
 }
 
-:global(.align-end) {
+.alignEnd {
   align-items: flex-end;
 }
 
-:global(.align-stretch) {
+.alignStretch {
   align-items: stretch;
 }
 
-:global(.align-self-end),
-.align-self-end {
+.alignSelfEnd {
   align-self: flex-end;
 }
 
-:global(.align-self-start),
-.align-self-start {
-  align-self: flex-start;
-}
-
-:global(.align-self-center) {
-  align-self: center;
-}
-
-:global(.align-self-stretch) {
+.alignSelfStretch {
   align-self: stretch;
 }
 
-:global(.flex-align-right),
-.flex-align-right {
+.flexAlignRight {
   margin-left: auto;
 }
 
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-flex-align-right) {
-    margin-left: auto;
-  }
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.md-flex-align-right) {
-    margin-left: auto;
-  }
-}
-
-@media screen and (--breakpoint-min-lg) {
-  :global(.lg-flex-align-right) {
-    margin-left: auto;
-  }
-}
-
-:global(.layout-centered),
-.layout-centered {
+.layoutCentered {
   align-items: center;
   justify-content: center;
 }
 
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-layout-centered) {
-    align-items: center;
-    justify-content: center;
-  }
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.md-layout-centered) {
-    align-items: center;
-    justify-content: center;
-  }
-}
-
-@media screen and (--breakpoint-min-lg) {
-  :global(.lg-layout-centered) {
-    align-items: center;
-    justify-content: center;
-  }
-}
-
-:global(.flex-column) {
+.flexColumn {
   flex-direction: column;
 }
 
-:global(.flex-column-reverse) {
-  flex-direction: column-reverse;
-}
-
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-flex-column) {
-    flex-direction: column;
-  }
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.md-flex-column) {
-    flex-direction: column;
-  }
-}
-
-:global(.flex-row),
-.flex-row {
+.flexRow {
   flex-direction: row;
 }
 
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-flex-row) {
-    flex-direction: row;
-  }
-}
-
-:global(.flex-wrap) {
+.flexWrap {
   flex-wrap: wrap;
 }
 
-:global(.flex-reverse) {
+.flexReverse {
   flex-direction: row-reverse;
-}
-
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-flex-reverse) {
-    flex-direction: row-reverse;
-  }
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.md-flex-reverse) {
-    flex-direction: row-reverse;
-  }
-}
-
-@media screen and (--breakpoint-min-lg) {
-  :global(.lg-flex-reverse) {
-    flex-direction: row-reverse;
-  }
-}
-
-@media screen and (--breakpoint-min-xl) {
-  :global(.xl-flex-reverse) {
-    flex-direction: row-reverse;
-  }
-}
-
-:global(.no-flex) {
-  flex: 0 1 0%;
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.md-no-flex) {
-    flex: 0 !important;
-  }
 }
 
 /* Contents of elements inside flex items might not be wrapped correctly on IE11,
    set max-width manually to enforce wrapping
 */
-:global(.ie-wrap-content-fix) {
+.ieWrapContentFix {
   max-width: 100%;
 }
 
-:global(.row-gap-1),
-.row-gap-1 {
+.rowGap1 {
   row-gap: var(--gap-1);
 }

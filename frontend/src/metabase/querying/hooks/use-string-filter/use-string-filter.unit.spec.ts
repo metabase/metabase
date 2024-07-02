@@ -1,23 +1,33 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 
+import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
-import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
+import {
+  createOrdersIdField,
+  createOrdersProductIdField,
+  createOrdersTable,
+  createProductsCategoryField,
+  createProductsEanField,
+  createProductsIdField,
+  createProductsTable,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { useStringFilter } from "./use-string-filter";
 
 interface CreateFilterCase {
   operator: Lib.StringFilterOperatorName;
   values: string[];
-  displayName: string;
+  expectedDisplayName: string;
 }
 
 interface UpdateFilterCase {
   operator: Lib.StringFilterOperatorName;
   expression: Lib.ExpressionClause;
   values: string[];
-  displayName: string;
+  expectedDisplayName: string;
 }
 
 interface ValidateFilterCase {
@@ -25,44 +35,79 @@ interface ValidateFilterCase {
   values: string[];
 }
 
+interface DefaultOperatorCase {
+  title: string;
+  column: Lib.ColumnMetadata;
+  expectedOperator: Lib.StringFilterOperatorName;
+}
+
+const METADATA = createMockMetadata({
+  databases: [
+    createSampleDatabase({
+      tables: [
+        createOrdersTable({
+          fields: [
+            createOrdersIdField({
+              base_type: "type/Text",
+              effective_type: "type/Text",
+            }),
+            createOrdersProductIdField({
+              base_type: "type/Text",
+              effective_type: "type/Text",
+            }),
+          ],
+        }),
+        createProductsTable({
+          fields: [
+            createProductsIdField({
+              base_type: "type/Text",
+              effective_type: "type/Text",
+            }),
+            createProductsCategoryField(),
+            createProductsEanField(),
+          ],
+        }),
+      ],
+    }),
+  ],
+});
+
 describe("useStringFilter", () => {
-  const defaultQuery = Lib.withDifferentTable(createQuery(), PRODUCTS_ID);
+  const defaultQuery = createQuery({ metadata: METADATA });
   const stageIndex = 0;
   const availableColumns = Lib.filterableColumns(defaultQuery, stageIndex);
-  const column = columnFinder(defaultQuery, availableColumns)(
-    "PRODUCTS",
-    "CATEGORY",
-  );
+  const findColumn = columnFinder(defaultQuery, availableColumns);
+  const column = findColumn("PRODUCTS", "CATEGORY");
 
   it.each<CreateFilterCase>([
     {
       operator: "=",
       values: ["Gadget", "Widget"],
-      displayName: "Category is 2 selections",
+      expectedDisplayName: "Category is 2 selections",
     },
     {
       operator: "!=",
       values: ["Gadget"],
-      displayName: "Category is not Gadget",
+      expectedDisplayName: "Category is not Gadget",
     },
     {
       operator: "contains",
       values: ["get"],
-      displayName: "Category contains get",
+      expectedDisplayName: "Category contains get",
     },
     {
       operator: "is-empty",
       values: [],
-      displayName: "Category is empty",
+      expectedDisplayName: "Category is empty",
     },
     {
       operator: "not-empty",
       values: [],
-      displayName: "Category is not empty",
+      expectedDisplayName: "Category is not empty",
     },
   ])(
     'should allow to create a filter for "$operator" operator',
-    ({ operator: newOperator, values: newValues, displayName }) => {
+    ({ operator: newOperator, values: newValues, expectedDisplayName }) => {
       const { result } = renderHook(() =>
         useStringFilter({
           query: defaultQuery,
@@ -84,7 +129,7 @@ describe("useStringFilter", () => {
       expect(
         Lib.displayInfo(defaultQuery, stageIndex, newFilter),
       ).toMatchObject({
-        displayName,
+        displayName: expectedDisplayName,
       });
     },
   );
@@ -99,7 +144,7 @@ describe("useStringFilter", () => {
         options: {},
       }),
       values: ["Widget"],
-      displayName: "Category is Widget",
+      expectedDisplayName: "Category is Widget",
     },
     {
       operator: "starts-with",
@@ -110,11 +155,11 @@ describe("useStringFilter", () => {
         options: {},
       }),
       values: ["Wi"],
-      displayName: "Category starts with Wi",
+      expectedDisplayName: "Category starts with Wi",
     },
   ])(
     'should allow to update a filter for "$operator" operator',
-    ({ expression, values: newValues, displayName }) => {
+    ({ expression, values: newValues, expectedDisplayName }) => {
       const query = Lib.filter(defaultQuery, stageIndex, expression);
       const [filter] = Lib.filters(query, stageIndex);
 
@@ -137,7 +182,7 @@ describe("useStringFilter", () => {
         getFilterClause(operator, values, options),
       );
       expect(Lib.displayInfo(query, stageIndex, newFilter)).toMatchObject({
-        displayName,
+        displayName: expectedDisplayName,
       });
     },
   );
@@ -153,11 +198,11 @@ describe("useStringFilter", () => {
     },
     {
       operator: "starts-with",
-      values: [""],
+      values: [],
     },
     {
       operator: "ends-with",
-      values: [""],
+      values: [],
     },
   ])(
     'should validate values for "$operator" operator',
@@ -211,4 +256,41 @@ describe("useStringFilter", () => {
       displayName: "Category is not Gadget",
     });
   });
+
+  it.each<DefaultOperatorCase>([
+    {
+      title: "PK column",
+      column: findColumn("ORDERS", "ID"),
+      expectedOperator: "=",
+    },
+    {
+      title: "FK column",
+      column: findColumn("ORDERS", "PRODUCT_ID"),
+      expectedOperator: "=",
+    },
+    {
+      title: "category column",
+      column: findColumn("PRODUCTS", "CATEGORY"),
+      expectedOperator: "=",
+    },
+    {
+      title: "regular column",
+      column: findColumn("PRODUCTS", "EAN"),
+      expectedOperator: "contains",
+    },
+  ])(
+    'should use "$expectedOperator" operator for $title',
+    ({ column, expectedOperator }) => {
+      const { result } = renderHook(() =>
+        useStringFilter({
+          query: defaultQuery,
+          stageIndex,
+          column,
+        }),
+      );
+
+      const { operator } = result.current;
+      expect(operator).toBe(expectedOperator);
+    },
+  );
 });

@@ -1,4 +1,10 @@
 import * as ML from "cljs/metabase.lib.js";
+import type {
+  CardId,
+  ConcreteTableId,
+  DatabaseId,
+  VirtualTableId,
+} from "metabase-types/api";
 
 import { expressionParts } from "./expression";
 import { isColumnMetadata } from "./internal";
@@ -34,8 +40,9 @@ export function joins(query: Query, stageIndex: number): Join[] {
 export function joinClause(
   joinable: Joinable,
   conditions: JoinCondition[],
+  strategy: JoinStrategy,
 ): Join {
-  return ML.join_clause(joinable, conditions);
+  return ML.join_clause(joinable, conditions, strategy);
 }
 
 export function joinConditionClause(
@@ -111,7 +118,7 @@ export function joinConditionUpdateTemporalBucketing(
   query: Query,
   stageIndex: number,
   condition: JoinCondition,
-  bucket: Bucket,
+  bucket: Bucket | null,
 ): JoinCondition {
   return ML.join_condition_update_temporal_bucketing(
     query,
@@ -201,8 +208,9 @@ export function suggestedJoinConditions(
   query: Query,
   stageIndex: number,
   joinable: Joinable,
+  joinPositon?: number,
 ): JoinCondition[] {
-  return ML.suggested_join_conditions(query, stageIndex, joinable);
+  return ML.suggested_join_conditions(query, stageIndex, joinable, joinPositon);
 }
 
 export type JoinFields = ColumnMetadata[] | "all" | "none";
@@ -236,12 +244,21 @@ export function joinedThing(query: Query, join: Join): Joinable {
   return ML.joined_thing(query, join);
 }
 
-export type PickerInfo = {
-  databaseId: number;
-  tableId: number;
-  cardId?: number;
-  isModel?: boolean;
+type CardPickerInfo = {
+  databaseId: DatabaseId;
+  tableId: VirtualTableId;
+  cardId: CardId;
+  isModel: boolean;
 };
+
+type TablePickerInfo = {
+  databaseId: DatabaseId;
+  tableId: ConcreteTableId;
+  cardId?: never;
+  isModel?: never;
+};
+
+export type PickerInfo = TablePickerInfo | CardPickerInfo;
 
 /**
  * Returns `null` when the joined table/card isn't available, e.g. due to sandboxing.

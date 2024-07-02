@@ -13,3 +13,4 @@ serdes/meta:
 - id: vG58R8k-QddHWA7_47umn
   label: metabase_analytics
   model: Collection
+is_sample: false

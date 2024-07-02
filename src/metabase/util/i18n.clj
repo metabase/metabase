@@ -150,6 +150,7 @@
   split a long string over multiple lines.
 
   Calling `str` on the results of this invocation will lookup the translated version of the string."
+  {:style/indent [:form]}
   [format-string-or-str & args]
   (validate-number-of-args format-string-or-str args)
   `(UserLocalizedString. ~format-string-or-str ~(vec args) {}))
@@ -162,6 +163,7 @@
   split a long string over multiple lines.
 
   Calling `str` on the results of this invocation will lookup the translated version of the string."
+  {:style/indent [:form]}
   [format-string & args]
   (validate-number-of-args format-string args)
   `(SiteLocalizedString. ~format-string ~(vec args) {}))
@@ -181,6 +183,7 @@
 
   Prefer this over `deferred-tru`. Use `deferred-tru` only in code executed at compile time, or where `str` is manually
   applied to the result."
+  {:style/indent [:form]}
   [format-string-or-str & args]
   `(str* (deferred-tru ~format-string-or-str ~@args)))
 
@@ -192,6 +195,7 @@
 
   Prefer this over `deferred-trs`. Use `deferred-trs` only in code executed at compile time, or where `str` is manually
   applied to the result."
+  {:style/indent [:form]}
   [format-string-or-str & args]
   `(str* (deferred-trs ~format-string-or-str ~@args)))
 

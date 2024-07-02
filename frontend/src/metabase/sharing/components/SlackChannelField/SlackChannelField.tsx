@@ -1,7 +1,9 @@
+import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
 import AutocompleteInput from "metabase/core/components/AutocompleteInput";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import type { Channel, ChannelSpec } from "metabase-types/api";
@@ -62,7 +64,9 @@ const SlackChannelField = ({
   const applicationName = useSelector(getApplicationName);
   return (
     <div>
-      <span className="block text-bold pb2">{channelField?.displayName}</span>
+      <span className={cx(CS.block, CS.textBold, CS.pb2)}>
+        {channelField?.displayName}
+      </span>
       <AutocompleteInput
         placeholder={t`Pick a user or channel...`}
         value={value}
@@ -71,7 +75,9 @@ const SlackChannelField = ({
         onChange={handleChange}
       />
       {hasPrivateChannelWarning && (
-        <div className="mt1">{t`In order to send subscriptions and alerts to private Slack channels, you must first add the ${applicationName} bot to them.`}</div>
+        <div
+          className={CS.mt1}
+        >{t`In order to send subscriptions and alerts to private Slack channels, you must first add the ${applicationName} bot to them.`}</div>
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import type * as Lib from "metabase-lib/types";
+import type * as Lib from "metabase-lib";
 
 export interface FilterPickerWidgetProps {
   query: Lib.Query;

@@ -1,6 +1,6 @@
 import { singularize } from "metabase/lib/formatting";
 import type { IconName } from "metabase/ui";
-import type { ColumnGroupDisplayInfo } from "metabase-lib/types";
+import type { ColumnGroupDisplayInfo } from "metabase-lib";
 
 export function getColumnGroupName(groupInfo: ColumnGroupDisplayInfo) {
   return groupInfo.fkReferenceName || singularize(groupInfo.displayName);

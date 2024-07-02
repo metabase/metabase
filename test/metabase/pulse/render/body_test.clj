@@ -3,15 +3,19 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
+   [clojure.zip :as zip]
    [hiccup.core :refer [html]]
    [hickory.select :as hik.s]
    [metabase.formatter :as formatter]
    [metabase.models :refer [Card]]
+   [metabase.pulse :as pulse]
    [metabase.pulse.render.body :as body]
    [metabase.pulse.render.test-util :as render.tu]
+   [metabase.pulse.util :as pu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.test.data.interface :as tx]
+   [metabase.util :as u]))
 
 (use-fixtures :each
   (fn warn-possible-rebuild
@@ -46,7 +50,9 @@
 (def ^:private example-test-data
   [[1 34.0996 "2014-04-01T08:30:00.0000" "Stout Burgers & Beers"]
    [2 34.0406 "2014-12-05T15:15:00.0000" "The Apple Pan"]
-   [3 34.0474 "2014-08-01T12:45:00.0000" "The Gorbals"]])
+   [3 34.0474 "2014-08-01T12:45:00.0000" "The Gorbals"]
+   [4 0       "2018-09-01T19:32:00.0000" "The Tipsy Tardigrade"]
+   [5 nil     "2022-10-12T05:55:00.0000" "The Bungalow"]])
 
 (defn- col-counts [results]
   (set (map (comp count :row) results)))
@@ -166,14 +172,18 @@
 (deftest format-result-rows
   (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
           {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan"]}
-          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals"]}]
+          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals"]}
+          {:bar-width nil, :row [(number "4" 4)  "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade"]}
+          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows example-test-data})))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (deftest bar-column
   (is (= [{:bar-width (float 85.249), :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
           {:bar-width (float 85.1015), :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan"]}
-          {:bar-width (float 85.1185), :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals"]}]
+          {:bar-width (float 85.1185), :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals"]}
+          {:bar-width (float 0.0), :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade"]}
+          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows example-test-data}
                  {:bar-column second, :min-value 0, :max-value 40})))))
 
@@ -240,7 +250,9 @@
 (deftest cols-with-semantic-types
   (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
           {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan"]}
-          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals"]}]
+          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals"]}
+          {:bar-width nil, :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade"]}
+          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
                  {}
                  {:cols test-columns-with-date-semantic-type :rows example-test-data})))))
@@ -408,153 +420,6 @@
 (defn has-inline-image? [rendered]
   (some #{:img} (flatten-html-data rendered)))
 
-(defn- render-bar-graph [results]
-  (body/render :bar :inline pacific-tz render.tu/test-card nil results))
-
-(defn- render-multiseries-bar-graph [results]
-  (body/render :bar :inline pacific-tz render.tu/test-combo-card nil results))
-
-(deftest render-bar-graph-test
-  (testing "Render a bar graph with non-nil values for the x and y axis"
-    (is (has-inline-image?
-         (render-bar-graph {:cols         default-columns
-                            :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]
-                            :viz-settings {:graph.metrics ["NumPurchased"]}}))))
-  (testing "Check to make sure we allow nil values for the y-axis"
-    (is (has-inline-image?
-         (render-bar-graph {:cols         default-columns
-                            :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]
-                            :viz-settings {:graph.metrics ["NumPurchased"]}}))))
-  (testing "Check to make sure we allow nil values for the x-axis"
-    (let [graph (render-bar-graph {:cols         default-columns
-                                   :rows         [[10.0 1] [5.0 10] [2.50 20] [nil 30]]
-                                   :viz-settings {:graph.metrics ["NumPurchased"]}})]
-      (is (has-inline-image? graph))
-      (is (= graph
-             (render-bar-graph {:cols         default-columns
-                                :rows         [[10.0 1] [5.0 10] [2.50 20] ["(empty)" 30]]
-                                :viz-settings {:graph.metrics ["NumPurchased"]}})))))
-  (testing "Check to make sure we allow nil values for both x and y on different rows"
-    (is (has-inline-image?
-         (render-bar-graph {:cols         default-columns
-                            :rows         [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]
-                            :viz-settings {:graph.metrics ["NumPurchased"]}}))))
-  (testing "Check multiseries in one card but without explicit combo"
-    (is (has-inline-image?
-         (render-multiseries-bar-graph
-          {:cols         default-multi-columns
-           :rows         [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]
-           :viz-settings {:graph.metrics ["NumPurchased"]}})))))
-
-(defn- render-area-graph [results]
-  (body/render :area :inline pacific-tz render.tu/test-card nil results))
-
-(defn- render-stack-area-graph [results]
-  (body/render :area :inline pacific-tz render.tu/test-stack-card nil results))
-
-(defn- render-multiseries-area-graph [results]
-  (body/render :area :inline pacific-tz render.tu/test-combo-card nil results))
-
-(deftest render-area-graph-test
-  (testing "Render an area graph with non-nil values for the x and y axis"
-    (is (has-inline-image?
-         (render-area-graph {:cols         default-columns
-                             :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]
-                             :viz-settings {:graph.metrics ["NumPurchased"]}}))))
-  (testing "Render a stacked area graph"
-    (is (has-inline-image?
-         (render-stack-area-graph {:cols         default-multi-columns
-                                   :rows         [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]
-                                   :viz-settings {:graph.metrics ["NumPurchased"]}}))))
-  (testing "Check to make sure we allow nil values for the y-axis"
-    (is (has-inline-image?
-         (render-area-graph {:cols         default-columns
-                             :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]
-                             :viz-settings {:graph.metrics ["NumPurchased"]}}))))
-  (testing "Check to make sure we allow nil values for the y-axis"
-    (is (has-inline-image?
-         (render-area-graph {:cols         default-columns
-                             :rows         [[10.0 1] [5.0 10] [2.50 20] [nil 30]]
-                             :viz-settings {:graph.metrics ["NumPurchased"]}}))))
-  (testing "Check to make sure we allow nil values for both x and y on different rows"
-    (is (has-inline-image?
-         (render-area-graph {:cols         default-columns
-                             :rows         [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]
-                             :viz-settings {:graph.metrics ["NumPurchased"]}}))))
-  (testing "Check multiseries in one card but without explicit combo"
-    (is (has-inline-image?
-         (render-multiseries-area-graph
-          {:cols         default-multi-columns
-           :rows         [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]
-           :viz-settings {:graph.metrics ["NumPurchased"]}})))))
-
-(defn- render-waterfall [results]
-  (body/render :waterfall :inline pacific-tz render.tu/test-card nil results))
-
-(deftest render-waterfall-test
-  (testing "Render a waterfall graph with non-nil values for the x and y axis"
-    (is (has-inline-image?
-         (render-waterfall {:cols default-columns
-                            :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]
-                            :viz-settings {}})))))
-
-(deftest render-waterfall-test-2
-  (testing "Render a waterfall graph with bigdec, bigint values for the x and y axis"
-    (is (has-inline-image?
-         (render-waterfall {:cols         default-columns
-                            :rows         [[10.0M 1M] [5.0 10N] [2.50 20N] [1.25M 30]]
-                            :viz-settings {}})))))
-
-(deftest render-waterfall-test-3
-  (testing "Check to make sure we allow nil values for the y-axis"
-    (is (has-inline-image?
-         (render-waterfall {:cols         default-columns
-                            :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]
-                            :viz-settings {}})))))
-
-(deftest render-waterfall-test-4
-  (testing "Check to make sure we allow nil values for the x-axis"
-    (is (has-inline-image?
-         (render-waterfall {:cols         default-columns
-                            :rows         [[10.0 1] [5.0 10] [2.50 20] [nil 30]]
-                            :viz-settings {}})))))
-
-(deftest render-waterfall-test-5
-  (testing "Check to make sure we allow nil values for both x and y on different rows"
-    (is (has-inline-image?
-         (render-waterfall {:cols         default-columns
-                            :rows         [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]
-                            :viz-settings {}})))))
-
-(defn- render-combo [results]
-  (body/render :combo :inline pacific-tz render.tu/test-combo-card nil results))
-
-(defn- render-combo-multi-x [results]
-  (body/render :combo :inline pacific-tz render.tu/test-combo-card-multi-x nil results))
-
-(deftest render-combo-test
-  (testing "Render a combo graph with non-nil values for the x and y axis"
-    (is (has-inline-image?
-         (render-combo {:cols         default-multi-columns
-                        :rows         [[10.0 1 123 111] [5.0 10 12 111] [2.50 20 1337 12312] [1.25 30 -22 123124]]
-                        :viz-settings {:graph.metrics ["NumPurchased" "NumKazoos" "ExtraneousColumn"]}})))))
-
-(deftest render-combo-test-2
-  (testing "Render a combo graph with multiple x axes"
-    (is (has-inline-image?
-         (render-combo-multi-x {:cols default-multi-columns
-                                :rows [[10.0 "Bob" 123 123124]
-                                       [5.0 "Dobbs" 12 23423]
-                                       [2.50 "Robbs" 1337 234234]
-                                       [1.25 "Mobbs" -22 1234123]]})))))
-
-(deftest render-combo-test-3
-  (testing "Check to make sure we allow nil values for any axis"
-    (is (has-inline-image?
-         (render-combo {:cols         default-multi-columns
-                        :rows         [[nil 1 1 23453] [10.0 1 nil nil] [5.0 10 22 1337] [2.50 nil 22 1231] [1.25 nil nil 1231232]]
-                        :viz-settings {:graph.metrics ["NumPurchased" "NumKazoos" "ExtraneousColumn"]}})))))
-
 (defn- render-funnel [results]
   (body/render :funnel :inline pacific-tz render.tu/test-card nil results))
 
@@ -620,6 +485,50 @@
                             (hik.s/class "pulse-body")
                             doc)]
             (is (not (render-error? pulse-body)))))))))
+
+(def ^:private funnel-rows
+  [["cart" 1500]
+   ["checkout" 450]
+   ["homepage" 10000]
+   ["product_page" 5000]
+   ["purchase" 225]])
+
+(tx/defdataset funnel-data
+  [["stages"
+    [{:field-name "stage", :base-type :type/Text}
+     {:field-name "count", :base-type :type/Quantity}]
+    funnel-rows]])
+
+(deftest render-funnel-with-row-keys-test
+  (testing "Static-viz Funnel Chart with text keys in viz-settings and text in returned
+            rows renders without error and in the order specified by the viz-settings (#39743)."
+    (mt/dataset funnel-data
+      (let [funnel-query {:database (mt/id)
+                          :type     :query
+                          :query
+                          {:source-table (mt/id :stages)
+                           ;; we explicitly select the 2 columns because if we don't the query returns the ID as well.
+                           ;; this is done here to construct the failing case resulting from the reproduction steps in issue #39743
+                           :fields       [[:field (mt/id :stages :stage)]
+                                          [:field (mt/id :stages :count)]]}}
+            funnel-card  {:display       :funnel
+                          :dataset_query funnel-query
+                          :visualization_settings
+                          {:funnel.rows
+                           [{:key "homepage" :name "homepage" :enabled true}
+                            {:key "product_page" :name "product_page" :enabled true}
+                            {:key "cart" :name "cart" :enabled true}
+                            {:key "checkout" :name "checkout" :enabled true}
+                            {:key "purchase" :name "purchase" :enabled true}]}}]
+        (mt/with-temp [:model/Card {card-id :id} funnel-card]
+          (let [row-names      (into #{} (map first funnel-rows))
+                doc            (render.tu/render-card-as-hickory card-id)
+                section-labels (->> doc
+                                    (hik.s/select (hik.s/tag :tspan))
+                                    (mapv (comp first :content))
+                                    (filter row-names))]
+            (is (= (map :key (get-in funnel-card [:visualization_settings :funnel.rows]))
+                   section-labels))))))))
 
 (deftest render-categorical-donut-test
   (let [columns [{:name          "category",
@@ -696,128 +605,39 @@
     nil  "1,234,543.21%"
     ""   "1,234,543.21%"))
 
-(defn- get-axis-classes
-  [viz-tree]
-  (let [nodes (render.tu/nodes-with-tag viz-tree :g)
-        xf    (comp
-               (mapcat #(filter map? %))
-               (map :class)
-               (mapcat #(str/split % #" "))
-               (filter #{"visx-axis-left" "visx-axis-right"}))]
-   (into #{} xf nodes)))
-
-(deftest reasonable-split-axes-test
-  (let [rows [["Category" "Series A" "Series B"]
-              ["A"        1          1.3]
-              ["B"        2          1.9]
-              ["C"        3          4]]]
-    (testing "Single X-axis, multiple series with close values does not split y-axis."
-      (is (= #{"visx-axis-left"}
-             (-> rows
-                 (render.tu/make-viz-data :bar :single {})
-                 :viz-tree
-                 get-axis-classes))))
-    (testing "Single X-axis, multiple series with far values does split y-axis."
-      (is (= #{"visx-axis-left" "visx-axis-right"}
-             (-> (conj rows ["D" 3 70])
-                 (render.tu/make-viz-data :bar :single {})
-                 :viz-tree
-                 get-axis-classes))))
-    (testing "Multiple series split does not fail when a series has the same value for all of its rows #27427"
-      (let [rows [["Category" "Series A" "Series B"]
-                  ["A"        1          1.3]
-                  ["B"        1          1.9]
-                  ["C"        1          4]]]
-        (is (= #{"visx-axis-left"}
-               (-> rows
-                   (render.tu/make-viz-data :bar :single {})
-                   :viz-tree
-                   get-axis-classes)))))))
-
-(deftest multi-x-axis-series-reasonable-split-axes-test
-  (let [rows        [["Category" "Series A" "Series B"]
-                     ["A"        1.0          1.3]
-                     ["B"        2.0          1.9]
-                     ["C"        3.0          3.2]]]
-    (testing "Mulit-x-axis series with close values does not split y-axis."
-      (is (= #{"visx-axis-left"}
-             (-> rows
-                 (render.tu/make-viz-data :bar :multi {})
-                 :viz-tree
-                 get-axis-classes))))
-    (testing "Mulit-x-axis series with far values does split y-axis."
-      (is (= #{"visx-axis-left" "visx-axis-right"}
-             (-> (conj rows ["D" 3 70])
-                 (render.tu/make-viz-data :bar :multi {})
-                 :viz-tree
-                 get-axis-classes))))))
-
-(deftest ^:parallel x-and-y-axis-label-info-test
-  (let [x-col {:display_name "X col"}
-        y-col {:display_name "Y col"}]
-    (testing "no custom viz settings"
-      (is (= {:bottom "X col", :left "Y col"}
-             (#'body/x-and-y-axis-label-info x-col y-col nil))))
-    (testing "w/ custom viz settings"
-      (is (= {:bottom "X custom", :left "Y custom"}
-             (#'body/x-and-y-axis-label-info x-col y-col {:graph.x_axis.title_text "X custom"
-                                                          :graph.y_axis.title_text "Y custom"}))))))
-
-(deftest lab-charts-respect-y-axis-range
-  (let [rows     [["Category" "Series A" "Series B"]
-                  ["A"        1          1.3]
-                  ["B"        2          1.9]
-                  ["C"        -3          6]]
-        renderfn (fn [viz]
-                   (-> rows
-                       (render.tu/make-card-and-data :bar)
-                       (render.tu/merge-viz-settings viz)
-                       render.tu/render-as-hiccup))]
-    (testing "Graph min and max values are respected in the render. #27927"
-      (let [to-find           ["14" "2" "-2" "-14"]
-            no-viz-render     (renderfn {})
-            viz-a-render      (renderfn {:graph.y_axis.max 14
-                                         :graph.y_axis.min -14})
-            nodes-without-viz (mapv #(last (last (render.tu/nodes-with-exact-text no-viz-render %))) to-find)
-            nodes-with-viz    (mapv #(last (last (render.tu/nodes-with-exact-text viz-a-render %))) to-find)]
-        ;; we only see 14/-14 in the render where min and max are explicitly set.
-        ;; this is because the data's min and max values are only -3 and 6, and the viz will minimize the axis range
-        ;; without cutting off the chart's actual values
-        (is (= {:without-viz ["2" "-2"]
-                :with-viz    ["14" "2" "-2" "-14"]}
-               {:without-viz (remove nil? nodes-without-viz)
-                :with-viz    nodes-with-viz}))))
-    (testing "Graph min and max values do not cut off the chart."
-      (let [viz-b-render   (renderfn {:graph.y_axis.max 1
-                                      :graph.y_axis.min -1})
-            to-find        ["14" "2" "-2" "-14"]
-            nodes-with-viz (mapv #(last (last (render.tu/nodes-with-exact-text viz-b-render %))) to-find)]
-        (is (= ["2" "-2"] (remove nil? nodes-with-viz)))))))
-
-(deftest invalid-graph-dim-render-test
-  (testing "A card with an invalid graph.dimension (or metric) will still render (#37266)"
+(deftest add-dashcard-timeline-events-test-34924
+  (testing "Timeline events should be added to the isomorphic renderer stages"
     (mt/dataset test-data
-      (mt/with-temp [Card {card-id :id}
-                     {:dataset_query          {:database (mt/id)
-                                               :type     :query
-                                               :query    {:source-table (mt/id :orders)
-                                                          :aggregation  [[:count]]
-                                                          :filter       [:between [:field (mt/id :orders :created_at) nil] "2019-05-16" "2019-08-16"]
-                                                          :breakout     [:field (mt/id :orders :created_at) {:temporal-unit :week}]}}
-                      :display                :line
-                      ;; While not part of the original issue, this fix also handles bad metrics.
-                      :visualization_settings {:graph.metrics    ["frooby"]
-                                               ;; This dimension does not exist and used to break the render
-                                               ;; This test verifies that it now works.
-                                               :graph.dimensions ["_sdc_extracted_at"]}}]
-        (let [{:keys [dataset_query result_metadata], card-type :type, :as card} (t2/select-one :model/Card :id card-id)
-              query-results (qp/process-query
-                              (cond-> dataset_query
-                                (= card-type :model)
-                                (assoc-in [:info :metadata/model-metadata] result_metadata)))
-              {:keys [content]} (body/render :line :inline "UTC" card nil (:data query-results))]
-          (testing "Content is generated (rather than an exception being thrown)"
-            (is (= :div (first content)))))))))
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Collection {collection-id :id :as _collection} {:name "Rasta's Collection"}
+                       :model/Timeline tl-a {:name "tl-a" :collection_id collection-id}
+                       :model/Timeline tl-b {:name "tl-b" :collection_id collection-id}
+                       :model/TimelineEvent _ {:timeline_id (u/the-id tl-a) :name "un-1"}
+                       :model/TimelineEvent _ {:timeline_id (u/the-id tl-a) :name "archived-1"}
+                       :model/TimelineEvent _ {:timeline_id (u/the-id tl-b) :name "un-2"}
+                       :model/TimelineEvent _ {:timeline_id (u/the-id tl-b) :name "archived-2"}
+                       :model/Card {dataset-query :dataset_query
+                                    :as           card} {:name          "Dashboard Test Card"
+                                                         :collection_id collection-id
+                                                         :dataset_query {:type     :query,
+                                                                         :database (mt/id)
+                                                                         :query    {:source-table (mt/id :orders)
+                                                                                    :breakout     [[:field (mt/id :orders :created_at)
+                                                                                                    {:temporal-unit :month}]],
+                                                                                    :aggregation  [[:sum [:field (mt/id :orders :subtotal) nil]]
+                                                                                                   [:avg [:field (mt/id :orders :subtotal) nil]]]}}
+                                                         :creator_id    (mt/user->id :crowberto)}]
+          (let [data                   (qp/process-query dataset-query)
+                combined-cards-results [(pu/execute-card card card nil)]
+                cards-with-data        (map
+                                        (comp
+                                         #'body/add-dashcard-timeline-events
+                                         (fn [c d] {:card c :data d}))
+                                        (cons card (map :card combined-cards-results))
+                                        (cons data (map #(get-in % [:result :data]) combined-cards-results)))]
+            (testing "The underlying add-dashcard-timeline-events call adds the timeline events to the card"
+              (is (=? [tl-a tl-b] (:timeline_events (#'body/add-dashcard-timeline-events {:card card})))))
+            (is (= 2 (count (:timeline_events (first cards-with-data)))))))))))
 
 (deftest unknown-column-settings-test
   (testing "Unknown `:column_settings` keys don't break static-viz rendering with a Null Pointer Exception (#27941)."
@@ -843,3 +663,202 @@
                                                              :visualization_settings viz}]
             (testing "the render succeeds with unknown column settings keys"
               (is (seq (render.tu/render-card-as-hickory card-id))))))))))
+
+(deftest trend-chart-renders-in-alerts-test
+  (testing "Trend charts render successfully in Alerts. (#39854)"
+    (mt/dataset test-data
+      (let [q {:database (mt/id)
+               :type     :query
+               :query
+               {:source-table (mt/id :orders)
+                :aggregation  [[:count]]
+                :breakout     [[:field (mt/id :orders :created_at) {:base-type :type/DateTime, :temporal-unit :month}]]}}]
+        ;; Alerts are set on Questions. They run through the 'pulse' code the same as subscriptions,
+        ;; But will not have any Dashcard data associated, which caused an error in the static-viz render code
+        ;; which implicitly expected a DashCard to exist
+        ;; Here, we simulate an Alert (NOT a subscription) by only providing a card and not mocking a DashCard.
+        (mt/with-temp [:model/Card {card-id :id} {:display       :smartscalar
+                                                  :dataset_query q}]
+          (let [doc       (render.tu/render-card-as-hickory card-id)
+                span-text (->> doc
+                               (hik.s/select (hik.s/tag :span))
+                               (mapv (comp first :content))
+                               (filter string?)
+                               (filter #(str/includes? % "vs.")))]
+            ;; we look for content that we are certain comes from a
+            ;; successfully rendered trend chart.
+            (is (= 1 (count span-text)))))))))
+
+(defn- content-selector
+  [content-to-match]
+  (fn [loc]
+    (let [{:keys [content]} (zip/node loc)]
+      (= content content-to-match))))
+
+(defn- parse-transform [s]
+  (let [numbers (-> (re-find #"matrix\((.+)\)" s)
+                    second
+                    (str/split #","))
+        keys [:a :b :c :d :e :f]]
+    (zipmap keys (map parse-double numbers))))
+
+(deftest axis-selection-for-series-test
+  (testing "When the user specifies all series to be on left or right, it will render. (#38839)"
+    (mt/dataset test-data
+      (let [q   {:database (mt/id)
+                 :type     :query
+                 :query
+                 {:source-table (mt/id :products)
+                  :aggregation  [[:count]]
+                  :breakout
+                  [[:field (mt/id :products :category) {:base-type :type/Text}]
+                   [:field (mt/id :products :price) {:base-type :type/Float, :binning {:strategy :default}}]]}}
+            viz (fn [dir]
+                  {:series_settings
+                   {:Doohickey {:axis dir}
+                    :Gadget    {:axis dir}
+                    :Gizmo     {:axis dir}
+                    :Widget    {:axis dir}},
+                   :graph.dimensions ["PRICE" "CATEGORY"],
+                   :graph.metrics    ["count"]})]
+        (mt/with-temp [:model/Card {left-card-id :id} {:display                :bar
+                                                       :visualization_settings (viz "left")
+                                                       :dataset_query          q}
+                       :model/Card {right-card-id :id} {:display                :bar
+                                                        :visualization_settings (viz "right")
+                                                        :dataset_query          q}]
+          (testing "Every series on the left correctly only renders left axis."
+            (let [doc                (render.tu/render-card-as-hickory left-card-id)
+                  axis-label-element (hik.s/select (content-selector ["Count"]) doc)
+                  ;; the axis label has a :transform property like this: "matrix(0,1,-1,0,520,162.3245)"
+                  ;; which is explained here: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
+                  ;; If we assume the 'previous coords' for the label were 0 0, we can ignore most matrix entries,
+                  ;; and only really care about the X position, which ends up being the :e entry in the matrix.
+                  ;; the '200' is an arbitrary X value that is close-ish to the middle of the chart's graphics
+                  ;; which should mean the assertions pass, even if the static-viz output changes a bit.
+                  ;; Well, one can hope, at least :)
+                  axis-y-transform   (-> axis-label-element
+                                         (get-in [0 :attrs :transform])
+                                         parse-transform
+                                         :e)]
+              (is (= 1 (count axis-label-element)))
+              (is (> 200 axis-y-transform))))
+          (testing "Every series on the right correctly only renders right axis."
+            (let [doc                (render.tu/render-card-as-hickory right-card-id)
+                  axis-label-element (hik.s/select (content-selector ["Count"]) doc)
+                  axis-y-transform   (-> axis-label-element
+                                         (get-in [0 :attrs :transform])
+                                         parse-transform
+                                         :e)]
+              (is (= 1 (count axis-label-element)))
+              (is (< 200 axis-y-transform)))))))))
+
+(deftest multiseries-dashcard-render-test
+  (testing "Multi-series dashcards render with every series. (#42730)"
+    (mt/dataset test-data
+      (let [q {:database (mt/id)
+               :type     :query
+               :query
+               {:source-table (mt/id :products)
+                :aggregation  [[:count]]
+                :breakout
+                [[:field (mt/id :products :category) {:base-type :type/Text}]]}}]
+        (mt/with-temp [:model/Card {card-a-id :id} {:display       :bar
+                                                    :dataset_query q}
+                       :model/Card {card-b-id :id} {:display       :bar
+                                                    :dataset_query q}
+                       :model/Dashboard {dash-id :id} {}
+                       :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id
+                                                               :card_id      card-a-id}
+                       :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id
+                                                     :card_id          card-b-id}]
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [card-doc               (render.tu/render-card-as-hickory card-a-id)
+                  dashcard-doc           (render.tu/render-dashcard-as-hickory dashcard-id)
+                  card-path-elements     (hik.s/select (hik.s/tag :path) card-doc)
+                  card-paths-count       (count card-path-elements)
+                  dashcard-path-elements (hik.s/select (hik.s/tag :path) dashcard-doc)
+                  expected-dashcard-paths-count (+ 4 card-paths-count)]
+              ;; SVG Path elements are used to draw the bars in a bar graph.
+              ;; They are also used to create the axes lines, so we establish a count of a single card's path elements
+              ;; to compare against.
+              ;; Since we know that the Products sample data has 4 Product categories, we can reliably expect
+              ;; that Adding a series to the card that is identical to the first card will result in 4 more path elements.
+              (is (= expected-dashcard-paths-count (count dashcard-path-elements))))))))))
+
+(deftest multiseries-dashcard-render-filters-test
+  (testing "Multi-series dashcards render with every series properly filtered (#39083)"
+    (mt/dataset test-data
+      (let [q {:database (mt/id)
+               :type     :query
+               :query
+               {:source-table (mt/id :orders)
+                :aggregation  [[:count]]
+                :breakout
+                [[:field (mt/id :orders :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}]
+        (mt/with-temp [:model/Card {card-a-id :id} {:name          "series_a"
+                                                    :display       :bar
+                                                    :dataset_query q}
+                       :model/Card {card-b-id :id} {:name          "series_b"
+                                                    :display       :bar
+                                                    :dataset_query q}
+                       :model/Dashboard {dash-id :id} {:parameters [{:name      "Date Filter"
+                                                                     :id        "944bba5f"
+                                                                     :type      :date/month-year
+                                                                     :sectionId "date"}]}
+                       :model/DashboardCard {dashcard-id :id}
+                       {:dashboard_id dash-id
+                        :card_id      card-a-id
+                        :visualization_settings
+                        {:graph.dimensions ["CREATED_AT"],
+                         :series_settings  {"series_a" {:color "#AAA"}
+                                            "series_b" {:color "#BBB"}}
+                         :graph.metrics    ["count"]}
+                        :parameter_mappings
+                        [{:parameter_id "944bba5f"
+                          :card_id      card-a-id
+                          :target       [:dimension [:field (mt/id :orders :created_at) {:base-type :type/DateTime}]]}
+                         {:parameter_id "944bba5f"
+                          :card_id      card-b-id
+                          :target       [:dimension [:field (mt/id :orders :created_at) {:base-type :type/DateTime}]]}]}
+                       :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id
+                                                     :card_id          card-b-id}]
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [dashcard-doc           (render.tu/render-dashcard-as-hickory
+                                          dashcard-id
+                                          [{:value     "2019-05"
+                                            :id        "944bba5f"
+                                            :sectionId "date"
+                                            :type      :date/month-year
+                                            :target    [:dimension [:field (mt/id :orders :created_at) {:base-type :type/DateTime}]]}])
+                  dashcard-path-elements (hik.s/select (hik.s/tag :path) dashcard-doc)
+                  ;; the series bars each have distinct colours, so we can group by those attrs to get a count.
+                  ;; and remove any paths that are 'transparent'
+                  series-counts          (-> (group-by #(get-in % [:attrs :fill]) dashcard-path-elements)
+                                             (dissoc "transparent")
+                                             (update-vals count))]
+              ;; The series count should be 1 for each series, since we're filtering by a single month of the year
+              ;; and each question is set up with a breakout on :created_at by :month, so filtering on a single month produces just 1 bar.
+              (is (= [1 1]
+                     (vals series-counts))))))))))
+
+(defn- render-card
+  [render-type card data]
+  (body/render render-type :attachment (pulse/defaulted-timezone card) card nil data))
+
+(deftest render-cards-are-thread-safe-test-for-js-visualization
+  (mt/with-temp [:model/Card card {:dataset_query          (mt/mbql-query orders
+                                                                          {:aggregation [[:count]]
+                                                                           :breakout    [$orders.created_at]
+                                                                           :limit       1})
+                                   :display                :line
+                                   :visualization_settings {:graph.dimensions ["CREATED_AT"]
+                                                            :graph.metrics    ["count"]}}]
+    (let [data (:data (qp/process-query (:dataset_query card)))]
+      (is (every? some? (mt/repeat-concurrently 3 #(render-card :javascript_visualization card data)))))))
+
+(deftest render-cards-are-thread-safe-test-for-table
+  (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:limit 1})
+                                   :display       :table}]
+    (let [data (:data (qp/process-query (:dataset_query card)))]
+      (is (every? some? (mt/repeat-concurrently 3 #(render-card :table card data)))))))

@@ -1,5 +1,5 @@
-import type Question from "metabase-lib/Question";
-import type { Query } from "metabase-lib/types";
+import type * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
 export type NotebookStepType =
   | "data"
@@ -12,15 +12,20 @@ export type NotebookStepType =
   | "sort"
   | "limit";
 
-type RevertFn = (query: Query, stageIndex: number, index?: number) => Query;
+type RevertFn = (
+  query: Lib.Query,
+  stageIndex: number,
+  index?: number,
+) => Lib.Query;
 
 export interface NotebookStep {
   id: string;
   type: NotebookStepType;
+  clauseType: Lib.ClauseType;
   stageIndex: number;
   itemIndex: number | null;
   question: Question;
-  query: Query;
+  query: Lib.Query;
   valid: boolean;
   active: boolean;
   visible: boolean;
@@ -29,7 +34,7 @@ export interface NotebookStep {
   actions: NotebookStepAction[];
   next: NotebookStep | null;
   previous: NotebookStep | null;
-  getPreviewQuery?: (() => Query) | undefined;
+  previewQuery?: Lib.Query | null;
 }
 
 export interface NotebookStepAction {
@@ -39,14 +44,13 @@ export interface NotebookStepAction {
 
 export interface NotebookStepUiComponentProps {
   step: NotebookStep;
-  query: Query;
+  query: Lib.Query;
   stageIndex: number;
-  sourceQuestion?: Question;
   color: string;
   isLastOpened: boolean;
   reportTimezone: string;
   readOnly?: boolean;
-  updateQuery: (query: Query) => Promise<void>;
+  updateQuery: (query: Lib.Query) => Promise<void>;
 }
 
 export type OpenSteps = Record<NotebookStep["id"], boolean>;

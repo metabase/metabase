@@ -1,8 +1,9 @@
+import { createAction, type UnknownAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { push } from "react-router-redux";
 
 import { deleteSession, initiateSLO } from "metabase/lib/auth";
-import { reload, isSmallScreen } from "metabase/lib/dom";
+import { isSmallScreen, reload } from "metabase/lib/dom";
 import { loadLocalization } from "metabase/lib/i18n";
 import { createAsyncThunk } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
@@ -25,12 +26,21 @@ import type { LoginData } from "./types";
 export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
 export const refreshLocale = createAsyncThunk(
   REFRESH_LOCALE,
-  async (_, { getState }) => {
+  async (_, { dispatch, getState }) => {
     const userLocale = getUser(getState())?.locale;
     const siteLocale = getSetting(getState(), "site-locale");
-    await loadLocalization(userLocale ?? siteLocale ?? "en");
+    if (userLocale && userLocale !== siteLocale) {
+      // This sets a flag to keep the route guard from redirecting us while the reload is happening
+      await dispatch(pauseRedirect());
+      reload();
+    } else {
+      await loadLocalization(userLocale ?? siteLocale ?? "en");
+    }
   },
 );
+
+export const PAUSE_REDIRECT = "metabase/user/PAUSE_REDIRECT";
+export const pauseRedirect = createAction(PAUSE_REDIRECT);
 
 export const REFRESH_SESSION = "metabase/auth/REFRESH_SESSION";
 export const refreshSession = createAsyncThunk(
@@ -38,7 +48,7 @@ export const refreshSession = createAsyncThunk(
   async (_, { dispatch }) => {
     await Promise.all([
       dispatch(refreshCurrentUser()),
-      dispatch(refreshSiteSettings()),
+      dispatch(refreshSiteSettings({})),
     ]);
     await dispatch(refreshLocale()).unwrap();
   },
@@ -52,15 +62,11 @@ interface LoginPayload {
 export const LOGIN = "metabase/auth/LOGIN";
 export const login = createAsyncThunk(
   LOGIN,
-  async (
-    { data, redirectUrl = "/" }: LoginPayload,
-    { dispatch, rejectWithValue },
-  ) => {
+  async ({ data }: LoginPayload, { dispatch, rejectWithValue }) => {
     try {
       await SessionApi.create(data);
       await dispatch(refreshSession()).unwrap();
       trackLogin();
-      dispatch(push(redirectUrl));
       if (!isSmallScreen()) {
         dispatch(openNavbar());
       }
@@ -78,15 +84,11 @@ interface LoginGooglePayload {
 export const LOGIN_GOOGLE = "metabase/auth/LOGIN_GOOGLE";
 export const loginGoogle = createAsyncThunk(
   LOGIN_GOOGLE,
-  async (
-    { credential, redirectUrl = "/" }: LoginGooglePayload,
-    { dispatch, rejectWithValue },
-  ) => {
+  async ({ credential }: LoginGooglePayload, { dispatch, rejectWithValue }) => {
     try {
       await SessionApi.createWithGoogleAuth({ token: credential });
       await dispatch(refreshSession()).unwrap();
       trackLoginGoogle();
-      dispatch(push(redirectUrl));
       if (!isSmallScreen()) {
         dispatch(openNavbar());
       }
@@ -122,7 +124,10 @@ export const logout = createAsyncThunk(
         dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();
         trackLogout();
-        dispatch(push(Urls.login()));
+
+        // We use old react-router-redux which references old redux, which does not require
+        // action type to be a string - unlike RTK v2+
+        dispatch(push(Urls.login()) as unknown as UnknownAction);
         reload(); // clears redux state and browser caches
       }
     } catch (error) {
@@ -175,14 +180,5 @@ export const validatePassword = async (password: string) => {
     await UtilApi.password_check({ password });
   } catch (error) {
     return getIn(error, ["data", "errors", "password"]);
-  }
-};
-
-export const validatePasswordToken = async (token: string) => {
-  const result = await SessionApi.password_reset_token_valid({ token });
-  const valid = getIn(result, ["valid"]);
-
-  if (!valid) {
-    throw result;
   }
 };

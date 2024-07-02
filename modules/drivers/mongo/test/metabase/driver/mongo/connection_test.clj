@@ -38,7 +38,7 @@
                     :use-srv true}]
     (testing "mongo+srv connection string used when :use-srv is thruthy"
       (is (str/includes? (mongo.connection/db-details->connection-string db-details)
-                         "mongodb+srv://test-host.place.com/datadb"))
+                         "mongodb+srv://test-host.place.com/"))
       (let [settings (mongo.connection/db-details->mongo-client-settings db-details)
             ^MongoCredential credential (.getCredential settings)]
         (is (= "test-user" (.getUserName credential)))

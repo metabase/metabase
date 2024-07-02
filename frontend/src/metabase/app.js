@@ -1,11 +1,5 @@
 import "regenerator-runtime/runtime";
 
-// Use of classList.add and .remove in Background and FitViewPort Hocs requires
-// this polyfill so that those work in older browsers
-import "classlist-polyfill";
-
-import "number-to-locale-string";
-
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
 // Should be imported before any other metabase import
@@ -33,7 +27,7 @@ import "ee-plugins"; // eslint-disable-line import/no-duplicates
 import { createHistory } from "history";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
-import ReactDOM from "react-dom";
+import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";
 import { Router, useRouterHistory } from "react-router";
 import { syncHistoryWithStore } from "react-router-redux";
@@ -41,8 +35,9 @@ import { syncHistoryWithStore } from "react-router-redux";
 import { createTracker } from "metabase/lib/analytics";
 import api from "metabase/lib/api";
 import { initializeEmbedding } from "metabase/lib/embed";
+import { captureConsoleErrors } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
-import { PLUGIN_APP_INIT_FUCTIONS } from "metabase/plugins";
+import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
@@ -66,14 +61,14 @@ function _init(reducers, getRoutes, callback) {
   const routes = getRoutes(store);
   const history = syncHistoryWithStore(browserHistory, store);
 
-  let root;
-
   createTracker(store);
 
   initializeEmbedding(store);
 
-  ReactDOM.render(
-    <Provider store={store} ref={ref => (root = ref)}>
+  const root = createRoot(document.getElementById("root"));
+
+  root.render(
+    <Provider store={store}>
       <EmotionCacheProvider>
         <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
           <ThemeProvider>
@@ -83,14 +78,13 @@ function _init(reducers, getRoutes, callback) {
         </DragDropContextProvider>
       </EmotionCacheProvider>
     </Provider>,
-    document.getElementById("root"),
   );
 
   registerVisualizations();
 
   store.dispatch(refreshSiteSettings());
 
-  PLUGIN_APP_INIT_FUCTIONS.forEach(init => init({ root }));
+  PLUGIN_APP_INIT_FUNCTIONS.forEach(init => init());
 
   window.Metabase = window.Metabase || {};
   window.Metabase.store = store;
@@ -108,3 +102,5 @@ export function init(...args) {
     document.addEventListener("DOMContentLoaded", () => _init(...args));
   }
 }
+
+captureConsoleErrors();

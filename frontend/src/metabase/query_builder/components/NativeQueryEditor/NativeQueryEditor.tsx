@@ -28,12 +28,13 @@ import { getEngineNativeAceMode } from "metabase/lib/engine";
 import { checkNotNull } from "metabase/lib/types";
 import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
+import type { QueryModalType } from "metabase/query_builder/constants";
 import { getSetting } from "metabase/selectors/settings";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import { CARD_TAG_REGEX } from "metabase-lib/queries/NativeQuery";
+import type Question from "metabase-lib/v1/Question";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import { CARD_TAG_REGEX } from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
   CardId,
@@ -112,7 +113,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   hasEditingSidebar?: boolean;
   sidebarFeatures?: SidebarFeatures;
   resizable?: boolean;
-  resizableBoxProps?: Partial<ResizableBoxProps>;
+  resizableBoxProps?: Partial<Omit<ResizableBoxProps, "axis">>;
 
   editorContext?: "question";
 
@@ -131,7 +132,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
   setParameterValue: (parameterId: ParameterId, value: string) => void;
   setParameterValueToDefault: (parameterId: ParameterId) => void;
-  onOpenModal: (modalType: string) => void;
+  onOpenModal: (modalType: QueryModalType) => void;
   toggleDataReference: () => void;
   toggleTemplateTagsEditor: () => void;
   toggleSnippetSidebar: () => void;
@@ -817,13 +818,15 @@ export class NativeQueryEditor extends Component<
                 enableParameterRequiredBehavior
               />
             )}
-            {query.hasWritePermission() && this.props.setIsNativeEditorOpen && (
-              <VisibilityToggler
-                isOpen={isNativeEditorOpen}
-                readOnly={!!readOnly}
-                toggleEditor={this.toggleEditor}
-              />
-            )}
+            {query.hasWritePermission() &&
+              !query.question().isArchived() &&
+              this.props.setIsNativeEditorOpen && (
+                <VisibilityToggler
+                  isOpen={isNativeEditorOpen}
+                  readOnly={!!readOnly}
+                  toggleEditor={this.toggleEditor}
+                />
+              )}
           </Flex>
         )}
         {isPromptInputVisible && (
@@ -833,7 +836,6 @@ export class NativeQueryEditor extends Component<
             onClose={this.togglePromptVisibility}
           />
         )}
-        {/* @ts-expect-error — error in resizable box types  */}
         <StyledResizableBox
           ref={this.resizeBox}
           isOpen={isNativeEditorOpen}

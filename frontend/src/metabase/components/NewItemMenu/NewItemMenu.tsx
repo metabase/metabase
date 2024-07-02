@@ -1,19 +1,14 @@
 import type { LocationDescriptor } from "history";
 import type { ReactNode } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
-import ActionCreator from "metabase/actions/containers/ActionCreator";
-import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import EntityMenu from "metabase/components/EntityMenu";
-import Modal from "metabase/components/Modal";
-import { CreateDashboardModalConnected } from "metabase/dashboard/containers/CreateDashboardModal";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
-import type { CollectionId, WritebackAction } from "metabase-types/api";
-
-type ModalType = "new-action" | "new-dashboard" | "new-collection";
+import type { CollectionId } from "metabase-types/api";
 
 export interface NewItemMenuProps {
   className?: string;
@@ -51,24 +46,11 @@ const NewItemMenu = ({
   hasDatabaseWithJsonEngine,
   hasDatabaseWithActionsEnabled,
   onCloseNavbar,
-  onChangeLocation,
 }: NewItemMenuProps) => {
-  const [modal, setModal] = useState<ModalType>();
+  const dispatch = useDispatch();
 
   const lastUsedDatabaseId = useSelector(state =>
     getSetting(state, "last-used-native-database-id"),
-  );
-
-  const handleModalClose = useCallback(() => {
-    setModal(undefined);
-  }, []);
-
-  const handleActionCreated = useCallback(
-    (action: WritebackAction) => {
-      const nextLocation = Urls.modelDetail({ id: action.model_id }, "actions");
-      onChangeLocation(nextLocation);
-    },
-    [onChangeLocation],
   );
 
   const menuItems = useMemo(() => {
@@ -107,14 +89,15 @@ const NewItemMenu = ({
       {
         title: t`Dashboard`,
         icon: "dashboard",
-        action: () => setModal("new-dashboard"),
+        action: () => dispatch(setOpenModal("dashboard")),
       },
       {
         title: t`Collection`,
         icon: "folder",
-        action: () => setModal("new-collection"),
+        action: () => dispatch(setOpenModal("collection")),
       },
     );
+
     if (hasNativeWrite) {
       const collectionQuery = collectionId
         ? `?collectionId=${collectionId}`
@@ -132,7 +115,20 @@ const NewItemMenu = ({
       items.push({
         title: t`Action`,
         icon: "bolt",
-        action: () => setModal("new-action"),
+        action: () => dispatch(setOpenModal("action")),
+      });
+    }
+
+    if (hasDataAccess) {
+      items.push({
+        title: t`Metric`,
+        icon: "metric",
+        link: Urls.newQuestion({
+          mode: "query",
+          cardType: "metric",
+          collectionId,
+        }),
+        onClose: onCloseNavbar,
       });
     }
 
@@ -145,55 +141,23 @@ const NewItemMenu = ({
     collectionId,
     onCloseNavbar,
     hasDatabaseWithJsonEngine,
+    dispatch,
     lastUsedDatabaseId,
   ]);
 
   return (
-    <>
-      <EntityMenu
-        className={className}
-        items={menuItems}
-        trigger={trigger}
-        triggerIcon={triggerIcon}
-        tooltip={triggerTooltip}
-        // I've disabled this transition, since it results in the menu
-        // sometimes not appearing until content finishes loading on complex
-        // dashboards and questions #39303
-        // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
-        transitionDuration={0}
-      />
-      {modal && (
-        <>
-          {modal === "new-collection" ? (
-            <Modal onClose={handleModalClose}>
-              <CreateCollectionModal
-                collectionId={collectionId}
-                onClose={handleModalClose}
-              />
-            </Modal>
-          ) : modal === "new-dashboard" ? (
-            <Modal onClose={handleModalClose}>
-              <CreateDashboardModalConnected
-                collectionId={collectionId}
-                onClose={handleModalClose}
-              />
-            </Modal>
-          ) : modal === "new-action" ? (
-            <Modal
-              wide
-              enableTransition={false}
-              onClose={handleModalClose}
-              closeOnClickOutside
-            >
-              <ActionCreator
-                onSubmit={handleActionCreated}
-                onClose={handleModalClose}
-              />
-            </Modal>
-          ) : null}
-        </>
-      )}
-    </>
+    <EntityMenu
+      className={className}
+      items={menuItems}
+      trigger={trigger}
+      triggerIcon={triggerIcon}
+      tooltip={triggerTooltip}
+      // I've disabled this transition, since it results in the menu
+      // sometimes not appearing until content finishes loading on complex
+      // dashboards and questions #39303
+      // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
+      transitionDuration={0}
+    />
   );
 };
 

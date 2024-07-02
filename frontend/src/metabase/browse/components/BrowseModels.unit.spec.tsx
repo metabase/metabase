@@ -1,44 +1,104 @@
-import userEvent from "@testing-library/user-event";
-
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  setupRecentViewsEndpoints,
+  setupSearchEndpoints,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
-import type { SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
-  createMockModelResult,
+  createMockSearchResult,
 } from "metabase-types/api/mocks";
 import { createMockSetupState } from "metabase-types/store/mocks";
 
-import { BROWSE_MODELS_LOCALSTORAGE_KEY } from "../constants";
+import { createMockModelResult, createMockRecentModel } from "../test-utils";
 
 import { BrowseModels } from "./BrowseModels";
 
-const renderBrowseModels = (modelCount: number) => {
-  const models = mockModels.slice(0, modelCount);
-  return renderWithProviders(
-    <BrowseModels
-      modelsResult={{ data: models, isLoading: false, error: false }}
-    />,
-    {
-      storeInitialState: {
-        setup: createMockSetupState({
-          locale: { name: "English", code: "en" },
-        }),
-      },
-    },
+const setup = (modelCount: number, recentModelCount = 5) => {
+  const mockModelResults = mockModels.map(model =>
+    createMockModelResult(model),
   );
+  const mockRecentModels = mockModels
+    .slice(0, recentModelCount)
+    .map(model => createMockRecentModel(model));
+  const models = mockModelResults.slice(0, modelCount);
+  setupSearchEndpoints(models.map(model => createMockSearchResult(model)));
+  setupSettingsEndpoints([]);
+  setupRecentViewsEndpoints(mockRecentModels);
+  return renderWithProviders(<BrowseModels />, {
+    storeInitialState: {
+      setup: createMockSetupState({
+        locale: { name: "English", code: "en" },
+      }),
+    },
+  });
 };
 
 const collectionAlpha = createMockCollection({ id: 99, name: "Alpha" });
-const collectionBeta = createMockCollection({ id: 1, name: "Beta" });
-const collectionCharlie = createMockCollection({ id: 2, name: "Charlie" });
-const collectionDelta = createMockCollection({ id: 3, name: "Delta" });
-const collectionZulu = createMockCollection({ id: 4, name: "Zulu" });
-const collectionAngstrom = createMockCollection({ id: 5, name: "Ångström" });
-const collectionOzgur = createMockCollection({ id: 6, name: "Özgür" });
-const collectionGrande = createMockCollection({ id: 7, name: "Grande" });
+const collectionBeta = createMockCollection({
+  id: 1,
+  name: "Beta",
+  effective_ancestors: [collectionAlpha],
+});
+const collectionCharlie = createMockCollection({
+  id: 2,
+  name: "Charlie",
+  effective_ancestors: [collectionAlpha, collectionBeta],
+});
+const collectionDelta = createMockCollection({
+  id: 3,
+  name: "Delta",
+  effective_ancestors: [collectionAlpha, collectionBeta, collectionCharlie],
+});
+const collectionZulu = createMockCollection({
+  id: 4,
+  name: "Zulu",
+  effective_ancestors: [
+    collectionAlpha,
+    collectionBeta,
+    collectionCharlie,
+    collectionDelta,
+  ],
+});
+const collectionAngstrom = createMockCollection({
+  id: 5,
+  name: "Ångström",
+  effective_ancestors: [
+    collectionAlpha,
+    collectionBeta,
+    collectionCharlie,
+    collectionDelta,
+    collectionZulu,
+  ],
+});
+const collectionOzgur = createMockCollection({
+  id: 6,
+  name: "Özgür",
+  effective_ancestors: [
+    collectionAlpha,
+    collectionBeta,
+    collectionCharlie,
+    collectionDelta,
+    collectionZulu,
+    collectionAngstrom,
+  ],
+});
+const collectionGrande = createMockCollection({
+  id: 7,
+  name: "Grande",
+  effective_ancestors: [
+    collectionAlpha,
+    collectionBeta,
+    collectionCharlie,
+    collectionDelta,
+    collectionZulu,
+    collectionAngstrom,
+    collectionOzgur,
+  ],
+});
 
-const mockModels: SearchResult[] = [
+const mockModels = [
   {
     id: 0,
     name: "Model 0",
@@ -201,165 +261,75 @@ const mockModels: SearchResult[] = [
     last_edited_at: "2000-01-01T00:00:00.000Z",
   },
   ...new Array(100).fill(null).map((_, i) => {
-    return createMockModelResult({
+    return {
       id: i + 300,
       name: `Model ${i + 300}`,
       collection: collectionGrande,
       last_editor_common_name: "Bobby",
       last_edited_at: "2000-01-01T00:00:00.000Z",
-    });
+    };
   }),
-].map(model => createMockModelResult(model));
+];
 
 describe("BrowseModels", () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
   it("displays a 'no models' message in the Models tab when no models exist", async () => {
-    renderBrowseModels(0);
+    setup(0);
     expect(await screen.findByText("No models here yet")).toBeInTheDocument();
   });
 
-  it("displays collection groups", async () => {
-    renderBrowseModels(10);
-    expect(await screen.findByText("Alpha")).toBeInTheDocument();
-    expect(await screen.findByText("Beta")).toBeInTheDocument();
-    expect(await screen.findByText("Charlie")).toBeInTheDocument();
-    expect(await screen.findByText("Delta")).toBeInTheDocument();
-  });
-
-  it("displays models in collections by default", () => {
-    const modelCount = 22;
-    renderBrowseModels(modelCount);
-    expect(screen.queryByText("No models here yet")).not.toBeInTheDocument();
-    assertThatModelsExist(0, modelCount - 1);
-  });
-
-  it("can collapse collections to hide models within them", async () => {
-    renderBrowseModels(10);
-    userEvent.click(await screen.findByLabelText("collapse Alpha"));
-    expect(screen.queryByText("Model 0")).not.toBeInTheDocument();
-    expect(screen.queryByText("Model 1")).not.toBeInTheDocument();
-    expect(screen.queryByText("Model 2")).not.toBeInTheDocument();
-
-    userEvent.click(await screen.findByLabelText("collapse Beta"));
-    expect(screen.queryByText("Model 3")).not.toBeInTheDocument();
-    expect(screen.queryByText("Model 4")).not.toBeInTheDocument();
-    expect(screen.queryByText("Model 5")).not.toBeInTheDocument();
-  });
-
-  it("can expand a collection to see models within it", async () => {
-    renderBrowseModels(10);
-    userEvent.click(await screen.findByLabelText("collapse Alpha"));
-    expect(screen.queryByText("Model 0")).not.toBeInTheDocument();
-    userEvent.click(await screen.findByLabelText("expand Alpha"));
-    expect(await screen.findByText("Model 0")).toBeInTheDocument();
-  });
-
   it("displays the Our Analytics collection if it has a model", async () => {
-    renderBrowseModels(25);
-    await screen.findByText("Alpha");
-    await screen.findByText("Our analytics");
-    expect(await screen.findByText("Model 20")).toBeInTheDocument();
-    expect(await screen.findByText("Model 21")).toBeInTheDocument();
-    expect(await screen.findByText("Model 22")).toBeInTheDocument();
+    setup(25);
+    const modelsTable = await screen.findByRole("table", {
+      name: /Table of models/,
+    });
+    expect(modelsTable).toBeInTheDocument();
+    expect(
+      await screen.findAllByTestId("path-for-collection: Our analytics"),
+    ).toHaveLength(2);
+    expect(
+      await within(modelsTable).findByText("Model 20"),
+    ).toBeInTheDocument();
+    expect(
+      await within(modelsTable).findByText("Model 21"),
+    ).toBeInTheDocument();
+    expect(
+      await within(modelsTable).findByText("Model 22"),
+    ).toBeInTheDocument();
   });
 
-  it("shows the first six models in a collection by default", async () => {
-    renderBrowseModels(9999);
-    expect(await screen.findByText("100 models")).toBeInTheDocument();
-    expect(await screen.findByText("Show all")).toBeInTheDocument();
-    assertThatModelsExist(300, 305);
+  it("displays collection breadcrumbs", async () => {
+    setup(25);
+    const modelsTable = await screen.findByRole("table", {
+      name: /Table of models/,
+    });
+    expect(await within(modelsTable).findByText("Model 1")).toBeInTheDocument();
+    expect(
+      await within(modelsTable).findAllByTestId(
+        "breadcrumbs-for-collection: Alpha",
+      ),
+    ).toHaveLength(3);
   });
 
-  it("can show more than 6 models by clicking 'Show all'", async () => {
-    renderBrowseModels(9999);
-    await screen.findByText("6 of 100");
-    expect(screen.queryByText("Model 350")).not.toBeInTheDocument();
-    userEvent.click(await screen.findByText("Show all"));
-    assertThatModelsExist(300, 399);
-  });
-
-  it("can show less than all models by clicking 'Show less'", async () => {
-    renderBrowseModels(9999);
-    expect(screen.queryByText("Model 399")).not.toBeInTheDocument();
-    userEvent.click(await screen.findByText("Show all"));
-    await screen.findByText("Model 301");
-    expect(screen.getByText("Model 399")).toBeInTheDocument();
-    userEvent.click(await screen.findByText("Show less"));
-    await screen.findByText("Model 301");
-    expect(screen.queryByText("Model 399")).not.toBeInTheDocument();
-  });
-
-  it("persists show-all state when expanding and collapsing collections", async () => {
-    renderBrowseModels(9999);
-    userEvent.click(screen.getByText("Show all"));
-    expect(await screen.findByText("Model 301")).toBeInTheDocument();
-    expect(screen.getByText("Model 399")).toBeInTheDocument();
-
-    userEvent.click(screen.getByLabelText("collapse Grande"));
-    expect(screen.queryByText("Model 301")).not.toBeInTheDocument();
-    expect(screen.queryByText("Model 399")).not.toBeInTheDocument();
-
-    userEvent.click(screen.getByLabelText("expand Grande"));
-    expect(await screen.findByText("Model 301")).toBeInTheDocument();
-    expect(screen.getByText("Model 399")).toBeInTheDocument();
-  });
-
-  describe("local storage", () => {
-    it("persists the expanded state of collections in local storage", async () => {
-      renderBrowseModels(10);
-      userEvent.click(await screen.findByLabelText("collapse Alpha"));
-      expect(screen.queryByText("Model 0")).not.toBeInTheDocument();
-      expect(localStorage.getItem(BROWSE_MODELS_LOCALSTORAGE_KEY)).toEqual(
-        JSON.stringify({ 99: { expanded: false, showAll: false } }),
-      );
+  it("displays recently viewed models", async () => {
+    setup(25);
+    const recentModelsGrid = await screen.findByRole("grid", {
+      name: /Recents/,
     });
-
-    it("loads the collapsed state of collections from local storage", async () => {
-      localStorage.setItem(
-        BROWSE_MODELS_LOCALSTORAGE_KEY,
-        JSON.stringify({ 99: { expanded: false, showAll: false } }),
-      );
-      renderBrowseModels(10);
-      expect(screen.queryByText("Model 0")).not.toBeInTheDocument();
-    });
-
-    it("persists the 'show all' state of collections in local storage", async () => {
-      renderBrowseModels(9999);
-      userEvent.click(await screen.findByText("Show all"));
-      await screen.findByText("Model 399");
-      expect(localStorage.getItem(BROWSE_MODELS_LOCALSTORAGE_KEY)).toEqual(
-        JSON.stringify({ 7: { expanded: true, showAll: true } }),
-      );
-    });
-
-    it("loads the 'show all' state of collections from local storage", async () => {
-      localStorage.setItem(
-        BROWSE_MODELS_LOCALSTORAGE_KEY,
-        JSON.stringify({ 7: { expanded: true, showAll: true } }),
-      );
-      renderBrowseModels(9999);
-      expect(await screen.findByText("Show less")).toBeInTheDocument();
-      assertThatModelsExist(300, 399);
-    });
-
-    it("can deal with invalid local storage data", async () => {
-      localStorage.setItem(BROWSE_MODELS_LOCALSTORAGE_KEY, "{invalid json[[[}");
-      renderBrowseModels(10);
-      expect(await screen.findByText("Model 0")).toBeInTheDocument();
-      userEvent.click(await screen.findByLabelText("collapse Alpha"));
-      expect(screen.queryByText("Model 0")).not.toBeInTheDocument();
-      // ignores invalid data and persists the new state
-      expect(localStorage.getItem(BROWSE_MODELS_LOCALSTORAGE_KEY)).toEqual(
-        JSON.stringify({ 99: { expanded: false, showAll: false } }),
-      );
-    });
+    expect(recentModelsGrid).toBeInTheDocument();
+    expect(
+      await within(recentModelsGrid).findByText("Model 1"),
+    ).toBeInTheDocument();
+    expect(
+      await within(recentModelsGrid).findByText("Model 2"),
+    ).toBeInTheDocument();
+    expect(
+      await within(recentModelsGrid).findByText("Model 3"),
+    ).toBeInTheDocument();
+    expect(
+      await within(recentModelsGrid).findByText("Model 4"),
+    ).toBeInTheDocument();
+    expect(
+      within(recentModelsGrid).queryByText("Model 5"),
+    ).not.toBeInTheDocument();
   });
 });
-
-function assertThatModelsExist(startId: number, endId: number) {
-  for (let i = startId; i <= endId; i++) {
-    expect(screen.getByText(`Model ${i}`)).toBeInTheDocument();
-  }
-}

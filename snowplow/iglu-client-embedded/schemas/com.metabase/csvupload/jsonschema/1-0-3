@@ -1,0 +1,76 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "csvupload",
+    "format": "jsonschema",
+    "version": "1-0-3"
+  },
+  "description": "CSV upload events",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": [
+        "csv_upload_successful",
+        "csv_upload_failed",
+        "csv_append_successful",
+        "csv_append_failed"],
+      "maxLength": 128
+    },
+    "model_id": {
+      "description": "Unique identifier for the newly created model",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "upload_seconds": {
+      "description": "Number of seconds the csv took to upload",
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "size_mb": {
+      "description": "File size of the CSV in megabytes",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "num_columns": {
+      "description": "Number of columns in the CSV file (does not include generated columns)",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "num_rows": {
+      "description": "Number of rows in the CSV",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "generated_columns": {
+      "description": "Number of new columns we added to the CSV (e.g., a PK)",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    }
+  },
+  "additionalProperties": true,
+  "type": "object",
+  "required": [
+    "event",
+    "size_mb",
+    "num_columns",
+    "num_rows",
+    "generated_columns"
+  ]
+}

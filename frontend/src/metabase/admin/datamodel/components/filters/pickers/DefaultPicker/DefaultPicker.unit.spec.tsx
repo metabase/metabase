@@ -6,9 +6,10 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  getByRole,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import {
   createSampleDatabase,
   PRODUCTS_ID,
@@ -92,7 +93,7 @@ describe("Filters > DefaultPicker", () => {
     expect(
       await screen.findByTestId("field-values-widget"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("textbox")).toBeInTheDocument();
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
     expect(screen.getByText("42")).toBeInTheDocument();
   });
 
@@ -103,7 +104,7 @@ describe("Filters > DefaultPicker", () => {
       await screen.findByTestId("field-values-widget"),
     ).toBeInTheDocument();
 
-    expect(screen.getByRole("textbox")).toBeInTheDocument();
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
     expect(screen.getByText("Ugly Shoes")).toBeInTheDocument();
   });
 
@@ -113,7 +114,7 @@ describe("Filters > DefaultPicker", () => {
     expect(
       await screen.findByTestId("field-values-widget"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("textbox")).toBeInTheDocument();
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
     const productTitles = [
       "Fancy Shoes",
       "Ugly Shoes",
@@ -141,9 +142,10 @@ describe("Filters > DefaultPicker", () => {
   it("should update values for a multi-value filter", async () => {
     const { setValuesSpy } = await setup({ filter: stringQuery.filters()[0] });
 
-    const input = screen.getByRole("textbox");
+    const combobox = screen.getByRole("combobox");
+    const input = getInput(combobox);
 
-    userEvent.type(input, "Fancy Sandals");
+    await userEvent.type(input, "Fancy Sandals");
 
     expect(setValuesSpy).toHaveBeenLastCalledWith([
       "Ugly Shoes",
@@ -156,8 +158,8 @@ describe("Filters > DefaultPicker", () => {
     const { setValueSpy } = await setup({ filter: query.filters()[0] });
 
     const input = screen.getByRole("textbox");
+    await userEvent.type(input, "25");
 
-    userEvent.type(input, "25");
     // index, value
     expect(setValueSpy).toHaveBeenLastCalledWith(0, 125);
   });
@@ -172,8 +174,15 @@ describe("Filters > DefaultPicker", () => {
 
     const input = screen.getAllByRole("textbox")[0];
 
-    userEvent.type(input, "1{enter}");
+    await userEvent.type(input, "1{enter}");
 
     expect(onCommitSpy).toHaveBeenCalled();
   });
 });
+
+function getInput(parent: HTMLElement) {
+  /* eslint-disable-next-line testing-library/prefer-screen-queries */
+  const input = getByRole(parent, "searchbox");
+  expect(input).toBeInTheDocument();
+  return input;
+}

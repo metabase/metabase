@@ -7,7 +7,6 @@
         "ranquild",
         "uladzimirdev",
         "kamilmielnik",
-        "oleggromov",
         "nemanjaglumac",
         "romeovs"
       ]
@@ -15,16 +14,13 @@
     {
       "name": "Embedding",
       "label": ".Team/Embedding",
-      "members": [
-        "WiNloSt",
-        "deniskaber",
-        "oisincoveney",
-        "npretto"
-      ]
+      "projectUrl": "https://github.com/orgs/metabase/projects/88/views/1",
+      "members": ["WiNloSt", "deniskaber", "oisincoveney", "npretto", "heypoom"]
     },
     {
       "name": "BEC",
       "label": ".Team/BackendComponents",
+      "projectUrl": "https://github.com/orgs/metabase/projects/50/views/1",
       "members": [
         "tsmacdonald",
         "qnkhuat",
@@ -36,13 +32,8 @@
     {
       "name": "Query Processor",
       "label": ".Team/QueryProcessor",
-      "members": [
-        "camsaul",
-        "snoe",
-        "bshepherdson",
-        "metamben",
-        "lbrdnk"
-      ]
+      "projectUrl": "https://github.com/orgs/metabase/projects/83/views/8",
+      "members": ["camsaul", "snoe", "bshepherdson", "metamben", "lbrdnk"]
     },
     {
       "name": "Admin Webapp",
@@ -50,7 +41,6 @@
       "members": [
         "noahmoss",
         "escherize",
-        "iethree",
         "npfitz",
         "johnswanson",
         "rafpaf",
@@ -66,6 +56,13 @@
         "JesseSDevaney",
         "kulyk",
         "adam-james-v"
+      ]
+    },
+    {
+      "name": "DevEx",
+      "label": ".Team/DevEx",
+      "members": [
+        "iethree"
       ]
     }
   ]

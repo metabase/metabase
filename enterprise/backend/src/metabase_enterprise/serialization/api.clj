@@ -18,6 +18,7 @@
    [metabase.util.compress :as u.compress]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.random :as u.random]
    [ring.core.protocols :as ring.protocols])
@@ -25,6 +26,10 @@
    (java.io ByteArrayOutputStream File)))
 
 (set! *warn-on-reflection* true)
+
+(def ^:dynamic *additive-logging*
+  "If custom loggers should pass logs to parent loggers (to system Metabase logs), used to clean up test output."
+  true)
 
 ;;; Storage
 
@@ -69,7 +74,8 @@
         dst      (io/file (str (.getPath path) ".tar.gz"))
         log-file (io/file path "export.log")
         err      (atom nil)
-        report   (with-open [_logger (logger/for-ns 'metabase-enterprise.serialization log-file)]
+        report   (with-open [_logger (logger/for-ns 'metabase-enterprise.serialization log-file
+                                                    {:additive *additive-logging*})]
                    (try                 ; try/catch inside logging to log errors
                      (let [report (serdes/with-cache
                                     (-> (extract/extract opts)
@@ -96,7 +102,8 @@
   (let [dst      (io/file parent-dir (u.random/random-name))
         log-file (io/file dst "import.log")
         err      (atom nil)
-        report   (with-open [_logger (logger/for-ns 'metabase-enterprise.serialization log-file)]
+        report   (with-open [_logger (logger/for-ns 'metabase-enterprise.serialization log-file
+                                                    {:additive *additive-logging*})]
                    (try                 ; try/catch inside logging to log errors
                      (log/infof "Serdes import, size %s" size)
                      (let [path (u.compress/untgz file dst)]
@@ -117,28 +124,32 @@
 (api/defendpoint POST "/export"
   "Serialize and retrieve Metabase instance.
 
-  Parameters:
-  - `dirname`: str, name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)
-  - `all_collections`: bool, serialize all collections (default: true, unless you specify `collection`)
-  - `collection`: array of int, db id of a collection to serialize
-  - `settings`: bool, if Metabase settings should be serialized (default: `true`)
-  - `data_model`: bool, if Metabase data model should be serialized (default: `true`)
-  - `field_values`: bool, if cached field values should be serialized (default: `false`)
-  - `database_secrets`: bool, if details how to connect to each db should be serialized (default: `false`)
-
-  Outputs .tar.gz file with serialization results and an `export.log` file.
-  On error just returns serialization logs."
+  Outputs `.tar.gz` file with serialization results and an `export.log` file.
+  On error outputs serialization logs directly."
   [:as {{:strs [all_collections collection settings data_model field_values database_secrets dirname]
          :or   {all_collections true
                 settings        true
                 data_model      true}}
         :query-params}]
-  {collection       [:maybe [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} ms/PositiveInt]]
-   all_collections  [:maybe ms/BooleanValue]
-   settings         [:maybe ms/BooleanValue]
-   data_model       [:maybe ms/BooleanValue]
-   field_values     [:maybe ms/BooleanValue]
-   database_secrets [:maybe ms/BooleanValue]}
+  {dirname          (mu/with [:maybe string?]
+                             {:description "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"})
+   collection       (mu/with [:maybe (ms/QueryVectorOf ms/PositiveInt)]
+                             {:description "collections' db ids to serialize"})
+   all_collections  (mu/with [:maybe ms/BooleanValue]
+                             {:default     true
+                              :description "Serialize all collections (`true` unless you specify `collection`)"})
+   settings         (mu/with [:maybe ms/BooleanValue]
+                             {:default true
+                              :description "Serialize Metabase settings"})
+   data_model       (mu/with [:maybe ms/BooleanValue]
+                             {:default true
+                              :description "Serialize Metabase data model"})
+   field_values     (mu/with [:maybe ms/BooleanValue]
+                             {:default false
+                              :description "Serialize cached field values"})
+   database_secrets (mu/with [:maybe ms/BooleanValue]
+                             {:default false
+                              :description "Serialize details how to connect to each db"})}
   (api/check-superuser)
   (let [start              (System/nanoTime)
         opts               {:targets                  (mapv #(vector "Collection" %)
@@ -155,8 +166,9 @@
                 report
                 error-message
                 callback]} (serialize&pack opts)]
-    (snowplow/track-event! ::snowplow/serialization-export api/*current-user-id*
-                           {:source          "api"
+    (snowplow/track-event! ::snowplow/serialization api/*current-user-id*
+                           {:direction       "export"
+                            :source          "api"
                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
                             :count           (count (:seen report))
                             :collection      (str/join "," (map str collection))
@@ -194,8 +206,9 @@
                   callback]} (unpack&import (get-in raw-params ["file" :tempfile])
                                             (get-in raw-params ["file" :size]))
           imported           (into (sorted-set) (map (comp :model last)) (:seen report))]
-      (snowplow/track-event! ::snowplow/serialization-import api/*current-user-id*
-                             {:source        "api"
+      (snowplow/track-event! ::snowplow/serialization api/*current-user-id*
+                             {:direction     "import"
+                              :source        "api"
                               :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
                               :models        (str/join "," imported)
                               :count         (if (contains? imported "Setting")

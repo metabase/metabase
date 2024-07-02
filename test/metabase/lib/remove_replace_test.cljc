@@ -3,7 +3,9 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.test-metadata :as meta]
@@ -458,24 +460,32 @@
   (testing "replacing with metric should work"
     (let [metadata-provider (lib.tu/mock-metadata-provider
                              meta/metadata-provider
-                             {:metrics  [{:id          100
-                                          :name        "Sum of Cans"
-                                          :table-id    (meta/id :venues)
-                                          :definition  {:source-table (meta/id :venues)
-                                                        :aggregation  [[:sum [:field (meta/id :venues :price) nil]]]
-                                                        :filter       [:= [:field (meta/id :venues :price) nil] 4]}
-                                          :description "Number of toucans plus number of pelicans"}]})
-          query (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                             {:cards [{:id          100
+                                       :name        "Sum of Cans"
+                                       :database-id (meta/id)
+                                       :dataset-query
+                                       (-> lib.tu/venues-query
+                                           (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
+                                           (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
+                                           lib.convert/->legacy-MBQL)
+                                       :description "Number of toucans plus number of pelicans"
+                                       :type :metric}]})
+          query (-> (lib/query metadata-provider (lib.metadata/card metadata-provider 100))
                     (lib/aggregate (lib/count)))]
-      (is (=? {:stages [{:aggregation [[:metric {:lib/uuid string?} 100]]}]}
+      (is (=? {:stages [{:aggregation [[:metric {:lib/uuid string?} 100]
+                                       [:count {:lib/uuid string?}]]}]}
+              query))
+      (is (=? {:stages [{:aggregation [[:metric {:lib/uuid string?} 100]
+                                       [:metric {:lib/uuid string?} 100]]}]}
               (lib/replace-clause
                query
-               (first (lib/aggregations query))
+               (second (lib/aggregations query))
                (first (lib/available-metrics query)))))
-      (is (=? {:stages [{:aggregation [[:count {:lib/uuid string?}]]}]}
+      (is (=? {:stages [{:aggregation [[:count {:lib/uuid string?}]
+                                       [:metric {:lib/uuid string?} 100]]}]}
               (-> query
                   (lib/replace-clause
-                   (first (lib/aggregations query))
+                   (second (lib/aggregations query))
                    (first (lib/available-metrics query)))
                   (as-> $q (lib/replace-clause $q (first (lib/aggregations $q)) (lib/count)))))))))
 
@@ -1031,6 +1041,53 @@
       (is (seq (lib/breakouts result)))
       (is (empty? (lib/aggregations result)))
       (is (= (lib/breakouts query) (lib/breakouts result))))))
+
+(deftest ^:parallel removing-last-aggregation-brings-back-all-fields-on-joins
+  (testing "Removing the last aggregation puts :fields :all on join clauses"
+    (let [base   (-> lib.tu/venues-query
+                     (lib/join (lib/join-clause (meta/table-metadata :products)
+                                                [(lib/= (meta/field-metadata :orders :product-id)
+                                                        (meta/field-metadata :products :id))])))
+          query  (lib/aggregate base (lib/count))
+          result (lib/remove-clause query (first (lib/aggregations query)))]
+      (is (= :all (-> base :stages first :joins first :fields)))
+      (is (= :all (-> result :stages first :joins first :fields)))
+      (is (=? (map :name (lib/returned-columns base))
+              (map :name (lib/returned-columns result)))))))
+
+(deftest ^:parallel removing-last-breakout-brings-back-all-fields-on-joins
+  (testing "Removing the last breakout puts :fields :all on join clauses"
+    (let [base   (-> lib.tu/venues-query
+                     (lib/join (lib/join-clause (meta/table-metadata :products)
+                                                [(lib/= (meta/field-metadata :orders :product-id)
+                                                        (meta/field-metadata :products :id))])))
+          query  (-> base
+                     (lib/aggregate (lib/count))
+                     (lib/breakout (meta/field-metadata :products :category)))
+          agg    (first (lib/aggregations query))
+          brk    (first (lib/breakouts query))]
+      (is (= :all (-> base :stages first :joins first :fields)))
+
+      (testing "no change to join"
+        (testing "when removing just the aggregation"
+          (is (= (m/dissoc-in query [:stages 0 :aggregation])
+                 (lib/remove-clause query agg))))
+        (testing "when removing just the breakout"
+          (is (= (m/dissoc-in query [:stages 0 :breakout])
+                 (lib/remove-clause query brk)))))
+      (testing "join gets :fields :all"
+        (testing "removing aggregation and then breakout"
+          (is (= :all
+                 (-> query
+                     (lib/remove-clause agg)
+                     (lib/remove-clause brk)
+                     :stages first :joins first :fields))))
+        (testing "removing breakout and then aggregation"
+          (is (= :all
+                 (-> query
+                     (lib/remove-clause brk)
+                     (lib/remove-clause agg)
+                     :stages first :joins first :fields))))))))
 
 (deftest ^:parallel simple-tweak-expression-test
   (let [table (lib/query meta/metadata-provider (meta/table-metadata :orders))

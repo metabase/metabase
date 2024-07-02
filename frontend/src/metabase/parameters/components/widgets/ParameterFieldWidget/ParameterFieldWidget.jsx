@@ -5,6 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+import CS from "metabase/css/core/index.css";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import {
   WidgetRoot,
@@ -13,9 +14,8 @@ import {
 import {
   getFilterArgumentFormatOptions,
   isEqualsOperator,
-  isFuzzyOperator,
-} from "metabase-lib/operators/utils";
-import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
+} from "metabase-lib/v1/operators/utils";
+import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 
 import { normalizeValue } from "./normalizeValue";
 
@@ -47,7 +47,6 @@ export default function ParameterFieldWidget({
   const operator = deriveFieldOperatorFromParameter(parameter);
   const { numFields = 1, multi = false, verboseName } = operator || {};
   const isEqualsOp = isEqualsOperator(operator);
-  const disableSearch = operator && isFuzzyOperator(operator);
 
   const supportsMultipleValues =
     multi && !parameter.hasVariableTemplateTagTarget;
@@ -58,9 +57,9 @@ export default function ParameterFieldWidget({
 
   return (
     <WidgetRoot>
-      <div className="p1">
+      <div className={CS.p1}>
         {verboseName && !isEqualsOp && (
-          <div className="text-bold mb1">{verboseName}...</div>
+          <div className={cx(CS.textBold, CS.mb1)}>{verboseName}...</div>
         )}
 
         {_.times(numFields, index => {
@@ -77,7 +76,7 @@ export default function ParameterFieldWidget({
           return (
             <FieldValuesWidget
               key={index}
-              className={cx("input", numFields - 1 !== index && "mb1")}
+              className={cx(CS.input, numFields - 1 !== index && CS.mb1)}
               value={value}
               parameter={parameter}
               parameters={parameters}
@@ -88,7 +87,6 @@ export default function ParameterFieldWidget({
               fields={fields}
               autoFocus={index === 0}
               multi={supportsMultipleValues}
-              disableSearch={disableSearch}
               formatOptions={
                 operator && getFilterArgumentFormatOptions(operator, index)
               }

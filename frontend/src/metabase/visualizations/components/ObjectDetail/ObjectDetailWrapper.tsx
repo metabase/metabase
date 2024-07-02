@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 
 import { ObjectDetailView } from "./ObjectDetailView";
 import { PaginationFooter, RootModal } from "./ObjectDetailWrapper.styled";
@@ -29,7 +29,7 @@ export function ObjectDetailWrapper({
         isOpen
         full={false}
         onClose={closeObjectDetail}
-        className={""} // need an empty className to override the Modal default width
+        className="" // need an empty className to override the Modal default width
       >
         <ObjectDetailView
           {...rest}

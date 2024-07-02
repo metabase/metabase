@@ -2,12 +2,11 @@
   (:require
    [clojure.walk :as walk]
    [metabase.api.common :as api]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -24,7 +23,7 @@
     (and (every? empty? [breakouts aggregations])
          (or (empty? fields)
              (and (= (count fields) (count nested-source-metadata))
-                  (every? #(mbql.u/match-one % [:field (_ :guard string?) _])
+                  (every? #(lib.util.match/match-one % [:field (_ :guard string?) _])
                           fields))))))
 
 (mu/defn ^:private native-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
@@ -40,9 +39,8 @@
     ;; a native source query
     (do
       (when-not qp.i/*disable-qp-logging*
-        (log/warn
-         (trs "Cannot infer `:source-metadata` for source query with native source query without source metadata.")
-         {:source-query source-query}))
+        (log/warn "Cannot infer `:source-metadata` for source query with native source query without source metadata."
+                  {:source-query source-query}))
       nil)))
 
 (mu/defn mbql-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
@@ -60,7 +58,7 @@
         (select-keys col [:name :id :table_id :display_name :base_type :effective_type :coercion_strategy
                           :semantic_type :unit :fingerprint :settings :source_alias :field_ref :nfc_path :parent_id])))
     (catch Throwable e
-      (log/error e (str (trs "Error determining expected columns for query: {0}" (ex-message e))))
+      (log/errorf e "Error determining expected columns for query: %s" (ex-message e))
       nil)))
 
 (mu/defn ^:private add-source-metadata :- [:map

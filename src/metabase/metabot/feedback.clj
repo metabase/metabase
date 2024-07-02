@@ -1,9 +1,10 @@
 (ns metabase.metabot.feedback
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.api.common :as api]
-            [metabase.metabot.settings :as metabot-settings]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.common :as api]
+   [metabase.metabot.settings :as metabot-settings]))
 
 (def ^:private snowplow-keys [:entity_type :prompt_template_versions :feedback_type])
 (def ^:private feedback-keys (into snowplow-keys [:prompt :sql]))

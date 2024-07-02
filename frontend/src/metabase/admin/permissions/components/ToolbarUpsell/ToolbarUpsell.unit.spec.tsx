@@ -9,10 +9,10 @@ const setup = () => {
 };
 
 describe("ToolbarUpsell", () => {
-  it("should add utm_media to the upgrade link", () => {
+  it("should add utm_media to the upgrade link", async () => {
     setup();
 
-    userEvent.click(screen.getByText("Get more control"));
+    await userEvent.click(screen.getByText("Get more control"));
 
     expect(
       screen.getByRole("link", { name: "Upgrade to Pro or Enterprise" }),

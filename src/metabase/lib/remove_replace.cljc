@@ -9,13 +9,16 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.util.match :as mbql.match]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- stage-paths
   [query stage-number]
@@ -77,7 +80,7 @@
                                             remove-replace-fn location target-clause)
         target-uuid (lib.options/uuid target-clause)]
     (if (not= query result)
-      (mbql.match/match-one location
+      (lib.util.match/match-one location
         [:expressions]
         (-> result
             (remove-local-references
@@ -116,7 +119,7 @@
                      (when-let [clauses (get-in stage location)]
                        (->> clauses
                             (keep (fn [clause]
-                                    (mbql.match/match-one clause
+                                    (lib.util.match/match-one clause
                                       [target-op
                                        (_ :guard #(or (empty? target-opts)
                                                       (set/subset? (set target-opts) (set %))))
@@ -194,7 +197,7 @@
       (if location
         (-> query
             (remove-replace-location stage-number query location target-clause remove-replace-fn)
-            normalize-fields-clauses)
+            (normalize-fields-clauses location))
         query))))
 
 (mu/defn remove-clause :- :metabase.lib.schema/query
@@ -216,7 +219,7 @@
 
 (defn- local-replace-expression-references [stage target-ref-id replacement-ref]
   (let [replace-embedded-refs (fn replace-refs [stage]
-                                (mbql.match/replace stage
+                                (lib.util.match/replace stage
                                   [:expression _ target-ref-id] (fresh-ref replacement-ref)))]
     (replace-embedded-refs stage)))
 
@@ -257,7 +260,7 @@
   (let [target-ref-id (:lib/desired-column-alias col)
         replaced-ref (lib.ref/ref (assoc replaced-col :lib/source :source/previous-stage))]
     (map (fn [target-ref] [target-ref (fresh-ref replaced-ref)])
-         (mbql.match/match (lib.util/query-stage query next-stage-number)
+         (lib.util.match/match (lib.util/query-stage query next-stage-number)
            [:field _ target-ref-id] &match))))
 
 (defn- typed-expression
@@ -339,7 +342,7 @@
    replacement      :- :metabase.lib.schema.expression/expression]
   (mu/disable-enforcement
     (loop [query (tweak-expression unmodified-query stage-number target replacement)]
-      (let [explanation (mc/explain :metabase.lib.schema/query query)
+      (let [explanation (mr/explain ::lib.schema/query query)
             error-paths (->> (:errors explanation)
                              (keep #(on-stage-path query %))
                              distinct)]
@@ -391,17 +394,17 @@
 
 (defn- replace-join-alias
   [a-join old-name new-name]
-  (mbql.match/replace a-join
+  (lib.util.match/replace a-join
     (field :guard #(field-clause-with-join-alias? % old-name))
     (lib.join/with-join-alias field new-name)))
 
 (defn- rename-join-in-stage
-  [stage idx new-name]
+  [metadata-providerable stage idx new-name]
   (let [the-joins      (:joins stage)
         [idx old-name] (when (< -1 idx (count the-joins))
                          [idx (get-in the-joins [idx :alias])])]
     (if (and idx (not= old-name new-name))
-      (let [unique-name-fn (lib.util/unique-name-generator)
+      (let [unique-name-fn (lib.util/unique-name-generator (lib.metadata/->metadata-provider metadata-providerable))
             _              (run! unique-name-fn (map :alias the-joins))
             unique-name    (unique-name-fn new-name)]
         (-> stage
@@ -436,7 +439,7 @@
     join-spec    :- [:or :metabase.lib.schema.join/join :string :int]
     new-name     :- :metabase.lib.schema.common/non-blank-string]
    (if-let [idx (join-spec->clause query stage-number join-spec)]
-     (lib.util/update-query-stage query stage-number rename-join-in-stage idx new-name)
+     (lib.util/update-query-stage query stage-number (partial rename-join-in-stage query) idx new-name)
      query)))
 
 (defn- remove-matching-missing-columns
@@ -497,7 +500,7 @@
      query)))
 
 (defn- has-field-from-join? [form join-alias]
-  (some? (mbql.match/match-one form
+  (some? (lib.util.match/match-one form
            (field :guard #(field-clause-with-join-alias? % join-alias)))))
 
 (defn- dependent-join? [join join-alias]
@@ -560,25 +563,36 @@
          (lib.equality/matching-column-sets? query stage-number fields
                                              (lib.metadata.calculation/default-columns-for-stage query stage-number)))))
 
-(defn- normalize-fields-for-join [query stage-number join]
-  (if (#{:none :all} (:fields join))
+(defn- normalize-fields-for-join [query stage-number removed-location join]
+  (cond
     ;; Nothing to do if it's already a keyword.
-    join
-    (cond-> join
-      (lib.equality/matching-column-sets?
-        query stage-number (:fields join)
-        (lib.metadata.calculation/returned-columns query stage-number (assoc join :fields :all)))
-      (assoc :fields :all))))
+    (#{:none :all} (:fields join)) join
 
-(defn- normalize-fields-for-stage [query stage-number]
+    ;; If it's missing, treat it as `:all` unless we just removed a field.
+    ;; TODO: This really should be a different function called by `remove-field`; it also needs to filter on the stage.
+    (and (or (= removed-location [:aggregation])
+             (= removed-location [:breakout]))
+         (not (contains? join :fields)))
+    (assoc join :fields :all)
+
+    (lib.equality/matching-column-sets?
+      query stage-number (:fields join)
+      (lib.metadata.calculation/returned-columns query stage-number (assoc join :fields :all)))
+    (assoc join :fields :all)
+
+    :else join))
+
+(defn- normalize-fields-for-stage [query stage-number removed-location]
   (let [stage (lib.util/query-stage query stage-number)]
     (cond-> query
       (specifies-default-fields? query stage-number)
       (lib.util/update-query-stage stage-number dissoc :fields)
 
-      (:joins stage)
+      (and (empty? (:aggregation stage))
+           (empty? (:breakout stage))
+           (:joins stage))
       (lib.util/update-query-stage stage-number update :joins
-                                   (partial mapv #(normalize-fields-for-join query stage-number %))))))
+                                   (partial mapv #(normalize-fields-for-join query stage-number removed-location %))))))
 
 (mu/defn normalize-fields-clauses :- :metabase.lib.schema/query
   "Check all the `:fields` clauses in the query - on the stages and any joins - and drops them if they are equal to the
@@ -586,5 +600,10 @@
   - For stages, if the `:fields` list is identical to the default fields for this stage.
   - For joins, replace it with `:all` if it's all the fields that are in the join by default.
   - For joins, remove it if the list is empty (the default for joins is no fields)."
-  [query :- :metabase.lib.schema/query]
-  (reduce normalize-fields-for-stage query (range (count (:stages query)))))
+  ([query :- :metabase.lib.schema/query]
+   (normalize-fields-clauses query nil))
+  ([query            :- :metabase.lib.schema/query
+    removed-location :- [:maybe [:sequential :any]]]
+   (reduce #(normalize-fields-for-stage %1 %2 removed-location)
+           query
+           (range (count (:stages query))))))

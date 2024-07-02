@@ -14,7 +14,7 @@ If instead you're wondering about what data Metabase the company can see, check 
 
 - Permissions are granted to [groups](../people-and-groups/managing.md#groups), not people.
 - People can be in more than one group.
-- If a person is in multiple groups, they will have the _most permissive_ access granted to them across all of their groups. For example, if a person is in three groups, and any one of those groups has access to a database, then that person will have access to that database.
+- If a person is in multiple groups, they will have the _most permissive_ access granted to them across all of their groups. For example, if a person is in three groups, and any one of those groups has Curate access to a collection, then that person will have curate access to that collection.
 
 ## What you can set permissions on
 
@@ -25,9 +25,12 @@ If instead you're wondering about what data Metabase the company can see, check 
 
 ### Data permissions
 
-- [Databases connected to Metabase](./data.md)
-- [Tables and schemas][table-permissions] in those databases
-- [Rows and columns][data-sandboxing], a.k.a. data sandboxing (available on paid plans)
+[Data permissions](./data.md) allow you to set permissions on database and their schemas and tables.
+
+- [View data](./data.md#view-data-permissions)
+- [Create queries](./data.md#create-queries-permissions)
+- [Download results](./data.md#download-results-permissions)
+- [Manage database](./data.md#manage-database-permissions)
 
 ### Collection permissions
 
@@ -41,10 +44,10 @@ If instead you're wondering about what data Metabase the company can see, check 
 
 ### Application permissions
 
-[Application permissions](application.md) (available on paid plans) dictate access to Metabase application-level features, including:
+[Application permissions](application.md) (available on [Pro and Enterprise plans](https://www.metabase.com/pricing/)) dictate access to Metabase application-level features, including:
 
 - **Settings**: The Settings tab in the Admin panel.
-- **Monitoring access**: The Tools, Audit, and Troubleshooting tabs in the Admin panel.
+- **Monitoring access**: The Tools and Troubleshooting tabs in the Admin panel.
 - **Subscriptions and Alerts**. Which groups can create/edit dashboard subscriptions and alerts.
 
 ### SQL snippet folder permissions

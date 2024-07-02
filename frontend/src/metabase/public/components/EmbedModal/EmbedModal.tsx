@@ -58,6 +58,8 @@ export const EmbedModal = ({ children, isOpen, onClose }: EmbedModalProps) => {
       title={isEmbeddingSetupStage ? t`Embed ${applicationName}` : undefined}
       fit
       formModal={false}
+      // needed to allow selecting with the mouse on the code samples
+      enableMouseEvents
     >
       {!isEmbeddingSetupStage && (
         <EmbedModalHeader onClose={onEmbedClose} onBack={goBackToEmbedModal}>

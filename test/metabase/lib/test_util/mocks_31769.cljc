@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util.malli :as mu]))
@@ -16,7 +17,7 @@
 (mu/defn card-1-query :- ::lib.schema/query
   "For reproducing #31769: create a query against `orders` with a join against `products` and another against `people`,
   with a breakout on `products.category` and a `count` aggregation."
-  [metadata-provider :- lib.metadata/MetadataProvider
+  [metadata-provider :- ::lib.schema.metadata/metadata-provider
    id-fn             :- fn?]
   (let [orders (lib.metadata/table metadata-provider (id-fn :orders))]
     (as-> (lib/query metadata-provider orders) q
@@ -36,7 +37,7 @@
 (mu/defn card-2-query :- ::lib.schema/query
   "For reproducing #31769: create a query against `products` with a breakout on `products.category` and a `count`
   aggregation."
-  [metadata-provider :- lib.metadata/MetadataProvider
+  [metadata-provider :- ::lib.schema.metadata/metadata-provider
    id-fn             :- fn?]
   (let [products (lib.metadata/table metadata-provider (id-fn :products))]
     (as-> (lib/query metadata-provider products) q
@@ -46,13 +47,13 @@
                         (assert breakout)
                         breakout)))))
 
-(mu/defn mock-metadata-provider :- lib.metadata/MetadataProvider
+(mu/defn mock-metadata-provider :- ::lib.schema.metadata/metadata-provider
   "For reproducing #31769: Create a composed metadata provider with two Cards based on [[card-1-query]]
   and [[card-2-query]]."
   ([]
    (mock-metadata-provider meta/metadata-provider meta/id))
 
-  ([base-metadata-provider :- lib.metadata/MetadataProvider
+  ([base-metadata-provider :- ::lib.schema.metadata/metadata-provider
     id-fn                  :- fn?]
    (lib.tu/mock-metadata-provider
     base-metadata-provider
@@ -71,7 +72,7 @@
   ([]
    (query (mock-metadata-provider meta/metadata-provider meta/id)))
 
-  ([metadata-provider :- lib.metadata/MetadataProvider]
+  ([metadata-provider :- ::lib.schema.metadata/metadata-provider]
    (let [card-1 (lib.metadata/card metadata-provider 1)
          card-2 (lib.metadata/card metadata-provider 2)]
      (assert card-1)

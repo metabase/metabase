@@ -6,7 +6,6 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -42,14 +41,14 @@
   (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions)
   (if-let [existing-database-id (t2/select-one-pk Database :engine (:engine database), :name (:name database))]
     (do
-      (log/info (u/colorize :blue (trs "Updating Database {0} {1}" (:engine database) (pr-str (:name database)))))
+      (log/info (u/format-color :blue "Updating Database %s %s" (:engine database) (pr-str (:name database))))
       (t2/update! Database existing-database-id database))
     (do
-      (log/info (u/colorize :green (trs "Creating new {0} Database {1}" (:engine database) (pr-str (:name database)))))
+      (log/info (u/format-color :green "Creating new %s Database %s" (:engine database) (pr-str (:name database))))
       (let [db (first (t2/insert-returning-instances! Database database))]
         (if (config-from-file-sync-databases)
           ((requiring-resolve 'metabase.sync/sync-database!) db)
-          (log/info (trs "Sync on database creation when initializing from file is disabled. Skipping sync.")))))))
+          (log/info "Sync on database creation when initializing from file is disabled. Skipping sync."))))))
 
 (defmethod advanced-config.file.i/initialize-section! :databases
   [_section-name databases]

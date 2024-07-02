@@ -100,18 +100,25 @@
   "Dump a sequence of rows (as vectors) to a CSV file."
   [{:keys [field-definitions rows]} ^String filename]
   (try
-    (let [column-names (cons "id" (mapv :field-name field-definitions))
-          rows-with-id (for [[i row] (m/indexed rows)]
-                         (cons (inc i) (for [v row]
-                                         (value->csv v))))
-          csv-rows     (cons column-names rows-with-id)]
-      (try
-        (with-open [writer (java.io.FileWriter. (java.io.File. filename))]
-          (csv/write-csv writer csv-rows :quote? (constantly false)))
-        (catch Throwable e
-          (throw (ex-info "Error writing rows to CSV" {:rows (take 10 csv-rows)} e)))))
-    (catch Throwable e
-      (throw (ex-info "Error dumping rows to CSV" {:filename filename} e)))))
+   (let [has-custom-pk? (when-let [pk (not-empty (sql.tx/fielddefs->pk-field-names field-definitions))]
+                          (not= ["id"] pk))
+         column-names   (cond->> (mapv :field-name field-definitions)
+                          (not has-custom-pk?)
+                          (cons "id"))
+         rows-with-id (for [[i row] (m/indexed rows)]
+                        (cond->> (for [v row]
+                                   (value->csv v))
+                          (not has-custom-pk?)
+                          (cons (inc i))))
+
+         csv-rows     (cons column-names rows-with-id)]
+     (try
+      (with-open [writer (java.io.FileWriter. (java.io.File. filename))]
+        (csv/write-csv writer csv-rows :quote? (constantly false)))
+      (catch Throwable e
+        (throw (ex-info "Error writing rows to CSV" {:rows (take 10 csv-rows)} e)))))
+   (catch Throwable e
+     (throw (ex-info "Error dumping rows to CSV" {:filename filename} e)))))
 
 (deftest dump-row-with-commas-to-csv-test
   (testing "Values with commas in them should get escaped correctly"

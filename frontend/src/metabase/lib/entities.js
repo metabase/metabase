@@ -88,6 +88,11 @@ import {
 import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
 import { addUndo } from "metabase/redux/undo";
 
+const EMPTY_ENTITY_QUERY = {};
+
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export function createEntity(def) {
   const entity = { ...def };
 
@@ -218,7 +223,9 @@ export function createEntity(def) {
     )(
       (entityQuery, options = {}) =>
         async (dispatch, getState) =>
-          entity.normalize(await entity.api.get(entityQuery, options)),
+          entity.normalize(
+            await entity.api.get(entityQuery, options, dispatch, getState),
+          ),
     ),
 
     create: compose(
@@ -228,7 +235,11 @@ export function createEntity(def) {
       withEntityActionDecorators("create"),
     )(entityObject => async (dispatch, getState) => {
       return entity.normalize(
-        await entity.api.create(getWritableProperties(entityObject)),
+        await entity.api.create(
+          getWritableProperties(entityObject),
+          dispatch,
+          getState,
+        ),
       );
     }),
 
@@ -253,7 +264,11 @@ export function createEntity(def) {
           }
 
           const result = entity.normalize(
-            await entity.api.update(getWritableProperties(entityObject)),
+            await entity.api.update(
+              getWritableProperties(entityObject),
+              dispatch,
+              getState,
+            ),
           );
 
           if (notify) {
@@ -290,7 +305,7 @@ export function createEntity(def) {
       withEntityRequestState(object => [object.id, "delete"]),
       withEntityActionDecorators("delete"),
     )(entityObject => async (dispatch, getState) => {
-      await entity.api.delete(entityObject);
+      await entity.api.delete(entityObject, dispatch, getState);
       return {
         entities: { [entity.name]: { [entityObject.id]: null } },
         result: entityObject.id,
@@ -310,7 +325,11 @@ export function createEntity(def) {
         entityQuery => [...getListStatePath(entityQuery), "fetch"],
       ),
     )((entityQuery = null) => async (dispatch, getState) => {
-      const fetched = await entity.api.list(entityQuery || {});
+      const fetched = await entity.api.list(
+        entityQuery || EMPTY_ENTITY_QUERY,
+        dispatch,
+        getState,
+      );
       // for now at least paginated endpoints have a 'data' property that
       // contains the actual entries, if that is on the response we should
       // use that as the 'results'
@@ -661,3 +680,19 @@ export const notify = (opts = {}, subject, verb) =>
 
 export const undo = (opts = {}, subject, verb) =>
   merge({ notify: { subject, verb, undo: true } }, opts || {});
+
+export async function entityCompatibleQuery(
+  entityQuery,
+  dispatch,
+  endpoint,
+  { forceRefetch = true } = {},
+) {
+  const request = entityQuery === EMPTY_ENTITY_QUERY ? undefined : entityQuery;
+  const action = dispatch(endpoint.initiate(request, { forceRefetch }));
+
+  try {
+    return await action.unwrap();
+  } finally {
+    action.unsubscribe?.();
+  }
+}

@@ -4,10 +4,9 @@
   (:require
    [clojure.core :as core]
    [clojure.java.jdbc :as jdbc]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -28,7 +27,7 @@
 ;; Setting cache is unique to the application DB; if it's swapped out for tests or mocking or whatever then use a new
 ;; cache.
 (def ^:private ^{:arglists '([])} cache*
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn []
      (doto (atom nil)
        (add-watch :call-on-change (fn [_key _ref old new]
@@ -71,9 +70,9 @@
 (defn update-settings-last-updated!
   "Update the value of `settings-last-updated` in the DB; if the row does not exist, insert one."
   []
-  (log/debug (trs "Updating value of settings-last-updated in DB..."))
+  (log/debug "Updating value of settings-last-updated in DB...")
   ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
-  (let [current-timestamp-as-string-honeysql (h2x/cast (if (= (mdb.connection/db-type) :mysql) :char :text)
+  (let [current-timestamp-as-string-honeysql (h2x/cast (if (= (mdb/db-type) :mysql) :char :text)
                                                        [:raw "current_timestamp"])]
     ;; attempt to UPDATE the existing row. If no row exists, `t2/update!` will return 0...
     (or (pos? (t2/update! :setting  {:key settings-last-updated-key} {:value current-timestamp-as-string-honeysql}))
@@ -86,8 +85,8 @@
           (t2/insert! (t2/table-name (t2/resolve-model 'Setting)) :key settings-last-updated-key, :value current-timestamp-as-string-honeysql)
           (catch java.sql.SQLException e
             ;; go ahead and log the Exception anyway on the off chance that it *wasn't* just a race condition issue
-            (log/error (trs "Error updating Settings last updated value: {0}"
-                            (with-out-str (jdbc/print-sql-exception-chain e))))))))
+            (log/errorf "Error updating Settings last updated value: %s"
+                        (with-out-str (jdbc/print-sql-exception-chain e)))))))
   ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
   ;; changes
   (swap! (cache*) assoc settings-last-updated-key (t2/select-one-fn :value 'Setting :key settings-last-updated-key)))
@@ -101,7 +100,7 @@
       will be no value until the first time a normal Setting is updated; thus if it is not yet set, we do not yet need
       to invalidate our cache.)"
   []
-  (log/debug (trs "Checking whether settings cache is out of date (requires DB call)..."))
+  (log/debug "Checking whether settings cache is out of date (requires DB call)...")
   (let [current-cache (cache)]
     (boolean
       (or
@@ -118,10 +117,9 @@
             (log/trace "last known Settings update: " (pr-str last-known-update))
             (log/trace "actual last Settings update:" (pr-str <>))
             (when <>
-              (log/info (u/format-color 'red
-                            (trs "Settings have been changed on another instance, and will be reloaded here."))))))))))
+              (log/info (u/format-color :red "Settings have been changed on another instance, and will be reloaded here.")))))))))
 
-(def ^:private ^:const cache-update-check-interval-ms
+(def ^:const cache-update-check-interval-ms
   "How often we should check whether the Settings cache is out of date (which requires a DB call)?"
   (u/minutes->ms 1))
 
@@ -136,7 +134,7 @@
 (defn restore-cache!
   "Populate cache with the latest hotness from the db"
   []
-  (log/debug (trs "Refreshing Settings cache..."))
+  (log/debug "Refreshing Settings cache...")
   (reset! (cache*) (t2/select-fn->fn :key :value 'Setting)))
 
 (defonce ^:private ^ReentrantLock restore-cache-lock (ReentrantLock.))

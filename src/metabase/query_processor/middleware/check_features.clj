@@ -1,9 +1,10 @@
 (ns metabase.query-processor.middleware.check-features
   (:require
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -12,17 +13,19 @@
 (defn assert-driver-supports
   "Assert that the driver/database supports keyword `feature`."
   [feature]
-  (when-not (driver/database-supports? driver/*driver* feature (lib.metadata/database (qp.store/metadata-provider)))
-    (throw (ex-info (tru "{0} is not supported by this driver." (name feature))
-                    {:type    qp.error-type/unsupported-feature
-                     :feature feature}))))
+  (let [database (lib.metadata/database (qp.store/metadata-provider))]
+    (when-not (driver.u/supports? driver/*driver* feature database)
+      (throw (ex-info (tru "{0} is not supported by {1} driver." (name feature) (name driver/*driver*))
+                      {:type    qp.error-type/unsupported-feature
+                       :feature feature
+                       :driver  driver/*driver*})))))
 
 ;; TODO - definitely a little incomplete. It would be cool if we cool look at the metadata in the schema namespace and
 ;; auto-generate this logic
 (defn- query->required-features [query]
   (into
    #{}
-   (mbql.u/match (:query query)
+   (lib.util.match/match (:query query)
      :stddev
      :standard-deviation-aggregations
 

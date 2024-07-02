@@ -1,18 +1,3 @@
-export const createMetric = ({
-  name,
-  table_id,
-  definition,
-  description = null,
-}) => {
-  cy.log(`Create a metric: ${name}`);
-  return cy.request("POST", "/api/metric", {
-    name,
-    description,
-    table_id,
-    definition,
-  });
-};
-
 export const createSegment = ({
   name,
   table_id,

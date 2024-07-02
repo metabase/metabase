@@ -8,7 +8,7 @@ import {
 import {
   LabelContainer,
   Label,
-  InvertedColorRelativeSizeIcon,
+  RelativeSizeIcon,
 } from "../MetadataInfo.styled";
 
 type SemanticTypeLabelProps = {
@@ -26,7 +26,7 @@ export function SemanticTypeLabel({
 
   return (
     <LabelContainer className={className}>
-      <InvertedColorRelativeSizeIcon name={semanticTypeIcon} />
+      <RelativeSizeIcon name={semanticTypeIcon} />
       <Label>{semanticTypeName}</Label>
     </LabelContainer>
   );

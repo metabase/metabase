@@ -1,14 +1,19 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import Color from "color";
-import d3 from "d3";
+import * as d3 from "d3";
 import { Component } from "react";
+import { connect } from "react-redux";
 import ss from "simple-statistics";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getMetabaseInstanceUrl } from "embedding-sdk/store/selectors";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/lib/formatting";
 import MetabaseSettings from "metabase/lib/settings";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 import {
   computeMinimalBounds,
@@ -18,7 +23,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { isMetric, isString } from "metabase-lib/types/utils/isa";
+import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
 
 import ChartWithLegend from "./ChartWithLegend";
 import LeafletChoropleth from "./LeafletChoropleth";
@@ -36,10 +41,10 @@ export function getColorplethColorScale(
 
   const darkColor = Color(color).darken(darken).saturate(saturate);
 
-  const scale = d3.scale
-    .linear()
-    .domain([0, 1])
-    .range([lightColor.string(), darkColor.string()]);
+  const scale = d3.scaleLinear(
+    [0, 1],
+    [lightColor.string(), darkColor.string()],
+  );
 
   const colors = d3.range(0, 1.25, 0.25).map(value => scale(value));
 
@@ -58,12 +63,13 @@ const geoJsonCache = new Map();
 function loadGeoJson(geoJsonPath, callback) {
   if (geoJsonCache.has(geoJsonPath)) {
     setTimeout(() => callback(geoJsonCache.get(geoJsonPath)), 0);
-  } else {
-    d3.json(geoJsonPath, json => {
-      geoJsonCache.set(geoJsonPath, json);
-      callback(json);
-    });
+    return;
   }
+
+  d3.json(geoJsonPath).then(json => {
+    geoJsonCache.set(geoJsonPath, json);
+    callback(json);
+  });
 }
 
 export function getLegendTitles(groups, columnSettings) {
@@ -97,7 +103,24 @@ function shouldUseCompactFormatting(groups, formatMetric) {
   return averageLength > AVERAGE_LENGTH_CUTOFF;
 }
 
-export default class ChoroplethMap extends Component {
+const mapStateToProps = state => ({
+  isSdk: getIsEmbeddingSdk(state),
+  sdkMetabaseInstanceUrl: getMetabaseInstanceUrl(state),
+});
+
+const connector = connect(mapStateToProps, null);
+
+function getMapUrl(details, props) {
+  if (details.builtin) {
+    if (props?.isSdk && props?.sdkMetabaseInstanceUrl) {
+      return new URL(details.url, props.sdkMetabaseInstanceUrl).href;
+    }
+    return details.url;
+  }
+  return "api/geojson/" + props.settings["map.region"];
+}
+
+class ChoroplethMapInner extends Component {
   static propTypes = {};
 
   static minSize = getMinSize("map");
@@ -137,13 +160,10 @@ export default class ChoroplethMap extends Component {
 
   UNSAFE_componentWillReceiveProps(nextProps) {
     const details = this._getDetails(nextProps);
+
     if (details) {
-      let geoJsonPath;
-      if (details.builtin) {
-        geoJsonPath = details.url;
-      } else {
-        geoJsonPath = "api/geojson/" + nextProps.settings["map.region"];
-      }
+      const geoJsonPath = getMapUrl(details, nextProps);
+
       if (this.state.geoJsonPath !== geoJsonPath) {
         this.setState({
           geoJson: null,
@@ -153,7 +173,7 @@ export default class ChoroplethMap extends Component {
           this.setState({
             geoJson: geoJson,
             geoJsonPath: geoJsonPath,
-            minimalBounds: computeMinimalBounds(geoJson.features),
+            minimalBounds: computeMinimalBounds(geoJson?.features ?? []),
           });
         });
       }
@@ -182,13 +202,13 @@ export default class ChoroplethMap extends Component {
     let projection, projectionFrame;
     // projectionFrame is the lng/lat of the top left and bottom right corners
     if (settings["map.region"] === "us_states") {
-      projection = d3.geo.albersUsa();
+      projection = d3.geoAlbersUsa();
       projectionFrame = [
         [-135.0, 46.6],
         [-69.1, 21.7],
       ];
     } else if (settings["map.region"] === "world_countries") {
-      projection = d3.geo.mercator();
+      projection = d3.geoMercator();
       projectionFrame = [
         [-170, 78],
         [180, -60],
@@ -202,7 +222,7 @@ export default class ChoroplethMap extends Component {
 
     if (!geoJson) {
       return (
-        <div className={className + " flex layout-centered"}>
+        <div className={cx(className, CS.flex, CS.layoutCentered)}>
           <LoadingSpinner />
         </div>
       );
@@ -324,10 +344,7 @@ export default class ChoroplethMap extends Component {
     const groups = ss.ckmeans(domain, heatMapColors.length);
     const groupBoundaries = groups.slice(1).map(cluster => cluster[0]);
 
-    const colorScale = d3.scale
-      .threshold()
-      .domain(groupBoundaries)
-      .range(heatMapColors);
+    const colorScale = d3.scaleThreshold(groupBoundaries, heatMapColors);
 
     const columnSettings = settings.column(cols[metricIndex]);
     const legendTitles = getLegendTitles(groups, columnSettings);
@@ -384,3 +401,5 @@ export default class ChoroplethMap extends Component {
     );
   }
 }
+
+export default connector(ChoroplethMapInner);

@@ -8,8 +8,11 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.test :as mt]
    [metabase.util :as u]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
@@ -18,7 +21,7 @@
 
 (deftest ^:parallel fetch-field-test
   (let [field (t2/select-one :metadata/column (mt/id :categories :id))]
-    (is (not (me/humanize (mc/validate lib.metadata/ColumnMetadata field))))))
+    (is (not (me/humanize (mc/validate ::lib.schema.metadata/column field))))))
 
 (deftest ^:parallel fetch-database-test
   (is (=? {:lib/type :metadata/database, :features set?}
@@ -183,7 +186,9 @@
              (mt/id :venues :id))))))
 
 (deftest ^:synchronized persisted-info-metadata-test
-  (t2.with-temp/with-temp [:model/Card          {card-id :id} {}
+  (t2.with-temp/with-temp [:model/Card          {card-id :id} {:dataset_query {:database (mt/id)
+                                                                               :type     :query
+                                                                               :query    {:source-table (mt/id :venues)}}}
                            :model/PersistedInfo {}            {:card_id card-id, :database_id (mt/id)}]
     (is (=? {:lib/type           :metadata/card
              :id                 card-id
@@ -199,3 +204,15 @@
 (deftest ^:parallel equality-test
   (is (= (lib.metadata.jvm/application-database-metadata-provider (mt/id))
          (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))
+
+(deftest ^:synchronized all-methods-call-go-through-invocation-tracker-first-test
+  (binding [lib.metadata.invocation-tracker/*to-track-metadata-types* #{:metadata/column}]
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+      (testing "sanity check"
+        (is (empty? (lib.metadata/invoked-ids mp :metadata/column))))
+      (testing "getting card should invoke the tracker"
+        (is (some? (lib.metadata/field mp (mt/id :orders :id))))
+        (is (= [(mt/id :orders :id)] (lib.metadata/invoked-ids mp :metadata/column))))
+      (testing "2nd call, card shoudld should be cached by now, but invocation still keeping track of ids"
+        (is (some? (lib.metadata/field mp (mt/id :orders :id))))
+        (is (= [(mt/id :orders :id) (mt/id :orders :id)] (lib.metadata/invoked-ids mp :metadata/column)))))))

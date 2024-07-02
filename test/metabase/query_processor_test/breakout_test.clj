@@ -3,16 +3,15 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.add-dimension-projections
-    :as qp.add-dimension-projections]
-   [metabase.query-processor.middleware.add-source-metadata
-    :as add-source-metadata]
+   [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
+   [metabase.query-processor.middleware.add-source-metadata :as qp.add-source-metadata]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -109,8 +108,7 @@
                                       (mt/id :venues :category_id)
                                       (mt/id :categories :name))
       (doseq [[sort-order expected] {:desc ["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse"
-                                            "Steakhouse" "Steakhouse" "Southern"]
-                                     :asc  ["American" "American" "American" "American" "American" "American" "American"
+                                            "Steakhouse" "Steakhouse" "Southern"] :asc  ["American" "American" "American" "American" "American" "American" "American"
                                             "American" "Artisan" "Artisan"]}]
         (testing (format "sort order = %s" sort-order)
           (is (= expected
@@ -286,7 +284,8 @@
       ;; Unfortunately our new `add-source-metadata` middleware is just too good at what it does and will pull in
       ;; metadata from the source query, so disable that for now so we can make sure the `update-binning-strategy`
       ;; middleware is doing the right thing
-      (with-redefs [add-source-metadata/mbql-source-query->metadata (constantly nil)]
+      (with-redefs [lib.card/card-metadata-columns                     (constantly nil)
+                    qp.add-source-metadata/mbql-source-query->metadata (constantly nil)]
         (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                           [(mt/mbql-query venues)])
           (is (thrown-with-msg?

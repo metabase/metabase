@@ -14,9 +14,9 @@ import {
 } from "metabase/lib/data_grid";
 import { formatColumn } from "metabase/lib/formatting";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
-import ChartSettingsTableFormatting from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
+import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { isDimension } from "metabase-lib/types/utils/isa";
+import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   DatasetColumn,
@@ -195,12 +195,14 @@ export const settings = {
         return hasOnlyFormattableColumns && !columnFormat.highlight_row;
       });
     },
-    getProps: (series: Series) => ({
-      canHighlightRow: false,
-      cols: (series[0].data.cols as DatasetColumn[]).filter(
-        isFormattablePivotColumn,
-      ),
-    }),
+    getProps: (series: Series) => {
+      const cols = series[0].data?.cols ?? [];
+
+      return {
+        canHighlightRow: false,
+        cols: cols.filter(isFormattablePivotColumn),
+      };
+    },
     getHidden: ([{ data }]: [{ data: DatasetData }]) =>
       !data?.cols.some(col => isFormattablePivotColumn(col)),
   },

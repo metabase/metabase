@@ -102,6 +102,24 @@ export const many_data_types = async dbClient => {
   return null;
 };
 
+export const uuid_pk_table = async dbClient => {
+  const tableName = "uuid_pk_table";
+
+  await dbClient.schema.dropTableIfExists(tableName);
+
+  await dbClient.schema.createTable(tableName, table => {
+    table.uuid("id").primary();
+    table.string("name");
+  });
+
+  await dbClient(tableName).insert([
+    { id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", name: "Duck" },
+    { id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12", name: "Rabbit" },
+  ]);
+
+  return null;
+};
+
 export const composite_pk_table = async dbClient => {
   const tableName = "composite_pk_table";
 
@@ -147,4 +165,73 @@ export const no_pk_table = async dbClient => {
   ]);
 
   return null;
+};
+
+export const multi_schema = async dbClient => {
+  const schemas = {
+    Domestic: [
+      "Animals",
+      [
+        { name: "Duck", score: 10 },
+        { name: "Horse", score: 20 },
+        { name: "Cow", score: 30 },
+      ],
+    ],
+    Wild: [
+      "Animals",
+      [
+        { name: "Snake", score: 10 },
+        { name: "Lion", score: 20 },
+        { name: "Elephant", score: 30 },
+      ],
+    ],
+  };
+
+  Object.entries(schemas).forEach(async ([schemaName, details]) => {
+    const [table, rows] = details;
+    await dbClient.schema.createSchemaIfNotExists(schemaName);
+    await dbClient.schema.withSchema(schemaName).dropTableIfExists(table);
+
+    await dbClient.schema.withSchema(schemaName).createTable(table, t => {
+      t.string("name");
+      t.integer("score");
+    });
+
+    await dbClient(`${schemaName}.${table}`).insert(rows);
+  });
+
+  return schemas;
+};
+
+export const many_schemas = async dbClient => {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const schemas = Object.fromEntries(
+    alphabet.map(letter => {
+      const key = `Schema ${letter}`;
+      const value = [
+        "Animals",
+        [
+          { name: "Duck", score: 10 },
+          { name: "Horse", score: 20 },
+          { name: "Cow", score: 30 },
+        ],
+      ];
+      return [key, value];
+    }),
+  );
+
+  Object.entries(schemas).forEach(async ([schemaName, details]) => {
+    const [table, rows] = details;
+    await dbClient.schema.createSchemaIfNotExists(schemaName);
+    await dbClient.schema.withSchema(schemaName).dropTableIfExists(table);
+
+    await dbClient.schema.withSchema(schemaName).createTable(table, t => {
+      t.string("name");
+      t.integer("score");
+    });
+
+    await dbClient(`${schemaName}.${table}`).insert(rows);
+  });
+
+  return schemas;
 };

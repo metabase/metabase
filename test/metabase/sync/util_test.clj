@@ -9,7 +9,7 @@
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.table :refer [Table]]
-   [metabase.models.task-history :refer [TaskHistory]]
+   [metabase.models.task-history :as task-history :refer [TaskHistory]]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
@@ -61,7 +61,7 @@
         (deref f2)
         (is (= 1 @calls-to-describe-database))))))
 
-(defn- call-with-operation-info
+(defn- call-with-operation-info!
   "Call `f` with `log-sync-summary` and `store-sync-summary!` redef'd. For `log-sync-summary`, it intercepts the step
   metadata before the information is logged. For `store-sync-summary!` it will return the IDs for the newly created
   TaskHistory rows. This is useful to validate that the metadata and history is correct as the message might not be
@@ -70,14 +70,14 @@
   (let [step-info-atom           (atom [])
         created-task-history-ids (atom [])
         orig-log-fn              @#'sync-util/log-sync-summary
-        orig-store-fn            @#'sync-util/store-sync-summary!]
-    (with-redefs [sync-util/log-sync-summary    (fn [operation database operation-metadata]
-                                                  (swap! step-info-atom conj operation-metadata)
-                                                  (orig-log-fn operation database operation-metadata))
-                  sync-util/store-sync-summary! (fn [operation database operation-metadata]
-                                                  (let [result (orig-store-fn operation database operation-metadata)]
-                                                    (swap! created-task-history-ids concat result)
-                                                    result))]
+        origin-update-th!        @#'task-history/update-task-history!]
+    (with-redefs [sync-util/log-sync-summary        (fn [operation database operation-metadata]
+                                                      (swap! step-info-atom conj operation-metadata)
+                                                      (orig-log-fn operation database operation-metadata))
+
+                  task-history/update-task-history! (fn [th-id startime-ms info]
+                                                      (swap! created-task-history-ids conj th-id)
+                                                      (origin-update-th! th-id startime-ms info))]
       (f))
     {:operation-results @step-info-atom
      :task-history-ids  @created-task-history-ids}))
@@ -87,7 +87,7 @@
   `step`. This function is useful for validating that each step's metadata correctly reflects the changes that were
   made via a test scenario."
   [step db]
-  (let [{:keys [operation-results task-history-ids]} (call-with-operation-info #(sync/sync-database! db))]
+  (let [{:keys [operation-results task-history-ids]} (call-with-operation-info! #(sync/sync-database! db))]
     {:step-info    (-> (into {} (mapcat :steps operation-results))
                        (get step))
      :task-history (when (seq task-history-ids)
@@ -104,7 +104,7 @@
   (every? (partial instance? java.time.temporal.Temporal) [start-time end-time]))
 
 (def ^:private default-task-history
-  {:id true, :db_id true, :started_at true, :ended_at true})
+  {:id true, :db_id true, :started_at true, :ended_at true :status :success})
 
 (defn- fetch-task-history-row [task-name]
   (let [task-history (t2/select-one TaskHistory :task task-name)]
@@ -119,7 +119,7 @@
                       (sync-util/create-sync-step step-2-name (fn [_] (Thread/sleep 10)))]
         mock-db      (mi/instance Database {:name "test", :id 1, :engine :h2})
         [results]    (:operation-results
-                      (call-with-operation-info #(sync-util/run-sync-operation process-name mock-db sync-steps)))]
+                      (call-with-operation-info! #(sync-util/run-sync-operation process-name mock-db sync-steps)))]
     (testing "valid operation metadata?"
       (is (= true
              (validate-times results))))
@@ -138,6 +138,36 @@
     (testing "step 2 history"
       (is (= (merge default-task-history {:task step-2-name, :task_details nil})
              (fetch-task-history-row step-2-name))))))
+
+(deftest run-sync-operation-record-failed-task-history-test
+  (let [process-name (mt/random-name)
+        step-name-1  (mt/random-name)
+        step-name-2  (mt/random-name)
+        mock-db      (mi/instance Database {:name "test", :id 1, :engine :h2})
+        sync-steps   [(sync-util/create-sync-step step-name-1
+                                                  (fn [_]
+                                                    (throw (ex-info "Sorry" {}))))
+                      (sync-util/create-sync-step step-name-2
+                                                  (fn [_]
+                                                    (sync-util/with-error-handling "fail"
+                                                      (throw (ex-info "Sorry" {})))))]]
+    (call-with-operation-info! #(sync-util/run-sync-operation process-name mock-db sync-steps))
+    (testing "operation history"
+      (is (= (merge default-task-history {:task process-name, :task_details nil})
+             (fetch-task-history-row process-name))))
+    (testing "step history should has status is failed"
+      (is (=? (merge default-task-history
+                     {:task step-name-1
+                      :task_details {:exception (mt/malli=? :string)
+                                     :stacktrace (mt/malli=? [:sequential :string])}
+                      :status :failed})
+              (fetch-task-history-row step-name-1)))
+      (is (=? (merge default-task-history
+                     {:task step-name-2
+                      :task_details {:exception (mt/malli=? :string)
+                                     :stacktrace (mt/malli=? [:sequential :string])}
+                      :status :failed})
+              (fetch-task-history-row step-name-2))))))
 
 (defn- create-test-sync-summary [step-name log-summary-fn]
   (let [start (t/zoned-date-time)]
@@ -202,7 +232,7 @@
 
 (deftest ^:parallel error-handling-test
   (testing "A ConnectException will cause sync to stop"
-    (mt/dataset test-data-with-time
+    (mt/dataset time-test-data
       (let [expected           (java.io.IOException.
                                 "outer"
                                 (java.net.ConnectException.

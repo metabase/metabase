@@ -8,7 +8,14 @@ import {
   popover,
   visitDashboard,
   cypressWaitAll,
-  moveDnDKitColumnVertical,
+  moveDnDKitElement,
+  chartPathWithFillColor,
+  echartsContainer,
+  getValueLabels,
+  createQuestion,
+  chartPathsWithFillColors,
+  createNativeQuestion,
+  testStackedTooltipRows,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -81,7 +88,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.get(".bar").should("have.length", 5); // there are six bars when null isn't filtered
+      chartPathWithFillColor("#509EE3").should("have.length", 5); // there are six bars when null isn't filtered
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("1,800"); // correct data has this on the y-axis
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -112,7 +119,10 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.get(".value-labels").should("contain", "19").and("contain", "20.0M");
+      echartsContainer()
+        .get("text")
+        .should("contain", "19")
+        .and("contain", "20.0M");
     });
   });
 
@@ -143,7 +153,7 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     it("should allow you to show/hide and reorder columns", () => {
-      moveDnDKitColumnVertical(getDraggableElements().eq(0), 100);
+      moveDnDKitElement(getDraggableElements().eq(0), { vertical: 100 });
 
       cy.findAllByTestId("legend-item").eq(0).should("contain.text", "Gadget");
       cy.findAllByTestId("legend-item").eq(1).should("contain.text", "Gizmo");
@@ -164,9 +174,13 @@ describe("scenarios > visualizations > bar chart", () => {
         .eq(columnIndex)
         .invoke("text")
         .then(columnName => {
-          cy.get(".Visualization").findByText(columnName).should("not.exist");
+          cy.findByTestId("query-visualization-root")
+            .findByText(columnName)
+            .should("not.exist");
           cy.findAllByTestId("legend-item").should("have.length", 3);
-          cy.get(".enable-dots").should("have.length", 3);
+          chartPathWithFillColor("#F2A86F").should("be.visible");
+          chartPathWithFillColor("#F9D45C").should("be.visible");
+          chartPathWithFillColor("#88BF4D").should("be.visible");
         });
 
       getDraggableElements()
@@ -179,9 +193,14 @@ describe("scenarios > visualizations > bar chart", () => {
         .eq(columnIndex)
         .invoke("text")
         .then(columnName => {
-          cy.get(".Visualization").findByText(columnName).should("exist");
+          cy.findByTestId("query-visualization-root")
+            .findByText(columnName)
+            .should("exist");
           cy.findAllByTestId("legend-item").should("have.length", 4);
-          cy.get(".enable-dots").should("have.length", 4);
+          chartPathWithFillColor("#F2A86F").should("be.visible");
+          chartPathWithFillColor("#F9D45C").should("be.visible");
+          chartPathWithFillColor("#88BF4D").should("be.visible");
+          chartPathWithFillColor("#A989C5").should("be.visible");
         });
 
       cy.findAllByTestId("legend-item").contains("Gadget").click();
@@ -192,7 +211,7 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
-      moveDnDKitColumnVertical(getDraggableElements().first(), 100);
+      moveDnDKitElement(getDraggableElements().first(), { vertical: 100 });
 
       getDraggableElements()
         .eq(1)
@@ -268,7 +287,10 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.get("g.axis.yr").should("be.visible");
+      echartsContainer().within(() => {
+        cy.get("text").contains("Average of Total").should("be.visible");
+        cy.get("text").contains("Min of Total").should("be.visible");
+      });
     });
 
     it("should not split the y-axis when semantic_type, column settings are same and values are not far", () => {
@@ -293,7 +315,7 @@ describe("scenarios > visualizations > bar chart", () => {
       cy.get("g.axis.yr").should("not.exist");
     });
 
-    it("should not split the y-axis on native queries with two numeric columns", () => {
+    it("should split the y-axis on native queries with two numeric columns", () => {
       visitQuestionAdhoc({
         display: "bar",
         dataset_query: {
@@ -313,7 +335,10 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.get("g.axis.yr").should("be.visible");
+      echartsContainer().within(() => {
+        cy.get("text").contains("m1").should("exist");
+        cy.get("text").contains("m2").should("exist");
+      });
     });
   });
 
@@ -518,23 +543,152 @@ describe("scenarios > visualizations > bar chart", () => {
     cy.findAllByTestId("dashcard")
       .contains("[data-testid=dashcard]", "Should split")
       .within(() => {
-        cy.get(".axis.yr").should("exist");
+        // Verify this axis tick exists twice which verifies there are two y-axes
+        echartsContainer().findAllByText("3.0k").should("have.length", 2);
       });
 
     cy.findAllByTestId("dashcard")
       .contains("[data-testid=dashcard]", "Multi Series")
       .within(() => {
-        cy.get(".axis.yr").should("exist");
+        echartsContainer().findByText("Average Total by Month");
+        echartsContainer().findByText("Sum Total by Month");
       });
 
     cy.log("Should not produce a split axis graph (#34618)");
     cy.findAllByTestId("dashcard")
       .contains("[data-testid=dashcard]", "Should not Split")
       .within(() => {
-        cy.get(".value-labels").should("contain", "6");
-        cy.get(".value-labels").should("contain", "13");
-        cy.get(".value-labels").should("contain", "19");
+        getValueLabels()
+          .should("contain", "6")
+          .and("contain", "13")
+          .and("contain", "19");
         cy.get(".axis.yr").should("not.exist");
       });
   });
+
+  it("should correctly handle bar sizes and tool-tips for multiple y-axis metrics with column scaling  (#43536)", () => {
+    cy.signInAsAdmin();
+
+    const column_settings = { '["name","sum"]': { scale: 0.5 } };
+    const multiMetric = {
+      name: "Should split",
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [
+          ["sum", ["field", ORDERS.TOTAL]],
+          ["sum", ["field", ORDERS.TOTAL]],
+        ],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+      },
+      display: "bar",
+      visualization_settings: {
+        column_settings,
+        "graph.show_values": true,
+        "graph.stackable.stack_type": "stacked",
+        series_settings: {
+          sum_2: {
+            axis: "left",
+          },
+          sum: {
+            axis: "left",
+          },
+        },
+      },
+    };
+
+    createQuestion(multiMetric, { visitQuestion: true });
+
+    const [firstMetric, secondMetric] = chartPathsWithFillColors([
+      "#88BF4D",
+      "#98D9D9",
+    ]);
+    firstMetric.then($metricOne => {
+      const { height: heightMetricOne } = $metricOne[0].getBoundingClientRect();
+      secondMetric.then($metricTwo => {
+        const { height: heightMetricTwo } =
+          $metricTwo[0].getBoundingClientRect();
+
+        // since the first metric is scaled to be half of the second metric
+        // the first bar should be half the size of the first bar
+        // within a given tolerance
+        expect(heightMetricOne - heightMetricTwo / 2).to.be.lessThan(0.1);
+      });
+    });
+
+    chartPathWithFillColor("#88BF4D").first().realHover();
+    popover().within(() => {
+      cy.contains("Sum of Total");
+      // half of the unscaled metric
+      cy.contains("21,078.43");
+      // full value of the unscale metric
+      cy.contains("42,156.87");
+    });
+  });
+
+  it("should correctly show tool-tips when stacked bar charts contain a total value that is negative (#39012)", () => {
+    cy.signInAsAdmin();
+
+    createNativeQuestion(
+      {
+        name: "42948",
+        native: {
+          query:
+            "    SELECT DATE '2024-05-21' AS created_at, 'blue' AS category, -7 as v\nUNION ALL SELECT DATE '2024-05-21' , 'yellow', 5\nUNION ALL SELECT DATE '2024-05-20' , 'blue', -16\nUNION ALL SELECT DATE '2024-05-20' , 'yellow', 8\nUNION ALL SELECT DATE '2024-05-19' ,'blue', 2\nUNION ALL SELECT DATE '2024-05-19' ,'yellow', 8\nUNION ALL SELECT DATE '2024-05-22' ,'blue', 2\nUNION ALL SELECT DATE '2024-05-22' ,'yellow', -2\nUNION ALL SELECT DATE '2024-05-23' ,'blue', 3\nUNION ALL SELECT DATE '2024-05-23' ,'yellow', -2\nORDER BY created_at",
+        },
+
+        display: "bar",
+        visualization_settings: {
+          "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+          "graph.metrics": ["V"],
+          "stackable.stack_type": "stacked",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    chartPathWithFillColor("#A989C5").eq(0).realHover();
+    testStackedTooltipRows([
+      ["blue", "2", "20.00 %"],
+      ["yellow", "8", "80.00 %"],
+      ["Total", "10", "100 %"],
+    ]);
+    resetHoverState();
+
+    chartPathWithFillColor("#A989C5").eq(1).realHover();
+    testStackedTooltipRows([
+      ["blue", "-16", "-200.00 %"],
+      ["yellow", "8", "100 %"],
+      ["Total", "-8", "-100.00 %"],
+    ]);
+    resetHoverState();
+
+    chartPathWithFillColor("#A989C5").eq(2).realHover();
+    testStackedTooltipRows([
+      ["blue", "-7", "-350.00 %"],
+      ["yellow", "5", "250.00 %"],
+      ["Total", "-2", "-100.00 %"],
+    ]);
+    resetHoverState();
+
+    chartPathWithFillColor("#A989C5").eq(3).realHover();
+    testStackedTooltipRows([
+      ["blue", "2", "Infinity %"],
+      ["yellow", "-2", "-Infinity %"],
+      ["Total", "0", "NaN %"],
+    ]);
+    resetHoverState();
+
+    chartPathWithFillColor("#A989C5").eq(4).realHover();
+    testStackedTooltipRows([
+      ["blue", "3", "300.00 %"],
+      ["yellow", "-2", "-200.00 %"],
+      ["Total", "1", "100 %"],
+    ]);
+    resetHoverState();
+  });
 });
+
+function resetHoverState() {
+  cy.findByTestId("main-logo").realHover();
+}
