@@ -2,6 +2,8 @@
   "/api/dashboard endpoints."
   (:require
    [cheshire.core :as json]
+   [clojure.core.cache :as cache]
+   [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
@@ -16,6 +18,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.action :as action]
@@ -244,7 +247,35 @@
   [dashboard]
   (update dashboard :dashcards add-query-average-duration-to-dashcards))
 
-(defn- get-dashboard
+;; ## Dashboard load caching
+;; When the FE loads a dashboard, there is a burst of requests sent to the BE:
+;; - One  /api/dashboard/:id
+;; - One  /api/dashboard/:id/query_metadata
+;; - Many /:dashboard-id/dashcard/:dashcard-id/card/:card-id/query
+;; Each of these needs some metadata from the appdb: to hydrate the dashboard, get the query_metadata, and to run the
+;; query processor over all the dashcards.
+;; That leads to a lot of re-fetching of the same information from the appdb, and is a great opportunity for caching.
+;;
+;; To connect the dots across these N+2 HTTP requests, the FE attaches a `?dashboard_load_id=UUID` parameter to all
+;; the calls coming from a single dashboard load. That gives the BE an excellent cache key!
+;;
+;; ### Why not cache on dashboard ID?
+;; There may be different users with different permissions fetching the same dashboard at the same time. They see a
+;; different picture of the queries and their metadata, so must be fetched separately.
+(def ^:private dashboard-load-cache-ttl
+  "Using 10 seconds for the cache TTL."
+  (* 10 1000))
+
+(def ^:private ^:dynamic *dashboard-load-id* nil)
+
+;; This is a kind of two-layer memoization:
+;; - The outer layer is a 10-second TTL cache on *dashboard-load-id*.
+;; - Its value is the *function* to use to get the dashboard by ID!
+;; If *dashboard-load-id* is set, the outer layer returns a forever-memoized wrapper around get-dashboard*.
+;; If *dashboard-load-id* is nil, it returns the unwrapped get-dashboard*.
+
+;; TODO: This indirect memoization by *dashboard-load-id* could probably be turned into a macro for reuse elsewhere.
+(defn- get-dashboard*
   "Get Dashboard with ID."
   [id]
   (span/with-span!
@@ -257,6 +288,35 @@
         hide-unreadable-cards
         add-query-average-durations
         (api/present-in-trash-if-archived-directly (collection/trash-collection-id)))))
+
+(def ^:private get-dashboard-fn
+  (memoize/ttl (fn [dashboard-load-id]
+                 (if dashboard-load-id
+                   (memoize get-dashboard*) ; If dashboard-load-id is set, return a memoized get-dashboard*.
+                   get-dashboard*))         ; If unset, just call through to get-dashboard*.
+               :ttl/threshold dashboard-load-cache-ttl))
+
+(def ^:private dashboard-load-metadata-provider-cache
+  (memoize/ttl (fn [_dashboard-load-id]
+                 (atom (cache/basic-cache-factory {})))
+               :ttl/threshold dashboard-load-cache-ttl))
+
+(defn- do-with-dashboard-load-id [dashboard-load-id body-fn]
+  (if dashboard-load-id
+    (binding [*dashboard-load-id*                        dashboard-load-id
+              lib.metadata.jvm/*metadata-provider-cache* (dashboard-load-metadata-provider-cache dashboard-load-id)]
+      (body-fn))
+    (body-fn)))
+
+(defmacro ^:private with-dashboard-load-id [dashboard-load-id & body]
+  `(do-with-dashboard-load-id ~dashboard-load-id (^:once fn* [] ~@body)))
+
+(defn- get-dashboard
+  "Get Dashboard with ID.
+
+  Memoized per `*dashboard-load-id*` with a TTL of 10 seconds."
+  [id]
+  ((get-dashboard-fn *dashboard-load-id*) id))
 
 (defn- cards-to-copy
   "Returns a map of which cards we need to copy and which are not to be copied. The `:copy` key is a map from id to
@@ -418,11 +478,12 @@
 
 (api/defendpoint GET "/:id"
   "Get Dashboard with ID."
-  [id]
+  [id :as {{dashboard-load-id "dashboard_load_id"} :query-params}]
   {id ms/PositiveInt}
-  (let [dashboard (get-dashboard id)]
-    (u/prog1 (first (last-edit/with-last-edit-info [dashboard] :dashboard))
-      (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*}))))
+  (with-dashboard-load-id dashboard-load-id
+    (let [dashboard (get-dashboard id)]
+      (u/prog1 (first (last-edit/with-last-edit-info [dashboard] :dashboard))
+               (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
@@ -845,11 +906,12 @@
 
 (api/defendpoint GET "/:id/query_metadata"
   "Get all of the required query metadata for the cards on dashboard."
-  [id]
+  [id :as {{dashboard-load-id "dashboard_load_id"} :query-params}]
   {id ms/PositiveInt}
-  (data-perms/with-relevant-permissions-for-user api/*current-user-id*
-    (let [dashboard (get-dashboard id)]
-      (api.query-metadata/dashboard-metadata dashboard))))
+  (with-dashboard-load-id dashboard-load-id
+    (data-perms/with-relevant-permissions-for-user api/*current-user-id*
+      (let [dashboard (get-dashboard id)]
+        (api.query-metadata/dashboard-metadata dashboard)))))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
@@ -1172,18 +1234,20 @@
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
-  [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body} :body}]
+  [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body}          :body
+                                         {dashboard-load-id "dashboard_load_id"} :query-params}]
   {dashboard-id  ms/PositiveInt
    dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
    parameters    [:maybe [:sequential ParameterWithID]]}
-  (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
-                     (merge
-                      body
-                      {:dashboard-id dashboard-id
-                       :card-id      card-id
-                       :dashcard-id  dashcard-id}))
-    (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
+  (with-dashboard-load-id dashboard-load-id
+    (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
+                       (merge
+                         body
+                         {:dashboard-id dashboard-id
+                          :card-id      card-id
+                          :dashcard-id  dashcard-id}))
+             (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard}))))
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
