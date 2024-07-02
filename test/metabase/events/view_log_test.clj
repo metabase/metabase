@@ -157,7 +157,7 @@
 
 (deftest increment-view-counts!*-test
   (mt/with-temp [:model/Card  {card-1-id :id} {}
-                 :model/Card  {card-2-id :id} {}
+                 :model/Card  {card-2-id :id} {:view_count 2}
                  :model/Table {table-id :id}  {}]
     (t2/with-call-count [call-count]
       (testing "increment-view-counts!* update the view_count correctly"
@@ -172,11 +172,12 @@
                (call-count))
             "and groups db calls by frequency")
         (is (= 1 (t2/select-one-fn :view_count :model/Table table-id))
-            "view_count for card-1 should be 2")
+            "view_count for table-id should be 1")
         (is (= 2 (t2/select-one-fn :view_count :model/Card card-1-id))
             "view_count for card-1 should be 2")
-        (is (= 2 (t2/select-one-fn :view_count :model/Card card-2-id))
-            "view_count for card-1 should be 2")))))
+        (is (= 4 ;; 2 old + 2 new
+               (t2/select-one-fn :view_count :model/Card card-2-id))
+            "view_count for card-2 should be 2")))))
 
 ;;; ---------------------------------------- API tests begin -----------------------------------------
 
