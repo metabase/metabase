@@ -1,6 +1,7 @@
 (ns metabase.events.view-log
   "This namespace is responsible for subscribing to events which should update the view log and view counts."
   (:require
+   [grouper.core :as grouper]
    [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
@@ -12,14 +13,42 @@
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
-(defn increment-view-counts!
-  "Increments the view_count column for a model given a list of ids.
-   Assumes the model has one primary key `id`, and the column for the view count is named `view_count`"
-  [model & ids]
-  (when (seq ids)
-    (t2/query {:update (t2/table-name model)
-               :set    {:view_count [:+ :view_count [:inline 1]]}
-               :where  [:in :id ids]})))
+(defn- group-by-frequency
+  [ids]
+  (as-> ids items
+    (seq (frequencies items))
+    (group-by second items)
+    (update-vals items #(map first %))))
+
+(defn- increment-view-counts!*
+  [items]
+  (log/debugf "Increment view counts of %d items" (count items))
+  (try
+    (let [model->ids (as-> items items
+                       (filter (comp some? :id) items)
+                       (group-by :model items)
+                       (update-vals items #(map :id %)))]
+      (doseq [[model ids] model->ids]
+        (doseq [[cnt ids] (group-by-frequency ids)]
+          (t2/query {:update (t2/table-name model)
+                     :set    {:view_count [:+ :view_count [:inline cnt]]}
+                     :where  [:in :id ids]}))))
+    (catch Exception e
+      (log/error e "Failed to increment view counts"))))
+
+(def ^{:private true
+       :once    true}
+  increase-view-count-queue
+  (grouper/start!
+   increment-view-counts!*
+   :capacity 500
+   ;; flushes every 5 mintues
+   :interval (* 5 60 1000)))
+
+(defn- increment-view-counts!
+  "Increment the view count of the given `model` and `model-id`."
+  [model model-id]
+  (grouper/submit! increase-view-count-queue {:model model :id model-id}))
 
 (defn- record-views!
   "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."
