@@ -97,92 +97,48 @@
                        (throw e))
                      (some-> (.getCause e) recur))))))))))
 
-;;; --------------------------------- Tests for splice-parameters-into-native-query ----------------------------------
-
-(deftest ^:parallel splice-parameters-native-test
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
-    (testing (str "test splicing a single param\n"
-                  "(This test won't work if a driver that doesn't use single quotes for string literals comes along. "
-                  "We can cross that bridge when we get there.)")
-      (is (=  {:query  "SELECT * FROM birds WHERE name = 'Reggae'"
-               :params nil}
-              (driver/splice-parameters-into-native-query driver/*driver*
-                {:query  "SELECT * FROM birds WHERE name = ?"
-                 :params ["Reggae"]}))))
-
-    (testing "test splicing multiple params"
-      (is (=  {:query
-               "SELECT * FROM birds WHERE name = 'Reggae' AND type = 'toucan' AND favorite_food = 'blueberries';",
-               :params nil}
-              (driver/splice-parameters-into-native-query driver/*driver*
-                {:query  "SELECT * FROM birds WHERE name = ? AND type = ? AND favorite_food = ?;"
-                 :params ["Reggae" "toucan" "blueberries"]}))))
-
-    (testing (str "I think we're supposed to ignore multiple question narks, only single ones should get substituted "
-                  "(`??` becomes `?` in JDBC, which is used for Postgres as a \")key exists?\" JSON operator amongst "
-                  "other uses)")
-      (is (= {:query
-              "SELECT * FROM birds WHERE favorite_food ?? bird_info AND name = 'Reggae'",
-              :params nil}
-             (driver/splice-parameters-into-native-query driver/*driver*
-               {:query  "SELECT * FROM birds WHERE favorite_food ?? bird_info AND name = ?"
-                :params ["Reggae"]}))))
-
-    (testing "splicing with no params should no-op"
-      (is (= {:query "SELECT * FROM birds;", :params []}
-             (driver/splice-parameters-into-native-query driver/*driver*
-               {:query  "SELECT * FROM birds;"
-                :params []}))))))
-
-(defn- spliced-count-of [table filter-clause]
+(defn- test-spliced-count-of [table filter-clause expected]
   (let [query        {:database (mt/id)
                       :type     :query
                       :query    {:source-table (mt/id table)
                                  :aggregation  [[:count]]
                                  :filter       filter-clause}}
-        native-query (qp.compile/compile-and-splice-parameters query)
-        spliced      (driver/splice-parameters-into-native-query driver/*driver* native-query)]
-    (ffirst
-     (mt/formatted-rows [int]
-       (qp/process-query
-        {:database (mt/id)
-         :type     :native
-         :native   spliced})))))
+        native-query (qp.compile/compile-with-inline-parameters query)]
+    (testing (format "\nnative query =\n%s" (u/pprint-to-str native-query))
+      (is (= expected
+             (ffirst
+              (mt/formatted-rows [int]
+                                 (qp/process-query
+                                  {:database (mt/id)
+                                   :type     :native
+                                   :native   native-query}))))))))
 
 (deftest ^:parallel splice-parameters-mbql-test
-  (testing "`splice-parameters-into-native-query` should generate a query that works correctly"
+  (testing "metabase.query-processor.compile/compile-with-inline-parameters should generate a query that works correctly"
     (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
       (mt/$ids venues
         (testing "splicing a string"
-          (is (= 3
-                 (spliced-count-of :venues [:starts-with $name "Sushi"])))
+          (test-spliced-count-of :venues [:starts-with $name "Sushi"] 3)
           (testing "containing single quotes -- this is done differently from driver to driver"
-            (is (= 1
-                   (spliced-count-of :venues [:= $name "Barney's Beanery"])))))
+            (test-spliced-count-of :venues [:= $name "Barney's Beanery"] 1)))
         (testing "splicing an integer"
-          (is (= 13
-                 (spliced-count-of :venues [:= $price 3]))))
+          (test-spliced-count-of :venues [:= $price 3] 13))
         (testing "splicing floating-point numbers"
-          (is (= 13
-                 (spliced-count-of :venues [:between $price 2.9 3.1]))))
+          (test-spliced-count-of :venues [:between $price 2.9 3.1] 13))
         (testing "splicing nil"
-          (is (= 0
-                 (spliced-count-of :venues [:is-null $price])))))
+          (test-spliced-count-of :venues [:is-null $price] 0)))
       (mt/dataset places-cam-likes
         (mt/$ids places
           (testing "splicing a boolean"
-            (is (= 2
-                   (spliced-count-of :places [:= $liked true]))))))
+            (test-spliced-count-of :places [:= $liked true] 2))))
       (mt/$ids checkins
         (testing "splicing a date"
-          (is (= 3
-                 (spliced-count-of :checkins [:= $date "2014-03-05"])))))
+          (test-spliced-count-of :checkins [:= $date "2014-03-05"] 3)))
       (when (mt/supports-time-type? driver/*driver*)
         (testing "splicing a time"
           (mt/dataset time-test-data
-            (is (= 2
-                   (mt/$ids users
-                     (spliced-count-of :users [:= $last_login_time "09:30"]))))))))))
+            (mt/$ids users
+              (test-spliced-count-of :users [:= $last_login_time "09:30"] 2))))))))
 
 (defn- find-schema-filters-prop [driver]
   (first (filter (fn [conn-prop]

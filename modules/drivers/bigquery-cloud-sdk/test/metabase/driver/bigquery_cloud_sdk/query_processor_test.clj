@@ -294,19 +294,19 @@
                  :info     {:executed-by 1000
                             :query-hash  (byte-array [1 2 3 4])}})))))))
 
-(deftest ^:parallel unprepare-params-test
-  (mt/test-driver :bigquery-cloud-sdk
-    (is (= [["Red Medicine"]]
-           (mt/rows
-             (qp/process-query
-              (mt/native-query
-                {:query  (with-test-db-name
-                           (str "SELECT `v4_test_data.venues`.`name` AS `name` "
-                                "FROM `v4_test_data.venues` "
-                                "WHERE `v4_test_data.venues`.`name` = ?"))
-                 :params ["Red Medicine"]}))))
-        (str "Do we properly unprepare, and can we execute, queries that still have parameters for one reason or "
-             "another? (EE #277)"))))
+(deftest ^:parallel query-with-params-test
+  (testing "Can we execute queries with parameters? (EE #277)"
+           (mt/test-driver :bigquery-cloud-sdk
+
+             (is (= [["Red Medicine"]]
+                    (mt/rows
+                     (qp/process-query
+                      (mt/native-query
+                        {:query  (with-test-db-name
+                                   (str "SELECT `v4_test_data.venues`.`name` AS `name` "
+                                        "FROM `v4_test_data.venues` "
+                                        "WHERE `v4_test_data.venues`.`name` = ?"))
+                         :params ["Red Medicine"]}))))))))
 
 (deftest ^:parallel temporal-type-test
   (testing "Make sure we can detect temporal types correctly"

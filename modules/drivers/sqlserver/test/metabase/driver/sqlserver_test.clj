@@ -11,7 +11,6 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.driver.sqlserver :as sqlserver]
    [metabase.models :refer [Database]]
    [metabase.query-processor :as qp]
@@ -243,7 +242,7 @@
            (finally
              (.rollback conn))))))))
 
-(deftest unprepare-test
+(deftest ^:parallel inline-value-test
   (mt/test-driver :sqlserver
     (let [date (t/local-date 2019 11 5)
           time (t/local-time 19 27)]
@@ -263,7 +262,7 @@
         (let [expected (or expected t)]
           #_{:clj-kondo/ignore [:discouraged-var]}
           (testing (format "Convert %s to SQL literal" (colorize/magenta (with-out-str (pr t))))
-            (let [sql (format "SELECT %s AS t;" (unprepare/unprepare-value :sqlserver t))]
+            (let [sql (format "SELECT %s AS t;" (sql.qp/inline-value :sqlserver t))]
               (sql-jdbc.execute/do-with-connection-with-options
                :sqlserver
                (mt/db)

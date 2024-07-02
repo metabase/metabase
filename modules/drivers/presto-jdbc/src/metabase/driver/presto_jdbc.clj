@@ -15,13 +15,10 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-database
-    :as sql-jdbc.describe-database]
-   [metabase.driver.sql.parameters.substitution
-    :as sql.params.substitution]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
@@ -169,31 +166,31 @@
 
 (sql/register-fn! ::mod #'format-mod)
 
-(def ^:dynamic ^:private *param-splice-style*
-  "How we should splice params into SQL (i.e. 'unprepare' the SQL). Either `:friendly` (the default) or `:paranoid`.
-  `:friendly` makes a best-effort attempt to escape strings and generate SQL that is nice to look at, but should not
-  be considered safe against all SQL injection -- use this for 'convert to SQL' functionality. `:paranoid` hex-encodes
-  strings so SQL injection is impossible; this isn't nice to look at, so use this for actually running a query."
+(def ^:dynamic ^:private *inline-param-style*
+  "How we should include inline params when compiling SQL. `:friendly` (the default) or `:paranoid`. `:friendly` makes a
+  best-effort attempt to escape strings and generate SQL that is nice to look at, but should not be considered safe
+  against all SQL injection -- use this for 'convert to SQL' functionality. `:paranoid` hex-encodes strings so SQL
+  injection is impossible; this isn't nice to look at, so use this for actually running a query."
   :friendly)
 
-(defmethod unprepare/unprepare-value [:presto-jdbc String]
+(defmethod sql.qp/inline-value [:presto-jdbc String]
   [_ ^String s]
-  (case *param-splice-style*
+  (case *inline-param-style*
     :friendly (str \' (sql.u/escape-sql s :ansi) \')
     :paranoid (format "from_utf8(from_hex('%s'))" (codecs/bytes->hex (.getBytes s "UTF-8")))))
 
 ;; See https://prestodb.io/docs/current/functions/datetime.html
 
 ;; This is only needed for test purposes, because some of the sample data still uses legacy types
-(defmethod unprepare/unprepare-value [:presto-jdbc Time]
+(defmethod sql.qp/inline-value [:presto-jdbc Time]
   [driver t]
-  (unprepare/unprepare-value driver (t/local-time t)))
+  (sql.qp/inline-value driver (t/local-time t)))
 
-(defmethod unprepare/unprepare-value [:presto-jdbc OffsetDateTime]
+(defmethod sql.qp/inline-value [:presto-jdbc OffsetDateTime]
   [_ t]
   (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t)))
 
-(defmethod unprepare/unprepare-value [:presto-jdbc ZonedDateTime]
+(defmethod sql.qp/inline-value [:presto-jdbc ZonedDateTime]
   [_ t]
   (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-id t)))
 
