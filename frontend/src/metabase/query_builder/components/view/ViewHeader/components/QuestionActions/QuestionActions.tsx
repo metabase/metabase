@@ -95,14 +95,18 @@ export const QuestionActions = ({
   const isModel = question.type() === "model";
   const isMetric = question.type() === "metric";
   const isModelOrMetric = isModel || isMetric;
-  const canWrite = question.canWrite();
+  const hasCollectionPermissions = question.canWrite();
   const isSaved = question.isSaved();
   const database = question.database();
-  const canAppend = canWrite && !!question._card.based_on_upload;
+  const canAppend =
+    hasCollectionPermissions && !!question._card.based_on_upload;
+  const { isEditable: hasDataPermissions } = Lib.queryDisplayInfo(
+    question.query(),
+  );
 
   const canPersistDataset =
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
-    canWrite &&
+    hasCollectionPermissions &&
     isSaved &&
     isModel &&
     checkDatabaseCanPersistDatasets(question.database());
@@ -150,7 +154,7 @@ export const QuestionActions = ({
     ),
   );
 
-  if (canWrite) {
+  if (hasCollectionPermissions && hasDataPermissions) {
     if (isModelOrMetric) {
       extraButtons.push({
         title: isMetric ? t`Edit metric definition` : t`Edit query definition`,
@@ -191,7 +195,7 @@ export const QuestionActions = ({
     });
   }
 
-  if (canWrite) {
+  if (hasCollectionPermissions) {
     extraButtons.push({
       title: t`Move`,
       icon: "move",
@@ -200,8 +204,7 @@ export const QuestionActions = ({
     });
   }
 
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
-  if (isEditable) {
+  if (hasDataPermissions) {
     extraButtons.push({
       title: t`Duplicate`,
       icon: "clone",
@@ -210,7 +213,7 @@ export const QuestionActions = ({
     });
   }
 
-  if (canWrite) {
+  if (hasCollectionPermissions && hasDataPermissions) {
     if (isQuestion) {
       extraButtons.push({
         title: t`Turn into a model`,
@@ -230,7 +233,7 @@ export const QuestionActions = ({
 
   extraButtons.push(...PLUGIN_QUERY_BUILDER_HEADER.extraButtons(question));
 
-  if (canWrite) {
+  if (hasCollectionPermissions) {
     extraButtons.push({
       title: t`Move to trash`,
       icon: "trash",
