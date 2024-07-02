@@ -46,7 +46,7 @@ export function SearchValuePicker({
         value: selectedValues,
       },
       {
-        skip: selectedValues.length === 0,
+        skip: searchValue.length > 0 || selectedValues.length === 0,
       },
     );
 
