@@ -1630,3 +1630,69 @@ describe("issue 38989", () => {
       .should("exist");
   });
 });
+
+describe("issue 39771", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show tooltip for ellipsified text (metabase#39771)", () => {
+    createQuestion(
+      {
+        query: {
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              "CREATED_AT",
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "quarter-of-year",
+              },
+            ],
+          ],
+          "source-query": {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month",
+                },
+              ],
+            ],
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    openNotebook();
+    getNotebookStep("summarize", { stage: 1 })
+      .findByTestId("breakout-step")
+      .findByText("Created At: Month: Quarter of year")
+      .click();
+
+    popover().first().as("popover");
+    popover().findByText("by quarter of year").realHover();
+
+    cy.get("@popover").then(([$popover]) => {
+      const popoverStyle = window.getComputedStyle($popover);
+      const popoverZindex = parseInt(popoverStyle.zIndex, 10);
+
+      cy.findByRole("tooltip", { name: "by quarter of year" })
+        .should("be.visible") // this assertion passes - it looks like a Cypress bug
+        .parent()
+        .then(([$tooltip]) => {
+          const tooltipStyle = window.getComputedStyle($tooltip);
+          const tooltipZindex = parseInt(tooltipStyle.zIndex, 10);
+
+          expect(tooltipZindex).to.be.gte(popoverZindex);
+        });
+    });
+  });
+});
