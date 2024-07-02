@@ -8,6 +8,7 @@ import type {
   UpdateFieldRequest,
   CreateFieldDimensionRequest,
   UpdateFieldValuesRequest,
+  GetRemappedFieldValuesRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -36,6 +37,17 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${id}/values`,
       }),
       providesTags: (_, error, fieldId) => provideFieldValuesTags(fieldId),
+    }),
+    getRemappedFieldValues: builder.query<
+      FieldValue[],
+      GetRemappedFieldValuesRequest
+    >({
+      query: ({ fieldId, searchFieldId, ...params }) => ({
+        method: "GET",
+        url: `/api/field/${fieldId}/remapping/${searchFieldId}`,
+        params,
+      }),
+      providesTags: (_, error, { fieldId }) => provideFieldValuesTags(fieldId),
     }),
     searchFieldValues: builder.query<FieldValue[], SearchFieldValuesRequest>({
       query: ({ fieldId, searchFieldId, ...params }) => ({
@@ -107,6 +119,7 @@ export const fieldApi = Api.injectEndpoints({
 export const {
   useGetFieldQuery,
   useGetFieldValuesQuery,
+  useGetRemappedFieldValuesQuery,
   useSearchFieldValuesQuery,
   useUpdateFieldMutation,
   useUpdateFieldValuesMutation,
