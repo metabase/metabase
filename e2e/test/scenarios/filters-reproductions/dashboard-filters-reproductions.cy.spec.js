@@ -3438,9 +3438,6 @@ describe("issue 35954", () => {
   };
 
   const updatedQuestionDetails = {
-    name: "35954",
-    cache_ttl: null,
-    type: "question",
     dataset_query: {
       database: SAMPLE_DB_ID,
       type: "native",
@@ -3461,29 +3458,15 @@ describe("issue 35954", () => {
         query: "SELECT * FROM REVIEWS WHERE {{RATING}} LIMIT 2",
       },
     },
-    display: "table",
-    description: null,
-    visualization_settings: {
-      "table.pivot_column": "PRODUCT_ID",
-      "table.cell_column": "RATING",
-    },
     parameters: [
       {
         id: "017b9185-c7cc-41ec-ba17-b8b21af879cc",
         type: "number/=",
         target: ["dimension", ["template-tag", "RATING"]],
-        name: "Dashboard Parameter",
         slug: "RATING",
       },
     ],
     parameter_mappings: [],
-    archived: false,
-    enable_embedding: false,
-    embedding_params: null,
-    collection_id: null,
-    collection_position: null,
-    collection_preview: true,
-    result_metadata: null,
   };
 
   beforeEach(() => {
