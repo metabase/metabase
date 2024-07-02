@@ -1,6 +1,6 @@
 import { FilterContent } from "metabase/querying/components/FilterContent";
 import { useFilterContent } from "metabase/querying/components/FilterModal";
-import { Group, Stack } from "metabase/ui";
+import { Box, Group, Stack } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { useInteractiveQuestionData } from "../hooks";
@@ -51,18 +51,22 @@ const FilterInner = ({
   };
 
   return (
-    <Stack>
-      <FilterContent.Header value={searchText} onChange={handleSearch} />
-      <FilterContent.Body
-        groupItems={visibleItems}
-        query={query}
-        tab={tab}
-        version={version}
-        searching={isSearching}
-        onChange={handleChange}
-        onInput={handleInput}
-        onTabChange={setTab}
-      />
+    <Stack w="100%" h="100%">
+      <Group position="right">
+        <FilterContent.Header value={searchText} onChange={handleSearch} />
+      </Group>
+      <Box h="100%" style={{ flex: 1, overflow: "hidden" }}>
+        <FilterContent.Body
+          groupItems={visibleItems}
+          query={query}
+          tab={tab}
+          version={version}
+          searching={isSearching}
+          onChange={handleChange}
+          onInput={handleInput}
+          onTabChange={setTab}
+        />
+      </Box>
       <Group>
         <FilterContent.Footer
           canRemoveFilters={canRemoveFilters}

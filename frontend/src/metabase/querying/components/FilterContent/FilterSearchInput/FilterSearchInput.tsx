@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
-import { Flex, TextInput, Icon } from "metabase/ui";
+import { TextInput, Icon } from "metabase/ui";
 
 const SEARCH_TIMEOUT = 200;
 
@@ -24,15 +24,13 @@ export function FilterSearchInput({
   );
 
   return (
-    <Flex mx="md" justify="end" style={{ flex: 1 }}>
-      <TextInput
-        type="search"
-        value={inputText}
-        icon={<Icon name="search" />}
-        placeholder={t`Search for a column…`}
-        aria-hidden
-        onChange={event => setInputText(event.currentTarget.value)}
-      />
-    </Flex>
+    <TextInput
+      type="search"
+      value={inputText}
+      icon={<Icon name="search" />}
+      placeholder={t`Search for a column…`}
+      aria-hidden
+      onChange={event => setInputText(event.currentTarget.value)}
+    />
   );
 }

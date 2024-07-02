@@ -2,10 +2,14 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { SummarizeContent } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/SummarizeContent/SummarizeContent";
-import { useSummarizeQuery } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/SummarizeContent/use-summarize-query";
+import { Divider } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
+import {
+  useSummarizeQuery,
+  SummarizeBreakoutColumnList,
+  SummarizeAggregationItemList,
+} from "./SummarizeContent";
 import { SidebarView } from "./SummarizeSidebar.styled";
 
 interface SummarizeSidebarProps {
@@ -46,18 +50,25 @@ export function SummarizeSidebar({
       color={color("summarize")}
       onDone={handleDoneClick}
     >
-      <SummarizeContent
+      <SummarizeAggregationItemList
+        px="lg"
         query={query}
         aggregations={aggregations}
-        hasAggregations={hasAggregations}
         onAddAggregations={handleAddAggregations}
         onUpdateAggregation={handleUpdateAggregation}
         onRemoveAggregation={handleRemoveAggregation}
-        onAddBreakout={handleAddBreakout}
-        onUpdateBreakout={handleUpdateBreakout}
-        onRemoveBreakout={handleRemoveBreakout}
-        onReplaceBreakouts={handleReplaceBreakouts}
       />
+      <Divider my="lg" />
+      {hasAggregations && (
+        <SummarizeBreakoutColumnList
+          px="lg"
+          query={query}
+          onAddBreakout={handleAddBreakout}
+          onUpdateBreakout={handleUpdateBreakout}
+          onRemoveBreakout={handleRemoveBreakout}
+          onReplaceBreakouts={handleReplaceBreakouts}
+        />
+      )}
     </SidebarView>
   );
 }
