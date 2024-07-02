@@ -1461,3 +1461,20 @@
                (do-test :schema-pattern "private" :schemas ["private"]))
              (testing "filter by table name"
                (do-test :table-pattern "table" :tables ["table"])))))))))
+
+(deftest ^:parallel date-plus-integer-test
+  (testing "Can we add a {{date}} template tag parameter to an integer in SQL queries? (#40755)"
+    (mt/test-driver :postgres
+      (is (= [[#t "2024-07-03"]]
+             (mt/rows
+              (qp/process-query
+               {:database   (mt/id)
+                :type       :native
+                :native     {:query         "SELECT {{date}} + 1 AS t;"
+                             :template-tags {"date" {:type         :date
+                                                     :name         "date"
+                                                     :display-name "Date"}}}
+                :parameters [{:type   :date/single
+                              :target [:variable [:template-tag "date"]]
+                              :value  "2024-07-02"}]
+                :middleware {:format-rows? false}})))))))
