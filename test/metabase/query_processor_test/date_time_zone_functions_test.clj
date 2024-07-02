@@ -161,7 +161,7 @@
                       first
                       (zipmap ops)))))))))
 
-(deftest ^:parallel extraction-function-timestamp-with-time-zone-test
+(deftest extraction-function-timestamp-with-time-zone-test
   (mt/dataset times-mixed
     (mt/test-drivers (filter mt/supports-timestamptz-type? (mt/normal-drivers-with-feature :temporal-extract))
       (mt/with-temporary-setting-values [start-of-week   :sunday
@@ -204,7 +204,7 @@
                                          (:h2 :sqlserver :oracle) 19
                                          49)
                       :get-second      9}
-                     {:get-year        2003
+                      {:get-year        2003
                       :get-quarter     4
                       :get-month       12
                       :get-day         31
