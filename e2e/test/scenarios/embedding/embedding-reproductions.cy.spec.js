@@ -592,6 +592,9 @@ describe.skip("27643", { tags: "@external" }, () => {
     /**
      * If we set the filter value now, this request won't be cancelled.
      * And it will override the result from the next request with filter value.
+     *
+     * This seems to only happen in Cypress since it click elements on the screen
+     * a lot faster than human. I tested this manually, and the requests were cancelled properly.
      */
     getDashboardCard()
       .findByText("Rows 1-6 of first 2000")
