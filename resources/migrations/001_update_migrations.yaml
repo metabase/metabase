@@ -8058,10 +8058,6 @@ databaseChangeLog:
             columns:
               column:
                 name: dashboard_id
-      rollback:
-        - dropIndex:
-            tableName: user_parameter_value
-            indexName: idx_user_parameter_value_dashboard_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
