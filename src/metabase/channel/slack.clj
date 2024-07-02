@@ -96,10 +96,10 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/alert] :- [:sequential SlackMessage]
-  [_channel-details {:keys [payload card]} channel-ids]
+  [_channel-details {:keys [payload context]} channel-ids]
   (let [attachments [{:blocks [{:type "header"
                                 :text {:type "plain_text"
-                                       :text (str "🔔 " (:name card))
+                                       :text (str "🔔 " (get-in context [:card :name]))
                                        :emoji true}}]}
                      (payload->attachment-data payload (slack/files-channel))]]
     (for [channel-id channel-ids]
@@ -158,10 +158,12 @@
       attachment)))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard-subscription] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload dashboard pulse]} channel-ids]
-  (for [channel-id channel-ids]
-    {:channel-id  channel-id
-     :attachments (remove nil?
-                          (flatten [(slack-dashboard-header pulse dashboard)
-                                    (create-slack-attachment-data payload)
-                                    (slack-dashboard-footer pulse dashboard)]))}))
+  [_channel-type {:keys [payload context]} channel-ids]
+  (let [{dashsub :pulse
+         dashboard :dashboard}           context]
+    (for [channel-id channel-ids]
+      {:channel-id  channel-id
+       :attachments (remove nil?
+                            (flatten [(slack-dashboard-header dashsub dashboard)
+                                      (create-slack-attachment-data payload)
+                                      (slack-dashboard-footer dashsub dashboard)]))})))
