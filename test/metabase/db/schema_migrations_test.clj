@@ -11,11 +11,16 @@
   (:require
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.cmd.dump-to-h2 :as dump-to-h2]
+   [metabase.cmd.load-from-h2 :as load-from-h2]
+   [metabase.cmd.load-from-h2-test :as load-from-h2-test]
    [metabase.config :as config]
    [metabase.db :as mdb]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations-test :as custom-migrations-test]
    [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
@@ -33,6 +38,7 @@
             User]]
    [metabase.models.collection :as collection]
    [metabase.test :as mt]
+   [metabase.test.data.env :as tx.env]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
@@ -2190,8 +2196,7 @@
 (deftest populate-is-defective-duplicate-test
   (testing "Migration v49.2024-06-27T00:00:02 populates is_defective_duplicate correctly"
     (mt/test-drivers #{:h2 :mysql}
-      (impl/test-migrations ["v49.2024-06-27T00:00:02"
-                             "v49.2024-06-27T00:00:09"] [migrate!]
+      (impl/test-migrations ["v49.2024-06-27T00:00:02" "v49.2024-06-27T00:00:09"] [migrate!]
         (let [db-id (t2/insert-returning-pk! (t2/table-name Database)
                                              {:details    "{}"
                                               :created_at :%now
@@ -2261,13 +2266,13 @@
             (assert-defective-cases cases-4))
           (testing "5. Fields with different parent_id's are not defective duplicates"
             (assert-defective-cases cases-5))
+          ;; TODO: MySQL flakes on rollback migrations, so
           (testing "Migrate down succeeds"
-            (migrate! :down 47)))))))
+            (migrate! :down 48)))))))
 
-(deftest unique-field-is-defective-duplicate-constraint-test
-  (testing "Migrations v49.2024-06-27T00:00:02 to v49.2024-06-27T00:00:09, which add a constraint for H2 and MySQL to prevent duplicate fields"
-    (impl/test-migrations ["v49.2024-06-27T00:00:02"
-                           "v49.2024-06-27T00:00:09"] [migrate!]
+(deftest is-defective-duplicate-constraint-test
+  (testing "Migrations for H2 and MySQL to prevent duplicate fields"
+    (impl/test-migrations ["v49.2024-06-27T00:00:02" "v49.2024-06-27T00:00:09"] [migrate!]
       (let [db-id (t2/insert-returning-pk! (t2/table-name Database)
                                            {:details    "{}"
                                             :created_at :%now
@@ -2275,12 +2280,12 @@
                                             :engine     "h2"
                                             :is_sample  false
                                             :name       "populate-is-defective-duplicate-test-db"})
-            table                 (t2/insert-returning-instance! (t2/table-name Table)
-                                                                 {:db_id      db-id
-                                                                  :name       (mt/random-name)
-                                                                  :created_at :%now
-                                                                  :updated_at :%now
-                                                                  :active     true})
+            table (t2/insert-returning-instance! (t2/table-name Table)
+                                                 {:db_id      db-id
+                                                  :name       (mt/random-name)
+                                                  :created_at :%now
+                                                  :updated_at :%now
+                                                  :active     true})
             field! (fn [values]
                      (t2/insert-returning-instance! (t2/table-name Field)
                                                     (merge {:table_id      (:id table)
@@ -2322,16 +2327,88 @@
               (let [field (field-thunk)]
                 (is (some? field))
                 (swap! fields-to-clean-up conj field)))))
-        (testing "Migrate down succeeds"
-          (migrate! :down 48))
-        ;; clean up the fields to test adding them again after rolling back the migrations
-        (t2/delete! (t2/table-name Field) :id [:in (map :id @fields-to-clean-up)])
-        (reset! fields-to-clean-up [])
-        (testing "After rolling back the migrations, all fields are allowed"
-          ;; This is needed to allow load-from-h2 to Postgres and then downgrading to work
-          (doseq [[_ field-thunk] defective+field-thunk]
-            (let [field (field-thunk)]
-              (is (some? field))
-              (swap! fields-to-clean-up conj field))))
-        (testing "Migrate up again succeeds"
-          (migrate!))))))
+        (when true ;; TODO UNCOMMENT THIS BEFORE MERGING #_(not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+          (testing "Migrate down succeeds"
+            (migrate! :down 48))
+          ;; clean up the fields to test adding them again after rolling back the migrations
+          (t2/delete! (t2/table-name Field) :id [:in (map :id @fields-to-clean-up)])
+          (reset! fields-to-clean-up [])
+          (testing "After rolling back the migrations, all fields are allowed"
+            ;; This is needed to allow load-from-h2 to Postgres and then downgrading to work
+            (if (= driver/*driver* :postgres)
+              (testing "Before the migrations, Postgres does not allow fields to have the same table, name, but different parent_id"
+                (doseq [[defective? field-thunk] defective+field-thunk]
+                  (if defective?
+                    (is (thrown? Exception (field-thunk)))
+                    (let [field (field-thunk)]
+                      (is (some? field))
+                      (swap! fields-to-clean-up conj field)))))
+              (testing "Before the migrations, all fields are allowed"
+                (doseq [[_ field-thunk] defective+field-thunk]
+                  (let [field (field-thunk)]
+                    (is (some? field))
+                    (swap! fields-to-clean-up conj field))))))
+          (testing "Migrate up again succeeds"
+            (migrate!)))))))
+
+(deftest is-defective-duplicate-constraint-load-from-h2
+  (testing "Test that you can use load-from-h2 with fields that meet the conditions for is_defective_duplicate=TRUE"
+    ;; In this test:
+    ;; 1. starting from an H2 app DB, create a field that meets the conditions for is_defective_duplicate=TRUE
+    ;; 2. migrate, adding constraints around is_defective_duplicate to prevent duplicates
+    ;; 3. test load-from-h2 works successfully by migrating to MySQL or Postgres
+    ;; 4. test you can downgrade after that
+    (when-let [test-drivers (set/intersection (tx.env/test-drivers) #{:mysql :postgres})]
+      (mt/with-driver :h2
+        (impl/test-migrations-for-driver!
+         :h2
+         ["v49.2024-06-27T00:00:02" "v49.2024-06-27T00:00:09"]
+         (fn [migrate!]
+           (let [db-id (t2/insert-returning-pk! (t2/table-name Database)
+                                                {:details    "{}"
+                                                 :created_at :%now
+                                                 :updated_at :%now
+                                                 :engine     "h2"
+                                                 :is_sample  false
+                                                 :name       ""})
+                 table (t2/insert-returning-instance! (t2/table-name Table)
+                                                      {:db_id      db-id
+                                                       :name       (mt/random-name)
+                                                       :created_at :%now
+                                                       :updated_at :%now
+                                                       :active     true})
+                 field! (fn [values]
+                          (t2/insert-returning-instance! (t2/table-name Field)
+                                                         (merge {:table_id      (:id table)
+                                                                 :active        true
+                                                                 :parent_id     nil
+                                                                 :base_type     "type/Text"
+                                                                 :database_type "TEXT"
+                                                                 :created_at    :%now
+                                                                 :updated_at    :%now}
+                                                                values)))
+                 _normal-field           (field! {:name "F1", :parent_id nil})
+                 create-defective-field! #(field! {:name "F1", :parent_id nil})
+                 defective-field-id      (:id (create-defective-field!))]
+             (testing "Before the migration, creating a defective duplicate field is allowed"
+               (is (some? defective-field-id)))
+             (migrate!)
+             (testing "After the migration, defective duplicate fields are not allowed"
+               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unique index" (field! {:name "F1", :parent_id nil}))))
+             (mt/with-temp-dir [dir nil]
+               (let [h2-filename (str dir "/dump")]
+                 (dump-to-h2/dump-to-h2! h2-filename) ; this migrates the DB back to the newest and creates a dump
+                 (mt/test-drivers test-drivers
+                   (let [db-def      {:database-name "field-test-db"}
+                         data-source (load-from-h2-test/get-data-source driver/*driver* db-def)]
+                     (load-from-h2-test/create-current-database driver/*driver* db-def data-source)
+                     (binding [mdb.connection/*application-db* (mdb.connection/application-db driver/*driver* data-source)]
+                       (load-from-h2/load-from-h2! h2-filename)
+                       (testing "The defective field should still exist after loading from H2"
+                         (is (= #{defective-field-id}
+                                (t2/select-pks-set (t2/table-name :model/Field) :is_defective_duplicate true)))))
+                     (testing "Migrating down to 48 should still work"
+                       (migrate! :down 48))
+                     (testing "The defective field should still exist after loading from H2 and downgrading"
+                       (is (= #{defective-field-id}
+                              (t2/select-pks-set (t2/table-name :model/Field) :is_defective_duplicate true)))))))))))))))

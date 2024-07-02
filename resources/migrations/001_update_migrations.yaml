@@ -6633,8 +6633,7 @@ databaseChangeLog:
       changes:
         - sql:
             dbms: postgres
-            sql:
-              ALTER TABLE metabase_field ADD COLUMN IF NOT EXISTS unique_field_helper INTEGER;
+            sql: ALTER TABLE metabase_field ADD COLUMN IF NOT EXISTS unique_field_helper INTEGER;
         - sql:
             dbms: h2
             sql: >-
@@ -6648,9 +6647,9 @@ databaseChangeLog:
                   CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE (CASE WHEN parent_id IS NULL THEN 0 ELSE parent_id END) END
               ) STORED;
       rollback:
-        - dropColumn:
-            tableName: metabase_field
-            columnName: unique_field_helper
+        - sql:
+            dbms: postgres,h2,mysql,mariadb
+            sql: ALTER TABLE metabase_field DROP COLUMN unique_field_helper;
 
   - changeSet:
       id: v49.2024-06-27T00:00:08
