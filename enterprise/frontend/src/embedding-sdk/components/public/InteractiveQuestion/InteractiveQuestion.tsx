@@ -1,21 +1,33 @@
-import { useCallback, useEffect, useState } from "react";
+import { type PropsWithChildren, useMemo } from "react";
 
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { initializeQBRaw } from "metabase/query_builder/actions";
-import { getCard, getQueryResults } from "metabase/query_builder/selectors";
 import type { CardId } from "metabase-types/api";
 
-interface InteractiveQuestionProps {
+import {
+  BackButton,
+  FilterBar,
+  QuestionResetButton,
+  Title,
+  Filter,
+  FilterButton,
+  Summarize,
+  SummarizeButton,
+  Notebook,
+  NotebookButton,
+  QuestionVisualization,
+} from "./components";
+import { InteractiveQuestionProvider } from "./context";
+
+type InteractiveQuestionProps = PropsWithChildren<{
   questionId: CardId;
   withResetButton?: boolean;
   withTitle?: boolean;
   customTitle?: React.ReactNode;
   plugins?: SdkClickActionPluginsConfig;
   height?: string | number;
-}
+}>;
 
 export const _InteractiveQuestion = ({
   questionId,
@@ -24,62 +36,30 @@ export const _InteractiveQuestion = ({
   customTitle,
   plugins,
   height,
+  children = null,
 }: InteractiveQuestionProps): JSX.Element | null => {
-  const dispatch = useDispatch();
-
-  const card = useSelector(getCard);
-  const queryResults = useSelector(getQueryResults);
-
-  const hasQuestionChanges =
-    card && (!card.id || card.id !== card.original_card_id);
-
-  const [isQuestionLoading, setIsQuestionLoading] = useState(true);
-
-  const loadQuestion = async (
-    dispatch: ReturnType<typeof useDispatch>,
-    questionId: CardId,
-  ) => {
-    setIsQuestionLoading(true);
-
-    const { location, params } = getQuestionParameters(questionId);
-    try {
-      await dispatch(initializeQBRaw(location, params));
-    } catch (e) {
-      console.error(`Failed to get question`, e);
-      setIsQuestionLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadQuestion(dispatch, questionId);
-  }, [dispatch, questionId]);
-
-  const handleQuestionReset = useCallback(() => {
-    loadQuestion(dispatch, questionId);
-  }, [dispatch, questionId]);
-
-  useEffect(() => {
-    if (queryResults) {
-      setIsQuestionLoading(false);
-    }
-  }, [queryResults]);
+  const { location, params } = useMemo(
+    () => getQuestionParameters(questionId),
+    [questionId],
+  );
 
   return (
-    <InteractiveQuestionResult
-      isQuestionLoading={isQuestionLoading}
-      onNavigateBack={handleQuestionReset}
-      height={height}
+    <InteractiveQuestionProvider
+      location={location}
+      params={params}
       componentPlugins={plugins}
-      withResetButton={hasQuestionChanges && withResetButton}
-      onResetButtonClick={handleQuestionReset}
-      withTitle={withTitle}
-      customTitle={customTitle}
-    />
+    >
+      {children ?? (
+        <InteractiveQuestionResult
+          height={height}
+          customTitle={customTitle}
+          withResetButton={withResetButton}
+          withTitle={withTitle}
+        />
+      )}
+    </InteractiveQuestionProvider>
   );
 };
-
-export const InteractiveQuestion =
-  withPublicComponentWrapper(_InteractiveQuestion);
 
 export const getQuestionParameters = (questionId: CardId) => {
   return {
@@ -93,3 +73,33 @@ export const getQuestionParameters = (questionId: CardId) => {
     },
   };
 };
+
+const InteractiveQuestion = withPublicComponentWrapper(
+  _InteractiveQuestion,
+) as typeof _InteractiveQuestion & {
+  BackButton: typeof BackButton;
+  FilterBar: typeof FilterBar;
+  Filter: typeof Filter;
+  FilterButton: typeof FilterButton;
+  ResetButton: typeof QuestionResetButton;
+  Title: typeof Title;
+  Summarize: typeof Summarize;
+  SummarizeButton: typeof SummarizeButton;
+  Notebook: typeof Notebook;
+  NotebookButton: typeof NotebookButton;
+  QuestionVisualization: typeof QuestionVisualization;
+};
+
+InteractiveQuestion.BackButton = BackButton;
+InteractiveQuestion.FilterBar = FilterBar;
+InteractiveQuestion.Filter = Filter;
+InteractiveQuestion.FilterButton = FilterButton;
+InteractiveQuestion.ResetButton = QuestionResetButton;
+InteractiveQuestion.Title = Title;
+InteractiveQuestion.Summarize = Summarize;
+InteractiveQuestion.SummarizeButton = SummarizeButton;
+InteractiveQuestion.Notebook = Notebook;
+InteractiveQuestion.NotebookButton = NotebookButton;
+InteractiveQuestion.QuestionVisualization = QuestionVisualization;
+
+export { InteractiveQuestion };

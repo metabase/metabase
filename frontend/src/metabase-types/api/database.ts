@@ -41,7 +41,7 @@ export type DatabaseFeature =
 export interface Database extends DatabaseData {
   id: DatabaseId;
   is_saved_questions: boolean;
-  features: DatabaseFeature[];
+  features?: DatabaseFeature[];
   creator_id?: number;
   timezone?: string;
   native_permissions: "write" | "none";

@@ -2792,6 +2792,11 @@ to-regex-range@^5.0.1:
   dependencies:
     is-number "^7.0.0"
 
+ts-pattern@^5.2.0:
+  version "5.2.0"
+  resolved "https://registry.yarnpkg.com/ts-pattern/-/ts-pattern-5.2.0.tgz#2cad8b58fcd87c52d1785f84eba572641e1bb5f3"
+  integrity sha512-aGaSpOlDcns7ZoeG/OMftWyQG1KqPVhgplhJxNCvyIXqWrumM5uIoOSarw/hmmi/T1PnuQ/uD8NaFHvLpHicDg==
+
 tsx@^3.12.7:
   version "3.12.7"
   resolved "https://registry.yarnpkg.com/tsx/-/tsx-3.12.7.tgz#b3b8b0fc79afc8260d1e14f9e995616c859a91e9"

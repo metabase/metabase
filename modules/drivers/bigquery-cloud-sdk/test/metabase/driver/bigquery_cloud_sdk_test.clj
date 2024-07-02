@@ -742,7 +742,21 @@
                   (is (< 0 row-count 10000)))))
             (catch clojure.lang.ExceptionInfo e
               (is (= "Query cancelled"
-                     (ex-message e))))))))))
+                     (ex-message e))))))))
+    (testing "Cancel thread does not leak"
+      (mt/dataset test-data
+        (let [query               (assoc-in (mt/query orders) [:query :limit] 2)
+              future-thread-names (fn []
+                                    ;; kinda hacky but we don't control this thread pool
+                                    (into #{} (comp (map (fn [^Thread t] (.getName t)))
+                                                    (filter #(str/includes? % "clojure-agent-send-off-pool")))
+                                          (.keySet (Thread/getAllStackTraces))))
+              count-before        (count (future-thread-names))]
+          (dotimes [_ 10]
+            (mt/process-query query))
+          (let [count-after (count (future-thread-names))]
+            (is (< count-after (+ count-before 5))
+                "unbounded thread growth!")))))))
 
 ;; TODO Temporarily disabling due to flakiness (#33140)
 #_

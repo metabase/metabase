@@ -23,6 +23,8 @@ import {
   onlyOnOSS,
   entityPickerModalItem,
   newButton,
+  createQuestion,
+  getNotebookStep,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -551,6 +553,92 @@ describe("issue 30610", () => {
     updateQuestion();
     createAdHocQuestion("Orders");
     visualizeAndAssertColumns();
+  });
+});
+
+describe("issue 36669", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to change question data source to raw data after selecting saved question (metabase#36669)", () => {
+    const questionDetails = {
+      name: "Orders 36669",
+      query: {
+        "source-table": ORDERS_ID,
+        limit: 5,
+      },
+    };
+
+    createQuestion(questionDetails).then(() => {
+      startNewQuestion();
+    });
+
+    entityPickerModal().within(() => {
+      cy.findByPlaceholderText("Search…").type("Orders 36669");
+
+      cy.findByRole("tabpanel").findByText("Orders 36669").click();
+    });
+
+    getNotebookStep("data").findByText("Orders 36669").click();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+
+      cy.log("verify Tables are listed");
+      cy.findByRole("tabpanel").should("contain", "Orders");
+    });
+  });
+});
+
+describe("issue 35290", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should render column settings when source query is a table joined on itself (metabase#35290)", () => {
+    const questionDetails = {
+      name: "Orders + Orders",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            "source-table": ORDERS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.ID, null],
+              ["field", ORDERS.ID, null],
+            ],
+            alias: "Orders",
+          },
+        ],
+        limit: 5,
+      },
+    };
+
+    createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
+      const questionDetails = {
+        name: "35290",
+        query: {
+          "source-table": `card__${questionId}`,
+        },
+      };
+
+      createQuestion(questionDetails, { visitQuestion: true });
+    });
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.findByTestId("chartsettings-sidebar")
+      // verify panel is shown
+      .should("contain", "Add or remove columns")
+      // verify column name is shown
+      .should("contain", "Created At");
+
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.icon("warning").should("not.exist");
+    });
   });
 });
 
