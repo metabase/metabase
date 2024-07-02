@@ -8,7 +8,6 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli :as mu]
    [potemkin :as p]))
@@ -63,15 +62,6 @@
            :query query
            :params params)))
 
-;; `:sql` drivers almost certainly don't need to override this method, and instead can implement
-;; `unprepare/unprepare-value` for specific classes, or, in extreme cases, `unprepare/unprepare` itself.
-(defmethod driver/splice-parameters-into-native-query :sql
-  [driver {:keys [params], sql :query, :as query}]
-  (cond-> query
-    (seq params)
-    (merge {:params nil
-            :query  (unprepare/unprepare driver (cons sql params))})))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Connection Impersonation                                          |
@@ -104,5 +94,3 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (p/import-vars [sql.params.substitution ->prepared-substitution PreparedStatementSubstitution])
-
-;; TODO - we should add imports for `sql.qp` and other namespaces to make driver implementation more straightforward

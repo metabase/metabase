@@ -24,7 +24,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -42,9 +41,9 @@
    [metabase.util.malli :as mu])
   (:import
    (java.io StringReader)
-   (java.sql Connection ResultSet ResultSetMetaData Time Types)
+   (java.sql Connection ResultSet ResultSetMetaData Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
-   (java.util Date UUID)
+   (java.util UUID)
    (org.postgresql.copy CopyManager)
    (org.postgresql.jdbc PgConnection)))
 
@@ -509,10 +508,6 @@
   (let [identifier (sql.qp/->honeysql driver arg)]
     [::regex-match-first identifier pattern]))
 
-(defmethod sql.qp/->honeysql [:postgres Time]
-  [_ time-value]
-  (h2x/->time time-value))
-
 (defn- format-pg-conversion [_fn [expr psql-type]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]
     (into [(format "%s::%s" expr-sql (name psql-type))]
@@ -641,16 +636,6 @@
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
                      clause)]
     ((get-method sql.qp/->honeysql [:sql :asc]) driver new-clause)))
-
-(defmethod unprepare/unprepare-value [:postgres Date]
-  [_ value]
-  (format "'%s'::timestamp" (u.date/format value)))
-
-(prefer-method unprepare/unprepare-value [:sql Time] [:postgres Date])
-
-(defmethod unprepare/unprepare-value [:postgres UUID]
-  [_ value]
-  (format "'%s'::uuid" value))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

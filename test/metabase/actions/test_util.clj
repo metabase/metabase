@@ -127,8 +127,7 @@
 
 (defn- delete-categories-1-query []
   (sql.qp/format-honeysql
-   2
-   (sql.qp/quote-style driver/*driver*)
+   driver/*driver*
    {:delete-from [(h2x/identifier :table (ddl.i/format-name driver/*driver* "categories"))]
     :where       [:=
                   (h2x/identifier :field (ddl.i/format-name driver/*driver* "id"))

@@ -14,13 +14,10 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
-   [metabase.driver.sql-jdbc.sync.describe-table
-    :as sql-jdbc.describe-table]
+   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.query-processor.empty-string-is-null
-    :as sql.qp.empty-string-is-null]
+   [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.models.secret :as secret]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.date-2 :as u.date]
@@ -622,20 +619,20 @@
   (fn []
     (u.date/parse (.getNString rs i))))
 
-(defmethod unprepare/unprepare-value [:oracle OffsetDateTime]
+(defmethod sql.qp/inline-value [:oracle OffsetDateTime]
   [_ t]
   ;; Oracle doesn't like `Z` to mean UTC
   (format "timestamp '%s'" (-> (t/format "yyyy-MM-dd HH:mm:ss.SSS ZZZZZ" t)
                                (str/replace #" Z$" " UTC"))))
 
-(defmethod unprepare/unprepare-value [:oracle ZonedDateTime]
+(defmethod sql.qp/inline-value [:oracle ZonedDateTime]
   [_ t]
   (format "timestamp '%s'" (-> (t/format "yyyy-MM-dd HH:mm:ss.SSS VV" t)
                                (str/replace #" Z$" " UTC"))))
 
-(defmethod unprepare/unprepare-value [:oracle Instant]
+(defmethod sql.qp/inline-value [:oracle Instant]
   [driver t]
-  (unprepare/unprepare-value driver (t/zoned-date-time t (t/zone-id "UTC"))))
+  (sql.qp/inline-value driver (t/zoned-date-time t (t/zone-id "UTC"))))
 
 ;; Oracle doesn't really support boolean types so use bits instead (See #11592, similar issue for SQL Server)
 (defmethod driver.sql/->prepared-substitution [:oracle Boolean]

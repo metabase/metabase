@@ -814,84 +814,86 @@
   (let [spec (sql-jdbc.conn/connection-details->spec :postgres (enums-test-db-details))]
     (jdbc/execute! spec [enums-db-sql])))
 
-(defn- do-with-enums-db [f]
+(defn- do-with-enums-db! [f]
   (create-enums-db!)
   (t2.with-temp/with-temp [Database database {:engine :postgres, :details (enums-test-db-details)}]
     (sync-metadata/sync-db-metadata! database)
     (f database)
     (driver/notify-database-updated :postgres database)))
 
-(deftest enums-test
+(deftest ^:parallel enums-test
   (mt/test-driver :postgres
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
       (is (= (h2x/with-database-type-info [:cast "toucan" (h2x/identifier :type-name "bird type")]
                                           "bird type")
-             (sql.qp/->honeysql :postgres [:value "toucan" {:database_type "bird type", :base_type :type/PostgresEnum}]))))
+             (sql.qp/->honeysql :postgres [:value "toucan" {:database_type "bird type", :base_type :type/PostgresEnum}]))))))
 
-    (do-with-enums-db
-      (fn [db]
-        (testing "check that we can actually fetch the enum types from a DB"
-          (is (= #{(keyword "bird type") :bird_status}
-                 (#'postgres/enum-types :postgres db))))
+(deftest enums-test-2
+  (mt/test-driver :postgres
+    (do-with-enums-db!
+     (fn [db]
+       (testing "check that we can actually fetch the enum types from a DB"
+         (is (= #{(keyword "bird type") :bird_status}
+                (#'postgres/enum-types :postgres db))))
 
-        (testing "check that describe-table properly describes the database & base types of the enum fields"
-          (is (= {:name   "birds"
-                  :fields #{{:name                       "name"
-                             :database-type              "varchar"
-                             :base-type                  :type/Text
-                             :pk?                        true
-                             :database-position          0
-                             :database-required          true
-                             :database-is-auto-increment false
-                             :json-unfolding             false}
-                            {:name                       "status"
-                             :database-type              "bird_status"
-                             :base-type                  :type/PostgresEnum
-                             :database-position          1
-                             :database-required          true
-                             :database-is-auto-increment false
-                             :json-unfolding             false}
-                            {:name                       "type"
-                             :database-type              "bird type"
-                             :base-type                  :type/PostgresEnum
-                             :database-position          2
-                             :database-required          true
-                             :database-is-auto-increment false
-                             :json-unfolding             false}}}
-                 (driver/describe-table :postgres db {:name "birds"}))))
+       (testing "check that describe-table properly describes the database & base types of the enum fields"
+         (is (= {:name   "birds"
+                 :fields #{{:name                       "name"
+                            :database-type              "varchar"
+                            :base-type                  :type/Text
+                            :pk?                        true
+                            :database-position          0
+                            :database-required          true
+                            :database-is-auto-increment false
+                            :json-unfolding             false}
+                           {:name                       "status"
+                            :database-type              "bird_status"
+                            :base-type                  :type/PostgresEnum
+                            :database-position          1
+                            :database-required          true
+                            :database-is-auto-increment false
+                            :json-unfolding             false}
+                           {:name                       "type"
+                            :database-type              "bird type"
+                            :base-type                  :type/PostgresEnum
+                            :database-position          2
+                            :database-required          true
+                            :database-is-auto-increment false
+                            :json-unfolding             false}}}
+                (driver/describe-table :postgres db {:name "birds"}))))
 
-        (testing "check that when syncing the DB the enum types get recorded appropriately"
-          (let [table-id (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")]
-            (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
-                     {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
-                     {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
-                   (set (map (partial into {})
-                             (t2/select [Field :name :database_type :base_type] :table_id table-id)))))))
+       (testing "check that when syncing the DB the enum types get recorded appropriately"
+         (let [table-id (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")]
+           (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
+                    {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
+                    {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
+                  (set (map (partial into {})
+                            (t2/select [Field :name :database_type :base_type] :table_id table-id)))))))
 
-        (testing "End-to-end check: make sure everything works as expected when we run an actual query"
-          (let [table-id           (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")
-                bird-type-field-id (t2/select-one-pk Field :table_id table-id, :name "type")]
-            (is (= {:rows        [["Rasta" "good bird" "toucan"]]
-                    :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
-                                               " \"public\".\"birds\".\"status\" AS \"status\","
-                                               " \"public\".\"birds\".\"type\" AS \"type\" "
-                                               "FROM \"public\".\"birds\" "
-                                               "WHERE \"public\".\"birds\".\"type\" = CAST('toucan' AS \"bird type\") "
-                                               "LIMIT 10")
-                                  :params nil}}
-                   (-> (qp/process-query
-                        {:database (u/the-id db)
-                         :type     :query
-                         :query    {:source-table table-id
-                                    :filter       [:= [:field (u/the-id bird-type-field-id) nil] "toucan"]
-                                    :limit        10}})
-                       :data
-                       (select-keys [:rows :native_form]))))))))))
+       (testing "End-to-end check: make sure everything works as expected when we run an actual query"
+         (let [table-id           (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")
+               bird-type-field-id (t2/select-one-pk Field :table_id table-id, :name "type")]
+           (is (= {:rows        [["Rasta" "good bird" "toucan"]]
+                   :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
+                                              " \"public\".\"birds\".\"status\" AS \"status\","
+                                              " \"public\".\"birds\".\"type\" AS \"type\" "
+                                              "FROM \"public\".\"birds\" "
+                                              "WHERE \"public\".\"birds\".\"type\" = CAST('toucan' AS \"bird type\") "
+                                              "LIMIT 10")
+                                 :params nil}}
+                  (-> (qp/process-query
+                       {:database (u/the-id db)
+                        :type     :query
+                        :query    {:source-table table-id
+                                   :filter       [:= [:field (u/the-id bird-type-field-id) nil] "toucan"]
+                                   :limit        10}})
+                      :data
+                      (select-keys [:rows :native_form]))))))))))
 
 (deftest enums-actions-test
   (mt/test-driver :postgres
     (testing "actions with enums"
-      (do-with-enums-db
+      (do-with-enums-db!
        (fn [enums-db]
          (mt/with-db enums-db
            (mt/with-actions-enabled
@@ -918,22 +920,25 @@
                                                             "type"   "turkey"}}))))))))))))
 
 ;; API tests are in [[metabase.api.action-test]]
-(deftest actions-maybe-parse-sql-error-test
+(deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test
   (testing "violate not null constraint"
     (is (= {:type :metabase.actions.error/violate-not-null-constraint,
             :message "Ranking must have values."
             :errors {"ranking" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :postgres actions.error/violate-not-null-constraint nil :row/created
-            "ERROR: null value in column \"ranking\" violates not-null constraint\n  Detail: Failing row contains (3, admin, null).")))
+            "ERROR: null value in column \"ranking\" violates not-null constraint\n  Detail: Failing row contains (3, admin, null).")))))
 
+(deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test-2
+  (testing "violate not null constraint"
     (is (= {:type :metabase.actions.error/violate-not-null-constraint,
             :message "Ranking must have values."
             :errors {"ranking" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :postgres actions.error/violate-not-null-constraint nil :row/created
-            "ERROR: null value in column \"ranking\" of relation \"group\" violates not-null constraint\n  Detail: Failing row contains (57, admin, null)."))))
+            "ERROR: null value in column \"ranking\" of relation \"group\" violates not-null constraint\n  Detail: Failing row contains (57, admin, null).")))))
 
+(deftest actions-maybe-parse-sql-error-violate-unique-constraint-test
   (testing "violate unique constraint"
     (with-redefs [postgres.actions/constraint->column-names (constantly ["ranking"])]
       (is (= {:type :metabase.actions.error/violate-unique-constraint,
@@ -941,31 +946,37 @@
               :errors {"ranking" "This Ranking value already exists."}}
              (sql-jdbc.actions/maybe-parse-sql-error
               :postgres actions.error/violate-unique-constraint nil nil
-              "Batch entry 0 UPDATE \"public\".\"group\" SET \"ranking\" = CAST(2 AS INTEGER) WHERE \"public\".\"group\".\"id\" = 1 was aborted: ERROR: duplicate key value violates unique constraint \"group_ranking_key\"\n  Detail: Key (ranking)=(2) already exists.  Call getNextException to see other errors in the batch.")))))
+              "Batch entry 0 UPDATE \"public\".\"group\" SET \"ranking\" = CAST(2 AS INTEGER) WHERE \"public\".\"group\".\"id\" = 1 was aborted: ERROR: duplicate key value violates unique constraint \"group_ranking_key\"\n  Detail: Key (ranking)=(2) already exists.  Call getNextException to see other errors in the batch."))))))
 
+(deftest ^:parallel actions-maybe-parse-sql-error-incorrect-type-test
   (testing "incorrect type"
     (is (= {:type :metabase.actions.error/incorrect-value-type,
             :message "Some of your values aren’t of the correct type for the database.",
             :errors {}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :postgres actions.error/incorrect-value-type nil nil
-            "Batch entry 0 UPDATE \"public\".\"group\" SET \"ranking\" = CAST('S' AS INTEGER) WHERE \"public\".\"group\".\"id\" = 1 was aborted: ERROR: invalid input syntax for type integer: \"S\"  Call getNextException to see other errors in the batch."))))
+            "Batch entry 0 UPDATE \"public\".\"group\" SET \"ranking\" = CAST('S' AS INTEGER) WHERE \"public\".\"group\".\"id\" = 1 was aborted: ERROR: invalid input syntax for type integer: \"S\"  Call getNextException to see other errors in the batch.")))))
 
+(deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test
   (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
             :message "Unable to create a new record.",
             :errors {"group-id" "This Group-id does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :postgres actions.error/violate-foreign-key-constraint nil :row/create
-            "ERROR: insert or update on table \"user\" violates foreign key constraint \"user_group-id_group_-159406530\"\n  Detail: Key (group-id)=(999) is not present in table \"group\".")))
+            "ERROR: insert or update on table \"user\" violates foreign key constraint \"user_group-id_group_-159406530\"\n  Detail: Key (group-id)=(999) is not present in table \"group\".")))))
 
+(deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test-2
+  (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
             :message "Unable to update the record.",
             :errors {"id" "This Id does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :postgres actions.error/violate-foreign-key-constraint nil :row/update
-            "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))
+            "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
 
+(deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test-3
+  (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
             :message "Other tables rely on this row so it cannot be deleted.",
             :errors {}}

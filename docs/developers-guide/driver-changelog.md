@@ -4,6 +4,45 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.51.0
+
+- Prior to 0.51.0, to generate SQL queries with inline parameters, Metabase would generate a parameterized SQL string,
+  then attempt to parse the SQL replace and replace `?` placeholders with inline values from the driver method
+  `metabase.driver.sql.util.unprepare/unprepare-value`. In 0.51.0+, Metabase instead generates these queries using
+  Honey SQL 2's `:inline` option, eliminating the need to parse and replace `?` placeholders. As such, the
+  `metabase.driver.sql.util.unprepare` namespace has been deprecated; you should remove all usages of it in your driver.
+
+  - The `metabase.driver.sql.util.unprepare/unprepare-value` method has been replaced by the new method
+    `metabase.driver.sql.query-processor/inline-value`. The signatures of these two functions are the same, and you
+    should be able to simply change the all of your `unprepare-value` implementations to `inline-value` instead.
+
+    For the time being, implementations of `unprepare-value` are used as implementations of `inline-value`
+    automatically, but `unprepare-value` is slated for removal in 0.54.0.
+
+  - The dynamic variable `metabase.driver/*compile-with-inline-parameters*` (default `false`) has been added; drivers
+    that can generate parameterized queries should look at its value in their implementation of
+    `metabase.driver/mbql->native` and adjust their output accordingly. For `:sql`-based drivers, this is handled in
+    the shared `metabase.driver.sql.query-processor` code, so you shouldn't need to adjust anything here. For `:sql`
+    drivers that do not support JDBC-style parameterized queries you can implement `mbql->native`, bind
+    `*compile-with-inline-parameters*` to something truthy, then call the default `:sql` implementation.
+
+  - `metabase.driver.sql.util.unprepare/unprepare`, which took a parameterized SQL string and de-parameterized or
+    "unprepared" it, has been removed. Instead, if you need a query with parameters spliced directly into the SQL,
+    bind `metabase.driver/*compile-with-inline-parameters*` as discussed above.
+
+  - Similarly, the driver method `metabase.driver/splice-parameters-into-native-query` has been marked deprecated, and
+    the default implementation will throw an Exception if called. Rework code that generates parameterized queries and
+    then calls `unprepare` or `splice-parameters-into-native-query` with code that generates queries with inlined
+    parameters in the first place as discussed above. Tests can use
+    `metabase.query-processor.compile/compile-with-inline-parameters` if needed.
+
+   - `metabase.query-processor.compile/compile-and-splice-parameters` has been removed; replace usages with
+     `metabase.query-processor.compile/compile-with-inline-parameters`.
+
+- The three-arity of `metabase.driver.sql.query-processor/format-honeysql` (which had an additional parameter for
+  Honey SQL version) has been removed; replace all usages with the two-arity version. Honey SQL 2 has been the only
+  supported version since Metabase 0.49.0.
+
 ## Metabase 0.50.0
 
 - The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to

@@ -13,6 +13,7 @@
    [metabase.driver.impl :as driver.impl]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -715,8 +716,11 @@
   For example, a driver like Postgres would build a valid SQL expression and return a map such as:
 
     {:query \"-- Metabase card: 10 user: 5
-              SELECT * FROM my_table\"}"
-  {:added "0.32.0", :arglists '([driver query]), :style/indent 1}
+              SELECT * FROM my_table\"}
+
+  In 0.51.0 and above, drivers should look the value of [[*compile-with-inline-parameters*]] and output a query with
+  all parameters inline when it is truthy."
+  {:added "0.32.0", :arglists '([driver query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -742,37 +746,43 @@
 
 (defmethod prettify-native-form ::driver
  [_ native-form]
- native-form)
+  native-form)
+
+(def ^:dynamic ^{:added "0.51.0"} *compile-with-inline-parameters*
+  "Whether to compile an MBQL query to native with parameters spliced inline (as opposed to using placeholders like `?`
+  and passing the parameters separately.) Normally we want to pass parameters separately to protect against SQL
+  injection and whatnot, but when converting an MBQL query to SQL it's nicer for people to see
+
+    WHERE bird_type = 'cockatiel'
+
+  instead of
+
+    WHERE bird_type = ?
+
+  so we bind this to `true`.
+
+  Drivers that have some notion of parameterized queries (e.g. `:sql-jdbc`-based drivers) should look at the value of
+  this dynamic variable in their implementation of [[metabase.driver/mbql->native]] and adjust query compilation
+  behavior accordingly."
+  false)
 
 (defmulti splice-parameters-into-native-query
-  "For a native query that has separate parameters, such as a JDBC prepared statement, e.g.
+  "Deprecated and unused in 0.51.0+; multimethod declaration left here so drivers implementing it can still compile
+  until we remove this method completely in 0.54.0 or later.
 
-    {:query \"SELECT * FROM birds WHERE name = ?\", :params [\"Reggae\"]}
-
-  splice the parameters in to the native query as literals so it can be executed by the user, e.g.
-
-    {:query \"SELECT * FROM birds WHERE name = 'Reggae'\"}
-
-  This is used to power features such as 'Convert this Question to SQL' in the Query Builder. Normally when executing
-  the query we'd like to leave the statement as a prepared one and pass parameters that way instead of splicing them
-  in as literals so as to avoid SQL injection vulnerabilities. Thus the results of this method are not normally
-  executed by the Query Processor when processing an MBQL query. However when people convert a
-  question to SQL they can see what they will be executing and edit the query as needed.
-
-  Input to this function follows the same shape as output of `mbql->native` -- that is, it will be a so-called 'inner'
-  native query, with `:query` and `:params` keys, as in the example code above; output should be of the same format.
-  This method might be called even if no splicing needs to take place, e.g. if `:params` is empty; implementations
-  should be sure to handle this situation correctly.
-
-  For databases that do not feature concepts like 'prepared statements', this method need not be implemented; the
-  default implementation is an identity function."
-  {:added "0.32.0", :arglists '([driver inner-query]), :style/indent 1}
+  Instead of implementing this method, you should instead look at the value
+  of [[metabase.driver/*compile-with-inline-parameters*]] in your implementation of [[metabase.driver/mbql->native]]
+  and adjust behavior accordingly."
+  {:added "0.32.0", :arglists '([driver inner-query]), :deprecated "0.51.0"}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod splice-parameters-into-native-query ::driver
-  [_ query]
-  query)
+  [_driver _query]
+  (throw (ex-info (str "metabase.driver/splice-parameters-into-native-query is deprecated, bind"
+                       " metabase.driver/*compile-with-inline-parameters* during query compilation instead.")
+                  {:type ::qp.error-type/driver})))
 
 ;; TODO -- shouldn't this be called `notify-database-updated!`, since the expectation is that it is done for side
 ;; effects? issue: https://github.com/metabase/metabase/issues/39367

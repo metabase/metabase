@@ -5,6 +5,8 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [honey.sql.protocols]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
@@ -23,10 +25,13 @@
    [metabase.query-processor.util.nest-query :as nest-query]
    [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu])
+  (:import
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -95,6 +100,7 @@
 ;;; |                                            Interface (Multimethods)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defmulti honey-sql-version
   "DEPRECATED: Prior to between 0.46.0 and 0.49.0, drivers could use either Honey SQL 1 or Honey SQL 2. In 0.49.0+, all
   drivers must use Honey SQL 2."
@@ -152,6 +158,27 @@
 
     :else
     (h2x/cast :float value)))
+
+(defmulti ^clojure.lang.MultiFn inline-value
+  "Return an inline value (as a raw SQL string) for an object `x`, e.g.
+
+    (inline-value :postgres (java-time.api/offset-date-time))
+    ;; => \"timestamp with time zone '2024-07-01 23:35:18.407 +00:00'\""
+  {:added "0.51.0", :arglists '(^String [driver x])}
+  (fn [driver x]
+    [(driver/dispatch-on-initialized-driver driver) (class x)])
+  :hierarchy #'driver/hierarchy)
+
+(defn- sqlize-value [x]
+  (if driver/*driver*
+    (inline-value driver/*driver* x)
+    (honey.sql.protocols/sqlize x)))
+
+;;; Replace the implentation of [[honey.sql/sqlize-value]] with one that hands off to [[inline-value]] if driver is
+;;; bound. This way we can have driver-specific inline behavior. Monkey-patching private functions like this is a little
+;;; questionable for sure but I think it's justified here since there is on other way to consistently guarantee that we
+;;; hand off to [[sqlize-value]] when compiling something inline.
+(alter-var-root #'sql/sqlize-value (constantly sqlize-value))
 
 (defmulti ->honeysql
   "Return an appropriate HoneySQL form for an object. Dispatches off both driver and either clause name or object class
@@ -439,6 +466,57 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               inline-value impls                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;;; we can go ahead and add implementations for the classes that implement [[honey.sql.protocols/InlineValue]], except
+;;; for `Object`, since we want it to fall back to `:default` and log a warning
+
+(doseq [[klass {method :sqlize}] (:impls honey.sql.protocols/InlineValue)
+        :when (not= klass Object)]
+  (.addMethod inline-value [:sql klass] (fn [_driver x]
+                                          (method x))))
+
+(defmethod inline-value :default
+  [driver object]
+  ;; default implementation of [[honey.sql.protocols/sqlize]] is just [[clojure.core/str]], that is almost certainly not
+  ;; what we want to do, so log a warning
+  (log/warnf "No implementation of %s for [%s %s], falling back to default implementation of %s"
+             `inline-value
+             driver
+             (some-> object class .getCanonicalName)
+             `honey.sql.protocols/sqlize)
+  (honey.sql.protocols/sqlize object))
+
+(defmethod inline-value [:sql Number]
+  [_driver n]
+  (str n))
+
+(defmethod inline-value [:sql LocalTime]
+  [_driver t]
+  (format "time '%s'" (u.date/format "HH:mm:ss.SSS" t)))
+
+(defmethod inline-value [:sql OffsetTime]
+  [_driver t]
+  (format "time with time zone '%s'" (u.date/format "HH:mm:ss.SSS xxx" t)))
+
+(defmethod inline-value [:sql LocalDate]
+  [_driver t]
+  (format "date '%s'" (u.date/format t)))
+
+(defmethod inline-value [:sql LocalDateTime]
+  [_driver t]
+  (format "timestamp '%s'" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
+
+(defmethod inline-value [:sql OffsetDateTime]
+  [_driver t]
+  (format "timestamp with time zone '%s'" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS xxx" t)))
+
+(defmethod inline-value [:sql ZonedDateTime]
+  [driver t]
+  (inline-value driver (t/offset-date-time t)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Low-Level ->honeysql impls                                           |
@@ -523,7 +601,7 @@
     (throw (ex-info "Semantic type must be a UNIXTimestamp"
                     {:type          qp.error-type/invalid-query
                      :coercion-type coercion-type})))
-  (or (get {:Coercion/UNIXNanoSeconds->DateTime :nanoseconds
+  (or (get {:Coercion/UNIXNanoSeconds->DateTime  :nanoseconds
             :Coercion/UNIXMicroSeconds->DateTime :microseconds
             :Coercion/UNIXMilliSeconds->DateTime :milliseconds
             :Coercion/UNIXSeconds->DateTime      :seconds}
@@ -992,15 +1070,15 @@
     [ag-type & _]
     (->honeysql driver (h2x/identifier :field-alias ag-type))))
 
-(defmethod ->honeysql [:sql :absolute-datetime]
+(mu/defmethod ->honeysql [:sql :absolute-datetime] :- some?
   [driver [_ timestamp unit]]
   (date driver unit (->honeysql driver timestamp)))
 
-(defmethod ->honeysql [:sql :time]
+(mu/defmethod ->honeysql [:sql :time] :- some?
   [driver [_ value unit]]
   (date driver unit (->honeysql driver value)))
 
-(defmethod ->honeysql [:sql :relative-datetime]
+(mu/defmethod ->honeysql [:sql :relative-datetime] :- some?
   [driver [_ amount unit]]
   (date driver unit (if (zero? amount)
                       (current-datetime-honeysql-form driver)
@@ -1447,46 +1525,40 @@
   (sort-by (fn [clause] [(get top-level-clause-application-order clause Integer/MAX_VALUE) clause])
            (keys inner-query)))
 
-(defn- format-honeysql-2 [dialect honeysql-form]
-  ;; throw people a bone and make sure they're not trying to use Honey SQL 1 stuff inside Honey SQL 2.
-  (lib.util.match/match honeysql-form
-    (form :guard record?)
-    (throw (ex-info (format "Not supported by Honey SQL 2: ^%s %s"
-                            (.getCanonicalName (class form))
-                            (pr-str form))
-                    {:honeysql-form honeysql-form, :form form})))
-  (if (map? honeysql-form)
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (sql/format honeysql-form {:dialect dialect, :quoted true, :quoted-snake false})
-    ;; for weird cases when we want to compile just one particular snippet. Why are we doing this? Who knows. This seems
-    ;; to not really be supported by Honey SQL 2, so hack around it for now. See upstream issue
-    ;; https://github.com/seancorfield/honeysql/issues/456
-    (binding [sql/*dialect*      (sql/get-dialect dialect)
-              sql/*quoted*       true
-              sql/*quoted-snake* false]
-      (sql/format-expr honeysql-form {:nested true}))))
+(defn- format-honeysql-2 [driver dialect honeysql-form]
+  ;; make sure [[driver/*driver*]] is bound, we need it for [[sqlize-value]]
+  (binding [driver/*driver* driver]
+    (if (map? honeysql-form)
+      (sql/format honeysql-form {:dialect      dialect
+                                 :quoted       true
+                                 :quoted-snake false
+                                 :inline       driver/*compile-with-inline-parameters*})
+      ;; for weird cases when we want to compile just one particular snippet. Why are we doing this? Who knows. This seems
+      ;; to not really be supported by Honey SQL 2, so hack around it for now. See upstream issue
+      ;; https://github.com/seancorfield/honeysql/issues/456
+      (binding [sql/*dialect*      (sql/get-dialect dialect)
+                sql/*quoted*       true
+                sql/*quoted-snake* false]
+        (sql/format-expr honeysql-form {:nested true, :inline driver/*compile-with-inline-parameters*})))))
 
 (defn format-honeysql
   "Compile a `honeysql-form` to a vector of `[sql & params]`. `honeysql-form` can either be a map (for a top-level
   query), or some sort of expression."
-  ([driver honeysql-form]
-   (format-honeysql nil (quote-style driver) honeysql-form))
-
-  ;; TODO -- get rid of this unused param without breaking things.
-  ([_version dialect honeysql-form]
-   (try
-     (format-honeysql-2 dialect honeysql-form)
-     (catch Throwable e
-       (try
-         (log/error e (u/format-color :red
-                                      "Invalid HoneySQL form: %s\n%s"
-                                      (ex-message e) (u/pprint-to-str honeysql-form)))
-         (finally
-           (throw (ex-info (tru "Error compiling HoneySQL form: {0}" (ex-message e))
-                           {:dialect dialect
-                            :form    honeysql-form
-                            :type    qp.error-type/driver}
-                           e))))))))
+  [driver honeysql-form]
+  (let [dialect (quote-style driver)]
+    (try
+      (format-honeysql-2 driver dialect honeysql-form)
+      (catch Throwable e
+        (try
+          (log/error e (u/format-color :red
+                                       "Invalid HoneySQL form: %s\n%s"
+                                       (ex-message e) (u/pprint-to-str honeysql-form)))
+          (finally
+            (throw (ex-info (tru "Error compiling HoneySQL form: {0}" (ex-message e))
+                            {:dialect dialect
+                             :form    honeysql-form
+                             :type    qp.error-type/driver}
+                            e))))))))
 
 (defn- default-select [driver {[from] :from, :as _honeysql-form}]
   (let [table-identifier (if (sequential? from)
@@ -1633,7 +1705,7 @@
       add/add-alias-info
       nest-query/nest-expressions))
 
-(mu/defn mbql->honeysql :- :map
+(mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver               :- :keyword
    {inner-query :query} :- :map]

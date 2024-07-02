@@ -6,8 +6,8 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -68,7 +68,7 @@
 
   Object
   (->inline [obj]
-    [:raw (unprepare/unprepare-value :sparksql obj)]))
+    [:raw (sql.qp/inline-value :sparksql obj)]))
 
 (defmethod ddl/insert-rows-honeysql-form :sparksql
   [driver table-identifier row-or-rows]

@@ -151,7 +151,7 @@
         (is (= (str "SELECT COUNT(*) AS \"count\" "
                     "FROM \"default\".\"test_data_venues\" "
                     "WHERE \"default\".\"test_data_venues\".\"name\" = 'wow'")
-               (:query (qp.compile/compile-and-splice-parameters query))
+               (:query (qp.compile/compile-with-inline-parameters query))
                (-> (qp/process-query query) :data :native_form :query)))))))
 
 (deftest ^:parallel connection-tests

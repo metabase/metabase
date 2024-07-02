@@ -9,7 +9,6 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -166,8 +165,8 @@
 ;; So go ahead and deparameterize all the statements for now.
 (defmethod ddl/insert-rows-ddl-statements :athena
   [driver table-identifier row-or-rows]
-  (for [sql+args ((get-method ddl/insert-rows-ddl-statements :sql-jdbc/test-extensions) driver table-identifier row-or-rows)]
-    (unprepare/unprepare driver sql+args)))
+  (binding [driver/*compile-with-inline-parameters* true]
+    ((get-method ddl/insert-rows-ddl-statements :sql-jdbc/test-extensions) driver table-identifier row-or-rows)))
 
 (doseq [[base-type sql-type] {:type/BigInteger     "BIGINT"
                               :type/Boolean        "BOOLEAN"

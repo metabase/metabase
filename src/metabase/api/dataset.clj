@@ -172,7 +172,7 @@
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [driver (driver.u/database->driver database)
           prettify (partial driver/prettify-native-form driver)
-          compiled (qp.compile/compile-and-splice-parameters query)]
+          compiled (qp.compile/compile-with-inline-parameters query)]
       (cond-> compiled
         (not (false? pretty)) (update :query prettify)))))
 

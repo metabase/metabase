@@ -15,7 +15,6 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
@@ -159,16 +158,20 @@
 ;; bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)
 (defmethod driver/execute-reducible-query :sparksql
   [driver {{sql :query, :keys [params], :as inner-query} :native, :as outer-query} context respond]
+  (assert (empty? params) "Spark SQL does not support parameterized JDBC queries.")
   (let [inner-query (-> (assoc inner-query
-                               :remark (qp.util/query->remark :sparksql outer-query)
-                               :query  (if (seq params)
-                                         (binding [hive-like/*param-splice-style* :paranoid]
-                                           (unprepare/unprepare driver (cons sql params)))
-                                         sql)
+                               :remark   (qp.util/query->remark :sparksql outer-query)
+                               :query    sql
                                :max-rows (mbql.u/query->max-rows-limit outer-query))
                         (dissoc :params))
         query       (assoc outer-query :native inner-query)]
     ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond)))
+
+(defmethod driver/mbql->native :sparksql
+  [driver query]
+  (binding [driver/*compile-with-inline-parameters* true
+            hive-like/*inline-param-style*          :paranoid]
+    ((get-method driver/mbql->native :hive-like) driver query)))
 
 ;; 1.  SparkSQL doesn't support `.supportsTransactionIsolationLevel`
 ;; 2.  SparkSQL doesn't support session timezones (at least our driver doesn't support it)

@@ -2,10 +2,10 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -187,8 +187,8 @@
 ;; statements for now.
 (defmethod ddl/insert-rows-ddl-statements :snowflake
   [driver table-identifier row-or-rows]
-  (for [sql+args ((get-method ddl/insert-rows-ddl-statements :sql-jdbc/test-extensions) driver table-identifier row-or-rows)]
-    (unprepare/unprepare driver sql+args)))
+  (binding [driver/*compile-with-inline-parameters* true]
+    ((get-method ddl/insert-rows-ddl-statements :sql-jdbc/test-extensions) driver table-identifier row-or-rows)))
 
 (defmethod execute/execute-sql! :snowflake
   [& args]

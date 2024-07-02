@@ -11,7 +11,7 @@
   "Create a data-oriented summary of a question as input to an LLM for summarization."
   [{:keys [display visualization_settings dataset_query result_metadata]}]
   (let [visualization_settings (u/remove-nils visualization_settings)
-        {:keys [query]} (qp.compile/compile-and-splice-parameters dataset_query)]
+        {:keys [query]} (qp.compile/compile-with-inline-parameters dataset_query)]
     (cond->
       {:sql_query           query
        :display_type        display
