@@ -350,7 +350,4 @@
 (defmethod tx/native-query-with-card-template-tag :sql
   [_driver card-template-tag-name]
   (let [source-table-name (u/lower-case-en (u.random/random-name))]
-    (format "WITH %s AS {{%s}} SELECT * FROM %s"
-            source-table-name
-            card-template-tag-name
-            source-table-name)))
+    (format "SELECT * FROM {{%s}} %s" card-template-tag-name source-table-name)))
