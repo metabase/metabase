@@ -33,6 +33,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import type { StoreDashcard } from "metabase-types/store";
+import { useTrackDashboardRenderEvent } from "metabase/instrumentation";
 
 import { DashCardRoot } from "./DashCard.styled";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
@@ -112,6 +113,7 @@ function DashCardInner({
   onUpdateVisualizationSettings,
   onReplaceAllVisualizationSettings,
 }: DashCardProps) {
+  useTrackDashboardRenderEvent("dashcard-rendered");
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
   );

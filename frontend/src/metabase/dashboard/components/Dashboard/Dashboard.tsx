@@ -64,6 +64,7 @@ import {
   DashboardEmptyState,
   DashboardEmptyStateWithoutAddPrompt,
 } from "./DashboardEmptyState/DashboardEmptyState";
+import { useTrackDashboardRenderEvent } from "metabase/instrumentation";
 
 export type DashboardProps = {
   route: Route;
@@ -311,6 +312,8 @@ function Dashboard(props: DashboardProps) {
       setErrorPage,
     ],
   );
+
+  useTrackDashboardRenderEvent("dashboard-rendered");
 
   useEffect(() => {
     const hasDashboardChanged = dashboardId !== previousDashboardId;
