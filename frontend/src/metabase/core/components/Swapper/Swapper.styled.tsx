@@ -5,6 +5,7 @@ export interface SwapperElementProps {
 }
 
 export const SwapperRoot = styled.div`
+  line-height: 0;
   position: relative;
 `;
 
