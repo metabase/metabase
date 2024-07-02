@@ -76,15 +76,11 @@
   ([_model pk]
    (if (should-read-audit-db? pk)
      false
-     (and (= :unrestricted (data-perms/full-db-permission-for-user
-                            api/*current-user-id*
-                            :perms/view-data
-                            pk))
-          (contains? #{:query-builder :query-builder-and-native}
-                    (data-perms/most-permissive-database-permission-for-user
-                     api/*current-user-id*
-                     :perms/create-queries
-                     pk))))))
+     (contains? #{:query-builder :query-builder-and-native}
+                (data-perms/most-permissive-database-permission-for-user
+                 api/*current-user-id*
+                 :perms/create-queries
+                 pk)))))
 
 (defenterprise current-user-can-write-db?
   "OSS implementation. Returns a boolean whether the current user can write the given field."

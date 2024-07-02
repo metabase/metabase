@@ -174,9 +174,9 @@
                           :from     [:report_card]
                           :where    (into [:and
                                            [:not= :result_metadata nil]
-                                           [:= :archived false]
+                                           [:= :archived false
                                            ;; always return metrics for now
-                                                  [:in :type [(u/qualified-name card-type) "metric"]]
+                                                  [:in :type [(u/qualified-name card-type) "metric"]]]
                                            [:in :database_id ids-of-dbs-that-support-source-queries]
                                            (collection/visible-collection-ids->honeysql-filter-clause
                                             (collection/permissions-set->visible-collection-ids
@@ -1096,14 +1096,11 @@
   at least some of its tables?)"
   [database-id schema-name]
   (or
-   (and (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id*
-                                                                 :perms/view-data
-                                                                 database-id))
-        (contains? #{:query-builder :query-builder-and-native}
-                   (data-perms/schema-permission-for-user api/*current-user-id*
-                                                          :perms/create-queries
-                                                          database-id
-                                                          schema-name)))
+   (contains? #{:query-builder :query-builder-and-native}
+              (data-perms/schema-permission-for-user api/*current-user-id*
+                                                     :perms/create-queries
+                                                     database-id
+                                                     schema-name))
    (current-user-can-read-schema? database-id schema-name)))
 
 (api/defendpoint GET "/:id/syncable_schemas"
