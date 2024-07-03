@@ -37,14 +37,15 @@
    parameter-id :- ms/NonBlankString
    value]
   (if value
-    (or (pos? (t2/update! :model/UserParameterValue {:user_id      user-id
-                                                     :dashboard_id dashboard-id
-                                                     :parameter_id parameter-id}
-                          {:value value}))
-        (t2/insert! :model/UserParameterValue {:user_id      user-id
-                                               :dashboard_id dashboard-id
-                                               :parameter_id parameter-id
-                                               :value        value}))
+    (t2/with-transaction [_conn]
+        (or (pos? (t2/update! :model/UserParameterValue {:user_id      user-id
+                                                         :dashboard_id dashboard-id
+                                                         :parameter_id parameter-id}
+                              {:value value}))
+            (t2/insert! :model/UserParameterValue {:user_id      user-id
+                                                   :dashboard_id dashboard-id
+                                                   :parameter_id parameter-id
+                                                   :value        value})))
     (t2/delete! :model/UserParameterValue
                 :user_id      user-id
                 :dashboard_id dashboard-id
