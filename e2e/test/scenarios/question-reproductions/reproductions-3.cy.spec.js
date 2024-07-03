@@ -1593,7 +1593,7 @@ describe.skip("issue 44974", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not be possible to join with a question from recents which is not in the same database (metabase#44974)", () => {
+  it("entity picker should not offer to join with a table or a question from a different database (metabase#44974)", () => {
     withDatabase(PG_DB_ID, ({ PEOPLE_ID }) => {
       createQuestion(
         {
