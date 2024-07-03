@@ -3,7 +3,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   commandPalette,
-  commandPaletteButton,
+  commandPaletteSearch,
   restore,
   visualize,
   openOrdersTable,
@@ -771,7 +771,7 @@ describe("issue 43216", () => {
     saveQuestion("Target question");
 
     cy.log("Update source question");
-    commandPaletteButton().click();
+    commandPaletteSearch("Source question", false);
     commandPalette().findByText("Source question").click();
     cy.findByTestId("native-query-editor-container")
       .findByText("Open Editor")
@@ -780,7 +780,7 @@ describe("issue 43216", () => {
     saveSavedQuestion();
 
     cy.log("Assert updated metadata in target question");
-    commandPaletteButton().click();
+    commandPaletteSearch("Target question", false);
     commandPalette().findByText("Target question").click();
     cy.findAllByTestId("header-cell").eq(3).should("have.text", "D");
     openNotebook();
