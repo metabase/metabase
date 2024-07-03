@@ -39,10 +39,6 @@ function shouldHideDescription(width) {
  * Using non-empty href will ensure that a focusable link is rendered.
  * We need a focusable element to handle onFocus.
  * (Using a div with tabIndex={0} breaks the sequence of focusable elements)
- *
- * All this is an optimization for computing the href, which uses getNewCardUrl
- * that makes a few MLv2 calls, which are expensive. It's a performance issue
- * on dashboards that have hundreds of dashcards - hence this lazy computation.
  */
 const HREF_PLACEHOLDER = "#";
 
@@ -57,6 +53,11 @@ const LegendCaption = ({
   width,
 }) => {
   const store = useStore();
+  /*
+   * Optimization: lazy computing the href, which uses getNewCardUrl,
+   * which makes a few MLv2 calls, which are expensive. It's a performance issue
+   * on dashboards that have hundreds of dashcards.
+   */
   const [href, setHref] = useState(getHref ? HREF_PLACEHOLDER : undefined);
 
   const handleFocus = useCallback(() => {
