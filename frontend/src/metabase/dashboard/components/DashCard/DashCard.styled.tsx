@@ -43,7 +43,7 @@ export const DashCardRoot = styled.div<DashCardRootProps>`
 
   &.${SAVING_DOM_IMAGE_CLASS} {
     border-radius: 0;
-    border: "none";
+    border: none;
   }
 `;
 
