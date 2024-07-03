@@ -1,3 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
+import { ActionIcon } from "@mantine/core";
+
 import { Flex, Icon, Menu, Text } from "metabase/ui";
 
 interface VisualizerAxisProps {
@@ -18,17 +21,28 @@ export function VisualizerAxis({
     onColumnsChange(nextColumns);
   };
 
+  const handleColumnAdd = (column: string) => {
+    const nextColumns = [...columns, column];
+    onColumnsChange(nextColumns);
+  };
+
   const flexProps =
     direction === "vertical"
       ? {
-          pos: "relative",
           w: "16px",
           h: "100%",
         }
       : { w: "100%" };
 
   return (
-    <Flex {...flexProps} justify="center" align="center" bg="bg-light">
+    <Flex
+      {...flexProps}
+      pos="relative"
+      justify="center"
+      align="center"
+      gap="md"
+      bg="bg-light"
+    >
       {columns.map(column => (
         <ColumnPicker
           key={column}
@@ -38,6 +52,12 @@ export function VisualizerAxis({
           onChange={nextColumn => handleColumnChange(column, nextColumn)}
         />
       ))}
+      <AddColumnButton
+        direction={direction}
+        columns={columns}
+        columnOptions={columnOptions}
+        onAddColumn={handleColumnAdd}
+      />
     </Flex>
   );
 }
@@ -85,6 +105,47 @@ function ColumnPicker({
             key={option.value}
             value={option.value}
             onClick={() => onChange(option.value)}
+          >
+            {option.label}
+          </Menu.Item>
+        ))}
+      </Menu.Dropdown>
+    </Menu>
+  );
+}
+
+interface AddColumnButtonProps {
+  direction?: "horizontal" | "vertical";
+  columns: string[];
+  columnOptions: Array<{ label: string; value: string }>;
+  onAddColumn: (column: string) => void;
+}
+
+function AddColumnButton({
+  direction = "horizontal",
+  columns,
+  columnOptions,
+  onAddColumn,
+}: AddColumnButtonProps) {
+  const positionAttr = direction === "vertical" ? "top" : "right";
+
+  const filteredOptions = columnOptions.filter(
+    option => !columns.includes(option.value),
+  );
+
+  return (
+    <Menu>
+      <Menu.Target>
+        <ActionIcon pos="absolute" style={{ [positionAttr]: 0 }}>
+          <Icon name="add" />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown>
+        {filteredOptions.map(option => (
+          <Menu.Item
+            key={option.value}
+            value={option.value}
+            onClick={() => onAddColumn(option.value)}
           >
             {option.label}
           </Menu.Item>
