@@ -52,7 +52,6 @@ const LegendCaption = ({
   onSelectTitle,
   width,
 }) => {
-  const store = useStore();
   /*
    * Optimization: lazy computing the href on title focus & mouseenter only.
    * Href computation uses getNewCardUrl, which makes a few MLv2 calls,
@@ -62,6 +61,7 @@ const LegendCaption = ({
    * potentially affect the href).
    */
   const [href, setHref] = useState(getHref ? HREF_PLACEHOLDER : undefined);
+  const store = useStore();
 
   const handleFocus = useCallback(() => {
     if (getHref) {
