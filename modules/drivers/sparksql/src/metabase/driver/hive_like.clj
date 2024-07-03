@@ -11,7 +11,6 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x])
@@ -226,31 +225,31 @@
   [_driver _unit x y]
   [:- [:unix_timestamp y] [:unix_timestamp x]])
 
-(def ^:dynamic *param-splice-style*
-  "How we should splice params into SQL (i.e. 'unprepare' the SQL). Either `:friendly` (the default) or `:paranoid`.
-  `:friendly` makes a best-effort attempt to escape strings and generate SQL that is nice to look at, but should not
-  be considered safe against all SQL injection -- use this for 'convert to SQL' functionality. `:paranoid` hex-encodes
-  strings so SQL injection is impossible; this isn't nice to look at, so use this for actually running a query."
+(def ^:dynamic *inline-param-style*
+  "How we should include inline params when compiling SQL. `:friendly` (the default) or `:paranoid`. `:friendly` makes a
+  best-effort attempt to escape strings and generate SQL that is nice to look at, but should not be considered safe
+  against all SQL injection -- use this for 'convert to SQL' functionality. `:paranoid` hex-encodes strings so SQL
+  injection is impossible; this isn't nice to look at, so use this for actually running a query."
   :friendly)
 
-(defmethod unprepare/unprepare-value [:hive-like String]
-  [_ ^String s]
+(defmethod sql.qp/inline-value [:hive-like String]
+  [_driver ^String s]
   ;; Because Spark SQL doesn't support parameterized queries (e.g. `?`) convert the entire String to hex and decode.
   ;; e.g. encode `abc` as `decode(unhex('616263'), 'utf-8')` to prevent SQL injection
-  (case *param-splice-style*
+  (case *inline-param-style*
     :friendly (str \' (sql.u/escape-sql s :backslashes) \')
     :paranoid (format "decode(unhex('%s'), 'utf-8')" (codecs/bytes->hex (.getBytes s "UTF-8")))))
 
 ;; Hive/Spark SQL doesn't seem to like DATEs so convert it to a DATETIME first
-(defmethod unprepare/unprepare-value [:hive-like LocalDate]
+(defmethod sql.qp/inline-value [:hive-like LocalDate]
   [driver t]
-  (unprepare/unprepare-value driver (t/local-date-time t (t/local-time 0))))
+  (sql.qp/inline-value driver (t/local-date-time t (t/local-time 0))))
 
-(defmethod unprepare/unprepare-value [:hive-like OffsetDateTime]
+(defmethod sql.qp/inline-value [:hive-like OffsetDateTime]
   [_ t]
   (format "to_utc_timestamp('%s', '%s')" (u.date/format-sql (t/local-date-time t)) (t/zone-offset t)))
 
-(defmethod unprepare/unprepare-value [:hive-like ZonedDateTime]
+(defmethod sql.qp/inline-value [:hive-like ZonedDateTime]
   [_ t]
   (format "to_utc_timestamp('%s', '%s')" (u.date/format-sql (t/local-date-time t)) (t/zone-id t)))
 

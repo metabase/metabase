@@ -193,8 +193,8 @@
     (testing "Multiple values"
       (mt/dataset airports
         (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX')"
-                :params nil}
-               (qp.compile/compile-and-splice-parameters
+                :params []}
+               (qp.compile/compile-with-inline-parameters
                 {:type       :native
                  :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
                               :template-tags {"country"
@@ -212,8 +212,8 @@
   (testing "Overriding the widget type in parameters should drop case-senstive option when incompatible"
     (mt/dataset airports
       (is (= {:query  "SELECT NAME FROM COUNTRY WHERE (\"PUBLIC\".\"COUNTRY\".\"NAME\" = 'US')"
-              :params nil}
-             (qp.compile/compile-and-splice-parameters
+              :params []}
+             (qp.compile/compile-with-inline-parameters
                {:type       :native
                 :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
                              :template-tags {"country"
@@ -226,12 +226,14 @@
                 :database   (mt/id)
                 :parameters [{:type   :string/=
                               :target [:dimension [:template-tag "country"]]
-                              :value  ["US"]}]})))))
+                              :value  ["US"]}]}))))))
+
+(deftest ^:parallel native-with-param-options-different-than-tag-type-test-2
   (testing "Overriding the widget type in parameters should not drop case-senstive option when compatible"
     (mt/dataset airports
       (is (= {:query  "SELECT NAME FROM COUNTRY WHERE (LOWER(\"PUBLIC\".\"COUNTRY\".\"NAME\") LIKE '%us')"
-              :params nil}
-             (qp.compile/compile-and-splice-parameters
+              :params []}
+             (qp.compile/compile-with-inline-parameters
                {:type       :native
                 :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
                              :template-tags {"country"
@@ -251,7 +253,7 @@
     (testing "Comma-separated numbers"
       (is (= {:query  "SELECT * FROM VENUES WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
               :params []}
-             (qp.compile/compile-and-splice-parameters
+             (qp.compile/compile-with-inline-parameters
               {:type       :native
                :native     {:query         "SELECT * FROM VENUES WHERE {{price}}"
                             :template-tags {"price"
@@ -271,7 +273,7 @@
       ;; this is an undocumented feature but lots of people rely on it, so we want it to continue working.
       (is (= {:query "SELECT * FROM VENUES WHERE price IN (1, 2, 3)"
               :params []}
-             (qp.compile/compile-and-splice-parameters
+             (qp.compile/compile-with-inline-parameters
               {:type :native
                :native {:query "SELECT * FROM VENUES WHERE price IN ({{number_comma}})"
                         :template-tags {"number_comma"
@@ -289,7 +291,7 @@
       ;; this is an undocumented feature but lots of people rely on it, so we want it to continue working.
       (is (= {:query "SELECT * FROM VENUES WHERE price IN (1, 2)"
               :params []}
-             (qp.compile/compile-and-splice-parameters
+             (qp.compile/compile-with-inline-parameters
               {:type :native
                :native {:query "SELECT * FROM VENUES WHERE price IN ({{number_comma}})"
                         :template-tags {"number_comma"
@@ -306,28 +308,28 @@
   (testing "Params in SQL comments are ignored"
     (testing "Single-line comments"
       (mt/dataset airports
-                  (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX') -- {{ignoreme}}"
-                          :params nil}
-                         (qp.compile/compile-and-splice-parameters
-                          {:type       :native
-                           :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}} -- {{ignoreme}}"
-                                        :template-tags {"country"
-                                                        {:name         "country"
-                                                         :display-name "Country"
-                                                         :type         :dimension
-                                                         :dimension    [:field (mt/id :country :name) nil]
-                                                         :widget-type  :category}}}
-                           :database   (mt/id)
-                           :parameters [{:type   :location/country
-                                         :target [:dimension [:template-tag "country"]]
-                                         :value  ["US" "MX"]}]})))))))
+        (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX') -- {{ignoreme}}"
+                :params []}
+               (qp.compile/compile-with-inline-parameters
+                {:type       :native
+                 :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}} -- {{ignoreme}}"
+                              :template-tags {"country"
+                                              {:name         "country"
+                                               :display-name "Country"
+                                               :type         :dimension
+                                               :dimension    [:field (mt/id :country :name) nil]
+                                               :widget-type  :category}}}
+                 :database   (mt/id)
+                 :parameters [{:type   :location/country
+                               :target [:dimension [:template-tag "country"]]
+                               :value  ["US" "MX"]}]})))))))
 
 (deftest ^:parallel params-in-comments-test-2
   (testing "Params in SQL comments are ignored"
     (testing "Multi-line comments"
       (is (= {:query  "SELECT * FROM VENUES WHERE\n/*\n{{ignoreme}}\n*/ \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
               :params []}
-             (qp.compile/compile-and-splice-parameters
+             (qp.compile/compile-with-inline-parameters
               {:type       :native
                :native     {:query         "SELECT * FROM VENUES WHERE\n/*\n{{ignoreme}}\n*/ {{price}}"
                             :template-tags {"price"
@@ -498,7 +500,7 @@
     (mt/dataset test-data
       (is (= {:query  "SELECT NOW() - INTERVAL '30 DAYS'"
               :params []}
-             (qp.compile/compile-and-splice-parameters
+             (qp.compile/compile-with-inline-parameters
               {:type       :native
                :native     {:query         "SELECT NOW() - INTERVAL '{{n}} DAYS'"
                             :template-tags {"n"
