@@ -107,4 +107,7 @@
                                                                    ;; defined in sets. changing keys will change the
                                                                    ;; order in the set implementation. (and position depends on database-position)
                                                                    (m/filter-vals some? (dissoc % :id :database-position :position))))]
-             (remove-ids-and-nil-vals (#'fields.our-metadata/our-metadata (t2/select-one Table :id transactions-table-id))))))))
+             (remove-ids-and-nil-vals (#'fields.our-metadata/our-metadata (t2/select-one Table :id transactions-table-id))))))
+        ;; Clean up nested fields first to avoid FK constraint violation
+        (let [table-ids (t2/select-pks-vec Table :db_id (u/the-id db))]
+          (t2/delete! :model/Field :parent_id [:not= nil] :table_id [:in table-ids]))))

@@ -6503,6 +6503,27 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
+      id: v49.2024-06-27T00:00:01
+      author: calherries
+      comment: Make indices on metabase_field.name case-sensitive for MySQL
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE metabase_field MODIFY
+              name VARCHAR(254)
+              CHARACTER SET utf8mb4
+              COLLATE utf8mb4_bin;
+      rollback:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE metabase_field MODIFY
+              name VARCHAR(254)
+              CHARACTER SET utf8mb4
+              COLLATE utf8mb4_unicode_ci;
+
+  - changeSet:
       id: v49.2024-06-27T00:00:02
       author: calherries
       comment: Populate metabase_field.is_defective_duplicate
@@ -6541,14 +6562,13 @@ databaseChangeLog:
                       SELECT
                           mf.id,
                           ROW_NUMBER() OVER (
-                              PARTITION BY mf.table_id, mf.name
+                              PARTITION BY mf.table_id, mf.name, mf.parent_id
                               ORDER BY
                                   CASE WHEN mf.active THEN 0 ELSE 1 END,
                                   CASE WHEN mf.nfc_path IS NULL THEN 0 ELSE 1 END,
                                   mf.created_at
                           ) AS rn
                       FROM metabase_field mf
-                      WHERE mf.parent_id IS NULL
                   ) x
                   WHERE x.rn > 1
               );
@@ -6558,7 +6578,7 @@ databaseChangeLog:
   #
   # 1. `idx_uniq_field_table_id_parent_id_name` is a unique constraint on (name, table_id, parent_id)
   # Since NULL <> NULL, it only applies a constraint on fields where parent_id IS NOT NULL.
-  # This constraint doesn't need modifying because (parent_id IS NOT NULL) implies (is_defective_duplicate = FALSE).
+  # Worse, the constraint was not case-sensitive for MySQL.
 
   # 2. `idx_uniq_field_table_id_parent_id_name_2col` is a Postgres-only unique constraint on
   # `(name, table_id) WHERE parent_id IS NULL`. There was no equivalent constraint for H2 or MySQL because only
@@ -6566,6 +6586,20 @@ databaseChangeLog:
   # MySQL by adding a constraint that uses a generated column to handle NULL parent_id values.
   #
   # At the same time, we exclude fields where is_defective_duplicate=TRUE from the above constraints.
+
+  - changeSet:
+      id: v49.2024-06-27T00:00:04
+      author: calherries
+      comment: replace idx_uniq_field_table_id_parent_id_name_2col for Postgres
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE metabase_field DROP CONSTRAINT idx_uniq_field_table_id_parent_id_name;
+              CREATE UNIQUE INDEX idx_uniq_field_table_id_parent_id_name
+                ON "metabase_field" ("table_id", "name")
+                WHERE "parent_id" IS NULL AND "is_defective_duplicate" = FALSE;
+      rollback: # No rollback since we want to allow downgrades to 48 to succeed
 
   - changeSet:
       id: v49.2024-06-27T00:00:04
@@ -6605,7 +6639,7 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-06-27T00:00:06
       author: calherries
-      comment: Add fk_field_parent_ref_field_id constraint without ON DELETE RESTRICT
+      comment: Add fk_field_parent_ref_field_id constraint without ON DELETE CASCADE
       changes:
         - addForeignKeyConstraint:
             baseTableName: metabase_field
