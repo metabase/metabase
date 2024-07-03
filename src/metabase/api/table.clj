@@ -334,7 +334,7 @@
     (api/read-check table))
   (let [db (t2/select-one Database :id (:db_id table))]
     (-> table
-        (t2/hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
+        (t2/hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values :name_field] :segments :metrics)
         (m/dissoc-in [:db :details])
         (assoc-dimension-options db)
         format-fields-for-response
@@ -353,7 +353,7 @@
                       (filter mi/can-read?))
           tables (t2/hydrate tables
                              :db
-                             [:fields [:target :has_field_values] :dimensions :has_field_values]
+                             [:fields [:target :has_field_values] :dimensions :has_field_values :name_field]
                              :segments
                              :metrics)
           dbs    (when (seq tables)

@@ -788,10 +788,8 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column]
   (or
-   (when (lib.types.isa/primary-key? column)
-     (let [field (lib.metadata/field metadata-providerable (:id column))
-           table-fields (lib.metadata/fields metadata-providerable (:table-id field))]
-           (m/find-first lib.types.isa/entity-name? table-fields)))
+    (when-let [name-field-id (:name_field column)]
+      (lib.metadata/field metadata-providerable name-field-id))
     (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
       (lib.metadata/field metadata-providerable remap-field-id))))
 
