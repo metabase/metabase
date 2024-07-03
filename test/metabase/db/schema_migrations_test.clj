@@ -2195,8 +2195,9 @@
 
 (deftest populate-is-defective-duplicate-test
   (testing "Migration v49.2024-06-27T00:00:02 populates is_defective_duplicate correctly"
+    ;; TODO: test postgres too on rollback
     (mt/test-drivers #{:h2 :mysql}
-      (impl/test-migrations ["v49.2024-06-27T00:00:02" "v49.2024-06-27T00:00:09"] [migrate!]
+      (impl/test-migrations ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"] [migrate!]
         (let [db-id (t2/insert-returning-pk! (t2/table-name Database)
                                              {:details    "{}"
                                               :created_at :%now
@@ -2272,7 +2273,7 @@
 
 (deftest is-defective-duplicate-constraint-test
   (testing "Migrations for H2 and MySQL to prevent duplicate fields"
-    (impl/test-migrations ["v49.2024-06-27T00:00:02" "v49.2024-06-27T00:00:09"] [migrate!]
+    (impl/test-migrations ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"] [migrate!]
       (let [db-id (t2/insert-returning-pk! (t2/table-name Database)
                                            {:details    "{}"
                                             :created_at :%now
@@ -2302,7 +2303,10 @@
                                    ; A field is not defective if they have non-unique (table, name) but different parent_id
                                    [false #(field! {:name "F1", :active true, :parent_id (:id field-no-parent-1)})]
                                    [false #(field! {:name "F1", :active true, :parent_id (:id field-no-parent-2)})]]
-            fields-to-clean-up    (atom [])]
+            fields-to-clean-up    (atom [])
+            clean-up-fields       (fn []
+                                    (t2/delete! (t2/table-name Field) :id [:in (map :id @fields-to-clean-up)])
+                                    (reset! fields-to-clean-up []))]
         (if (= driver/*driver* :postgres)
           (testing "Before the migrations, Postgres does not allow fields to have the same table, name, but different parent_id"
             (doseq [[defective? field-thunk] defective+field-thunk]
@@ -2318,8 +2322,7 @@
                 (swap! fields-to-clean-up conj field)))))
         (migrate!)
         ;; clean up the fields to test adding them again after the migrations
-        (t2/delete! (t2/table-name Field) :id [:in (map :id @fields-to-clean-up)])
-        (reset! fields-to-clean-up [])
+        (clean-up-fields)
         (testing "After the migrations, only allow fields that have the same table, name, but different parent_id"
           (doseq [[defective? field-thunk] defective+field-thunk]
             (if defective?
@@ -2332,22 +2335,12 @@
             (migrate! :down 48))
           ;; clean up the fields to test adding them again after rolling back the migrations
           (t2/delete! (t2/table-name Field) :id [:in (map :id @fields-to-clean-up)])
-          (reset! fields-to-clean-up [])
           (testing "After rolling back the migrations, all fields are allowed"
+            ;; Postgres' unique index is removed on rollback, so we can add defective fields
             ;; This is needed to allow load-from-h2 to Postgres and then downgrading to work
-            (if (= driver/*driver* :postgres)
-              (testing "Before the migrations, Postgres does not allow fields to have the same table, name, but different parent_id"
-                (doseq [[defective? field-thunk] defective+field-thunk]
-                  (if defective?
-                    (is (thrown? Exception (field-thunk)))
-                    (let [field (field-thunk)]
-                      (is (some? field))
-                      (swap! fields-to-clean-up conj field)))))
-              (testing "Before the migrations, all fields are allowed"
-                (doseq [[_ field-thunk] defective+field-thunk]
-                  (let [field (field-thunk)]
-                    (is (some? field))
-                    (swap! fields-to-clean-up conj field))))))
+            (testing "After migrating down, all fields are allowed"
+              (doseq [[_ field-thunk] defective+field-thunk]
+                (is (some? (field-thunk))))))
           (testing "Migrate up again succeeds"
             (migrate!)))))))
 
@@ -2362,7 +2355,7 @@
       (mt/with-driver :h2
         (impl/test-migrations-for-driver!
          :h2
-         ["v49.2024-06-27T00:00:02" "v49.2024-06-27T00:00:09"]
+         ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"]
          (fn [migrate!]
            (let [db-id (t2/insert-returning-pk! (t2/table-name Database)
                                                 {:details    "{}"
