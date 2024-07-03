@@ -54,17 +54,10 @@
 
 (defmethod tx/dbdef->connection-details :h2
   [_driver context dbdef]
-  {:db (str "mem:" (tx/escaped-database-name dbdef)
-            (case context
-              ;; disable automatic closing of the Database so it doesn't get closed the second we close this connection.
-              ;; Can't do in `:db` mode because only admins are allowed to do it.
-              :server
-              ";DB_CLOSE_DELAY=-1"
-
-              ;; Return details with the GUEST user added so SQL queries are
-              ;; allowed.
-              :db
-              ";USER=GUEST;PASSWORD=guest"))})
+  {:db (str "mem:" (tx/escaped-database-name dbdef) (when (= context :db)
+                                                      ;; Return details with the GUEST user added so SQL queries are
+                                                      ;; allowed.
+                                                      ";USER=GUEST;PASSWORD=guest"))})
 
 (defmethod sql.tx/pk-sql-type :h2 [_] "BIGINT AUTO_INCREMENT")
 
@@ -97,7 +90,7 @@
 
 (defmethod ddl/drop-db-ddl-statements :h2
   [_driver _dbdef & _options]
-  ["SHUTDOWN;"])
+  nil)
 
 (defmethod tx/id-field-type :h2 [_] :type/BigInteger)
 
