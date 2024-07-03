@@ -21,6 +21,18 @@
   (:import
    (org.apache.poi.xssf.usermodel XSSFSheet)))
 
+(defn- card-download
+  [card-id export-format format-rows?]
+  (->> (format "card/%d/query/%s?format_rows=%s" card-id export-format format-rows?)
+       (mt/user-http-request :crowberto :post 200)
+       csv/read-csv))
+
+(defn- dashcard-download
+  [dashcard-id export-format format-rows?]
+  (->> (format "card/%d/query/%s?format_rows=%s" dashcard-id export-format format-rows?)
+       (mt/user-http-request :crowberto :post 200)
+       csv/read-csv))
+
 (set! *warn-on-reflection* true)
 
 (def ^:private pivot-rows-query
@@ -427,3 +439,17 @@
                     ["Widget" 0.0 3109.31]
                     [nil 1.0 11149.28]]
                  (take 6 data)))))))))
+
+(deftest ^:parallel dashcard-viz-settings-export-test
+  (testing "Dashcard visualization settings are respected in exports."
+    (testing "for csv"
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:display       :table
+                        :dataset_query {:database (mt/id)
+                                        :type     :query
+                                        :query    {:source-table (mt/id :orders)}}}]
+          (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" card-id))
+                            csv/read-csv)]
+            (is (= []
+                   (take 1 result)))))))))
