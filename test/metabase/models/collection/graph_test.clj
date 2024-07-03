@@ -473,7 +473,6 @@
         (let [group-id (:id (perms-group/all-users))
               audit-collection-id (:id (audit/default-audit-collection))]
           (perms/grant-collection-read-permissions! group-id temp-coll-id)
-          (def g (graph/graph-for-coll-id temp-coll-id))
           (is (= #{temp-coll-id}
                  (->> (graph/graph-for-coll-id temp-coll-id) :groups vals (mapcat keys) set)))
           (is (= nil
