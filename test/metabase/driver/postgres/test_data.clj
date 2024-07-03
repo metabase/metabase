@@ -243,15 +243,15 @@
     (log/infof "[%s] executing SQL in %s" driver filename)
     (execute-statements! driver connection (script->statements filename))))
 
-#_{:clj-kondo/ignore [:discouraged-var]}
+
 (mu/defmethod test.test-data/load-artifacts-method! :postgres
   [driver    :- ::test.test-data/driver
    artifacts :- ::test.test-data/artifacts]
   (log/infof "[%s] Executing statements against server..." driver)
-  (with-open [server-connection (jdbc/get-connection (spec/dbdef->spec driver :server {:database-name "test-data"}))]
+  (with-open [server-connection #_{:clj-kondo/ignore [:discouraged-var]} (jdbc/get-connection (spec/dbdef->spec driver :server {:database-name "test-data"}))]
     (doseq [artifact (:server artifacts)]
       (load-artifact! driver server-connection artifact)))
   (log/infof "[%s] Executing statements against database..." driver)
-  (with-open [db-connection (jdbc/get-connection (spec/dbdef->spec driver :db {:database-name "test-data"}))]
+  (with-open [db-connection #_{:clj-kondo/ignore [:discouraged-var]} (jdbc/get-connection (spec/dbdef->spec driver :db {:database-name "test-data"}))]
     (doseq [artifact (:db artifacts)]
       (load-artifact! driver db-connection artifact))))
