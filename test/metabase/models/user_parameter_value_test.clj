@@ -10,11 +10,11 @@
     (let [user-id        (mt/user->id :rasta)
           original-count (t2/count :model/UserParameterValue)
           param-name     (str (random-uuid))
-          value!         (fn
-                           ([] (->> param-name
-                                    (t2/select-one :model/UserParameterValue :user_id user-id :parameter_id)
-                                    :value))
-                           ([v] (upv/upsert! user-id dashboard-id param-name v)))]
+          value-fn       (fn value-fn []
+                           (->> param-name
+                                (t2/select-one :model/UserParameterValue :user_id user-id :parameter_id)
+                                :value))
+          value!         (fn value! [v] (upv/upsert! user-id dashboard-id param-name v))]
       (try
         ;; UserParameterValue stores `:user_id`, `:parameter_id`, and `:value`
         ;; The value is looked up per user and param-id, and is stored as a string in the app db.
@@ -29,16 +29,16 @@
             (testing (format "Upsert creates new user parameter value entry if the param_id user_id pair doesn't exist")
               (value! value-in)
               (is (= (inc original-count) (t2/count :model/UserParameterValue)))
-              (is (= value-out (value!))))
+              (is (= value-out (value-fn))))
 
             (testing "Upsert updates user parameter value entry if the param_id user_id pair already exists"
               (value! value-update)
               (is (= (inc original-count) (t2/count :model/UserParameterValue)))
-              (is (= value-update-out (value!))))
+              (is (= value-update-out (value-fn))))
 
             (testing "Upsert deletes user parameter value entry if value is `nil`."
               (value! nil)
               (is (= original-count (count (t2/select :model/UserParameterValue))))
-              (is (= nil (value!))))))
+              (is (= nil (value-fn))))))
         (finally
           (t2/delete! :model/UserParameterValue :parameter_id param-name))))))

@@ -429,24 +429,24 @@
           [Dashboard {dashboard-a-id :id} {:name             "Test Dashboard"
                                            :creator_id       (mt/user->id :crowberto)
                                            :embedding_params {:id "enabled"}
-                                           :parameters       [{:name "Id", :slug "id", :id "a", :type :id}]}
+                                           :parameters       [{:name "Name", :slug "name", :id "a" :type :string/contains}]}
            Dashboard {dashboard-b-id :id} {:name             "Test Dashboard"
                                            :creator_id       (mt/user->id :crowberto)
                                            :embedding_params {:id "enabled"}
-                                           :parameters       [{:name "Id", :slug "id", :id "a", :type :id}]}
+                                           :parameters       [{:name "Name", :slug "name", :id "a" :type :string/contains}]}
            Card {card-id :id} {:database_id   (mt/id)
                                :query_type    :native
                                :name          "test question"
                                :creator_id    (mt/user->id :crowberto)
                                :dataset_query {:type     :native
-                                               :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}}"
+                                               :native   {:query "SELECT COUNT(*) FROM people WHERE {{name}}"
                                                           :template-tags
-                                                          {"id" {:name         "id"
-                                                                 :display-name "Id"
-                                                                 :type         :dimension
-                                                                 :dimension    [:field (mt/id :people :id) nil]
-                                                                 :widget-type  :id
-                                                                 :default      nil}}}
+                                                          {"name" {:name         "Name"
+                                                                   :display-name "name"
+                                                                   :type         :dimension
+                                                                   :dimension    [:field (mt/id :people :name) nil]
+                                                                   :widget-type  :string/contains
+                                                                   :default      nil}}}
                                                :database (mt/id)}}
            DashboardCard {dashcard-a-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
                                               :card_id            card-id
