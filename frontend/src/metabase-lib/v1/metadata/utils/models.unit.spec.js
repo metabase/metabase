@@ -118,7 +118,7 @@ describe("data model utils", () => {
         expect(checkCanBeModel(question)).toBe(true);
       });
 
-      it("returns false if database does not support nested queries", () => {
+      it("returns true if database does not support nested queries", () => {
         const { ordersTable } = setup({ hasNestedQueriesSupport: false });
         const question = ordersTable.question();
         expect(checkCanBeModel(question)).toBe(true);
