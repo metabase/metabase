@@ -360,11 +360,44 @@
 
     (with-upload-table [table (create-upload-table! ...)]
       ...)"
-  {:style/indent 1}
+  {:style/indent :defn}
   [[table-binding create-table-expr] & body]
   `(with-uploads-enabled
      (mt/with-model-cleanup [:model/Table]
        (do-with-upload-table! ~create-table-expr (fn [~table-binding] ~@body)))))
+
+(deftest create-from-csv-display-name-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (let [test-names-match (fn [table expected]
+                             (is (= expected
+                                    (:display_name table)
+                                    (:name (table->card table)))))]
+      (testing "The table's display name and model's name is humanized from the CSV file name"
+        (let [csv-file-prefix "some_FILE-prefix"]
+          (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
+            (test-names-match table "Some File Prefix"))))
+      (testing "Unicode characters are preserved in the display name, even when the table name is slugified"
+        (let [csv-file-prefix "出色的"]
+          (with-redefs [upload/strictly-monotonic-now (constantly #t "2024-06-28T00:00:00")]
+            (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
+              (test-names-match table "出色的")
+              (is (= (ddl.i/format-name driver/*driver* "%e5%87%ba%e8%89%b2%e7%9a%84_20240628000000")
+                     (:name table)))))))
+      (testing "The names should be truncated to the right size"
+        ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
+        (let [max-bytes 50]
+          (with-redefs [; redef this because the UNIX filename limit is 255 bytes, so we can't test it in CI
+                        upload/max-bytes (constantly max-bytes)]
+            (doseq [c ["a" "出"]]
+              (let [long-csv-file-prefix (apply str (repeat (inc max-bytes) c))
+                    char-size            (count (.getBytes c "UTF-8"))]
+                (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix long-csv-file-prefix))]
+                  (testing "The card name should be truncated to max bytes with UTF-8 encoding"
+                    (is (= (str/capitalize (apply str (repeat (quot max-bytes char-size) c)))
+                           (:name (table->card table)))))
+                  (testing "The display name should be truncated to the max bytes with UTF-8 encoding"
+                    (is (= (str/capitalize (apply str (repeat (quot max-bytes char-size) c)))
+                           (:display_name table)))))))))))))
 
 (deftest create-from-csv-table-name-test
   (testing "Can upload two files with the same name"
@@ -375,11 +408,15 @@
           (with-upload-table!
             [table-2 (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
             (mt/with-current-user (mt/user->id :crowberto)
+              (testing "both tables have the same display name"
+                (is (= "Some File Prefix"
+                       (:display_name table-1)
+                       (:display_name table-2))
               (testing "tables are different between the two uploads"
                 (is (some? (:id table-1)))
                 (is (some? (:id table-2)))
                 (is (not= (:id table-1)
-                          (:id table-2)))))))))))
+                          (:id table-2)))))))))))))
 
 (defn- query [db-id source-table]
   (qp/process-query {:database db-id
@@ -1998,25 +2035,28 @@
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
-       (let [long-string (str (str/join (repeat 1000 "really_")) "long")]
-         ;; See https://github.com/metabase/metabase/issues/44725#issuecomment-2195780743 for context on why we have
-         ;; modified the test for now.
+       (let [long-string (str (str/join (repeat 1000 "really_")) "long")
+             header      (str (str "a_" long-string ",")
+                              (str "b_" long-string ",")
+                              (str "b_" long-string "_with_a"))]
          (with-upload-table!
            [table (create-from-csv-and-sync-with-defaults!
-                   :file (csv-file-with [(str (str "a_" long-string ",")
-                                              #_(str "b_" long-string ",")
-                                              (str "b_" long-string "_with_a"))
-                                         #_"a,b1,b2"
-                                         "a,b"]))]
+                   :file (csv-file-with [header
+                                         "a,b1,b2"]))]
            (testing "Table and Fields exist after sync"
              (testing "Check the data was uploaded into the table correctly"
                (let [column-names (column-names-for-table table)]
-                 (is (=  @#'upload/auto-pk-column-name (first column-names)))
-                 (is (= #_4 3 (count (distinct column-names))))
-                 (is (= 1 (count (filter #(str/starts-with? % "a_") column-names))))
-                 (is (= #_2 1 (count (filter #(str/starts-with? % "b_") column-names)))))))))))))
+                 (testing "We preserve names where possible"
+                   (let [header-names (->> (str/split header #",")
+                                           (map (partial #'upload/normalize-column-name driver/*driver*)))]
+                     (is (every? (set column-names) header-names))))
+                 (testing "We preserve prefixes where_possible"
+                   (is (= {"_mb_row_" 1
+                           "a_really" 1
+                           "b_really" 2}
+                          (frequencies (map #(subs % 0 8) column-names))))))))))))))
 
-(deftest append-with-really-long-names
+(deftest append-with-really-long-names-test
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
@@ -2039,9 +2079,7 @@
                       (map rest (rows-for-table table)))))
              (io/delete-file file))))))))
 
-;; For now we have chosen not to support this edge case,
-;; See https://github.com/metabase/metabase/issues/44725#issuecomment-2195780743 for more context
-#_(deftest append-with-really-long-names-that-duplicate-test
+(deftest append-with-really-long-names-that-duplicate-test
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
@@ -2065,28 +2103,10 @@
                       (map rest (rows-for-table table)))))
              (io/delete-file file))))))))
 
-;; See https://github.com/metabase/metabase/issues/44725#issuecomment-2195780743 for more context.
-(deftest table-with-really-long-names-that-duplicate-fail-somehow-test
-  (testing "Upload a CSV file with unique column names that get sanitized to the same string"
-    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-      (with-mysql-local-infile-on-and-off
-       (let [long-string  (str (str/join (repeat 1000 "really_")) "long")
-             header       (str (str "a_" long-string ",")
-                               (str "b_" long-string ",")
-                               (str "b_" long-string "_with_a"))
-             original-row "a,b1,b2"]
-         (try
-           (with-upload-table!
-             [table (create-from-csv-and-sync-with-defaults!
-                     :file (csv-file-with [header original-row]))]
+(driver/register! ::short-column-test-driver)
+(defmethod driver/column-name-length-limit ::short-column-test-driver [_] 10)
 
-             (testing "A table is created"
-               (is (seq (t2/select :model/Table :id (:id table)))))
-
-             (testing "But it is broken"
-               (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                     #"No fields found for table"
-                                     (column-names-for-table table)))))
-           (catch Exception _
-             (testing "Or, for some databases it (thankfully) just fails"
-               (is true)))))))))
+(deftest unique-long-column-names-test
+  (let [original ["αbcdεf"     "αbcdεfg"   "αbc_2_etc" "αbc_3_xyz"]
+        expected [:%CE%B1bcd%  :%_852c229f :%CE%B1bc_2 :%CE%B1bc_3]]
+    (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))))

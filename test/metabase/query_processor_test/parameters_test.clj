@@ -75,7 +75,7 @@
               (is (= 1
                      (count-with-params :users :last_login :date/single "2014-08-02T09:30Z" options))))))))))
 
-(deftest template-tag-generation-test
+(deftest ^:parallel template-tag-generation-test
   (testing "Generating template tags produces correct types for running process-query (#31252)"
     (t2.with-temp/with-temp
       [Card {card-id :id} {:type          :model
@@ -87,7 +87,8 @@
                    :type     :native
                    :native   {:query         q
                               :template-tags tt}})]
-        (is (some? res))))))
+        (is (=? {:status :completed}
+                res))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Field Filter Params                                               |
