@@ -41,15 +41,30 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private max-field-name-bytes
-  "This tracks the size of the metabase_field.name field, in bytes."
-  254)
+;; TODO: move these to a more appropriate namespace if they need to be reused
+(defmulti max-bytes
+  "This tracks the size of various text fields in bytes."
+  {:arglists '([model column])}
+  (fn [model _column] model))
+
+(defmethod max-bytes :model/Table [_ column]
+  (case column
+    :display_name 256
+    :name 256))
+
+(defmethod max-bytes :model/Field [_ column]
+  (case column
+    :name 254))
+
+(defmethod max-bytes :model/Card  [_ column]
+  (case column
+    :name 254))
 
 (def ^:private min-safe (fnil min Long/MAX_VALUE Long/MAX_VALUE))
 
 (defn- max-column-bytes [driver]
   (let [column-limit (some-> driver driver/column-name-length-limit)]
-    (min-safe column-limit max-field-name-bytes)))
+    (min-safe column-limit (max-bytes :model/Field :name))))
 
 (defn- normalize-column-name
   [driver raw-name]
@@ -110,7 +125,9 @@
         slugified-name               (or (u/slugify table-name) "")
         ;; since both the time-format and the slugified-name contain only ASCII characters, we can behave as if
         ;; [[driver/table-name-length-limit]] were defining a length in characters.
-        max-length                  (- (driver/table-name-length-limit driver) (count time-format))
+        max-length                  (- (min-safe (driver/table-name-length-limit driver)
+                                                 (max-bytes :model/Table :name))
+                                       (count time-format))
         acceptable-length           (min (count slugified-name) max-length)
         truncated-name-without-time (subs slugified-name 0 acceptable-length)]
     (str truncated-name-without-time
@@ -389,14 +406,16 @@
 
 (defn- create-from-csv-and-sync!
   "This is separated from `create-csv-upload!` for testing"
-  [{:keys [db file schema table-name]}]
+  [{:keys [db file schema table-name display-name]}]
   (let [driver            (driver.u/database->driver db)
         schema            (some->> schema (ddl.i/format-name driver))
         table-name        (some->> table-name (ddl.i/format-name driver))
         schema+table-name (table-identifier {:schema schema :name table-name})
         stats             (create-from-csv! driver db schema+table-name file)
         ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
-        table             (sync-tables/create-or-reactivate-table! db {:name table-name :schema (not-empty schema)})
+        table             (sync-tables/create-table! db {:name         table-name
+                                                         :schema       (not-empty schema)
+                                                         :display_name display-name})
         _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
         _sync             (scan-and-sync-table! db table)
         ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
@@ -446,12 +465,19 @@
       (let [timer             (start-timer)
             filename-prefix   (or (second (re-matches #"(.*)\.(csv|tsv)$" filename))
                                   filename)
+            humanized-name    (humanization/name->human-readable-name filename-prefix)
+            display-name      (u/truncate-string-to-byte-count humanized-name (max-bytes :model/Table :display_name))
+            card-name         (u/truncate-string-to-byte-count humanized-name (max-bytes :model/Card :name))
             driver            (driver.u/database->driver database)
-            table-name        (->> (str table-prefix filename-prefix)
+            table-name        (->> (str table-prefix display-name)
                                    (unique-table-name driver)
                                    (u/lower-case-en))
             {:keys [stats
-                    table]}   (create-from-csv-and-sync! {:db database :file file :schema schema-name :table-name table-name})
+                    table]}   (create-from-csv-and-sync! {:db           database
+                                                          :file         file
+                                                          :schema       schema-name
+                                                          :table-name   table-name
+                                                          :display-name display-name})
             card              (card/create-card!
                                {:collection_id          collection-id
                                 :type                   :model
@@ -460,7 +486,7 @@
                                                          :query    {:source-table (:id table)}
                                                          :type     :query}
                                 :display                :table
-                                :name                   (humanization/name->human-readable-name filename-prefix)
+                                :name                   card-name
                                 :visualization_settings {}}
                                @api/*current-user*)
             upload-seconds    (/ (since-ms timer) 1e3)
