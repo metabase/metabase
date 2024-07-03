@@ -26,7 +26,7 @@ function _CartesianChart(props: VisualizationProps) {
     rawSeries,
     settings: originalSettings,
     card,
-    href,
+    getHref,
     gridSize,
     width,
     showTitle,
@@ -96,7 +96,7 @@ function _CartesianChart(props: VisualizationProps) {
           description={description}
           icon={headerIcon}
           actionButtons={actionButtons}
-          href={canSelectTitle ? href : undefined}
+          getHref={canSelectTitle ? getHref : undefined}
           onSelectTitle={canSelectTitle ? onOpenQuestion : undefined}
           width={width}
         />

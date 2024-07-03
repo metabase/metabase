@@ -54,7 +54,7 @@
   (str hour-part \: minutes-part (optional seconds-milliseconds-part)))
 
 (def ^:private date-time-part
-  (str date-part \T time-part))
+  (str date-part "[T ]" time-part))
 
 (def ^:private offset-part
   (str "(?:Z|(?:[+-]" time-part "))"))

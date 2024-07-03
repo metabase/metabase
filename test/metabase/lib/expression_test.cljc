@@ -532,3 +532,52 @@
                                                   (lib/< (lib/offset (meta/field-metadata :orders :subtotal) -1)
                                                          100)
                                                   nil))))))
+
+(deftest ^:parallel date-and-time-string-literals-test-1-dates
+  (are [types input] (= types (lib.schema.expression/type-of input))
+    #{:type/Date :type/Text} "2024-07-02"))
+
+(deftest ^:parallel date-and-time-string-literals-test-2-times
+  (are [types input] (= types (lib.schema.expression/type-of input))
+    ;; Times without time zones
+    #{:type/Time :type/Text} "12:34:56.789"
+    #{:type/Time :type/Text} "12:34:56"
+    #{:type/Time :type/Text} "12:34"
+    ;; Times in Zulu
+    #{:type/Time :type/Text} "12:34:56.789Z"
+    #{:type/Time :type/Text} "12:34:56Z"
+    #{:type/Time :type/Text} "12:34Z"
+    ;; Times with offsets
+    #{:type/Time :type/Text} "12:34:56.789+07:00"
+    #{:type/Time :type/Text} "12:34:56-03:00"
+    #{:type/Time :type/Text} "12:34+02:03"))
+
+(deftest ^:parallel date-and-time-string-literals-test-3-datetimes-with-T
+  (are [types input] (= types (lib.schema.expression/type-of input))
+    ;; DateTimes without time zones
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56.789"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34"
+    ;; DateTimes in Zulu time
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56.789Z"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56Z"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34Z"
+    ;; DateTimes with offsets
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56.789+07:00"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56-03:00"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34+02:03"))
+
+(deftest ^:parallel date-and-time-string-literals-test-4-datetimes-without-T
+  (are [types input] (= types (lib.schema.expression/type-of input))
+    ;; DateTimes without time zones and no T
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56.789"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34"
+    ;; DateTimes in Zulu time and no T
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56.789Z"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56Z"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34Z"
+    ;; DateTimes with offsets and no T
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56.789+07:00"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56-03:00"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34+02:03"))

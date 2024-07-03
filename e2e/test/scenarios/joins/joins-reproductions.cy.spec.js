@@ -1262,4 +1262,28 @@ describe("issue 42385", { tags: "@external" }, () => {
       cy.findByLabelText("Right column").should("not.exist");
     });
   });
+
+  it("should remove invalid join clause in incomplete draft state when query database changes (metabase#42385)", () => {
+    openOrdersTable({ mode: "notebook" });
+    join();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
+
+    getNotebookStep("join")
+      .findByLabelText("Right table")
+      .findByText("Products")
+      .click();
+
+    entityPickerModal().findByText("Reviews").click();
+
+    getNotebookStep("data").findByTestId("data-step-cell").click();
+    entityPickerModal().within(() => {
+      cy.findByText("QA Postgres12").click();
+      cy.findByText("Reviews").click();
+    });
+
+    getNotebookStep("join").should("not.exist");
+  });
 });

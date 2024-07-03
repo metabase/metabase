@@ -193,7 +193,7 @@
   (partial user-request client/real-client))
 
 (defn do-with-test-user [user-kwd thunk]
-  (t/testing (format "with test user %s\n" user-kwd)
+  (t/testing (format "\nwith test user %s\n" user-kwd)
     (mw.session/with-current-user (some-> user-kwd user->id)
       (thunk))))
 
