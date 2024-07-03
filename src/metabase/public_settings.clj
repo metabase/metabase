@@ -826,6 +826,16 @@ See [fonts](../configuring-metabase/fonts.md).")
   :type       :boolean
   :audit      :never)
 
+(defsetting show-updated-permission-banner
+  (deferred-tru
+    "Whether an informational header should be displayed in the permissions editor about the new data-permissions format.")
+  :visibility :admin
+  :export?    false
+  :default    true
+  :user-local :only
+  :type       :boolean
+  :audit      :never)
+
 (defn- not-handling-api-request?
   []
   (nil? @api/*current-user*))
