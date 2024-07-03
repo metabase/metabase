@@ -1,11 +1,13 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
+import { useCallback, useState } from "react";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
+import { useStore } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 import LegendActions from "./LegendActions";
@@ -21,7 +23,7 @@ const propTypes = {
   className: PropTypes.string,
   title: PropTypes.string,
   description: PropTypes.string,
-  href: PropTypes.string,
+  getHref: PropTypes.func,
   icon: PropTypes.object,
   actionButtons: PropTypes.node,
   onSelectTitle: PropTypes.func,
@@ -33,16 +35,44 @@ function shouldHideDescription(width) {
   return width != null && width < HIDE_DESCRIPTION_THRESHOLD;
 }
 
+/**
+ * Using non-empty href will ensure that a focusable link is rendered.
+ * We need a focusable element to handle onFocus.
+ * (Using a div with tabIndex={0} breaks the sequence of focusable elements)
+ *
+ * All this is an optimization for computing the href, which uses getNewCardUrl
+ * that makes a few MLv2 calls, which are expensive. It's a performance issue
+ * on dashboards that have hundreds of dashcards - hence this lazy computation.
+ */
+const HREF_PLACEHOLDER = "#";
+
 const LegendCaption = ({
   className,
   title,
   description,
-  href,
+  getHref,
   icon,
   actionButtons,
   onSelectTitle,
   width,
 }) => {
+  const store = useStore();
+  const [href, setHref] = useState(getHref ? HREF_PLACEHOLDER : undefined);
+
+  const handleFocus = useCallback(() => {
+    if (getHref) {
+      const state = store.getState();
+      setHref(getHref(state));
+    }
+  }, [store, getHref]);
+
+  const handleMouseEnter = useCallback(() => {
+    if (getHref) {
+      const state = store.getState();
+      setHref(getHref(state));
+    }
+  }, [store, getHref]);
+
   return (
     <LegendCaptionRoot className={className} data-testid="legend-caption">
       {icon && <LegendLabelIcon {...icon} />}
@@ -54,6 +84,8 @@ const LegendCaption = ({
         )}
         href={href}
         onClick={onSelectTitle}
+        onFocus={handleFocus}
+        onMouseEnter={handleMouseEnter}
       >
         <Ellipsified data-testid="legend-caption-title">{title}</Ellipsified>
       </LegendLabel>

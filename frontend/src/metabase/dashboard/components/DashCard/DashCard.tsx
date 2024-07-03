@@ -32,7 +32,7 @@ import type {
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { StoreDashcard } from "metabase-types/store";
+import type { State, StoreDashcard } from "metabase-types/store";
 
 import { DashCardRoot } from "./DashCard.styled";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
@@ -115,7 +115,10 @@ function DashCardInner({
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
   );
-  const href = useSelector(state => getDashcardHref(state, dashcard.id));
+  const getHref = useCallback(
+    (state: State) => getDashcardHref(state, dashcard.id),
+    [dashcard.id],
+  );
   const [isPreviewingCard, setIsPreviewingCard] = useState(false);
   const cardRootRef = useRef<HTMLDivElement>(null);
 
@@ -323,7 +326,7 @@ function DashCardInner({
           headerIcon={headerIcon}
           expectedDuration={expectedDuration}
           error={error}
-          href={navigateToNewCardFromDashboard ? href : undefined}
+          getHref={navigateToNewCardFromDashboard ? getHref : undefined}
           isAction={isAction}
           isEmbed={isEmbed}
           isXray={isXray}

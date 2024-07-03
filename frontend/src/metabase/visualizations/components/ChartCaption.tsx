@@ -8,6 +8,7 @@ import type {
   TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import { ChartCaptionRoot } from "./ChartCaption.styled";
 
@@ -17,7 +18,7 @@ interface ChartCaptionProps {
   icon?: IconProps;
   actionButtons?: ReactNode;
   width?: number;
-  href?: string;
+  getHref?: (state: State) => string | undefined;
   onChangeCardAndRun: OnChangeCardAndRun;
 }
 
@@ -27,7 +28,7 @@ const ChartCaption = ({
   icon,
   actionButtons,
   onChangeCardAndRun,
-  href,
+  getHref,
   width,
 }: ChartCaptionProps) => {
   const title = settings["card.title"] ?? series[0].card.name;
@@ -47,7 +48,7 @@ const ChartCaption = ({
     <ChartCaptionRoot
       title={title}
       description={description}
-      href={href}
+      getHref={getHref}
       icon={icon}
       actionButtons={actionButtons}
       onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
