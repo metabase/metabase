@@ -780,6 +780,10 @@ const TITLE_LOCALES_BN = {
     'en' : 'Pre-Primary 5+ to Class One Admission Statistics',
     'bn' : 'প্রাক-প্রাথমিক ৫+ থেকে প্রথম শ্রেণিতে ভর্তির পরিসংখ্যান'
   },
+  'website.year.wise.education.stat' : {
+    'en' : 'Key Indicator (Primary Education)',
+    'bn' : 'মূল সূচক (প্রাথমিক শিক্ষা)'
+  }
 }
 
 export function dashcard_locale_title (locale, title_key) {
