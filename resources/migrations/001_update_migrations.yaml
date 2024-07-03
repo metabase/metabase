@@ -6590,7 +6590,7 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-06-27T00:00:04
       author: calherries
-      comment: replace idx_uniq_field_table_id_parent_id_name_2col for Postgres
+      comment: replace idx_uniq_field_table_id_parent_id_name_2col and idx_uniq_field_table_id_parent_id_name_2col for Postgres
       changes:
         - sql:
             dbms: postgresql
@@ -6599,16 +6599,6 @@ databaseChangeLog:
               CREATE UNIQUE INDEX idx_uniq_field_table_id_parent_id_name
                 ON "metabase_field" ("table_id", "name")
                 WHERE "parent_id" IS NULL AND "is_defective_duplicate" = FALSE;
-      rollback: # No rollback since we want to allow downgrades to 48 to succeed
-
-  - changeSet:
-      id: v49.2024-06-27T00:00:04
-      author: calherries
-      comment: replace idx_uniq_field_table_id_parent_id_name_2col for Postgres
-      changes:
-        - sql:
-            dbms: postgresql
-            sql: >-
               DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name_2col;
               CREATE UNIQUE INDEX idx_uniq_field_table_id_parent_id_name_2col
                 ON "metabase_field" ("table_id", "name")
