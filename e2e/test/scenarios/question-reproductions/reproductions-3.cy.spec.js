@@ -1615,6 +1615,11 @@ describe.skip("issue 44974", () => {
     join();
 
     entityPickerModal().within(() => {
+      entityPickerModalTab("Recents").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
       cy.findByText("Question 44794 in Postgres DB").should("not.exist");
     });
   });
