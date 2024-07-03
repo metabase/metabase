@@ -243,7 +243,6 @@
     (log/infof "[%s] executing SQL in %s" driver filename)
     (execute-statements! driver connection (script->statements filename))))
 
-
 (mu/defmethod test.test-data/load-artifacts-method! :postgres
   [driver    :- ::test.test-data/driver
    artifacts :- ::test.test-data/artifacts]
