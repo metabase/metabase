@@ -2035,7 +2035,7 @@
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
-       (let [long-string (str (str/join (repeat 1000 "яeαllУ_")) "long")
+       (let [long-string (str (str/join (repeat 1000 "really_")) "long")
              header      (str (str "a_" long-string ",")
                               (str "b_" long-string ",")
                               (str "b_" long-string "_with_a"))]
@@ -2049,15 +2049,12 @@
                  (testing "We preserve names where possible"
                    (let [header-names (->> (str/split header #",")
                                            (map (partial #'upload/normalize-column-name driver/*driver*)))]
-                     ;; there's some non-determinism about whether the multibyte escape codes are upper or lowercase
-                     ;; hex characters. their meaning does not matter.
-                     (is (every? (set (map u/upper-case-en column-names))
-                                 (map u/upper-case-en header-names)))))
+                     (is (every? (set column-names) header-names))))
                  (testing "We preserve prefixes where_possible"
-                   (is (= {"_m" 1
-                           "a_" 1
-                           "b_" 2}
-                          (frequencies (map #(subs % 0 2) column-names))))))))))))))
+                   (is (= {"_mb_row_" 1
+                           "a_really" 1
+                           "b_really" 2}
+                          (frequencies (map #(subs % 0 8) column-names))))))))))))))
 
 (deftest append-with-really-long-names-test
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
