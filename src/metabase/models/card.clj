@@ -153,7 +153,8 @@
   enabled, as per https://github.com/metabase/metabase/pull/45050. Returns `nil`."
   [dataset-cards]
   (let [db-id->table-ids (-> (group-by :database_id dataset-cards)
-                             (update-vals (partial into #{} (mapcat card->integer-table-ids))))
+                             (update-vals (partial into #{} (comp (mapcat card->integer-table-ids)
+                                                                  (remove nil?)))))
         db-id->mp (into {}
                         (map (juxt identity lib.metadata.jvm/application-database-metadata-provider))
                         (keys db-id->table-ids))]
