@@ -43,9 +43,15 @@ export const downloadQueryResults =
     }
   };
 
-const downloadChart = async ({ question }: DownloadQueryResultsOpts) => {
+const downloadChart = async ({
+  question,
+  dashcardId,
+}: DownloadQueryResultsOpts) => {
   const fileName = getChartFileName(question);
-  const chartSelector = `[data-card-key='${getCardKey(question.id())}']`;
+  const chartSelector =
+    dashcardId != null
+      ? `[data-dashcard-key='${dashcardId}']`
+      : `[data-card-key='${getCardKey(question.id())}']`;
   await saveChartImage(chartSelector, fileName);
 };
 
