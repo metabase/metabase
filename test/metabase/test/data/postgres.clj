@@ -13,6 +13,8 @@
 
 (set! *warn-on-reflection* true)
 
+(comment postgres.test-data/keep-me)
+
 (sql-jdbc.tx/add-test-extensions! :postgres)
 
 (defmethod tx/sorts-nil-first? :postgres [_ _] false)

@@ -147,7 +147,7 @@
     (->csv (t/offset-date-time t))))
 
 #_{:clj-kondo/ignore [:discouraged-var]}
-(mu/defn print-value [x]
+(defn- print-value [x]
   (print (->csv x)))
 
 #_{:clj-kondo/ignore [:discouraged-var]}
