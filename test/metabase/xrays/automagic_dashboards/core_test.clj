@@ -362,7 +362,7 @@
           (mt/with-test-user :rasta
             (automagic-dashboards.test/with-dashboard-cleanup!
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-              (test-automagic-analysis (t2/select-one Card :id card-id) 8))))))))
+              (test-automagic-analysis (t2/select-one Card :id card-id) 6))))))))
 
 (deftest ensure-field-dimension-bindings-test
   (testing "A very simple card with two plain fields should return the singe assigned dimension for each field."
@@ -963,7 +963,7 @@
                                           :source-table (mt/id :checkins)}
                                   :type :query
                                   :database (mt/id)})]
-        (test-automagic-analysis q 17)))))
+        (test-automagic-analysis q 9)))))
 
 (deftest adhoc-filter-cell-test
   (mt/with-test-user :rasta
@@ -1808,19 +1808,12 @@
                 (is (= "A closer look at the metrics and dimensions used in this saved question."
                        description))
                 (is (set/subset?
-                     #{{:group-name "# A look at the SOURCE fields", :card-name nil}
-                       {:group-name "## The number of 15655 over time", :card-name nil}
+                     #{{:group-name "## The number of 15655 over time", :card-name nil}
                        {:group-name nil, :card-name "Over time"}
                        {:group-name nil, :card-name "Number of 15655 per day of the week"}
                        {:group-name "## How this metric is distributed across different categories", :card-name nil}
                        {:group-name nil, :card-name "Number of 15655 per NAME over time"}
-                       {:group-name nil, :card-name "Number of 15655 per CITY over time"}
-                       {:group-name "## Overview", :card-name nil}
-                       {:group-name nil, :card-name "Count"}
-                       {:group-name nil, :card-name "How the SOURCE is distributed"}
-                       {:group-name "## How the SOURCE fields is distributed", :card-name nil}
-                       {:group-name nil, :card-name "SOURCE by NAME"}
-                       {:group-name nil, :card-name "SOURCE by CITY"}}
+                       {:group-name nil, :card-name "Number of 15655 per CITY over time"}}
                      (set (map (fn [dashcard]
                                  {:group-name (get-in dashcard [:visualization_settings :text])
                                   :card-name  (get-in dashcard [:card :name])})
@@ -1838,16 +1831,16 @@
                          transient_name))
                   (is (= "Automatically generated comparison dashboard comparing Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
                          comparison-description))
-                  (is (= [{:group-name nil, :card-name "SOURCE by CITY"}
-                          {:group-name nil, :card-name "SOURCE by CITY"}
-                          {:group-name nil, :card-name "SOURCE by NAME"}
-                          {:group-name nil, :card-name "SOURCE by NAME"}
-                          {:group-name "## How the SOURCE fields is distributed", :card-name nil}
-                          {:group-name nil, :card-name "Distinct values"}
-                          {:group-name nil, :card-name "Distinct values"}
-                          {:group-name nil, :card-name "How the SOURCE is distributed (Number of 15655 where SOURCE is Affiliate)"}
-                          {:group-name nil, :card-name "Null values"}
-                          {:group-name nil, :card-name "Null values"}]
+                  (is (= [{:group-name nil, :card-name "Number of 15655 per SOURCE"}
+                          {:group-name nil, :card-name "Number of 15655 per SOURCE"}
+                          {:group-name nil, :card-name "Number of 15655 per CITY"}
+                          {:group-name nil, :card-name "Number of 15655 per CITY"}
+                          {:group-name nil, :card-name "Number of 15655 per NAME"}
+                          {:group-name nil, :card-name "Number of 15655 per NAME"}
+                          {:group-name nil, :card-name "Number of 15655 per SOURCE over time"}
+                          {:group-name nil, :card-name "Number of 15655 per SOURCE over time"}
+                          {:group-name nil, :card-name "Number of 15655 per CITY over time"}
+                          {:group-name nil, :card-name "Number of 15655 per CITY over time"}]
                          (->> comparison-dashcards
                               (take 10)
                               (map (fn [dashcard]
