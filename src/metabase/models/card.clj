@@ -158,7 +158,8 @@
         db-id->mp (into {}
                         (map (juxt identity lib.metadata.jvm/application-database-metadata-provider))
                         (keys db-id->table-ids))]
-    (doseq [[db-id table-ids] db-id->table-ids]
+    (doseq [[db-id table-ids] db-id->table-ids
+            :when (seq table-ids)]
       (lib.metadata.protocols/metadatas (db-id->mp db-id) :metadata/table table-ids))))
 
 (defn with-can-run-adhoc-query
