@@ -1233,3 +1233,33 @@ describe.skip("issue 27521", () => {
     cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
   }
 });
+
+describe("issue 42385", { tags: "@external" }, () => {
+  beforeEach(() => {
+    restore("postgres-12");
+    cy.signInAsAdmin();
+  });
+
+  it("should remove invalid draft join clause when query database changes (metabase#42385)", () => {
+    openOrdersTable({ mode: "notebook" });
+    join();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Reviews").click();
+    });
+
+    getNotebookStep("data").findByTestId("data-step-cell").click();
+    entityPickerModal().within(() => {
+      cy.findByText("QA Postgres12").click();
+      cy.findByText("Reviews").click();
+    });
+
+    getNotebookStep("join").within(() => {
+      cy.findByLabelText("Right table")
+        .findByText("Pick data…")
+        .should("be.visible");
+      cy.findByLabelText("Left column").should("not.exist");
+      cy.findByLabelText("Right column").should("not.exist");
+    });
+  });
+});

@@ -101,9 +101,10 @@
                                      (upsert-sandboxes! sandbox-updates))
             impersonation-updates  (:impersonations graph)
             impersonations         (when impersonation-updates
-                                     (insert-impersonations! impersonation-updates))]
+                                     (insert-impersonations! impersonation-updates))
+            group-ids (-> graph :groups keys)]
         (merge {:revision (perms-revision/latest-id)}
-               (when-not skip-graph {:groups (:groups (data-perms.graph/api-graph {}))})
+               (when-not skip-graph {:groups (:groups (data-perms.graph/api-graph {:group-ids group-ids}))})
                (when sandboxes {:sandboxes sandboxes})
                (when impersonations {:impersonations impersonations}))))))
 
