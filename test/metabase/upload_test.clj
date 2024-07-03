@@ -2107,6 +2107,6 @@
 (defmethod driver/column-name-length-limit ::short-column-test-driver [_] 10)
 
 (deftest unique-long-column-names-test
-  (let [original ["abcdefghijk" "abcdefghijklm" "abcdefgh_2_etc" "abcdefgh_3_xyz"]
-        expected [:abcdefghij   :a_c1819420     :abcdefgh_2      :abcdefgh_3]]
+  (let [original ["αbcdεf"     "αbcdεfg"   "αbc_2_etc" "αbc_3_xyz"]
+        expected [:%CE%B1bcd%  :%_852c229f :%CE%B1bc_2 :%CE%B1bc_3]]
     (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))))
