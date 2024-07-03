@@ -56,6 +56,7 @@ export const DelayedLoadingAndErrorWrapper = ({
     // make tests aware that things are loading
     return <span data-testid="loading-indicator" />;
   }
+
   return (
     <Transition
       mounted={!!(error || loading)}

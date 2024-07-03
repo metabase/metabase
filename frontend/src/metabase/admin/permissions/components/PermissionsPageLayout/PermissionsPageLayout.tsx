@@ -35,7 +35,7 @@ import {
   clearSaveError as clearPermissionsSaveError,
   toggleHelpReference,
 } from "../../permissions";
-import { showRevisionChangedModal } from "../../selectors/data-permissions/revision";
+import { showRevisionChangedModal } from "../../selectors/revision-modal";
 import { ToolbarButton } from "../ToolbarButton";
 
 import { PermissionsEditBar } from "./PermissionsEditBar";

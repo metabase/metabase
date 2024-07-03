@@ -78,13 +78,9 @@ const INITIALIZE_COLLECTION_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_COLLECTION_PERMISSIONS";
 export const initializeCollectionPermissions = createThunkAction(
   INITIALIZE_COLLECTION_PERMISSIONS,
-  ({ collectionId, namespace }) =>
-    async dispatch => {
-      await Promise.all([
-        dispatch(loadCollectionPermissions({ collectionId, namespace })),
-        dispatch(Group.actions.fetchList()),
-      ]);
-    },
+  () => async dispatch => {
+    await dispatch(Group.actions.fetchList());
+  },
 );
 
 const LOAD_COLLECTION_PERMISSIONS =
@@ -92,12 +88,40 @@ const LOAD_COLLECTION_PERMISSIONS =
 export const loadCollectionPermissions = createThunkAction(
   LOAD_COLLECTION_PERMISSIONS,
   ({ collectionId, namespace }) =>
-    async () => {
-      return CollectionsApi.subgraph({
-        id: collectionId,
-        ...(namespace != null ? { namespace } : {}),
+    async (_dispatch, getState) => {
+      const { collectionPermissions, collectionPermissionsRevision } =
+        getState().admin.permissions;
+      const hasCollectionGraph = Object.keys(collectionPermissions || {}).some(
+        groupId => {
+          return collectionPermissions[groupId]?.[collectionId] !== undefined;
+        },
+      );
+
+      if (!hasCollectionGraph) {
+        return CollectionsApi.subgraph({
+          id: collectionId,
+          ...(namespace != null ? { namespace } : {}),
+        });
+      }
+
+      return Promise.resolve({
+        groups: {},
+        revision: collectionPermissionsRevision,
       });
     },
+);
+
+export const RESTORE_LOADED_COLLECTION_PERMISSIONS =
+  "metabase/admin/permissions/RESTORE_LOADED_COLLECTION_PERMISSIONS";
+
+export const restoreLoadedCollectionPermissions = createThunkAction(
+  RESTORE_LOADED_COLLECTION_PERMISSIONS,
+  ({ collectionId, namespace }) =>
+    async () =>
+      CollectionsApi.subgraph({
+        id: collectionId,
+        ...(namespace != null ? { namespace } : {}),
+      }),
 );
 
 export const LIMIT_DATABASE_PERMISSION =
@@ -458,7 +482,10 @@ const dataPermissionsRevision = handleActions(
 const collectionPermissions = handleActions(
   {
     [LOAD_COLLECTION_PERMISSIONS]: {
-      next: (state, { payload }) => ({ ...(state || {}), ...payload.groups }),
+      next: (state, { payload }) => merge(state || {}, payload.groups),
+    },
+    [RESTORE_LOADED_COLLECTION_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.groups,
     },
     [UPDATE_COLLECTION_PERMISSION]: {
       next: (state, { payload }) => {
@@ -487,7 +514,10 @@ const collectionPermissions = handleActions(
 const originalCollectionPermissions = handleActions(
   {
     [LOAD_COLLECTION_PERMISSIONS]: {
-      next: (state, { payload }) => ({ ...(state || {}), ...payload.groups }),
+      next: (state, { payload }) => merge(state || {}, payload.groups),
+    },
+    [RESTORE_LOADED_COLLECTION_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.groups,
     },
     [SAVE_COLLECTION_PERMISSIONS]: {
       next: (state, { payload }) => payload.groups,
@@ -499,6 +529,9 @@ const originalCollectionPermissions = handleActions(
 const collectionPermissionsRevision = handleActions(
   {
     [LOAD_COLLECTION_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.revision,
+    },
+    [RESTORE_LOADED_COLLECTION_PERMISSIONS]: {
       next: (_state, { payload }) => payload.revision,
     },
     [SAVE_COLLECTION_PERMISSIONS]: {
@@ -527,8 +560,6 @@ const checkRevisionChanged = (state, { payload }) => {
       revision: payload.revision,
       hasChanged: false,
     };
-  } else if (state.revision === payload.revision && !state.hasChanged) {
-    return state;
   } else {
     return {
       revision: payload.revision,
@@ -561,6 +592,36 @@ const hasRevisionChanged = handleActions(
   },
 );
 
+const hasCollectionRevisionChanged = handleActions(
+  {
+    [LOAD_COLLECTION_PERMISSIONS]: {
+      next: (state, { payload }) => {
+        if (!state.revision) {
+          return {
+            revision: payload.revision,
+            hasChanged: false,
+          };
+        } else {
+          return {
+            revision: payload.revision,
+            hasChanged: true,
+          };
+        }
+      },
+    },
+    [SAVE_COLLECTION_PERMISSIONS]: {
+      next: (state, { payload }) => ({
+        revision: payload.revision,
+        hasChanged: false,
+      }),
+    },
+  },
+  {
+    revision: null,
+    hasChanged: false,
+  },
+);
+
 export default combineReducers({
   saveError,
   dataPermissions,
@@ -571,4 +632,5 @@ export default combineReducers({
   collectionPermissionsRevision,
   isHelpReferenceOpen,
   hasRevisionChanged,
+  hasCollectionRevisionChanged,
 });

@@ -233,6 +233,14 @@ export const getCollectionsPermissionEditor = createSelector(
       return null;
     }
 
+    const hasLoadedPermissionsForGroup = Object.values(permissions).some(
+      permission => collection.id in permission,
+    );
+
+    if (!hasLoadedPermissionsForGroup) {
+      return null;
+    }
+
     const hasChildren = collection.children?.length > 0;
     const toggleLabel = hasChildren ? getToggleLabel(namespace) : null;
     const defaultGroup = _.find(groups, isDefaultGroup);

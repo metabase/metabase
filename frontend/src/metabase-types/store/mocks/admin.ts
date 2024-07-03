@@ -30,6 +30,10 @@ export const createMockPermissionsState = (
       revision: null,
       hasChanged: false,
     },
+    hasCollectionRevisionChanged: {
+      revision: null,
+      hasChanged: false,
+    },
     ...opts,
   };
 };

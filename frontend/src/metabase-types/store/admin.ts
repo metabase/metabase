@@ -34,6 +34,10 @@ export interface AdminState {
       revision: number | null;
       hasChanged: boolean;
     };
+    hasCollectionRevisionChanged: {
+      revision: number | null;
+      hasChanged: boolean;
+    };
   };
   settings: {
     settings: SettingDefinition[];

@@ -15,6 +15,7 @@ import * as Urls from "metabase/lib/urls";
 
 import {
   initializeCollectionPermissions,
+  loadCollectionPermissions,
   updateCollectionPermission,
   saveCollectionPermissions,
 } from "../../permissions";
@@ -54,6 +55,7 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
   initialize: initializeCollectionPermissions,
+  loadPermissions: loadCollectionPermissions,
   updateCollectionPermission,
   saveCollectionPermissions,
 };
@@ -66,6 +68,7 @@ const propTypes = {
   collection: PropTypes.object,
   collectionsList: PropTypes.arrayOf(PropTypes.object),
   initialize: PropTypes.func.isRequired,
+  loadPermissions: PropTypes.func.isRequired,
   updateCollectionPermission: PropTypes.func.isRequired,
   saveCollectionPermissions: PropTypes.func.isRequired,
 };
@@ -78,12 +81,19 @@ const CollectionPermissionsModal = ({
   collection,
   collectionsList,
   initialize,
+  loadPermissions,
   updateCollectionPermission,
   saveCollectionPermissions,
 }) => {
   useEffect(() => {
-    initialize({ collectionId: collection.id, namespace });
-  }, [initialize, namespace, collection.id]);
+    initialize();
+  }, [initialize]);
+
+  useEffect(() => {
+    if (collection.id) {
+      loadPermissions({ collectionId: collection.id, namespace });
+    }
+  }, [loadPermissions, namespace, collection.id]);
 
   useEffect(() => {
     const isPersonalCollectionLoaded =

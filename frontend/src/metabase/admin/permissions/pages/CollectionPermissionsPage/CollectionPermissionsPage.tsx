@@ -1,4 +1,5 @@
-import { useEffect, useCallback } from "react";
+import cx from "classnames";
+import { useEffect, useCallback, useState } from "react";
 import { connect } from "react-redux";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
@@ -6,8 +7,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
+import CS from "metabase/css/core/index.css";
 import Collections from "metabase/entities/collections";
 import Groups from "metabase/entities/groups";
+import { Box, Center, Loader } from "metabase/ui";
 import type { Collection, CollectionId, GroupId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -22,6 +25,7 @@ import {
   updateCollectionPermission,
   saveCollectionPermissions,
   loadCollectionPermissions,
+  restoreLoadedCollectionPermissions,
 } from "../../permissions";
 import type {
   CollectionIdProps,
@@ -39,6 +43,7 @@ import {
 const mapDispatchToProps = {
   initialize: initializeCollectionPermissions,
   loadPermissions: loadCollectionPermissions,
+  restorePermissions: restoreLoadedCollectionPermissions,
   navigateToItem: ({ id }: { id: CollectionId }) =>
     push(`/admin/permissions/collections/${id}`),
   updateCollectionPermission,
@@ -65,7 +70,7 @@ type CollectionPermissionsPageProps = {
   params: CollectionIdProps["params"];
   sidebar: CollectionSidebarType;
   permissionEditor: CollectionPermissionEditorType;
-  collection: Collection;
+  collection: Collection | undefined;
   navigateToItem: (item: any) => void;
   updateCollectionPermission: ({
     groupId,
@@ -75,8 +80,9 @@ type CollectionPermissionsPageProps = {
   }: UpdateCollectionPermissionParams) => void;
   isDirty: boolean;
   savePermissions: () => void;
-  loadPermissions: () => void;
-  initialize: (params: { collectionId: CollectionId }) => void;
+  loadPermissions: (params: { collectionId: CollectionId }) => Promise<void>;
+  restorePermissions: (params: { collectionId: CollectionId }) => Promise<void>;
+  initialize: () => Promise<void>;
   route: Route;
 };
 
@@ -87,14 +93,43 @@ function CollectionsPermissionsPageView({
   isDirty,
   savePermissions,
   loadPermissions,
+  restorePermissions,
   updateCollectionPermission,
   navigateToItem,
   initialize,
   route,
 }: CollectionPermissionsPageProps) {
   useEffect(() => {
-    initialize({ collectionId: collection.id });
-  }, [initialize, collection.id]);
+    initialize();
+  }, [initialize]);
+
+  const [{ reqId, error }, setReqInfo] = useState<{
+    reqId: number;
+    error: unknown;
+  }>({ reqId: 0, error: null });
+  const isLoading = reqId !== null;
+  const isSettled = !isLoading && !error;
+
+  useEffect(() => {
+    if (collection?.id) {
+      let currReqId;
+      setReqInfo(({ reqId }) => {
+        currReqId = reqId + 1;
+        return { reqId: currReqId, error: null };
+      });
+      loadPermissions({ collectionId: collection.id })
+        .catch(error => {
+          setReqInfo(info =>
+            info.reqId === currReqId ? { ...info, error } : info,
+          );
+        })
+        .finally(() => {
+          setReqInfo(info =>
+            info.reqId === currReqId ? { ...info, reqId: null } : info,
+          );
+        });
+    }
+  }, [loadPermissions, collection?.id]);
 
   const handlePermissionChange = useCallback(
     (
@@ -103,12 +138,14 @@ function CollectionsPermissionsPageView({
       value: unknown,
       toggleState: boolean,
     ) => {
-      updateCollectionPermission({
-        groupId: item.id,
-        collection,
-        value,
-        shouldPropagate: toggleState,
-      });
+      if (collection) {
+        updateCollectionPermission({
+          groupId: item.id,
+          collection,
+          value,
+          shouldPropagate: toggleState,
+        });
+      }
     },
     [collection, updateCollectionPermission],
   );
@@ -119,16 +156,34 @@ function CollectionsPermissionsPageView({
       isDirty={isDirty}
       route={route}
       onSave={savePermissions}
-      onLoad={() => loadPermissions()}
+      onLoad={() =>
+        collection?.id && restorePermissions({ collectionId: collection?.id })
+      }
       helpContent={<CollectionPermissionsHelp />}
     >
       <PermissionsSidebar {...sidebar} onSelect={navigateToItem} />
 
-      {!permissionEditor && (
+      {!permissionEditor && isSettled && (
         <PermissionsEditorEmptyState
           icon="folder"
           message={t`Select a collection to see its permissions`}
         />
+      )}
+
+      {!permissionEditor && isLoading && (
+        <Box w="100%" m="2rem">
+          <Center style={{ flexGrow: 1 }}>
+            <Loader size="lg" />
+          </Center>
+        </Box>
+      )}
+
+      {!permissionEditor && error && (
+        <Box p="2rem">
+          <h2 className={cx(CS.textNormal, CS.textLight, CS.ieWrapContentFix)}>
+            {error?.data?.message ?? error?.message ?? error.toString()}
+          </h2>
+        </Box>
       )}
 
       {permissionEditor && (
