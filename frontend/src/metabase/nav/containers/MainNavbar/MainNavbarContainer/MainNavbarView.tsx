@@ -1,5 +1,5 @@
 import type { MouseEvent } from "react";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -120,6 +120,19 @@ function MainNavbarView({
     ({ id, can_write }) => (id === null || id === "root") && can_write,
   );
 
+  const [collectionsWithoutTrash, trashCollection] = useMemo(() => {
+    let trashCollection;
+    const collectionsWithoutTrash = [];
+    for (const c of collections) {
+      if (c.type === "trash") {
+        trashCollection = c;
+      } else {
+        collectionsWithoutTrash.push(c);
+      }
+    }
+    return [collectionsWithoutTrash, trashCollection];
+  }, [collections]);
+
   return (
     <SidebarContentRoot>
       <div>
@@ -137,6 +150,36 @@ function MainNavbarView({
             <UploadCSV collection={rootCollection} />
           )}
         </SidebarSection>
+
+        {bookmarks.length > 0 && (
+          <SidebarSection>
+            <BookmarkList
+              bookmarks={bookmarks}
+              selectedItem={cardItem ?? dashboardItem ?? collectionItem}
+              onSelect={onItemSelect}
+              reorderBookmarks={reorderBookmarks}
+              onToggle={setExpandBookmarks}
+              initialState={expandBookmarks ? "expanded" : "collapsed"}
+            />
+          </SidebarSection>
+        )}
+
+        <SidebarSection>
+          <CollectionSectionHeading
+            currentUser={currentUser}
+            handleCreateNewCollection={handleCreateNewCollection}
+          />
+          <Tree
+            data={collectionsWithoutTrash}
+            // FIXME: Ensure this works properly when the trash collection is selected
+            selectedId={collectionItem?.id}
+            onSelect={onItemSelect}
+            TreeNode={SidebarCollectionLink}
+            role="tree"
+            aria-label="collection-tree"
+          />
+        </SidebarSection>
+
         <SidebarSection>
           <BrowseNavSection
             nonEntityItem={nonEntityItem}
@@ -161,31 +204,14 @@ function MainNavbarView({
           )}
         </SidebarSection>
 
-        {bookmarks.length > 0 && (
-          <SidebarSection>
-            <BookmarkList
-              bookmarks={bookmarks}
-              selectedItem={cardItem ?? dashboardItem ?? collectionItem}
-              onSelect={onItemSelect}
-              reorderBookmarks={reorderBookmarks}
-              onToggle={setExpandBookmarks}
-              initialState={expandBookmarks ? "expanded" : "collapsed"}
-            />
-          </SidebarSection>
-        )}
-
         <SidebarSection>
-          <CollectionSectionHeading
-            currentUser={currentUser}
-            handleCreateNewCollection={handleCreateNewCollection}
-          />
           <Tree
-            data={collections}
+            data={trashCollection ? [trashCollection] : []}
             selectedId={collectionItem?.id}
             onSelect={onItemSelect}
             TreeNode={SidebarCollectionLink}
             role="tree"
-            aria-label="collection-tree"
+            aria-label="collection tree for trash"
           />
         </SidebarSection>
       </div>
