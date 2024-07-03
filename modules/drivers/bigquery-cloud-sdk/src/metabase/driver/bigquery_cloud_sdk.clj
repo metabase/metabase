@@ -371,10 +371,13 @@
               (future-cancel res-fut)
               (when (future-done? res-fut) ; canceled received after it was finished; may as well return it
                 @res-fut)))))
-      @res-fut)
+      (u/prog1 @res-fut
+        (a/close! cancel-chan)))
     (catch java.util.concurrent.CancellationException _e
+      (a/close! cancel-chan)
       (throw (ex-info (tru "Query cancelled") {:sql sql :parameters parameters ::cancelled? true})))
     (catch BigQueryException e
+      (a/close! cancel-chan)
       (if (.isRetryable e)
         (throw (ex-info (tru "BigQueryException executing query")
                         {:retryable? (.isRetryable e), :sql sql, :parameters parameters}
