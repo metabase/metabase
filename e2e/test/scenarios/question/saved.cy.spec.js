@@ -273,7 +273,6 @@ describe("scenarios > question > saved", () => {
         cy.wrap($cell)
           .find(".react-draggable")
           .trigger("mousedown", 0, 0, { force: true })
-          .wait(100)
           .trigger("mousemove", 100, 0, { force: true })
           .wait(100)
           .trigger("mouseup", 100, 0, { force: true });
