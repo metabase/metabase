@@ -8,7 +8,6 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-  getByRole,
 } from "__support__/ui";
 import type { IFieldValuesWidgetProps } from "metabase/components/FieldValuesWidget";
 import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
@@ -299,8 +298,7 @@ describe("FieldValuesWidget", () => {
         }),
       });
 
-      const combobox = screen.getByRole("combobox");
-      const input = getInput(combobox);
+      const input = screen.getByRole("searchbox");
 
       await userEvent.type(input, "Foo,");
 
@@ -308,10 +306,3 @@ describe("FieldValuesWidget", () => {
     });
   });
 });
-
-function getInput(parent: HTMLElement) {
-  /* eslint-disable-next-line testing-library/prefer-screen-queries */
-  const input = getByRole(parent, "searchbox");
-  expect(input).toBeInTheDocument();
-  return input;
-}
