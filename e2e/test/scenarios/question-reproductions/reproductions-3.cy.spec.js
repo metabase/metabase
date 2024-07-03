@@ -1584,7 +1584,8 @@ describe("issue 44668", () => {
   });
 });
 
-describe("issue 44974", () => {
+// TODO: unskip when metabase#44974 is fixed
+describe.skip("issue 44974", () => {
   const PG_DB_ID = 2;
 
   beforeEach(() => {
@@ -1592,8 +1593,7 @@ describe("issue 44974", () => {
     cy.signInAsAdmin();
   });
 
-  // TODO: unskip when metabase#44974 is fixed
-  it.skip("should not be possible to join with a question from recents which is not in the same database (metabase#44974)", () => {
+  it("should not be possible to join with a question from recents which is not in the same database (metabase#44974)", () => {
     withDatabase(PG_DB_ID, ({ PEOPLE_ID }) => {
       createQuestion(
         {
