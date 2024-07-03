@@ -152,19 +152,12 @@
   "Collect tables from `dataset-cards` and prefetch metadata. Should be used only with metdata provider caching
   enabled, as per https://github.com/metabase/metabase/pull/45050. Returns `nil`."
   [dataset-cards]
-  (let [db-id->card-ids (update-vals (group-by :database_id dataset-cards) (partial map :id))
-        card-id->table-ids (into {}
-                                 (comp (map (juxt :id card->integer-table-ids))
-                                       (filter (comp seq second)))
-                                 dataset-cards)
+  (let [db-id->table-ids (-> (group-by :database_id dataset-cards)
+                             (update-vals (partial into #{} (mapcat card->integer-table-ids))))
         db-id->mp (into {}
                         (map (juxt identity lib.metadata.jvm/application-database-metadata-provider))
-                        (keys db-id->card-ids))]
-    (doseq [db-id (keys db-id->card-ids)
-            :let [table-ids (into #{}
-                                  (mapcat card-id->table-ids)
-                                  (db-id->card-ids db-id))]
-            :when (seq table-ids)]
+                        (keys db-id->table-ids))]
+    (doseq [[db-id table-ids] db-id->table-ids]
       (lib.metadata.protocols/metadatas (db-id->mp db-id) :metadata/table table-ids))))
 
 (defn with-can-run-adhoc-query
@@ -174,8 +167,12 @@
         source-card-ids (into #{}
                               (keep (comp source-card-id :dataset_query))
                               dataset-cards)]
-    (when lib.metadata.jvm/*metadata-provider-cache*
-      (prefetch-tables-for-cards! dataset-cards))
+    ;; Prefetching code should not propagate any exception.
+    (try
+      (when lib.metadata.jvm/*metadata-provider-cache*
+        (prefetch-tables-for-cards! dataset-cards))
+      (catch Throwable _
+        (log/errorf "Error prefething cards `%s`." (pr-str (map :id dataset-cards)))))
     (binding [query-perms/*card-instances*
               (when (seq source-card-ids)
                 (t2/select-fn->fn :id identity [Card :id :collection_id] :id [:in source-card-ids]))]
