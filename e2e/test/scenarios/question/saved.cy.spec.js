@@ -274,7 +274,6 @@ describe("scenarios > question > saved", () => {
           .find(".react-draggable")
           .trigger("mousedown", 0, 0, { force: true })
           .trigger("mousemove", 100, 0, { force: true })
-          .wait(100)
           .trigger("mouseup", 100, 0, { force: true });
 
         assertColumnResized();
