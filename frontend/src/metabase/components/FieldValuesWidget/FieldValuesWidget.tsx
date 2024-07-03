@@ -380,20 +380,40 @@ export function FieldValuesWidgetInner({
       ) ?? [];
 
     // Get the fetched values as well as the values from the parameter settings.
-    return options.concat(configValues);
+    const allValues = options.concat(configValues);
+
+    const byValue = new Map<RowValue, string | undefined>();
+    const byLabel = new Map<string, RowValue>();
+
+    allValues.forEach(entry => {
+      const value = getValue(entry);
+      const label = getLabel(entry) ?? value?.toString();
+      if (!label) {
+        return;
+      }
+      byValue.set(value, label);
+      byLabel.set(label, value);
+    });
+
+    return { byLabel, byValue };
   }, [parameter?.values_source_config?.values, options]);
 
   // Get the label/value options for the current values
   // This is needed to show the correct display value for the current value in the MultiSelect
   const valueOptions = useMemo(() => {
     return value
-      .map(value => fieldValues.find(entry => getValue(entry) === value))
+      .map(value => {
+        const label = fieldValues.byValue.get(value);
+        if (!label) {
+          return null;
+        }
+        return [value, label];
+      })
       .filter((entry): entry is FieldValue => Boolean(entry));
   }, [value, fieldValues]);
 
   function customLabel(value: RowValue): string | undefined {
-    const option = fieldValues.find(entry => getValue(entry) === value);
-    return option && getLabel(option);
+    return fieldValues.byValue.get(value);
   }
 
   if (!valueRenderer) {
@@ -472,13 +492,10 @@ export function FieldValuesWidgetInner({
   });
 
   const valueForLabel = (label: string | number) => {
-    const option = fieldValues.find(option => {
-      const opt = getLabel(option) ?? getValue(option)?.toString();
-      return opt === label;
-    });
+    const value = fieldValues.byLabel.get(label?.toString());
 
-    if (option) {
-      return getValue(option);
+    if (value) {
+      return value;
     }
 
     return label;
