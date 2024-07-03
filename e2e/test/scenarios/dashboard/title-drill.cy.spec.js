@@ -453,7 +453,7 @@ describe("scenarios > dashboard > title drill", () => {
       cy.signInAsAdmin();
     });
 
-    it.only("titles become actual HTML anchors on focus and on hover", () => {
+    it("titles become actual HTML anchors on focus and on hover", () => {
       cy.createDashboardWithQuestions({
         dashboardName: "Dashboard with aggregated Q2",
         questions: [
@@ -517,40 +517,46 @@ describe("scenarios > dashboard > title drill", () => {
         getDashboardCard(0)
           .findByRole("link", { name: "Line chart" })
           .as("line-chart-title");
-        cy.get("@line-chart-title").should("have.attr", "href", "#");
-        cy.get("@line-chart-title").focus();
-        cy.get("@line-chart-title")
-          .should("have.attr", "href")
-          .and("eq", `/question/${questions[0].id}-line-chart`);
-
         getDashboardCard(1)
           .findByRole("link", { name: "Row chart" })
           .as("row-chart-title");
-        cy.get("@row-chart-title").should("have.attr", "href", "#");
-        cy.get("@row-chart-title").focus();
-        cy.get("@row-chart-title")
-          .should("have.attr", "href")
-          .and("eq", `/question/${questions[1].id}-row-chart`);
-
         getDashboardCard(2)
           .findByRole("link", { name: "Map chart" })
           .as("map-chart-title");
-        cy.get("@map-chart-title").should("have.attr", "href", "#");
-        cy.get("@map-chart-title").realHover();
-        cy.get("@map-chart-title")
-          .should("have.attr", "href")
-          .and("eq", `/question/${questions[2].id}-map-chart`);
-
         getDashboardCard(3)
           .findByRole("link", { name: "Funnel chart" })
           .as("funnel-chart-title");
-        cy.get("@funnel-chart-title").should("have.attr", "href", "#");
-        cy.get("@funnel-chart-title").realHover();
-        cy.get("@funnel-chart-title")
-          .should("have.attr", "href")
-          .and("eq", `/question/${questions[3].id}-funnel-chart`);
+
+        assertTitleHrefOnFocus({
+          elementAlias: "@line-chart-title",
+          href: `/question/${questions[0].id}-line-chart`,
+        });
+        assertTitleHrefOnFocus({
+          elementAlias: "@row-chart-title",
+          href: `/question/${questions[1].id}-row-chart`,
+        });
+        assertTitleHrefOnHover({
+          elementAlias: "@map-chart-title",
+          href: `/question/${questions[2].id}-map-chart`,
+        });
+        assertTitleHrefOnHover({
+          elementAlias: "@funnel-chart-title",
+          href: `/question/${questions[3].id}-funnel-chart`,
+        });
       });
     });
+
+    function assertTitleHrefOnFocus({ elementAlias, href }) {
+      cy.get(elementAlias).should("have.attr", "href", "#");
+      cy.get(elementAlias).focus();
+      cy.get(elementAlias).should("have.attr", "href", href);
+    }
+
+    function assertTitleHrefOnHover({ elementAlias, href }) {
+      cy.get(elementAlias).should("have.attr", "href", "#");
+      cy.get(elementAlias).realHover();
+      cy.get(elementAlias).should("have.attr", "href", href);
+    }
   });
 });
 
