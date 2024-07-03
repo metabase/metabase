@@ -465,3 +465,25 @@
                      (-> (graph/graph-for-coll-id coll-id-a)
                          :descendant-perms
                          (dissoc admin-group-id)))))))))))
+
+(deftest narrow-graph-by-collection-id-test
+  (testing "Collections narrowed by numeric ID should only show the specified Collection"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (t2.with-temp/with-temp [:model/Collection {temp-coll-id :id} {:name "my coll"}]
+        (let [group-id (:id (perms-group/all-users))
+              audit-collection-id (:id (audit/default-audit-collection))]
+          (perms/grant-collection-read-permissions! group-id temp-coll-id)
+          (def g (graph/graph-for-coll-id temp-coll-id))
+          (is (= #{temp-coll-id}
+                 (->> (graph/graph-for-coll-id temp-coll-id) :groups vals (mapcat keys) set)))
+          (is (= nil
+                 (-> (graph/graph-for-coll-id temp-coll-id) :groups (get audit/default-audit-collection)))
+              "When narrowed by a normal collection id, instance-analytics should  not be in the graph")
+          (is (= nil
+                 (-> (graph/graph-for-coll-id audit-collection-id) :groups (get audit-collection-id)))
+              "When narrowed by instance-analytics-collection-id, the instance-analytics-collection-id should be specified")))))
+  (testing "Collections narrowed by :root should only show the :root Collection"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (let [group-id (:id (perms-group/admin))]
+        (is (= [:root]
+               (-> (graph/graph-for-coll-id :root) :groups (get group-id) keys)))))))

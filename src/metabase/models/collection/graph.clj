@@ -94,9 +94,8 @@
   (let [admin-group-id      (:id (perms-group/admin))
         audit-collection-id (:id (audit/default-audit-collection))
         has-instance-analytics? (boolean (get-in graph [:groups admin-group-id audit-collection-id]))]
-    (if has-instance-analytics?
-      (assoc-in graph [:groups admin-group-id audit-collection-id] :read)
-      graph)))
+    (cond-> graph
+      has-instance-analytics? (assoc-in [:groups admin-group-id audit-collection-id] :read))))
 
 (mu/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every group and all permissioned collections. This
