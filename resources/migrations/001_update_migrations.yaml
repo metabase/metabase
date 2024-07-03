@@ -6666,25 +6666,24 @@ databaseChangeLog:
   # Previously we had two unique constraints on metabase_field's name, table_id, and parent_id columns.
   #
   # 1. `idx_uniq_field_table_id_parent_id_name` is a unique constraint on (name, table_id, parent_id)
-  #    Since NULL <> NULL, it only applies a constraint on fields where parent_id IS NOT NULL.
+  #    Since NULL <> NULL, it only applies to fields where parent_id IS NOT NULL.
   #    Worse, the constraint was not case-sensitive for MySQL.
   #
   # 2. `idx_uniq_field_table_id_parent_id_name_2col` is a Postgres-only unique constraint on
   #    `(name, table_id) WHERE parent_id IS NULL`. There was no equivalent constraint for H2 or MySQL because only
-  #    Postgres supports partial indexes. The following migration introduces an equivalent constraint for H2 and
+  #    Postgres supports partial indexes. The following changesets introduce an equivalent constraint for H2 and
   #    MySQL by adding a constraint that uses a generated column to handle NULL parent_id values.
   #
   # At the same time, we exclude fields where is_defective_duplicate=TRUE from the above constraints.
   #
   # The following two changesets add a new column `unique_field_helper` to `metabase_field` and a unique constraint
-  # `idx_unique_field` for H2 and MySQL.
+  # `idx_unique_field`.
   # The combination of `unique_field_helper` and `idx_unique_field` achieves two things:
   # 1. It enforces the conditional constraints:
-  #   - if parent_id IS NULL, then (table_id, name) is unique. (Postgres' idx_uniq_field_table_id_parent_id_name_col2)
-  #   - if parent_id IS NOT NULL, then (table_id, name, parent_id) is unique. (Postgres' idx_uniq_field_table_id_parent_id_name)
+  #   - if parent_id IS NULL, then (table_id, name) is unique. (like idx_uniq_field_table_id_parent_id_name_col2)
+  #   - if parent_id IS NOT NULL, then (table_id, name, parent_id) is unique. (like idx_uniq_field_table_id_parent_id_name)
   # 2. It only enforces the constraints when is_defective_duplicate = FALSE
-  #    `unique_field_helper` is only used in H2 and MySQL but it is added in Postgres so all DBs have the same set of
-  #    colums.
+
   - changeSet:
       id: v49.2024-06-27T00:00:07
       author: calherries
