@@ -89,13 +89,14 @@
                                                               collection-ids)}))})))
 
 (defn- modify-instance-analytics-for-admins
-  "In the graph, override the instance analytics collection within the admin group to read."
+  "In the graph, override the instance analytics collection within the admin group to read, but only if it is there."
   [graph]
   (let [admin-group-id      (:id (perms-group/admin))
-        audit-collection-id (:id (audit/default-audit-collection))]
-    (if (nil? audit-collection-id)
-      graph
-      (assoc-in graph [:groups admin-group-id audit-collection-id] :read))))
+        audit-collection-id (:id (audit/default-audit-collection))
+        has-instance-analytics? (boolean (get-in graph [:groups admin-group-id audit-collection-id]))]
+    (if has-instance-analytics?
+      (assoc-in graph [:groups admin-group-id audit-collection-id] :read)
+      graph)))
 
 (mu/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every group and all permissioned collections. This
@@ -167,8 +168,9 @@
     (build-descendant-perms collection-id group-ids descendant-ids)))
 
 (mu/defn graph-for-coll-id
-  "Fetch a graph corresponding to the current permissions status for a single collection with ID `collection-id`.
-  This works just like [[metabase.models.permissions/graph-for-db-id]], but for Collections."
+  "Fetch a graph corresponding to the current permissions status for a single collection with ID `collection-id`. This
+  works just like [[metabase.models.permissions/graph-for-db-id]], but for Collections. It also adds in warnings for
+  when a collection's descendant has more permissive perms."
   [collection-id] :- [:map
                       [:revision :int]
                       [:groups :map]
