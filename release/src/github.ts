@@ -86,7 +86,7 @@ export const getMilestoneIssues = async ({
   owner,
   repo,
   state = "closed",
-  milestoneStatus = "closed"
+  milestoneStatus,
 }: ReleaseProps & { state?: "closed" | "open"; milestoneStatus?: 'open' | 'closed' }): Promise<Issue[]> => {
   const milestone = await findMilestone({ version, github, owner, repo, state: milestoneStatus });
 

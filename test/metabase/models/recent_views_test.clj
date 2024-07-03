@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.recent-views :as recent-views]
@@ -26,8 +27,9 @@
       (update :parent_collection #(into {} %))
       (update :timestamp type)))
 
-(defn recent-views [user-id]
-  (:recents (recent-views/get-recents user-id [:views])))
+(defn recent-views
+  ([user-id] (recent-views user-id [:views]))
+  ([user-id context] (:recents (recent-views/get-recents user-id context))))
 
 (deftest simple-get-list-card-test
   (mt/with-temp
@@ -476,9 +478,7 @@
 
           (doseq [model-id model-ids]
             (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view)))
-        (def t (t2/select :model/RecentViews))
-        (def rv0 (recent-views (mt/user->id :rasta)))
-        (with-redefs [mi/can-read? (constantly true)
+        (with-redefs [mi/can-read?                              (constantly true)
                       data-perms/user-has-permission-for-table? (constantly true)]
           (let [freqs (frequencies (map :model
                                         (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
@@ -512,3 +512,30 @@
     (is (= 2 (count
               (mt/with-test-user :rasta
                 (:recents (recent-views/get-recents (mt/user->id :rasta) [:selections :views]))))))))
+
+(deftest special-collections-are-treated-specially
+  (mt/with-temp
+    [:model/Collection {instance-analytics-id :id} {:type collection/instance-analytics-collection-type}
+     :model/Collection {with-ns-id :id} {:namespace "fluffy"}
+     :model/Collection {normal-id :id} {}]
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection normal-id :view)
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection with-ns-id :view)
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection (collection/trash-collection-id) :view)
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection instance-analytics-id :view)
+    (testing "sanity check: all models are in the recent views table"
+      (is (= #{instance-analytics-id
+               (collection/trash-collection-id)
+               with-ns-id
+               normal-id}
+             (t2/select-fn-set :model_id :model/RecentViews :model "collection" :user_id (mt/user->id :rasta) :context "view"))))
+    (testing "only the instance analytics gets included"
+      (is (= [{:id instance-analytics-id}
+              {:id normal-id}]
+             (map #(select-keys % [:id])
+                  (mt/with-test-user :rasta
+                    (recent-views (mt/user->id :rasta)))))))
+    (testing "for selections, instance analytics is excluded"
+      (is (= [{:id normal-id}]
+             (map #(select-keys % [:id])
+                  (mt/with-test-user :rasta
+                    (recent-views (mt/user->id :rasta) [:selections :views]))))))))

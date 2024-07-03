@@ -1,6 +1,6 @@
 import { match } from 'ts-pattern';
 
-import { nonUserFacingLabels } from "./constants";
+import { nonUserFacingLabels, hiddenLabels } from "./constants";
 import { getMilestoneIssues, isLatestRelease, hasBeenReleased } from "./github";
 import type { ReleaseProps, Issue } from "./types";
 import {
@@ -70,6 +70,10 @@ const isNonUserFacingIssue = (issue: Issue) => {
   return nonUserFacingLabels.some(label => hasLabel(issue, label));
 }
 
+const isHiddenIssue = (issue: Issue) => {
+  return hiddenLabels.some(label => hasLabel(issue, label));
+}
+
 const formatIssue = (issue: Issue) => `- ${issue.title.trim()} (#${issue.number})`;
 
 export const getDockerTag = (version: string) => {
@@ -109,18 +113,20 @@ const issueMap: Record<IssueType, Issue[]> = {
 };
 
 export const categorizeIssues = (issues: Issue[]) => {
-  return issues.reduce((issueMap, issue) => {
-    const category: IssueType = match(issue)
-      .when(isNonUserFacingIssue, () => IssueType.underTheHoodIssues)
-      .when(isAlreadyFixedIssue, () => IssueType.alreadyFixedIssues)
-      .when(isBugIssue, () => IssueType.bugFixes)
-      .otherwise(() => IssueType.enhancements);
+  return issues
+    .filter(issue => !isHiddenIssue(issue))
+    .reduce((issueMap, issue) => {
+      const category: IssueType = match(issue)
+        .when(isNonUserFacingIssue, () => IssueType.underTheHoodIssues)
+        .when(isAlreadyFixedIssue, () => IssueType.alreadyFixedIssues)
+        .when(isBugIssue, () => IssueType.bugFixes)
+        .otherwise(() => IssueType.enhancements);
 
-    return {
-      ...issueMap,
-      [category]: [...issueMap[category], issue],
-    }
-  }, { ...issueMap });
+      return {
+        ...issueMap,
+        [category]: [...issueMap[category], issue],
+      }
+    }, { ...issueMap });
 };
 
 export const generateReleaseNotes = ({
