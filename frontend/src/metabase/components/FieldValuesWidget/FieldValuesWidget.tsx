@@ -540,7 +540,6 @@ export function FieldValuesWidgetInner({
               formatOptions,
               value: props.value,
               displayValue: props.customLabel,
-              hasCustomLabel: props.customLabel !== undefined,
             });
 
           return (
@@ -763,7 +762,6 @@ function renderValue({
   autoLoad?: boolean;
   compact?: boolean;
   displayValue?: string;
-  hasCustomLabel?: boolean;
 }) {
   return (
     <ValueComponent
