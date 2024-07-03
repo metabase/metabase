@@ -5,6 +5,8 @@ import { t } from "ttag";
 import { Menu, Flex, Card, Title, Icon, IconName, Text } from "metabase/ui";
 import type { Card as ICard } from "metabase-types/api";
 import { ActionIcon } from "@mantine/core";
+import Link from "metabase/core/components/Link";
+import * as Urls from "metabase/lib/urls";
 
 export function VisualizerUsed({ cards }: { cards?: ICard[] }) {
   return (
@@ -50,13 +52,14 @@ export function VisualizerUsed({ cards }: { cards?: ICard[] }) {
             </Menu>
             <div>{card.name}</div>
             <Flex ml="auto">
-              <ActionIcon mr="sm">
+              <Link to={Urls.question(card)} style={{ marginRight: "6px" }}>
                 <Icon
                   name={
                     card.dataset_query.type === "native" ? "sql" : "notebook"
                   }
+                  style={{ marginTop: "6px" }}
                 />
-              </ActionIcon>
+              </Link>
               <Menu>
                 <Menu.Target>
                   <ActionIcon>
