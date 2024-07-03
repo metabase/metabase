@@ -15,8 +15,7 @@ import { Router, useRouterHistory } from "react-router";
 import { routerReducer, routerMiddleware } from "react-router-redux";
 import _ from "underscore";
 
-import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
-import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
+import { MetabaseProviderInternal } from "embedding-sdk/components/public/MetabaseProvider";
 import { sdkReducers } from "embedding-sdk/store";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import { createMockSdkState } from "embedding-sdk/test/mocks/state";
@@ -26,7 +25,6 @@ import { UndoListing } from "metabase/containers/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { mainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
-import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
@@ -130,7 +128,7 @@ export function renderWithProviders(
   const wrapper = (props: any) => {
     if (mode === "sdk") {
       return (
-        <SdkWrapper {...props} config={sdkConfig} store={store} theme={theme} />
+        <MetabaseProviderInternal {...props} config={sdkConfig} store={store} />
       );
     }
 
@@ -199,31 +197,6 @@ export function TestWrapper({
           {withUndos && <UndoListing />}
         </ThemeProvider>
       </MaybeDNDProvider>
-    </Provider>
-  );
-}
-
-function SdkWrapper({
-  config,
-  children,
-  store,
-}: {
-  config: SDKConfig;
-  children: React.ReactElement;
-  store: any;
-  history?: History;
-  withRouter: boolean;
-  withDND: boolean;
-}) {
-  return (
-    <Provider store={store}>
-      <EmotionCacheProvider>
-        <SdkThemeProvider>
-          <AppInitializeController config={config}>
-            {children}
-          </AppInitializeController>
-        </SdkThemeProvider>
-      </EmotionCacheProvider>
     </Provider>
   );
 }

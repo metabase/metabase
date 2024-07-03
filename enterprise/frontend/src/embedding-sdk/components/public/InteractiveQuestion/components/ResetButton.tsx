@@ -1,16 +1,11 @@
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
-import {
-  useInteractiveQuestionContext,
-  useInteractiveQuestionData,
-} from "embedding-sdk/components/public/InteractiveQuestion/context";
+
+import { useInteractiveQuestionContext } from "../context";
+import { useInteractiveQuestionData } from "../hooks";
 
 export const QuestionResetButton = () => {
-  const { onReset, withResetButton } = useInteractiveQuestionContext();
+  const { onReset } = useInteractiveQuestionContext();
   const { hasQuestionChanges } = useInteractiveQuestionData();
 
-  return (
-    withResetButton &&
-    hasQuestionChanges &&
-    onReset && <ResetButton onClick={onReset} />
-  );
+  return hasQuestionChanges && onReset && <ResetButton onClick={onReset} />;
 };

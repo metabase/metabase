@@ -39,7 +39,12 @@ import {
   queryBuilderMain,
   leftSidebar,
   assertQueryBuilderRowCount,
+  visitDashboard,
+  getDashboardCard,
+  testTooltipPairs,
   join,
+  visitQuestion,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -393,6 +398,44 @@ describe("issue 39102", () => {
       cy.findByText("Count").should("be.visible");
       cy.findByText("4").should("be.visible");
     });
+  });
+});
+
+describe("issue 13814", () => {
+  const questionDetails = {
+    display: "scalar",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["count", ["field", ORDERS.TAX, { "base-type": "type/Float" }]],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should support specifying a field in 'count' MBQL clause even if the UI doesn't support it (metabase#13814)", () => {
+    cy.log("verify that the API supports saving this MBQL");
+    createQuestion(questionDetails).then(({ body: card }) =>
+      visitQuestion(card.id),
+    );
+
+    cy.log("verify that the query is executed correctly");
+    cy.findByTestId("scalar-value").findByText("18,760").should("be.visible");
+
+    cy.log(
+      "verify that the clause is displayed correctly and won't crash if updated",
+    );
+    openNotebook();
+    getNotebookStep("summarize")
+      .findByText("Count of Tax")
+      .should("be.visible")
+      .click();
+    popover().findByText("Count of rows").click();
+    getNotebookStep("summarize").findByText("Count").should("be.visible");
   });
 });
 
@@ -985,6 +1028,45 @@ describe("issue 44415", () => {
   });
 });
 
+describe("issue 37374", () => {
+  const questionDetails = {
+    query: {
+      "source-table": PRODUCTS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+        ["field", PRODUCTS.VENDOR, { "base-type": "type/Text" }],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    createQuestion(questionDetails, { wrapId: true });
+    cy.signIn("nodata");
+  });
+
+  it("should allow to change the viz type to pivot without data access (metabase#37374)", () => {
+    visitQuestion("@questionId");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
+
+    cy.log("changing the viz type to pivot table and running the query works");
+    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("chart-type-sidebar")
+      .findByTestId("Pivot Table-button")
+      .click();
+    cy.wait("@cardPivotQuery");
+    cy.findByTestId("pivot-table").should("be.visible");
+
+    cy.log("changing the viz type back to table and running the query works");
+    cy.findByTestId("chart-type-sidebar").findByTestId("Table-button").click();
+    cy.wait("@cardQuery");
+    tableInteractive().should("be.visible");
+  });
+});
+
 describe("issue 44532", () => {
   beforeEach(() => {
     restore();
@@ -1086,6 +1168,56 @@ describe("issue 33441", () => {
       cy.findByText("Invalid expression").should("be.visible");
       cy.button("Done").should("be.disabled");
     });
+  });
+});
+
+describe("issue 31960", () => {
+  const questionDetails = {
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+    },
+    display: "line",
+    visualization_settings: {
+      "graph.metrics": ["count"],
+      "graph.dimensions": ["CREATED_AT"],
+    },
+  };
+
+  // the dot that corresponds to July 10–16, 2022
+  const dotIndex = 10;
+  const rowCount = 11;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should apply a date range filter for a query broken out by week (metabase#31960)", () => {
+    cy.createDashboardWithQuestions({ questions: [questionDetails] }).then(
+      ({ dashboard }) => {
+        visitDashboard(dashboard.id);
+      },
+    );
+
+    getDashboardCard().within(() => {
+      cartesianChartCircle().eq(dotIndex).realHover();
+    });
+    testTooltipPairs([
+      ["Created At:", "July 10–16, 2022"],
+      ["Count:", String(rowCount)],
+      ["Compared to previous week", "+10%"],
+    ]);
+    getDashboardCard().within(() => {
+      cartesianChartCircle().eq(dotIndex).click({ force: true });
+    });
+
+    popover().findByText("See these Orders").click();
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is Jul 10–16, 2022")
+      .should("be.visible");
+    assertQueryBuilderRowCount(rowCount);
   });
 });
 
@@ -1199,6 +1331,63 @@ describe("issue 40399", () => {
       cy.findByTestId("preview-root").findAllByText("Gizmo").should("exist");
       cy.findByTestId("preview-root").findAllByText("Widget").should("exist");
     });
+  });
+});
+
+describe("issue 43057", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should differentiate between date and datetime filters with 00:00 time (metabase#43057)", () => {
+    openOrdersTable();
+
+    cy.log("set the date and verify the filter and results");
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    tableHeaderClick("Created At");
+    popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByText("Specific dates…").click();
+      cy.findByText("On").click();
+      cy.findByLabelText("Date").clear().type("November 18, 2024");
+      cy.button("Add filter").click();
+    });
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(16);
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is on Nov 18, 2024")
+      .should("be.visible");
+
+    cy.log("set time to 00:00 and verify the filter and results");
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is on Nov 18, 2024")
+      .click();
+    popover().within(() => {
+      cy.button("Add time").click();
+      cy.findByLabelText("Time").should("have.value", "00:00");
+      cy.button("Update filter").click();
+    });
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(1);
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is Nov 18, 2024, 12:00 AM")
+      .should("be.visible");
+
+    cy.log("remove time and verify the filter and results");
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is Nov 18, 2024, 12:00 AM")
+      .click();
+    popover().within(() => {
+      cy.findByLabelText("Time").should("have.value", "00:00");
+      cy.button("Remove time").click();
+      cy.button("Update filter").click();
+    });
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(16);
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is on Nov 18, 2024")
+      .should("be.visible");
   });
 });
 
@@ -1391,5 +1580,53 @@ describe("issue 44668", () => {
       cy.findByText("Add another series").should("not.exist");
       cy.findByText("Add series breakout").should("not.exist");
     });
+  });
+});
+
+describe("issue 38989", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should be impossible to join with a table or question which is not in the same database (metabase#38989)", () => {
+    createQuestion(
+      {
+        query: {
+          "source-table": PEOPLE_ID,
+          fields: [
+            ["field", PEOPLE.ID, { "base-type": "type/Number" }],
+            ["field", PEOPLE.EMAIL, { "base-type": "type/Text" }],
+          ],
+          joins: [
+            {
+              fields: "all",
+              alias: "Orders",
+              // This is not a valid table ID in the Sample Database
+              "source-table": 123,
+              strategy: "left-join",
+              condition: [
+                "=",
+                ["field", PEOPLE.ID, null],
+                ["field", ORDERS.USER_ID, { "join-alias": "Orders" }],
+              ],
+            },
+          ],
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+
+    cy.findByTestId("query-builder-main")
+      .findByText("Show error details")
+      .click();
+
+    cy.findByTestId("query-builder-main")
+      .findByText(
+        /either it does not exist, or it belongs to a different Database/,
+      )
+      .should("exist");
   });
 });

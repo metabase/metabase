@@ -1,7 +1,8 @@
-import { useInteractiveQuestionData } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import { useDispatch } from "metabase/lib/redux";
 import { updateQuestion } from "metabase/query_builder/actions";
 import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components";
+
+import { useInteractiveQuestionData } from "../hooks";
 
 export const FilterBar = () => {
   const dispatch = useDispatch();
