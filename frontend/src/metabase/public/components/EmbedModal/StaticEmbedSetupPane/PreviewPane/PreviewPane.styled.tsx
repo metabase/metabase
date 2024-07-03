@@ -1,6 +1,8 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
+import { getCheckerBoardDataUri } from "./utils";
+
 export const PreviewPaneContainer = styled.div<{
   isTransparent?: boolean;
   hidden?: boolean;
@@ -17,5 +19,8 @@ export const PreviewPaneContainer = styled.div<{
 
   ${({ isTransparent }) =>
     isTransparent &&
-    `background-image: url("app/img/pattern_checkerboard.svg")`};
+    css`
+      background-image: url("${getCheckerBoardDataUri()}");
+      border-radius: var(--mb-default-border-radius);
+    `};
 `;
