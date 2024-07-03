@@ -57,7 +57,7 @@
   [_model _k dashboards]
   (if-let [user-id api/*current-user-id*]
     (let [all-parameter-ids (into #{} (comp (mapcat :parameters) (map :id)) dashboards)
-          last-used-values  (fn [dashboard-id]
+          last-used-values  (fn last-used-values [dashboard-id]
                               (when (seq all-parameter-ids)
                                 (into {}
                                       (t2/select
