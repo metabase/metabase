@@ -788,7 +788,7 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column]
   (or
-    (when-let [name-field-id (:name_field column)]
+    (when-let [name-field-id (:name-field column)]
       (lib.metadata/field metadata-providerable name-field-id))
     (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
       (lib.metadata/field metadata-providerable remap-field-id))))
