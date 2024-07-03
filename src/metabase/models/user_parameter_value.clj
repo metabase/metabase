@@ -60,10 +60,8 @@
           last-used-values  (fn [dashboard-id]
                               (when (seq all-parameter-ids)
                                 (into {}
-                                      (t2/select-fn-vec
-                                       (fn [{:keys [parameter_id value]}]
-                                         [parameter_id value])
-                                       :model/UserParameterValue
+                                      (t2/select
+                                       [:model/UserParameterValue :parameter_id :value]
                                        :user_id user-id
                                        :dashboard_id dashboard-id
                                        :parameter_id [:in all-parameter-ids]))))]
