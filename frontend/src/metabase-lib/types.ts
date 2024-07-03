@@ -601,7 +601,6 @@ export interface ClickObject {
 export interface FieldValuesSearchInfo {
   fieldId: FieldId | null;
   searchFieldId: FieldId | null;
-  remappedFieldId: FieldId | null;
   hasFieldValues: FieldValuesType;
 }
 

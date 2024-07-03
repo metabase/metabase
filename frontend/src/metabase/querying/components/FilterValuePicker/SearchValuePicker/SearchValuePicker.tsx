@@ -3,7 +3,6 @@ import { useDebounce } from "react-use";
 import { t } from "ttag";
 
 import {
-  skipToken,
   useGetRemappedFieldValuesQuery,
   useSearchFieldValuesQuery,
 } from "metabase/api";
@@ -18,7 +17,6 @@ import { shouldSearch } from "./utils";
 interface SearchValuePickerProps {
   fieldId: FieldId;
   searchFieldId: FieldId;
-  remappedFieldId: FieldId | null;
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
@@ -30,7 +28,6 @@ interface SearchValuePickerProps {
 export function SearchValuePicker({
   fieldId,
   searchFieldId,
-  remappedFieldId,
   fieldValues: initialFieldValues,
   selectedValues,
   placeholder,
@@ -43,28 +40,30 @@ export function SearchValuePicker({
 
   const { data: searchFieldValues = initialFieldValues } =
     useSearchFieldValuesQuery(
-      searchQuery
-        ? {
-            fieldId,
-            searchFieldId,
-            value: searchQuery,
-            limit: SEARCH_LIMIT,
-          }
-        : skipToken,
+      {
+        fieldId,
+        searchFieldId,
+        value: searchQuery,
+        limit: SEARCH_LIMIT,
+      },
+      {
+        skip: !searchQuery,
+      },
     );
 
-  const { data: remappedFieldValues = initialFieldValues } =
-    useGetRemappedFieldValuesQuery(
-      remappedFieldId != null &&
-        selectedValues.length > 0 &&
-        searchValue.length === 0
-        ? {
-            fieldId,
-            remappedFieldId,
-            values: selectedValues,
-          }
-        : skipToken,
-    );
+  const { data: remappedFieldValues = [] } = useGetRemappedFieldValuesQuery(
+    {
+      fieldId,
+      remappedFieldId: searchFieldId,
+      values: selectedValues,
+    },
+    {
+      skip:
+        fieldId === searchFieldId ||
+        selectedValues.length === 0 ||
+        searchValue.length !== 0,
+    },
+  );
 
   const options = useMemo(
     () => getEffectiveOptions([...searchFieldValues, ...remappedFieldValues]),
