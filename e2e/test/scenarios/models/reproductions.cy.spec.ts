@@ -654,6 +654,8 @@ describe("issue 39749", () => {
     cy.findByLabelText("Description").should("have.text", "").type("B");
     tableHeaderClick("Count");
     cy.findByLabelText("Description").should("have.text", "A");
+    tableHeaderClick("Sum of Total");
+    cy.findByLabelText("Description").should("have.text", "B");
     cy.button("Save changes").click();
     cy.wait("@updateModel");
 
