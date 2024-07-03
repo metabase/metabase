@@ -15,6 +15,8 @@
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.models.audit-log :as audit-log]
@@ -140,6 +142,31 @@
       :mbql/query (-> query lib/normalize lib.util/source-card-id)
       nil)))
 
+(defn- card->integer-table-ids
+  "Return integer source table ids for card's :dataset_query."
+  [card]
+  (when-some [query (-> card :dataset_query :query)]
+    (not-empty (filter pos-int? (lib.util/collect-source-tables query)))))
+
+(defn- prefetch-tables-for-cards!
+  "Collect tables from `dataset-cards` and prefetch. Purpose of this function is to avoid..
+  Returns `nil`."
+  [dataset-cards]
+  (let [db-id->card-ids (update-vals (group-by :database_id dataset-cards) (partial map :id))
+        card-id->table-ids (into {}
+                                 (comp (map (juxt :id card->integer-table-ids))
+                                       (filter (comp seq second)))
+                                 dataset-cards)
+        db-id->mp (into {}
+                        (map (juxt identity lib.metadata.jvm/application-database-metadata-provider))
+                        (keys db-id->card-ids))]
+    (doseq [db-id (keys db-id->card-ids)
+            :let [table-ids (into #{}
+                                  (mapcat card-id->table-ids)
+                                  (db-id->card-ids db-id))]
+            :when (seq table-ids)]
+      (lib.metadata.protocols/metadatas (db-id->mp db-id) :metadata/table table-ids))))
+
 (defn with-can-run-adhoc-query
   "Adds can_run_adhoc_query to each card."
   [cards]
@@ -147,6 +174,8 @@
         source-card-ids (into #{}
                               (keep (comp source-card-id :dataset_query))
                               dataset-cards)]
+    (when lib.metadata.jvm/*metadata-provider-cache*
+      (prefetch-tables-for-cards! dataset-cards))
     (binding [query-perms/*card-instances*
               (when (seq source-card-ids)
                 (t2/select-fn->fn :id identity [Card :id :collection_id] :id [:in source-card-ids]))]
