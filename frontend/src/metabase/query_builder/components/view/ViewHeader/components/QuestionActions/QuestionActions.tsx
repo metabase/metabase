@@ -52,10 +52,10 @@ const ARCHIVE_TESTID = "archive-button";
 interface Props {
   isBookmarked: boolean;
   isShowingQuestionInfoSidebar: boolean;
-  handleBookmark: () => void;
+  onToggleBookmark: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
   question: Question;
-  setQueryBuilderMode: (
+  onSetQueryBuilderMode: (
     mode: QueryBuilderMode,
     opts?: {
       shouldUpdateUrl?: boolean;
@@ -70,10 +70,10 @@ interface Props {
 export const QuestionActions = ({
   isBookmarked,
   isShowingQuestionInfoSidebar,
-  handleBookmark,
+  onToggleBookmark,
   onOpenModal,
   question,
-  setQueryBuilderMode,
+  onSetQueryBuilderMode,
   onTurnModelIntoQuestion,
   onInfoClick,
   onModelPersistenceChange,
@@ -112,16 +112,16 @@ export const QuestionActions = ({
     checkDatabaseCanPersistDatasets(question.database());
 
   const handleEditQuery = useCallback(() => {
-    setQueryBuilderMode("dataset", {
+    onSetQueryBuilderMode("dataset", {
       datasetEditorTab: "query",
     });
-  }, [setQueryBuilderMode]);
+  }, [onSetQueryBuilderMode]);
 
   const handleEditMetadata = useCallback(() => {
-    setQueryBuilderMode("dataset", {
+    onSetQueryBuilderMode("dataset", {
       datasetEditorTab: "metadata",
     });
-  }, [setQueryBuilderMode]);
+  }, [onSetQueryBuilderMode]);
 
   const handleTurnToModel = useCallback(() => {
     const modal = checkCanBeModel(question)
@@ -278,8 +278,8 @@ export const QuestionActions = ({
       {!question.isArchived() && (
         <ViewHeaderIconButtonContainer>
           <BookmarkToggle
-            onCreateBookmark={handleBookmark}
-            onDeleteBookmark={handleBookmark}
+            onCreateBookmark={onToggleBookmark}
+            onDeleteBookmark={onToggleBookmark}
             isBookmarked={isBookmarked}
           />
         </ViewHeaderIconButtonContainer>

@@ -57,15 +57,16 @@ function setup({ card, hasDataPermissions = true }: SetupOpts) {
   const question = metadata.question(card.id) as Question;
   const onOpenModal = jest.fn();
   const onTurnModelIntoQuestion = jest.fn();
+  const onSetQueryBuilderMode = jest.fn();
 
   renderWithProviders(
     <QuestionActions
+      question={question}
       isBookmarked={false}
       isShowingQuestionInfoSidebar={false}
-      handleBookmark={jest.fn()}
       onOpenModal={onOpenModal}
-      question={question}
-      setQueryBuilderMode={jest.fn()}
+      onToggleBookmark={jest.fn()}
+      onSetQueryBuilderMode={onSetQueryBuilderMode}
       onTurnModelIntoQuestion={onTurnModelIntoQuestion}
       onInfoClick={jest.fn()}
       onModelPersistenceChange={jest.fn()}
@@ -73,7 +74,7 @@ function setup({ card, hasDataPermissions = true }: SetupOpts) {
     { storeInitialState: state },
   );
 
-  return { onOpenModal, onTurnModelIntoQuestion };
+  return { onOpenModal, onSetQueryBuilderMode, onTurnModelIntoQuestion };
 }
 
 describe("QuestionActions", () => {
@@ -91,7 +92,7 @@ describe("QuestionActions", () => {
 
   describe("model query & metadata", () => {
     it("should allow to edit the model with write data & collection permissions", async () => {
-      setup({
+      const { onSetQueryBuilderMode } = setup({
         card: createMockCard({
           type: "model",
           can_write: true,
@@ -99,10 +100,17 @@ describe("QuestionActions", () => {
       });
 
       await userEvent.click(getIcon("ellipsis"));
-      await screen.findByRole("dialog");
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
-      expect(screen.getByText("Edit query definition")).toBeInTheDocument();
-      expect(screen.getByText("Edit metadata")).toBeInTheDocument();
+      await userEvent.click(screen.getByText("Edit query definition"));
+      expect(onSetQueryBuilderMode).toHaveBeenCalledWith("dataset", {
+        datasetEditorTab: "query",
+      });
+
+      await userEvent.click(screen.getByText("Edit metadata"));
+      expect(onSetQueryBuilderMode).toHaveBeenCalledWith("dataset", {
+        datasetEditorTab: "metadata",
+      });
     });
 
     it("should not allow to edit the model without write collection permissions", async () => {
@@ -114,7 +122,7 @@ describe("QuestionActions", () => {
       });
 
       await userEvent.click(getIcon("ellipsis"));
-      await screen.findByRole("dialog");
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
       expect(
         screen.queryByText("Edit query definition"),
@@ -132,7 +140,7 @@ describe("QuestionActions", () => {
       });
 
       await userEvent.click(getIcon("ellipsis"));
-      await screen.findByRole("dialog");
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
       expect(
         screen.queryByText("Edit query definition"),
