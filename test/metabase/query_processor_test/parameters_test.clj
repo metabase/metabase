@@ -96,7 +96,8 @@
                    :type     :native
                    :native   {:query         q
                               :template-tags tt}})]
-        (is (some? res))))))
+        (is (=? {:status :completed}
+                res))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Field Filter Params                                               |

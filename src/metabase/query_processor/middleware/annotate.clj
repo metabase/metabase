@@ -17,6 +17,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.humanization :as humanization]
+   [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -626,17 +627,20 @@
   [{query-type :type, :as query
     {:keys [:metadata/model-metadata :alias/escaped->original]} :info} rff]
   (fn add-column-info-rff* [metadata]
+    (qp.debug/debug> (list `add-column-info query metadata))
     (if (and (= query-type :query)
              ;; we should have type metadata eiter in the query fields
              ;; or in the result metadata for the following code to work
              (or (->> query :query keys (some #{:aggregation :breakout :fields}))
                  (every? :base_type (:cols metadata))))
-      (let [query (cond-> query
-                    (seq escaped->original) ;; if we replaced aliases, restore them
-                    (escape-join-aliases/restore-aliases escaped->original))]
-        (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
-               (seq model-metadata)
-               (update :cols qp.util/combine-metadata model-metadata))))
+      (let [query     (cond-> query
+                        (seq escaped->original) ;; if we replaced aliases, restore them
+                        (escape-join-aliases/restore-aliases escaped->original))
+            metadata (cond-> (assoc metadata :cols (merged-column-info query metadata))
+                       (seq model-metadata)
+                       (update :cols qp.util/combine-metadata model-metadata))]
+        (qp.debug/debug> (list `add-column-info '=> metadata))
+        (rff metadata))
       ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
       ;; queries...
       (let [metadata (cond-> (update metadata :cols annotate-native-cols)
@@ -646,4 +650,5 @@
                        ;; but we want those column refs removed since they have type info which we don't know yet
                        :always
                        (update :cols (fn [cols] (map #(dissoc % :field_ref) cols))))]
+        (qp.debug/debug> (list `add-column-info '=> metadata))
         (add-column-info-xform query metadata (rff metadata))))))
