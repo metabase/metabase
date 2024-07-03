@@ -2,10 +2,11 @@ import { useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
-  SummarizeContent,
+  SummarizeAggregationItemList,
+  SummarizeBreakoutColumnList,
   useSummarizeQuery,
 } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/SummarizeContent";
-import { Button, Stack } from "metabase/ui";
+import { Button, Divider, Group, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -62,21 +63,33 @@ const SummarizeInner = ({
   } = useSummarizeQuery(currentQuery, setCurrentQuery);
 
   return (
-    <Stack>
-      <Button onClick={onCloseFilter}>{t`Close`}</Button>
-      <SummarizeContent
+    <Stack w="100%" h="100%">
+      <SummarizeAggregationItemList
         query={query}
         aggregations={aggregations}
-        hasAggregations={hasAggregations}
         onAddAggregations={handleAddAggregations}
         onUpdateAggregation={handleUpdateAggregation}
         onRemoveAggregation={handleRemoveAggregation}
-        onAddBreakout={handleAddBreakout}
-        onUpdateBreakout={handleUpdateBreakout}
-        onRemoveBreakout={handleRemoveBreakout}
-        onReplaceBreakouts={handleReplaceBreakouts}
       />
-      <Button onClick={onApplyFilter}>{t`Apply`}</Button>
+      <Divider my="lg" />
+      {hasAggregations && (
+        <SummarizeBreakoutColumnList
+          query={query}
+          onAddBreakout={handleAddBreakout}
+          onUpdateBreakout={handleUpdateBreakout}
+          onRemoveBreakout={handleRemoveBreakout}
+          onReplaceBreakouts={handleReplaceBreakouts}
+        />
+      )}
+
+      <Group>
+        <Button variant="filled" onClick={onApplyFilter}>
+          {t`Apply`}
+        </Button>
+        <Button variant="subtle" color="text-medium" onClick={onCloseFilter}>
+          {t`Close`}
+        </Button>
+      </Group>
     </Stack>
   );
 };

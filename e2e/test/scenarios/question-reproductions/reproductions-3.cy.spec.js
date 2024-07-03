@@ -1583,6 +1583,49 @@ describe("issue 44668", () => {
   });
 });
 
+// TODO: unskip when metabase#44974 is fixed
+describe.skip(
+  "issue 44974",
+  {
+    tags: ["@external"],
+  },
+  () => {
+    beforeEach(() => {
+      restore("postgres-writable");
+      cy.signInAsAdmin();
+    });
+    it("should not be possible to join with a table or question which is not in the same database (metabase#44974)", () => {
+      startNewQuestion();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Sample Database").click();
+        cy.findByText("Orders").click();
+      });
+
+      cy.button("Visualize").click();
+      cy.button("Save").click();
+      modal().button("Save").click();
+
+      cy.wait(300);
+      modal().button("Not now").click();
+
+      startNewQuestion();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Writable Postgres12").click();
+        cy.findByText("Scoreboard Actions").click();
+      });
+
+      join();
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Recents").click();
+        cy.findByText("Orders").should("not.exist");
+      });
+    });
+  },
+);
+
 describe("issue 38989", () => {
   beforeEach(() => {
     restore();
@@ -1628,5 +1671,70 @@ describe("issue 38989", () => {
         /either it does not exist, or it belongs to a different Database/,
       )
       .should("exist");
+  });
+});
+
+describe("issue 39771", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show tooltip for ellipsified text (metabase#39771)", () => {
+    createQuestion(
+      {
+        query: {
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              "CREATED_AT",
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "quarter-of-year",
+              },
+            ],
+          ],
+          "source-query": {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month",
+                },
+              ],
+            ],
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    openNotebook();
+    getNotebookStep("summarize", { stage: 1 })
+      .findByTestId("breakout-step")
+      .findByText("Created At: Month: Quarter of year")
+      .click();
+
+    popover().findByText("by quarter of year").realHover();
+
+    popover().then(([$popover]) => {
+      const popoverStyle = window.getComputedStyle($popover);
+      const popoverZindex = parseInt(popoverStyle.zIndex, 10);
+
+      cy.findByTestId("ellipsified-tooltip").within(([$tooltip]) => {
+        cy.findByText("by quarter of year").should("be.visible");
+
+        const tooltipStyle = window.getComputedStyle($tooltip);
+        const tooltipZindex = parseInt(tooltipStyle.zIndex, 10);
+
+        // resort to asserting zIndex because should("be.visible") passes unexpectedly
+        expect(tooltipZindex).to.be.gte(popoverZindex);
+      });
+    });
   });
 });
