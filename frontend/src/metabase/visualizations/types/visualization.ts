@@ -17,7 +17,6 @@ import type {
   TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { HoveredObject } from "./hover";
@@ -74,7 +73,7 @@ export interface StaticVisualizationProps {
 export interface VisualizationProps {
   series: Series;
   card: Card;
-  getHref?: (state: State) => string | undefined;
+  getHref?: () => string | undefined;
   data: DatasetData;
   metadata: Metadata;
   rawSeries: RawSeries;

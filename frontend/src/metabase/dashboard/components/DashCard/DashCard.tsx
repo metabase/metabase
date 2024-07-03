@@ -16,7 +16,7 @@ import {
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
 import { color } from "metabase/lib/colors";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector, useStore } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -32,7 +32,7 @@ import type {
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { State, StoreDashcard } from "metabase-types/store";
+import type { StoreDashcard } from "metabase-types/store";
 
 import { DashCardRoot } from "./DashCard.styled";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
@@ -115,9 +115,10 @@ function DashCardInner({
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
   );
+  const store = useStore();
   const getHref = useCallback(
-    (state: State) => getDashcardHref(state, dashcard.id),
-    [dashcard.id],
+    () => getDashcardHref(store.getState(), dashcard.id),
+    [store, dashcard.id],
   );
   const [isPreviewingCard, setIsPreviewingCard] = useState(false);
   const cardRootRef = useRef<HTMLDivElement>(null);

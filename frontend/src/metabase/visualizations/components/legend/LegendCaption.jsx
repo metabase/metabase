@@ -7,7 +7,6 @@ import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { useStore } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 import LegendActions from "./LegendActions";
@@ -61,21 +60,18 @@ const LegendCaption = ({
    * potentially affect the href).
    */
   const [href, setHref] = useState(getHref ? HREF_PLACEHOLDER : undefined);
-  const store = useStore();
 
   const handleFocus = useCallback(() => {
     if (getHref) {
-      const state = store.getState();
-      setHref(getHref(state));
+      setHref(getHref());
     }
-  }, [store, getHref]);
+  }, [getHref]);
 
   const handleMouseEnter = useCallback(() => {
     if (getHref) {
-      const state = store.getState();
-      setHref(getHref(state));
+      setHref(getHref());
     }
-  }, [store, getHref]);
+  }, [getHref]);
 
   return (
     <LegendCaptionRoot className={className} data-testid="legend-caption">

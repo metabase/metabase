@@ -27,7 +27,6 @@ import type {
   VisualizationSettings,
   DashboardCard,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
 import {
@@ -47,7 +46,7 @@ interface DashCardVisualizationProps {
   dashcard: DashboardCard;
   series: Series;
   mode?: QueryClickActionsMode | Mode;
-  getHref?: (state: State) => string | undefined;
+  getHref?: () => string | undefined;
 
   gridSize: {
     width: number;

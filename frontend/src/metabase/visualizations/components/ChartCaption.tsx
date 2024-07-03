@@ -8,7 +8,6 @@ import type {
   TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { ChartCaptionRoot } from "./ChartCaption.styled";
 
@@ -18,7 +17,7 @@ interface ChartCaptionProps {
   icon?: IconProps;
   actionButtons?: ReactNode;
   width?: number;
-  getHref?: (state: State) => string | undefined;
+  getHref?: () => string | undefined;
   onChangeCardAndRun: OnChangeCardAndRun;
 }
 
