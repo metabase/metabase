@@ -781,8 +781,8 @@ const TITLE_LOCALES_BN = {
     'bn' : 'প্রাক-প্রাথমিক ৫+ থেকে প্রথম শ্রেণিতে ভর্তির পরিসংখ্যান'
   },
   'website.year.wise.education.stat' : {
-    'en' : 'Key Indicator (Primary Education)',
-    'bn' : 'মূল সূচক (প্রাথমিক শিক্ষা)'
+    'en' : 'Net Enrolment Rate & Dropout Rate',
+    'bn' : 'নীট ভর্তির হার এবং ঝরে পড়ার হার'
   }
 }
 
