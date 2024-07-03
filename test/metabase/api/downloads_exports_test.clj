@@ -21,17 +21,31 @@
   (:import
    (org.apache.poi.xssf.usermodel XSSFSheet)))
 
+(defn- process-results
+  [export-format results]
+  (case export-format
+    :csv (csv/read-csv results)))
+
 (defn- card-download
-  [card-id export-format format-rows?]
-  (->> (format "card/%d/query/%s?format_rows=%s" card-id export-format format-rows?)
+  [{:keys [id] :as _card} export-format format-rows?]
+  (->> (format "card/%d/query/%s?format_rows=%s" id (name export-format) format-rows?)
        (mt/user-http-request :crowberto :post 200)
-       csv/read-csv))
+       (process-results export-format)))
 
 (defn- dashcard-download
-  [dashcard-id export-format format-rows?]
-  (->> (format "card/%d/query/%s?format_rows=%s" dashcard-id export-format format-rows?)
-       (mt/user-http-request :crowberto :post 200)
-       csv/read-csv))
+  [card-or-dashcard export-format format-rows?]
+  (letfn [(dashcard-download-fn [{dashcard-id  :id
+                                  card-id      :card_id
+                                  dashboard-id :dashboard_id}]
+            (->> (format "dashboard/%d/dashcard/%d/card/%d/query/%s?format_rows=%s" dashboard-id dashcard-id card-id (name export-format) format-rows?)
+                 (mt/user-http-request :crowberto :post 200)
+                 (process-results export-format)))]
+      (if (contains? card-or-dashcard :dashboard_id)
+        (dashcard-download-fn card-or-dashcard)
+        (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                       :model/DashboardCard dashcard {:dashboard_id dashboard-id
+                                                      :card_id      (:id card-or-dashcard)}]
+          (dashcard-download-fn dashcard)))))
 
 (set! *warn-on-reflection* true)
 
@@ -444,12 +458,13 @@
   (testing "Dashcard visualization settings are respected in exports."
     (testing "for csv"
       (mt/dataset test-data
-        (mt/with-temp [:model/Card {card-id :id}
+        (mt/with-temp [:model/Card card
                        {:display       :table
                         :dataset_query {:database (mt/id)
                                         :type     :query
                                         :query    {:source-table (mt/id :orders)}}}]
-          (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" card-id))
-                            csv/read-csv)]
-            (is (= []
-                   (take 1 result)))))))))
+          (let [card-result     (card-download card :csv false)
+                dashcard-result (dashcard-download card :csv false)]
+            (is (= {}
+                   {:card     (take 1 card-result)
+                    :dashcard (take 1 dashcard-result)}))))))))
