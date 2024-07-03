@@ -1,12 +1,14 @@
 (ns metabase.test.data.postgres
   "Postgres driver test extensions."
   (:require
+   [metabase.driver.postgres.test-data :as postgres.test-data]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl]
+   [metabase.test.test-data :as test.test-data]
    [metabase.util.honey-sql-2 :as h2x]))
 
 (set! *warn-on-reflection* true)
@@ -94,8 +96,16 @@
                                     rows))))
     tabledef))
 
-(defmethod load-data/load-data! :postgres [driver dbdef tabledef]
+(defmethod load-data/load-data! :postgres
+  [driver dbdef tabledef]
   (load-data/load-data-all-at-once! driver dbdef (cast-json-columns tabledef)))
+
+(defmethod tx/create-db! :postgres
+  [driver dbdef & options]
+  (if (and (= driver :postgres)
+           (= (:database-name dbdef) "test-data"))
+    (test.test-data/load-test-data! :postgres)
+    (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver dbdef options)))
 
 (defmethod sql.tx/standalone-column-comment-sql :postgres [& args]
   (apply sql.tx/standard-standalone-column-comment-sql args))

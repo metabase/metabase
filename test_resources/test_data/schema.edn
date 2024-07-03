@@ -1,0 +1,212 @@
+;; Data is structured as follows:
+;; *  users - 15 rows
+;;    *  id
+;;    *  name
+;;    *  last_login
+;;    *  password (sensitive)
+;; *  categories - 75 rows
+;;    *  id
+;;    *  name
+;; *  venues - 100 rows
+;;    *  id
+;;    *  name
+;;    *  latitude
+;;    *  longitude
+;;    *  price           number of $$$. 0 if unknown, otherwise between 1-4.
+;;    *  category_id
+;; *  checkins - 1000 rows
+;;    *  id
+;;    *  user_id
+;;    *  venue_id
+;;    *  date
+;; *  products - 200 rows
+;;    *  ean
+;;    *  title
+;;    *  category
+;;    *  vendor
+;;    *  price
+;;    *  rating
+;;    *  created_at
+;; *  people - 2500 rows
+;;    *  address
+;;    *  email
+;;    *  password
+;;    *  name
+;;    *  city
+;;    *  longitude
+;;    *  state
+;;    *  source
+;;    *  birth_date
+;;    *  zip
+;;    *  latitude
+;;    *  created_at
+;; *  reviews - 1112 rows
+;;    *  product_id
+;;    *  reviewer
+;;    *  rating
+;;    *  body
+;;    *  created_at
+;; *  orders - 18760 rows
+;;    *  user_id
+;;    *  product_id
+;;    *  subtotal
+;;    *  tax
+;;    *  total
+;;    *  discount
+;;    *  created_at
+;;    *  quantity
+{:tables
+ [{:name   "users"
+   :fields [{:name          "id"
+             :base-type     :type/Integer
+             :semantic-type :type/PK
+             :pk?           true
+             :not-null?     true}
+            {:name      "name"
+             :base-type :type/Text}
+            {:name      "last_login"
+             :base-type :type/DateTime}
+            {:name            "password"
+             :base-type       :type/Text
+             :visibility-type :sensitive}]}
+
+  {:name   "categories"
+   :fields [{:name          "id"
+             :base-type     :type/Integer
+             :semantic-type :type/PK
+             :pk?           true
+             :not-null?     true}
+            {:name      "name"
+             :base-type :type/Text
+             :not-null? true}]}
+
+  {:name   "venues"
+   :fields [{:name          "id"
+             :base-type     :type/Integer
+             :semantic-type :type/PK
+             :pk?           true
+             :not-null?     true}
+            {:name          "name"
+             :base-type     :type/Text}
+            {:name          "category_id"
+             :base-type     :type/Integer
+             :fk            ["categories" "id"]}
+            {:name          "latitude"
+             :base-type     :type/Float
+             :semantic-type :type/Latitude}
+            {:name          "longitude"
+             :base-type     :type/Float
+             :semantic-type :type/Longitude}
+            {:name          "price"
+             :base-type     :type/Integer
+             :semantic-type :type/Category}]}
+
+  {:name   "checkins"
+   :fields [{:name          "id"
+             :base-type     :type/Integer
+             :semantic-type :type/PK
+             :pk?           true
+             :not-null?     true}
+            {:name       "date"
+             :base-type  :type/Date}
+            {:name       "user_id"
+             :base-type  :type/Integer
+             :fk         ["users" "id"]}
+            {:name       "venue_id"
+             :base-type  :type/Integer
+             :fk         ["venues" "id"]}]}
+
+  {:name   "products"
+   :fields [{:name          "id"
+             :base-type     :type/Integer
+             :semantic-type :type/PK
+             :pk?           true
+             :not-null?     true}
+            {:name      "ean"
+             :base-type :type/Text}
+            {:name      "title"
+             :base-type :type/Text}
+            {:name      "category"
+             :base-type :type/Text}
+            {:name      "vendor"
+             :base-type :type/Text}
+            {:name      "price"
+             :base-type :type/Float}
+            {:name      "rating"
+             :base-type :type/Float}
+            {:name      "created_at"
+             :base-type :type/DateTimeWithTZ}]}
+
+  {:name   "people"
+   :fields [{:name          "id"
+             :base-type     :type/Integer
+             :semantic-type :type/PK
+             :pk?           true
+             :not-null?     true}
+            {:name      "address"
+             :base-type :type/Text}
+            {:name      "email"
+             :base-type :type/Text}
+            {:name      "password"
+             :base-type :type/Text}
+            {:name      "name"
+             :base-type :type/Text}
+            {:name      "city"
+             :base-type :type/Text}
+            {:name      "longitude"
+             :base-type :type/Float}
+            {:name      "state"
+             :base-type :type/Text}
+            {:name      "source"
+             :base-type :type/Text}
+            {:name      "birth_date"
+             :base-type :type/Date}
+            {:name      "zip"
+             :base-type :type/Text}
+            {:name      "latitude"
+             :base-type :type/Float}
+            {:name      "created_at"
+             :base-type :type/DateTimeWithTZ}]}
+
+  {:name   "reviews"
+   :fields [{:name          "id"
+             :base-type     :type/Integer
+             :semantic-type :type/PK
+             :pk?           true
+             :not-null?     true}
+            {:name      "product_id"
+             :base-type :type/Integer
+             :fk        ["products" "id"]}
+            {:name      "reviewer"
+             :base-type :type/Text}
+            {:name      "rating"
+             :base-type :type/Integer}
+            {:name      "body"
+             :base-type :type/Text}
+            {:name      "created_at"
+             :base-type :type/DateTimeWithTZ}]}
+
+  {:name   "orders"
+   :fields [{:name          "id"
+             :base-type     :type/Integer
+             :semantic-type :type/PK
+             :pk?           true
+             :not-null?     true}
+            {:name      "user_id"
+             :base-type :type/Integer
+             :fk        ["people" "id"]}
+            {:name      "product_id"
+             :base-type :type/Integer
+             :fk        ["products" "id"]}
+            {:name      "subtotal"
+             :base-type :type/Float}
+            {:name      "tax"
+             :base-type :type/Float}
+            {:name      "total"
+             :base-type :type/Float}
+            {:name      "discount"
+             :base-type :type/Float}
+            {:name      "created_at"
+             :base-type :type/DateTimeWithTZ}
+            {:name      "quantity"
+             :base-type :type/Integer}]}]}
