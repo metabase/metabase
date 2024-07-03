@@ -23,7 +23,6 @@
    [metabase.query-processor-test.string-extracts-test
     :as string-extracts-test]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.sync-metadata.tables :as sync-tables]

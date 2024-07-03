@@ -248,6 +248,4 @@
       (doseq [statement (ddl/drop-db-ddl-statements driver dbdef)]
         (execute/execute-sql! driver server-connection statement)))
     (catch Throwable e
-      (throw (ex-info "Error destroying database"
-                      {:driver driver, :dbdef dbdef}
-                      e)))))
+      (throw (ex-info "Error destroying database" {:driver driver, :dbdef (select-keys dbdef #{:database-name})} e)))))
