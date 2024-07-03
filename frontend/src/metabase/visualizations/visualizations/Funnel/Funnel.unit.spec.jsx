@@ -1,4 +1,4 @@
-import { render, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { ThemeProvider } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import {
@@ -45,7 +45,7 @@ const setup = (funnelProps, visualizationSettings = {}) => {
     ...visualizationSettings,
   });
 
-  render(
+  renderWithProviders(
     <ThemeProvider>
       <Funnel
         series={[series]}
