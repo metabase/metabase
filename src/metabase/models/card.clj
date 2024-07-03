@@ -149,8 +149,8 @@
     (not-empty (filter pos-int? (lib.util/collect-source-tables query)))))
 
 (defn- prefetch-tables-for-cards!
-  "Collect tables from `dataset-cards` and prefetch. Purpose of this function is to avoid..
-  Returns `nil`."
+  "Collect tables from `dataset-cards` and prefetch metadata. Should be used only with metdata provider caching
+  enabled, as per https://github.com/metabase/metabase/pull/45050. Returns `nil`."
   [dataset-cards]
   (let [db-id->card-ids (update-vals (group-by :database_id dataset-cards) (partial map :id))
         card-id->table-ids (into {}
