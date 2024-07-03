@@ -161,7 +161,7 @@
         collection-id    (first collection-ids)
         collection       (if (= collection-id :root)
                            (collection/root-collection-with-ui-details nil)
-                           (t2/select :model/Collection :id collection-id))
+                           (t2/select-one :model/Collection :id collection-id))
         ;; does this need to be effective descendants? No: admins can see all collections.
         descendant-ids      (map :id (collection/descendants-flat collection))]
     (build-descendant-perms collection-id group-ids descendant-ids)))
