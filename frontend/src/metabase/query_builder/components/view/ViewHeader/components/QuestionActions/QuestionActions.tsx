@@ -62,7 +62,7 @@ interface Props {
       datasetEditorTab?: DatasetEditorTab;
     },
   ) => void;
-  turnDatasetIntoQuestion: () => void;
+  onTurnModelIntoQuestion: () => void;
   onInfoClick: () => void;
   onModelPersistenceChange: () => void;
 }
@@ -74,7 +74,7 @@ export const QuestionActions = ({
   onOpenModal,
   question,
   setQueryBuilderMode,
-  turnDatasetIntoQuestion,
+  onTurnModelIntoQuestion,
   onInfoClick,
   onModelPersistenceChange,
 }: Props) => {
@@ -226,7 +226,7 @@ export const QuestionActions = ({
       extraButtons.push({
         title: t`Turn back to saved question`,
         icon: "insight",
-        action: turnDatasetIntoQuestion,
+        action: onTurnModelIntoQuestion,
       });
     }
   }

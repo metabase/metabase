@@ -7,6 +7,7 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
@@ -54,21 +55,25 @@ function setup({ card, hasDataPermissions = true }: SetupOpts) {
 
   const metadata = getMetadata(state);
   const question = metadata.question(card.id) as Question;
+  const onOpenModal = jest.fn();
+  const onTurnModelIntoQuestion = jest.fn();
 
   renderWithProviders(
     <QuestionActions
       isBookmarked={false}
       isShowingQuestionInfoSidebar={false}
       handleBookmark={jest.fn()}
-      onOpenModal={jest.fn()}
+      onOpenModal={onOpenModal}
       question={question}
       setQueryBuilderMode={jest.fn()}
-      turnDatasetIntoQuestion={jest.fn()}
+      onTurnModelIntoQuestion={onTurnModelIntoQuestion}
       onInfoClick={jest.fn()}
       onModelPersistenceChange={jest.fn()}
     />,
     { storeInitialState: state },
   );
+
+  return { onOpenModal, onTurnModelIntoQuestion };
 }
 
 describe("QuestionActions", () => {
@@ -138,7 +143,7 @@ describe("QuestionActions", () => {
 
   describe("turning into a model or question", () => {
     it("should allow to turn into a model with write data & collection permissions", async () => {
-      setup({
+      const { onOpenModal } = setup({
         card: createMockCard({
           type: "question",
           can_write: true,
@@ -146,13 +151,14 @@ describe("QuestionActions", () => {
       });
 
       await userEvent.click(getIcon("ellipsis"));
-      await screen.findByRole("dialog");
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
-      expect(screen.getByText("Turn into a model")).toBeInTheDocument();
+      await userEvent.click(screen.getByText("Turn into a model"));
+      expect(onOpenModal).toHaveBeenCalledWith(MODAL_TYPES.TURN_INTO_DATASET);
     });
 
     it("should allow to turn into a question with write data & collection permissions", async () => {
-      setup({
+      const { onTurnModelIntoQuestion } = setup({
         card: createMockCard({
           type: "model",
           can_write: true,
@@ -160,11 +166,10 @@ describe("QuestionActions", () => {
       });
 
       await userEvent.click(getIcon("ellipsis"));
-      await screen.findByRole("dialog");
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
-      expect(
-        screen.getByText("Turn back to saved question"),
-      ).toBeInTheDocument();
+      await userEvent.click(screen.getByText("Turn back to saved question"));
+      expect(onTurnModelIntoQuestion).toHaveBeenCalled();
     });
 
     it("should not allow to turn into a model without write collection permissions", async () => {
@@ -198,7 +203,7 @@ describe("QuestionActions", () => {
     });
 
     it("should allow to turn into a model without data permissions", async () => {
-      setup({
+      const { onOpenModal } = setup({
         card: createMockCard({
           type: "question",
           can_write: true,
@@ -207,13 +212,14 @@ describe("QuestionActions", () => {
       });
 
       await userEvent.click(getIcon("ellipsis"));
-      await screen.findByRole("dialog");
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
-      expect(screen.getByText("Turn into a model")).toBeInTheDocument();
+      await userEvent.click(screen.getByText("Turn into a model"));
+      expect(onOpenModal).toHaveBeenCalledWith(MODAL_TYPES.TURN_INTO_DATASET);
     });
 
     it("should allow to turn into a question without data permissions", async () => {
-      setup({
+      const { onTurnModelIntoQuestion } = setup({
         card: createMockCard({
           type: "model",
           can_write: true,
@@ -222,11 +228,10 @@ describe("QuestionActions", () => {
       });
 
       await userEvent.click(getIcon("ellipsis"));
-      await screen.findByRole("dialog");
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
-      expect(
-        screen.getByText("Turn back to saved question"),
-      ).toBeInTheDocument();
+      await userEvent.click(screen.getByText("Turn back to saved question"));
+      expect(onTurnModelIntoQuestion).toHaveBeenCalled();
     });
   });
 
