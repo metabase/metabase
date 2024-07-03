@@ -90,7 +90,7 @@
 
 (defmethod ddl/drop-db-ddl-statements :h2
   [_driver _dbdef & _options]
-  nil)
+  ["DROP ALL OBJECTS DELETE FILES;"])
 
 (defmethod tx/id-field-type :h2 [_] :type/BigInteger)
 
