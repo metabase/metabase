@@ -21,8 +21,6 @@ export function Visualizer({ location }: WithRouterProps) {
 
   const { isVizSettingsOpen, closeVizSettings } = useVizSettings();
 
-  const cards = series.map(s => s.card);
-
   const _fetchCardAndData = async (
     cardId: CardId,
     { forceRefetch = false } = {},
@@ -82,6 +80,15 @@ export function Visualizer({ location }: WithRouterProps) {
     if (newSeries) {
       setSeries([newSeries]);
     }
+  };
+
+  const handleChangeVizType = (cardId: CardId, vizType: string) => {
+    const nextSeries = series.map(series =>
+      series.card.id === cardId
+        ? { ...series, card: { ...series.card, display: vizType } }
+        : series,
+    );
+    setSeries(nextSeries);
   };
 
   const handleRefresh = async (cardId: CardId) => {
@@ -154,7 +161,8 @@ export function Visualizer({ location }: WithRouterProps) {
             </PanelResizeHandle>
             <Panel defaultSize={30}>
               <VisualizerUsed
-                cards={cards}
+                series={series}
+                onVizTypeChange={handleChangeVizType}
                 onRefreshCard={handleRefresh}
                 onRemoveCard={handleRemove}
               />

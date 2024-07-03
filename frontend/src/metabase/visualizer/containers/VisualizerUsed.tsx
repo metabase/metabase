@@ -3,63 +3,36 @@
 import { t } from "ttag";
 
 import { Menu, Flex, Card, Title, Icon, IconName, Text } from "metabase/ui";
-import type { CardId, Card as ICard } from "metabase-types/api";
+import type { CardId, Series, SingleSeries } from "metabase-types/api";
 import { ActionIcon } from "@mantine/core";
 import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
+import visualizations from "metabase/visualizations";
 
 interface VisualizerUsedProps {
-  cards: ICard[];
+  series: Series;
+  onVizTypeChange: (card: CardId, vizType: string) => void;
   onRefreshCard: (card: CardId) => void;
   onRemoveCard: (card: CardId) => void;
 }
 
 export function VisualizerUsed({
-  cards,
+  series,
+  onVizTypeChange,
   onRefreshCard,
   onRemoveCard,
 }: VisualizerUsedProps) {
   return (
     <Card h="100%">
       <Title order={4}>{t`Being used`}</Title>
-      {cards.map((card, index) => {
+      {series.map(({ card, data }, index) => {
         return (
           <Flex key={index} py="sm" align="center">
             {/* TODO - create a dark variant  */}
-            <Menu>
-              <Menu.Target>
-                <ActionIcon mr="sm">
-                  <Icon name={card.display as IconName} />
-                  <Icon name="chevrondown" size={8} />
-                </ActionIcon>
-              </Menu.Target>
-              <Menu.Dropdown bg="black.0">
-                <Menu.Item>
-                  <Flex align="center">
-                    <Icon name="bar" color="white" />
-                    <Text ml="sm" color="white">{t`Bar`}</Text>
-                  </Flex>
-                </Menu.Item>
-                <Menu.Item>
-                  <Flex align="center">
-                    <Icon name="line" color="white" />
-                    <Text ml="sm" color="white">{t`Line`}</Text>
-                  </Flex>
-                </Menu.Item>
-                <Menu.Item>
-                  <Flex align="center">
-                    <Icon name="pie" color="white" />
-                    <Text ml="sm" color="white">{t`Pie`}</Text>
-                  </Flex>
-                </Menu.Item>
-                <Menu.Item>
-                  <Flex align="center">
-                    <Icon name="ellipsis" />
-                    <Text ml="sm">{t`More`}</Text>
-                  </Flex>
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
+            <VisualizationPicker
+              series={{ card, data }}
+              onChange={vizType => onVizTypeChange(card.id, vizType)}
+            />
             <div>{card.name}</div>
             <Flex ml="auto">
               <Link to={Urls.question(card)} style={{ marginRight: "6px" }}>
@@ -90,5 +63,51 @@ export function VisualizerUsed({
         );
       })}
     </Card>
+  );
+}
+
+interface VisualizationPickerProps {
+  series: SingleSeries;
+  onChange: (vizType: string) => void;
+}
+
+function VisualizationPicker({ series, onChange }: VisualizationPickerProps) {
+  const { card, data } = series;
+
+  const vizOptions = Array.from(visualizations)
+    .filter(([, viz]) => {
+      if (viz.hidden) {
+        return false;
+      }
+      if (typeof viz.isSensible === "function") {
+        return viz.isSensible(data);
+      }
+      return true;
+    })
+    .map(([vizType, viz]) => ({
+      label: viz.uiName,
+      value: vizType,
+      icon: viz.iconName,
+    }));
+
+  return (
+    <Menu>
+      <Menu.Target>
+        <ActionIcon mr="sm">
+          <Icon name={card.display as IconName} />
+          <Icon name="chevrondown" size={8} />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown bg="black.0">
+        {vizOptions.map(({ label, value, icon }) => (
+          <Menu.Item key={value} onClick={() => onChange(value)}>
+            <Flex align="center" color="white">
+              <Icon name={icon} />
+              <Text ml="sm">{label}</Text>
+            </Flex>
+          </Menu.Item>
+        ))}
+      </Menu.Dropdown>
+    </Menu>
   );
 }
