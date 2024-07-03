@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import CS from "metabase/css/core/index.css";
 import { FilterContent } from "metabase/querying/components/FilterContent";
 import { Flex, Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -121,7 +122,7 @@ export function FilterModal({
       <Modal.Content>
         <ModalHeader p="lg">
           <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
-          <Flex mx="md" justify="end" style={{ flex: 1 }}>
+          <Flex mx="md" justify="end" className={CS.flex1}>
             <FilterContent.Header value={searchText} onChange={handleSearch} />
           </Flex>
           <Modal.CloseButton />

@@ -1,3 +1,6 @@
+import cx from "classnames";
+
+import CS from "metabase/css/core/index.css";
 import { FilterContent } from "metabase/querying/components/FilterContent";
 import { useFilterContent } from "metabase/querying/components/FilterModal";
 import { Box, Group, Stack } from "metabase/ui";
@@ -55,7 +58,7 @@ const FilterInner = ({
       <Group position="right">
         <FilterContent.Header value={searchText} onChange={handleSearch} />
       </Group>
-      <Box h="100%" style={{ flex: 1, overflow: "hidden" }}>
+      <Box h="100%" className={cx(CS.flex1, CS.overflowHidden)}>
         <FilterContent.Body
           groupItems={visibleItems}
           query={query}
