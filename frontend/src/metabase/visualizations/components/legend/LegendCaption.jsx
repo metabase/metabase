@@ -54,9 +54,12 @@ const LegendCaption = ({
 }) => {
   const store = useStore();
   /*
-   * Optimization: lazy computing the href, which uses getNewCardUrl,
-   * which makes a few MLv2 calls, which are expensive. It's a performance issue
-   * on dashboards that have hundreds of dashcards.
+   * Optimization: lazy computing the href on title focus & mouseenter only.
+   * Href computation uses getNewCardUrl, which makes a few MLv2 calls,
+   * which are expensive.
+   * It's a performance issue on dashboards that have hundreds of dashcards
+   * (during initial render and after changing dashboard parameters which can
+   * potentially affect the href).
    */
   const [href, setHref] = useState(getHref ? HREF_PLACEHOLDER : undefined);
 
