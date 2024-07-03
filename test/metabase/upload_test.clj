@@ -360,7 +360,7 @@
 
     (with-upload-table [table (create-upload-table! ...)]
       ...)"
-  {:style/indent 1}
+  {:style/indent :defn}
   [[table-binding create-table-expr] & body]
   `(with-uploads-enabled
      (mt/with-model-cleanup [:model/Table]

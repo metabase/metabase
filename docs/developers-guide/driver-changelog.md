@@ -4,6 +4,14 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.51.0
+
+- New optional method `metabase.driver/query-result-metadata` has been added for efficiently calculating metadata for
+  queries without actually running them. `:sql-jdbc` has been given a default implementation; drivers not based on
+  this that can determine result metadata without actually running queries should add their implementations as well
+  for better performance when saving Questions. Refer to the method docstring for more information and where to find
+  an example implementation.
+
 ## Metabase 0.50.0
 
 - The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to
