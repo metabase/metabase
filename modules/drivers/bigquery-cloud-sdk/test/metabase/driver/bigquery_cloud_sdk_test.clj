@@ -749,7 +749,7 @@
               future-thread-names (fn []
                                     ;; kinda hacky but we don't control this thread pool
                                     (into #{} (comp (map (fn [^Thread t] (.getName t)))
-                                                    (filter #(str/includes? % "clojure-agent-send-off-pool")))
+                                                    (filter #(str/includes? % "bigquery-cancel-watcher")))
                                           (.keySet (Thread/getAllStackTraces))))
               count-before        (count (future-thread-names))]
           (dotimes [_ 10]

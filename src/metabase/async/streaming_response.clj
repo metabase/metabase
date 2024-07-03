@@ -74,6 +74,7 @@
       nil)
     (catch Throwable e
       (log/error e "Caught unexpected Exception in streaming response body")
+      (a/>!! canceled-chan :throwable)
       (write-error! os e)
       nil)))
 
