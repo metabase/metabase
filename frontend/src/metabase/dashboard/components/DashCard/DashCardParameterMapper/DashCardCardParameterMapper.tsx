@@ -232,6 +232,7 @@ export function DashCardCardParameterMapper({
           buttonText: t`Unknown Field`,
           buttonIcon: (
             <CloseIconButton
+              aria-label={t`Disconnect`}
               onClick={e => {
                 handleChangeTarget(null);
                 e.stopPropagation();
