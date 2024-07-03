@@ -204,16 +204,17 @@ function MainNavbarView({
           )}
         </SidebarSection>
 
-        <SidebarSection>
-          <Tree
-            data={trashCollection ? [trashCollection] : []}
-            selectedId={collectionItem?.id}
-            onSelect={onItemSelect}
-            TreeNode={SidebarCollectionLink}
-            role="tree"
-            aria-label="collection tree for trash"
-          />
-        </SidebarSection>
+        {trashCollection && (
+          <SidebarSection>
+            <Tree
+              data={[trashCollection]}
+              selectedId={collectionItem?.id}
+              onSelect={onItemSelect}
+              TreeNode={SidebarCollectionLink}
+              role="tree"
+            />
+          </SidebarSection>
+        )}
       </div>
       <WhatsNewNotification />
     </SidebarContentRoot>
