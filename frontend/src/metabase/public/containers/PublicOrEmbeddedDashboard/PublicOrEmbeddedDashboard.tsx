@@ -202,7 +202,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
         navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
         slowCards={slowCards}
         cardTitled={cardTitled}
-        downloads={downloadsEnabled}
+        downloadsEnabled={downloadsEnabled}
       />
     );
   }

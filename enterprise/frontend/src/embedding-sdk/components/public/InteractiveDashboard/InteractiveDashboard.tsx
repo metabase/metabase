@@ -136,7 +136,7 @@ const InteractiveDashboardInner = ({
           font={font}
           bordered={displayOptions.bordered}
           navigateToNewCardFromDashboard={handleNavigateToNewCardFromDashboard}
-          downloads={false}
+          downloadsEnabled={false}
         />
       )}
     </Box>

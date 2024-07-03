@@ -59,7 +59,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         onFullscreenChange={onFullscreenChange}
         onRefreshPeriodChange={onRefreshPeriodChange}
         bordered={bordered}
-        downloads={downloadsEnabled}
+        downloadsEnabled={downloadsEnabled}
         theme={theme}
         titled={titled}
         font={font}

@@ -3,7 +3,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useMount } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { setErrorPage } from "metabase/redux/app";
 import { addFields, addParamValues } from "metabase/redux/metadata";
@@ -47,19 +46,8 @@ export const PublicOrEmbeddedQuestion = ({
   const [parameterValues, setParameterValues] = useState<ParameterValuesMap>(
     {},
   );
-  const {
-    bordered,
-    hide_download_button,
-    hide_parameters,
-    theme,
-    titled,
-    downloads,
-  } = useEmbedFrameOptions({ location });
-
-  const downloadsEnabled = PLUGIN_RESOURCE_DOWNLOADS.areDownloadsEnabled({
-    hide_download_button,
-    downloads,
-  });
+  const { bordered, hide_parameters, theme, titled, downloadsEnabled } =
+    useEmbedFrameOptions({ location });
 
   useMount(async () => {
     if (uuid) {

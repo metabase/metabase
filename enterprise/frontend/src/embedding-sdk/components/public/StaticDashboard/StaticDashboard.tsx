@@ -56,7 +56,7 @@ export const StaticDashboardInner = ({
         setRefreshElapsedHook={setRefreshElapsedHook}
         font={font}
         bordered={displayOptions.bordered}
-        downloads={withDownloads}
+        downloadsEnabled={withDownloads}
       />
     </Box>
   );
