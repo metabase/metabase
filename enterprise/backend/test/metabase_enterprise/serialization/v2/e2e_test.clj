@@ -457,7 +457,7 @@
                            :type                 :category,
                            :values_source_config {:card_id     (:entity_id card1s),
                                                   :value_field [:field
-                                                                ["my-db" nil "CUSTOMERS" (:name card1s)]
+                                                                ["my-db" nil "CUSTOMERS" (:name field1s)]
                                                                 nil]},
                            :values_source_type   "card"}]
                          (:parameters (first (by-model extraction "Dashboard")))))
@@ -469,7 +469,7 @@
                              :type                 :category,
                              :values_source_config {:card_id     (:entity_id card1s),
                                                     :value_field [:field
-                                                                  ["my-db" nil "CUSTOMERS" (:name card1s)]
+                                                                  ["my-db" nil "CUSTOMERS" (:name field1s)]
                                                                   nil]},
                              :values_source_type   "card"}]}
                          (set (map :parameters (by-model extraction "Card")))))
