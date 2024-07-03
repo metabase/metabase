@@ -259,7 +259,7 @@
   :type       :boolean
   :default    true
   :setter     :none
-  :visibility :internal
+  :visibility :authenticated
   :export?    true
   :getter     (fn enable-nested-queries-getter []
                 ;; only false if explicitly set `false` by the environment
