@@ -6656,7 +6656,7 @@ databaseChangeLog:
       comment: Add unique_field_helper column to metabase_field
       changes:
         - sql:
-            dbms: postgres
+            dbms: postgresql
             sql: ALTER TABLE metabase_field ADD COLUMN IF NOT EXISTS unique_field_helper INTEGER;
         - sql:
             dbms: h2
