@@ -203,9 +203,3 @@
                       (create-artifacts! driver))]
       (u/profile (format "%s for %s" `load-artifacts! driver)
         (load-artifacts! driver artifacts)))))
-
-(mu/defn legacy-load-test-data! []
-  (u/profile 'metabase.test.data.interface/create-db!
-    (let [driver :postgres
-          db-def (metabase.test.data.interface/get-dataset-definition (metabase.test.data.interface/default-dataset driver))]
-      (metabase.test.data.interface/create-db! driver db-def))))
