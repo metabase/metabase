@@ -2,6 +2,8 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  commandPalette,
+  commandPaletteButton,
   restore,
   visualize,
   openOrdersTable,
@@ -19,10 +21,12 @@ import {
   openQuestionActions,
   queryBuilderHeader,
   saveQuestion,
+  saveSavedQuestion,
   tableHeaderClick,
   onlyOnOSS,
   entityPickerModalItem,
   newButton,
+  createNativeQuestion,
   createQuestion,
   getNotebookStep,
 } from "e2e/support/helpers";
@@ -639,6 +643,47 @@ describe("issue 35290", () => {
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.icon("warning").should("not.exist");
     });
+  });
+});
+
+describe("issue 43216", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+
+    createNativeQuestion({
+      name: "Source question",
+      native: { query: "select 1 as A, 2 as B, 3 as C" },
+    });
+  });
+
+  it("should update source question metadata when it changes (metabase#43216)", () => {
+    cy.visit("/");
+
+    cy.log("Create target question");
+    newButton("Question").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText("Source question").click();
+    });
+    saveQuestion("Target question");
+
+    cy.log("Update source question");
+    commandPaletteButton().click();
+    commandPalette().findByText("Source question").click();
+    cy.findByTestId("native-query-editor-container")
+      .findByText("Open Editor")
+      .click();
+    cy.get(".ace_editor").should("be.visible").type(" , 4 as D");
+    saveSavedQuestion();
+
+    cy.log("Assert updated metadata in target question");
+    commandPaletteButton().click();
+    commandPalette().findByText("Target question").click();
+    cy.findAllByTestId("header-cell").eq(3).should("have.text", "D");
+    openNotebook();
+    getNotebookStep("data").button("Pick columns").click();
+    popover().findByText("D").should("be.visible");
   });
 });
 

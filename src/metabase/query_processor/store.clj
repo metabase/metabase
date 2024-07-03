@@ -195,8 +195,8 @@
   [mlv2-metadata]
   (let [model (case (:lib/type mlv2-metadata)
                 :metadata/database :model/Database
-                :metadata/table :model/Table
-                :metadata/column :model/Field)]
+                :metadata/table    :model/Table
+                :metadata/column   :model/Field)]
     (-> mlv2-metadata
         (dissoc :lib/type)
         (update-keys u/->snake_case_en)

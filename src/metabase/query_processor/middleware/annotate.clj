@@ -17,13 +17,14 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.humanization :as humanization]
+   [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
 (def ^:private Col
@@ -70,28 +71,29 @@
     (let [expected-count (count cols)
           actual-count   (count (first rows))]
       (when-not (= expected-count actual-count)
-        (throw (ex-info (str (deferred-tru "Query processor error: number of columns returned by driver does not match results.")
+        (throw (ex-info (str (tru "Query processor error: number of columns returned by driver does not match results.")
                              "\n"
-                             (deferred-tru "Expected {0} columns, but first row of resuls has {1} columns."
-                               expected-count actual-count))
-                 {:expected-columns (map :name cols)
-                  :first-row        (first rows)
-                  :type             qp.error-type/qp}))))))
+                             (tru "Expected {0} columns, but first row of resuls has {1} columns."
+                                  expected-count actual-count))
+                        {:expected-columns (map :name cols)
+                         :first-row        (first rows)
+                         :type             qp.error-type/qp}))))))
 
 (defn- annotate-native-cols [cols]
   (let [unique-name-fn (lib.util/unique-name-generator (qp.store/metadata-provider))]
-    (vec (for [{col-name :name, base-type :base_type, :as driver-col-metadata} cols]
-           (let [col-name (name col-name)]
-             (merge
-              {:display_name (u/qualified-name col-name)
-               :source       :native}
-              ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does
-              ;; this for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank
-              ;; names in MBQL `:field` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a
-              ;; valid `:field`, omit the `:field_ref`.
-              (when-not (str/blank? col-name)
-                {:field_ref [:field (unique-name-fn col-name) {:base-type base-type}]})
-              driver-col-metadata))))))
+    (mapv (fn [{col-name :name, base-type :base_type, :as driver-col-metadata}]
+            (let [col-name (name col-name)]
+              (merge
+               {:display_name (u/qualified-name col-name)
+                :source       :native}
+               ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does
+               ;; this for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank
+               ;; names in MBQL `:field` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a
+               ;; valid `:field`, omit the `:field_ref`.
+               (when-not (str/blank? col-name)
+                 {:field_ref [:field (unique-name-fn col-name) {:base-type base-type}]})
+               driver-col-metadata)))
+          cols)))
 
 (defmethod column-info :native
   [_query {:keys [cols rows] :as _results}]
@@ -262,8 +264,7 @@
                   :display_name (humanization/name->human-readable-name id-or-name)}))
 
       (integer? id-or-name)
-      (merge (let [{:keys [parent-id], :as field} (-> (lib.metadata/field (qp.store/metadata-provider) id-or-name)
-                                                      (dissoc :database-type))]
+      (merge (let [{:keys [parent-id], :as field} (lib.metadata/field (qp.store/metadata-provider) id-or-name)]
                #_{:clj-kondo/ignore [:deprecated-var]}
                (if-not parent-id
                  (qp.store/->legacy-metadata field)
@@ -434,7 +435,6 @@
    {} ; ensure the type is a plain map rather than a Toucan 2 instance or whatever
    (when-let [field-id (:id source-metadata-col)]
      (-> (lib.metadata/field (qp.store/metadata-provider) field-id)
-         (dissoc :database-type)
          #_{:clj-kondo/ignore [:deprecated-var]}
          qp.store/->legacy-metadata))
    source-metadata-col
@@ -627,17 +627,20 @@
   [{query-type :type, :as query
     {:keys [:metadata/model-metadata :alias/escaped->original]} :info} rff]
   (fn add-column-info-rff* [metadata]
+    (qp.debug/debug> (list `add-column-info query metadata))
     (if (and (= query-type :query)
              ;; we should have type metadata eiter in the query fields
              ;; or in the result metadata for the following code to work
              (or (->> query :query keys (some #{:aggregation :breakout :fields}))
                  (every? :base_type (:cols metadata))))
-      (let [query (cond-> query
-                    (seq escaped->original) ;; if we replaced aliases, restore them
-                    (escape-join-aliases/restore-aliases escaped->original))]
-        (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
-               (seq model-metadata)
-               (update :cols qp.util/combine-metadata model-metadata))))
+      (let [query     (cond-> query
+                        (seq escaped->original) ;; if we replaced aliases, restore them
+                        (escape-join-aliases/restore-aliases escaped->original))
+            metadata (cond-> (assoc metadata :cols (merged-column-info query metadata))
+                       (seq model-metadata)
+                       (update :cols qp.util/combine-metadata model-metadata))]
+        (qp.debug/debug> (list `add-column-info '=> metadata))
+        (rff metadata))
       ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
       ;; queries...
       (let [metadata (cond-> (update metadata :cols annotate-native-cols)
@@ -647,4 +650,5 @@
                        ;; but we want those column refs removed since they have type info which we don't know yet
                        :always
                        (update :cols (fn [cols] (map #(dissoc % :field_ref) cols))))]
+        (qp.debug/debug> (list `add-column-info '=> metadata))
         (add-column-info-xform query metadata (rff metadata))))))
