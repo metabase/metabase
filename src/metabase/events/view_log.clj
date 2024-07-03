@@ -37,18 +37,17 @@
     (catch Exception e
       (log/error e "Failed to increment view counts"))))
 
-(def ^{:private true
-       :once    true}
+(defonce ^:private
   increase-view-count-queue
-  (grouper/start!
-   increment-view-counts!*
-   :capacity 500
-   :interval (* 5 60 1000)))
+  (delay (grouper/start!
+          increment-view-counts!*
+          :capacity 500
+          :interval (* 5 60 1000))))
 
 (defn- increment-view-counts!
   "Increment the view count of the given `model` and `model-id`."
   [model model-id]
-  (grouper/submit! increase-view-count-queue {:model model :id model-id}))
+  (grouper/submit! @increase-view-count-queue {:model model :id model-id}))
 
 (defn- record-views!
   "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."
