@@ -11,6 +11,8 @@ body {
 }
 
 .EmbedFrame {
+  --mb-color-embed-filter-bg-color: var(--mb-color-bg-white);
+
   background-color: var(
     --mb-color-embed-bg-color-override,
     var(--mb-color-bg-dashboard)
@@ -27,6 +29,8 @@ body {
 }
 
 .ThemeNight.EmbedFrame {
+  --mb-color-embed-filter-bg-color: var(--mb-color-bg-black);
+
   background-color: var(
     --mb-color-embed-bg-color-override,
     var(--mb-color-bg-black)

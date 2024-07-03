@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
@@ -120,23 +120,11 @@ export const EmbedFrame = ({
 
   const [hasFrameScroll, setHasFrameScroll] = useState(!isEmbeddingSdk);
 
-  const [hasInnerScroll, setHasInnerScroll] = useState(
-    document.documentElement.scrollTop > 0,
-  );
-
   useMount(() => {
     initializeIframeResizer(() => setHasFrameScroll(false));
   });
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setHasInnerScroll(document.documentElement.scrollTop > 0);
-    };
-
-    document.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => document.removeEventListener("scroll", handleScroll);
-  }, []);
+  const [isFilterSticky, intersectionObserverTargetRef] = useIsFiltersSticky();
 
   const hideParameters = [hide_parameters, hiddenParameterSlugs]
     .filter(Boolean)
@@ -154,10 +142,8 @@ export const EmbedFrame = ({
   const hasVisibleParameters = visibleParameters.length > 0;
 
   const hasHeader = Boolean(finalName || dashboardTabs);
-  const isParameterPanelSticky =
-    !!dashboard &&
-    theme !== "transparent" && // https://github.com/metabase/metabase/pull/38766#discussion_r1491549200
-    isParametersWidgetContainersSticky(visibleParameters.length);
+  const canParameterPanelSticky =
+    !!dashboard && isParametersWidgetContainersSticky(visibleParameters.length);
 
   return (
     <Root
@@ -207,11 +193,17 @@ export const EmbedFrame = ({
             <Separator />
           </Header>
         )}
+        {/**
+         * I put the target for IntersectionObserver right above the parameters container,
+         * so that it detects when the parameters container is about to be sticky (is about
+         * to go out of the viewport).
+         */}
+        <span ref={intersectionObserverTargetRef} />
         {hasVisibleParameters && (
           <ParametersWidgetContainer
             embedFrameTheme={theme}
-            hasScroll={hasInnerScroll}
-            isSticky={isParameterPanelSticky}
+            canSticky={canParameterPanelSticky}
+            isSticky={isFilterSticky}
             data-testid="dashboard-parameters-widget-container"
           >
             <ParametersFixedWidthContainer
@@ -265,4 +257,31 @@ function isParametersWidgetContainersSticky(parameterCount: number) {
   // Sticky header with more than 5 parameters
   // takes too much space on small screens
   return parameterCount <= 5;
+}
+
+function useIsFiltersSticky() {
+  const intersectionObserverTargetRef = useRef<HTMLElement>(null);
+  const [isSticky, setIsSticky] = useState(false);
+
+  useEffect(() => {
+    if (
+      intersectionObserverTargetRef.current &&
+      // Allow this hook in tests, since Node don't have access to some Browser APIs
+      typeof IntersectionObserver !== "undefined"
+    ) {
+      const settings: IntersectionObserverInit = {
+        threshold: 1,
+      };
+      const observer = new IntersectionObserver(([entry]) => {
+        setIsSticky(entry.intersectionRatio < 1);
+      }, settings);
+      observer.observe(intersectionObserverTargetRef.current);
+
+      return () => {
+        observer.disconnect();
+      };
+    }
+  }, []);
+
+  return [isSticky, intersectionObserverTargetRef] as const;
 }
