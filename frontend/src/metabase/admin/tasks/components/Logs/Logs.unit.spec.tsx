@@ -101,7 +101,11 @@ describe("Logs", () => {
     it("should stop polling on unmount", async () => {
       fetchMock.get("path:/api/util/logs", [log]);
       const { unmount } = render(<Logs />);
-      await waitFor(() => [screen.getByText(new RegExp(log.process_uuid))]);
+      await waitFor(() => {
+        expect(
+          screen.getByText(new RegExp(log.process_uuid)),
+        ).toBeInTheDocument();
+      });
 
       unmount();
       act(() => {
