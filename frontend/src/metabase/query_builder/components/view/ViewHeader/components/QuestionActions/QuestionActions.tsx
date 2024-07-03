@@ -154,8 +154,8 @@ export const QuestionActions = ({
     ),
   );
 
-  if (hasCollectionPermissions && hasDataPermissions) {
-    if (isModelOrMetric) {
+  if (hasCollectionPermissions) {
+    if (isModelOrMetric && hasDataPermissions) {
       extraButtons.push({
         title: isMetric ? t`Edit metric definition` : t`Edit query definition`,
         icon: "notebook",
@@ -213,7 +213,7 @@ export const QuestionActions = ({
     });
   }
 
-  if (hasCollectionPermissions && hasDataPermissions) {
+  if (hasCollectionPermissions) {
     if (isQuestion) {
       extraButtons.push({
         title: t`Turn into a model`,

@@ -117,7 +117,7 @@ describe("QuestionActions", () => {
       expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
     });
 
-    it("should not allow to edit the model without data permissions", async () => {
+    it("should allow to edit metadata but not the query without data permissions", async () => {
       setup({
         card: createMockCard({
           type: "model",
@@ -132,7 +132,7 @@ describe("QuestionActions", () => {
       expect(
         screen.queryByText("Edit query definition"),
       ).not.toBeInTheDocument();
-      expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
+      expect(screen.getByText("Edit metadata")).toBeInTheDocument();
     });
   });
 
@@ -197,7 +197,7 @@ describe("QuestionActions", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should not allow to turn into a model without data permissions", async () => {
+    it("should allow to turn into a model without data permissions", async () => {
       setup({
         card: createMockCard({
           type: "question",
@@ -209,10 +209,10 @@ describe("QuestionActions", () => {
       await userEvent.click(getIcon("ellipsis"));
       await screen.findByRole("dialog");
 
-      expect(screen.queryByText("Turn into a model")).not.toBeInTheDocument();
+      expect(screen.getByText("Turn into a model")).toBeInTheDocument();
     });
 
-    it("should not allow to turn into a question without data permissions", async () => {
+    it("should allow to turn into a question without data permissions", async () => {
       setup({
         card: createMockCard({
           type: "model",
@@ -225,8 +225,8 @@ describe("QuestionActions", () => {
       await screen.findByRole("dialog");
 
       expect(
-        screen.queryByText("Turn back to saved question"),
-      ).not.toBeInTheDocument();
+        screen.getByText("Turn back to saved question"),
+      ).toBeInTheDocument();
     });
   });
 
