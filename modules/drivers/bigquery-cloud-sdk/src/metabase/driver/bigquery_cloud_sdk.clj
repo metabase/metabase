@@ -376,10 +376,12 @@
         (when cancel-chan
           (a/close! cancel-chan))))
     (catch java.util.concurrent.CancellationException _e
-      (a/close! cancel-chan)
+      (when cancel-chan
+        (a/close! cancel-chan))
       (throw (ex-info (tru "Query cancelled") {:sql sql :parameters parameters ::cancelled? true})))
     (catch BigQueryException e
-      (a/close! cancel-chan)
+      (when cancel-chan
+        (a/close! cancel-chan))
       (if (.isRetryable e)
         (throw (ex-info (tru "BigQueryException executing query")
                         {:retryable? (.isRetryable e), :sql sql, :parameters parameters}
