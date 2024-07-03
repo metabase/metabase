@@ -700,14 +700,14 @@
   (doseq [[perm-type perm-value] (new-database-permissions group-or-id)]
     (set-database-permission! group-or-id db-or-id perm-type perm-value)))
 
-(def ^:private ^:dynamic *permission-batch-size* 1000)
+(def ^:private permission-batch-size 1000)
 
 (defn- batch-insert-permissions!
   "In certain cases, when updating the permissions for many tables at once, we need to batch the insertions to avoid
   hitting database limits for the number of parameters in a prepared statement. This is only really applicable when a DB
   has more than ~10k tables and we're transitioning from database-level permissions to table-level permissions."
   [new-perms]
-  (doseq [batched-new-perms (partition-all *permission-batch-size* new-perms)]
+  (doseq [batched-new-perms (partition-all permission-batch-size new-perms)]
     (t2/insert! :model/DataPermissions batched-new-perms)))
 
 (mu/defn set-table-permissions!
