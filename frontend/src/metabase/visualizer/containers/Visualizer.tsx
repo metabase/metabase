@@ -187,7 +187,7 @@ export function Visualizer({ location }: WithRouterProps) {
         ></span>
       </PanelResizeHandle>
       <Panel defaultSize={75} minSize={60}>
-        <VisualizerCanvas series={series} />
+        <VisualizerCanvas series={series} onChange={setSeries} />
       </Panel>
       {isVizSettingsOpen && (
         <Panel minSize={40}>

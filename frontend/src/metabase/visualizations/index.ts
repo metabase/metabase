@@ -137,6 +137,16 @@ export function hasGraphDataSettings(display: string) {
   );
 }
 
+export function hasAxes(display: string) {
+  const visualization = visualizations.get(display);
+  const settingDefinitions = visualization?.settings ?? {};
+  const settingNames = Object.keys(settingDefinitions);
+  return (
+    settingNames.some(name => name.startsWith("graph.x_axis.")) &&
+    settingNames.some(name => name.startsWith("graph.y_axis."))
+  );
+}
+
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column
 export const extractRemappedColumns = (data: DatasetData) => {
   const cols: RemappingHydratedDatasetColumn[] = data.cols.map(col => ({
