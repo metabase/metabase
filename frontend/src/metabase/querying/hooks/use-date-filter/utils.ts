@@ -42,6 +42,7 @@ function getSpecificDateValue(
     type: "specific",
     operator: filterParts.operator,
     values: filterParts.values,
+    hasTime: filterParts.hasTime,
   };
 }
 
@@ -101,7 +102,7 @@ export function getFilterClause(
     case "specific":
       return getSpecificFilterClause(query, stageIndex, column, value);
     case "relative":
-      return getRelativeFilterClause(query, stageIndex, column, value);
+      return getRelativeFilterClause(column, value);
     case "exclude":
       return getExcludeFilterClause(query, stageIndex, column, value);
   }
@@ -117,12 +118,11 @@ function getSpecificFilterClause(
     operator: value.operator,
     column,
     values: value.values,
+    hasTime: value.hasTime,
   });
 }
 
 function getRelativeFilterClause(
-  query: Lib.Query,
-  stageIndex: number,
   column: Lib.ColumnMetadata,
   value: RelativeDatePickerValue,
 ): Lib.ExpressionClause {
