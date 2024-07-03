@@ -3,16 +3,26 @@
 import { t } from "ttag";
 
 import { Menu, Flex, Card, Title, Icon, IconName, Text } from "metabase/ui";
-import type { Card as ICard } from "metabase-types/api";
+import type { CardId, Card as ICard } from "metabase-types/api";
 import { ActionIcon } from "@mantine/core";
 import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 
-export function VisualizerUsed({ cards }: { cards?: ICard[] }) {
+interface VisualizerUsedProps {
+  cards: ICard[];
+  onRefreshCard: (card: CardId) => void;
+  onRemoveCard: (card: CardId) => void;
+}
+
+export function VisualizerUsed({
+  cards,
+  onRefreshCard,
+  onRemoveCard,
+}: VisualizerUsedProps) {
   return (
     <Card h="100%">
       <Title order={4}>{t`Being used`}</Title>
-      {cards?.map((card, index) => {
+      {cards.map((card, index) => {
         return (
           <Flex key={index} py="sm" align="center">
             {/* TODO - create a dark variant  */}
@@ -67,8 +77,12 @@ export function VisualizerUsed({ cards }: { cards?: ICard[] }) {
                   </ActionIcon>
                 </Menu.Target>
                 <Menu.Dropdown>
-                  <Menu.Item>{t`Refresh`}</Menu.Item>
-                  <Menu.Item>{t`Remove`}</Menu.Item>
+                  <Menu.Item
+                    onClick={() => onRefreshCard(card.id)}
+                  >{t`Refresh`}</Menu.Item>
+                  <Menu.Item
+                    onClick={() => onRemoveCard(card.id)}
+                  >{t`Remove`}</Menu.Item>
                 </Menu.Dropdown>
               </Menu>
             </Flex>

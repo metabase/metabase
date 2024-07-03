@@ -23,9 +23,17 @@ export function Visualizer({ location }: WithRouterProps) {
 
   const cards = series.map(s => s.card);
 
-  const _fetchCardAndData = async (cardId: CardId) => {
+  const _fetchCardAndData = async (
+    cardId: CardId,
+    { forceRefetch = false } = {},
+  ) => {
     const { data: card } = await dispatch(
-      cardApi.endpoints.getCard.initiate({ id: cardId }),
+      cardApi.endpoints.getCard.initiate(
+        { id: cardId },
+        {
+          forceRefetch,
+        },
+      ),
     );
 
     if (!card) {
@@ -33,7 +41,7 @@ export function Visualizer({ location }: WithRouterProps) {
     }
 
     const { data: dataset } = await dispatch(
-      cardApi.endpoints.cardQuery.initiate(cardId),
+      cardApi.endpoints.cardQuery.initiate(cardId, { forceRefetch }),
     );
 
     if (!dataset) {
@@ -74,6 +82,21 @@ export function Visualizer({ location }: WithRouterProps) {
     if (newSeries) {
       setSeries([newSeries]);
     }
+  };
+
+  const handleRefresh = async (cardId: CardId) => {
+    const newSeries = await _fetchCardAndData(cardId, { forceRefetch: true });
+    if (newSeries) {
+      const nextSeries = series.map(series =>
+        series.card.id === cardId ? newSeries : series,
+      );
+      setSeries(nextSeries);
+    }
+  };
+
+  const handleRemove = (cardId: CardId) => {
+    const nextSeries = series.filter(series => series.card.id !== cardId);
+    setSeries(nextSeries);
   };
 
   useMount(() => {
@@ -130,7 +153,11 @@ export function Visualizer({ location }: WithRouterProps) {
               ></span>
             </PanelResizeHandle>
             <Panel defaultSize={30}>
-              <VisualizerUsed cards={cards} />
+              <VisualizerUsed
+                cards={cards}
+                onRefreshCard={handleRefresh}
+                onRemoveCard={handleRemove}
+              />
             </Panel>
           </PanelGroup>
         </Panel>
