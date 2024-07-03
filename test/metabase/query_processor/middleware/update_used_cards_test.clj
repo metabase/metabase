@@ -78,7 +78,7 @@
         two-hours-ago (t/minus now (t/hours 2))]
     (testing "update with multiple card of the same ids will set timestamp to the latest"
       (mt/with-temp
-        [:model/Card {card-id-1 :id} {:last_used_at two-hours-ago}]
+        [:model/Card {card-id-1 :id} {}]
         (#'qp.update-used-cards/update-used-cards!* [{:id card-id-1 :timestamp two-hours-ago}
                                                      {:id card-id-1 :timestamp one-hour-ago}])
         (is (= one-hour-ago (t2/select-one-fn :last_used_at :model/Card card-id-1)))))

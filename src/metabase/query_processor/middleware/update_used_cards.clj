@@ -21,7 +21,7 @@
       (t2/update! :model/Card :id [:in (keys card-id->timestamp)]
                   {:last_used_at (into [:case]
                                        (apply concat (for [[id timestamp] card-id->timestamp]
-                                                       [[:= :id id] [:greatest :last_used_at timestamp]])))})
+                                                       [[:= :id id] [:greatest [:coalesce :last_used_at 0] timestamp]])))})
       (catch Throwable e
         (log/error e "Error updating used cards")))))
 
