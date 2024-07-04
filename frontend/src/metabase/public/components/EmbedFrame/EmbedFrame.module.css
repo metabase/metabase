@@ -8,6 +8,7 @@ body {
 
 .EmbedFrame {
   --mb-color-text-primary: var(--mb-color-text-dark);
+  --mb-color-text-secondary: var(--mb-color-text-medium);
   --mb-color-embed-filter-bg-color: var(--mb-color-bg-white);
 
   color: var(--mb-color-text-primary);
@@ -32,9 +33,10 @@ body {
 }
 
 .ThemeNight.EmbedFrame {
+  --mb-color-text-primary: var(--mb-color-text-white-alpha-85);
+  --mb-color-text-secondary: var(--mb-color-text-light);
   --mb-color-embed-filter-bg-color: var(--mb-color-bg-black);
   --mb-color-border: var(--mb-color-text-medium);
-  --mb-color-text-primary: var(--mb-color-text-white-alpha-85);
 
   background-color: var(
     --mb-color-embed-bg-color-override,

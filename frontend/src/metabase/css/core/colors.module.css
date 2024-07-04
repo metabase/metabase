@@ -87,6 +87,10 @@
   color: var(--mb-color-text-primary);
 }
 
+.textSecondary {
+  color: var(--mb-color-text-secondary);
+}
+
 .bgLight,
 .bgLightHover:hover {
   background-color: var(--mb-color-bg-light);
