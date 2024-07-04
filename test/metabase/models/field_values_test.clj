@@ -96,7 +96,23 @@
                                    {{:has_field_values :list
                                      :visibility_type  :normal
                                      :base_type        :type/*}
-                                    false}}
+                                    false}
+
+                                   "type/Structured fields should be excluded"
+                                   (into {}
+                                         (for [base-type (conj (descendants :type/Structured) :type/Structured)]
+                                           [{:has_field_values :list
+                                             :visibility_type  :normal
+                                             :base_type        base-type}
+                                            false]))
+
+                                   "type/Collection fields should be excluded"
+                                   (into {}
+                                         (for [base-type (conj (descendants :type/Collection) :type/Collection)]
+                                           [{:has_field_values :list
+                                             :visibility_type  :normal
+                                             :base_type        base-type}
+                                            false]))}
           [input expected] input->expected]
     (testing (str group "\n")
       (testing (pr-str (list 'field-should-have-field-values? input))
