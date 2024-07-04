@@ -109,7 +109,7 @@ describe("Logs", () => {
       act(() => {
         jest.advanceTimersByTime(1100); // wait longer than polling period
       });
-      expect(utilSpy).toHaveBeenCalledTimes(1); // should not have been called
+      expect(utilSpy).toHaveBeenCalledTimes(1);
     });
   });
 
