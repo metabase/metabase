@@ -456,12 +456,21 @@ export class NativeQueryEditor extends Component<
       results: [],
     };
 
-    const prepareResultsForAce = (results: [string, string][]) =>
-      results.map(([name, meta]) => ({
-        name: name,
-        value: name,
-        meta: meta,
-      }));
+    function isMatchForPrefix(prefix: string, name: string) {
+      return name.toLowerCase().includes(prefix.toLowerCase());
+    }
+
+    const prepareResultsForAce = (
+      prefix: string,
+      results: [string, string][],
+    ) =>
+      results
+        .filter(([name]) => isMatchForPrefix(prefix, name))
+        .map(([name, meta]) => ({
+          name: name,
+          value: name,
+          meta: meta,
+        }));
 
     aceLanguageTools.addCompleter({
       getCompletions: async (
@@ -488,7 +497,10 @@ export class NativeQueryEditor extends Component<
               results: lastAutoComplete.results,
             };
 
-            callback(null, prepareResultsForAce(lastAutoComplete.results));
+            callback(
+              null,
+              prepareResultsForAce(prefix, lastAutoComplete.results),
+            );
             return;
           }
 
@@ -516,23 +528,16 @@ export class NativeQueryEditor extends Component<
             );
 
             // Get columns from referenced questions that match the prefix
-            const lowerCasePrefix = prefix.toLowerCase();
-            const isMatchForPrefix = (name: string) =>
-              name.toLowerCase().includes(lowerCasePrefix);
             const questionColumns: AutocompleteItem[] = referencedCards
               .filter(Boolean)
               .flatMap(card =>
-                card.result_metadata
-                  .filter(columnMetadata =>
-                    isMatchForPrefix(columnMetadata.name),
-                  )
-                  .map(
-                    columnMetadata =>
-                      [
-                        columnMetadata.name,
-                        `${card.name} :${columnMetadata.base_type}`,
-                      ] as AutocompleteItem,
-                  ),
+                card.result_metadata.map(
+                  columnMetadata =>
+                    [
+                      columnMetadata.name,
+                      `${card.name} :${columnMetadata.base_type}`,
+                    ] as AutocompleteItem,
+                ),
               );
 
             // Concat the results from tables, fields, and referenced questions.
@@ -543,7 +548,7 @@ export class NativeQueryEditor extends Component<
           }
 
           // transform results into what ACE expects
-          callback(null, prepareResultsForAce(results));
+          callback(null, prepareResultsForAce(prefix, results));
         } catch (error) {
           console.error("error getting autocompletion data", error);
           callback(null, []);
