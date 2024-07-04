@@ -92,7 +92,7 @@
                                :schema (when *supports-schemas?* "public")}
             :dest-column-name "studio"}})))
 
-(defmethod driver/database-supports? [::sync-test :foreign-keys]
+(defmethod driver/database-supports? [::sync-test :metadata/key-constraints]
   [_driver _feature _db]
   true)
 
