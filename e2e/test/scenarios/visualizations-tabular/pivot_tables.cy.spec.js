@@ -1272,6 +1272,60 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       cy.findByTestId("qb-save-button").should("have.attr", "data-disabled");
     });
   });
+
+  describe("issue 38265", () => {
+    beforeEach(() => {
+      createQuestion(
+        {
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["count"],
+              [
+                "sum",
+                ["field", ORDERS.SUBTOTAL, { "base-type": "type/Float" }],
+              ],
+            ],
+            breakout: [
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                { "base-type": "type/DateTime", "temporal-unit": "month" },
+              ],
+              [
+                "field",
+                PEOPLE.STATE,
+                { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+              ],
+              [
+                "field",
+                PRODUCTS.CATEGORY,
+                { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+              ],
+            ],
+          },
+          display: "pivot",
+        },
+        {
+          visitQuestion: true,
+        },
+      );
+    });
+
+    it("correctly filters the query when zooming in on a **row** header (metabase#38265)", () => {
+      cy.findByTestId("pivot-table").findByText("KS").click();
+      popover().findByText("Zoom in").click();
+
+      cy.log("Filter pills");
+      cy.findByTestId("filter-pill").should("have.text", "User → State is KS");
+
+      cy.log("Pivot table column headings");
+      cy.findByTestId("pivot-table")
+        .should("contain", "Created At: Month")
+        .and("contain", "User → Latitude")
+        .and("contain", "User → Longitude");
+    });
+  });
 });
 
 const testQuery = {
