@@ -34,9 +34,7 @@
                       :right-join
                       :inner-join
                       :full-join]]
-  (defmethod driver/database-supports? [:sql join-feature]
-    [driver _feature db]
-    (driver/database-supports? driver :foreign-keys db)))
+  (defmethod driver/database-supports? [:sql join-feature] [_driver _feature _db] true))
 
 (defmethod driver/database-supports? [:sql :persist-models-enabled]
   [driver _feat db]
