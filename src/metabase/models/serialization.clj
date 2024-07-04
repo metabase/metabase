@@ -926,7 +926,7 @@
        [:dimension (mbql-id->fully-qualified-name dim)]
 
        [:metric (id :guard integer?)]
-       [:metric (*export-fk* id 'LegacyMetric)]
+       [:metric (*export-fk* id 'Card)]
 
        [:segment (id :guard integer?)]
        [:segment (*export-fk* id 'Segment)])))
