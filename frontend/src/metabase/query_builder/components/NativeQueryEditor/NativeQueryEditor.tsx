@@ -736,7 +736,7 @@ export class NativeQueryEditor extends Component<
 
   handleQueryGenerated = (queryText: string) => {
     this.handleQueryUpdate(queryText);
-    this._editor?.focus();
+    this.focus();
   };
 
   isPromptInputVisible = () => {
@@ -760,7 +760,7 @@ export class NativeQueryEditor extends Component<
     const queryText = Lib.rawNativeQuery(query);
 
     this.handleQueryUpdate(await formatQuery(queryText, engine));
-    this._editor?.focus();
+    this.focus();
   };
 
   render() {
