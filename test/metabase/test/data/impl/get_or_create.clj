@@ -184,16 +184,18 @@
               :fk-target-field-id (get-in table-name->pk-field [target-table-name :id])})
            table-field-fk))))
 
-(defn- add-foreign-keys!
-  "Add foreign key relationships to app db. To be used with dbmses that do not support `:foreign-keys`.
+(defn- add-foreign-key-relationships!
+  "Add foreign key relationships _to app db manually_. To be used with dbmses that do not support
+  `:metadata/key-constraints`.
 
-  `:foreign-keys` driver feature signals that underlying dbms _is capable of reporting_ some columns as having foregin
-  key relationship to other columns. If that's the case, sync infers those relationships.
+  `:metadata/key-constraints` driver feature signals that underlying dbms _is capable of reporting_ some columns
+  as having foregin key relationship to other columns. If that's the case, sync infers those relationships.
 
-  However, users can freely define those relationships also for dbmses that do not support that (eg. Mongo).
+  However, users can freely define those relationships also for dbmses that do not support that (eg. Mongo)
+  in Metabase.
 
-  This function simulates user added fks, based on dataset definition. Therefore enabling tests for eg. implicit joins
-  to work."
+  This function simulates those user added fks, based on dataset definition. Therefore, it enables tests for eg.
+  implicit joins to work."
   [dbdef db]
   (let [fk-field-infos (dbdef->fk-field-infos dbdef db)]
     (doseq [{:keys [id fk-target-field-id]} fk-field-infos]
@@ -219,10 +221,10 @@
       (sync-newly-created-database! driver database-definition connection-details db)
       (set-test-db-permissions! (u/the-id db))
       ;; Add foreign key relationships to app db as per dataset definition. _Only_ in case dbms in use does not support
-      ;; :foreign-keys feature. In case it does, sync should be able to infer foreign keys. This is required eg. for
-      ;; testing implicit joins.
-      (when-not (driver/database-supports? driver :foreign-keys nil)
-        (add-foreign-keys! database-definition db))
+      ;; :metadata/key-constraints feature. In case it does, sync should be able to infer foreign keys. This is
+      ;; required eg. for testing implicit joins.
+      (when-not (driver/database-supports? driver :metadata/key-constraints nil)
+        (add-foreign-key-relationships! database-definition db))
       ;; make sure we're returing an up-to-date copy of the DB
       (t2/select-one Database :id (u/the-id db)))
     (catch Throwable e
