@@ -11,6 +11,7 @@ export const ControlContainer = styled.div`
 
 export const HoverableIcon = styled(Icon)`
   cursor: pointer;
+
   &:hover {
     color: var(--mb-color-brand);
   }

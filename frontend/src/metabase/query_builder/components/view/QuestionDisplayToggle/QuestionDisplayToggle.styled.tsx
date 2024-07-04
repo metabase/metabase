@@ -8,9 +8,11 @@ export const Well = styled.div`
   padding: 4px 6px;
   border-radius: 99px;
   background-color: var(--mb-color-bg-medium);
+
   &:hover {
     background-color: ${() => darken(color("bg-medium"), 0.05)};
   }
+
   transition: background 300ms linear;
 `;
 

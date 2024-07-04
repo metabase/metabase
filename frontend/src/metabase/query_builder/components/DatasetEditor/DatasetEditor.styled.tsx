@@ -28,22 +28,17 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
   flex-direction: row;
   align-items: center;
   min-width: 35px;
-
   margin: 24px 0.75em;
   padding: 3px ${space(1)};
-
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow-x: hidden;
-
   color: var(--mb-color-brand);
   background-color: transparent;
   font-weight: bold;
   cursor: pointer;
-
   border: 1px solid var(--mb-color-brand);
   border-radius: 8px;
-
   transition: all 0.25s;
 
   ${props =>
@@ -72,9 +67,7 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
 export const FieldTypeIcon = styled(Icon)<{ isSelected: boolean }>`
   background-color: ${props =>
     props.isSelected ? color("bg-white") : color("brand")};
-
   color: ${props => (props.isSelected ? color("brand") : color("text-white"))};
-
   border-radius: 0.3em;
   padding: 0.2em;
 `;
