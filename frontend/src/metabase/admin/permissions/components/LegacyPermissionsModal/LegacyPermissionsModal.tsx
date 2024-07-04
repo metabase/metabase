@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { useSelector } from "metabase/lib/redux";
@@ -37,10 +37,11 @@ export const LegacyPermissionsModal = ({
         </Modal.Header>
         <Modal.Body p="2.5rem">
           <Text mb="1rem">
-            {t`In Metabase 50, we split our data permissions into two new settings:`}{" "}
-            <Text span color="brand" fw="bold">{t`View data`}</Text> {t`and`}{" "}
-            <Text span color="brand" fw="bold">{t`Create queries`}</Text>
-            {`. Separate settings for what people can view and what they can query makes data permissions more expressive and easier to reason about. `}
+            {jt`In Metabase 50, we split our data permissions into two new settings: ${(
+              <Text span color="brand" fw="bold">{t`View data`}</Text>
+            )} and ${(
+              <Text span color="brand" fw="bold">{t`Create queries`}</Text>
+            )} . Separate settings for what people can view and what they can query makes data permissions more expressive and easier to reason about.`}
           </Text>
           <Text mb="1.5rem">
             {t`Your permissions have been automatically converted to the new settings, with no change in data access for your groups.`}

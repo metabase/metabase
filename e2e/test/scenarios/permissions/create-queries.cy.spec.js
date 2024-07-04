@@ -7,6 +7,7 @@ import {
   modal,
   restore,
   modifyPermission,
+  dismissSplitPermsModal,
 } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
@@ -21,7 +22,7 @@ describe("scenarios > admin > permissions > create queries > granular", () => {
 
   it("should allow configuring granular permissions in group view", () => {
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-
+    dismissSplitPermsModal();
     modifyPermission(
       "Sample Database",
       NATIVE_QUERIES_PERMISSION_INDEX,
@@ -106,7 +107,7 @@ describe("scenarios > admin > permissions > create queries > no", () => {
 
   it("should allow setting create queries to 'no' in group view", () => {
     cy.visit("/admin/permissions/data");
-
+    dismissSplitPermsModal();
     selectSidebarItem("data");
 
     modifyPermission("Sample Database", NATIVE_QUERIES_PERMISSION_INDEX, "No");
@@ -145,7 +146,7 @@ describe("scenarios > admin > permissions > create queries > query builder and n
 
   it("should allow setting create queries to 'query builder and native' in group view", () => {
     cy.visit("/admin/permissions");
-
+    dismissSplitPermsModal();
     selectSidebarItem("collection");
 
     assertPermissionTable([["Sample Database", "No"]]);
@@ -228,7 +229,7 @@ describe("scenarios > admin > permissions > create queries > query builder and n
 
   it("should allow setting create queries to 'query builder and native' in database view", () => {
     cy.visit("/admin/permissions/");
-
+    dismissSplitPermsModal();
     cy.get("label").contains("Databases").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -293,7 +294,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
 
   it("should allow setting create queries to 'query builder only' in group view", () => {
     cy.visit("/admin/permissions");
-
+    dismissSplitPermsModal();
     selectSidebarItem("collection");
 
     assertPermissionTable([["Sample Database", "No"]]);
@@ -372,7 +373,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
 
   it("should set entire database to 'query builder only' if a table is changed to it while db is 'query builder only'", () => {
     cy.visit("/admin/permissions");
-
+    dismissSplitPermsModal();
     selectSidebarItem("collection");
 
     assertPermissionTable([["Sample Database", "No"]]);
@@ -446,7 +447,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
 
   it("should allow setting create queries to 'query builder only' in group view", () => {
     cy.visit("/admin/permissions");
-
+    dismissSplitPermsModal();
     selectSidebarItem("collection");
 
     assertPermissionTable([["Sample Database", "No"]]);
@@ -525,7 +526,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
 
   it("should allow setting create queries to 'query builder only' in database view", () => {
     cy.visit("/admin/permissions/");
-
+    dismissSplitPermsModal();
     cy.get("label").contains("Databases").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

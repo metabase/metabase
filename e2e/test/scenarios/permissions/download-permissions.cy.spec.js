@@ -17,6 +17,7 @@ import {
   visitDashboard,
   popover,
   setTokenFeatures,
+  dismissSplitPermsModal,
 } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
@@ -59,6 +60,7 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
     cy.log("allows changing download results permission for a database");
 
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
+    dismissSplitPermsModal();
 
     modifyPermission("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
 
@@ -95,7 +97,7 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
 
   it("respects 'no download' permissions when 'All users' group data permissions are set to `Blocked` (metabase#22408)", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
-
+    dismissSplitPermsModal();
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Blocked");
 
     cy.button("Save changes").click();

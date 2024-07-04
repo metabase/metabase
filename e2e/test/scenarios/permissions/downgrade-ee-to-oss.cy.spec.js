@@ -8,6 +8,7 @@ import {
   describeEE,
   setTokenFeatures,
   isPermissionDisabled,
+  dismissSplitPermsModal,
 } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
@@ -29,7 +30,7 @@ describeEE("scenarios > admin > permissions > downgrade ee to oss", () => {
 
   it("should allow users to edit permissions after downgrading EE to OSS", () => {
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-
+    dismissSplitPermsModal();
     modifyPermission(
       "Sample Database",
       EE_DATA_ACCESS_PERMISSION_INDEX,
@@ -81,7 +82,7 @@ describeEE("scenarios > admin > permissions > downgrade ee to oss", () => {
   it("should preserve unedited EE values in graph when OSS", () => {
     // starting as EE, set a EE only value in the graph
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-
+    dismissSplitPermsModal();
     modifyPermission(
       "Sample Database",
       EE_DATA_ACCESS_PERMISSION_INDEX,

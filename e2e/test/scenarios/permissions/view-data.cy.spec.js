@@ -14,6 +14,7 @@ import {
   getPermissionRowPermissions,
   createTestRoles,
   selectPermissionRow,
+  dismissSplitPermsModal,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -32,6 +33,7 @@ describeEE("scenarios > admin > permissions > view data > blocked", () => {
 
   it("should allow saving 'blocked' and disable create queries dropdown when set", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
+    dismissSplitPermsModal();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("All Users")
@@ -94,6 +96,7 @@ describe("scenarios > admin > permissions > view data > granular", () => {
 
   it("should not allow making permissions granular in the either database or group focused view", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
+    dismissSplitPermsModal();
 
     cy.get("main").findByText("View data").should("not.exist");
 
@@ -131,6 +134,7 @@ describeEE("scenarios > admin > permissions > view data > granular", () => {
 
   it("should allow making permissions granular in the database focused view", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
+    dismissSplitPermsModal();
 
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Granular");
 
@@ -164,6 +168,7 @@ describeEE("scenarios > admin > permissions > view data > granular", () => {
 
   it("should allow making permissions granular in the group focused view", () => {
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+    dismissSplitPermsModal();
 
     modifyPermission(
       "Sample Database",
@@ -203,6 +208,7 @@ describeEE("scenarios > admin > permissions > view data > granular", () => {
     // TODO: this feature (not test) is broken when changing permissions for all schemas to the samve value
 
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+    dismissSplitPermsModal();
 
     modifyPermission(
       "Sample Database",
@@ -235,6 +241,7 @@ describeEE("scenarios > admin > permissions > view data > granular", () => {
 
   it("should set a new default for children if parent is currently selected to a top-level only permission before going granular", () => {
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+    dismissSplitPermsModal();
 
     modifyPermission(
       "Sample Database",
@@ -280,6 +287,7 @@ describeEE("scenarios > admin > permissions > view data > impersonated", () => {
 
   it("should allow saving 'impersonated' permissions", () => {
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+    dismissSplitPermsModal();
 
     // Check there is no Impersonated option on H2
     selectPermissionRow("Sample Database", DATA_ACCESS_PERMISSION_INDEX);
@@ -346,6 +354,7 @@ describeEE("scenarios > admin > permissions > view data > impersonated", () => {
 
   it("should warns when All Users group has 'impersonated' access and the target group has unrestricted access", () => {
     cy.visit(`/admin/permissions/data/group/${COLLECTION_GROUP}`);
+    dismissSplitPermsModal();
 
     modifyPermission(
       "QA Postgres12",
@@ -378,6 +387,7 @@ describeEE("scenarios > admin > permissions > view data > impersonated", () => {
 
   it("allows switching to the granular access and update table permissions", () => {
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+    dismissSplitPermsModal();
 
     modifyPermission(
       "QA Postgres12",
@@ -424,6 +434,7 @@ describeEE("scenarios > admin > permissions > view data > impersonated", () => {
   it("impersonation modal should be positioned behind the page leave confirmation modal", () => {
     // Try leaving the page
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+    dismissSplitPermsModal();
 
     modifyPermission(
       "QA Postgres12",
@@ -477,6 +488,7 @@ describeEE(
       // load the page like normal w/o legacy value in the graph
       // and test that it does not exist
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+      dismissSplitPermsModal();
 
       selectPermissionRow("Sample Database", DATA_ACCESS_PERMISSION_INDEX);
       popover().should("not.contain", "No self-service (Deprecated)");
@@ -581,6 +593,7 @@ describeEE("scenarios > admin > permissions > view data > sandboxed", () => {
 
   it("allows editing sandboxed access in the database focused view", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
+    dismissSplitPermsModal();
 
     // make sure that we have native permissions now so that we can validate that
     // permissions are droped to query builder only after we sandbox a table
@@ -660,6 +673,7 @@ describeEE("scenarios > admin > permissions > view data > sandboxed", () => {
   it("allows editing sandboxed access in the group focused view", () => {
     cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+    dismissSplitPermsModal();
 
     // make sure that we have native permissions now so that we can validate that
     // permissions are droped to query builder only after we sandbox a table
@@ -766,6 +780,7 @@ describeEE("scenarios > admin > permissions > view data > unrestricted", () => {
 
   it("should allow perms to be set to from 'can view' to 'block' and back from database view", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
+    dismissSplitPermsModal();
 
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Blocked");
 

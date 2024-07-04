@@ -590,6 +590,26 @@ describe("scenarios > admin > permissions", () => {
       cy.findByText("Data permissions");
     });
   });
+
+  it("should show a dismissable modal and banner showing split permermisson changes (#metabase#45073", () => {
+    cy.visit("/admin/permissions/");
+
+    dismissSplitPermsModal();
+
+    cy.findByRole("menuitem", { name: "All Users" }).click();
+    cy.findByRole("alert").should(
+      "contain.text",
+      "Your data permissions may look different",
+    );
+    cy.findByRole("alert").findByRole("button").click();
+
+    cy.reload();
+
+    cy.findByRole("dialog", { name: /permissions may look different/ }).should(
+      "not.exist",
+    );
+    cy.findByRole("alert").should("not.exist");
+  });
 });
 
 describe("scenarios > admin > permissions", () => {
