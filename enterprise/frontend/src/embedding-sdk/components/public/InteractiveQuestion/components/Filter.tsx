@@ -1,19 +1,18 @@
 import cx from "classnames";
 
+import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
 import { FilterContent } from "metabase/querying/components/FilterContent";
 import { useFilterContent } from "metabase/querying/components/FilterModal";
 import { Box, Group, Stack } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
-import { useInteractiveQuestionData } from "../hooks";
-
 type FilterProps = {
   onClose: () => void;
 };
 
 export const Filter = ({ onClose = () => {} }: Partial<FilterProps>) => {
-  const { question } = useInteractiveQuestionData();
+  const { question } = useInteractiveQuestionContext();
 
   return question && <FilterInner question={question} onClose={onClose} />;
 };
@@ -24,7 +23,7 @@ const FilterInner = ({
 }: {
   question: Question;
 } & FilterProps) => {
-  const { onQueryChange } = useInteractiveQuestionData();
+  const { onQueryChange } = useInteractiveQuestionContext();
 
   const {
     query,

@@ -9,30 +9,28 @@ import {
 import type { SdkPluginsConfig } from "embedding-sdk";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
+import type { SdkQuestionResult } from "embedding-sdk/types/question";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import type * as Lib from "metabase-lib";
 
-import {
-  type UseLoadQuestionParams,
-  useInteractiveQuestionData,
-  useLoadQuestion,
-} from "./hooks";
+import { type UseLoadQuestionParams, useLoadQuestion } from "./hooks";
 
-type InteractiveQuestionContextType = {
+interface InteractiveQuestionContextType extends SdkQuestionResult {
   plugins: SdkPluginsConfig | null;
   mode: Mode | null | undefined;
   isQuestionLoading: boolean;
   resetQuestion: () => void;
   onReset?: () => void;
   onNavigateBack?: () => void;
-};
+  onQueryChange: (query: Lib.Query) => void;
+}
 
 /**
  * Note: This context should only be used as a wrapper for the InteractiveQuestionResult
  * component. The idea behind this context is to allow the InteractiveQuestionResult component
  * to use components within the ./components folder, which use the context for display
- * and functions. Any data that can be referenced from the store should be placed in
- * the useInteractiveQuestionData hook.
+ * and functions.
  * */
 export const InteractiveQuestionContext = createContext<
   InteractiveQuestionContextType | undefined
@@ -53,8 +51,8 @@ export const InteractiveQuestionProvider = ({
   onReset,
   onNavigateBack,
 }: InteractiveQuestionProviderProps) => {
-  const { isQuestionLoading, loadQuestion } = useLoadQuestion({ questionId });
-  const { question } = useInteractiveQuestionData();
+  const { card, question, queryResults, isQuestionLoading, loadQuestion } =
+    useLoadQuestion({ questionId });
 
   const globalPlugins = useSdkSelector(getPlugins);
   const plugins = componentPlugins || globalPlugins;
@@ -64,21 +62,33 @@ export const InteractiveQuestionProvider = ({
     [plugins, question],
   );
 
+  const onQueryChange = async (_query: Lib.Query) => {
+    if (question) {
+      // const nextQuestion = question.setQuery(query);
+      // TODO: updateQuestion on query change
+      // await dispatch(updateQuestion(nextQuestion, { run: true }));
+    }
+  };
+
+  const questionContext: InteractiveQuestionContextType = {
+    isQuestionLoading,
+    resetQuestion: loadQuestion,
+    onReset: onReset || loadQuestion,
+    onNavigateBack,
+    onQueryChange,
+    mode,
+    plugins,
+    card,
+    question,
+    queryResults,
+  };
+
   useEffect(() => {
     loadQuestion();
   }, [loadQuestion]);
 
   return (
-    <InteractiveQuestionContext.Provider
-      value={{
-        isQuestionLoading,
-        resetQuestion: loadQuestion,
-        onReset: onReset || loadQuestion,
-        onNavigateBack,
-        mode,
-        plugins,
-      }}
-    >
+    <InteractiveQuestionContext.Provider value={questionContext}>
       {children}
     </InteractiveQuestionContext.Provider>
   );

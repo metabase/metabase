@@ -11,18 +11,20 @@ import { navigateToNewCardInsideQB } from "metabase/query_builder/actions";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 
 import { useInteractiveQuestionContext } from "../context";
-import { useInteractiveQuestionData } from "../hooks";
 
 export const QuestionVisualization = () => {
   const dispatch = useDispatch();
 
-  const { card, isQueryRunning, queryResults, question, result } =
-    useInteractiveQuestionData();
+  const {
+    card,
+    question,
+    queryResults,
+    mode,
+    isQuestionLoading,
+    onNavigateBack,
+  } = useInteractiveQuestionContext();
 
-  const { mode, isQuestionLoading, onNavigateBack } =
-    useInteractiveQuestionContext();
-
-  if (isQuestionLoading || isQueryRunning) {
+  if (isQuestionLoading) {
     return <SdkLoader />;
   }
 
@@ -30,12 +32,20 @@ export const QuestionVisualization = () => {
     return <SdkError message={t`Question not found`} />;
   }
 
+  const [result] = queryResults;
+
+  // eslint-disable-next-line no-console
+  console.log("Result is", result);
+
   return (
     <QueryVisualization
       className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
       question={question}
+      // TODO: dataset data??
+      // @ts-expect-error: to investigate and fix
       rawSeries={[{ card, data: result && result.data }]}
-      isRunning={isQueryRunning}
+      // TODO: isQueryRunning?
+      isRunning={isQuestionLoading}
       isObjectDetail={false}
       isResultDirty={false}
       isNativeEditorOpen={false}
