@@ -733,7 +733,7 @@
 (deftest update-dashboard-test
   (testing "PUT /api/dashboard/:id"
     (mt/test-helpers-set-global-values!
-      (mt/with-grouper-realize! [realize]
+      (mt/with-grouper-batches! [process-batch!]
         (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
           (with-dashboards-in-writeable-collection [dashboard-id]
             (testing "GET before update"
@@ -767,7 +767,7 @@
                          (update get-response :last-edit-info dissoc :timestamp))))))
 
             (testing "GET after update"
-              (realize)
+              (process-batch!)
               (is (= (merge dashboard-defaults {:name          "My Cool Dashboard"
                                                 :description   "Some awesome description"
                                                 :cache_ttl     1234

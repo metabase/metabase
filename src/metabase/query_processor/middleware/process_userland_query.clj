@@ -6,7 +6,6 @@
   ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
   event -- see [[metabase.events.view-log]]."
   (:require
-   [grouper.core :as grouper]
    [java-time.api :as t]
    [metabase.events :as events]
    [metabase.lib.core :as lib]
@@ -18,6 +17,7 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
+   [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
@@ -44,7 +44,7 @@
               (catch Throwable e
                 (log/error e "Error saving field usages"))))
           :capacity 500
-          :interval (* 5 60 1000))))
+          :interval (* 20 1000))))
 
 ;; TODO - I'm not sure whether this should happen async as is currently the case, or should happen synchronously e.g.
 ;; in the completing arity of the rf
@@ -60,8 +60,9 @@
     (log/warn "Cannot save QueryExecution, missing :context")
     (let [qe-id (t2/insert-returning-pk! QueryExecution (dissoc query-execution :json_query))]
       (when (seq field-usages)
-        (doseq [field-usage (map #(assoc % :query_execution_id qe-id) field-usages)]
-          (grouper/submit! @field-usages-queue field-usage))))))
+        (let [queue @field-usages-queue]
+          (doseq [field-usage field-usages]
+            (grouper/submit! queue (assoc field-usage :query_execution_id qe-id))))))))
 
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."

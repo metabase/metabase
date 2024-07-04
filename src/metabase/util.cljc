@@ -1,14 +1,14 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
   (:require
-   #?@(:clj  ([clojure.math.numeric-tower :as math]
-              [me.flowthing.pp :as pp]
-              [metabase.config :as config]
-              #_{:clj-kondo/ignore [:discouraged-namespace]}
-              [metabase.util.jvm :as u.jvm]
-              [metabase.util.string :as u.str]
-              [potemkin :as p]
-              [ring.util.codec :as codec]))
+   #?@(:clj ([clojure.math.numeric-tower :as math]
+             [me.flowthing.pp :as pp]
+             [metabase.config :as config]
+             #_{:clj-kondo/ignore [:discouraged-namespace]}
+             [metabase.util.jvm :as u.jvm]
+             [metabase.util.string :as u.str]
+             [potemkin :as p]
+             [ring.util.codec :as codec]))
    [camel-snake-kebab.internals.macros :as csk.macros]
    [clojure.data :refer [diff]]
    [clojure.pprint :as pprint]

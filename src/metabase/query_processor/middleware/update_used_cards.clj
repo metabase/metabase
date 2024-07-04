@@ -1,10 +1,10 @@
 (ns metabase.query-processor.middleware.update-used-cards
   (:require
-   [grouper.core :as grouper]
    [java-time.api :as t]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
+   [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
@@ -31,7 +31,7 @@
    (grouper/start!
     update-used-cards!*
     :capacity 500
-    :interval (* 5 60 1000))))
+    :interval (* 20 1000))))
 
 (mu/defn update-used-cards! :- ::qp.schema/qp
   "Middleware that get all card-ids that were used during a query execution and updates their `last_used_at`.

@@ -1,39 +1,43 @@
 (ns metabase.events.view-log
   "This namespace is responsible for subscribing to events which should update the view log and view counts."
   (:require
-   [grouper.core :as grouper]
    [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
+   [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
 (defn- group-by-frequency
-  [ids]
-  (as-> ids items
-    (seq (frequencies items))
-    (group-by second items)
-    (update-vals items #(map first %))))
+  "Given a list of items, returns a map of frequencies to items.
+    (group-by-frequency [:a :a :b :b :c :c :c])
+    ;; => {2 [:a :b] 3 [:c]}"
+  [items]
+  (reduce (fn [acc [item cnt]]
+            (update acc cnt conj item))
+          {}
+          (frequencies items)))
 
 (defn- increment-view-counts!*
   [items]
   (log/debugf "Increment view counts of %d items" (count items))
   (try
-    (let [model->ids (as-> items items
-                       (filter (comp some? :id) items)
-                       (group-by :model items)
-                       (update-vals items #(map :id %)))]
+    (let [model->ids (reduce (fn [acc {:keys [id model]}]
+                               (update acc model conj id))
+                             {}
+                             items)]
       (doseq [[model ids] model->ids]
-        (doseq [[cnt ids] (group-by-frequency ids)]
-          (log/debugf "Incrementing view count of %d and %s" (count ids) (pr-str (t2/select model :id [:in ids])))
+        (let [cnt->ids (group-by-frequency ids)]
           (t2/query {:update (t2/table-name model)
-                     :set    {:view_count [:+ :view_count [:inline cnt]]}
-                     :where  [:in :id ids]}))))
+                     :set    {:view_count [:+ :view_count [:inline (into [:case]
+                                                                         (apply concat (for [[cnt ids] cnt->ids]
+                                                                                         [[:in :id ids] cnt])))]]}
+                     :where  [:in :id (apply concat (vals cnt->ids))]}))))
     (catch Exception e
       (log/error e "Failed to increment view counts"))))
 
@@ -42,7 +46,7 @@
   (delay (grouper/start!
           increment-view-counts!*
           :capacity 500
-          :interval (* 5 60 1000))))
+          :interval (* 20 1000))))
 
 (defn- increment-view-counts!
   "Increment the view count of the given `model` and `model-id`."

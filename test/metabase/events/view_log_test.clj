@@ -105,22 +105,22 @@
 
 (deftest card-read-view-count-test
   (mt/test-helpers-set-global-values!
-    (mt/with-grouper-realize! [realize]
+    (mt/with-grouper-batches! [process-batch!]
       (mt/with-temp [:model/User user {}
                      :model/Card card {:creator_id (u/id user)}]
         (testing "Card read events are recorded by a card's view_count"
           (is (= 0 (:view_count card))
               "view_count should be 0 before the event is published")
           (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
-          (realize)
+          (process-batch!)
           (is (= 1 (t2/select-one-fn :view_count :model/Card (:id card))))
           (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
-          (realize)
+          (process-batch!)
           (is (= 2 (t2/select-one-fn :view_count :model/Card (:id card)))))))))
 
 (deftest dashboard-read-view-count-test
   (mt/test-helpers-set-global-values!
-    (mt/with-grouper-realize! [realize]
+    (mt/with-grouper-batches! [process-batch!]
       (mt/with-temp [:model/User          user      {}
                      :model/Dashboard     dashboard {:creator_id (u/id user)}
                      :model/Card          card      {:name "Dashboard Test Card"}
@@ -130,28 +130,28 @@
             (is (= 0 (:view_count dashboard) (:view_count card))
                 "view_count should be 0 before the event is published")
             (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
-            (realize)
+            (process-batch!)
             (is (= 1 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))
             (is (= 0 (t2/select-one-fn :view_count :model/Card (:id card)))
                 "view_count for cards on the dashboard should not be incremented")
             (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
-            (realize)
+            (process-batch!)
             (is (= 2 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))))))))
 
 (deftest table-read-view-count-test
   (mt/test-helpers-set-global-values!
-    (mt/with-grouper-realize! [realize]
+    (mt/with-grouper-batches! [process-batch!]
       (mt/with-temp [:model/User  user  {}
                      :model/Table table {}]
         (testing "Card read events are recorded by a card's view_count"
           (is (= 0 (:view_count table))
               "view_count should be 0 before the event is published")
           (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
-          (realize)
+          (process-batch!)
           (is (= 1 (t2/select-one-fn :view_count :model/Table (:id table)))
               "view_count should be incremented")
           (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
-          (realize)
+          (process-batch!)
           (is (= 2 (t2/select-one-fn :view_count :model/Table (:id table)))
               "view_count should be incremented"))))))
 
@@ -167,8 +167,7 @@
                                                     {:model :model/Card  :id card-1-id}
                                                     {:model :model/Card  :id card-2-id}
                                                     {:model :model/Card  :id card-2-id}])
-        (is (= (+ 1 #_to-update-table-view
-                  1 #_grouped-update-for-cards-with-the-same-view-count)
+        (is (= 2 ;; one for update card, one for table
                (call-count))
             "and groups db calls by frequency")
         (is (= 1 (t2/select-one-fn :view_count :model/Table table-id))

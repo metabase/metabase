@@ -1,10 +1,8 @@
-(ns metabase.test.util.async
+(ns ^{:added "0.50.0"} metabase.test.util.async
   (:require
    [clojure.core.async :as a]
-   [grouper.core :as grouper]
-   [metabase.util :as u])
-  (:import
-   (grouper.core Grouper)))
+   [metabase.util :as u]
+   [metabase.util.grouper :as grouper]))
 
 (set! *warn-on-reflection* true)
 
@@ -50,21 +48,21 @@
       (f (fn []
            (u/poll {:thunk (fn []
                              (doseq [grouper @groupers]
-                               (.wakeUp ^Grouper grouper))
+                               (.wakeUp grouper))
                              (every? realized? @submitted))
                     :done? true?
                     :interval 100
                     :timeout 1000}))))))
 
-(defmacro with-grouper-realize!
+(defmacro with-grouper-batches!
   "Test helpers to test grouper operations.
-  Records all [[grouper/submit!]] calls and provider a [[realize]] function that will force all of them to be realized.
+  Records all [[grouper/submit!]] calls and provider a [[process-batch!]] function that will force all of them to be realized.
 
-    (with-grouper-realize! [realize]
+    (with-grouper-batches! [process-batch!]
       (grouper/submit! a-grouper some-data)
       ;; all submitted data will be forced to realize
-      (realize)"
-  [[realize-binding] & body]
+      (process-batch!)"
+  [[process-batch-binding] & body]
   {:arglists     '([realize-binding])
    :style/indent 0}
-  `(do-with-grouper-immediately-realizes! (^:once fn* [~realize-binding] ~@body)))
+  `(do-with-grouper-immediately-realizes! (^:once fn* [~process-batch-binding] ~@body)))
