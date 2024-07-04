@@ -141,7 +141,7 @@ function calculateNumRowsCols(
   fontWeight: number,
 ) {
   let colWidth: number;
-  let numCols = 1;
+  let numCols = 2;
 
   do {
     if (numCols >= items.length) {
