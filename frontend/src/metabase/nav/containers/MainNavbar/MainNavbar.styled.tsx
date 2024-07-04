@@ -41,6 +41,7 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   ${breakpointMaxSmall} {
     position: absolute;
     top: 0;
+    inset-inline-start: 0;
   }
 `;
 
