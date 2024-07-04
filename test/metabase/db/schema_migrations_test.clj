@@ -2195,7 +2195,6 @@
 
 (deftest populate-is-defective-duplicate-test
   (testing "Migration v49.2024-06-27T00:00:02 populates is_defective_duplicate correctly"
-    ;; TODO: test postgres too on rollback
     (mt/test-drivers #{:postgres :h2 :mysql}
       (impl/test-migrations ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"] [migrate!]
         (when (= driver/*driver* :postgres)
@@ -2272,9 +2271,9 @@
             (assert-defective-cases cases-4))
           (testing "5. Fields with different parent_id's are not defective duplicates"
             (assert-defective-cases cases-5))
-          ;; TODO: MySQL flakes on rollback migrations, so
-          (testing "Migrate down succeeds"
-            (migrate! :down 48)))))))
+          (when true ;; TODO UNCOMMENT THIS BEFORE MERGING #_(not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+            (testing "Migrate down succeeds"
+              (migrate! :down 48))))))))
 
 (deftest is-defective-duplicate-constraint-test
   (testing "Migrations for H2 and MySQL to prevent duplicate fields"
