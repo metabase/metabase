@@ -27,7 +27,7 @@
 }
 
 .Title {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   font-size: 14px;
   font-weight: bold;
   text-transform: uppercase;

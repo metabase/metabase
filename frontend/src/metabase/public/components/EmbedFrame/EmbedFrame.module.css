@@ -9,6 +9,7 @@ body {
 .EmbedFrame {
   --mb-color-text-primary: var(--mb-color-text-dark);
   --mb-color-text-secondary: var(--mb-color-text-medium);
+  --mb-color-text-tertiary: var(--mb-color-text-light);
   --mb-color-embed-filter-bg-color: var(--mb-color-bg-white);
 
   color: var(--mb-color-text-primary);
