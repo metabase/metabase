@@ -396,6 +396,7 @@ export class NativeQueryEditor extends Component<
     }
 
     // HACK: the cursor doesn't blink without this intended small delay
+    // HACK: the editor injects newlines into the query without this small delay
     setTimeout(() => this._editor?.focus(), 50);
   }
 
@@ -434,9 +435,7 @@ export class NativeQueryEditor extends Component<
     editor.getSession().getUndoManager().reset();
 
     // hmmm, this could be dangerous
-    if (!this.props.readOnly) {
-      editor.focus();
-    }
+    this.focus();
 
     const aceLanguageTools = ace.require("ace/ext/language_tools");
     editor.setOptions({
