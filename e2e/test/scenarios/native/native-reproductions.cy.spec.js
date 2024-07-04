@@ -586,6 +586,7 @@ describe("issue 34330", () => {
 
     // can't use cy.type because it does not simulate the bug
     // Delay needed for React 18. TODO: fix shame
+    cy.wait(50);
     editor.type("USER").type("_", { delay: 1000 });
 
     cy.wait("@autocomplete").then(({ request }) => {
