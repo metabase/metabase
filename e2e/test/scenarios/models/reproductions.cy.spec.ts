@@ -25,6 +25,7 @@ import {
   undoToast,
   visitModel,
   visualize,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 import type { FieldReference } from "metabase-types/api";
 
