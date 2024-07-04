@@ -68,7 +68,7 @@
   (tx/create-db! db-type db-def)
   (mdb.setup/setup-db! db-type data-source true false))
 
-(defn dump-filename
+(defn- dump-filename
   [h2-filename version]
   (str h2-filename "-" version))
 
