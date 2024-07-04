@@ -34,6 +34,7 @@ export const useInteractiveQuestionData = () => {
   const onQueryChange = async (query: Lib.Query) => {
     if (question) {
       const nextQuestion = question.setQuery(query);
+
       await dispatch(updateQuestion(nextQuestion, { run: true }));
     }
   };

@@ -2,6 +2,7 @@ import {
   createContext,
   type PropsWithChildren,
   useContext,
+  useEffect,
   useMemo,
 } from "react";
 
@@ -46,33 +47,33 @@ type InteractiveQuestionProviderProps = PropsWithChildren<
 >;
 
 export const InteractiveQuestionProvider = ({
+  questionId,
   children,
-  location,
-  params,
   componentPlugins,
   onReset,
   onNavigateBack,
 }: InteractiveQuestionProviderProps) => {
-  const { isQuestionLoading, resetQuestion } = useLoadQuestion({
-    location: location,
-    params: params,
-  });
-
+  const { isQuestionLoading, loadQuestion } = useLoadQuestion({ questionId });
   const { question } = useInteractiveQuestionData();
 
   const globalPlugins = useSdkSelector(getPlugins);
   const plugins = componentPlugins || globalPlugins;
+
   const mode = useMemo(
     () => question && getEmbeddingMode(question, plugins || undefined),
     [plugins, question],
   );
 
+  useEffect(() => {
+    loadQuestion();
+  }, [loadQuestion]);
+
   return (
     <InteractiveQuestionContext.Provider
       value={{
         isQuestionLoading,
-        resetQuestion,
-        onReset: onReset || resetQuestion,
+        resetQuestion: loadQuestion,
+        onReset: onReset || loadQuestion,
         onNavigateBack,
         mode,
         plugins,

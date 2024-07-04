@@ -1,58 +1,29 @@
-import { useCallback, useEffect, useState } from "react";
-import { useUnmount } from "react-use";
+import { useCallback, useState } from "react";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { initializeQBRaw, resetQB } from "metabase/query_builder/actions";
-import { getQueryResults } from "metabase/query_builder/selectors";
+import { loadSdkQuestion } from "embedding-sdk/lib/question";
+import { useDispatch } from "metabase/lib/redux";
 
 export type UseLoadQuestionParams = {
-  location: {
-    search?: string;
-    hash?: string;
-    pathname?: string;
-    query?: Record<string, unknown>;
-  };
-  params: {
-    slug?: string;
-  };
+  questionId: number;
 };
-export const useLoadQuestion = ({
-  location,
-  params,
-}: UseLoadQuestionParams) => {
+
+export const useLoadQuestion = (options: UseLoadQuestionParams) => {
+  const { questionId } = options;
+
   const dispatch = useDispatch();
-
-  const queryResults = useSelector(getQueryResults);
-
   const [isQuestionLoading, setIsQuestionLoading] = useState(true);
 
   const loadQuestion = useCallback(async () => {
     setIsQuestionLoading(true);
 
     try {
-      await dispatch(initializeQBRaw(location, params));
+      await dispatch(loadSdkQuestion(questionId));
     } catch (e) {
       console.error(`Failed to get question`, e);
+    } finally {
       setIsQuestionLoading(false);
     }
-  }, [dispatch, location, params]);
+  }, [dispatch, questionId]);
 
-  useEffect(() => {
-    loadQuestion();
-  }, [loadQuestion]);
-
-  useEffect(() => {
-    if (queryResults) {
-      setIsQuestionLoading(false);
-    }
-  }, [queryResults]);
-
-  const resetQuestion = () => {
-    loadQuestion();
-  };
-
-  useUnmount(() => {
-    dispatch(resetQB());
-  });
-  return { resetQuestion, isQuestionLoading };
+  return { loadQuestion, isQuestionLoading };
 };
