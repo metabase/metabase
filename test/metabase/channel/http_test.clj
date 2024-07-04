@@ -2,7 +2,11 @@
   (:require
    [clj-http.client :as http]
    [clojure.test :refer :all]
-   [metabase.channel.core :as channel]))
+   [metabase.channel.core :as channel]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.urls :as urls]
+   [metabase.util.secret :as u.secret]
+   [metabase.test :as mt]))
 
 (def ^{:private true
        :dynamic true}
@@ -27,12 +31,24 @@
   {:accept       :json
    :content-type :json})
 
-(deftest can-connect-test
+(deftest can-connect-with-api-key-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-temp [:model/ApiKey _ {:name          "A superuser API Key"
+                                    :user_id       (mt/user->id :crowberto)
+                                    :creator_id    (mt/user->id :lucky)
+                                    :updated_by_id (mt/user->id :lucky)
+                                    :unhashed_key  (u.secret/secret "mb_superuser")}]
+      (is (true? (channel/can-connect? :channel/http {:url         (str (urls/site-url) "/api/user/current")
+                                                      :auth-method :header
+                                                      :auth-info   {:x-api-key "mb_superuser"}
+                                                      :method      :get}))))))
+
+(deftest ^:parallel can-connect-request-test
   (testing "Can connect without auth"
     (with-captured-http-requests
-      (channel/can-connect? :channel/http {:url         "https://www.secret_service.xyz"
-                                           :auth-method :none
-                                           :method      :post})
+      (is (true? (channel/can-connect? :channel/http {:url         "https://www.secret_service.xyz"
+                                                      :auth-method :none
+                                                      :method      :post})))
       (is (= (merge default-request
                     {:method :post
                      :url    "https://www.secret_service.xyz"})
@@ -40,10 +56,10 @@
 
   (testing "Can connect with header auth"
     (with-captured-http-requests
-      (channel/can-connect? :channel/http {:url         "https://www.secret_service.xyz"
-                                           :auth-method :header
-                                           :auth-info   {:Authorization "Bearer 123"}
-                                           :method      :post})
+      (is (true? (channel/can-connect? :channel/http {:url         "https://www.secret_service.xyz"
+                                                      :auth-method :header
+                                                      :auth-info   {:Authorization "Bearer 123"}
+                                                      :method      :post})))
       (is (= (merge default-request
                     {:method :post
                      :url    "https://www.secret_service.xyz"
@@ -52,18 +68,40 @@
 
   (testing "Can connect with query-param auth"
     (with-captured-http-requests
-      (channel/can-connect? :channel/http {:url         "https://www.secret_service.xyz"
-                                           :auth-method :query-param
-                                           :auth-info   {:token "123"}
-                                           :method      :post})
+      (is (true? (channel/can-connect? :channel/http {:url         "https://www.secret_service.xyz"
+                                                      :auth-method :query-param
+                                                      :auth-info   {:token "123"}
+                                                      :method      :post})))
       (is (= (merge default-request
                     {:method       :post
                      :url          "https://www.secret_service.xyz"
                      :query-params {:token "123"}})
              (first @*requests*))))))
 
+(defmacro exception-data
+  [& body]
+  `(try
+     ~@body
+     (catch Exception e#
+       (ex-data e#))))
 
-(deftest send!-test
+(deftest ^:parallel can-connect?-errors-test
+  (testing "throws an appriopriate errors if details are mismatched"
+    (is (= {:errors {:url [(deferred-tru "value must be a valid URL.")]}}
+           (exception-data (channel/can-connect? :channel/http {:url         "not-an-url"
+                                                                :auth-method :none}))))
+    (is (= {:errors {:auth-method ["missing required key"]}}
+           (exception-data (channel/can-connect? :channel/http {:url "https://www.secret_service.xyz"}))))
+
+    (is (= {:request-body "\"API endpoint does not exist.\""
+            :request-status 404}
+           (exception-data (channel/can-connect? :channel/http {:url         (str (urls/site-url) "/api/not-exists")
+                                                                :method      :get
+                                                                :auth-method :none}))))))
+
+(deftest returns-300-test)
+
+(deftest ^:parallel send!-test
   (testing "basic send"
     (with-captured-http-requests
       (channel/send! {:type        :channel/http
@@ -105,5 +143,3 @@
                      :query-params {:token "123"
                                     :page 1}})
              (first @*requests*))))))
-
-(deftest errors-test)

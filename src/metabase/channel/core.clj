@@ -5,8 +5,8 @@
   (:require
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.util.malli.fn :as mu.fn]))
+   [metabase.util.log :as log]))
+
 
 (set! *warn-on-reflection* true)
 
@@ -14,7 +14,7 @@
 ;;                                      Channels methods                                           ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defmulti can-connect?*
+(defmulti can-connect?
   "Check whether we can connect to a `channel` with `detail`.
 
   Returns `true` if can connect to the channel, otherwise return faslsy or throw an appriopriate exception.
@@ -50,16 +50,6 @@
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                             Utils                                               ;;
 ;; ------------------------------------------------------------------------------------------------;;
-
-(defn can-connect?
-  [& args]
-  (try
-    (apply can-connect?* args)
-    (catch Exception e
-      (if (= ::mu.fn/invalid-input (-> e ex-data :type))
-        (throw (ex-info (ex-message e)
-                        {:errors (:humanized (ex-data e))}))
-        (throw e)))))
 
 (defn- find-and-load-metabase-channels!
   "Load namespaces that start with `metabase.channel."
