@@ -1,8 +1,9 @@
 (ns ^{:added "0.50.0"} metabase.test.util.async
   (:require
    [clojure.core.async :as a]
-   [metabase.util :as u]
-   [metabase.util.grouper :as grouper]))
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [grouper.core :as grouper]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
