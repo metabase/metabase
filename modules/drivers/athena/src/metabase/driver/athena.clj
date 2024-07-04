@@ -32,7 +32,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (doseq [[feature supported?] {:datetime-diff                 true
-                              :foreign-keys                  true
                               :nested-fields                 false
                               :connection/multiple-databases true
                               :metadata/key-constraints      false
