@@ -1376,7 +1376,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByTestId("viz-type-button").click();
     cy.findByTestId("Pivot Table-button").click();
     cy.wait("@pivotDataset");
-    cy.findAllByTestId("pivot-table-cell")
+    cy.findByTestId("pivot-table")
       .should("contain", "User → Source")
       .and("contain", "Sum of Subtotal")
       .and("contain", "Sum of Total")
@@ -1390,7 +1390,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     // Close the notebook editor
     cy.findByTestId("qb-header-action-panel").icon("notebook").click();
-    cy.findAllByTestId("pivot-table-cell")
+    cy.findByTestId("pivot-table")
       .should("contain", "User → Source")
       .and("contain", "Sum of Subtotal")
       .and("contain", "Sum of Total")
