@@ -15,6 +15,8 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.pulse]
+   [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.streaming.csv :as qp.csv]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.test :as mt])
@@ -34,18 +36,62 @@
 
 (defn- dashcard-download
   [card-or-dashcard export-format format-rows?]
-  (letfn [(dashcard-download-fn [{dashcard-id  :id
-                                  card-id      :card_id
-                                  dashboard-id :dashboard_id}]
+  (letfn [(dashcard-download* [{dashcard-id  :id
+                                card-id      :card_id
+                                dashboard-id :dashboard_id}]
             (->> (format "dashboard/%d/dashcard/%d/card/%d/query/%s?format_rows=%s" dashboard-id dashcard-id card-id (name export-format) format-rows?)
                  (mt/user-http-request :crowberto :post 200)
                  (process-results export-format)))]
       (if (contains? card-or-dashcard :dashboard_id)
-        (dashcard-download-fn card-or-dashcard)
+        (dashcard-download* card-or-dashcard)
         (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                        :model/DashboardCard dashcard {:dashboard_id dashboard-id
                                                       :card_id      (:id card-or-dashcard)}]
-          (dashcard-download-fn dashcard)))))
+          (dashcard-download* dashcard)))))
+
+(defn- run-pulse-and-return-attached-csv-data!
+  "Simulate sending the pulse email, get the attached text/csv content, and parse into a map of
+  attachment name -> column name -> column data"
+  [pulse export-format]
+  #_(with-redefs [email/bcc-enabled? (constantly false)])
+  (->> (mt/with-test-user nil
+         (pulse.test-util/with-captured-channel-send-messages!
+           (metabase.pulse/send-pulse! pulse)))
+       :channel/email
+       first
+       :message
+       (keep
+        (fn [{:keys [type content-type content]}]
+          (when (and
+                 (= :attachment type)
+                 (= (format "text/%s" (name export-format)) content-type))
+            (slurp content))))
+       first))
+
+(defn- subscription-attachment!
+  [card-or-dashcard export-format _format-rows?]
+  (letfn [(subscription-attachment* [pulse]
+            (run-pulse-and-return-attached-csv-data! pulse export-format))]
+    (if (contains? card-or-dashcard :dashboard_id)
+      ;; dashcard
+      (mt/with-temp [:model/Pulse {pulse-id :id
+                                   :as      pulse} {:name         "Test Pulse"
+                                                    :dashboard_id (:dashboard_id card-or-dashcard)}
+                     :model/PulseCard _ {:pulse_id          pulse-id
+                                         :card_id           (:card_id card-or-dashcard)
+                                         :dashboard_card_id (:id card-or-dashcard)}]
+        (subscription-attachment* pulse))
+      ;; card
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                     :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                             :card_id      (:id card-or-dashcard)}
+                     :model/Pulse {pulse-id :id
+                                   :as      pulse} {:name         "Test Pulse"
+                                                    :dashboard_id dashboard-id}
+                     :model/PulseCard _ {:pulse_id          pulse-id
+                                         :card_id           (:id card-or-dashcard)
+                                         :dashboard_card_id dashcard-id}]
+        (subscription-attachment* pulse)))))
 
 (set! *warn-on-reflection* true)
 
@@ -454,7 +500,7 @@
                     [nil 1.0 11149.28]]
                  (take 6 data)))))))))
 
-(deftest ^:parallel dashcard-viz-settings-export-test
+(deftest dashcard-viz-settings-export-test
   (testing "Dashcard visualization settings are respected in exports."
     (testing "for csv"
       (mt/dataset test-data
@@ -464,7 +510,9 @@
                                         :type     :query
                                         :query    {:source-table (mt/id :orders)}}}]
           (let [card-result     (card-download card :csv false)
-                dashcard-result (dashcard-download card :csv false)]
+                dashcard-result (dashcard-download card :csv false)
+                subscription-result (subscription-attachment! card :csv false)]
             (is (= {}
                    {:card     (take 1 card-result)
-                    :dashcard (take 1 dashcard-result)}))))))))
+                    :dashcard (take 1 dashcard-result)
+                    :subscription (take 1 subscription-result)}))))))))
