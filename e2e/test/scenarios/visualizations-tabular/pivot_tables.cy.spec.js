@@ -18,6 +18,8 @@ import {
   dashboardCards,
   queryBuilderMain,
   createQuestion,
+  openNotebook,
+  getNotebookStep,
 } from "e2e/support/helpers";
 import { PIVOT_TABLE_BODY_LABEL } from "metabase/visualizations/visualizations/PivotTable/constants";
 
@@ -1329,6 +1331,75 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         .and("contain", "User → Latitude")
         .and("contain", "User → Longitude");
     });
+  });
+
+  it("should be possible to switch between notebook and simple views when pivot table is the visualization (metabase#39504)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "sum",
+              [
+                "field",
+                ORDERS.SUBTOTAL,
+                {
+                  "base-type": "type/Float",
+                },
+              ],
+            ],
+            [
+              "sum",
+              [
+                "field",
+                ORDERS.TOTAL,
+                {
+                  "base-type": "type/Float",
+                },
+              ],
+            ],
+          ],
+          breakout: [
+            [
+              "field",
+              PEOPLE.SOURCE,
+              {
+                "base-type": "type/Text",
+                "source-field": ORDERS.USER_ID,
+              },
+            ],
+          ],
+        },
+        type: "query",
+      },
+    });
+
+    cy.log("Set the visualization to pivot table using the UI");
+    cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
+    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("Pivot Table-button").click();
+    cy.wait("@pivotDataset");
+    cy.findByTestId("pivot-table")
+      .should("contain", "User → Source")
+      .and("contain", "Sum of Subtotal")
+      .and("contain", "Sum of Total")
+      .and("contain", "Grand totals");
+
+    openNotebook();
+    getNotebookStep("summarize")
+      .should("be.visible")
+      .and("contain", "Sum of Subtotal")
+      .and("contain", "Sum of Total");
+
+    // Close the notebook editor
+    cy.findByTestId("qb-header-action-panel").icon("notebook").click();
+    cy.findByTestId("pivot-table")
+      .should("contain", "User → Source")
+      .and("contain", "Sum of Subtotal")
+      .and("contain", "Sum of Total")
+      .and("contain", "Grand totals");
   });
 });
 
