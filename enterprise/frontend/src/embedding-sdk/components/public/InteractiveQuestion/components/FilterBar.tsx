@@ -14,7 +14,7 @@ export const FilterBar = () => {
       question,
       isObjectDetail: false,
 
-      // TODO: query builder mode?
+      // This only renders when the queryBuilderMode is view.
       queryBuilderMode: "view",
     });
 

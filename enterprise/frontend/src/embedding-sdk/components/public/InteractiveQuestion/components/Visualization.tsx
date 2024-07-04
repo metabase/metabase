@@ -34,17 +34,16 @@ export const QuestionVisualization = () => {
 
   const [result] = queryResults;
 
+  // TODO: remove this
   // eslint-disable-next-line no-console
-  console.log("Result is", result);
+  console.log("Query Results:", queryResults);
 
   return (
     <QueryVisualization
       className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
       question={question}
-      // TODO: dataset data??
-      // @ts-expect-error: to investigate and fix
       rawSeries={[{ card, data: result && result.data }]}
-      // TODO: isQueryRunning?
+      // TODO: should we have isQuestionRunning?
       isRunning={isQuestionLoading}
       isObjectDetail={false}
       isResultDirty={false}
