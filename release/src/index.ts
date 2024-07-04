@@ -1,6 +1,7 @@
 export * from "./backports";
 export * from "./github";
 export * from "./linked-issues";
+export * from "./milestones";
 export * from "./release-notes";
 export * from "./release-status";
 export * from "./slack";

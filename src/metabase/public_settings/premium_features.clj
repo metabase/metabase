@@ -104,6 +104,7 @@
    [:status                         [:string {:min 1}]]
    [:error-details {:optional true} [:maybe [:string {:min 1}]]]
    [:features      {:optional true} [:sequential [:string {:min 1}]]]
+   [:plan-alias    {:optional true} :string]
    [:trial         {:optional true} :boolean]
    [:valid-thru    {:optional true} [:string {:min 1}]]
    [:max-users     {:optional true} pos-int?]
@@ -262,6 +263,7 @@
 (defsetting premium-embedding-token     ; TODO - rename this to premium-features-token?
   (deferred-tru "Token for premium features. Go to the MetaStore to get yours!")
   :audit :never
+  :sensitive? true
   :setter
   (fn [new-value]
     ;; validate the new value if we're not unsetting it

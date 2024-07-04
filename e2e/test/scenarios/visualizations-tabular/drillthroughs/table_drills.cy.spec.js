@@ -4,9 +4,10 @@ import {
   popover,
   restore,
   tableHeaderClick,
+  openTable,
 } from "e2e/support/helpers";
 
-const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
+const { REVIEWS, REVIEWS_ID, ACCOUNTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > drillthroughs > table_drills", () => {
   beforeEach(() => {
@@ -208,5 +209,38 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     popover()
       .findByText("Drill-through doesn’t work on SQL questions.")
       .should("be.visible");
+  });
+});
+
+describe("scenarios > visualizations > drillthroughs > table_drills > nulls", () => {
+  beforeEach(() => {
+    // It's important to restore to the "setup" to have access to "Accounts" table
+    restore("setup");
+    cy.signInAsAdmin();
+    cy.viewport(1500, 800);
+  });
+
+  it("should display proper drills on a datetime cell click when there is no value (metabase#44101)", () => {
+    const CANCELLED_AT_INDEX = 9;
+
+    openTable({ table: ACCOUNTS_ID, limit: 1 });
+    cy.findAllByRole("gridcell")
+      .eq(CANCELLED_AT_INDEX)
+      .should("have.text", "")
+      .click({ force: true });
+
+    popover().within(() => {
+      cy.findByText("Filter by this date").should("be.visible");
+      cy.findByText("Is empty").should("be.visible");
+      cy.findByText("Not empty").should("be.visible").click();
+    });
+
+    cy.findByTestId("filter-pill").should(
+      "have.text",
+      "Canceled At is not empty",
+    );
+    cy.findAllByRole("gridcell")
+      .eq(CANCELLED_AT_INDEX)
+      .should("not.have.text", "");
   });
 });

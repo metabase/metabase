@@ -12,6 +12,7 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { getParameterColumns } from "metabase-lib/v1/parameters/utils/targets";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
+import { isTemplateTagReference } from "metabase-lib/v1/references";
 import type {
   BaseDashboardCard,
   DashboardCard,
@@ -54,10 +55,11 @@ export function getMappingOptionByTarget<T extends DashboardCard>(
     return;
   }
 
-  const isVirtual = isVirtualDashCard(dashcard);
   const isNative = isQuestionDashCard(dashcard)
     ? isNativeDashCard(dashcard)
     : false;
+
+  const isVirtual = isVirtualDashCard(dashcard);
   const normalizedTarget = normalize(target);
   const matchedMappingOptions = mappingOptions.filter(mappingOption =>
     _.isEqual(mappingOption.target, normalizedTarget),
@@ -74,11 +76,19 @@ export function getMappingOptionByTarget<T extends DashboardCard>(
     return;
   }
 
+  // a parameter mapping could have been created for a SQL query which got
+  // reverted to an MBQL query via revision history.
+  // `Lib.findColumnIndexesFromLegacyRefs` throws for non-MBQL references, so we
+  // need to ignore such references here
+  const fieldRef = normalizedTarget[1];
+  if (isTemplateTagReference(fieldRef)) {
+    return;
+  }
+
   const { query, stageIndex, columns } = getParameterColumns(
     question,
     parameter,
   );
-  const fieldRef = normalizedTarget[1];
 
   const [columnByTargetIndex] = Lib.findColumnIndexesFromLegacyRefs(
     query,

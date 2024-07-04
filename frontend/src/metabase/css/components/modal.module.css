@@ -49,7 +49,7 @@
 }
 
 .ModalBackdrop {
-  background-color: color-mod(var(--mb-color-bg-black) alpha(-40%));
+  background-color: var(--mb-color-bg-black-alpha-60);
 }
 
 /* TRANSITIONS */
@@ -58,22 +58,30 @@
 
 .ModalBackdrop.ModalAppear,
 .ModalBackdrop.ModalEnter {
-  background-color: color-mod(var(--mb-color-bg-black) alpha(-99%));
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-bg-black) 1%,
+    transparent
+  );
 }
 
 .ModalBackdrop.ModalAppearActive,
 .ModalBackdrop.ModalEnterActive {
   transition: background-color 200ms ease-in-out;
-  background-color: color-mod(var(--mb-color-bg-black) alpha(-40%));
+  background-color: var(--mb-color-bg-black-alpha-60);
 }
 
 .ModalBackdrop.ModalExit {
-  background-color: color-mod(var(--mb-color-bg-black) alpha(-40%));
+  background-color: var(--mb-color-bg-black-alpha-60);
 }
 
 .ModalBackdrop.ModalExitActive {
   transition: background-color 200ms ease-in-out 100ms;
-  background-color: color-mod(var(--mb-color-bg-black) alpha(-99%));
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-bg-black) 1%,
+    transparent
+  );
 }
 
 /* modal */

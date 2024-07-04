@@ -5751,6 +5751,9 @@ databaseChangeLog:
       id: v49.2024-03-26T20:27:58
       author: noahmoss
       comment: Added 0.46.0 - Delete the truncate audit log task (renamed to truncate audit tables)
+      # Apparently this migration can hang when connection pool is small (#44528). It's also not needed
+      # as of v50 due to #42383 so let's skip it.
+      ignore: true
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.DeleteTruncateAuditLogTask"
@@ -7227,25 +7230,6 @@ databaseChangeLog:
                   defaultValue: false
 
   - changeSet:
-      id: v50.2024-04-12T12:33:09
-      author: piranha
-      comment: 'Copy old cache configurations to cache_config table'
-      changes:
-        - sqlFile:
-            dbms: postgresql
-            path: custom_sql/fill_cache_config.pg.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: mysql,mariadb
-            path: custom_sql/fill_cache_config.my.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: h2
-            path: custom_sql/fill_cache_config.h2.sql
-            relativeToChangelogFile: true
-      rollback: # no rollback necessary, we're not removing the columns yet
-
-  - changeSet:
       id: v50.2024-04-15T16:30:35
       author: qnkhuat
       comment: Add report_card.last_used_at
@@ -7580,6 +7564,7 @@ databaseChangeLog:
             tableName: task_history
             columnDataType: ${timestamp_type}
             columnName: ended_at
+      rollback: # we can't reliably add back the constraint while downgrading
 
   - changeSet:
       id: v50.2024-05-08T09:00:04
@@ -7590,6 +7575,7 @@ databaseChangeLog:
             tableName: task_history
             columnDataType: int
             columnName: duration
+      rollback: # we can't reliably add back the constraint while downgrading
 
   - changeSet:
       id: v50.2024-05-08T09:00:05
@@ -7873,6 +7859,123 @@ databaseChangeLog:
       rollback: # not needed, columns will be deleted
 
   - changeSet:
+      id: v50.2024-06-12T12:33:07
+      author: piranha
+      comment: 'Decrypt some settings so the next migration runs well'
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DecryptCacheSettings"
+      rollback: # no rollback necessary, they'll be encrypted if you downgrade and touch them
+
+  - changeSet:
+      # this had id `v50.2024-04-12T12:33:09` before #44048
+      id: v50.2024-06-12T12:33:08
+      author: piranha
+      comment: 'Copy old cache configurations to cache_config table'
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: custom_sql/fill_cache_config.pg.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: custom_sql/fill_cache_config.my.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: custom_sql/fill_cache_config.h2.sql
+            relativeToChangelogFile: true
+      rollback: # no rollback necessary, we're not removing the columns yet
+
+  - changeSet:
+      id: v50.2024-06-12T12:33:09
+      author: piranha
+      comment: 'Fix root cache config for mysql if it is wrong'
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: custom_sql/fill_cache_config_root_fix.my.sql
+            relativeToChangelogFile: true
+      rollback: # no rollback necessary here too
+
+  - changeSet:
+      id: v50.2024-06-20T13:21:30
+      author: noahmoss
+      comment: 'Drop permission_id column on sandboxes table to fix down migrations'
+      changes:
+        - dropColumn:
+            tableName: sandboxes
+            columnName: permission_id
+      rollback:
+        - addColumn:
+            tableName: sandboxes
+            columns:
+              - column:
+                  name: permission_id
+                  type: int
+                  remarks: 'The ID of the corresponding permissions path for this sandbox (deprecated)'
+                  constraints:
+                    nullable: true
+                  defaultValue: null
+
+  - changeSet:
+      id: v50.2024-06-28T12:35:50
+      author: piranha
+      comment: 'Clean databasechangelog table of migration that was once deleted'
+      changes:
+        - sql: "DELETE FROM ${databasechangelog.name} WHERE id = 'v50.2024-04-12T12:33:09'"
+      rollback: # nothing to do here
+
+  - changeSet:
+      id: v50.2024-07-02T16:48:21
+      author: adam-james
+      comment: Remove existing user_parameter_value entries as we want to add dashboard_id, and can't easily backfill
+      rollback: # none, entries already removed and are non-critical to app functionality
+      changes:
+        - delete:
+           tableName: user_parameter_value
+
+  - changeSet:
+      id: v50.2024-07-02T16:49:29
+      author: adam-james
+      comment: Add dashboard_id column to user_parameter_value to keep values unique per dashboard
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The ID of the dashboard
+            tableName: user_parameter_value
+
+  - changeSet:
+      id: v50.2024-07-02T16:55:42
+      author: adam-james
+      comment: Add fk constraint to user_parameter_value.dashboard_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: user_parameter_value
+            baseColumnNames: dashboard_id
+            referencedTableName: report_dashboard
+            referencedColumnNames: id
+            constraintName: fk_user_parameter_value_dashboard_id
+            nullable: false
+            deleteCascade: true
+
+  - changeSet:
+      id: v50.2024-07-02T17:07:15
+      author: adam-james
+      comment: Index user_parameter_value.dashboard_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: user_parameter_value
+            indexName: idx_user_parameter_value_dashboard_id
+            columns:
+              column:
+                name: dashboard_id
+
+  - changeSet:
       id: v51.2024-05-13T15:30:57
       author: metamben
       comment: Backup of dataset_query rewritten by the metrics v2 migration
@@ -7920,6 +8023,41 @@ databaseChangeLog:
             oldColumnName: direct_reference
             newColumnName: explicit_reference
 
+  - changeSet:
+      id: v51.2024-06-12T18:53:02
+      author: noahmoss
+      comment: Drop incorrect index on login_history
+      changes:
+        - dropIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
+      rollback:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
+            columns:
+              - column:
+                  name: session_id
+              - column:
+                  name: device_id
+
+  - changeSet:
+      id: v51.2024-06-12T18:53:03
+      author: noahmoss
+      comment: Create index on login_history (user_id, device_id)
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: device_id
+      rollback:
+        - dropIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
@@ -7927,7 +8065,21 @@ databaseChangeLog:
 #
 # ADVICE:
 #
-# 1) Run ./bin/lint-migrations-file.sh to run core.spec checks against any changes you make here. Liquibase is pretty
+# 1) Think through some of these points when writing a migration, learn from our past mistakes:
+#    - Do you really need a migration? Could the feature work without it? Prefer not to if possible.
+#      Data in the wild can be vastly different from what you expect, and it's hard to get right.
+#    - If you still need to, make sure it works when Metabase is encrypted. Fields like `metabase_database.details`
+#      or `setting.value` can be encrypted, so you need to decrypt them in your migration. See #42617, #44048.
+#    - Prefer SQL migrations over custom migrations.
+#    - Still, make sure your migration is backward compatible: it might not be possible to add a constraint back
+#      if you are dropping it in a migration.
+#    - Postgres, MySQL and H2 have their differences. Make sure your migration works for all.
+#    - Custom migrations and their tests demand a high level of reliability. They should only use code from the standard library.
+#      Requiring code from the Metabase codebase is a bad idea because it can change and break your migration.
+#      More in `metabase.db.custom_migrations` namespace doc.
+#    - Custom migrations shouldn't use Toucan models; work directly with the table names.
+#
+# 2) Run ./bin/lint-migrations-file.sh to run core.spec checks against any changes you make here. Liquibase is pretty
 #    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
 #    this check but it's nicer to know now instead of waiting for CI.
 #
@@ -7936,7 +8088,7 @@ databaseChangeLog:
 #       automatically and the migrations linter will check for the presence of rollback where required as
 #       much as possible.
 #
-# 2) Migration IDs should follow the format
+# 3) Migration IDs should follow the format
 #
 #    vMM.TIMESTAMP
 #

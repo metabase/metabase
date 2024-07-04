@@ -8,7 +8,3 @@ export const getEngines = (state: State) => {
 export const getIsHosted = (state: State) => {
   return getSetting(state, "is-hosted?");
 };
-
-export const getIsCachingEnabled = (state: State) => {
-  return getSetting(state, "enable-query-caching") ?? false;
-};

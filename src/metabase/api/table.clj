@@ -356,7 +356,8 @@
                              [:fields [:target :has_field_values] :dimensions :has_field_values]
                              :segments
                              :metrics)
-          dbs (t2/select-pk->fn identity Database :id [:in (into #{} (map :db_id) tables)])]
+          dbs    (when (seq tables)
+                   (t2/select-pk->fn identity Database :id [:in (into #{} (map :db_id) tables)]))]
       (for [table tables]
         (-> table
             (m/dissoc-in [:db :details])

@@ -30,6 +30,5 @@ export const TabsPanel = styled(Tabs.Panel)<{ value: string }>`
   flex: 1;
   justify-content: stretch;
   padding: 1rem 2.5rem;
-  ${props =>
-    props.value === PerformanceTabId.DataCachingSettings && `overflow: hidden;`}
+  ${props => props.value === PerformanceTabId.Databases && `overflow: hidden;`}
 `;

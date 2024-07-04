@@ -85,6 +85,9 @@ export const useCommandPalette = ({
   );
 
   const docsAction = useMemo<PaletteAction[]>(() => {
+    const link = debouncedSearchText
+      ? getDocsSearchUrl({ query: debouncedSearchText })
+      : docsUrl;
     const ret: PaletteAction[] = [
       {
         id: "search_docs",
@@ -95,11 +98,10 @@ export const useCommandPalette = ({
         keywords: debouncedSearchText, // Always match the debouncedSearchText string
         icon: "document",
         perform: () => {
-          if (debouncedSearchText) {
-            window.open(getDocsSearchUrl({ debouncedSearchText }));
-          } else {
-            window.open(docsUrl);
-          }
+          window.open(link);
+        },
+        extra: {
+          href: link,
         },
       },
     ];

@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import type { Issue, ReleaseProps } from "./types";
+import type { GithubProps, Issue, ReleaseProps } from "./types";
 import {
   getMilestoneName,
   getNextVersions,
@@ -7,18 +7,19 @@ import {
   isValidVersionString,
 } from "./version-helpers";
 
-const getMilestones = async ({
+export const getMilestones = async ({
   github,
   owner,
   repo,
-}: Omit<ReleaseProps, "version">) => {
-  const milestones = await github.rest.issues.listMilestones({
+  state = "open",
+}: GithubProps & { state?: 'open' | 'closed' }) => {
+  const milestones = await github.paginate(github.rest.issues.listMilestones, {
     owner,
     repo,
-    state: "open",
+    state,
   });
 
-  return milestones.data;
+  return milestones;
 };
 
 export const findMilestone = async ({
@@ -26,8 +27,9 @@ export const findMilestone = async ({
   github,
   owner,
   repo,
-}: ReleaseProps) => {
-  const milestones = await getMilestones({ github, owner, repo });
+  state,
+}: ReleaseProps & { state?: 'open' | 'closed'}) => {
+  const milestones = await getMilestones({ github, owner, repo, state });
   const expectedMilestoneName = getMilestoneName(version);
 
   return milestones.find(
@@ -84,8 +86,9 @@ export const getMilestoneIssues = async ({
   owner,
   repo,
   state = "closed",
-}: ReleaseProps & { state?: "closed" | "open" }): Promise<Issue[]> => {
-  const milestone = await findMilestone({ version, github, owner, repo });
+  milestoneStatus,
+}: ReleaseProps & { state?: "closed" | "open"; milestoneStatus?: 'open' | 'closed' }): Promise<Issue[]> => {
+  const milestone = await findMilestone({ version, github, owner, repo, state: milestoneStatus });
 
   if (!milestone) {
     return [];

@@ -13,7 +13,7 @@ describe("DatePickerHeader", () => {
       />,
     );
 
-    expect(screen.getByText("Past")).toBeInTheDocument();
+    expect(screen.getByText("Previous")).toBeInTheDocument();
     expect(screen.getByText("Current")).toBeInTheDocument();
     expect(screen.getByText("Next")).toBeInTheDocument();
   });

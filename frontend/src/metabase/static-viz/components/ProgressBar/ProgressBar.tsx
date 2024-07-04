@@ -105,18 +105,18 @@ const ProgressBar = ({
           <>
             <CheckMarkIcon
               size={layout.iconSize}
-              color="var(--mb-color-text-white)"
+              color="#ffffff"
               x={10}
               y={(layout.barHeight - layout.iconSize) / 2}
             />
             <Text
               fontSize={layout.fontSize}
               textAnchor="start"
-              color="var(--mb-color-text-white)"
+              color="#ffffff"
               x={layout.iconSize + 16}
               y={layout.barHeight / 2}
               verticalAnchor="middle"
-              fill="var(--mb-color-text-white)"
+              fill="#ffffff"
             >
               {barText}
             </Text>

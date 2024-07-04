@@ -261,4 +261,14 @@ describe("PaletteResults", () => {
     // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
     expect(fetchMock.calls("path:/api/search").length).toBe(1);
   });
+
+  it("should provide a link to docs with the proper url param", async () => {
+    setup({ query: "model" });
+    expect(
+      await screen.findByRole("link", { name: /Search documentation/ }),
+    ).toHaveAttribute("href", expect.stringContaining("?query=model"));
+
+    // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
+    expect(fetchMock.calls("path:/api/search").length).toBe(2);
+  });
 });

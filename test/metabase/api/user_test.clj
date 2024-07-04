@@ -515,11 +515,7 @@
                      (dissoc :is_qbnewb :last_login))
                  (-> resp
                      mt/boolean-ids-and-timestamps
-                     (dissoc :is_qbnewb :last_login :user_group_memberships))))))
-
-      (testing "We should get a 404 when trying to access a disabled account"
-        (is (= "Not found."
-               (mt/user-http-request :crowberto :get 404 (str "user/" (mt/user->id :trashbird)))))))))
+                     (dissoc :is_qbnewb :last_login :user_group_memberships)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

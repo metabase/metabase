@@ -306,7 +306,7 @@ describe("ObjectDetailView", () => {
     // because this row is not in the test dataset, it should trigger a fetch
     setup({ question: mockQuestion, zoomedRowID: "101", zoomedRow: undefined });
 
-    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     expect(
       await screen.findByText(/Extremely Hungry Toucan/i),
     ).toBeInTheDocument();
@@ -318,7 +318,7 @@ describe("ObjectDetailView", () => {
     // because this row is not in the test dataset, it should trigger a fetch
     setup({ question: mockQuestion, zoomedRowID: "102", zoomedRow: undefined });
 
-    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     expect(await screen.findByText(/we're a little lost/i)).toBeInTheDocument();
   });
 

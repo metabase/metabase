@@ -108,9 +108,6 @@ function getParameterPanelBackgroundColor(theme?: DisplayTheme) {
   if (theme === "night") {
     return color("bg-black");
   }
-  if (theme === "transparent") {
-    return "transparent";
-  }
   return color("bg-white");
 }
 

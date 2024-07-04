@@ -37,7 +37,7 @@ export const Head = styled.div<SharedProps>`
   ${props =>
     props.isNarrow
       ? css`
-          font-size: 12px;
+          font-size: 0.85em;
         `
       : null}
 `;
@@ -45,7 +45,7 @@ export const Head = styled.div<SharedProps>`
 export const Info = styled.div<SharedProps>`
   text-align: right;
   padding: 0.5em 0.5em 0 0.5em;
-  font-size: ${props => (props.isNarrow ? "12px" : "16px")};
+  font-size: ${props => (props.isNarrow ? "0.85em" : "1.15em")};
 
   ${Subtitle} {
     font-size: ${props => (props.isNarrow ? "0.875em" : "0.6875em")};
@@ -61,11 +61,11 @@ export const FunnelStart = styled.div<SharedProps>`
   flex-grow: 1;
 
   padding-right: 0.5em;
-  font-size: 24px;
+  font-size: 1.72em;
 
   ${Title} {
     font-weight: bold;
-    color: black;
+    color: var(--mb-color-text-dark);
     ${props =>
       props.isNarrow
         ? css`

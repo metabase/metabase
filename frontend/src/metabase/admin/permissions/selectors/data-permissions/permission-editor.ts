@@ -22,13 +22,13 @@ import type {
   RawGroupRouteParams,
   PermissionSectionConfig,
   EntityId,
+  PermissionSubject,
 } from "../../types";
 import { DataPermissionValue, DataPermission } from "../../types";
 import {
   getTableEntityId,
   getSchemaEntityId,
   getDatabaseEntityId,
-  getPermissionSubject,
 } from "../../utils/data-entity-id";
 import { hasPermissionValueInEntityGraphs } from "../../utils/graph";
 
@@ -189,15 +189,16 @@ export const getDatabasesPermissionEditor = createSelector(
       databaseId != null &&
       metadata.database(databaseId)?.getSchemas().length === 1;
 
-    let entities: EntityWithPermissions[] = [];
-
     const database = metadata?.database(databaseId);
+
+    let entities: EntityWithPermissions[] = [];
+    let permissionSubject: PermissionSubject | null = null;
 
     if (database && (schemaName != null || hasSingleSchema)) {
       const schema: Schema = hasSingleSchema
         ? database.getSchemas()[0]
         : (database.schema(schemaName) as Schema);
-
+      permissionSubject = "fields";
       entities = schema
         .getTables()
         .sort((a, b) => a.display_name.localeCompare(b.display_name))
@@ -241,9 +242,11 @@ export const getDatabasesPermissionEditor = createSelector(
           };
         });
       if (maybeDbEntities) {
+        permissionSubject = "tables";
         entities = maybeDbEntities;
       }
     } else if (groupId != null) {
+      permissionSubject = "schemas";
       entities = metadata
         .databasesList({ savedQuestions: false })
         .map(database => {
@@ -266,18 +269,15 @@ export const getDatabasesPermissionEditor = createSelector(
         });
     }
 
-    const permissionSubject = getPermissionSubject(
-      { databaseId, schemaName },
-      hasSingleSchema,
-    );
-
     const showViewDataColumn = hasViewDataOptions(entities);
 
     const columns = _.compact([
       { name: getEditorEntityName(params, hasSingleSchema) },
       showViewDataColumn && { name: t`View data` },
       { name: t`Create queries` },
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
+      ...(permissionSubject
+        ? PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject)
+        : []),
     ]);
 
     const breadcrumbs = getDatabasesEditorBreadcrumbs(params, metadata, group);
@@ -364,6 +364,9 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
         throw new Error("No default group found");
       }
 
+      const permissionSubject =
+        tableId != null ? "fields" : schemaName != null ? "tables" : "schemas";
+
       const entities = sortedGroups.map(group => {
         const isAdmin = isAdminGroup(group);
         let groupPermissions;
@@ -418,8 +421,6 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
           permissions: groupPermissions,
         };
       });
-
-      const permissionSubject = getPermissionSubject(params);
 
       const showViewDataColumn = hasViewDataOptions(entities);
 

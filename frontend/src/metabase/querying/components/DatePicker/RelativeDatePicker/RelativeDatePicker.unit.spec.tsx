@@ -6,7 +6,7 @@ import type { RelativeDatePickerValue } from "../types";
 
 import { RelativeDatePicker } from "./RelativeDatePicker";
 
-const TABS = ["Past", "Current", "Next"];
+const TABS = ["Previous", "Current", "Next"];
 const TAB_CASES = TABS.flatMap(fromTab => TABS.map(toTab => [fromTab, toTab]));
 
 interface SetupOpts {
@@ -60,7 +60,7 @@ describe("RelativeDatePicker", () => {
     await userEvent.click(screen.getByLabelText("Next"));
     expect(screen.getByLabelText("Interval")).toHaveValue("20");
 
-    await userEvent.click(screen.getByLabelText("Past"));
+    await userEvent.click(screen.getByLabelText("Previous"));
     expect(screen.getByLabelText("Interval")).toHaveValue("20");
   });
 
@@ -69,14 +69,13 @@ describe("RelativeDatePicker", () => {
       canUseRelativeOffsets: true,
     });
 
-    await userEvent.click(screen.getByLabelText("Options"));
-    await userEvent.click(await screen.findByText("Starting from…"));
+    await userEvent.click(await screen.findByLabelText("Starting from…"));
     await userEvent.clear(screen.getByLabelText("Starting from interval"));
     await userEvent.type(screen.getByLabelText("Starting from interval"), "20");
     await userEvent.click(screen.getByLabelText("Next"));
     expect(screen.getByLabelText("Starting from interval")).toHaveValue("20");
 
-    await userEvent.click(screen.getByLabelText("Past"));
+    await userEvent.click(screen.getByLabelText("Previous"));
     expect(screen.getByLabelText("Starting from interval")).toHaveValue("20");
   });
 
@@ -113,8 +112,7 @@ describe("RelativeDatePicker", () => {
       canUseRelativeOffsets: true,
     });
 
-    await userEvent.click(screen.getByLabelText("Options"));
-    await userEvent.click(await screen.findByText("Starting from…"));
+    await userEvent.click(await screen.findByLabelText("Starting from…"));
     await userEvent.click(screen.getByText("Update filter"));
 
     expect(onChange).toHaveBeenCalledWith({
@@ -149,8 +147,7 @@ describe("RelativeDatePicker", () => {
     });
 
     await userEvent.click(screen.getByText("Next"));
-    await userEvent.click(screen.getByLabelText("Options"));
-    await userEvent.click(await screen.findByText("Starting from…"));
+    await userEvent.click(await screen.findByLabelText("Starting from…"));
     await userEvent.click(screen.getByText("Update filter"));
 
     expect(onChange).toHaveBeenCalledWith({

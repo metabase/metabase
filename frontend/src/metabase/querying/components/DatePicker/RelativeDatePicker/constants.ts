@@ -3,7 +3,7 @@ import { t } from "ttag";
 import type { Tab } from "./types";
 
 export const TABS: Tab[] = [
-  { label: t`Past`, direction: "last" },
+  { label: t`Previous`, direction: "last" },
   { label: t`Current`, direction: "current" },
   { label: t`Next`, direction: "next" },
 ];

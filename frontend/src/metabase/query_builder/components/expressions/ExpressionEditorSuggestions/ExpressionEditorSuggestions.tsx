@@ -1,7 +1,9 @@
+import { useMergedRef } from "@mantine/hooks";
 import {
   useEffect,
   useRef,
   useCallback,
+  forwardRef,
   type ReactNode,
   type MouseEvent,
 } from "react";
@@ -48,27 +50,33 @@ type WithIndex<T> = T & {
   index: number;
 };
 
-export function ExpressionEditorSuggestions({
-  query,
-  stageIndex,
-  suggestions = [],
-  onSuggestionMouseDown,
-  open,
-  highlightedIndex,
-  onHighlightSuggestion,
-  children,
-}: {
-  query: Lib.Query;
-  stageIndex: number;
-  suggestions?: (Suggestion | SuggestionFooter | SuggestionShortcut)[];
-  onSuggestionMouseDown: (index: number) => void;
-  open: boolean;
-  highlightedIndex: number;
-  onHighlightSuggestion: (index: number) => void;
-  children: ReactNode;
-}) {
-  const ref = useRef(null);
-
+export const ExpressionEditorSuggestions = forwardRef<
+  HTMLUListElement,
+  {
+    query: Lib.Query;
+    stageIndex: number;
+    suggestions?: (Suggestion | SuggestionFooter | SuggestionShortcut)[];
+    onSuggestionMouseDown: (index: number) => void;
+    open: boolean;
+    highlightedIndex: number;
+    onHighlightSuggestion: (index: number) => void;
+    children: ReactNode;
+  }
+>(function ExpressionEditorSuggestions(
+  {
+    query,
+    stageIndex,
+    suggestions = [],
+    onSuggestionMouseDown,
+    open,
+    highlightedIndex,
+    onHighlightSuggestion,
+    children,
+  },
+  ref,
+) {
+  const listRef = useRef(null);
+  const mergedRef = useMergedRef(ref, listRef);
   const withIndex = suggestions.map((suggestion, index) => ({
     ...suggestion,
     index,
@@ -87,7 +95,7 @@ export function ExpressionEditorSuggestions({
   const groups = group(items);
 
   function handleMouseDown(evt: MouseEvent) {
-    if (evt.target === ref.current) {
+    if (evt.target === listRef.current) {
       evt.preventDefault();
       evt.stopPropagation();
     }
@@ -111,7 +119,7 @@ export function ExpressionEditorSuggestions({
         <DelayGroup>
           <ExpressionList
             data-testid="expression-suggestions-list"
-            ref={ref}
+            ref={mergedRef}
             onMouseDownCapture={handleMouseDown}
           >
             <ExpressionEditorSuggestionsListGroup
@@ -162,7 +170,7 @@ export function ExpressionEditorSuggestions({
       </Popover.Dropdown>
     </Popover>
   );
-}
+});
 
 function ExpressionEditorSuggestionsListGroup({
   name,
@@ -251,8 +259,9 @@ function ExpressionEditorSuggestionsListItem({
   }, [index, onHighlightSuggestion]);
 
   return (
-    <HoverParent>
+    <HoverParent as="li">
       <ExpressionListItem
+        as="div"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         ref={ref}
@@ -356,7 +365,7 @@ function group(suggestions: Suggestion[]): Groups {
     shortcuts: [],
   };
 
-  suggestions.forEach(function (suggestion) {
+  suggestions.forEach(suggestion => {
     if (suggestion.group) {
       groups[suggestion.group].push(suggestion);
     } else {

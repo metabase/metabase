@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
-import type { SortingOptions } from "metabase/components/ItemsTable/BaseItemsTable";
-import { SortDirection } from "metabase/components/ItemsTable/Columns";
 import type { CollectionEssentials, SearchResult } from "metabase-types/api";
+import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import type { ModelResult } from "../types";
 import { getCollectionName } from "../utils";

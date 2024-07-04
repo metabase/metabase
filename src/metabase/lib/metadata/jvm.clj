@@ -1,6 +1,7 @@
 (ns metabase.lib.metadata.jvm
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:require
+   [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.driver :as driver]
@@ -396,11 +397,34 @@
           (and (instance? UncachedApplicationDatabaseMetadataProvider another)
                (= database-id (.database-id ^UncachedApplicationDatabaseMetadataProvider another)))))
 
-(mu/defn application-database-metadata-provider :- ::lib.schema.metadata/metadata-provider
-  "An implementation of [[metabase.lib.metadata.protocols/MetadataProvider]] for the application database.
+(defn- application-database-metadata-provider-factory
+  "Inner function that constructs a new `MetadataProvider`.
+  I couldn't resist the Java naming, `foo-provider-factory-strategy-bean`.
 
-  All operations are cached; so you can use the bulk operations to pre-warm the cache if you need to."
-  [database-id :- ::lib.schema.id/database]
+  Call [[application-database-metadata-provider]] instead, which wraps this inner function with optional, dynamically
+  scoped caching, to allow reuse of `MetadataProvider`s across the life of an API request."
+  [database-id]
   (-> (->UncachedApplicationDatabaseMetadataProvider database-id)
       lib.metadata.cached-provider/cached-metadata-provider
       lib.metadata.invocation-tracker/invocation-tracker-provider))
+
+(def ^:dynamic *metadata-provider-cache*
+  "Bind this to a `(atom (clojure.core.cache/basic-cache-factory {}))` or similar cache-atom, and
+  [[application-database-metadata-provider]] will use it for caching the `MetadataProvider` for each `database-id`
+  over the lifespan of this binding.
+
+  This is useful for an API request, or group fo API requests like a dashboard load, to reduce appdb traffic."
+  nil)
+
+(mu/defn application-database-metadata-provider :- ::lib.schema.metadata/metadata-provider
+  "An implementation of [[metabase.lib.metadata.protocols/MetadataProvider]] for the application database.
+
+  Supports caching over a dynamic scope (eg. an API request or group of API requests like a dashboard load) via
+  [[*metadata-provider-cache*]]. Outside such a scope, this creates a new `MetadataProvider` for each call.
+
+  On the returned `MetadataProvider`, all operations are cached. You can use the bulk operations to pre-warm the cache
+  if you need to."
+  [database-id :- ::lib.schema.id/database]
+  (if-let [cache-atom *metadata-provider-cache*]
+     (cache.wrapped/lookup-or-miss cache-atom database-id application-database-metadata-provider-factory)
+     (application-database-metadata-provider-factory database-id)))

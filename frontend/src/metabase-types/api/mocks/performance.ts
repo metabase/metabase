@@ -1,4 +1,4 @@
-import { DurationUnit, type Config as CacheConfig } from "metabase-types/api";
+import { CacheDurationUnit, type CacheConfig } from "metabase-types/api";
 
 export const createMockCacheConfig = (
   opts?: Partial<CacheConfig>,
@@ -26,6 +26,6 @@ export const createMockCacheConfigWithDurationStrategy = (
   opts?: Partial<CacheConfig>,
 ): CacheConfig =>
   createMockCacheConfig({
-    strategy: { type: "duration", duration: 1, unit: DurationUnit.Hours },
+    strategy: { type: "duration", duration: 1, unit: CacheDurationUnit.Hours },
     ...opts,
   });

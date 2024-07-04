@@ -66,6 +66,20 @@ LineLogYScale.args = {
   renderingContext,
 };
 
+export const GoalLineLogYScale = Template.bind({});
+GoalLineLogYScale.args = {
+  rawSeries: data.goalLineLogYScale as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const GoalLinePowYScale = Template.bind({});
+GoalLinePowYScale.args = {
+  rawSeries: data.goalLinePowYScale as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const LineLogYScaleNegative = Template.bind({});
 LineLogYScaleNegative.args = {
   rawSeries: data.lineLogYScaleNegative as any,
@@ -783,6 +797,27 @@ export const ComboDataLabelsAutoCompactnessPropagatesFromTotals = Template.bind(
 );
 ComboDataLabelsAutoCompactnessPropagatesFromTotals.args = {
   rawSeries: data.comboDataLabelsAutoCompactnessPropagatesFromTotals as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const AreaChartSteppedNullsInterpolated = Template.bind({});
+AreaChartSteppedNullsInterpolated.args = {
+  rawSeries: data.areaChartSteppedNullsInterpolated as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const AreaChartSteppedNullsSkipped = Template.bind({});
+AreaChartSteppedNullsSkipped.args = {
+  rawSeries: data.areaChartSteppedNullsSkipped as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const SafariNonIanaTimezoneRepro44128 = Template.bind({});
+SafariNonIanaTimezoneRepro44128.args = {
+  rawSeries: data.safariNonIanaTimezoneRepro44128 as any,
   dashcardSettings: {},
   renderingContext,
 };

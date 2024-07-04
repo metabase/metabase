@@ -29,16 +29,17 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           script: | # js
-            const { sendReleaseMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const { sendPreReleaseMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            await sendReleaseMessage({
-              stage: 'build-start',
+            await sendPreReleaseMessage({
               github,
               owner: context.repo.owner,
               repo: context.repo.repo,
               version: '${{ inputs.version }}',
               runId: '${{ github.run_id }}',
               releaseSha: '${{ inputs.commit }}',
+              userName: '${{ github.actor }}',
+              channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
             }).catch(console.error);
 
   check-version:

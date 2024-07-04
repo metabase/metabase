@@ -24,6 +24,10 @@ title: Troubleshooting SQL questions
 
 For some common error messages, see [error messages](./error-message.md).
 
+## Working with JSON in SQL
+
+Using the `?` operator for working with JSON in SQL may cause queries to fail. On PostgreSQL, you can use `??` instead.
+
 ## Are you still stuck?
 
 If you can’t solve your problem using the troubleshooting guides:

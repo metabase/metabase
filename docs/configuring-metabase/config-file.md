@@ -6,7 +6,7 @@ title: "Configuration file"
 
 {% include plans-blockquote.html feature="Loading from a configuration file" self-hosted-only="true" %}
 
-On some paid, self-hosted plans, Metabase supports initialization on launch from a config file named `config.yml`. The config file should be located at:
+On self-hosted Pro and Enterprise plans, Metabase supports initialization on launch from a config file named `config.yml`. The config file should be located at:
 
 - The current directory (the directory where the running Metabase JAR is located).
 - The path specified by the `MB_CONFIG_FILE_PATH` [environment variable](./environment-variables.md).
@@ -190,7 +190,6 @@ check-for-updates
 experimental-enable-actions
 persisted-model-refresh-cron-schedule
 email-smtp-host
-enable-query-caching
 email-smtp-username
 start-of-week
 email-smtp-password
@@ -223,7 +222,7 @@ But you can set any of the Admin settings with the config file. Check out the li
 
 ## Loading a new Metabase from a config file
 
-Since loading from a config file is a paid feature: for new installations, you'll need to supply Metabase with a token using the `MB_PREMIUM_EMBEDDING_TOKEN` environment variable.
+Since loading from a config file is a Pro/Enterprise feature: for new installations, you'll need to supply Metabase with a token using the `MB_PREMIUM_EMBEDDING_TOKEN` environment variable.
 
 ```
 MB_PREMIUM_EMBEDDING_TOKEN="[your token]" java -jar metabase.jar

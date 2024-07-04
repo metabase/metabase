@@ -2,6 +2,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { HTMLAttributes, MutableRefObject } from "react";
 
+import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 import type { ButtonProps as BaseButtonProps } from "metabase/ui";
@@ -33,7 +34,10 @@ export const PolicyToken = styled(Button)<
 `;
 PolicyToken.defaultProps = { radius: "sm" };
 
-export const StyledLauncher = styled(Flex)<
+export const StyledLauncher = styled(
+  Flex,
+  doNotForwardProps("forRoot", "inheritsRootStrategy"),
+)<
   {
     forRoot?: boolean;
     inheritsRootStrategy?: boolean;

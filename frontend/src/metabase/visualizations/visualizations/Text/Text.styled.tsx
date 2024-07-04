@@ -253,7 +253,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
     text-align: left;
   }
   .text-card-markdown tr {
-    border-bottom: 1px solid color-mod(var(--mb-color-border) alpha(-70%));
+    border-bottom: 1px solid var(--mb-color-border-alpha-30);
   }
   .text-card-markdown tr:nth-of-type(even) {
     background-color: ${() => alpha("bg-black", 0.05)};
@@ -261,7 +261,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
   .text-card-markdown th,
   .text-card-markdown td {
     padding: 0.75em;
-    border: 1px solid color-mod(var(--mb-color-border) alpha(-70%));
+    border: 1px solid var(--mb-color-border-alpha-30);
   }
 
   .text-card-markdown code {

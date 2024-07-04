@@ -251,27 +251,6 @@
       (assoc (select-keys param [:type :target :slug])
              :value value))))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
 
 (defn card-for-unsigned-token

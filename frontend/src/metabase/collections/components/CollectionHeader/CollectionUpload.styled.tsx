@@ -1,9 +1,5 @@
 import styled from "@emotion/styled";
 
-export const UploadInput = styled.input`
-  display: none;
-`;
-
 export const LoadingStateContainer = styled.div`
   display: flex;
   transform: translateY(10px);

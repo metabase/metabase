@@ -137,7 +137,6 @@ export function DefaultPicker({
         return (
           <FieldValuesWidget
             key={index}
-            className={CS.input}
             value={values}
             onChange={onValuesChange}
             multi={operator.multi}

@@ -66,21 +66,30 @@
                      [3 -118.428 11 2 "The Apple Pan"                34.0406]
                      [4 -118.465 29 2 "Wurstküche"                   33.9997]
                      [5 -118.261 20 2 "Brite Spot Family Restaurant" 34.0778]]
-              :cols (mapv (partial qp.test-util/native-query-col :venues)
+              ;; don't compare `database_type`, it's wrong for Redshift, see upstream bug
+              ;; https://github.com/aws/amazon-redshift-jdbc-driver/issues/118 ... not really important here anyway
+              :cols (mapv (fn [col-name]
+                            (-> (qp.test-util/native-query-col :venues col-name)
+                                (dissoc :database_type)))
                           [:id :longitude :category_id :price :name :latitude])}
-             (mt/format-rows-by [int 4.0 int int str 4.0]
-               (let [native-query (compile-to-native
-                                   (mt/mbql-query venues
-                                     {:fields [$id $longitude $category_id $price $name $latitude]}))]
-                 (qp.test-util/rows-and-cols
-                  (mt/run-mbql-query venues
-                    {:source-query {:native native-query}
-                     :order-by     [[:asc *venues.id]]
-                     :limit        5})))))))))
+             (mt/format-rows-by
+              [int 4.0 int int str 4.0]
+              (let [native-query (compile-to-native
+                                  (mt/mbql-query venues
+                                    {:fields [$id $longitude $category_id $price $name $latitude]}))]
+                (-> (qp.test-util/rows-and-cols
+                     (mt/run-mbql-query venues
+                       {:source-query {:native native-query}
+                        :order-by     [[:asc *venues.id]]
+                        :limit        5}))
+                    (update :cols (fn [cols]
+                                    (mapv (fn [col]
+                                            (dissoc col :database_type))
+                                          cols)))))))))))
 
 (defn breakout-results [& {:keys [has-source-metadata? native-source?]
-                            :or   {has-source-metadata? true
-                                   native-source?       false}}]
+                           :or   {has-source-metadata? true
+                                  native-source?       false}}]
   (let [{base-type :base_type effective-type :effective_type :keys [name] :as breakout-col}
         (qp.test-util/breakout-col (qp.test-util/col :venues :price))]
     {:rows [[1 22]

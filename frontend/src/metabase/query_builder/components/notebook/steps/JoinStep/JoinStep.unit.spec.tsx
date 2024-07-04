@@ -8,7 +8,13 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import {
@@ -16,9 +22,9 @@ import {
   createMockDatabase,
 } from "metabase-types/api/mocks";
 import {
+  PRODUCTS_ID,
   createSampleDatabase,
   createStructuredModelCard,
-  PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -58,6 +64,14 @@ function getJoinQueryHelpers(query: Lib.Query) {
     Lib.joinConditionRHSColumns(query, 0, table),
   );
 
+  const defaultStrategy = Lib.availableJoinStrategies(query, 0).find(
+    strategy => Lib.displayInfo(query, 0, strategy).default,
+  );
+
+  if (!defaultStrategy) {
+    throw new Error("No default strategy found");
+  }
+
   const defaultOperator = Lib.joinConditionOperators(query, 0).find(
     operator => Lib.displayInfo(query, 0, operator).default,
   );
@@ -66,29 +80,44 @@ function getJoinQueryHelpers(query: Lib.Query) {
     throw new Error("No default operator found");
   }
 
-  return { table, defaultOperator, findLHSColumn, findRHSColumn };
+  return {
+    table,
+    defaultStrategy,
+    defaultOperator,
+    findLHSColumn,
+    findRHSColumn,
+  };
 }
 
 function getJoinedQuery() {
   const query = createQuery({ metadata });
 
-  const { table, defaultOperator, findLHSColumn, findRHSColumn } =
-    getJoinQueryHelpers(query);
+  const {
+    table,
+    defaultStrategy,
+    defaultOperator,
+    findLHSColumn,
+    findRHSColumn,
+  } = getJoinQueryHelpers(query);
 
   const ordersProductId = findLHSColumn("ORDERS", "PRODUCT_ID");
   const productsId = findRHSColumn("PRODUCTS", "ID");
 
+  const stageIndex = -1;
   const condition = Lib.joinConditionClause(
     query,
-    0,
+    stageIndex,
     defaultOperator,
     ordersProductId,
     productsId,
   );
 
-  const join = Lib.withJoinFields(Lib.joinClause(table, [condition]), "all");
+  const join = Lib.withJoinFields(
+    Lib.joinClause(table, [condition], defaultStrategy),
+    "all",
+  );
 
-  return Lib.join(query, 0, join);
+  return Lib.join(query, stageIndex, join);
 }
 
 function getJoinedQueryWithMultipleConditions() {
@@ -158,7 +187,7 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
 
   function getRecentJoin() {
     const query = getNextQuery();
-    const [join] = Lib.joins(query, 0);
+    const [join] = Lib.joins(query, step.stageIndex);
 
     const strategy = Lib.displayInfo(query, 0, Lib.joinStrategy(join));
     const fields = Lib.joinFields(join);
@@ -166,13 +195,13 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
     const conditions = Lib.joinConditions(join).map(condition => {
       const { operator, lhsColumn, rhsColumn } = Lib.joinConditionParts(
         query,
-        0,
+        step.stageIndex,
         condition,
       );
       return {
-        operator: Lib.displayInfo(query, 0, operator),
-        lhsColumn: Lib.displayInfo(query, 0, lhsColumn),
-        rhsColumn: Lib.displayInfo(query, 0, rhsColumn),
+        operator: Lib.displayInfo(query, step.stageIndex, operator),
+        lhsColumn: Lib.displayInfo(query, step.stageIndex, lhsColumn),
+        rhsColumn: Lib.displayInfo(query, step.stageIndex, rhsColumn),
       };
     });
 
@@ -227,6 +256,8 @@ describe("Notebook Editor > Join Step", () => {
     );
     const modal = await screen.findByTestId("entity-picker-modal");
 
+    await waitForLoaderToBeRemoved();
+
     expect(within(modal).getByText("Products")).toBeInTheDocument();
     expect(within(modal).getByText("People")).toBeInTheDocument();
     expect(within(modal).getByText("Reviews")).toBeInTheDocument();
@@ -239,6 +270,8 @@ describe("Notebook Editor > Join Step", () => {
       within(screen.getByLabelText("Right table")).getByRole("button"),
     );
     const modal = await screen.findByTestId("entity-picker-modal");
+
+    await waitForLoaderToBeRemoved();
 
     expect(
       within(modal).queryByText(ANOTHER_DATABASE.name),
@@ -435,36 +468,6 @@ describe("Notebook Editor > Join Step", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should handle join strategy", async () => {
-    const { getRecentJoin } = setup(
-      createMockNotebookStep({ query: getJoinedQuery() }),
-    );
-
-    await userEvent.click(screen.getByLabelText("Change join type"));
-    let popover = await screen.findByTestId("select-list");
-    let leftJoin = within(popover).getByLabelText("Left outer join");
-    let rightJoin = within(popover).getByLabelText("Right outer join");
-
-    expect(leftJoin).toHaveAttribute("aria-selected", "true");
-    expect(rightJoin).toHaveAttribute("aria-selected", "false");
-
-    await userEvent.click(rightJoin);
-    await waitFor(() =>
-      expect(screen.queryByTestId("select-list")).not.toBeInTheDocument(),
-    );
-
-    await userEvent.click(screen.getByLabelText("Change join type"));
-    popover = await screen.findByTestId("select-list");
-    leftJoin = within(popover).getByLabelText("Left outer join");
-    rightJoin = within(popover).getByLabelText("Right outer join");
-
-    expect(leftJoin).toHaveAttribute("aria-selected", "false");
-    expect(rightJoin).toHaveAttribute("aria-selected", "true");
-
-    const { strategy } = getRecentJoin();
-    expect(strategy.shortName).toBe("right-join");
-  });
-
   it("should handle join operator", async () => {
     const { getRecentJoin } = setup(
       createMockNotebookStep({ query: getJoinedQuery() }),
@@ -493,6 +496,93 @@ describe("Notebook Editor > Join Step", () => {
 
     const [condition] = getRecentJoin().conditions;
     expect(condition.operator.shortName).toBe("!=");
+  });
+
+  describe("join strategies", () => {
+    it("should be able to change the join strategy for a new join clause", async () => {
+      const { getRecentJoin } = setup();
+
+      await userEvent.click(
+        within(screen.getByLabelText("Right table")).getByRole("button"),
+      );
+      const lhsTableModal = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(await within(lhsTableModal).findByText("Reviews"));
+
+      await userEvent.click(screen.getByLabelText("Change join type"));
+      const strategyPopover = await screen.findByTestId("select-list");
+      await userEvent.click(
+        within(strategyPopover).getByLabelText("Right outer join"),
+      );
+
+      await userEvent.click(screen.getByLabelText("Left column"));
+      const lhsColumnPopover = await screen.findByTestId("lhs-column-picker");
+      await userEvent.click(within(lhsColumnPopover).getByText("ID"));
+
+      const rhsColumnPopover = await screen.findByTestId("rhs-column-picker");
+      await userEvent.click(within(rhsColumnPopover).getByText("ID"));
+
+      const { strategy } = getRecentJoin();
+      expect(strategy.shortName).toBe("right-join");
+    });
+
+    it("should be able to change the join strategy of an existing join clause", async () => {
+      const { getRecentJoin } = setup(
+        createMockNotebookStep({ query: getJoinedQuery() }),
+      );
+
+      await userEvent.click(screen.getByLabelText("Change join type"));
+      let popover = await screen.findByTestId("select-list");
+      let leftJoin = within(popover).getByLabelText("Left outer join");
+      let rightJoin = within(popover).getByLabelText("Right outer join");
+
+      expect(leftJoin).toHaveAttribute("aria-selected", "true");
+      expect(rightJoin).toHaveAttribute("aria-selected", "false");
+
+      await userEvent.click(rightJoin);
+      await waitFor(() =>
+        expect(screen.queryByTestId("select-list")).not.toBeInTheDocument(),
+      );
+
+      await userEvent.click(screen.getByLabelText("Change join type"));
+      popover = await screen.findByTestId("select-list");
+      leftJoin = within(popover).getByLabelText("Left outer join");
+      rightJoin = within(popover).getByLabelText("Right outer join");
+
+      expect(leftJoin).toHaveAttribute("aria-selected", "false");
+      expect(rightJoin).toHaveAttribute("aria-selected", "true");
+
+      const { strategy } = getRecentJoin();
+      expect(strategy.shortName).toBe("right-join");
+    });
+
+    it("should be able to change the join strategy of an existing join clause after removing the rhs table and selecting join conditions", async () => {
+      const { getRecentJoin } = setup(
+        createMockNotebookStep({ query: getJoinedQuery() }),
+      );
+
+      await userEvent.click(screen.getByLabelText("Change join type"));
+      const strategyPopover = await screen.findByTestId("select-list");
+      await userEvent.click(
+        within(strategyPopover).getByLabelText("Right outer join"),
+      );
+
+      await userEvent.click(
+        within(screen.getByLabelText("Right table")).getByRole("button", {
+          name: /Products/,
+        }),
+      );
+      const lhsTableModal = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(await within(lhsTableModal).findByText("Reviews"));
+
+      const lhsColumnPopover = await screen.findByTestId("lhs-column-picker");
+      await userEvent.click(within(lhsColumnPopover).getByText("ID"));
+
+      const rhsColumnPopover = await screen.findByTestId("rhs-column-picker");
+      await userEvent.click(within(rhsColumnPopover).getByText("ID"));
+
+      const { strategy } = getRecentJoin();
+      expect(strategy.shortName).toBe("right-join");
+    });
   });
 
   describe("join fields", () => {
@@ -811,6 +901,138 @@ describe("Notebook Editor > Join Step", () => {
         within(firstCondition).queryByLabelText("Remove condition"),
       ).not.toBeInTheDocument();
     });
+  });
+
+  describe("temporal bucket sync", () => {
+    async function selectColumnWithBucket(bucketName: string) {
+      await userEvent.click(screen.getByLabelText("Temporal bucket"));
+      await userEvent.click(screen.getByText("More…"));
+      await userEvent.click(screen.getByText(bucketName));
+    }
+
+    it.each([
+      {
+        lhsBucketName: "Don't bin",
+        rhsBucketName: "Don't bin",
+        expectedColumnName: "Created At",
+      },
+      {
+        lhsBucketName: "Year",
+        rhsBucketName: "Don't bin",
+        expectedColumnName: "Created At: Year",
+      },
+      {
+        lhsBucketName: "Don't bin",
+        rhsBucketName: "Quarter",
+        expectedColumnName: "Created At: Quarter",
+      },
+      {
+        lhsBucketName: "Year",
+        rhsBucketName: "Month",
+        expectedColumnName: "Created At: Year",
+      },
+    ])(
+      "should set the temporal bucket for all columns in a new join condition equal to the first non-empty temporal bucket of the columns",
+      async ({ lhsBucketName, rhsBucketName, expectedColumnName }) => {
+        const { getRecentJoin } = setup(createMockNotebookStep());
+
+        const picketModal = await screen.findByTestId("entity-picker-modal");
+        await userEvent.click(await within(picketModal).findByText("Reviews"));
+        await selectColumnWithBucket(lhsBucketName);
+        await selectColumnWithBucket(rhsBucketName);
+
+        const { conditions } = getRecentJoin();
+        const [condition] = conditions;
+        expect(condition.lhsColumn.displayName).toBe(expectedColumnName);
+        expect(condition.rhsColumn.displayName).toBe(expectedColumnName);
+      },
+    );
+
+    it.each([
+      {
+        oldBucketName: "Don't bin",
+        newLhsBucketName: "Don't bin",
+        newRhsBucketName: undefined,
+        expectedColumnName: "Created At",
+      },
+      {
+        oldBucketName: "Don't bin",
+        newLhsBucketName: undefined,
+        newRhsBucketName: "Don't bin",
+        expectedColumnName: "Created At",
+      },
+      {
+        oldBucketName: "Don't bin",
+        newLhsBucketName: "Year",
+        newRhsBucketName: undefined,
+        expectedColumnName: "Created At: Year",
+      },
+      {
+        oldBucketName: "Don't bin",
+        newLhsBucketName: undefined,
+        newRhsBucketName: "Year",
+        expectedColumnName: "Created At: Year",
+      },
+      {
+        oldBucketName: "Month",
+        newLhsBucketName: "Don't bin",
+        newRhsBucketName: undefined,
+        expectedColumnName: "Created At",
+      },
+      {
+        oldBucketName: "Month",
+        newLhsBucketName: undefined,
+        newRhsBucketName: "Don't bin",
+        expectedColumnName: "Created At",
+      },
+      {
+        oldBucketName: "Month",
+        newLhsBucketName: "Year",
+        newRhsBucketName: undefined,
+        expectedColumnName: "Created At: Year",
+      },
+      {
+        oldBucketName: "Year",
+        newLhsBucketName: undefined,
+        newRhsBucketName: "Month",
+        expectedColumnName: "Created At: Month",
+      },
+      {
+        oldBucketName: "Month",
+        newLhsBucketName: "Year",
+        newRhsBucketName: "Quarter",
+        expectedColumnName: "Created At: Quarter",
+      },
+    ])(
+      "should set the temporal bucket for all columns in an existing join condition to the temporal bucket of the last selected column",
+      async ({
+        oldBucketName,
+        newLhsBucketName,
+        newRhsBucketName,
+        expectedColumnName,
+      }) => {
+        const { getRecentJoin } = setup(createMockNotebookStep());
+
+        const picketModal = await screen.findByTestId("entity-picker-modal");
+        await userEvent.click(await within(picketModal).findByText("Reviews"));
+        await selectColumnWithBucket(oldBucketName);
+        await selectColumnWithBucket(oldBucketName);
+
+        if (newLhsBucketName) {
+          await userEvent.click(screen.getByLabelText("Left column"));
+          await selectColumnWithBucket(newLhsBucketName);
+        }
+        if (newRhsBucketName) {
+          await userEvent.click(screen.getByLabelText("Right column"));
+          await selectColumnWithBucket(newRhsBucketName);
+        }
+
+        const { conditions } = getRecentJoin();
+        const [condition] = conditions;
+        expect(condition.lhsColumn.displayName).toBe(expectedColumnName);
+        expect(condition.rhsColumn.displayName).toBe(expectedColumnName);
+      },
+    );
   });
 
   describe("read-only", () => {

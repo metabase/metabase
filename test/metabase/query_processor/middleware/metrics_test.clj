@@ -89,6 +89,66 @@
                      :aggregation [[:+ {} [:avg {} [:field {} (meta/id :products :rating)]] 1]]}]}
           (adjust query)))))
 
+(deftest ^:parallel metric-with-implicit-join-test
+  (testing "Metrics with filters on implicitly joined columns should work #43943"
+    (let [[source-metric mp] (mock-metric (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) $q
+                                            (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :category)} :id) (lib/filterable-columns $q)) "Gadget"))
+                                            (lib/aggregate $q (lib/count))))
+          query (-> (lib/query mp (meta/table-metadata :orders))
+                    (lib/aggregate (lib.options/ensure-uuid [:metric {} (:id source-metric)])))]
+      (is (=?
+            {:stages [{:source-table (meta/id :orders)
+                       :joins [{:stages [{:source-table (meta/id :products)}]}]
+                       :filters [[:= {} [:field {} (meta/id :products :category)] [:value {} "Gadget"]]]
+                       :aggregation [[:count {}]]}]}
+            (adjust query)))
+      (testing "With an explicit product join in consumer query"
+        (is (=?
+              {:stages [{:source-table (meta/id :orders)
+                         :joins [{:stages [{:source-table (meta/id :products)}]}
+                                 {:stages [{:source-table (meta/id :products)}]}]
+                         :filters [[:= {} [:field {} (meta/id :products :title)] "foobar"]
+                                   [:= {} [:field {} (meta/id :products :category)] [:value {} "Gadget"]]]
+                         :aggregation [[:count {}]]}]}
+              (adjust (as-> (lib/query mp (meta/table-metadata :orders)) $q
+                        (lib/join $q (meta/table-metadata :products))
+                        (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :title)} :id) (lib/filterable-columns $q))
+                                              "foobar"))
+                        (lib/aggregate $q (lib.options/ensure-uuid [:metric {} (:id source-metric)])))))))
+      (testing "With an implicit product join in consumer query"
+        (is (=?
+              {:stages [{:source-table (meta/id :orders)
+                         :joins [{:stages [{:source-table (meta/id :products)}]}]
+                         :filters [[:= {} [:field {} (meta/id :products :title)] "foobar"]
+                                   [:= {} [:field {} (meta/id :products :category)] [:value {} "Gadget"]]]
+                         :aggregation [[:count {}]]}]}
+              (adjust (as-> (lib/query mp (meta/table-metadata :orders)) $q
+                        (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :title)} :id) (lib/filterable-columns $q))
+                                              "foobar"))
+                        (lib/aggregate $q (lib.options/ensure-uuid [:metric {} (:id source-metric)]))))))))))
+
+(deftest ^:parallel multiple-source-metrics-with-implicit-join-test
+  (let [[first-metric mp] (mock-metric (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) $q
+                                         (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :category)} :id)
+                                                                             (lib/filterable-columns $q))
+                                                               "Gadget"))
+                                         (lib/aggregate $q (lib/count))))
+        [second-metric mp] (mock-metric mp (as-> (lib/query mp (meta/table-metadata :orders)) $q
+                                             (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :title)} :id)
+                                                                                 (lib/filterable-columns $q))
+                                                                   "Title"))
+                                             (lib/aggregate $q (lib/count))))
+        query (-> (lib/query mp (meta/table-metadata :orders))
+                  (lib/aggregate (lib.options/ensure-uuid [:metric {} (:id first-metric)]))
+                  (lib/aggregate (lib.options/ensure-uuid [:metric {} (:id second-metric)])))]
+    (is (=? {:stages [{:source-table (meta/id :orders)
+                       :joins [{:stages [{:source-table (meta/id :products)}]}]
+                       :filters [[:= {} [:field {} (meta/id :products :category)] [:value {} "Gadget"]]
+                                 [:= {} [:field {} (meta/id :products :title)] [:value {} "Title"]]]
+                       :aggregation [[:count {}]
+                                     [:count {}]]}]}
+            (adjust query)))))
+
 (deftest ^:parallel adjust-aggregation-metric-ordering-test
   (let [[source-metric mp] (mock-metric)
         query (-> (lib/query mp (meta/table-metadata :products))

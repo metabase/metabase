@@ -194,7 +194,7 @@ const RelativeDatePicker = (props: RelativeDatePickerProps) => {
       data-testid="relative-date-picker"
     >
       {startingFrom ? (
-        <GridText>{intervals < 0 ? t`Past` : t`Next`}</GridText>
+        <GridText>{intervals < 0 ? t`Previous` : t`Next`}</GridText>
       ) : null}
       <NumericInput
         className={CS.textRight}

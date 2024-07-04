@@ -25,6 +25,16 @@
                                                               (u.date/format (t/zoned-date-time)))}
     :write-keepalive-newlines? false}))
 
+;; As a first step towards hollistically solving this issue: https://github.com/metabase/metabase/issues/44556
+;; (which is basically that very large pivot tables can crash the export process),
+;; The post processing is disabled completely.
+;; This should remain `false` until it's fixed
+;; TODO: rework this post-processing once there's a clear way in app to enable/disable it, or to select alternate download options
+(def ^:dynamic *pivot-export-post-processing-enabled*
+  "Flag to enable/disable export post-processing of pivot tables.
+  Disabled by default and should remain disabled until Issue #44556 is resolved and a clear plan is made."
+  false)
+
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
@@ -34,13 +44,14 @@
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options]
                    :or   {format-rows? true}} :data} viz-settings]
-        (let [opts      (when pivot-export-options
+        (let [opts      (when (and *pivot-export-post-processing-enabled* pivot-export-options)
                           (assoc pivot-export-options :column-titles (mapv :display_name ordered-cols)))
               ;; col-names are created later when exporting a pivot table, so only create them if there are no pivot options
               col-names (when-not opts (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))]
           ;; when pivot options exist, we want to save them to access later when processing the complete set of results for export.
           (when opts
-            (reset! pivot-options opts))
+            (reset! pivot-options (merge {:pivot-rows []
+                                          :pivot-cols []} opts)))
           (vreset! ordered-formatters
                    (if format-rows?
                      (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)

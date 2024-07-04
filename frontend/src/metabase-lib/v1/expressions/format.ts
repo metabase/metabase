@@ -43,6 +43,7 @@ type Options = {
       legacyQuery?: never;
       query: Lib.Query;
       stageIndex: number;
+      expressionIndex: number | undefined;
     }
 );
 
@@ -86,7 +87,7 @@ function formatNumberLiteral(mbql: unknown) {
 }
 
 function formatDimension(fieldRef: FieldReference, options: Options) {
-  const { query, stageIndex, legacyQuery } = options;
+  const { query, stageIndex, legacyQuery, expressionIndex } = options;
 
   if (!query) {
     if (!legacyQuery) {
@@ -98,7 +99,7 @@ function formatDimension(fieldRef: FieldReference, options: Options) {
     return formatLegacyDimension(fieldRef, options);
   }
 
-  const columns = Lib.expressionableColumns(query, stageIndex);
+  const columns = Lib.expressionableColumns(query, stageIndex, expressionIndex);
   const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
     query,
     stageIndex,

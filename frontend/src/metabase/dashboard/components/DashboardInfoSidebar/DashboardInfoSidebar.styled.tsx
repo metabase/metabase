@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import EditableText from "metabase/core/components/EditableText";
@@ -60,4 +61,16 @@ export const ContentSection = styled.div`
 
 export const DescriptionHeader = styled.h3`
   margin-bottom: 0.5rem;
+`;
+
+export const EditableDescription = styled(EditableText)<{ hasError?: boolean }>`
+  ${props =>
+    props.hasError &&
+    css`
+      border-color: var(--mb-color-error);
+
+      &:hover {
+        border-color: var(--mb-color-error);
+      }
+    `}
 `;

@@ -44,7 +44,7 @@ const setup = ({ hasDataAccess = true }: SetupOpts = {}) => {
 describe("useDatabaseQuery", () => {
   it("should be initially loading", () => {
     setup();
-    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
   });
 
   it("should show data from the response", async () => {

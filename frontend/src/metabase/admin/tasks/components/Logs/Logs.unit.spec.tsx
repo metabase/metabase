@@ -34,7 +34,7 @@ describe("Logs", () => {
       fetchMock.get("path:/api/util/logs", []);
       render(<Logs />);
       await waitFor(() => [
-        expect(screen.getByTestId("loading-spinner")).toBeInTheDocument(),
+        expect(screen.getByTestId("loading-indicator")).toBeInTheDocument(),
         expect(utilSpy).toHaveBeenCalledTimes(1),
       ]);
     });
@@ -45,7 +45,7 @@ describe("Logs", () => {
       utilSpy.mockReturnValueOnce(new Promise(res => (resolve = res)));
       render(<Logs />);
       await waitFor(() => [
-        expect(screen.getByTestId("loading-spinner")).toBeInTheDocument(),
+        expect(screen.getByTestId("loading-indicator")).toBeInTheDocument(),
         expect(utilSpy).toHaveBeenCalledTimes(1),
       ]);
       act(() => {
@@ -96,6 +96,20 @@ describe("Logs", () => {
       await waitFor(() => {
         expect(screen.getByText(errMsg)).toBeInTheDocument();
       });
+    });
+
+    it("should stop polling on unmount", async () => {
+      fetchMock.get("path:/api/util/logs", [log]);
+      const { unmount } = render(<Logs />);
+      expect(
+        await screen.findByText(new RegExp(log.process_uuid)),
+      ).toBeInTheDocument();
+
+      unmount();
+      act(() => {
+        jest.advanceTimersByTime(1100); // wait longer than polling period
+      });
+      expect(utilSpy).toHaveBeenCalledTimes(1);
     });
   });
 

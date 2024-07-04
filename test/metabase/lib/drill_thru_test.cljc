@@ -5,6 +5,7 @@
    [malli.error :as me]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.field :as-alias lib.field]
    [metabase.lib.schema :as lib.schema]
@@ -822,3 +823,9 @@
                        :initial-op {:short :=}}
                       {:type            :drill-thru/sort
                        :sort-directions [:asc :desc]}]})))
+
+(deftest ^:parallel drill-value->js-test
+  (testing "should convert :null to nil"
+    (doseq [[input expected] [[:null nil]
+                              [nil nil] ]]
+      (is (= expected (lib.drill-thru.common/drill-value->js input))))))

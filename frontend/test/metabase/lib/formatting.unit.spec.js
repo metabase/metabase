@@ -95,15 +95,15 @@ describe("formatting", () => {
       });
       it("shouldn't display small numbers as 0", () => {
         expect(formatNumber(0.1, { compact: true })).toEqual("0.1");
-        expect(formatNumber(-0.1, { compact: true })).toEqual("-0.1");
+        expect(formatNumber(-0.1, { compact: true })).toEqual("−0.1");
         expect(formatNumber(0.01, { compact: true })).toEqual("0.01");
-        expect(formatNumber(-0.01, { compact: true })).toEqual("-0.01");
+        expect(formatNumber(-0.01, { compact: true })).toEqual("−0.01");
       });
       it("should round up and down", () => {
         expect(formatNumber(1.01, { compact: true })).toEqual("1.01");
-        expect(formatNumber(-1.01, { compact: true })).toEqual("-1.01");
+        expect(formatNumber(-1.01, { compact: true })).toEqual("−1.01");
         expect(formatNumber(1.9, { compact: true })).toEqual("1.9");
-        expect(formatNumber(-1.9, { compact: true })).toEqual("-1.9");
+        expect(formatNumber(-1.9, { compact: true })).toEqual("−1.9");
       });
       it("should format large numbers with metric units", () => {
         expect(formatNumber(1, { compact: true })).toEqual("1");
@@ -127,7 +127,7 @@ describe("formatting", () => {
         expect(formatNumber(0.019, options)).toEqual("1.9%");
         expect(formatNumber(0.021, options)).toEqual("2.1%");
         expect(formatNumber(11.11, options)).toEqual("1.1k%");
-        expect(formatNumber(-0.22, options)).toEqual("-22%");
+        expect(formatNumber(-0.22, options)).toEqual("−22%");
       });
       it("should format scientific notation", () => {
         const options = { compact: true, number_style: "scientific" };

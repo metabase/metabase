@@ -610,14 +610,14 @@
       (try
         (assert (not (qs/started? temp-scheduler))
                 "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
-        (with-redefs [task/*quartz-scheduler* (atom temp-scheduler)
-                      qs/initialize (constantly temp-scheduler)
-                      ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
-                      ;; after it's done, but we need the scheduler for testing
-                      qs/shutdown   (constantly nil)]
-          (thunk))
-        (finally
-          (qs/shutdown temp-scheduler))))))
+        (binding [task/*quartz-scheduler* (atom temp-scheduler)]
+          (with-redefs [qs/initialize (constantly temp-scheduler)
+                        ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
+                        ;; after it's done, but we need the scheduler for testing
+                        qs/shutdown   (constantly nil)]
+            (thunk)))
+       (finally
+         (qs/shutdown temp-scheduler))))))
 
 (defn do-with-temp-scheduler [thunk]
   ;; not 100% sure we need to initialize the DB anymore since the temp scheduler is in-memory-only now.

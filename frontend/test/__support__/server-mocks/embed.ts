@@ -1,10 +1,20 @@
 import fetchMock from "fetch-mock";
 
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, DashboardCard } from "metabase-types/api";
 
 export function setupEmbedDashboardEndpoints(
-  uuid: string,
+  uuidOrToken: string,
   dashboard: Dashboard,
+  dashcards?: DashboardCard[],
 ) {
-  fetchMock.get(`path:/api/embed/dashboard/${uuid}`, dashboard);
+  fetchMock.get(`path:/api/embed/dashboard/${uuidOrToken}`, dashboard);
+
+  if (dashcards) {
+    dashcards.forEach(({ id, card_id }) => {
+      fetchMock.get(
+        `path:/api/embed/dashboard/${uuidOrToken}/dashcard/${id}/card/${card_id}`,
+        dashboard,
+      );
+    });
+  }
 }

@@ -300,7 +300,7 @@ describe("postgres > user > query", { tags: "@external" }, () => {
 
     // Wait until "doing science" spinner disappears (DOM is ready for assertions)
     // TODO: if this proves to be reliable, extract it as a helper function for waiting on DOM to render
-    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
 
     // Assertions
     cy.log("Fails in v0.36.6");
@@ -312,9 +312,9 @@ describe("postgres > user > query", { tags: "@external" }, () => {
   });
 });
 
-const PG_DB_NAME = "QA Postgres12";
+describe("issue 14957", { tags: "@external" }, () => {
+  const PG_DB_NAME = "QA Postgres12";
 
-describe.skip("issue 14957", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();
@@ -323,12 +323,7 @@ describe.skip("issue 14957", { tags: "@external" }, () => {
   it("should save a question before query has been executed (metabase#14957)", () => {
     openNativeEditor({ databaseName: PG_DB_NAME }).type("select pg_sleep(60)");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-
-    cy.findByLabelText("Name").type("14957");
-    cy.button("Save").click();
-
+    saveQuestion("14957");
     modal().should("not.exist");
   });
 });
@@ -979,13 +974,13 @@ describe("issue 19341", () => {
     // Test "Saved Questions" table is hidden in QB data selector
     startNewQuestion();
     entityPickerModal().within(() => {
-      cy.findByTestId("loading-spinner").should("not.exist");
+      cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByText("Orders").should("exist");
       cy.findAllByRole("tab").should("not.exist");
 
       // Ensure the search doesn't list saved questions
       cy.findByPlaceholderText("Search…").type("Ord");
-      cy.findByTestId("loading-spinner").should("not.exist");
+      cy.findByTestId("loading-indicator").should("not.exist");
 
       cy.findAllByTestId("result-item").then($result => {
         const searchResults = $result.toArray();

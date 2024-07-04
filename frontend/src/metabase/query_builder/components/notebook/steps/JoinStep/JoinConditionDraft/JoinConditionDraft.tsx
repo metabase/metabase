@@ -6,7 +6,7 @@ import * as Lib from "metabase-lib";
 import { JoinConditionColumnPicker } from "../JoinConditionColumnPicker";
 import { JoinConditionOperatorPicker } from "../JoinConditionOperatorPicker";
 import { JoinConditionRemoveButton } from "../JoinConditionRemoveButton";
-import { maybeSyncTemporalBucket } from "../utils";
+import { updateTemporalBucketing } from "../utils";
 
 import { JoinConditionRoot } from "./JoinConditionDraft.styled";
 import { getDefaultJoinConditionOperator } from "./utils";
@@ -49,7 +49,7 @@ export function JoinConditionDraft({
     rhsColumn: Lib.ColumnMetadata | undefined,
   ) => {
     if (lhsColumn != null && rhsColumn != null) {
-      const newCondition = maybeSyncTemporalBucket(
+      const newCondition = updateTemporalBucketing(
         query,
         stageIndex,
         Lib.joinConditionClause(
@@ -59,8 +59,7 @@ export function JoinConditionDraft({
           lhsColumn,
           rhsColumn,
         ),
-        lhsColumn,
-        rhsColumn,
+        [lhsColumn, rhsColumn],
       );
       onChange(newCondition);
     }

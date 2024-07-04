@@ -2,12 +2,19 @@ import dayjs from "dayjs";
 
 import type {
   DatePickerOperator,
+  DatePickerValue,
   SpecificDatePickerOperator,
   SpecificDatePickerValue,
 } from "../types";
 
 import { TABS } from "./constants";
 import type { Tab } from "./types";
+
+export function isSpecificValue(
+  value?: DatePickerValue,
+): value is SpecificDatePickerValue {
+  return value?.type === "specific";
+}
 
 export function getTabs(
   availableOperators: ReadonlyArray<DatePickerOperator>,
@@ -31,6 +38,7 @@ export function getOperatorDefaultValue(
         type: "specific",
         operator,
         values: [past30Days, today],
+        hasTime: false,
       };
     case "=":
     case "<":
@@ -39,6 +47,7 @@ export function getOperatorDefaultValue(
         type: "specific",
         operator,
         values: [today],
+        hasTime: false,
       };
   }
 }
@@ -70,15 +79,20 @@ export function getDate(value: SpecificDatePickerValue) {
   return value.values[0];
 }
 
-export function setDate(value: SpecificDatePickerValue, date: Date) {
-  return { ...value, values: [date] };
+export function setDateTime(
+  value: SpecificDatePickerValue,
+  date: Date,
+  hasTime: boolean,
+) {
+  return { ...value, values: [date], hasTime };
 }
 
-export function setDateRange(
+export function setDateTimeRange(
   value: SpecificDatePickerValue,
-  dates: [Date, Date],
+  dateRange: [Date, Date],
+  hasTime: boolean,
 ) {
-  return { ...value, values: dates };
+  return { ...value, values: dateRange, hasTime };
 }
 
 export function isDateRange(value: Date[]): value is [Date, Date] {
@@ -101,15 +115,12 @@ export function clearTimePart(value: Date) {
   return dayjs(value).startOf("date").toDate();
 }
 
-export function hasTimeParts(value: Date) {
-  return value.getHours() !== 0 || value.getMinutes() !== 0;
-}
-
 export function coerceValue({
   type,
   operator,
   values,
-}: SpecificDatePickerValue) {
+  hasTime,
+}: SpecificDatePickerValue): SpecificDatePickerValue {
   if (operator === "between") {
     const [startDate, endDate] = values;
 
@@ -119,8 +130,9 @@ export function coerceValue({
       values: dayjs(endDate).isBefore(startDate)
         ? [endDate, startDate]
         : [startDate, endDate],
+      hasTime,
     };
   }
 
-  return { type, operator, values };
+  return { type, operator, values, hasTime };
 }

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactNode, JSX } from "react";
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
@@ -54,7 +54,7 @@ export type EmbedFrameBaseProps = Partial<{
   description: string | null;
   question: Question;
   dashboard: Dashboard | null;
-  actionButtons: JSX.Element | null;
+  actionButtons: ReactNode;
   footerVariant: FooterVariant;
   parameters: Parameter[];
   parameterValues: ParameterValuesMap;
@@ -129,10 +129,7 @@ export const EmbedFrame = ({
       setHasInnerScroll(document.documentElement.scrollTop > 0);
     };
 
-    document.addEventListener("scroll", handleScroll, {
-      capture: false,
-      passive: true,
-    });
+    document.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => document.removeEventListener("scroll", handleScroll);
   }, []);

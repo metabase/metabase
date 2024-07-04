@@ -201,7 +201,7 @@ export function Funnel(props: VisualizationProps) {
     onChangeCardAndRun,
     rawSeries,
     fontFamily,
-    href,
+    getHref,
   } = props;
   const hasTitle = showTitle && settings["card.title"];
 
@@ -225,7 +225,7 @@ export function Funnel(props: VisualizationProps) {
           series={rawSeries}
           settings={settings}
           icon={headerIcon}
-          href={href}
+          getHref={getHref}
           actionButtons={actionButtons}
           onChangeCardAndRun={onChangeCardAndRun}
         />
