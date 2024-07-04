@@ -186,6 +186,7 @@ export class NativeQueryEditor extends Component<
 
   _editor: Ace.Editor | null = null;
   _localUpdate = false;
+  _focusTimeout: number | NodeJS.Timeout = -1;
 
   constructor(props: Props) {
     super(props);
@@ -319,6 +320,7 @@ export class NativeQueryEditor extends Component<
     if (this.props.cancelQueryOnLeave) {
       this.props.cancelQuery?.();
     }
+    clearTimeout(this._focusTimeout);
     this._editor?.destroy?.();
     document.removeEventListener("keydown", this.handleKeyDown);
     document.removeEventListener("contextmenu", this.handleRightClick);
@@ -398,9 +400,11 @@ export class NativeQueryEditor extends Component<
       return;
     }
 
+    clearTimeout(this._focusTimeout);
+
     // HACK: the cursor doesn't blink without this intended small delay
     // HACK: the editor injects newlines into the query without this small delay
-    setTimeout(() => this._editor?.focus(), 50);
+    this._focusTimeout = setTimeout(() => this._editor?.focus(), 50);
   }
 
   loadAceEditor() {
