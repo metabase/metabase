@@ -2196,8 +2196,13 @@
 (deftest populate-is-defective-duplicate-test
   (testing "Migration v49.2024-06-27T00:00:02 populates is_defective_duplicate correctly"
     ;; TODO: test postgres too on rollback
-    (mt/test-drivers #{:h2 :mysql}
+    (mt/test-drivers #{:postgres :h2 :mysql}
       (impl/test-migrations ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"] [migrate!]
+        (when (= driver/*driver* :postgres)
+          ;; This is to test what happens when Postgres is rolled back to 48 from 49, and
+          ;; then rolled back to 49 again. The rollback to 48 will cause the
+          ;; idx_uniq_field_table_id_parent_id_name_2col index to be dropped
+          (t2/query "DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name_2col;"))
         (let [db-id (t2/insert-returning-pk! (t2/table-name Database)
                                              {:details    "{}"
                                               :created_at :%now
@@ -2221,8 +2226,8 @@
                                                               :created_at    :%now
                                                               :updated_at    :%now}
                                                              values)))
-              earlier #inst "2023-01-01"
-              later   #inst "2024-01-01"
+              earlier #t "2023-01-01T00:00:00"
+              later   #t "2024-01-01T00:00:00"
               ; 1.
               table-1 (table!)
               cases-1 {; field                                                                                 ; is_defective_duplicate
@@ -2348,7 +2353,7 @@
     ;; 1. starting from an H2 app DB, create a field that meets the conditions for is_defective_duplicate=TRUE
     ;; 2. migrate, adding constraints around is_defective_duplicate to prevent duplicates
     ;; 3. test load-from-h2 works successfully by migrating to MySQL or Postgres
-    ;; 4. test you can downgrade after that
+    ;; 4. test you can downgrade and upgrade again after that
     (when-let [test-drivers (set/intersection (tx.env/test-drivers) #{:mysql :postgres})]
       (mt/with-driver :h2
         (impl/test-migrations-for-driver!
@@ -2398,7 +2403,10 @@
                        (testing "The defective field should still exist after loading from H2"
                          (is (= #{defective-field-id}
                                 (t2/select-pks-set (t2/table-name :model/Field) :is_defective_duplicate true)))))
-                     (testing "Migrating down to 48 should still work"
-                       (migrate! :down 48))
-                     (testing "The defective field should still exist after loading from H2 and downgrading"
-                       (is (t2/exists? (t2/table-name :model/Field) :id defective-field-id))))))))))))))
+                     (when true ;; TODO UNCOMMENT THIS BEFORE MERGING #_(not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+                       (testing "Migrating down to 48 should still work"
+                         (migrate! :down 48))
+                       (testing "The defective field should still exist after loading from H2 and downgrading"
+                         (is (t2/exists? (t2/table-name :model/Field) :id defective-field-id)))
+                       (testing "Migrating up again should still work"
+                         (migrate!))))))))))))))
