@@ -1,10 +1,6 @@
-import cx from "classnames";
 import { t } from "ttag";
 
-import Modal from "metabase/components/Modal";
-import ModalContent from "metabase/components/ModalContent";
-import ButtonsS from "metabase/css/components/buttons.module.css";
-import CS from "metabase/css/core/index.css";
+import { Modal, Button, Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 interface Props {
@@ -48,18 +44,19 @@ export const SavedQuestionIntroModal = ({
   const { title, message } = getLabels(question);
 
   return (
-    <Modal isOpen={isShowingNewbModal}>
-      <ModalContent title={title} className={cx(CS.textCentered, CS.py2)}>
-        <div className={cx(CS.px2, CS.pb2, CS.textParagraph)}>{message}</div>
-        <div className={cx("Form-actions", CS.flex, CS.justifyCenter, CS.py1)}>
-          <button
-            className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
-            onClick={onClose}
-          >
-            {t`Okay`}
-          </button>
-        </div>
-      </ModalContent>
-    </Modal>
+    <Modal.Root opened={isShowingNewbModal} onClose={onClose} size={500}>
+      <Modal.Overlay />
+      <Modal.Content p="1rem">
+        <Modal.Header mb="1rem">
+          <Modal.Title>{title}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body ta="center">
+          <Box mb="1rem" ta="left">
+            {message}
+          </Box>
+          <Button variant="filled" onClick={onClose}>{t`Okay`}</Button>
+        </Modal.Body>
+      </Modal.Content>
+    </Modal.Root>
   );
 };
