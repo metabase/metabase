@@ -124,8 +124,8 @@ jobs:
       COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.even.head.sha }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
-      CYPRESS_REPLAYIO_ENABLED: 1
-      CYPRESS_REPLAYIO_ENABLE_UPLOAD: 1
+      CYPRESS_REPLAYIO_ENABLED: 0
+      CYPRESS_REPLAYIO_ENABLE_UPLOAD: 0
       RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
       RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ github.run_id }}
       REPLAY_API_KEY: ${{ secrets.REPLAY_IO_TOKEN }}
@@ -179,7 +179,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags=@OSS,grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-          --browser 'replay-chromium'
+          --browser 'chrome'
 
       - name: Run slow and resource-intensive Cypress tests
         if: matrix.name == 'slow' && github.event_name != 'schedule'
@@ -187,7 +187,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="@slow",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-          --browser 'replay-chromium'
+          --browser 'chrome'
 
       - name: Run Flaky Cypress tests
         if: matrix.name == 'flaky' && github.event_name != 'schedule'
@@ -195,7 +195,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="@flaky --@quarantine",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-          --browser 'replay-chromium'
+          --browser 'chrome'
 
       - name: Run EE Cypress tests on ${{ matrix.name }}
         if: matrix.context == 'folder' && github.event_name != 'schedule'
@@ -203,7 +203,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="-@slow+-@mongo+-@flaky --@quarantine",grepOmitFiltered=true \
           --folder ${{ matrix.name }} \
-          --browser 'replay-chromium'
+          --browser 'chrome'
 
       - name: Run E2E tests that depend on Mongo
         if: matrix.name == 'mongo'
@@ -211,7 +211,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="@mongo --@quarantine",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-          --browser 'replay-chromium'
+          --browser 'chrome'
         env:
           CYPRESS_QA_DB_MONGO: true
 
