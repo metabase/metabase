@@ -36,17 +36,26 @@ function findIndexes<T1, T2>(
     indexesByKey.set(key, [...indexes, index]);
     indexesByName.set(getItem1Name(item), index);
   });
-  return items2.map(item => {
+
+  const matchedIndexes = Array(items2.length).fill(-1);
+  items2.forEach((item, index) => {
     const key = getItem2Key(item);
-    const name = getItem2Name(item);
     const indexByKey = indexesByKey.get(key) ?? [];
-    const indexByName = indexesByName.get(getItem2Name(item));
-    return (
-      indexByKey.find(index => getItem1Name(items1[index]) === name) ??
-      indexByName ??
-      -1
-    );
+    if (indexByKey.length === 1) {
+      matchedIndexes[index] = indexByKey[0];
+    }
   });
+
+  const unavailableIndexes = new Set(matchedIndexes);
+  items2.forEach((item, index) => {
+    const name = getItem2Name(item);
+    const indexByName = indexesByName.get(name);
+    if (indexByName != null && !unavailableIndexes.has(indexByName)) {
+      matchedIndexes[index] = indexByName;
+    }
+  });
+
+  return matchedIndexes;
 }
 
 export function findColumnIndexesForColumnSettings(
