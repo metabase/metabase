@@ -814,3 +814,38 @@ describe("issue 46308", () => {
     cartesianChartCircle().should("have.length", 3);
   });
 });
+
+describe("issue 34596", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("GET", "/api/database/*/autocomplete_suggestions**").as(
+      "autocomplete",
+    );
+  });
+
+  it("should not flicker different autocompletions when typing (metabase#34596)", () => {
+    const editor = openNativeEditor();
+
+    editor.type("PE");
+
+    cy.wait("@autocomplete");
+
+    cy.findByRole("listbox")
+      .should("contain", "PEOPLE")
+      .should("contain", "EXPECTED_INVOICE");
+
+    cy.intercept("GET", "/api/database/*/autocomplete_suggestions**", req =>
+      // Add a long delay to avoid the immediate autocomplete results from
+      // causing a false positive. The test will end long before this delay gets hit.
+      req.delay(30_000),
+    );
+
+    editor.type("O");
+
+    cy.findByRole("listbox")
+      .should("contain", "PEOPLE")
+      // short timeout here to indicate that we aren't waiting for autocompletion results
+      .should("not.contain", "EXPECTED_INVOICE", { timeout: 5000 });
+  });
+});
