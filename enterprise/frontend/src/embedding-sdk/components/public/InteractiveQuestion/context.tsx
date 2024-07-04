@@ -7,14 +7,21 @@ import {
 } from "react";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
-import { updateQuestion } from "embedding-sdk/lib/update-question";
+import {
+  runQuestionOnQueryChangeSdk,
+  runQuestionQueryOnNavigateSdk,
+} from "embedding-sdk/lib/run-question-query";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
-import type { SdkQuestionResult } from "embedding-sdk/types/question";
+import type {
+  NavigateToNewCardParams,
+  SdkQuestionResult,
+} from "embedding-sdk/types/question";
 import { useDispatch } from "metabase/lib/redux";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type * as Lib from "metabase-lib";
+import type { Card } from "metabase-types/api";
 
 import { type UseLoadQuestionParams, useLoadQuestion } from "./hooks";
 
@@ -26,6 +33,8 @@ interface InteractiveQuestionContextType extends SdkQuestionResult {
   onReset?: () => void;
   onNavigateBack?: () => void;
   onQueryChange: (query: Lib.Query) => void;
+  onNavigateToNewCard: (params: NavigateToNewCardParams) => void;
+  card?: Card;
 }
 
 /**
@@ -56,13 +65,12 @@ export const InteractiveQuestionProvider = ({
   const dispatch = useDispatch();
 
   const {
-    card,
     question,
     queryResults,
 
-    setQuestion,
     loadQuestion,
     isQuestionLoading,
+    setQuestionResult,
   } = useLoadQuestion({ questionId });
 
   const globalPlugins = useSdkSelector(getPlugins);
@@ -73,20 +81,31 @@ export const InteractiveQuestionProvider = ({
     [plugins, question],
   );
 
-  const onQueryChange = async (query: Lib.Query) => {
+  async function onQueryChange(query: Lib.Query) {
     if (!question) {
       return;
     }
 
-    const nextQuestion = await updateQuestion({ query, question, dispatch });
-    if (!nextQuestion) {
-      return;
+    // eslint-disable-next-line no-console
+    console.log("On Query Change:", { question, query });
+
+    const nextQuestion = question.setQuery(query);
+    const result = await dispatch(
+      runQuestionOnQueryChangeSdk(question, nextQuestion),
+    );
+    setQuestionResult(result);
+  }
+
+  async function onNavigateToNewCard(params: NavigateToNewCardParams) {
+    const result = await dispatch(runQuestionQueryOnNavigateSdk(params));
+
+    // eslint-disable-next-line no-console
+    console.log("On Navigate:", { question });
+
+    if (result) {
+      setQuestionResult(result);
     }
-
-    setQuestion(nextQuestion);
-
-    await loadQuestion();
-  };
+  }
 
   const questionContext: InteractiveQuestionContextType = {
     isQuestionLoading,
@@ -94,9 +113,10 @@ export const InteractiveQuestionProvider = ({
     onReset: onReset || loadQuestion,
     onNavigateBack,
     onQueryChange,
+    onNavigateToNewCard,
     mode,
     plugins,
-    card,
+    card: question?.card(),
     question,
     queryResults,
   };

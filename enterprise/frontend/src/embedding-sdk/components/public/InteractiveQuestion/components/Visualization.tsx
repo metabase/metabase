@@ -6,15 +6,11 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
-import { navigateToNewCardInsideQB } from "metabase/query_builder/actions";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 
 import { useInteractiveQuestionContext } from "../context";
 
 export const QuestionVisualization = () => {
-  const dispatch = useDispatch();
-
   const {
     card,
     question,
@@ -22,6 +18,7 @@ export const QuestionVisualization = () => {
     mode,
     isQuestionLoading,
     onNavigateBack,
+    onNavigateToNewCard,
   } = useInteractiveQuestionContext();
 
   if (isQuestionLoading) {
@@ -33,10 +30,6 @@ export const QuestionVisualization = () => {
   }
 
   const [result] = queryResults;
-
-  // TODO: remove this
-  // eslint-disable-next-line no-console
-  console.log("Query Results:", queryResults);
 
   return (
     <QueryVisualization
@@ -51,9 +44,7 @@ export const QuestionVisualization = () => {
       result={result}
       noHeader
       mode={mode}
-      navigateToNewCardInsideQB={(props: any) => {
-        dispatch(navigateToNewCardInsideQB(props));
-      }}
+      navigateToNewCardInsideQB={onNavigateToNewCard}
       onNavigateBack={onNavigateBack}
     />
   );
