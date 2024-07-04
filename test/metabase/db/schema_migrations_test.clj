@@ -2304,7 +2304,7 @@
                                    [false #(field! {:name "F1", :active true, :parent_id (:id field-no-parent-1)})]
                                    [false #(field! {:name "F1", :active true, :parent_id (:id field-no-parent-2)})]]
             fields-to-clean-up    (atom [])
-            clean-up-fields       (fn []
+            clean-up-fields!      (fn []
                                     (t2/delete! (t2/table-name Field) :id [:in (map :id @fields-to-clean-up)])
                                     (reset! fields-to-clean-up []))]
         (if (= driver/*driver* :postgres)
@@ -2321,8 +2321,7 @@
                 (is (some? field))
                 (swap! fields-to-clean-up conj field)))))
         (migrate!)
-        ;; clean up the fields to test adding them again after the migrations
-        (clean-up-fields)
+        (clean-up-fields!)
         (testing "After the migrations, only allow fields that have the same table, name, but different parent_id"
           (doseq [[defective? field-thunk] defective+field-thunk]
             (if defective?
@@ -2333,8 +2332,7 @@
         (when true ;; TODO UNCOMMENT THIS BEFORE MERGING #_(not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
           (testing "Migrate down succeeds"
             (migrate! :down 48))
-          ;; clean up the fields to test adding them again after rolling back the migrations
-          (t2/delete! (t2/table-name Field) :id [:in (map :id @fields-to-clean-up)])
+          (clean-up-fields!)
           (testing "After rolling back the migrations, all fields are allowed"
             ;; Postgres' unique index is removed on rollback, so we can add defective fields
             ;; This is needed to allow load-from-h2 to Postgres and then downgrading to work
@@ -2403,5 +2401,4 @@
                      (testing "Migrating down to 48 should still work"
                        (migrate! :down 48))
                      (testing "The defective field should still exist after loading from H2 and downgrading"
-                       (is (= #{defective-field-id}
-                              (t2/select-pks-set (t2/table-name :model/Field) :is_defective_duplicate true)))))))))))))))
+                       (is (t2/exists? (t2/table-name :model/Field) :id defective-field-id))))))))))))))

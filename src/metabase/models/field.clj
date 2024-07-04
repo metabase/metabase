@@ -145,8 +145,9 @@
 
 (t2/define-before-delete :model/Field
   [field]
-  ; Cascading deletes parent_id cannot be done with foreign key constraints in the database
-  ; because parent_id constributes to a generated column
+  ; Cascading deletes through parent_id cannot be done with foreign key constraints in the database
+  ; because parent_id constributes to a generated column, and MySQL doesn't support columns with cascade delete
+  ;; foreign key constraints in generated columns. #44866
   (t2/delete! :model/Field :parent_id (:id field)))
 
 (defn- field->db-id
