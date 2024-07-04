@@ -1,7 +1,8 @@
-(ns metabase-enterprise.query-field-validation.api.query-validator
+(ns metabase-enterprise.query-field-validation.api
   (:require
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
+   [metabase.api.routes.common :refer [+auth]]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [toucan2.core :as t2]))
 
@@ -45,26 +46,31 @@
     ;; processing in Clojure, but since that increases the Clojure-side processing I'm not convinced it's actually any
     ;; better. The second query also makes it much simpler to add the ORDER BY
     (when (seq card-ids)
-      (let [sort-direction-fn ({"asc"  reverse
-                                "desc" identity} sort-direction)]
-        (mw.offset-paging/page-result
-         (sort-direction-fn
-          (sort-by (sort-column->keyfn sort-column)
-                   (map add-errors (t2/hydrate (t2/select :model/Card :id [:in card-ids])
-                                               :collection :creator)))))))))
+      (let [sort-direction-fn ({"asc"  identity
+                                "desc" reverse} sort-direction)]
+        (sort-direction-fn
+         (sort-by (sort-column->keyfn sort-column)
+                  (map add-errors (t2/hydrate (t2/select :model/Card :id [:in card-ids])
+                                              :collection :creator))))))))
 
 (api/defendpoint GET "/invalid-cards"
   "List of cards that have an invalid reference in their query. Shape of each card is standard, with the addition of an
-  `errors` key."
+  `errors` key. Supports pagination (`offset` and `limit`), so it returns something in the shape:
+
+  ```
+    {:total  200
+     :data   [card1, card2, ...]
+     :limit  50
+     :offset 100
+  ```"
   [sort_column sort_direction]
   {sort_column    [:maybe (into [:enum] valid-sort-columns)]
    sort_direction [:maybe (into [:enum] valid-sort-directions)]}
   (let [cards (cards-with-inactive-fields (or sort_column default-sort-column)
                                           (or sort_direction default-sort-direction))]
-    {:total (count cards)
-     :data cards
-     :limit mw.offset-paging/*limit*
-     :offset mw.offset-paging/*offset*})
-)
+    {:total  (count cards)
+     :data   (mw.offset-paging/page-result cards)
+     :limit  mw.offset-paging/*limit*
+     :offset mw.offset-paging/*offset*}))
 
-(api/define-routes)
+(api/define-routes +auth)

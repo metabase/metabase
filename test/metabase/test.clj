@@ -239,6 +239,7 @@
   latest-audit-log-entry
   let-url
   obj->json->obj
+  ordered-subset?
   postwalk-pred
   round-all-decimals
   scheduler-current-tasks

@@ -1423,3 +1423,19 @@
                                   (.await latch)
                                   (f))))
     (mapv deref @futures)))
+
+(defn ordered-subset?
+  "Test if all the elements in `xs` appear in the same order in `ys` (but `ys` could have additional entries as
+  well). Search results in this test suite can be polluted by local data, so this is a way to ignore extraneous
+  results.
+
+  Uses the equality function if provided (otherwise just `=`)"
+  ([xs ys]
+   (ordered-subset? xs ys =))
+  ([[x & rest-x :as xs] [y & rest-y :as ys] eq?]
+   (or (zero? (count xs))
+       (if (> (count xs) (count ys))
+         false
+         (if (eq? x y)
+           (recur rest-x rest-y eq?)
+           (recur xs rest-y eq?))))))
