@@ -211,9 +211,6 @@
   [driver {:keys [table-definitions] :as dbdef} & options]
   (with-open [server-connection #_{:clj-kondo/ignore [:discouraged-var]} (jdbc/get-connection (spec/dbdef->spec driver :server dbdef))]
     (assert (instance? java.sql.Connection server-connection))
-    ;; first execute statements to drop the DB if needed (this will do nothing if `skip-drop-db?` is true)
-    (doseq [statement (apply ddl/drop-db-ddl-statements driver dbdef options)]
-      (execute/execute-sql! driver server-connection statement))
     ;; now execute statements to create the DB
     (doseq [statement (ddl/create-db-ddl-statements driver dbdef)]
       (execute/execute-sql! driver server-connection statement)))

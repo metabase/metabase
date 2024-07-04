@@ -80,10 +80,15 @@
   otherwise the timezone of the database (if known), otherwise the system timezone. Guaranteed to always return a
   timezone ID ­ never returns `nil`."
   (^String []
-   (results-timezone-id driver/*driver* ::db-from-store))
+   (results-timezone-id ::db-from-store))
 
   (^String [database]
-   (results-timezone-id (:engine database) database))
+   (let [driver (or driver/*driver*
+                    (:engine database)
+                    (when (and (= database ::db-from-store)
+                               (qp.store/initialized?))
+                      (:engine (lib.metadata/database (qp.store/metadata-provider)))))]
+     (results-timezone-id driver database)))
 
   (^String [driver   :- :keyword
             database :- [:or [:= ::db-from-store] :map]
