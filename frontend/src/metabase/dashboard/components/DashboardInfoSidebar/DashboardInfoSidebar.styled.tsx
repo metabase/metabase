@@ -13,7 +13,6 @@ export const DashboardInfoSidebarRoot = styled.aside`
   background: var(--mb-color-bg-white);
   border-left: 1px solid var(--mb-color-border);
   align-self: stretch;
-  /* FIXME: ensure that removing this style is OK overflow-y: auto; */
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
