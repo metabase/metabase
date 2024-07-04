@@ -390,6 +390,15 @@ export class NativeQueryEditor extends Component<
     }
   };
 
+  focus() {
+    if (this.props.readOnly) {
+      return;
+    }
+
+    // HACK: the cursor doesn't blink without this intended small delay
+    setTimeout(() => this._editor?.focus(), 50);
+  }
+
   loadAceEditor() {
     const { query } = this.props;
 
@@ -692,10 +701,7 @@ export class NativeQueryEditor extends Component<
       setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
 
       onSetDatabaseId?.(databaseId);
-      if (!this.props.readOnly) {
-        // HACK: the cursor doesn't blink without this intended small delay
-        setTimeout(() => this._editor?.focus(), 50);
-      }
+      this.focus();
     }
   };
 
