@@ -71,19 +71,12 @@ import {
 } from "./utils";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
-const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
 
 type CardCompletionItem = Pick<Card, "id" | "name" | "type"> & {
   collection_name: string;
 };
 
 type AutocompleteItem = [string, string];
-
-type LastAutoComplete = {
-  timestamp: number;
-  prefix: string | null;
-  results: AutocompleteItem[];
-};
 
 type OwnProps = typeof NativeQueryEditor.defaultProps & {
   question: Question;
@@ -450,27 +443,90 @@ export class NativeQueryEditor extends Component<
       showLineNumbers: true,
     });
 
-    let lastAutoComplete: LastAutoComplete = {
-      timestamp: 0,
-      prefix: "",
-      results: [],
+    const autocomplete = async (
+      prefix: string,
+    ): Promise<Ace.ValueCompletion[]> => {
+      if (!this.props.autocompleteResultsFn) {
+        return Promise.resolve([]);
+      }
+
+      const results: AutocompleteItem[] =
+        await this.props.autocompleteResultsFn(prefix);
+      return results.map(([name, meta]) => ({ value: name, meta }));
+    };
+
+    const referencedQuestionCompletions = async () => {
+      // Get referenced questions
+      const referencedQuestionIds = this.props.query.referencedQuestionIds();
+
+      // The results of the API call are cached by ID
+      const referencedCards = await Promise.all(
+        referencedQuestionIds.map(id => this.props.fetchQuestion(id)),
+      );
+
+      // Get columns from referenced questions that match the prefix
+      return referencedCards.filter(Boolean).flatMap(card =>
+        card.result_metadata.map(
+          (columnMetadata): Ace.ValueCompletion => ({
+            value: columnMetadata.name,
+            meta: `${card.name} :${columnMetadata.base_type}`,
+          }),
+        ),
+      );
     };
 
     function isMatchForPrefix(prefix: string, name: string) {
       return name.toLowerCase().includes(prefix.toLowerCase());
     }
 
+    // The actual call to the API is debounced.
+    const complete = _.debounce(
+      async (prefix: string, callback: Ace.CompleterCallback) => {
+        try {
+          const apiResults = await autocomplete(prefix);
+          const questionResults = await referencedQuestionCompletions();
+          const allResults = questionResults.concat(apiResults);
+          callback(null, prepareResultsForAce(prefix, allResults));
+        } catch (error) {
+          console.error("error getting autocompletion data", error);
+          callback(null, []);
+        }
+      },
+      AUTOCOMPLETE_DEBOUNCE_DURATION,
+    );
+
+    // Because ACE does not allow removing or updating completions outside of
+    // the getCompletions callback, we need to do completions in two phases.
+    //
+    // In the first phase, we immediately return the results from previous autocompletions,
+    // but filtered by the current prefix. This is done to avoid stale completions
+    // from being present in the popover.
+    // We then trigger the completer again to make it go into the second phase.
+    //
+    // In the second phase we actually perform the autocompletion by going to the API.
+
+    // We keep track of the phase here.
+    // If value is null, go to the first phase.
+    // If the value equals to the prefix, you can go to the second phase for that prefix.
+    let phase: string | null = null;
+
+    // Store the previous results so we can resuse them in the first phase.
+    let previous: Ace.ValueCompletion[] = [];
+
     const prepareResultsForAce = (
       prefix: string,
-      results: [string, string][],
-    ) =>
-      results
-        .filter(([name]) => isMatchForPrefix(prefix, name))
-        .map(([name, meta]) => ({
-          name: name,
-          value: name,
-          meta: meta,
-        }));
+      results: Ace.ValueCompletion[],
+    ): Ace.ValueCompletion[] => {
+      // Only return results that match the prefix.
+      const res = results.filter(({ value }) =>
+        isMatchForPrefix(prefix, value),
+      );
+
+      // Store the results for later use.
+      previous = res;
+
+      return res;
+    };
 
     aceLanguageTools.addCompleter({
       getCompletions: async (
@@ -480,78 +536,28 @@ export class NativeQueryEditor extends Component<
         prefix: string,
         callback: Ace.CompleterCallback,
       ) => {
-        if (!this.props.autocompleteResultsFn) {
+        if (!this.props.autocompleteResultsFn || prefix.length <= 1) {
           return callback(null, []);
         }
 
-        try {
-          if (prefix.length <= 1 && prefix !== lastAutoComplete.prefix) {
-            // ACE triggers an autocomplete immediately when the user starts typing that is
-            // not debounced by debouncing _retriggerAutocomplete.
-            // Here we prevent it from actually calling the autocomplete endpoint.
-            // It will run eventually even if the prefix is only one character,
-            // after the user stops typing, because _retriggerAutocomplete will get called with the same prefix.
-            lastAutoComplete = {
-              timestamp: 0,
-              prefix,
-              results: lastAutoComplete.results,
-            };
+        if (phase !== prefix) {
+          // First phase: immediately return the previous results (filtered by prefix).
 
-            callback(
-              null,
-              prepareResultsForAce(prefix, lastAutoComplete.results),
-            );
-            return;
-          }
+          // Mark that we want to go into the second phase for this prefix.
+          phase = prefix;
 
-          let { results, timestamp } = lastAutoComplete;
-          const cacheHit =
-            Date.now() - timestamp < AUTOCOMPLETE_CACHE_DURATION &&
-            lastAutoComplete.prefix === prefix;
+          // Return the previous results (filtered by prefix).
+          callback(null, prepareResultsForAce(prefix, previous));
 
-          if (!cacheHit) {
-            // Get models and fields from tables
-            // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
-            const apiResults = await this.props.autocompleteResultsFn(prefix);
-            lastAutoComplete = {
-              timestamp: Date.now(),
-              prefix,
-              results: apiResults,
-            };
+          // Retrigger the autocomplete, to be able to go to the other branch
+          this._editor?.execCommand("startAutocomplete");
+        } else {
+          // Second phase: actually perform the autocompletion.
 
-            // Get referenced questions
-            const referencedQuestionIds =
-              this.props.query.referencedQuestionIds();
-            // The results of the API call are cached by ID
-            const referencedCards = await Promise.all(
-              referencedQuestionIds.map(id => this.props.fetchQuestion(id)),
-            );
-
-            // Get columns from referenced questions that match the prefix
-            const questionColumns: AutocompleteItem[] = referencedCards
-              .filter(Boolean)
-              .flatMap(card =>
-                card.result_metadata.map(
-                  columnMetadata =>
-                    [
-                      columnMetadata.name,
-                      `${card.name} :${columnMetadata.base_type}`,
-                    ] as AutocompleteItem,
-                ),
-              );
-
-            // Concat the results from tables, fields, and referenced questions.
-            // The ace editor will deduplicate results based on name, keeping results
-            // that come first. In case of a name conflict, prioritise referenced
-            // questions' columns over tables and fields.
-            results = questionColumns.concat(apiResults);
-          }
-
-          // transform results into what ACE expects
-          callback(null, prepareResultsForAce(prefix, results));
-        } catch (error) {
-          console.error("error getting autocompletion data", error);
-          callback(null, []);
+          // Mark that we're done with the second phase, subsequent completions
+          // will go into the first phase.
+          phase = null;
+          await complete(prefix, callback);
         }
       },
     });
@@ -673,11 +679,11 @@ export class NativeQueryEditor extends Component<
     }
   }
 
-  _retriggerAutocomplete = _.debounce(() => {
+  _retriggerAutocomplete = () => {
     if (this._editor?.completer?.popup?.isOpen) {
       this._editor.execCommand("startAutocomplete");
     }
-  }, AUTOCOMPLETE_DEBOUNCE_DURATION);
+  };
 
   onChange() {
     const { query, setDatasetQuery } = this.props;
