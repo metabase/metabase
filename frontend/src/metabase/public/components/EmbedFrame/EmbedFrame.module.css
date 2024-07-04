@@ -30,6 +30,7 @@ body {
 
 .ThemeNight.EmbedFrame {
   --mb-color-embed-filter-bg-color: var(--mb-color-bg-black);
+  --mb-color-border: var(--mb-color-text-medium);
 
   background-color: var(
     --mb-color-embed-bg-color-override,
@@ -63,7 +64,6 @@ body {
 
 .ThemeNight.EmbedFrame .DashCard .Card {
   background-color: var(--mb-color-bg-black);
-  border: 1px solid var(--mb-color-bg-dark);
 }
 
 .ThemeNight.EmbedFrame .enableDotsOnHover :global(.dc-tooltip circle.dot:hover),

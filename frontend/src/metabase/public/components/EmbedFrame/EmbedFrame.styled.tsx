@@ -1,7 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
@@ -126,13 +125,10 @@ function getParameterPanelBackgroundColor(
 }
 
 function getParameterPanelBorderColor(theme?: DisplayTheme) {
-  if (theme === "night") {
-    return color("bg-dark");
-  }
   if (theme === "transparent") {
     return "transparent";
   }
-  return color("border");
+  return "var(--mb-color-border)";
 }
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
