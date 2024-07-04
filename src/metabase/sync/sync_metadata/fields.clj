@@ -62,7 +62,6 @@
   properties (e.g. base type and comment/remark) as needed. Returns number of Fields synced."
   [table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
-  (log/infof "Updating field metadata for %s" (sync-util/name-for-logging table))
   (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
      ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
      ;; Re-fetch our metadata because there might be somethings that have changed after calling
