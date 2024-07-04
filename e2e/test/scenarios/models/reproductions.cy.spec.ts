@@ -668,3 +668,70 @@ describe("issue 39749", () => {
     cy.findByLabelText("Description").should("have.text", "B");
   });
 });
+
+describe("issue 25885", () => {
+  const mbqlModelDetails: StructuredQuestionDetails = {
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+      fields: [["field", ORDERS.ID, { "base-type": "type/BigInteger" }]],
+      joins: [
+        {
+          fields: [
+            [
+              "field",
+              ORDERS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Orders" },
+            ],
+          ],
+          strategy: "left-join",
+          alias: "Orders",
+          condition: [
+            "=",
+            ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+            [
+              "field",
+              ORDERS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Orders" },
+            ],
+          ],
+          "source-table": ORDERS_ID,
+        },
+        {
+          fields: [
+            [
+              "field",
+              ORDERS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Orders_2" },
+            ],
+          ],
+          strategy: "left-join",
+          alias: "Orders_2",
+          condition: [
+            "=",
+            ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+            [
+              "field",
+              ORDERS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Orders_2" },
+            ],
+          ],
+          "source-table": ORDERS_ID,
+        },
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to edit metadata for mbql models with duplicate columns (metabase#25885)", () => {
+    createQuestion(mbqlModelDetails).then(({ body: card }) =>
+      visitModel(card.id),
+    );
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+  });
+});
