@@ -44,7 +44,6 @@
                               :binning                         true
                               :expression-aggregations         true
                               :expressions                     true
-                              :foreign-keys                    true
                               :native-parameters               true
                               :now                             true
                               :set-timezone                    true
