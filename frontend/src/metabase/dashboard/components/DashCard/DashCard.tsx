@@ -16,7 +16,7 @@ import {
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
 import { color } from "metabase/lib/colors";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector, useStore } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -115,7 +115,11 @@ function DashCardInner({
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
   );
-  const href = useSelector(state => getDashcardHref(state, dashcard.id));
+  const store = useStore();
+  const getHref = useCallback(
+    () => getDashcardHref(store.getState(), dashcard.id),
+    [store, dashcard.id],
+  );
   const [isPreviewingCard, setIsPreviewingCard] = useState(false);
   const cardRootRef = useRef<HTMLDivElement>(null);
 
@@ -324,7 +328,7 @@ function DashCardInner({
           headerIcon={headerIcon}
           expectedDuration={expectedDuration}
           error={error}
-          href={navigateToNewCardFromDashboard ? href : undefined}
+          getHref={navigateToNewCardFromDashboard ? getHref : undefined}
           isAction={isAction}
           isEmbed={isEmbed}
           isXray={isXray}
