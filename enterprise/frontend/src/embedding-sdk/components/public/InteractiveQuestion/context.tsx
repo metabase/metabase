@@ -7,9 +7,11 @@ import {
 } from "react";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
+import { updateQuestion } from "embedding-sdk/lib/update-question";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import type { SdkQuestionResult } from "embedding-sdk/types/question";
+import { useDispatch } from "metabase/lib/redux";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type * as Lib from "metabase-lib";
@@ -51,8 +53,17 @@ export const InteractiveQuestionProvider = ({
   onReset,
   onNavigateBack,
 }: InteractiveQuestionProviderProps) => {
-  const { card, question, queryResults, isQuestionLoading, loadQuestion } =
-    useLoadQuestion({ questionId });
+  const dispatch = useDispatch();
+
+  const {
+    card,
+    question,
+    queryResults,
+
+    setQuestion,
+    loadQuestion,
+    isQuestionLoading,
+  } = useLoadQuestion({ questionId });
 
   const globalPlugins = useSdkSelector(getPlugins);
   const plugins = componentPlugins || globalPlugins;
@@ -62,12 +73,19 @@ export const InteractiveQuestionProvider = ({
     [plugins, question],
   );
 
-  const onQueryChange = async (_query: Lib.Query) => {
-    if (question) {
-      // const nextQuestion = question.setQuery(query);
-      // TODO: updateQuestion on query change
-      // await dispatch(updateQuestion(nextQuestion, { run: true }));
+  const onQueryChange = async (query: Lib.Query) => {
+    if (!question) {
+      return;
     }
+
+    const nextQuestion = await updateQuestion({ query, question, dispatch });
+    if (!nextQuestion) {
+      return;
+    }
+
+    setQuestion(nextQuestion);
+
+    await loadQuestion();
   };
 
   const questionContext: InteractiveQuestionContextType = {
