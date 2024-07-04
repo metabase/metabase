@@ -362,8 +362,8 @@
 (defmethod escape-entity-name-for-metadata :default [_driver table-name] table-name)
 
 (defmulti describe-table-fks
-  "Return information about the foreign keys in a `table`. Required for drivers that support `:foreign-keys` but not
-  `:describe-fks`. Results should match the [[metabase.sync.interface/FKMetadata]] schema."
+  "Return information about the foreign keys in a `table`. Required for drivers that support :metadata/keys-constraints
+  but not :describe-fks. Results should match the [[metabase.sync.interface/FKMetadata]] schema."
   {:added "0.32.0" :deprecated "0.49.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -515,13 +515,17 @@
 
 (def features
   "Set of all features a driver can support."
-  #{;; Does this database support following foreign key relationships while querying?
-    ;; Note that this is different from supporting primary key and foreign key constraints in the schema; see below.
-    :foreign-keys
-
-    ;; Does this database track and enforce primary key and foreign key constraints in the schema?
-    ;; SQL query engines like Presto and Athena do not track these, though they can query across FKs.
-    ;; See :foreign-keys above.
+  #{;; Does this database track and enforce primary key and foreign key constraints in the schema?
+    ;; Is the database capable of reporting columns as PK or FK? (Relevant during sync.)
+    ;;
+    ;; Not to be confused with Metabase notion of foreign key columns. Those are user definable and power eg.
+    ;; implicit joins.
+    ;;
+    ;; This feature supersedes :foreign-keys! Hence no product functionality depends on :foreign-keys anymore.
+    ;; Some functionality, eg. implicit joins, has a different dependency now, :left-join, while eg. sync related
+    ;; functionality depends on this new feature.
+    ;;
+    ;; More context on slack: https://metaboat.slack.com/archives/C04DN5VRQM6/p1720024835058369?thread_ts=1719971343.726209&cid=C04DN5VRQM6
     :metadata/key-constraints
 
     ;; Does this database support nested fields for any and every field except primary key (e.g. Mongo)?
