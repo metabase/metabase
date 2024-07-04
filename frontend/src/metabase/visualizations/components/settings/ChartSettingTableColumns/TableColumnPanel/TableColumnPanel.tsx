@@ -76,7 +76,7 @@ export const TableColumnPanel = ({
   );
 
   const getId = useCallback((columnItem: ColumnItem) => {
-    return columnItem.columnSetting.key;
+    return columnItem.column.name;
   }, []);
 
   return (
