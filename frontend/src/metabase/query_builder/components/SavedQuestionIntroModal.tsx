@@ -46,12 +46,12 @@ export const SavedQuestionIntroModal = ({
   return (
     <Modal.Root opened={isShowingNewbModal} onClose={onClose} size={500}>
       <Modal.Overlay />
-      <Modal.Content p="1rem">
-        <Modal.Header mb="1rem">
+      <Modal.Content p="md">
+        <Modal.Header mb="md">
           <Modal.Title>{title}</Modal.Title>
         </Modal.Header>
         <Modal.Body ta="center">
-          <Box mb="1rem" ta="left">
+          <Box mb="md" ta="left">
             {message}
           </Box>
           <Button variant="filled" onClick={onClose}>{t`Okay`}</Button>
