@@ -7,6 +7,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -290,7 +291,7 @@
   [query]
   (if (mbql.u/match-one (:query query) [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))])
     (do
-      (when-not (driver/database-supports? driver/*driver* :foreign-keys (lib.metadata/database (qp.store/metadata-provider)))
+      (when-not (driver.u/supports? driver/*driver* :foreign-keys (lib.metadata/database (qp.store/metadata-provider)))
         (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
                         {:driver driver/*driver*
                          :type   qp.error-type/unsupported-feature})))

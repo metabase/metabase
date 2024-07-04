@@ -3,7 +3,6 @@
   (:require
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
-   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -134,7 +133,7 @@
 
   This function also sets all the tables that should be synced to have `initial-sync-status=complete` once the sync is done."
   [database :- i/DatabaseInstance]
-  (u/prog1 (if (driver/database-supports? (driver.u/database->driver database) :describe-fks database)
+  (u/prog1 (if (driver.u/supports? (driver.u/database->driver database) :describe-fks database)
              (sync-fks-for-db! database)
              (reduce (fn [update-info table]
                        (let [table         (t2.realize/realize table)

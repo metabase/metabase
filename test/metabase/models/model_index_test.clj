@@ -6,7 +6,7 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.models.card :refer [Card]]
    [metabase.models.model-index :as model-index :refer [ModelIndex
                                                         ModelIndexValue]]
@@ -185,7 +185,7 @@
                        [:native (mt/native-query
                                  (qp/compile
                                   (mt/mbql-query products {:fields [$id $title]})))]
-                       (when (driver/database-supports? (:engine (mt/db)) :left-join (mt/db))
+                       (when (driver.u/supports? (:engine (mt/db)) :left-join (mt/db))
                          [:join (mt/$ids
                                  {:type     :query,
                                   :query    {:source-table $$people,

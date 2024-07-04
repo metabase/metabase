@@ -13,6 +13,7 @@
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.models :refer [Field]]
    [metabase.models.table :as table]
@@ -188,7 +189,7 @@
              :json-unfolding    json?}
             (when semantic-type
               {:semantic-type semantic-type})
-            (when (and json? (driver/database-supports? driver :nested-field-columns db))
+            (when (and json? (driver.u/supports? driver :nested-field-columns db))
               {:visibility-type :details-only}))))))
 
 (defn describe-table-fields-xf
