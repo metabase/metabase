@@ -725,13 +725,35 @@ describe("issue 25885", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/*").as("updateModel");
   });
 
-  it("should allow to edit metadata for mbql models with duplicate columns (metabase#25885)", () => {
+  function setColumnName(oldName: string, newName: string) {
+    tableHeaderClick(oldName);
+    cy.findByLabelText("Display name")
+      .should("have.value", oldName)
+      .clear()
+      .type(newName);
+  }
+
+  function verifyColumnName(name: string) {
+    tableHeaderClick(name);
+    cy.findByLabelText("Display name").should("have.value", name);
+  }
+
+  it("should allow to edit metadata for mbql models with self joins columns (metabase#25885)", () => {
     createQuestion(mbqlModelDetails).then(({ body: card }) =>
       visitModel(card.id),
     );
+
+    cy.log("set metadata");
     openQuestionActions();
     popover().findByText("Edit metadata").click();
+    setColumnName("ID", "ID1");
+    setColumnName("Orders → ID", "ID2");
+    setColumnName("Orders_2 → ID", "ID3");
+    verifyColumnName("ID1");
+    verifyColumnName("ID2");
+    verifyColumnName("ID3");
   });
 });
