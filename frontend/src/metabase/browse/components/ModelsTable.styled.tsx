@@ -10,7 +10,7 @@ import { breakpoints } from "metabase/ui/theme";
 
 export const ModelTableRow = styled.tr<{ skeleton?: boolean }>`
   :focus {
-    outline: 2px solid var(--mb-color-brand);
+    outline: 2px solid var(--mb-color-focus);
   }
   ${props =>
     props.skeleton
