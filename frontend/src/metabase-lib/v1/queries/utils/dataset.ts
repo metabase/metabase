@@ -21,28 +21,28 @@ export function getColumnSettingKey(
 }
 
 function findColumnIndexes<T1, T2>(
-  items1: T1[],
-  items2: T2[],
-  getItem1Key: (item: T1) => string,
-  getItem1Name: (item: T1) => string,
-  getItem2Key: (item: T2) => string,
-  getItem2Name: (item: T2) => string,
+  columns1: T1[],
+  columns2: T2[],
+  getColumn1Key: (item: T1) => string,
+  getColumn1Name: (item: T1) => string,
+  getColumn2Key: (item: T2) => string,
+  getColumn2Name: (item: T2) => string,
 ) {
   const indexesByKey = new Map<string, number[]>();
   const indexesByName = new Map<string, number>();
-  items1.forEach((item, index) => {
-    const key = getItem1Key(item);
+  columns1.forEach((column, index) => {
+    const key = getColumn1Key(column);
     const indexes = indexesByKey.get(key) ?? [];
     indexesByKey.set(key, [...indexes, index]);
-    indexesByName.set(getItem1Name(item), index);
+    indexesByName.set(getColumn1Name(column), index);
   });
 
   // Keys take priority over names
   // There could be cases where the name has changed but the key has not
   // Ignore duplicate key matches
-  const matchedIndexes = Array(items2.length).fill(-1);
-  items2.forEach((item, index) => {
-    const key = getItem2Key(item);
+  const matchedIndexes = Array(columns2.length).fill(-1);
+  columns2.forEach((column, index) => {
+    const key = getColumn2Key(column);
     const indexByKey = indexesByKey.get(key) ?? [];
     if (indexByKey.length === 1) {
       matchedIndexes[index] = indexByKey[0];
@@ -53,9 +53,9 @@ function findColumnIndexes<T1, T2>(
   // Do not overwrite previous matches by key
   // Do not use the same index more than once
   const unavailableIndexes = new Set(matchedIndexes);
-  items2.forEach((item, index) => {
+  columns2.forEach((column, index) => {
     if (matchedIndexes[index] < 0) {
-      const name = getItem2Name(item);
+      const name = getColumn2Name(column);
       const indexByName = indexesByName.get(name);
       if (indexByName != null && !unavailableIndexes.has(indexByName)) {
         matchedIndexes[index] = indexByName;
