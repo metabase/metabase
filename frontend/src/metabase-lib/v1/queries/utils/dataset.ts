@@ -20,7 +20,7 @@ export function getColumnSettingKey(
   return key ?? getColumnKey({ name, field_ref: normalize(fieldRef) });
 }
 
-function findIndexes<T1, T2>(
+function findColumnIndexes<T1, T2>(
   items1: T1[],
   items2: T2[],
   getItem1Key: (item: T1) => string,
@@ -70,7 +70,7 @@ export function findColumnIndexesForColumnSettings(
   columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
 ) {
-  return findIndexes(
+  return findColumnIndexes(
     columns,
     columnSettings,
     column => getColumnKey(column, true),
@@ -84,7 +84,7 @@ export function findColumnSettingIndexesForColumns(
   columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
 ) {
-  return findIndexes(
+  return findColumnIndexes(
     columnSettings,
     columns,
     columnSetting => getColumnSettingKey(columnSetting, true),
