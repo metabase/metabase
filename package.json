@@ -395,7 +395,7 @@
     "wait:cljs": "echo Waiting for first CLJS build; until [ -f target/cljs_dev/cljs.core.js ]; do sleep 1; done; echo CLJS build done"
   },
   "lint-staged": {
-    "+(enterprise|frontend)/**/*.styled.tsx": [
+    "+(frontend|enterprise)/**/*.styled.tsx": [
       "stylelint --customSyntax postcss-styled-syntax --fix"
     ],
     "+(frontend|enterprise/frontend|e2e)/**/*.css": [
