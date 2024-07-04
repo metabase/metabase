@@ -45,6 +45,7 @@ import {
   join,
   visitQuestion,
   tableHeaderClick,
+  withDatabase,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -1587,47 +1588,44 @@ describe("issue 44668", () => {
 });
 
 // TODO: unskip when metabase#44974 is fixed
-describe.skip(
-  "issue 44974",
-  {
-    tags: ["@external"],
-  },
-  () => {
-    beforeEach(() => {
-      restore("postgres-writable");
-      cy.signInAsAdmin();
-    });
-    it("should not be possible to join with a table or question which is not in the same database (metabase#44974)", () => {
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
-        cy.findByText("Sample Database").click();
-        cy.findByText("Orders").click();
+describe.skip("issue 44974", () => {
+  const PG_DB_ID = 2;
+
+  beforeEach(() => {
+    restore("postgres-12");
+    cy.signInAsAdmin();
+  });
+
+  it("entity picker should not offer to join with a table or a question from a different database (metabase#44974)", () => {
+    withDatabase(PG_DB_ID, ({ PEOPLE_ID }) => {
+      const questionDetails = {
+        name: "Question 44794 in Postgres DB",
+        query: {
+          database: PG_DB_ID,
+          "source-table": PEOPLE_ID,
+          limit: 1,
+        },
+      };
+
+      createQuestion(questionDetails, {
+        // Visit question to put it in recents
+        visitQuestion: true,
       });
 
-      cy.button("Visualize").click();
-      cy.button("Save").click();
-      modal().button("Save").click();
-
-      cy.wait(300);
-      modal().button("Not now").click();
-
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
-        cy.findByText("Writable Postgres12").click();
-        cy.findByText("Scoreboard Actions").click();
-      });
-
+      openOrdersTable({ mode: "notebook" });
       join();
 
       entityPickerModal().within(() => {
-        entityPickerModalTab("Recents").click();
-        cy.findByText("Orders").should("not.exist");
+        entityPickerModalTab("Recents").should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+        cy.findByText(questionDetails.name).should("not.exist");
       });
     });
-  },
-);
+  });
+});
 
 describe("issue 38989", () => {
   beforeEach(() => {
