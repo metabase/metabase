@@ -111,11 +111,12 @@ export const BASE_DIMENSION_REFERENCE_OMIT_OPTIONS = [
 
 export const getBaseDimensionReference = (
   mbql: DimensionReferenceWithOptions,
+  ignoreBaseType: boolean,
 ) =>
-  getDimensionReferenceWithoutOptions(
-    mbql,
-    BASE_DIMENSION_REFERENCE_OMIT_OPTIONS,
-  );
+  getDimensionReferenceWithoutOptions(mbql, [
+    ...BASE_DIMENSION_REFERENCE_OMIT_OPTIONS,
+    ...(ignoreBaseType ? ["base-type"] : []),
+  ]);
 
 /**
  * Whether this Field clause has a string Field name (as opposed to an integer Field ID). This generally means the
