@@ -64,7 +64,7 @@ export const FunnelStart = styled.div<SharedProps>`
 
   ${Title} {
     font-weight: bold;
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
     ${props =>
       props.isNarrow
         ? css`

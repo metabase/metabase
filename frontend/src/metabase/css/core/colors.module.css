@@ -29,6 +29,9 @@
   --mb-color-filter: #7172ad;
   --mb-color-focus: #cbe2f7;
   --mb-color-warning: #f9cf48;
+  --mb-color-text-primary: var(--mb-color-text-dark);
+  --mb-color-text-secondary: var(--mb-color-text-medium);
+  --mb-color-text-tertiary: var(--mb-color-text-light);
 }
 
 .textDefault {
@@ -78,6 +81,10 @@
 .textDark,
 .textDarkHover:hover {
   color: var(--mb-color-text-dark);
+}
+
+.textPrimary {
+  color: var(--mb-color-text-primary);
 }
 
 .bgLight,

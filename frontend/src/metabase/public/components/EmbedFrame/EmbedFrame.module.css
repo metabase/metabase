@@ -6,22 +6,25 @@ body {
   --mb-color-embed-bg-color-override: transparent;
 }
 
-.ThemeNight.NoBackground {
-  --mb-color-embed-font-color-override: var(--mb-color-text-dark);
-}
-
 .EmbedFrame {
+  --mb-color-text-primary: var(--mb-color-text-dark);
   --mb-color-embed-filter-bg-color: var(--mb-color-bg-white);
 
+  color: var(--mb-color-text-primary);
   background-color: var(
     --mb-color-embed-bg-color-override,
     var(--mb-color-bg-dashboard)
   );
 }
+/* A temporary solution until we migrated all colors in visualization to use semantic colors
+   e.g. `text-primary`, `text-secondary`, `text-tertiary`. */
+.EmbedFrame svg text {
+  fill: var(--mb-color-text-primary);
+}
 
 .EmbedFrameHeader,
 .EmbedFrameFooter {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   background-color: var(
     --mb-color-embed-bg-color-override,
     var(--mb-color-bg-dashboard)
@@ -64,11 +67,6 @@ body {
 
 .ThemeNight.EmbedFrame .DashCard .Card {
   background-color: var(--mb-color-bg-black);
-}
-
-.ThemeNight.EmbedFrame .enableDotsOnHover :global(.dc-tooltip circle.dot:hover),
-.ThemeNight.EmbedFrame .enableDots :global(.dc-tooltip circle.dot) {
-  fill: currentColor;
 }
 
 .ThemeTransparent.EmbedFrame {
