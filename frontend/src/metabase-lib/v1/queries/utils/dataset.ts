@@ -37,6 +37,9 @@ function findIndexes<T1, T2>(
     indexesByName.set(getItem1Name(item), index);
   });
 
+  // Keys take priority over names
+  // There could be cases where the name has changed but the key has not
+  // Ignore duplicate key matches
   const matchedIndexes = Array(items2.length).fill(-1);
   items2.forEach((item, index) => {
     const key = getItem2Key(item);
@@ -46,12 +49,17 @@ function findIndexes<T1, T2>(
     }
   });
 
+  // Set missing index by name
+  // Do not overwrite previous matches by key
+  // Do not use the same index more than once
   const unavailableIndexes = new Set(matchedIndexes);
   items2.forEach((item, index) => {
-    const name = getItem2Name(item);
-    const indexByName = indexesByName.get(name);
-    if (indexByName != null && !unavailableIndexes.has(indexByName)) {
-      matchedIndexes[index] = indexByName;
+    if (matchedIndexes[index] < 0) {
+      const name = getItem2Name(item);
+      const indexByName = indexesByName.get(name);
+      if (indexByName != null && !unavailableIndexes.has(indexByName)) {
+        matchedIndexes[index] = indexByName;
+      }
     }
   });
 
