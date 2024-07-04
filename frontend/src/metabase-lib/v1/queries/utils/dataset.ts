@@ -37,9 +37,12 @@ function findColumnIndexes<T1, T2>(
     indexesByName.set(getColumn1Name(column), index);
   });
 
-  // Keys take priority over names
-  // There could be cases where the name has changed but the key has not
-  // Ignore duplicate key matches
+  // Column keys are computed based on field refs and can "survive" certain
+  // query updates where the column name normally changes. E.g. when there are
+  // multiple implicitly joinable fields added with the same name, they would
+  // names like `ID`, `ID_2`, `ID_3`, and removing `ID_2` from the query
+  // will cause `ID_3` to become `ID_2`; but the key won't change. That's why
+  // column keys take priority over name matches.
   const matchedIndexes = Array(columns2.length).fill(-1);
   columns2.forEach((column, index) => {
     const key = getColumn2Key(column);
@@ -49,9 +52,11 @@ function findColumnIndexes<T1, T2>(
     }
   });
 
-  // Set missing index by name
-  // Do not overwrite previous matches by key
-  // Do not use the same index more than once
+  // In some cases match by keys will fail. Self joins with duplicate columns
+  // will have the same column key but different column names. Also adding a
+  // query stage can cause the QP to switch from integer-based to string-based
+  // field refs, making all column keys become different. For these cases we
+  // match by column name as a last resort.
   const unavailableIndexes = new Set(matchedIndexes);
   columns2.forEach((column, index) => {
     if (matchedIndexes[index] < 0) {
