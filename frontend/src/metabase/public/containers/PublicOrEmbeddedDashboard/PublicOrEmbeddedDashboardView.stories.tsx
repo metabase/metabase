@@ -9,6 +9,7 @@ import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { explicitSizeRefreshModeContext } from "metabase/components/ExplicitSize/context";
 import { publicReducers } from "metabase/reducers-public";
+import { Box } from "metabase/ui";
 import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
 import {
   createMockCard,
@@ -21,6 +22,7 @@ import {
 } from "metabase-types/api/mocks";
 import {
   createMockDashboardState,
+  createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
 
@@ -35,6 +37,9 @@ export default {
     WaitForResizeToStopDecorator,
     MockIsEmbeddingDecorator,
   ],
+  parameters: {
+    layout: "fullscreen",
+  },
 };
 
 function ReduxDecorator(Story: Story) {
@@ -86,6 +91,9 @@ const CARD_TABLE_ID = getNextId();
 const TAB_ID = getNextId();
 const PARAMETER_ID = "param-hex";
 const initialState = createMockState({
+  settings: createMockSettingsState({
+    "hide-embed-branding?": false,
+  }),
   dashboard: createMockDashboardState({
     dashcardData: {
       [DASHCARD_BAR_ID]: {
@@ -143,7 +151,7 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
           name: "Table",
           display: "table",
         }),
-        ...(!hasScroll ? { col: 12 } : {}),
+        ...(!hasScroll ? { col: 12 } : { row: 8 }),
         size_x: 12,
         size_y: 8,
       }),
@@ -202,6 +210,7 @@ DarkThemeDefault.args = {
   ...defaultArgs,
   theme: "night",
 };
+DarkThemeDefault.decorators = [DarkBackgroundDecorator];
 
 export const DarkThemeScroll = Template.bind({});
 DarkThemeScroll.args = {
@@ -209,7 +218,7 @@ DarkThemeScroll.args = {
   theme: "night",
   dashboard: createDashboard({ hasScroll: true }),
 };
-DarkThemeScroll.decorators = [ScrollDecorator];
+DarkThemeScroll.decorators = [DarkBackgroundDecorator, ScrollDecorator];
 
 export const DarkThemeNoBackgroundDefault = Template.bind({});
 DarkThemeNoBackgroundDefault.args = {
@@ -217,6 +226,7 @@ DarkThemeNoBackgroundDefault.args = {
   theme: "night",
   background: false,
 };
+DarkThemeNoBackgroundDefault.decorators = [DarkBackgroundDecorator];
 
 export const DarkThemeNoBackgroundScroll = Template.bind({});
 DarkThemeNoBackgroundScroll.args = {
@@ -225,7 +235,10 @@ DarkThemeNoBackgroundScroll.args = {
   background: false,
   dashboard: createDashboard({ hasScroll: true }),
 };
-DarkThemeNoBackgroundScroll.decorators = [ScrollDecorator];
+DarkThemeNoBackgroundScroll.decorators = [
+  DarkBackgroundDecorator,
+  ScrollDecorator,
+];
 
 const EXPLICIT_SIZE_WAIT_TIME = 300;
 function ScrollDecorator(Story: Story) {
@@ -235,4 +248,12 @@ function ScrollDecorator(Story: Story) {
     }, EXPLICIT_SIZE_WAIT_TIME);
   }, []);
   return <Story />;
+}
+
+function DarkBackgroundDecorator(Story: Story) {
+  return (
+    <Box bg="bg-dark" mih="100vh">
+      <Story />
+    </Box>
+  );
 }
