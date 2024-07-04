@@ -1,12 +1,14 @@
 import {
   createContext,
-  type PropsWithChildren,
+  useCallback,
   useContext,
   useEffect,
-  useMemo,
+  useState,
+  type PropsWithChildren,
 } from "react";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
+import { loadSdkQuestion } from "embedding-sdk/lib/load-question";
 import {
   runQuestionOnQueryChangeSdk,
   runQuestionQueryOnNavigateSdk,
@@ -22,8 +24,6 @@ import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
-
-import { type UseLoadQuestionParams, useLoadQuestion } from "./hooks";
 
 interface InteractiveQuestionContextType extends SdkQuestionResult {
   plugins: SdkPluginsConfig | null;
@@ -47,13 +47,12 @@ export const InteractiveQuestionContext = createContext<
   InteractiveQuestionContextType | undefined
 >(undefined);
 
-type InteractiveQuestionProviderProps = PropsWithChildren<
-  UseLoadQuestionParams & {
-    componentPlugins?: SdkPluginsConfig;
-    onReset?: () => void;
-    onNavigateBack?: () => void;
-  }
->;
+type InteractiveQuestionProviderProps = PropsWithChildren<{
+  questionId: number;
+  componentPlugins?: SdkPluginsConfig;
+  onReset?: () => void;
+  onNavigateBack?: () => void;
+}>;
 
 export const InteractiveQuestionProvider = ({
   questionId,
@@ -64,46 +63,67 @@ export const InteractiveQuestionProvider = ({
 }: InteractiveQuestionProviderProps) => {
   const dispatch = useDispatch();
 
-  const {
-    question,
-    queryResults,
+  const [result, setQuestionResult] = useState<SdkQuestionResult>({});
+  const [isQuestionLoading, setIsQuestionLoading] = useState(true);
 
-    loadQuestion,
-    isQuestionLoading,
-    setQuestionResult,
-  } = useLoadQuestion({ questionId });
+  const { question, queryResults } = result;
+
+  const loadQuestion = useCallback(async () => {
+    setIsQuestionLoading(true);
+
+    try {
+      const result = await dispatch(loadSdkQuestion(questionId));
+      setQuestionResult(result);
+    } catch (e) {
+      console.error(`Failed to get question`, e);
+    } finally {
+      setIsQuestionLoading(false);
+    }
+  }, [dispatch, questionId]);
 
   const globalPlugins = useSdkSelector(getPlugins);
   const plugins = componentPlugins || globalPlugins;
 
-  const mode = useMemo(
-    () => question && getEmbeddingMode(question, plugins || undefined),
-    [plugins, question],
-  );
+  const mode = question && getEmbeddingMode(question, plugins ?? undefined);
 
   async function onQueryChange(query: Lib.Query) {
     if (!question) {
       return;
     }
 
+    // TODO: to remove log
     // eslint-disable-next-line no-console
     console.log("On Query Change:", { question, query });
 
+    setIsQuestionLoading(true);
     const nextQuestion = question.setQuery(query);
-    const result = await dispatch(
-      runQuestionOnQueryChangeSdk(question, nextQuestion),
-    );
-    setQuestionResult(result);
+
+    try {
+      const result = await dispatch(
+        runQuestionOnQueryChangeSdk(question, nextQuestion),
+      );
+
+      setQuestionResult(result);
+    } finally {
+      setIsQuestionLoading(false);
+    }
   }
 
   async function onNavigateToNewCard(params: NavigateToNewCardParams) {
-    const result = await dispatch(runQuestionQueryOnNavigateSdk(params));
+    setIsQuestionLoading(true);
 
-    // eslint-disable-next-line no-console
-    console.log("On Navigate:", { question });
+    try {
+      const result = await dispatch(runQuestionQueryOnNavigateSdk(params));
 
-    if (result) {
-      setQuestionResult(result);
+      // TODO: to remove log
+      // eslint-disable-next-line no-console
+      console.log("On Navigate:", { question });
+
+      if (result) {
+        setQuestionResult(result);
+      }
+    } finally {
+      setIsQuestionLoading(false);
     }
   }
 
