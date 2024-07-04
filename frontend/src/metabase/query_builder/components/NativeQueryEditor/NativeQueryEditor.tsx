@@ -232,6 +232,9 @@ export class NativeQueryEditor extends Component<
     this.loadAceEditor();
     document.addEventListener("keydown", this.handleKeyDown);
     document.addEventListener("contextmenu", this.handleRightClick);
+
+    // hmmm, this could be dangerous
+    this.focus();
   }
 
   handleRightClick = (event: MouseEvent) => {
@@ -433,9 +436,6 @@ export class NativeQueryEditor extends Component<
 
     // reset undo manager to prevent undoing to empty editor
     editor.getSession().getUndoManager().reset();
-
-    // hmmm, this could be dangerous
-    this.focus();
 
     const aceLanguageTools = ace.require("ace/ext/language_tools");
     editor.setOptions({
