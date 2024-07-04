@@ -42,7 +42,11 @@ export const Legend = ({
           width != null
             ? truncateText(
                 originalName,
-                width - percentTextWidth,
+                width -
+                  percentTextWidth -
+                  LEGEND_CIRCLE_SIZE -
+                  LEGEND_CIRCLE_MARGIN_RIGHT -
+                  LEGEND_ITEM_MARGIN_RIGHT,
                 fontSize,
                 fontWeight,
               )
