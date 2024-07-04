@@ -6,9 +6,13 @@ import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/Inter
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   type SdkDashboardDisplayProps,
+  type SdkDashboardEventHandlersProps,
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
-import { NAVIGATE_TO_NEW_CARD, reset } from "metabase/dashboard/actions";
+import {
+  NAVIGATE_TO_NEW_CARD,
+  reset as dashboardReset,
+} from "metabase/dashboard/actions";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
@@ -20,12 +24,13 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import type { QuestionDashboardCard } from "metabase-types/api";
 
-export type InteractiveDashboardProps = SdkDashboardDisplayProps & {
-  questionHeight?: number;
-  questionPlugins?: SdkClickActionPluginsConfig;
+export type InteractiveDashboardProps = SdkDashboardDisplayProps &
+  SdkDashboardEventHandlersProps & {
+    questionHeight?: number;
+    questionPlugins?: SdkClickActionPluginsConfig;
 
-  className?: string;
-};
+    className?: string;
+  };
 
 const InteractiveDashboardInner = ({
   dashboardId,
@@ -36,6 +41,8 @@ const InteractiveDashboardInner = ({
   hiddenParameters = [],
   questionHeight,
   questionPlugins,
+  onLoad,
+  onLoadWithCards,
   className,
 }: InteractiveDashboardProps) => {
   const {
@@ -64,12 +71,12 @@ const InteractiveDashboardInner = ({
   const previousDashboardId = usePrevious(dashboardId);
 
   useUnmount(() => {
-    dispatch(reset()); // reset "isNavigatingBackToDashboard" state
+    dispatch(dashboardReset()); // reset "isNavigatingBackToDashboard" state
   });
 
   useEffect(() => {
     if (dashboardId !== previousDashboardId) {
-      dispatch(reset()); // reset "isNavigatingBackToDashboard" state
+      dispatch(dashboardReset()); // reset "isNavigatingBackToDashboard" state
       setAdhocQuestionUrl(null);
     }
   }, [dashboardId, dispatch, previousDashboardId]);
@@ -137,6 +144,8 @@ const InteractiveDashboardInner = ({
           font={font}
           bordered={displayOptions.bordered}
           navigateToNewCardFromDashboard={handleNavigateToNewCardFromDashboard}
+          onLoad={onLoad}
+          onLoadWithCards={onLoadWithCards}
         />
       )}
     </Box>

@@ -20,6 +20,11 @@ export type SdkDashboardDisplayProps = {
   hiddenParameters?: string[];
 };
 
+export type SdkDashboardEventHandlersProps = {
+  onLoad?: () => void;
+  onLoadWithCards?: () => void;
+};
+
 export const useSdkDashboardParams = ({
   dashboardId,
   withDownloads,

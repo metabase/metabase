@@ -1,6 +1,7 @@
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   type SdkDashboardDisplayProps,
+  type SdkDashboardEventHandlersProps,
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import CS from "metabase/css/core/index.css";
@@ -10,7 +11,8 @@ import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import { Box } from "metabase/ui";
 
-export type StaticDashboardProps = SdkDashboardDisplayProps;
+export type StaticDashboardProps = SdkDashboardDisplayProps &
+  SdkDashboardEventHandlersProps;
 
 export const StaticDashboardInner = ({
   dashboardId,
@@ -19,6 +21,8 @@ export const StaticDashboardInner = ({
   withCardTitle = true,
   withDownloads = true,
   hiddenParameters = [],
+  onLoad,
+  onLoadWithCards,
 }: StaticDashboardProps) => {
   const {
     displayOptions,
@@ -57,6 +61,8 @@ export const StaticDashboardInner = ({
         setRefreshElapsedHook={setRefreshElapsedHook}
         font={font}
         bordered={displayOptions.bordered}
+        onLoad={onLoad}
+        onLoadWithCards={onLoadWithCards}
       />
     </Box>
   );
