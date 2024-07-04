@@ -1680,11 +1680,11 @@ describe("issue 39771", () => {
       .findByText("Created At: Month: Quarter of year")
       .click();
 
-    popover().findByText("by quarter of year").realHover();
-
     popover().then(([$popover]) => {
       const popoverStyle = window.getComputedStyle($popover);
       const popoverZindex = parseInt(popoverStyle.zIndex, 10);
+
+      cy.wrap($popover).findByText("by quarter of year").realHover();
 
       cy.findByTestId("ellipsified-tooltip").within(([$tooltip]) => {
         cy.findByText("by quarter of year").should("be.visible");
