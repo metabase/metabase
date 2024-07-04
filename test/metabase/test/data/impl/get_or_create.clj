@@ -223,7 +223,10 @@
       ;; Add foreign key relationships to app db as per dataset definition. _Only_ in case dbms in use does not support
       ;; :metadata/key-constraints feature. In case it does, sync should be able to infer foreign keys. This is
       ;; required eg. for testing implicit joins.
-      (when-not (driver/database-supports? driver :metadata/key-constraints nil)
+      (when (or (not (driver/database-supports? driver :metadata/key-constraints nil))
+                ;; Foreign keys inference seems broken for :sqlite. Add foreign keys to Metabase test instance manually
+                ;; until it is fixed.
+                (#{:sqlite} driver))
         (add-foreign-key-relationships! database-definition db))
       ;; make sure we're returing an up-to-date copy of the DB
       (t2/select-one Database :id (u/the-id db)))
