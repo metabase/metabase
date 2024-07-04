@@ -19,6 +19,7 @@ import {
   dashboardCards,
   queryBuilderMain,
   openNotebook,
+  getNotebookStep,
 } from "e2e/support/helpers";
 import { PIVOT_TABLE_BODY_LABEL } from "metabase/visualizations/visualizations/PivotTable/constants";
 
@@ -1383,7 +1384,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       .and("contain", "Grand totals");
 
     openNotebook();
-    cy.findByTestId("step-summarize-0-0")
+    getNotebookStep("summarize")
       .should("be.visible")
       .and("contain", "Sum of Subtotal")
       .and("contain", "Sum of Total");
