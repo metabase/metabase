@@ -745,8 +745,6 @@ describe("issue 25885", () => {
     createQuestion(mbqlModelDetails).then(({ body: card }) =>
       visitModel(card.id),
     );
-
-    cy.log("set metadata");
     openQuestionActions();
     popover().findByText("Edit metadata").click();
     setColumnName("ID", "ID1");

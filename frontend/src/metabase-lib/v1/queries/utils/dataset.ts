@@ -20,48 +20,59 @@ export function getColumnSettingKey(
   return key ?? getColumnKey({ name, field_ref: normalize(fieldRef) });
 }
 
+function findIndexes<T1, T2>(
+  items1: T1[],
+  items2: T2[],
+  getItem1Key: (item: T1) => string,
+  getItem1Name: (item: T1) => string,
+  getItem2Key: (item: T2) => string,
+  getItem2Name: (item: T2) => string,
+) {
+  const indexesByKey = new Map<string, number[]>();
+  const indexesByName = new Map<string, number>();
+  items1.forEach((item, index) => {
+    const key = getItem1Key(item);
+    const indexes = indexesByKey.get(key) ?? [];
+    indexesByKey.set(key, [...indexes, index]);
+    indexesByName.set(getItem1Name(item), index);
+  });
+  return items2.map(item => {
+    const key = getItem2Key(item);
+    const name = getItem2Name(item);
+    const indexByKey = indexesByKey.get(key) ?? [];
+    const indexByName = indexesByName.get(getItem2Name(item));
+    return (
+      indexByKey.find(index => getItem1Name(items1[index]) === name) ??
+      indexByName ??
+      -1
+    );
+  });
+}
+
 export function findColumnIndexesForColumnSettings(
   columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
 ) {
-  const indexesByKey = new Map<string, number[]>();
-  columns.forEach((column, index) => {
-    const key = getColumnKey(column, true);
-    const indexes = indexesByKey.get(key) ?? [];
-    indexesByKey.set(key, [...indexes, index]);
-  });
-  return columnSettings.map(columnSetting => {
-    const key = getColumnSettingKey(columnSetting, true);
-    const indexes = indexesByKey.get(key);
-    if (!indexes) {
-      return -1;
-    }
-    return (
-      indexes.find(index => columns[index].name === columnSetting.name) ??
-      indexes[0]
-    );
-  });
+  return findIndexes(
+    columns,
+    columnSettings,
+    column => getColumnKey(column, true),
+    column => column.name,
+    columnSetting => getColumnSettingKey(columnSetting, true),
+    columnSetting => columnSetting.name,
+  );
 }
 
 export function findColumnSettingIndexesForColumns(
   columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
 ) {
-  const indexesByKey = new Map<string, number[]>();
-  columnSettings.forEach((columnSetting, index) => {
-    const key = getColumnSettingKey(columnSetting, true);
-    const indexes = indexesByKey.get(key) ?? [];
-    indexesByKey.set(key, [...indexes, index]);
-  });
-  return columns.map(column => {
-    const key = getColumnKey(column, true);
-    const indexes = indexesByKey.get(key);
-    if (!indexes) {
-      return -1;
-    }
-    return (
-      indexes.find(index => columnSettings[index].name === column.name) ??
-      indexes[0]
-    );
-  });
+  return findIndexes(
+    columnSettings,
+    columns,
+    columnSetting => getColumnSettingKey(columnSetting, true),
+    columnSetting => columnSetting.name,
+    column => getColumnKey(column, true),
+    column => column.name,
+  );
 }
