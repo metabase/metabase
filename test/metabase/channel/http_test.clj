@@ -105,3 +105,5 @@
                      :query-params {:token "123"
                                     :page 1}})
              (first @*requests*))))))
+
+(deftest errors-test)

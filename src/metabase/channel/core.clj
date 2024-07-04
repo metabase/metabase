@@ -5,7 +5,8 @@
   (:require
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli.fn :as mu.fn]))
 
 (set! *warn-on-reflection* true)
 
@@ -13,14 +14,17 @@
 ;;                                      Channels methods                                           ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defmulti can-connect?
+(defmulti can-connect?*
   "Check whether we can connect to a `channel` with `detail`.
 
-  Returns `true` if we can connect to the channel.
+  Returns `true` if can connect to the channel, otherwise return faslsy or throw an appriopriate exception.
+  In case of failure, to provide a field-specific error message on UI, return or throw an :errors map where key is the
+  field name and value is the error message.
+
   Otherwise returns false or an errors map in which the key is the details key and value is the error message.
   E.g:
-    (can-connect? :slack {:token \"invalid\"})
-    ;; => {:errors {:token \"Invalid token\"}}"
+    (can-connect? :slack {:email \"name\"})
+    ;; => {:errors {:email \"Invalid email\"}}"
   {:added    "0.51.0"
    :arglists '([channel-type details])}
   (fn [channel-type _details]
@@ -46,6 +50,16 @@
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                             Utils                                               ;;
 ;; ------------------------------------------------------------------------------------------------;;
+
+(defn can-connect?
+  [& args]
+  (try
+    (apply can-connect?* args)
+    (catch Exception e
+      (if (= ::mu.fn/invalid-input (-> e ex-data :type))
+        (throw (ex-info (ex-message e)
+                        {:errors (:humanized (ex-data e))}))
+        (throw e)))))
 
 (defn- find-and-load-metabase-channels!
   "Load namespaces that start with `metabase.channel."
