@@ -34,6 +34,8 @@ You can set the following types of permissions on a database, schema, or table:
 - [Manage table metadata](#manage-table-metadata-permissions)
 - [Manage database](#manage-database-permissions)
 
+> If you're upgrading from a version below Metabase 50, your permission levels may look different, but the data access hasn't changed. See [what's changed with data permissions and why](./no-self-service-deprecation.md).
+
 ## View data permissions
 
 The **View data** permission determines what data people can see. Permission levels include:

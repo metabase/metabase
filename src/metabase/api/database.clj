@@ -176,7 +176,7 @@
                                            [:not= :result_metadata nil]
                                            [:= :archived false]
                                            ;; always return metrics for now
-                                                  [:in :type [(u/qualified-name card-type) "metric"]]
+                                           [:in :type [(u/qualified-name card-type) "metric"]]
                                            [:in :database_id ids-of-dbs-that-support-source-queries]
                                            (collection/visible-collection-ids->honeysql-filter-clause
                                             (collection/permissions-set->visible-collection-ids
@@ -1085,8 +1085,9 @@
 
 ;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
 
-(defenterprise current-user-can-read-schema?
-  "OSS implementation. Returns a boolean whether the current user can write the given field."
+(defenterprise current-user-can-manage-schema-metadata?
+  "Returns a boolean whether the current user has permission to edit table metadata for any tables in the schema.
+  On OSS, this is only available to admins."
   metabase-enterprise.advanced-permissions.common
   [_db-id _schema-name]
   (mi/superuser?))
@@ -1096,15 +1097,12 @@
   at least some of its tables?)"
   [database-id schema-name]
   (or
-   (and (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id*
-                                                                 :perms/view-data
-                                                                 database-id))
-        (contains? #{:query-builder :query-builder-and-native}
-                   (data-perms/schema-permission-for-user api/*current-user-id*
-                                                          :perms/create-queries
-                                                          database-id
-                                                          schema-name)))
-   (current-user-can-read-schema? database-id schema-name)))
+   (contains? #{:query-builder :query-builder-and-native}
+              (data-perms/schema-permission-for-user api/*current-user-id*
+                                                     :perms/create-queries
+                                                     database-id
+                                                     schema-name))
+   (current-user-can-manage-schema-metadata? database-id schema-name)))
 
 (api/defendpoint GET "/:id/syncable_schemas"
   "Returns a list of all syncable schemas found for the database `id`."
