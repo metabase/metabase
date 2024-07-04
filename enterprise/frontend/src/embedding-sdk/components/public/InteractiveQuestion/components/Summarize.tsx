@@ -27,7 +27,10 @@ const SummarizeInner = ({
 }: {
   question: Question;
 } & SummarizeProps) => {
-  const { onQueryChange } = useInteractiveQuestionContext();
+  const { onQuestionChange } = useInteractiveQuestionContext();
+
+  const onQueryChange = (query: Lib.Query) =>
+    onQuestionChange(question.setQuery(query));
 
   // save initial question in case we close without making changes
   const initialQuestion = useRef(question.query());

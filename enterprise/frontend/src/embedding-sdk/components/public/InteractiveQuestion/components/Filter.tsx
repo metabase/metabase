@@ -5,6 +5,7 @@ import CS from "metabase/css/core/index.css";
 import { FilterContent } from "metabase/querying/components/FilterContent";
 import { useFilterContent } from "metabase/querying/components/FilterModal";
 import { Box, Group, Stack } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 type FilterProps = {
@@ -23,7 +24,10 @@ const FilterInner = ({
 }: {
   question: Question;
 } & FilterProps) => {
-  const { onQueryChange } = useInteractiveQuestionContext();
+  const { onQuestionChange } = useInteractiveQuestionContext();
+
+  const onQueryChange = (query: Lib.Query) =>
+    onQuestionChange(question.setQuery(query));
 
   const {
     query,

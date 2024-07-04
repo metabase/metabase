@@ -1,12 +1,8 @@
 import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
-import { useDispatch } from "metabase/lib/redux";
-import { updateQuestion } from "metabase/query_builder/actions";
 import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components";
 
 export const FilterBar = () => {
-  const dispatch = useDispatch();
-
-  const { question } = useInteractiveQuestionContext();
+  const { question, onQuestionChange } = useInteractiveQuestionContext();
 
   const shouldRender =
     question &&
@@ -26,7 +22,7 @@ export const FilterBar = () => {
     <QuestionFiltersHeader
       expanded
       question={question}
-      updateQuestion={(...args) => dispatch(updateQuestion(...args))}
+      updateQuestion={question => onQuestionChange(question)}
     />
   );
 };

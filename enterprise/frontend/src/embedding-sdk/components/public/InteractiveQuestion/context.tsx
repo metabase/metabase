@@ -22,7 +22,7 @@ import type {
 import { useDispatch } from "metabase/lib/redux";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import type * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
 interface InteractiveQuestionContextType extends SdkQuestionResult {
@@ -32,7 +32,7 @@ interface InteractiveQuestionContextType extends SdkQuestionResult {
   resetQuestion: () => void;
   onReset?: () => void;
   onNavigateBack?: () => void;
-  onQueryChange: (query: Lib.Query) => void;
+  onQuestionChange: (question: Question) => void;
   onNavigateToNewCard: (params: NavigateToNewCardParams) => void;
   card?: Card;
 }
@@ -86,17 +86,16 @@ export const InteractiveQuestionProvider = ({
 
   const mode = question && getEmbeddingMode(question, plugins ?? undefined);
 
-  async function onQueryChange(query: Lib.Query) {
+  async function onQuestionChange(nextQuestion: Question) {
     if (!question) {
       return;
     }
 
     // TODO: to remove log
     // eslint-disable-next-line no-console
-    console.log("On Query Change:", { question, query });
+    console.log("On Question Change:", { question });
 
     setIsQuestionLoading(true);
-    const nextQuestion = question.setQuery(query);
 
     try {
       const result = await dispatch(
@@ -132,7 +131,7 @@ export const InteractiveQuestionProvider = ({
     resetQuestion: loadQuestion,
     onReset: onReset || loadQuestion,
     onNavigateBack,
-    onQueryChange,
+    onQuestionChange,
     onNavigateToNewCard,
     mode,
     plugins,
