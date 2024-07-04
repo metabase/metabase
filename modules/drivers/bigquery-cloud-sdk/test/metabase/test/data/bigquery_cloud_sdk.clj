@@ -4,12 +4,10 @@
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -37,20 +35,6 @@
                        (t/minus (t/instant) (t/hours 2)))
         (reset! timestamp* (System/currentTimeMillis)))
       @timestamp*)))
-
-;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins are still
-;; allowed, which puts us in a weird position, however; people can manually specifiy "foreign key" relationships in
-;; admin and everything should work correctly. Since we can't infer any "FK" relationships during sync our normal FK
-;; tests are not appropriate for BigQuery, so they're disabled for the time being.
-;;
-;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK
-;; relationships for FK tables
-(defmethod driver/database-supports? [:bigquery-cloud-sdk :foreign-keys]
-  [_driver _feature _db]
-  (if config/is-test?
-    qp.test-util/*enable-fk-support-for-disabled-drivers-in-tests*
-    true))
-
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 

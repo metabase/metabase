@@ -477,7 +477,6 @@
 (doseq [[feature supported?] {:convert-timezone        true
                               :datetime-diff           true
                               :expressions             true
-                              :foreign-keys            true
                               :now                     true
                               :percentile-aggregations true
                               ;; BigQuery uses timezone operators and arguments on calls like extract() and
