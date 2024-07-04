@@ -33,6 +33,13 @@ import {
   getCurrentTabDashboardCards,
 } from "../utils";
 
+import {
+  SET_DOCUMENT_TITLE,
+  markCardAsSlow,
+  setDocumentTitle,
+  setShowLoadingCompleteFavicon,
+} from "./data-fetching-typed";
+
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
 export const CANCEL_FETCH_DASHBOARD_CARD_DATA =
@@ -48,18 +55,8 @@ export const CANCEL_FETCH_CARD_DATA =
 export const MARK_CARD_AS_SLOW = "metabase/dashboard/MARK_CARD_AS_SLOW";
 export const CLEAR_CARD_DATA = "metabase/dashboard/CLEAR_CARD_DATA";
 
-export const SET_SHOW_LOADING_COMPLETE_FAVICON =
-  "metabase/dashboard/SET_SHOW_LOADING_COMPLETE_FAVICON";
-
 export const SET_LOADING_DASHCARDS_COMPLETE =
   "metabase/dashboard/SET_LOADING_DASHCARDS_COMPLETE";
-
-export const SET_DOCUMENT_TITLE = "metabase/dashboard/SET_DOCUMENT_TITLE";
-const setDocumentTitle = createAction(SET_DOCUMENT_TITLE);
-
-export const setShowLoadingCompleteFavicon = createAction(
-  SET_SHOW_LOADING_COMPLETE_FAVICON,
-);
 
 // real dashcard ids are integers >= 1
 function isNewDashcard(dashcard) {
@@ -418,11 +415,6 @@ export const clearCardData = createAction(
   CLEAR_CARD_DATA,
   (cardId, dashcardId) => ({ cardId, dashcardId }),
 );
-
-export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, card => ({
-  id: card.id,
-  result: true,
-}));
 
 function getDatasetQueryParams(datasetQuery = {}) {
   const { type, query, native, parameters = [] } = datasetQuery;
