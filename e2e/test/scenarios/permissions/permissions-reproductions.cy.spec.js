@@ -26,6 +26,8 @@ import {
   filterWidget,
 } from "e2e/support/helpers";
 
+import { dismissSplitPermsModal } from "../../../support/helpers/e2e-permissions-helpers";
+
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID, PRODUCTS } =
   SAMPLE_DATABASE;
@@ -182,6 +184,7 @@ describeEE("issue 17763", () => {
 
   it('should be able to edit tables permissions in granular view after "block" permissions (metabase#17763)', () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
+    dismissSplitPermsModal();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Blocked").click();
@@ -220,6 +223,7 @@ describe.skip("issue 17777", () => {
 
   it("should still be able to set permissions on individual tables, even though they are hidden in data model (metabase#17777)", () => {
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+    dismissSplitPermsModal();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Permissions for the All Users group");
@@ -299,6 +303,7 @@ describeEE("issue 20436", () => {
 
   it("should display correct permissions on the database level after changes on the table level (metabase#20436)", () => {
     cy.visit(url);
+    dismissSplitPermsModal();
 
     cy.findByTestId("permission-table").within(() => {
       cy.findByText("Query builder only").click();

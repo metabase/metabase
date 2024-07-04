@@ -23,7 +23,6 @@ import CS from "metabase/css/core/index.css";
 import fitViewport from "metabase/hoc/FitViewPort";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
-import { getSetting } from "metabase/selectors/settings";
 import type { IconName } from "metabase/ui";
 import {
   Modal as NewModal,
@@ -60,6 +59,7 @@ type PermissionsPageLayoutProps = {
   navigateToTab: (tab: string) => void;
   helpContent?: ReactNode;
   toolbarRightContent?: ReactNode;
+  showSplitPermsModal?: boolean;
 };
 
 const CloseSidebarButtonWithDefault = ({
@@ -80,12 +80,11 @@ function PermissionsPageLayout({
   route,
   toolbarRightContent,
   helpContent,
+  showSplitPermsModal = false,
 }: PermissionsPageLayoutProps) {
   const saveError = useSelector(state => state.admin.permissions.saveError);
   const showRefreshModal = useSelector(showRevisionChangedModal);
-  const showLegacyPermissionModal = useSelector(state =>
-    getSetting(state, "show-updated-permission-modal"),
-  );
+
   const isHelpReferenceOpen = useSelector(getIsHelpReferenceOpen);
   const dispatch = useDispatch();
 
@@ -172,7 +171,7 @@ function PermissionsPageLayout({
         </Group>
       </NewModal>
       <LegacyPermissionsModal
-        isOpen={showLegacyPermissionModal}
+        isOpen={showSplitPermsModal}
         onClose={handleDimissSplitPermsModal}
       />
     </PermissionPageRoot>
