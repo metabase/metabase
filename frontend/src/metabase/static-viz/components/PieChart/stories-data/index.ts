@@ -18,6 +18,7 @@ import missingCurrencyFormatting2 from "./missing-currency-formatting-2.json";
 import missingCurrencyFormatting3 from "./missing-currency-formatting-3.json";
 import missingCurrencyFormatting44086 from "./missing-currency-formatting-44086.json";
 import mixedPostiiveNegative from "./mixed-positive-negative.json";
+import noSingleColumnLegend45149 from "./no-single-column-legend-45149.json";
 import nullDimension from "./null-dimension.json";
 import numericDimension from "./numeric-dimension.json";
 import percentagesOnChartBooleanDimensionCrashes44085 from "./percentages-on-chart-boolean-dimension-crashes-44085.json";
@@ -66,4 +67,5 @@ export const data = {
   invalidDimensionSetting44085,
   percentagesOnChartBooleanDimensionCrashes44085,
   allZeroMetric44847,
+  noSingleColumnLegend45149,
 };

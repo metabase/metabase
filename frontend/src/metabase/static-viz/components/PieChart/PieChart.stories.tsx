@@ -265,3 +265,10 @@ AllZeroMetric44847.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const NoSingleColumnLegend45149 = Template.bind({});
+NoSingleColumnLegend45149.args = {
+  rawSeries: data.noSingleColumnLegend45149 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
