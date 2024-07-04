@@ -19,10 +19,10 @@ import {
   Notebook,
   NotebookButton,
   QuestionVisualization,
-} from "embedding-sdk/components/public/InteractiveQuestion";
+} from "embedding-sdk/components/public/InteractiveQuestion/components";
 import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
-import { Box, Button, Flex, Group, Stack } from "metabase/ui";
+import { Box, Flex, Group, Stack } from "metabase/ui";
 
 import { useInteractiveQuestionData } from "../public/InteractiveQuestion/hooks";
 
@@ -47,12 +47,7 @@ const ResultView = ({
   };
 
   if (questionView === "filter") {
-    return (
-      <Stack>
-        <Button onClick={returnToVisualization}>{t`Close`}</Button>
-        <Filter onClose={returnToVisualization} />
-      </Stack>
-    );
+    return <Filter onClose={returnToVisualization} />;
   }
 
   if (questionView === "summarize") {
@@ -80,26 +75,26 @@ export const InteractiveQuestionResult = ({
   const { defaultHeight, isQueryRunning, queryResults, question } =
     useInteractiveQuestionData();
 
+  let content;
+
   if (isQuestionLoading || isQueryRunning) {
-    return <SdkLoader />;
-  }
-
-  if (!question || !queryResults) {
-    return <SdkError message={t`Question not found`} />;
-  }
-
-  return (
-    <Box
-      className={cx(CS.flexFull, CS.fullWidth)}
-      h={height ?? defaultHeight}
-      bg="var(--mb-color-bg-question)"
-    >
+    content = <SdkLoader />;
+  } else if (!question || !queryResults) {
+    content = <SdkError message={t`Question not found`} />;
+  } else {
+    content = (
       <Stack h="100%">
         <Flex direction="row" gap="md" px="md" align="center">
           <BackButton />
           {withTitle && (customTitle ?? <Title />)}
           {withResetButton && <QuestionResetButton />}
-          <FilterButton onClick={() => setQuestionView("filter")} />
+          <FilterButton
+            onClick={() =>
+              setQuestionView(
+                questionView === "filter" ? "visualization" : "filter",
+              )
+            }
+          />
           <SummarizeButton
             isOpen={questionView === "summarize"}
             onOpen={() => setQuestionView("summarize")}
@@ -124,6 +119,16 @@ export const InteractiveQuestionResult = ({
           />
         </Group>
       </Stack>
+    );
+  }
+
+  return (
+    <Box
+      className={cx(CS.flexFull, CS.fullWidth)}
+      h={height ?? defaultHeight}
+      bg="var(--mb-color-bg-question)"
+    >
+      {content}
     </Box>
   );
 };

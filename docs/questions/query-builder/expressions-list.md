@@ -9,6 +9,7 @@ redirect_from:
 For an introduction to expressions, check out the [overview of custom expressions][expressions].
 
 - [Aggregations](#aggregations)
+
   - [Average](#average)
   - [Count](#count)
   - [CountIf](./expressions/countif.md)
@@ -26,7 +27,9 @@ For an introduction to expressions, check out the [overview of custom expression
   - [Variance](#variance)
 
 - Functions
+
   - [Logical functions](#logical-functions)
+
     - [between](#between)
     - [case](./expressions/case.md)
     - [coalesce](./expressions/coalesce.md)
@@ -34,6 +37,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [notnull](#notnull)
 
   - [Math functions](#math-functions)
+
     - [abs](#abs)
     - [ceil](#ceil)
     - [exp](#exp)
@@ -44,6 +48,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [sqrt](#sqrt)
 
   - [String functions](#string-functions)
+
     - [concat](./expressions/concat.md)
     - [contains](#contains)
     - [doesNotContain](#doesnotcontain)
@@ -62,6 +67,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [upper](#upper)
 
   - [Date functions](#date-functions)
+
     - [convertTimezone](./expressions/converttimezone.md)
     - [datetimeAdd](./expressions/datetimeadd.md)
     - [datetimeDiff](./expressions/datetimediff.md)
@@ -228,6 +234,7 @@ Related: [StandardDeviation](#standarddeviation), [Average](#average).
 Function expressions apply to each individual value. They can be used to alter or filter values in a column, or create new, custom columns.
 
 ## Logical functions
+
 Logical functions determine if a condition is satisfied or determine what value to return based on a condition.
 
 ### between
@@ -277,6 +284,7 @@ Example: `notnull([Tax])` would return true if there is a value present in the c
 Related: [isnull](#isnull), [notempty](#notempty)
 
 ## Math functions
+
 Math functions implement common mathematical operations.
 
 ### abs
@@ -360,6 +368,7 @@ Databases that don't support `sqrt`: SQLite.
 Related: [Power](#power).
 
 ## String functions
+
 String functions manipulate or validate string data.
 
 ### [concat](./expressions/concat.md)
@@ -400,23 +409,22 @@ Syntax: `doesNotContain(string1, string2)` for case-sensitive match.
 
 Example: `doesNotContain([Status], "Class")`. If `Status` were "Classified", the expression would return `false`.
 
-Related: [contains](#contains),  [regexextract](#regexextract).
+Related: [contains](#contains), [regexextract](#regexextract).
 
 ### endsWith
 
 Returns true if the end of the text matches the comparison text.
 
- Performs case-sensitive match by default.
+Performs case-sensitive match by default.
 You can pass an optional parameter `"case-insensitive"` to perform a case-insensitive match.
 
 Syntax: `endsWith(text, comparison)` for case-sensitive match.
 
- `endsWith(text, comparison, "case-insensitive")` for case-insensitive match.
+`endsWith(text, comparison, "case-insensitive")` for case-insensitive match.
 
 Example: `endsWith([Appetite], "hungry")`
 
 Related: [startsWith](#startswith), [contains](#contains), [doesNotContain](#doesnotcontain).
-
 
 ### [isempty](./expressions/isempty.md)
 
@@ -464,9 +472,7 @@ Syntax: `notempty(column)`
 
 Example: `notempty([Feedback])` would return true if `Feedback` contains a value that isn't the empty string (`''`).
 
-
 Related: [isempty](#isempty), [isnull](#isnull), [notnull](#notnull)
-
 
 ### [regexextract](./expressions/regexextract.md)
 
@@ -505,14 +511,13 @@ You can pass an optional parameter `"case-insensitive"` to perform a case-insens
 
 Syntax: `startsWith(text, comparison)` for case-sensitive match.
 
- `startsWith(text, comparison, "case-insensitive")` for case-insensitive match.
+`startsWith(text, comparison, "case-insensitive")` for case-insensitive match.
 
 Example: `startsWith([Course Name], "Computer Science")` would return true for course names that began with "Computer Science", like "Computer Science 101: An introduction".
 
- It would return false for "Computer **s**cience 201: Data structures" because the case of "science" does not match the case in the comparison text.
+It would return false for "Computer **s**cience 201: Data structures" because the case of "science" does not match the case in the comparison text.
 
 `startsWith([Course Name], "Computer Science", "case-insensitive")` would return true for both "Computer Science 101: An introduction" and "Computer science 201: Data structures".
-
 
 Related: [endsWith](#endswith), [contains](#contains), [doesNotContain](#doesnotcontain).
 
@@ -543,6 +548,7 @@ Syntax: `upper(text)`.
 Example: `upper([Status])`. If status were "hyper", `upper("hyper")` would return "HYPER".
 
 ## Date functions
+
 Date functions manipulate, extract, or create date and time values.
 
 ### [convertTimezone](./expressions/converttimezone.md)
@@ -736,13 +742,14 @@ See [Offset](./expressions/offset.md).
 
 ## Limitations
 
-- [Aggregation expressions](#aggregations)  can only be used in the **Summarize** section of the query builder.
+- [Aggregation expressions](#aggregations) can only be used in the **Summarize** section of the query builder.
 - Functions that return a boolean value, like [isempty](#isempty) or [contains](#contains), cannot be used to create a custom column. To create a custom column based on one of these functions, you must combine them with another function, like `case`.
 
-For example, to create a new custom column that contains `true` if `[Title]` contain `'Wallet'`, you can use the custom expression
-```
-case(contains([Title], 'Wallet'), true, false)
-```
+  For example, to create a new custom column that contains `true` if `[Title]` contain `'Wallet'`, you can use the custom expression
+
+  ```
+  case(contains([Title], 'Wallet'), true, false)
+  ```
 
 ### Database limitations
 

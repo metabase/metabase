@@ -46,7 +46,7 @@ interface DashCardVisualizationProps {
   dashcard: DashboardCard;
   series: Series;
   mode?: QueryClickActionsMode | Mode;
-  href: string | undefined;
+  getHref?: () => string | undefined;
 
   gridSize: {
     width: number;
@@ -94,7 +94,7 @@ export function DashCardVisualization({
   dashboard,
   series,
   mode,
-  href,
+  getHref,
   gridSize,
   gridItemWidth,
   totalNumGridCols,
@@ -246,7 +246,7 @@ export function DashCardVisualization({
       rawSeries={series}
       metadata={metadata}
       mode={mode}
-      href={href}
+      getHref={getHref}
       gridSize={gridSize}
       totalNumGridCols={totalNumGridCols}
       headerIcon={headerIcon}
