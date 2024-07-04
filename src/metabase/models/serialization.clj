@@ -338,7 +338,14 @@
 (defn- log-and-extract-one
   [model opts instance]
   (log/infof "Extracting %s %s" model (:id instance))
-  (extract-one model opts instance))
+  (try
+    (extract-one model opts instance)
+    (catch Exception e
+      (throw (ex-info (format "Exception extracting %s %s" model (:id instance))
+                      {:model     model
+                       :id        (:id instance)
+                       :entity_id (:entity_id instance)}
+                      e)))))
 
 (defmethod extract-all :default [model opts]
   (eduction (map (partial log-and-extract-one model opts))
