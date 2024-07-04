@@ -20,7 +20,6 @@
                  :binning
                  :expression-aggregations
                  :expressions
-                 :foreign-keys
                  :native-parameters
                  :nested-queries
                  :percentile-aggregations
