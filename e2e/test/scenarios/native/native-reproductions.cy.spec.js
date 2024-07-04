@@ -1,4 +1,4 @@
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
@@ -13,11 +13,12 @@ import {
   popover,
   addPostgresDatabase,
   focusNativeEditor,
+  createQuestion,
 } from "e2e/support/helpers";
 
 import { runQuery } from "../native-filters/helpers/e2e-sql-filter-helpers";
 
-const { PRODUCTS } = SAMPLE_DATABASE;
+const { PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("issue 12439", () => {
   const nativeQuery = `
@@ -706,5 +707,55 @@ describe("issue 35785", () => {
     cy.wait("@getSearchResults");
 
     cy.url().should("include", "/question");
+  });
+});
+
+describe("issue 22991", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show 'no permissions' screen when question with no access is referenced (metabase#22991)", () => {
+    const questionDetails = {
+      name: "question 22991",
+      query: {
+        "source-table": ORDERS_ID,
+        limit: 5,
+      },
+    };
+
+    cy.createCollection({ name: "Restricted Collection" }).then(
+      ({ body: restrictedCollection }) => {
+        cy.updateCollectionGraph({
+          [USER_GROUPS.COLLECTION_GROUP]: {
+            [restrictedCollection.id]: "none",
+          },
+        });
+
+        createQuestion(
+          {
+            ...questionDetails,
+            collection_id: restrictedCollection.id,
+          },
+          { wrapId: true },
+        );
+      },
+    );
+
+    cy.signOut();
+    cy.signInAsNormalUser();
+
+    const editor = openNativeEditor();
+
+    cy.get("@questionId").then(questionId => {
+      // can't use cy.type because it does not simulate the bug
+      editor.type(`select * from {{#${questionId}`);
+    });
+
+    cy.get("main").should(
+      "not.contain",
+      "Sorry, you don’t have permission to see that",
+    );
   });
 });

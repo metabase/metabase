@@ -16,6 +16,7 @@
    [metabase.events :as events]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
+   [metabase.lib.util :as lib.util]
    [metabase.models :refer [Database]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
@@ -264,10 +265,17 @@
   [driver db]
   (driver.u/supports? driver :upload-with-auto-pk db))
 
+(defn- unique-alias-fn [driver]
+  (let [max-length (max-column-bytes driver)]
+    (fn [base suffix]
+      (as-> (str base "_" suffix) %
+            (driver/escape-alias driver %)
+            (lib.util/truncate-alias % max-length)))))
+
 (defn- derive-column-names [driver header]
-  (let [normalized-header (for [h header] (normalize-column-name driver h))
-        unique-header     (mbql.u/uniquify-names normalized-header)]
-    (map keyword unique-header)))
+  (let [generator-fn (mbql.u/unique-name-generator :unique-alias-fn (unique-alias-fn driver))]
+    (mapv (comp keyword generator-fn)
+          (for [h header] (normalize-column-name driver h)))))
 
 (defn- create-from-csv!
   "Creates a table from a CSV file. If the table already exists, it will throw an error.

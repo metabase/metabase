@@ -19,7 +19,9 @@
   (fn [query rff]
     (letfn [(rff* [metadata]
               {:pre [(map? metadata)]}
-              (rff (assoc metadata :native_form ((some-fn :native :qp/compiled) query))))]
+              (rff (cond-> metadata
+                     (not (:native_form metadata))
+                     (assoc :native_form ((some-fn :qp/compiled-inline :qp/compiled :native) query)))))]
       (qp query rff*))))
 
 (defn- add-preprocessed-query-to-result-metadata-for-userland-query [qp]

@@ -28,6 +28,8 @@ import {
   visitModel,
   visitQuestion,
   visualize,
+  openOrdersTable,
+  queryBuilderMain,
 } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 
@@ -393,6 +395,29 @@ describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
   });
 });
 
+describe("issue 34350", { tags: "@external" }, () => {
+  beforeEach(() => {
+    restore("postgres-12");
+    cy.signInAsAdmin();
+  });
+
+  it("works after changing question's source table to a one from a different database (metabase#34350)", () => {
+    openOrdersTable({ mode: "notebook" });
+    openDataSelector();
+    entityPickerModal().within(() => {
+      cy.findByText("QA Postgres12").click();
+      cy.findByText("Orders").click();
+    });
+
+    visualize();
+
+    queryBuilderMain()
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+    cy.findAllByTestId("cell-data").should("contain", "37.65");
+  });
+});
+
 describe("issue 28106", () => {
   beforeEach(() => {
     const dialect = "postgres";
@@ -417,22 +442,22 @@ describe("issue 28106", () => {
           .findByTestId("scroll-container")
           .as("schemasList");
 
-        // the list is virtualized and the scrollbar height changes during scrolling (metabase#44966)
-        // that's why we need to scroll twice and wait
-        cy.get("@schemasList").scrollTo("bottom");
-        cy.wait(100);
-        cy.get("@schemasList").scrollTo("bottom");
+        // The list is virtualized and the scrollbar height changes during scrolling (metabase#44966)
+        // that's why we need to scroll and wait multiple times.
+        // Test is flaky because of this - that's why there are 3 attempts.
+        for (let i = 0; i < 3; ++i) {
+          cy.get("@schemasList").scrollTo("bottom");
+          cy.wait(100);
+        }
 
         // assert scrolling worked and the last item is visible
         entityPickerModalItem(1, "Public").should("be.visible");
 
         // simulate scrolling up using mouse wheel 3 times
-        cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
-        cy.wait(100);
-        cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
-        cy.wait(100);
-        cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
-        cy.wait(100);
+        for (let i = 0; i < 3; ++i) {
+          cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
+          cy.wait(100);
+        }
 
         // assert first item does not exist - this means the list has not been scrolled to the top
         cy.findByText("Domestic").should("not.exist");
