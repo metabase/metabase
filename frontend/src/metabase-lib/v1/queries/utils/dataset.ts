@@ -40,7 +40,7 @@ function findColumnIndexes<T1, T2>(
   // Column keys are computed based on field refs and can "survive" certain
   // query updates where the column name normally changes. E.g. when there are
   // multiple implicitly joinable fields added with the same name, they would
-  // names like `ID`, `ID_2`, `ID_3`, and removing `ID_2` from the query
+  // have names like `ID`, `ID_2`, `ID_3`, and removing `ID_2` from the query
   // will cause `ID_3` to become `ID_2`; but the key won't change. That's why
   // column keys take priority over name matches.
   const matchedIndexes = Array(columns2.length).fill(-1);
@@ -52,11 +52,11 @@ function findColumnIndexes<T1, T2>(
     }
   });
 
-  // In some cases match by keys will fail. Self joins with duplicate columns
+  // In some cases matching by keys will fail. Self joins with duplicate columns
   // will have the same column key but different column names. Also adding a
   // query stage can cause the QP to switch from integer-based to string-based
-  // field refs, making all column keys become different. For these cases we
-  // match by column name as a last resort.
+  // field refs, making all column keys different. For these cases we match by
+  // column name as a last resort.
   const unavailableIndexes = new Set(matchedIndexes);
   columns2.forEach((column, index) => {
     if (matchedIndexes[index] < 0) {
