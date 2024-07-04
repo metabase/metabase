@@ -23,10 +23,8 @@ export const loadSdkQuestion =
     await dispatch(loadMetadataForCard(card));
     const metadata = getMetadata(getState());
 
-    const { question, queryResults } = await runQuestionQuerySdk({
+    return runQuestionQuerySdk({
       question: new Question(card, metadata),
       originalQuestion: originalCard && new Question(originalCard, metadata),
     });
-
-    return { question, queryResults };
   };

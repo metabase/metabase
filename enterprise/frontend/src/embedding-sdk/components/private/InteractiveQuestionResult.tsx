@@ -69,9 +69,10 @@ export const InteractiveQuestionResult = ({
   const [questionView, setQuestionView] =
     useState<QuestionView>("visualization");
 
-  const { card, question, queryResults, isQuestionLoading } =
+  const { question, queryResults, isQuestionLoading } =
     useInteractiveQuestionContext();
 
+  const card = question?.card();
   const defaultHeight = card ? getDefaultVizHeight(card.display) : undefined;
 
   let content;

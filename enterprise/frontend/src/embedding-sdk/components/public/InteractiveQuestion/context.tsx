@@ -23,7 +23,6 @@ import { useDispatch } from "metabase/lib/redux";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
 
 interface InteractiveQuestionContextType extends SdkQuestionResult {
   plugins: SdkPluginsConfig | null;
@@ -34,7 +33,6 @@ interface InteractiveQuestionContextType extends SdkQuestionResult {
   onNavigateBack?: () => void;
   onQuestionChange: (question: Question) => void;
   onNavigateToNewCard: (params: NavigateToNewCardParams) => void;
-  card?: Card;
 }
 
 /**
@@ -135,7 +133,6 @@ export const InteractiveQuestionProvider = ({
     onNavigateToNewCard,
     mode,
     plugins,
-    card: question?.card(),
     question,
     queryResults,
   };

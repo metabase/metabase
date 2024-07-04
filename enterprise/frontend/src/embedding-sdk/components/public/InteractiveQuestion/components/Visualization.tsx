@@ -12,7 +12,6 @@ import { useInteractiveQuestionContext } from "../context";
 
 export const QuestionVisualization = () => {
   const {
-    card,
     question,
     queryResults,
     mode,
@@ -30,6 +29,7 @@ export const QuestionVisualization = () => {
   }
 
   const [result] = queryResults;
+  const card = question.card();
 
   return (
     <QueryVisualization
