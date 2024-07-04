@@ -536,7 +536,7 @@ export class NativeQueryEditor extends Component<
         prefix: string,
         callback: Ace.CompleterCallback,
       ) => {
-        if (!this.props.autocompleteResultsFn || prefix.length <= 1) {
+        if (!this.props.autocompleteResultsFn || prefix.length < 1) {
           return callback(null, []);
         }
 
