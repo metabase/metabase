@@ -1,5 +1,3 @@
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
-import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type {
   DatasetColumn,
   DatasetData,
@@ -9,16 +7,8 @@ import type {
 export const datasetContainsNoResults = (data: DatasetData) =>
   data.rows == null || data.rows.length === 0;
 
-export function getColumnSettingKey({
-  key,
-  name,
-  fieldRef,
-}: TableColumnOrderSetting) {
-  return key ?? getColumnKey({ name, field_ref: normalize(fieldRef) });
-}
-
 export function findColumnIndexesForColumnSettings(
-  columns: DatasetColumn[],
+  columns: Pick<DatasetColumn, "name">[],
   columnSettings: TableColumnOrderSetting[],
 ) {
   const columnIndexByKey = new Map(
@@ -30,7 +20,7 @@ export function findColumnIndexesForColumnSettings(
 }
 
 export function findColumnSettingIndexesForColumns(
-  columns: DatasetColumn[],
+  columns: Pick<DatasetColumn, "name">[],
   columnSettings: TableColumnOrderSetting[],
 ) {
   const columnSettingIndexByKey = new Map(
