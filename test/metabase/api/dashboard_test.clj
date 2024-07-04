@@ -4773,4 +4773,7 @@
           (mt/user-http-request :crowberto :get 200
                                 (format "dashboard/%d/query_metadata?dashboard_load_id=%s" (:id d) load-id))))
       (testing "Call count for :metadata/table is smaller with caching in place"
-        (is (< @cached-calls-count @uncached-calls-count))))))
+        (is (< @cached-calls-count @uncached-calls-count)))
+      ;; If we need more for _some reason_, this test should be updated accordingly.
+      (testing "At most 1 db call should be executed for :metadata/tables"
+        (is (= @cached-calls-count 1))))))
