@@ -35,6 +35,8 @@
 ;;; |                                              Save Query Execution                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private field-usage-interval-seconds 20)
+
 (defonce ^:private
   field-usages-queue
   (delay (grouper/start!
@@ -44,7 +46,7 @@
               (catch Throwable e
                 (log/error e "Error saving field usages"))))
           :capacity 500
-          :interval (* 20 1000))))
+          :interval (* field-usage-interval-seconds 1000))))
 
 ;; TODO - I'm not sure whether this should happen async as is currently the case, or should happen synchronously e.g.
 ;; in the completing arity of the rf

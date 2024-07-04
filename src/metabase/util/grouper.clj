@@ -3,7 +3,7 @@
 
   Note:
   - These utilities should only be used for scenarios where data consistency is not a requirement,
-    as the batched items are not persisted.
+    Execution is best effort and may not occur as the batched items are not persisted.
   - Suitable for use cases that can tolerate lag time in processing. For example, updating
     last_used_at of cards after a query execution. Things like recording view_log should not use
     grouper since it's important to have the data immediately available.
@@ -30,5 +30,3 @@
   [& args]
   (apply grouper/submit! args)
   nil)
-
-(alter-meta! #'submit! merge (select-keys (meta #'grouper/submit!) [:ns :name :file :column :line]))

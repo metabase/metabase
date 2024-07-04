@@ -19,7 +19,7 @@
     ;; => {2 [:a :b] 3 [:c]}"
   [items]
   (reduce (fn [acc [item cnt]]
-            (update acc cnt conj item))
+            (update acc cnt u/conjv item))
           {}
           (frequencies items)))
 
@@ -34,19 +34,22 @@
       (doseq [[model ids] model->ids]
         (let [cnt->ids (group-by-frequency ids)]
           (t2/query {:update (t2/table-name model)
-                     :set    {:view_count [:+ :view_count [:inline (into [:case]
-                                                                         (apply concat (for [[cnt ids] cnt->ids]
-                                                                                         [[:in :id ids] cnt])))]]}
+                     :set    {:view_count [:+ :view_count (into [:case]
+                                                                (mapcat (fn [[cnt ids]]
+                                                                          [[:in :id ids] cnt])
+                                                                        cnt->ids))]}
                      :where  [:in :id (apply concat (vals cnt->ids))]}))))
     (catch Exception e
       (log/error e "Failed to increment view counts"))))
+
+(def ^:private increment-view-count-interval-seconds 20)
 
 (defonce ^:private
   increase-view-count-queue
   (delay (grouper/start!
           increment-view-counts!*
           :capacity 500
-          :interval (* 20 1000))))
+          :interval (* increment-view-count-interval-seconds 1000))))
 
 (defn- increment-view-counts!
   "Increment the view count of the given `model` and `model-id`."

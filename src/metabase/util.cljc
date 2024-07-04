@@ -990,6 +990,10 @@
                          m))]
      (with-meta ret (meta m)))))
 
+(def conjv
+  "Like `conj` but returns a vector instead of a list"
+  (fnil conj []))
+
 (defn string-byte-count
   "Number of bytes in a string using UTF-8 encoding."
   [s]
