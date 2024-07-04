@@ -1595,32 +1595,31 @@ describe.skip("issue 44974", () => {
 
   it("entity picker should not offer to join with a table or a question from a different database (metabase#44974)", () => {
     withDatabase(PG_DB_ID, ({ PEOPLE_ID }) => {
-      createQuestion(
-        {
-          name: "Question 44794 in Postgres DB",
-          query: {
-            database: PG_DB_ID,
-            "source-table": PEOPLE_ID,
-            limit: 1,
-          },
+      const questionDetails = {
+        name: "Question 44794 in Postgres DB",
+        query: {
+          database: PG_DB_ID,
+          "source-table": PEOPLE_ID,
+          limit: 1,
         },
-        {
-          // Visit question to put it in recents
-          visitQuestion: true,
-        },
-      );
-    });
+      };
 
-    openOrdersTable({ mode: "notebook" });
-    join();
+      createQuestion(questionDetails, {
+        // Visit question to put it in recents
+        visitQuestion: true,
+      });
 
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Recents").should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
-      cy.findByText("Question 44794 in Postgres DB").should("not.exist");
+      openOrdersTable({ mode: "notebook" });
+      join();
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Recents").should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+        cy.findByText(questionDetails.name).should("not.exist");
+      });
     });
   });
 });
