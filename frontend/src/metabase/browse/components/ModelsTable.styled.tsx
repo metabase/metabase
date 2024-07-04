@@ -9,6 +9,9 @@ import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { breakpoints } from "metabase/ui/theme";
 
 export const ModelTableRow = styled.tr<{ skeleton?: boolean }>`
+  :focus {
+    outline: 2px solid var(--mb-color-brand);
+  }
   ${props =>
     props.skeleton
       ? `
