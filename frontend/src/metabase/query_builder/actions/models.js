@@ -67,7 +67,7 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   );
 };
 
-export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
+export const turnModelIntoQuestion = () => async (dispatch, getState) => {
   const dataset = getQuestion(getState());
   const question = dataset.setType("question");
   await dispatch(apiUpdateQuestion(question, { rerunQuery: true }));

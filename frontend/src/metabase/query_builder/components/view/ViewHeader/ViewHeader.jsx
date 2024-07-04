@@ -385,7 +385,7 @@ ViewTitleHeaderRightSide.propTypes = {
   onEditSummary: PropTypes.func,
   onCloseSummary: PropTypes.func,
   setQueryBuilderMode: PropTypes.func,
-  turnDatasetIntoQuestion: PropTypes.func,
+  turnModelIntoQuestion: PropTypes.func,
   areFiltersExpanded: PropTypes.bool,
   onExpandFilters: PropTypes.func,
   onCollapseFilters: PropTypes.func,
@@ -420,7 +420,7 @@ function ViewTitleHeaderRightSide(props) {
     onEditSummary,
     onCloseSummary,
     setQueryBuilderMode,
-    turnDatasetIntoQuestion,
+    turnModelIntoQuestion,
     areFiltersExpanded,
     onExpandFilters,
     onCollapseFilters,
@@ -519,13 +519,13 @@ function ViewTitleHeaderRightSide(props) {
       )}
       {isSaved && (
         <QuestionActions
-          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
-          isBookmarked={isBookmarked}
-          handleBookmark={toggleBookmark}
-          onOpenModal={onOpenModal}
           question={question}
-          setQueryBuilderMode={setQueryBuilderMode}
-          turnDatasetIntoQuestion={turnDatasetIntoQuestion}
+          isBookmarked={isBookmarked}
+          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
+          onOpenModal={onOpenModal}
+          onToggleBookmark={toggleBookmark}
+          onSetQueryBuilderMode={setQueryBuilderMode}
+          onTurnModelIntoQuestion={turnModelIntoQuestion}
           onInfoClick={handleInfoClick}
           onModelPersistenceChange={onModelPersistenceChange}
         />
