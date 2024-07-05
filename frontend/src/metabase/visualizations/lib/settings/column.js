@@ -554,6 +554,7 @@ export const buildTableColumnSettings = ({
         return [
           ...columnSettings.map((columnSetting, columnSettingIndex) => ({
             ...columnSetting,
+            // back-fill desired_column_alias for old settings
             desired_column_alias:
               cols[columnIndexes[columnSettingIndex]]?.desired_column_alias ??
               columnSetting.desired_column_alias,

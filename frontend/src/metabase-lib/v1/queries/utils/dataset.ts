@@ -20,6 +20,8 @@ export function findColumnIndexesForColumnSettings(
   columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
 ) {
+  // for legacy settings without `desired_column_alias`, use the previous way
+  // of matching columns by `name` and `field_ref`
   if (
     !columnSettings.every(columnSetting => columnSetting.desired_column_alias)
   ) {
@@ -45,6 +47,8 @@ export function findColumnSettingIndexesForColumns(
   columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
 ) {
+  // for legacy settings without `desired_column_alias`, use the previous way
+  // of matching columns by `name` and `field_ref`
   if (
     !columnSettings.every(columnSetting => columnSetting.desired_column_alias)
   ) {
