@@ -261,7 +261,7 @@
     (apply channel/send! args)
     (catch Exception e
       ;; Token errors have already been logged and we should not retry.
-      (when-not (and (= :channel/slack (first args))
+      (when-not (and (= :channel/slack (:type (first args)))
                      (contains? (:errors (ex-data e)) :slack-token))
         (throw e)))))
 
