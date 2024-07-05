@@ -7,7 +7,6 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useModelIndexesListQuery } from "metabase/common/hooks";
 import ActionButton from "metabase/components/ActionButton";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
@@ -15,6 +14,7 @@ import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
+import { modelIndexes } from "metabase/entities";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
@@ -77,9 +77,9 @@ const propTypes = {
   onCancelCreateNewModel: PropTypes.func.isRequired,
   onCancelDatasetChanges: PropTypes.func.isRequired,
   handleResize: PropTypes.func.isRequired,
-  updateQuestion: PropTypes.func.isRequired,
   runQuestionQuery: PropTypes.func.isRequired,
   onOpenModal: PropTypes.func.isRequired,
+  modelIndexes: PropTypes.array.isRequired,
 
   // Native editor sidebars
   isShowingTemplateTagsEditor: PropTypes.bool.isRequired,
@@ -120,7 +120,7 @@ function getSidebar(
   },
 ) {
   const {
-    question,
+    question: dataset,
     isShowingTemplateTagsEditor,
     isShowingDataReference,
     isShowingSnippetSidebar,
@@ -140,10 +140,10 @@ function getSidebar(
       return <div />;
     }
     const isLastField =
-      focusedFieldIndex === question.getResultMetadata().length - 1;
+      focusedFieldIndex === dataset.getResultMetadata().length - 1;
     return (
       <DatasetFieldMetadataSidebar
-        dataset={question}
+        dataset={dataset}
         field={focusedField}
         isLastField={isLastField}
         handleFirstFieldFocus={focusFirstField}
@@ -154,7 +154,7 @@ function getSidebar(
     );
   }
 
-  const { isNative } = Lib.queryDisplayInfo(question.query());
+  const { isNative } = Lib.queryDisplayInfo(dataset.query());
 
   if (!isNative) {
     return null;
@@ -164,7 +164,7 @@ function getSidebar(
     return (
       <TagEditorSidebar
         {...props}
-        query={question.legacyQuery()}
+        query={dataset.legacyQuery()}
         onClose={toggleTemplateTagsEditor}
       />
     );
@@ -199,13 +199,13 @@ const FIELDS = [
 
 function DatasetEditor(props) {
   const {
-    question,
+    question: dataset,
+    metadataDiff,
     visualizationSettings,
     datasetEditorTab,
     result,
     resultsMetadata,
     metadata,
-    metadataDiff,
     isMetadataDirty,
     height,
     isDirty: isModelQueryDirty,
@@ -217,12 +217,11 @@ function DatasetEditor(props) {
     onCancelDatasetChanges,
     onCancelCreateNewModel,
     onSave,
-    updateQuestion,
     handleResize,
     onOpenModal,
+    modelIndexes = [],
   } = props;
 
-  const { isNative } = Lib.queryDisplayInfo(question.query());
   const isDirty = isModelQueryDirty || isMetadataDirty;
   const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
   const fields = useMemo(
@@ -234,25 +233,20 @@ function DatasetEditor(props) {
     [resultsMetadata, visualizationSettings],
   );
 
-  const { data: modelIndexes } = useModelIndexesListQuery({
-    query: { model_id: question.id() },
-    enabled: question.isSaved() && question.type() === "model",
-  });
-
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";
 
   const initialEditorHeight = useMemo(() => {
-    const { isNative } = Lib.queryDisplayInfo(question.query());
+    const { isNative } = Lib.queryDisplayInfo(dataset.query());
 
     if (!isNative) {
       return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
     }
     return calcInitialEditorHeight({
-      query: question.legacyQuery(),
+      query: dataset.legacyQuery(),
       viewHeight: height,
     });
-  }, [question, height]);
+  }, [dataset, height]);
 
   const [editorHeight, setEditorHeight] = useState(
     isEditingQuery ? initialEditorHeight : 0,
@@ -340,7 +334,7 @@ function DatasetEditor(props) {
   };
 
   const handleCancelClick = () => {
-    if (question.isSaved()) {
+    if (dataset.isSaved()) {
       if (isDirty) {
         setShowCancelEditWarning(true);
       } else {
@@ -352,12 +346,11 @@ function DatasetEditor(props) {
   };
 
   const handleSave = useCallback(async () => {
-    const canBeDataset = checkCanBeModel(question);
-    const isBrandNewDataset = !question.id();
-    const questionWithMetadata = question.setResultMetadataDiff(metadataDiff);
+    const questionWithMetadata = dataset.setResultMetadataDiff(metadataDiff);
+    const canBeDataset = checkCanBeModel(questionWithMetadata);
+    const isBrandNewDataset = !questionWithMetadata.id();
 
     if (canBeDataset && isBrandNewDataset) {
-      await updateQuestion(questionWithMetadata, { rerunQuery: false });
       onOpenModal(MODAL_TYPES.SAVE);
     } else if (canBeDataset) {
       await onSave(questionWithMetadata, { rerunQuery: false });
@@ -368,9 +361,8 @@ function DatasetEditor(props) {
       throw new Error(t`Variables in models aren't supported yet`);
     }
   }, [
-    question,
+    dataset,
     metadataDiff,
-    updateQuestion,
     onSave,
     setQueryBuilderMode,
     runQuestionQuery,
@@ -441,22 +433,21 @@ function DatasetEditor(props) {
     [datasetEditorTab, renderSelectableTableColumnHeader],
   );
 
+  const { isNative } = Lib.queryDisplayInfo(dataset.query());
+
   const canSaveChanges =
     isDirty &&
     (!isNative || !isResultDirty) &&
     fields.every(field => field.display_name) &&
-    Lib.canSave(question.query(), question.type());
+    Lib.canSave(dataset.query());
 
-  const saveButtonTooltipLabel = useMemo(() => {
-    if (
-      isNative &&
-      isDirty &&
-      isResultDirty &&
-      Lib.rawNativeQuery(question.query()).length > 0
-    ) {
-      return t`You must run the query before you can save this model`;
-    }
-  }, [isNative, isDirty, isResultDirty, question]);
+  const saveButtonTooltipLabel =
+    isDirty &&
+    isNative &&
+    isResultDirty &&
+    Lib.rawNativeQuery(dataset.query()).length > 0
+      ? t`You must run the query before you can save this model`
+      : undefined;
 
   const sidebar = getSidebar(
     { ...props, modelIndexes },
@@ -475,7 +466,7 @@ function DatasetEditor(props) {
     <>
       <DatasetEditBar
         data-testid="dataset-edit-bar"
-        title={question.displayName()}
+        title={dataset.displayName()}
         center={
           <EditorTabs
             currentTab={datasetEditorTab}
@@ -507,7 +498,7 @@ function DatasetEditor(props) {
               key="save"
               disabled={!canSaveChanges}
               actionFn={handleSave}
-              normalText={question.isSaved() ? t`Save changes` : t`Save`}
+              normalText={dataset.isSaved() ? t`Save changes` : t`Save`}
               activeText={t`Saving…`}
               failedText={t`Save failed`}
               successText={t`Saved`}
@@ -578,4 +569,10 @@ function DatasetEditor(props) {
 
 DatasetEditor.propTypes = propTypes;
 
-export default connect(mapStateToProps, mapDispatchToProps)(DatasetEditor);
+export default _.compose(
+  modelIndexes.loadList({
+    query: (_state, props) => ({ model_id: props?.question?.id() }),
+    loadingAndErrorWrapper: false,
+  }),
+  connect(mapStateToProps, mapDispatchToProps),
+)(DatasetEditor);
