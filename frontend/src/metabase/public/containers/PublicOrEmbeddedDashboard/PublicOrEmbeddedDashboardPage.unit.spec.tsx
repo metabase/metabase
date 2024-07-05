@@ -12,6 +12,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import type { DashboardCard, DashboardTab } from "metabase-types/api";
 import {
   createMockCard,
@@ -140,6 +141,15 @@ describe("PublicOrEmbeddedDashboardPage", () => {
       // in this case the dashcard menu would be empty so it's not rendered at all
       expect(queryIcon("ellipsis")).not.toBeInTheDocument();
     });
+
+    it("should use the container used for pdf exports", async () => {
+      const { container } = await setup({ numberOfTabs: 1 });
+
+      expect(
+        // eslint-disable-next-line testing-library/no-node-access -- this test is testing a specific implementation detail as testing the actual functionality is not easy on jest
+        container.querySelector(`#${DASHBOARD_PDF_EXPORT_ROOT_ID}`),
+      ).toBeInTheDocument();
+    });
   });
 });
 
@@ -180,7 +190,7 @@ async function setup({
 
   setupEmbedDashboardEndpoints(MOCK_TOKEN, dashboard, dashcards);
 
-  renderWithProviders(
+  const view = renderWithProviders(
     <Route
       path="embed/dashboard/:token"
       component={PublicOrEmbeddedDashboardPage}
@@ -197,4 +207,6 @@ async function setup({
   if (numberOfTabs > 0) {
     expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
   }
+
+  return view;
 }
