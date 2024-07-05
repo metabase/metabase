@@ -7,27 +7,23 @@ import {
 } from "react";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
-import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
+import {
+  useLoadQuestion,
+  type LoadQuestionHookResult,
+} from "embedding-sdk/hooks/private/use-load-question";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
-import type {
-  LoadSdkQuestionParams,
-  NavigateToNewCardParams,
-  SdkQuestionResult,
-} from "embedding-sdk/types/question";
+import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import type Question from "metabase-lib/v1/Question";
 
-interface InteractiveQuestionContextType extends SdkQuestionResult {
+interface InteractiveQuestionContextType
+  extends Omit<LoadQuestionHookResult, "loadQuestion"> {
   plugins: SdkPluginsConfig | null;
   mode: Mode | null | undefined;
-  isQuestionLoading: boolean;
   resetQuestion: () => void;
   onReset?: () => void;
   onNavigateBack?: () => void;
-  onQuestionChange: (question: Question) => void;
-  onNavigateToNewCard: (params: NavigateToNewCardParams) => void;
 }
 
 /**
@@ -59,7 +55,9 @@ export const InteractiveQuestionProvider = ({
   const {
     question,
     queryResults,
+
     isQuestionLoading,
+    isQueryRunning,
 
     loadQuestion,
     onQuestionChange,
@@ -75,6 +73,7 @@ export const InteractiveQuestionProvider = ({
 
   const questionContext: InteractiveQuestionContextType = {
     isQuestionLoading,
+    isQueryRunning,
     resetQuestion: loadQuestion,
     onReset: onReset || loadQuestion,
     onNavigateBack,

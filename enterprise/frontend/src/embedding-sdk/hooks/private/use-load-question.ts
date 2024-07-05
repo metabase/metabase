@@ -13,18 +13,37 @@ import type {
 import { useDispatch } from "metabase/lib/redux";
 import type Question from "metabase-lib/v1/Question";
 
-export function useLoadQuestion({ location, params }: LoadSdkQuestionParams) {
+export interface LoadQuestionHookResult {
+  question?: Question;
+  queryResults?: any[];
+  isQuestionLoading: boolean;
+  isQueryRunning: boolean;
+
+  loadQuestion(): Promise<void>;
+  onQuestionChange(question: Question): Promise<void>;
+  onNavigateToNewCard(params: NavigateToNewCardParams): Promise<void>;
+}
+
+export function useLoadQuestion({
+  location,
+  params,
+}: LoadSdkQuestionParams): LoadQuestionHookResult {
   const dispatch = useDispatch();
 
   const [result, setQuestionResult] = useState<SdkQuestionResult>({});
+
+  // Loading state for initial question load.
   const [isQuestionLoading, setIsQuestionLoading] = useState(true);
+
+  // Loading state for subsequent query runs; either query change or navigating to new card.
+  const [isQueryRunning, setIsQueryRunning] = useState(true);
 
   const { question, originalQuestion, queryResults } = result;
 
   const storeQuestionResult = async (
     getQuestionResult: () => Promise<SdkQuestionResult | null>,
   ) => {
-    setIsQuestionLoading(true);
+    setIsQueryRunning(true);
 
     try {
       const nextResult = await getQuestionResult();
@@ -35,17 +54,27 @@ export function useLoadQuestion({ location, params }: LoadSdkQuestionParams) {
     } catch (e) {
       console.error(`Failed to update question result`, e);
     } finally {
-      setIsQuestionLoading(false);
+      setIsQueryRunning(false);
     }
   };
 
-  const loadQuestion = useCallback(
-    () =>
-      storeQuestionResult(() =>
-        dispatch(runQuestionOnLoadSdk({ location, params })),
-      ),
-    [dispatch, location, params],
-  );
+  const loadQuestion = useCallback(async () => {
+    setIsQuestionLoading(true);
+
+    try {
+      const nextResult = await dispatch(
+        runQuestionOnLoadSdk({ location, params }),
+      );
+
+      if (nextResult) {
+        setQuestionResult(result => ({ ...result, ...nextResult }));
+      }
+    } catch (e) {
+      console.error(`Failed to update question result`, e);
+    } finally {
+      setIsQuestionLoading(false);
+    }
+  }, [dispatch, location, params]);
 
   const onQuestionChange = useCallback(
     async (nextQuestion: Question) =>
@@ -79,6 +108,7 @@ export function useLoadQuestion({ location, params }: LoadSdkQuestionParams) {
     question,
     queryResults,
     isQuestionLoading,
+    isQueryRunning,
 
     loadQuestion,
     onQuestionChange,

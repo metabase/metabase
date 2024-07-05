@@ -16,6 +16,7 @@ export const QuestionVisualization = () => {
     queryResults,
     mode,
     isQuestionLoading,
+    isQueryRunning,
     onNavigateBack,
     onNavigateToNewCard,
   } = useInteractiveQuestionContext();
@@ -36,7 +37,7 @@ export const QuestionVisualization = () => {
       className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
       question={question}
       rawSeries={[{ card, data: result && result.data }]}
-      isRunning={isQuestionLoading}
+      isRunning={isQueryRunning}
       isObjectDetail={false}
       isResultDirty={false}
       isNativeEditorOpen={false}
