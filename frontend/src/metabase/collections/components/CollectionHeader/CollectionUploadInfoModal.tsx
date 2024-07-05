@@ -41,7 +41,7 @@ export const UploadInfoModal = ({
                 primary
                 role="link"
               >
-                {t`Go to setup.`}
+                {t`Go to setup`}
               </Button>
             </>
           ) : (
