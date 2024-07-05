@@ -22,6 +22,7 @@ export interface DatasetColumn {
   id?: FieldId;
   name: string;
   display_name: string;
+  desired_column_alias: string;
   description?: string | null;
   source: string;
   aggregation_index?: number;
