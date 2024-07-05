@@ -52,7 +52,6 @@ export const FETCH_CARD_DATA_PENDING =
 export const CANCEL_FETCH_CARD_DATA =
   "metabase/dashboard/CANCEL_FETCH_CARD_DATA";
 
-export const MARK_CARD_AS_SLOW = "metabase/dashboard/MARK_CARD_AS_SLOW";
 export const CLEAR_CARD_DATA = "metabase/dashboard/CLEAR_CARD_DATA";
 
 export const SET_LOADING_DASHCARDS_COMPLETE =
