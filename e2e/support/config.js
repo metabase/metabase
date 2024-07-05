@@ -31,9 +31,6 @@ const uploadReplayRecordings = !!process.env["CYPRESS_REPLAYIO_ENABLE_UPLOAD"];
 
 const feHealthcheckEnabled = process.env["CYPRESS_FE_HEALTHCHECK"] === "true";
 
-const convertStringToInt = string =>
-  string.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(on, config) {
@@ -54,9 +51,7 @@ const defaultConfig = {
           const isFlaky =
             r.metadata.test?.result === "passed" &&
             r.metadata.test.tests.some(r => r.result === "failed");
-          const randomlyUploadAll =
-            r.metadata.source.branch === "master" &&
-            convertStringToInt(r.metadata.test.run.id) % 10 === 1;
+          const randomlyUploadAll = true;
 
           console.log("upload replay ::", {
             hasCrashed,
