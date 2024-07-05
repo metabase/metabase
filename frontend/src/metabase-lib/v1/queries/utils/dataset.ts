@@ -9,11 +9,11 @@ import type {
 export const datasetContainsNoResults = (data: DatasetData) =>
   data.rows == null || data.rows.length === 0;
 
-export function getColumnSettingKey(
-  { name, fieldRef }: TableColumnOrderSetting,
-  ignoreBaseType = false,
-) {
-  return getColumnKey({ name, field_ref: normalize(fieldRef) }, ignoreBaseType);
+export function getColumnSettingKey({
+  name,
+  fieldRef,
+}: TableColumnOrderSetting) {
+  return getColumnKey({ name, field_ref: normalize(fieldRef) }, true);
 }
 
 export function findColumnIndexesForColumnSettings(
@@ -30,7 +30,7 @@ export function findColumnIndexesForColumnSettings(
     );
     return columnSettings.map(
       columnSetting =>
-        columnIndexByKey.get(getColumnSettingKey(columnSetting, true)) ?? -1,
+        columnIndexByKey.get(getColumnSettingKey(columnSetting)) ?? -1,
     );
   }
 
@@ -54,7 +54,7 @@ export function findColumnSettingIndexesForColumns(
   ) {
     const columnSettingIndexByKey = new Map(
       columnSettings.map((columnSetting, index) => [
-        getColumnSettingKey(columnSetting, true),
+        getColumnSettingKey(columnSetting),
         index,
       ]),
     );
