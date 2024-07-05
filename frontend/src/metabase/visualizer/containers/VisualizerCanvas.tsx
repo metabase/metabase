@@ -1,3 +1,4 @@
+import { useDroppable } from "@dnd-kit/core";
 import { ActionIcon } from "@mantine/core";
 import { useMemo } from "react";
 
@@ -10,6 +11,7 @@ import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
 import { VisualizerAxis } from "../components/VisualizerAxis";
+import { DROPPABLE_CANVAS_ID } from "../dnd";
 
 interface VisualizerCanvasProps {
   series: Series;
@@ -23,6 +25,10 @@ export function VisualizerCanvas({
   onChange,
 }: VisualizerCanvasProps) {
   const metadata = useSelector(getMetadata);
+
+  const {setNodeRef} = useDroppable({
+    id: DROPPABLE_CANVAS_ID
+  })
 
   const { metrics, dimensions } = useMemo(
     () => getMetricAndDimensionOptions(series),
@@ -77,7 +83,7 @@ export function VisualizerCanvas({
   };
 
   return (
-    <Card w="100%" h="100%">
+    <Card w="100%" h="100%" ref={setNodeRef}>
       {displaySeries.length > 0 && (
         <>
           <Flex mx="xs" mb="md">

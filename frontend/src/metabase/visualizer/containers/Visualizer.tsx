@@ -1,3 +1,9 @@
+import {
+  DndContext,
+  type DragEndEvent,
+  MouseSensor,
+  useSensor,
+} from "@dnd-kit/core";
 import type { Location } from "history";
 import { useState } from "react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
@@ -7,6 +13,7 @@ import _ from "underscore";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import type { VisualizationSettings } from "metabase-types/api";
 
+import { handleDragEnd } from "../dnd";
 import { useVisualizerSeries } from "../hooks/useVisualizerSeries";
 
 import { VisualizerCanvas } from "./VisualizerCanvas";
@@ -28,62 +35,75 @@ export function Visualizer({ location }: WithRouterProps) {
     setVizSettings,
   } = useVisualizerSeries(getInitialCardIds(location));
 
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: { distance: 10 },
+  });
+
   const hasInitialCardsSelected =
     "c1" in location.query && "c2" in location.query;
 
+  const onDragEnd = (event: DragEndEvent) => {
+    if (question) {
+      const nextVizSettings = handleDragEnd(event, question.settings());
+      setVizSettings(question.id(), nextVizSettings);
+    }
+  };
+
   return (
-    <PanelGroup direction="horizontal" style={{ padding: 20 }}>
-      {!isVizSettingsOpen && (
-        <Panel defaultSize={25} minSize={15}>
-          <PanelGroup direction="vertical">
-            <Panel defaultSize={70} minSize={20} maxSize={80}>
-              <VisualizerMenu
-                defaultTab={hasInitialCardsSelected ? "recents" : "metrics"}
-                onAdd={item => addCardSeries(item.id)}
-                onReplace={item => replaceAllWithCardSeries(item.id)}
-              />
-            </Panel>
-            <ResizeHandle direction="horizontal" />
-            <Panel defaultSize={30}>
-              <VisualizerUsed
-                series={series}
-                onVizTypeChange={setCardDisplay}
-                onRefreshCard={refreshCardData}
-                onRemoveCard={removeCardSeries}
-              />
-            </Panel>
-          </PanelGroup>
-        </Panel>
-      )}
-      <ResizeHandle direction="vertical" />
-      <Panel defaultSize={75} minSize={60}>
-        <VisualizerCanvas
-          series={series}
-          onToggleVizSettings={() => setVizSettingsOpen(isOpen => !isOpen)}
-          onChange={settings => {
-            if (question) {
-              setVizSettings(question.id(), settings);
-            }
-          }}
-        />
-      </Panel>
-      {isVizSettingsOpen && (
-        <Panel defaultSize={20} minSize={20}>
-          <ChartSettings
-            question={question}
+    <DndContext sensors={[mouseSensor]} onDragEnd={onDragEnd}>
+      <PanelGroup direction="horizontal" style={{ padding: 20 }}>
+        {!isVizSettingsOpen && (
+          <Panel defaultSize={25} minSize={15}>
+            <PanelGroup direction="vertical">
+              <Panel defaultSize={70} minSize={20} maxSize={80}>
+                <VisualizerMenu
+                  defaultTab={hasInitialCardsSelected ? "recents" : "metrics"}
+                  onAdd={item => addCardSeries(item.id)}
+                  onReplace={item => replaceAllWithCardSeries(item.id)}
+                />
+              </Panel>
+              <ResizeHandle direction="horizontal" />
+              <Panel defaultSize={30}>
+                <VisualizerUsed
+                  series={series}
+                  onVizTypeChange={setCardDisplay}
+                  onRefreshCard={refreshCardData}
+                  onRemoveCard={removeCardSeries}
+                />
+              </Panel>
+            </PanelGroup>
+          </Panel>
+        )}
+        <ResizeHandle direction="vertical" />
+        <Panel defaultSize={75} minSize={60}>
+          <VisualizerCanvas
             series={series}
-            computedSettings={settings}
-            noPreview
-            onChange={(settings: VisualizationSettings) => {
+            onToggleVizSettings={() => setVizSettingsOpen(isOpen => !isOpen)}
+            onChange={settings => {
               if (question) {
                 setVizSettings(question.id(), settings);
               }
             }}
-            onClose={() => setVizSettingsOpen(false)}
           />
         </Panel>
-      )}
-    </PanelGroup>
+        {isVizSettingsOpen && (
+          <Panel defaultSize={20} minSize={20}>
+            <ChartSettings
+              question={question}
+              series={series}
+              computedSettings={settings}
+              noPreview
+              onChange={(settings: VisualizationSettings) => {
+                if (question) {
+                  setVizSettings(question.id(), settings);
+                }
+              }}
+              onClose={() => setVizSettingsOpen(false)}
+            />
+          </Panel>
+        )}
+      </PanelGroup>
+    </DndContext>
   );
 }
 

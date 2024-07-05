@@ -1,7 +1,14 @@
 // eslint-disable-next-line no-restricted-imports
+import { useDraggable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import { ActionIcon } from "@mantine/core";
 
 import { Flex, Icon, Menu, Text } from "metabase/ui";
+
+import {
+  DRAGGABLE_ACTIVE_DIMENSION_TYPE,
+  DRAGGABLE_ACTIVE_METRIC_TYPE,
+} from "../dnd";
 
 interface VisualizerAxisProps {
   direction?: "horizontal" | "vertical";
@@ -75,6 +82,16 @@ function ColumnPicker({
   direction = "horizontal",
   onChange,
 }: ColumnPickerProps) {
+  const type =
+    direction === "horizontal" // 🥴
+      ? DRAGGABLE_ACTIVE_DIMENSION_TYPE
+      : DRAGGABLE_ACTIVE_METRIC_TYPE;
+
+  const { attributes, listeners, transform, setNodeRef } = useDraggable({
+    id: column,
+    data: { type, column },
+  });
+
   const option = columnOptions.find(option => option.value === column);
 
   const containerStyle =
@@ -84,15 +101,24 @@ function ColumnPicker({
           width: "200px",
           height: "14px",
           textAlign: "center",
-          transform: "rotate(-90deg)",
+          transform: transform
+            ? CSS.Translate.toString(transform) + " rotate(-90deg)"
+            : "rotate(-90deg)",
           cursor: "pointer",
         }
-      : { cursor: "pointer" };
+      : { cursor: "pointer", transform: CSS.Translate.toString(transform) };
 
   return (
     <Menu>
       <Menu.Target>
-        <Flex align="center" gap="4px" style={containerStyle}>
+        <Flex
+          {...attributes}
+          {...listeners}
+          align="center"
+          gap="4px"
+          style={containerStyle}
+          ref={setNodeRef}
+        >
           <Text color="text-medium" fw="bold">
             {option?.label ?? column}
           </Text>
