@@ -1,45 +1,16 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
-import {
-  setupCardsEndpoints,
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-  setupErrorParameterValuesEndpoints,
-  setupParameterValuesEndpoints,
-  setupSearchEndpoints,
-  setupUnauthorizedCardsEndpoints,
-  setupUnauthorizedCollectionsEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupTableQueryMetadataEndpoint,
-  setupCollectionByIdEndpoint,
-  setupCollectionItemsEndpoint,
-} from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { Card, ParameterValues } from "metabase-types/api";
 import {
   createMockCard,
-  createMockCollection,
-  createMockDatabase,
   createMockField,
   createMockParameterValues,
-  createMockTable,
-  createMockTokenFeatures,
-  createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
-import ValuesSourceModal from "./ValuesSourceModal";
+import { setup } from "./setup";
 
 describe("ValuesSourceModal", () => {
   const metadata = createMockMetadata({
@@ -419,112 +390,5 @@ describe("ValuesSourceModal", () => {
       expect(screen.getByText("do it once in a model")).toBeInTheDocument();
       expect(screen.getByText("do it once in a model").tagName).toBe("A");
     });
-
-    it("should render a hint about using models when labels are used, but without link when `show-metabase-links: false`", async () => {
-      await setup({
-        showMetabaseLinks: false,
-        parameter: createMockUiParameter({
-          fields: [field1],
-          values_source_type: "static-list",
-          values_source_config: {
-            values: [["Gadget", "Label"], ["Widget"]],
-          },
-        }),
-      });
-
-      await userEvent.click(
-        screen.getByRole("radio", { name: "From connected fields" }),
-      );
-      await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
-
-      expect(screen.getByRole("textbox")).toHaveValue("Gadget, Label\nWidget");
-      expect(screen.getByText("do it once in a model")).toBeInTheDocument();
-      expect(screen.getByText("do it once in a model").tagName).not.toBe("A");
-    });
   });
 });
-
-interface SetupOpts {
-  parameter?: UiParameter;
-  parameterValues?: ParameterValues;
-  cards?: Card[];
-  hasCollectionAccess?: boolean;
-  hasParameterValuesError?: boolean;
-  showMetabaseLinks?: boolean;
-}
-
-const setup = async ({
-  parameter = createMockUiParameter(),
-  parameterValues = createMockParameterValues(),
-  cards = [],
-  hasCollectionAccess = true,
-  hasParameterValuesError = false,
-  showMetabaseLinks = true,
-}: SetupOpts = {}) => {
-  const currentUser = createMockUser();
-  const databases = [createMockDatabase()];
-  const rootCollection = createMockCollection(ROOT_COLLECTION);
-  const personalCollection = createMockCollection({
-    id: currentUser.personal_collection_id,
-  });
-  const onSubmit = jest.fn();
-  const onClose = jest.fn();
-
-  setupDatabasesEndpoints(databases);
-  setupSearchEndpoints([]);
-  setupRecentViewsAndSelectionsEndpoints([]);
-  setupCollectionByIdEndpoint({
-    collections: [personalCollection],
-  });
-  setupCollectionItemsEndpoint({
-    collection: personalCollection,
-    collectionItems: [],
-  });
-
-  if (hasCollectionAccess) {
-    setupCollectionsEndpoints({ collections: [rootCollection] });
-    setupCardsEndpoints(cards);
-    cards.forEach(card =>
-      setupTableQueryMetadataEndpoint(
-        createMockTable({
-          id: `card__${card.id}`,
-          fields: card.result_metadata,
-        }),
-      ),
-    );
-  } else {
-    setupUnauthorizedCollectionsEndpoints([rootCollection]);
-    setupUnauthorizedCardsEndpoints(cards);
-  }
-
-  if (!hasParameterValuesError) {
-    setupParameterValuesEndpoints(parameterValues);
-  } else {
-    setupErrorParameterValuesEndpoints();
-  }
-
-  if (!showMetabaseLinks) {
-    setupEnterprisePlugins();
-  }
-
-  renderWithProviders(
-    <ValuesSourceModal
-      parameter={parameter}
-      onSubmit={onSubmit}
-      onClose={onClose}
-    />,
-    {
-      storeInitialState: createMockState({
-        currentUser,
-        settings: mockSettings({
-          "show-metabase-links": showMetabaseLinks,
-          "token-features": createMockTokenFeatures({ whitelabel: true }),
-        }),
-      }),
-    },
-  );
-
-  await waitForLoaderToBeRemoved();
-
-  return { onSubmit };
-};
