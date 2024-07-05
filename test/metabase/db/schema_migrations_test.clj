@@ -2271,7 +2271,7 @@
             (assert-defective-cases cases-4))
           (testing "5. Fields with different parent_id's are not defective duplicates"
             (assert-defective-cases cases-5))
-          (when true ;; TODO UNCOMMENT THIS BEFORE MERGING #_(not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+          (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
             (testing "Migrate down succeeds"
               (migrate! :down 48))))))))
 
@@ -2333,7 +2333,7 @@
               (let [field (field-thunk)]
                 (is (some? field))
                 (swap! fields-to-clean-up conj field)))))
-        (when true ;; TODO UNCOMMENT THIS BEFORE MERGING #_(not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+        (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
           (testing "Migrate down succeeds"
             (migrate! :down 48))
           (clean-up-fields!)
@@ -2402,7 +2402,7 @@
                        (testing "The defective field should still exist after loading from H2"
                          (is (= #{defective-field-id}
                                 (t2/select-pks-set (t2/table-name :model/Field) :is_defective_duplicate true)))))
-                     (when true ;; TODO UNCOMMENT THIS BEFORE MERGING #_(not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+                     (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
                        (testing "Migrating down to 48 should still work"
                          (migrate! :down 48))
                        (testing "The defective field should still exist after loading from H2 and downgrading"
