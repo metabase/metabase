@@ -1,4 +1,3 @@
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -20,6 +19,7 @@ const columns: DatasetColumn[] = [
       },
     ],
     name: "num",
+    desired_column_alias: "num",
     base_type: "type/Float",
   },
   {
@@ -33,12 +33,12 @@ const columns: DatasetColumn[] = [
       },
     ],
     name: "text",
+    desired_column_alias: "text",
     base_type: "type/Text",
   },
 ];
 
 const vizSettingColumns: TableColumnOrderSetting[] = columns.map(column => ({
-  key: getColumnKey(column),
   name: column.name,
   fieldRef: column.field_ref,
   enabled: true,
@@ -93,6 +93,7 @@ describe("syncVizSettingsWithSeries", () => {
     it("should handle the addition and removal of columns", () => {
       const addedColumn: DatasetColumn = {
         name: "foo",
+        desired_column_alias: "foo",
         display_name: "foo",
         source: "native",
         field_ref: [
@@ -112,8 +113,8 @@ describe("syncVizSettingsWithSeries", () => {
         "table.columns": [
           ...vizSettingColumns.slice(1),
           {
-            key: getColumnKey(addedColumn),
             name: addedColumn.name,
+            desired_column_alias: addedColumn.desired_column_alias,
             fieldRef: addedColumn.field_ref,
             enabled: true,
           },
@@ -133,6 +134,7 @@ describe("syncVizSettingsWithSeries", () => {
           },
         ],
         name: "foo",
+        desired_column_alias: "foo",
         base_type: "type/Float",
       };
       const series = createSeries({
@@ -145,8 +147,8 @@ describe("syncVizSettingsWithSeries", () => {
         "table.columns": [
           ...vizSettingColumns.slice(1),
           {
-            key: getColumnKey(updatedColumn),
             name: updatedColumn.name,
+            desired_column_alias: updatedColumn.desired_column_alias,
             fieldRef: updatedColumn.field_ref,
             enabled: true,
           },
@@ -157,6 +159,7 @@ describe("syncVizSettingsWithSeries", () => {
     it("should handle existing column's field_ref mutation", () => {
       const updatedColumn: DatasetColumn = {
         name: "foo",
+        desired_column_alias: "foo",
         display_name: "foo",
         source: "native",
         field_ref: [
@@ -178,8 +181,8 @@ describe("syncVizSettingsWithSeries", () => {
         "table.columns": [
           ...vizSettingColumns.slice(1),
           {
-            key: getColumnKey(updatedColumn),
             name: updatedColumn.name,
+            desired_column_alias: updatedColumn.desired_column_alias,
             fieldRef: updatedColumn.field_ref,
             enabled: true,
           },
