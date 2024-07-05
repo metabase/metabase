@@ -13,15 +13,13 @@ import type {
 import { useDispatch } from "metabase/lib/redux";
 import type Question from "metabase-lib/v1/Question";
 
-export function useLoadQuestion(options: LoadSdkQuestionParams) {
-  const { location, params } = options;
-
+export function useLoadQuestion({ location, params }: LoadSdkQuestionParams) {
   const dispatch = useDispatch();
 
   const [result, setQuestionResult] = useState<SdkQuestionResult>({});
   const [isQuestionLoading, setIsQuestionLoading] = useState(true);
 
-  const { question, queryResults } = result;
+  const { question, originalQuestion, queryResults } = result;
 
   const storeQuestionResult = async (
     getQuestionResult: () => Promise<SdkQuestionResult | null>,
@@ -29,10 +27,10 @@ export function useLoadQuestion(options: LoadSdkQuestionParams) {
     setIsQuestionLoading(true);
 
     try {
-      const result = await getQuestionResult();
+      const nextResult = await getQuestionResult();
 
-      if (result) {
-        setQuestionResult(result);
+      if (nextResult) {
+        setQuestionResult(result => ({ ...result, ...nextResult }));
       }
     } catch (e) {
       console.error(`Failed to update question result`, e);
@@ -53,15 +51,28 @@ export function useLoadQuestion(options: LoadSdkQuestionParams) {
     async (nextQuestion: Question) =>
       question &&
       storeQuestionResult(() =>
-        dispatch(runQuestionOnQueryChangeSdk(question, nextQuestion)),
+        dispatch(
+          runQuestionOnQueryChangeSdk({
+            nextQuestion,
+            previousQuestion: question,
+            originalQuestion,
+          }),
+        ),
       ),
-    [dispatch, question],
+    [dispatch, question, originalQuestion],
   );
 
   const onNavigateToNewCard = useCallback(
     async (params: NavigateToNewCardParams) =>
-      storeQuestionResult(() => dispatch(runQuestionOnNavigateSdk(params))),
-    [dispatch],
+      storeQuestionResult(() =>
+        dispatch(
+          runQuestionOnNavigateSdk({
+            ...params,
+            originalQuestion,
+          }),
+        ),
+      ),
+    [dispatch, originalQuestion],
   );
 
   return {

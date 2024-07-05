@@ -21,15 +21,25 @@ import Question from "metabase-lib/v1/Question";
 import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
 import type { Dispatch, GetState } from "metabase-types/store";
 
-interface Options {
+interface RunQuestionQueryParams {
   question: Question;
   originalQuestion?: Question;
 }
 
+interface RunQuestionOnQueryChangeParams {
+  previousQuestion: Question;
+  nextQuestion: Question;
+  originalQuestion?: Question;
+}
+
+interface RunQuestionOnNavigateParams extends NavigateToNewCardParams {
+  originalQuestion?: Question;
+}
+
 export async function runQuestionQuerySdk(
-  options: Options,
+  params: RunQuestionQueryParams,
 ): Promise<SdkQuestionResult> {
-  let { question, originalQuestion } = options;
+  let { question, originalQuestion } = params;
 
   const query = question.query();
   const { isNative } = Lib.queryDisplayInfo(query);
@@ -43,7 +53,7 @@ export async function runQuestionQuerySdk(
   }
 
   const isQueryDirty = originalQuestion
-    ? question.isQueryDirtyComparedTo(new Question(originalQuestion))
+    ? question.isQueryDirtyComparedTo(originalQuestion)
     : true;
 
   let queryResults;
@@ -61,7 +71,7 @@ export async function runQuestionQuerySdk(
     question.alertType = () => null;
   }
 
-  return { question, queryResults };
+  return { question, originalQuestion, queryResults };
 }
 
 export const runQuestionOnLoadSdk =
@@ -91,11 +101,13 @@ export const runQuestionOnLoadSdk =
   };
 
 export const runQuestionOnQueryChangeSdk =
-  (previousQuestion: Question, nextQuestion: Question) =>
+  (params: RunQuestionOnQueryChangeParams) =>
   async (
     dispatch: Dispatch,
     getState: GetState,
   ): Promise<SdkQuestionResult> => {
+    const { previousQuestion, nextQuestion, originalQuestion } = params;
+
     const currentDependencies = previousQuestion
       ? Lib.dependentMetadata(
           previousQuestion.query(),
@@ -118,16 +130,17 @@ export const runQuestionOnQueryChangeSdk =
 
     return runQuestionQuerySdk({
       question: new Question(nextQuestion.card(), metadata),
+      originalQuestion,
     });
   };
 
 export const runQuestionOnNavigateSdk =
-  (options: NavigateToNewCardParams) =>
+  (params: RunQuestionOnNavigateParams) =>
   async (
     dispatch: Dispatch,
     getState: GetState,
   ): Promise<SdkQuestionResult | null> => {
-    let { nextCard, previousCard } = options;
+    let { nextCard, previousCard, originalQuestion } = params;
 
     // Do not reload questions with breakouts when clicking on a legend item
     if (previousCard === nextCard) {
@@ -145,7 +158,11 @@ export const runQuestionOnNavigateSdk =
     const nextQuestion = new Question(nextCard, metadata);
 
     const result = await dispatch(
-      runQuestionOnQueryChangeSdk(previousQuestion, nextQuestion),
+      runQuestionOnQueryChangeSdk({
+        previousQuestion,
+        nextQuestion,
+        originalQuestion,
+      }),
     );
 
     return result as SdkQuestionResult;
