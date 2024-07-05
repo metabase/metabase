@@ -197,13 +197,18 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   setQueryText(newQueryText: string): NativeQuery {
+    const prevTags = this.templateTagsMap();
+    const nextTags = this._getUpdatedTemplateTags(newQueryText);
+
+    const newKeys = _.difference(Object.keys(nextTags), Object.keys(prevTags));
+
     return new NativeQuery(
       this._originalQuestion,
       chain(this._datasetQuery)
         .assocIn(["native", "query"], newQueryText)
-        .assocIn(
-          ["native", "template-tags"],
-          this._getUpdatedTemplateTags(newQueryText),
+        .assocIn(["native", "template-tags"], nextTags)
+        .updateIn(["native", "template-tags-order"], order =>
+          (order ?? [])?.concat(newKeys).filter(key => key in nextTags),
         )
         .value(),
     );
@@ -225,18 +230,43 @@ export default class NativeQuery extends AtomicQuery {
     // template tags, and the order is determined by the key order
     return new NativeQuery(
       this._originalQuestion,
-      updateIn(
-        this._datasetQuery,
-        ["native", "template-tags"],
-        templateTags => {
-          const entries = Array.from(Object.entries(templateTags));
+      updateIn(this._datasetQuery, ["native", "template-tags-order"], order => {
+        const tags = this.templateTagsMap();
+        const prevOrder = order ?? Object.keys(tags);
+        const tag = this.getTagById(id);
+        if (!tag) {
+          return order;
+        }
 
-          const oldIndex = _.findIndex(entries, entry => entry[1].id === id);
+        const oldIndex = _.findIndex(prevOrder, entry => entry === tag.name);
+        const nextOrder = Array.from(prevOrder);
+        nextOrder.splice(oldIndex, 1);
+        nextOrder.splice(newIndex, 0, tag.name);
 
-          entries.splice(newIndex, 0, entries.splice(oldIndex, 1)[0]);
-          return _.object(entries);
-        },
-      ),
+        return nextOrder;
+      }),
+    );
+  }
+
+  getTagById(id: string): TemplateTag | null {
+    const tags = this.templateTagsMap();
+    return Object.values(tags).find(tag => tag.id === id) ?? null;
+  }
+
+  templateTagsOrder(): string[] {
+    return (
+      getIn(this.datasetQuery(), ["native", "template-tags-order"]) ??
+      // TODO: can we use source-order instead of alphabetical here?
+      Object.keys(this.templateTagsMap()).sort()
+    );
+  }
+
+  parameters(): Parameter[] {
+    const parameters = this.question().parameters();
+    const order = this.templateTagsOrder();
+
+    return parameters.sort(
+      (a, b) => order.indexOf(a.name) - order.indexOf(b.name),
     );
   }
 
@@ -257,7 +287,10 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   templateTags(): TemplateTag[] {
-    return Object.values(this.templateTagsMap());
+    const order = this.templateTagsOrder();
+    return Object.values(this.templateTagsMap()).sort(
+      (a, b) => order.indexOf(a.name) - order.indexOf(b.name),
+    );
   }
 
   variableTemplateTags(): TemplateTag[] {

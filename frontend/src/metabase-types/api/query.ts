@@ -10,6 +10,7 @@ import type {
 export interface NativeQuery {
   query: string;
   "template-tags"?: TemplateTags;
+  "template-tags-order"?: string[];
   collection?: string;
 }
 
@@ -40,6 +41,7 @@ interface PublicNativeDatasetQuery {
   type: "native";
   native: {
     "template-tags"?: TemplateTags;
+    "template-tags-order"?: string[];
   };
 }
 
