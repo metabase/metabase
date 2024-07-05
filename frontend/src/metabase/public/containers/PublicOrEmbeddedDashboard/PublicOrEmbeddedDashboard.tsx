@@ -1,5 +1,5 @@
 import type { Query } from "history";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
 import { useMount, usePrevious, useUnmount } from "react-use";
@@ -97,13 +97,11 @@ type PublicOrEmbeddedDashboardProps = OwnProps &
 const initializeData = async ({
   dashboardId,
   shouldReload,
-  shouldFetchCardData,
   parameterQueryParams,
   dispatch,
 }: {
   dashboardId: string;
   shouldReload: boolean;
-  shouldFetchCardData: boolean;
   parameterQueryParams: OwnProps["parameterQueryParams"];
   dispatch: DispatchFn;
 }) => {
@@ -125,7 +123,7 @@ const initializeData = async ({
   }
 
   try {
-    if (shouldFetchCardData) {
+    if (result.payload.dashboard?.tabs?.length === 0) {
       await dispatch(
         fetchDashboardCardData({ reload: false, clearCache: true }),
       );
@@ -172,6 +170,7 @@ const PublicOrEmbeddedDashboardInner = ({
   fetchDashboardCardData,
 }: PublicOrEmbeddedDashboardProps) => {
   const dispatch = useDispatch();
+  const didMountRef = useRef(false);
   const previousDashboardId = usePrevious(dashboardId);
   const previousSelectedTabId = usePrevious(selectedTabId);
   const previousParameterValues = usePrevious(parameterValues);
@@ -184,9 +183,10 @@ const PublicOrEmbeddedDashboardInner = ({
     initializeData({
       dashboardId: String(dashboardId),
       shouldReload: !isNavigatingBackToDashboard,
-      shouldFetchCardData,
       parameterQueryParams,
       dispatch,
+    }).then(() => {
+      didMountRef.current = true;
     });
   });
 
@@ -195,18 +195,19 @@ const PublicOrEmbeddedDashboardInner = ({
   });
 
   useEffect(() => {
-    if (previousDashboardId && dashboardId !== previousDashboardId) {
-      initializeData({
-        dashboardId: String(dashboardId),
-        shouldReload: true,
-        shouldFetchCardData,
-        parameterQueryParams,
-        dispatch,
-      });
-    } else if (selectedTabId && selectedTabId !== previousSelectedTabId) {
-      fetchDashboardCardData();
-    } else if (!_.isEqual(parameterValues, previousParameterValues)) {
-      fetchDashboardCardData({ reload: false, clearCache: true });
+    if (didMountRef.current) {
+      if (dashboardId !== previousDashboardId) {
+        initializeData({
+          dashboardId: String(dashboardId),
+          shouldReload: true,
+          parameterQueryParams,
+          dispatch,
+        });
+      } else if (selectedTabId !== previousSelectedTabId) {
+        fetchDashboardCardData();
+      } else if (!_.isEqual(parameterValues, previousParameterValues)) {
+        fetchDashboardCardData({ reload: false, clearCache: true });
+      }
     }
   }, [
     dashboardId,
