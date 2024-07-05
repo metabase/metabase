@@ -1,8 +1,6 @@
-import { createAction as RTKCreateAction } from "@reduxjs/toolkit";
-
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { createAction, createThunkAction } from "metabase/lib/redux";
-import type { DashCardId, ParameterId } from "metabase-types/api";
+import type { DashCardId } from "metabase-types/api";
 import type {
   DashboardSidebarName,
   Dispatch,
@@ -14,10 +12,7 @@ import { getSidebar } from "../selectors";
 import { closeAutoApplyFiltersToast } from "./parameters";
 
 export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
-export const setSidebar = RTKCreateAction<{
-  name: DashboardSidebarName;
-  props?: { dashcardId?: DashCardId; parameterId?: ParameterId };
-}>(SET_SIDEBAR);
+export const setSidebar = createAction(SET_SIDEBAR);
 
 export const CLOSE_SIDEBAR = "metabase/dashboard/CLOSE_SIDEBAR";
 export const closeSidebar = createAction(CLOSE_SIDEBAR);

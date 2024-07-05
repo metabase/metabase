@@ -2,7 +2,12 @@ import { createReducer } from "@reduxjs/toolkit";
 
 import { handleActions } from "metabase/lib/redux";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
-import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
+import type {
+  DashCardId,
+  ParameterId,
+  ParameterValueOrArray,
+} from "metabase-types/api";
+import type { DashboardSidebarName } from "metabase-types/store/dashboard";
 
 import {
   INITIALIZE,
@@ -18,7 +23,7 @@ import {
   setShowLoadingCompleteFavicon,
   REMOVE_PARAMETER,
   CLOSE_SIDEBAR,
-  setSidebar,
+  SET_SIDEBAR,
   SET_PARAMETER_VALUE,
   SET_PARAMETER_VALUES,
 } from "./actions";
@@ -135,7 +140,16 @@ export const sidebar = createReducer(
     builder.addCase(SET_EDITING_DASHBOARD, () => DEFAULT_SIDEBAR);
     builder.addCase(CLOSE_SIDEBAR, () => DEFAULT_SIDEBAR);
 
-    builder.addCase(setSidebar, (_state, { payload: { name, props } }) => ({
+    builder.addCase<
+      string,
+      {
+        type: string;
+        payload: {
+          name: DashboardSidebarName;
+          props?: { dashcardId?: DashCardId; parameterId?: ParameterId };
+        };
+      }
+    >(SET_SIDEBAR, (_state, { payload: { name, props } }) => ({
       name,
       props: props || {},
     }));
