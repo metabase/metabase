@@ -74,6 +74,7 @@ export type EmbedFrameBaseProps = Partial<{
   setParameterValueToDefault: (id: ParameterId) => void;
   children: ReactNode;
   dashboardTabs: ReactNode;
+  downloadsEnabled: boolean;
 }>;
 
 export type EmbedFrameProps = EmbedFrameBaseProps & DashboardUrlHashOptions;
@@ -112,9 +113,7 @@ export const EmbedFrame = ({
   titled,
   theme,
   hide_parameters,
-  hide_download_button,
-  // TODO: merge `downloads` with `hide_download_button` on the higher level component?
-  downloads = true,
+  downloadsEnabled = true,
 }: EmbedFrameProps) => {
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const hasEmbedBranding = useSelector(
@@ -149,8 +148,7 @@ export const EmbedFrame = ({
     .filter(Boolean)
     .join(",");
 
-  const showFooter =
-    hasEmbedBranding || (!hide_download_button && actionButtons);
+  const showFooter = hasEmbedBranding || (downloadsEnabled && actionButtons);
 
   const finalName = titled ? name : null;
 
@@ -202,7 +200,7 @@ export const EmbedFrame = ({
             )}
             data-testid="embed-frame-header"
           >
-            {(finalName || downloads) && (
+            {(finalName || downloadsEnabled) && (
               <TitleAndDescriptionContainer>
                 <TitleAndButtonsContainer
                   data-testid="fixed-width-dashboard-header"
@@ -217,7 +215,7 @@ export const EmbedFrame = ({
                   )}
                   <Box style={{ flex: 1 }} />
                   {/* TODO: move this to a prop passed by PublicDashboard ? */}
-                  {dashboard && downloads && (
+                  {dashboard && downloadsEnabled && (
                     <Button
                       variant="subtle"
                       leftIcon={<Icon name="document" />}

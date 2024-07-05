@@ -484,5 +484,8 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
   /**
    * Returns if 'download results' on cards and pdf exports are enabled in public and embedded contexts.
    */
-  areDownloadsEnabled: () => true,
+  areDownloadsEnabled: (_args: {
+    hide_download_button?: boolean | null;
+    downloads?: boolean | null;
+  }) => true,
 };

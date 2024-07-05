@@ -55,8 +55,8 @@ export const DEFAULT_DASHBOARD_DISPLAY_OPTIONS: EmbedDisplayParams = {
   bordered: false,
   titled: true,
   cardTitled: true,
-  hideDownloadButton: null,
   hideParameters: null,
   font: null,
   theme: "light",
+  downloadsEnabled: true,
 };
