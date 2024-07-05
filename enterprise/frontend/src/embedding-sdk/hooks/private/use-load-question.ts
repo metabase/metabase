@@ -2,9 +2,9 @@ import { useCallback, useState } from "react";
 
 import {
   runQuestionOnLoadSdk,
-  runQuestionOnNavigateSdk,
   runQuestionOnQueryChangeSdk,
-} from "embedding-sdk/lib/run-question-query";
+  runQuestionOnNavigateSdk,
+} from "embedding-sdk/lib/interactive-question";
 import type {
   LoadSdkQuestionParams,
   NavigateToNewCardParams,
