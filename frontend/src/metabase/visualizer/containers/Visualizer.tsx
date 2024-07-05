@@ -43,22 +43,7 @@ export function Visualizer({ location }: WithRouterProps) {
                 onReplace={item => replaceAllWithCardSeries(item.id)}
               />
             </Panel>
-            <PanelResizeHandle
-              style={{
-                margin: 4,
-                display: "flex",
-              }}
-            >
-              <span
-                style={{
-                  width: 20,
-                  height: 4,
-                  backgroundColor: "#ddd",
-                  borderRadius: 99,
-                  margin: "0 auto",
-                }}
-              ></span>
-            </PanelResizeHandle>
+            <ResizeHandle direction="horizontal" />
             <Panel defaultSize={30}>
               <VisualizerUsed
                 series={series}
@@ -70,22 +55,7 @@ export function Visualizer({ location }: WithRouterProps) {
           </PanelGroup>
         </Panel>
       )}
-      <PanelResizeHandle
-        style={{
-          display: "flex",
-          margin: 4,
-        }}
-      >
-        <span
-          style={{
-            width: 4,
-            height: 20,
-            backgroundColor: "#ddd",
-            borderRadius: 99,
-            margin: "auto 0",
-          }}
-        ></span>
-      </PanelResizeHandle>
+      <ResizeHandle direction="vertical" />
       <Panel defaultSize={75} minSize={60}>
         <VisualizerCanvas
           series={series}
@@ -97,16 +67,18 @@ export function Visualizer({ location }: WithRouterProps) {
           }}
         />
       </Panel>
-      {isVizSettingsOpen && question && (
+      {isVizSettingsOpen && (
         <Panel defaultSize={20} minSize={20}>
           <ChartSettings
             question={question}
             series={series}
             computedSettings={settings}
             noPreview
-            onChange={(settings: VisualizationSettings) =>
-              setVizSettings(question.id(), settings)
-            }
+            onChange={(settings: VisualizationSettings) => {
+              if (question) {
+                setVizSettings(question.id(), settings);
+              }
+            }}
             onClose={() => setVizSettingsOpen(false)}
           />
         </Panel>
@@ -126,4 +98,29 @@ function getInitialCardIds(location: Location) {
     ids.push(secondCardId);
   }
   return ids;
+}
+
+function ResizeHandle({ direction }: { direction: "horizontal" | "vertical" }) {
+  const style =
+    direction === "horizontal"
+      ? { width: 20, height: 4, margin: "0 auto" }
+      : { width: 4, height: 20, margin: "auto 0" };
+
+  return (
+    <PanelResizeHandle
+      style={{
+        display: "flex",
+        margin: 4,
+        cursor: direction === "horizontal" ? "row-resize" : "col-resize",
+      }}
+    >
+      <span
+        style={{
+          ...style,
+          backgroundColor: "#ddd",
+          borderRadius: 99,
+        }}
+      ></span>
+    </PanelResizeHandle>
+  );
 }
