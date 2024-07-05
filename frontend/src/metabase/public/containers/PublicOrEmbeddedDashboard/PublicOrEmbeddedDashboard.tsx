@@ -1,5 +1,5 @@
 import type { Query } from "history";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
 import { useMount, usePrevious, useUnmount } from "react-use";
@@ -17,6 +17,8 @@ import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/comp
 import {
   getDashboardComplete,
   getDraftParameterValues,
+  getIsLoading,
+  getIsLoadingWithCards,
   getIsNavigatingBackToDashboard,
   getParameters,
   getParameterValues,
@@ -29,7 +31,7 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
-import { useDispatch } from "metabase/lib/redux";
+import { type DispatchFn, useDispatch } from "metabase/lib/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import type { DashboardId } from "metabase-types/api";
@@ -47,16 +49,15 @@ const mapStateToProps = (state: State) => {
     selectedTabId: getSelectedTabId(state),
     isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
     isErrorPage: getErrorPage(state),
+    isLoading: getIsLoading(state),
+    isLoadingWithCards: getIsLoadingWithCards(state),
   };
 };
 
 const mapDispatchToProps = {
-  initialize,
   cancelFetchDashboardCardData,
   setParameterValueToDefault,
   setParameterValue,
-  setErrorPage,
-  fetchDashboard,
   fetchDashboardCardData,
 };
 
@@ -93,6 +94,48 @@ type PublicOrEmbeddedDashboardProps = OwnProps &
   DisplayProps &
   EmbedDisplayParams;
 
+const initializeData = async ({
+  dashboardId,
+  shouldReload,
+  shouldFetchCardData,
+  parameterQueryParams,
+  dispatch,
+}: {
+  dashboardId: string;
+  shouldReload: boolean;
+  shouldFetchCardData: boolean;
+  parameterQueryParams: OwnProps["parameterQueryParams"];
+  dispatch: DispatchFn;
+}) => {
+  dispatch(initialize({ clearCache: shouldReload }));
+
+  const result = await dispatch(
+    fetchDashboard({
+      dashId: String(dashboardId),
+      queryParams: parameterQueryParams,
+      options: {
+        clearCache: shouldReload,
+      },
+    }),
+  );
+
+  if (!isSuccessfulFetchDashboardResult(result)) {
+    dispatch(setErrorPage(result.payload));
+    return;
+  }
+
+  try {
+    if (shouldFetchCardData) {
+      await dispatch(
+        fetchDashboardCardData({ reload: false, clearCache: true }),
+      );
+    }
+  } catch (error) {
+    console.error(error);
+    dispatch(setErrorPage(error));
+  }
+};
+
 const PublicOrEmbeddedDashboardInner = ({
   dashboard,
   parameters,
@@ -100,7 +143,6 @@ const PublicOrEmbeddedDashboardInner = ({
   draftParameterValues,
   isFullscreen,
   isNightMode = false,
-  setParameterValueToDefault,
   onFullscreenChange,
   onNightModeChange,
   onRefreshPeriodChange,
@@ -114,7 +156,6 @@ const PublicOrEmbeddedDashboardInner = ({
   hideParameters,
   navigateToNewCardFromDashboard,
   selectedTabId,
-  setParameterValue,
   slowCards,
   dashboardId,
   cardTitled,
@@ -123,71 +164,30 @@ const PublicOrEmbeddedDashboardInner = ({
   isErrorPage,
   onLoad,
   onLoadWithCards,
+  isLoading,
+  isLoadingWithCards,
+  cancelFetchDashboardCardData,
+  setParameterValueToDefault,
+  setParameterValue,
+  fetchDashboardCardData,
 }: PublicOrEmbeddedDashboardProps) => {
   const dispatch = useDispatch();
   const previousDashboardId = usePrevious(dashboardId);
   const previousSelectedTabId = usePrevious(selectedTabId);
   const previousParameterValues = usePrevious(parameterValues);
+  const previousIsLoading = usePrevious(isLoading);
+  const previousIsLoadingWithCards = usePrevious(isLoadingWithCards);
 
-  const [isDashboardLoading, setIsDashboardLoading] = useState<boolean>(true);
-  const previousIsDashboardLoading = usePrevious(isDashboardLoading);
-  const [areCardsLoading, setAreCardsLoading] = useState<boolean>(false);
-
-  const isDashboardWithCardLoading = isDashboardLoading || areCardsLoading;
-  const previousIsDashboardWithCardLoading = usePrevious(
-    isDashboardWithCardLoading,
-  );
-
-  const _initialize = useCallback(
-    async (isForceUpdate?: boolean) => {
-      const shouldReloadDashboardData =
-        !isNavigatingBackToDashboard || !!isForceUpdate;
-
-      initialize({ clearCache: shouldReloadDashboardData });
-
-      setIsDashboardLoading(true);
-
-      const result = await dispatch(
-        fetchDashboard({
-          dashId: String(dashboardId),
-          queryParams: parameterQueryParams,
-          options: {
-            clearCache: shouldReloadDashboardData,
-          },
-        }),
-      );
-
-      setIsDashboardLoading(false);
-
-      if (!isSuccessfulFetchDashboardResult(result)) {
-        setErrorPage(result.payload);
-        return;
-      }
-
-      setAreCardsLoading(true);
-
-      try {
-        if (dashboard?.tabs?.length === 0) {
-          await fetchDashboardCardData({ reload: false, clearCache: true });
-        }
-      } catch (error) {
-        console.error(error);
-        setErrorPage(error);
-      } finally {
-        setAreCardsLoading(false);
-      }
-    },
-    [
-      dashboard?.tabs?.length,
-      dashboardId,
-      dispatch,
-      isNavigatingBackToDashboard,
-      parameterQueryParams,
-    ],
-  );
+  const shouldFetchCardData = dashboard?.tabs?.length === 0;
 
   useMount(() => {
-    _initialize();
+    initializeData({
+      dashboardId: String(dashboardId),
+      shouldReload: !isNavigatingBackToDashboard,
+      shouldFetchCardData,
+      parameterQueryParams,
+      dispatch,
+    });
   });
 
   useUnmount(() => {
@@ -195,42 +195,47 @@ const PublicOrEmbeddedDashboardInner = ({
   });
 
   useEffect(() => {
-    if (dashboardId !== previousDashboardId) {
-      _initialize(true);
-    } else if (selectedTabId !== previousSelectedTabId) {
+    if (previousDashboardId && dashboardId !== previousDashboardId) {
+      initializeData({
+        dashboardId: String(dashboardId),
+        shouldReload: true,
+        shouldFetchCardData,
+        parameterQueryParams,
+        dispatch,
+      });
+    } else if (selectedTabId && selectedTabId !== previousSelectedTabId) {
       fetchDashboardCardData();
     } else if (!_.isEqual(parameterValues, previousParameterValues)) {
       fetchDashboardCardData({ reload: false, clearCache: true });
     }
   }, [
-    _initialize,
     dashboardId,
+    dispatch,
+    fetchDashboardCardData,
+    parameterQueryParams,
     parameterValues,
     previousDashboardId,
     previousParameterValues,
     previousSelectedTabId,
     selectedTabId,
+    shouldFetchCardData,
   ]);
 
   useEffect(() => {
-    if (!isDashboardLoading && previousIsDashboardLoading && !isErrorPage) {
+    if (!isLoading && previousIsLoading && !isErrorPage) {
       onLoad?.();
     }
-  }, [isDashboardLoading, isErrorPage, onLoad, previousIsDashboardLoading]);
+  }, [isLoading, isErrorPage, onLoad, previousIsLoading]);
 
   useEffect(() => {
-    if (
-      !isDashboardWithCardLoading &&
-      previousIsDashboardWithCardLoading &&
-      !isErrorPage
-    ) {
+    if (!isLoadingWithCards && previousIsLoadingWithCards && !isErrorPage) {
       onLoadWithCards?.();
     }
   }, [
-    isDashboardWithCardLoading,
+    isLoadingWithCards,
     isErrorPage,
     onLoadWithCards,
-    previousIsDashboardWithCardLoading,
+    previousIsLoadingWithCards,
   ]);
 
   return (
