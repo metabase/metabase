@@ -89,7 +89,7 @@ export const runQuestionOnQueryChangeSdk =
     return runResult;
   };
 
-export const runQuestionQueryOnNavigateSdk =
+export const runQuestionOnNavigateSdk =
   (options: NavigateToNewCardParams) =>
   async (dispatch: Dispatch, getState: GetState): Promise<Result | null> => {
     let { nextCard, previousCard } = options;

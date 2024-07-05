@@ -1,8 +1,10 @@
 import type React from "react";
 import type { PropsWithChildren } from "react";
+import { useMemo } from "react";
 
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import type { LoadSdkQuestionParams } from "embedding-sdk/lib/load-question";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
 import type { CardId } from "metabase-types/api";
 
@@ -39,9 +41,14 @@ export const _InteractiveQuestion = ({
   height,
   children = null,
 }: InteractiveQuestionProps): React.JSX.Element | null => {
+  const { location, params } = useMemo(() => {
+    return getQuestionParameters(questionId);
+  }, [questionId]);
+
   return (
     <InteractiveQuestionProvider
-      questionId={questionId}
+      location={location}
+      params={params}
       componentPlugins={plugins}
     >
       {children ?? (
@@ -54,6 +61,19 @@ export const _InteractiveQuestion = ({
       )}
     </InteractiveQuestionProvider>
   );
+};
+
+export const getQuestionParameters = (
+  questionId: CardId,
+): LoadSdkQuestionParams => {
+  return {
+    location: {
+      query: {}, // TODO: add wrapped parameterValues here.
+      hash: "",
+      pathname: `/question/${questionId}`,
+    },
+    params: { slug: questionId.toString() },
+  };
 };
 
 const InteractiveQuestion = withPublicComponentWrapper(

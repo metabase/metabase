@@ -48,7 +48,7 @@ type BlankQueryOptions = {
   segment?: string;
 };
 
-type QueryParams = BlankQueryOptions & {
+export type QueryParams = BlankQueryOptions & {
   slug?: string;
   objectId?: string;
 };
@@ -101,7 +101,7 @@ function filterBySegmentId(question: Question, segmentId: SegmentId) {
   return question.setQuery(newQuery);
 }
 
-function deserializeCard(serializedCard: string) {
+export function deserializeCard(serializedCard: string) {
   const card = deserializeCardFromUrl(serializedCard);
   if (card.dataset_query.database != null) {
     // Ensure older MBQL is supported
@@ -187,7 +187,7 @@ export async function resolveCards({
       );
 }
 
-function parseHash(hash?: string) {
+export function parseHash(hash?: string) {
   let options: BlankQueryOptions = {};
   let serializedCard;
 

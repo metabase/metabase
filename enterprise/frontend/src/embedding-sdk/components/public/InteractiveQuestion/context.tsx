@@ -8,10 +8,13 @@ import {
 } from "react";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
-import { loadSdkQuestion } from "embedding-sdk/lib/load-question";
+import {
+  loadSdkQuestion,
+  type LoadSdkQuestionParams,
+} from "embedding-sdk/lib/load-question";
 import {
   runQuestionOnQueryChangeSdk,
-  runQuestionQueryOnNavigateSdk,
+  runQuestionOnNavigateSdk,
 } from "embedding-sdk/lib/run-question-query";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
@@ -45,19 +48,21 @@ export const InteractiveQuestionContext = createContext<
   InteractiveQuestionContextType | undefined
 >(undefined);
 
-type InteractiveQuestionProviderProps = PropsWithChildren<{
-  questionId: number;
-  componentPlugins?: SdkPluginsConfig;
-  onReset?: () => void;
-  onNavigateBack?: () => void;
-}>;
+type InteractiveQuestionProviderProps = PropsWithChildren<
+  {
+    componentPlugins?: SdkPluginsConfig;
+    onReset?: () => void;
+    onNavigateBack?: () => void;
+  } & LoadSdkQuestionParams
+>;
 
 export const InteractiveQuestionProvider = ({
-  questionId,
-  children,
+  location,
+  params,
   componentPlugins,
   onReset,
   onNavigateBack,
+  children,
 }: InteractiveQuestionProviderProps) => {
   const dispatch = useDispatch();
 
@@ -66,63 +71,52 @@ export const InteractiveQuestionProvider = ({
 
   const { question, queryResults } = result;
 
-  const loadQuestion = useCallback(async () => {
-    setIsQuestionLoading(true);
-
-    try {
-      const result = await dispatch(loadSdkQuestion(questionId));
-      setQuestionResult(result);
-    } catch (e) {
-      console.error(`Failed to get question`, e);
-    } finally {
-      setIsQuestionLoading(false);
-    }
-  }, [dispatch, questionId]);
-
   const globalPlugins = useSdkSelector(getPlugins);
   const plugins = componentPlugins || globalPlugins;
 
   const mode = question && getEmbeddingMode(question, plugins ?? undefined);
 
-  async function onQuestionChange(nextQuestion: Question) {
-    if (!question) {
-      return;
-    }
-
-    // TODO: to remove log
-    // eslint-disable-next-line no-console
-    console.log("On Question Change:", { question });
-
+  const storeQuestionResult = async (
+    getQuestionResult: () => Promise<SdkQuestionResult | null>,
+  ) => {
     setIsQuestionLoading(true);
 
     try {
-      const result = await dispatch(
-        runQuestionOnQueryChangeSdk(question, nextQuestion),
-      );
-
-      setQuestionResult(result);
-    } finally {
-      setIsQuestionLoading(false);
-    }
-  }
-
-  async function onNavigateToNewCard(params: NavigateToNewCardParams) {
-    setIsQuestionLoading(true);
-
-    try {
-      const result = await dispatch(runQuestionQueryOnNavigateSdk(params));
-
-      // TODO: to remove log
-      // eslint-disable-next-line no-console
-      console.log("On Navigate:", { question });
+      const result = await getQuestionResult();
 
       if (result) {
         setQuestionResult(result);
       }
+    } catch (e) {
+      console.error(`Failed to update question result`, e);
     } finally {
       setIsQuestionLoading(false);
     }
-  }
+  };
+
+  const loadQuestion = useCallback(
+    () =>
+      storeQuestionResult(() =>
+        dispatch(loadSdkQuestion({ location, params })),
+      ),
+    [dispatch, location, params],
+  );
+
+  const onQuestionChange = useCallback(
+    async (nextQuestion: Question) =>
+      storeQuestionResult(async () =>
+        question
+          ? dispatch(runQuestionOnQueryChangeSdk(question, nextQuestion))
+          : null,
+      ),
+    [dispatch, question],
+  );
+
+  const onNavigateToNewCard = useCallback(
+    async (params: NavigateToNewCardParams) =>
+      storeQuestionResult(() => dispatch(runQuestionOnNavigateSdk(params))),
+    [dispatch],
+  );
 
   const questionContext: InteractiveQuestionContextType = {
     isQuestionLoading,
