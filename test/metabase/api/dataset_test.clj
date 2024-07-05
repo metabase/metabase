@@ -444,7 +444,6 @@
                 (is (=? {:base_type            "type/Integer"
                          :effective_type       "type/Integer"
                          :name                 "pivot-grouping"
-                         :desired_column_alias "pivot-grouping"
                          :display_name         "pivot-grouping"
                          :expression_name      "pivot-grouping"
                          :field_ref            ["expression" "pivot-grouping"]

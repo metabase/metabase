@@ -486,8 +486,10 @@
                             [[(:name col) (:metabase.lib.join/join-alias col)]
                              (:lib/desired-column-alias col)]))]
     (mapv (fn [col]
-            (let [k [(:name col) (:source_alias col)]]
-              (m/assoc-some col :desired_column_alias (get aliases k))))
+            (let [k     [(:name col) (:source_alias col)]
+                  alias (get aliases k)]
+              (cond-> col
+                alias (assoc :desired_column_alias alias))))
           cols)))
 
 (defn mbql-cols

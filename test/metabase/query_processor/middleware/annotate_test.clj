@@ -63,9 +63,7 @@
         (is (=? [{:source    :fields
                   :field_ref $price}]
                 (annotate/column-info
-                 {:type  :query
-                  :query {:source-table $$venues
-                          :fields       [$price]}}
+                 {:type :query, :query {:fields [$price]}}
                  {:columns [:price]})))))))
 
 (deftest ^:parallel col-info-for-implicit-joins-test
@@ -82,9 +80,7 @@
                   ;; on [[metabase.query-processor.middleware.annotate/col-info-for-aggregation-clause]]
                   :display_name "Name"}]
                 (annotate/column-info
-                 {:type :query
-                  :query {:source-table $$venues
-                          :fields       [$category-id->categories.name]}}
+                 {:type :query, :query {:fields [$category-id->categories.name]}}
                  {:columns [:name]})))))))
 
 (deftest ^:parallel col-info-for-implicit-joins-aggregation-test
@@ -114,13 +110,12 @@
                   :source_alias "CATEGORIES__via__CATEGORY_ID"}]
                 (annotate/column-info
                  {:type  :query
-                  :query {:source-table $$venues
-                          :fields       [&CATEGORIES__via__CATEGORY_ID.categories.name]
-                          :joins        [{:alias        "CATEGORIES__via__CATEGORY_ID"
-                                          :source-table $$venues
-                                          :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
-                                          :strategy     :left-join
-                                          :fk-field-id  %category-id}]}}
+                  :query {:fields [&CATEGORIES__via__CATEGORY_ID.categories.name]
+                          :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
+                                    :source-table $$venues
+                                    :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                                    :strategy     :left-join
+                                    :fk-field-id  %category-id}]}}
                  {:columns [:name]})))))))
 
 (deftest ^:parallel col-info-for-explicit-joins-without-fk-field-id-test
@@ -134,12 +129,11 @@
                   :source_alias "Categories"}]
                 (annotate/column-info
                  {:type  :query
-                  :query {:source-table $$venues
-                          :fields       [&Categories.categories.name]
-                          :joins        [{:alias        "Categories"
-                                          :source-table $$venues
-                                          :condition    [:= $category-id &Categories.categories.id]
-                                          :strategy     :left-join}]}}
+                  :query {:fields [&Categories.categories.name]
+                          :joins  [{:alias        "Categories"
+                                    :source-table $$venues
+                                    :condition    [:= $category-id &Categories.categories.id]
+                                    :strategy     :left-join}]}}
                  {:columns [:name]})))))))
 
 (deftest ^:parallel col-info-for-field-with-temporal-unit-test
@@ -150,27 +144,22 @@
                   :source    :fields
                   :field_ref !month.price}]
                 (annotate/column-info
-                 {:type  :query
-                  :query {:source-table $$venues
-                          :fields       (lib.tu.macros/$ids venues [!month.price])}}
+                 {:type :query, :query {:fields (lib.tu.macros/$ids venues [!month.price])}}
                  {:columns [:price]})))))))
 
 (deftest ^:parallel col-info-for-field-literal-with-temporal-unit-test
   (qp.store/with-metadata-provider meta/metadata-provider
     (lib.tu.macros/$ids venues
       (testing "datetime unit should work on field literals too"
-        (is (= [{:name                 "price"
-                 :desired_column_alias "price"
-                 :base_type            :type/Number
-                 :display_name         "Price"
-                 :unit                 :month
-                 :source               :fields
-                 :field_ref            !month.*price/Number}]
+        (is (= [{:name         "price"
+                 :base_type    :type/Number
+                 :display_name "Price"
+                 :unit         :month
+                 :source       :fields
+                 :field_ref    !month.*price/Number}]
                (doall
                 (annotate/column-info
-                 {:type  :query
-                  :query {:source-table $$venues
-                          :fields       [[:field "price" {:base-type :type/Number, :temporal-unit :month}]]}}
+                 {:type :query, :query {:fields [[:field "price" {:base-type :type/Number, :temporal-unit :month}]]}}
                  {:columns [:price]}))))))))
 
 (deftest ^:parallel col-info-for-field-with-temporal-unit-from-nested-query-test
@@ -181,7 +170,7 @@
                 {:name "LAST_LOGIN", :unit :month, :field_ref [:field
                                                                %users.last-login
                                                                {:temporal-unit :default
-                                                                :source-field  %user-id}]}]
+                                                                :join-alias    "USERS__via__USER_ID"}]}]
                (mapv
                 (fn [col]
                   (select-keys col [:name :unit :field_ref]))
@@ -202,38 +191,35 @@
                                              :field_ref [:field %users.last-login {:temporal-unit :month
                                                                                    :source-field  %user-id}]}]
                           :fields          [[:field %date {:temporal-unit :default}]
-                                            [:field %users.last-login {:temporal-unit :default, :source-field %user-id}]]
+                                            [:field %users.last-login {:temporal-unit :default, :join-alias "USERS__via__USER_ID"}]]
                           :limit           1}}
                  nil))))))))
 
 (deftest ^:parallel col-info-for-binning-strategy-test
   (testing "when binning strategy is used, include `:binning_info`"
-    (qp.store/with-metadata-provider meta/metadata-provider
-      (is (= [{:name                 "price"
-               :desired_column_alias "price"
-               :base_type            :type/Number
-               :display_name         "Price"
-               :unit                 :month
-               :source               :fields
-               :binning_info         {:num_bins 10, :bin_width 5, :min_value -100, :max_value 100, :binning_strategy :num-bins}
-               :field_ref            [:field "price" {:base-type     :type/Number
-                                                      :temporal-unit :month
-                                                      :binning       {:strategy  :num-bins
-                                                                      :num-bins  10
-                                                                      :bin-width 5
-                                                                      :min-value -100
-                                                                      :max-value 100}}]}]
-             (annotate/column-info
-               {:type  :query
-                :query {:source-table (meta/id :venues)
-                        :fields       [[:field "price" {:base-type     :type/Number
-                                                        :temporal-unit :month
-                                                        :binning       {:strategy  :num-bins
-                                                                        :num-bins  10
-                                                                        :bin-width 5
-                                                                        :min-value -100
-                                                                        :max-value 100}}]]}}
-               {:columns [:price]}))))))
+    (is (= [{:name         "price"
+             :base_type    :type/Number
+             :display_name "Price"
+             :unit         :month
+             :source       :fields
+             :binning_info {:num_bins 10, :bin_width 5, :min_value -100, :max_value 100, :binning_strategy :num-bins}
+             :field_ref    [:field "price" {:base-type     :type/Number
+                                            :temporal-unit :month
+                                            :binning       {:strategy  :num-bins
+                                                            :num-bins  10
+                                                            :bin-width 5
+                                                            :min-value -100
+                                                            :max-value 100}}]}]
+           (annotate/column-info
+            {:type  :query
+             :query {:fields [[:field "price" {:base-type     :type/Number
+                                               :temporal-unit :month
+                                               :binning       {:strategy  :num-bins
+                                                               :num-bins  10
+                                                               :bin-width 5
+                                                               :min-value -100
+                                                               :max-value 100}}]]}}
+            {:columns [:price]})))))
 
 (def ^:private child-parent-grandparent-metadata-provider
   (lib.tu/mock-metadata-provider
@@ -518,7 +504,6 @@
           (is (= {:semantic_type :type/Name,
                   :coercion_strategy nil,
                   :name "expr",
-                  :desired_column_alias "expr",
                   :expression_name "expr",
                   :source :fields,
                   :field_ref [:expression "expr"],
@@ -532,7 +517,6 @@
         (testing "Gets the type information from the literal"
           (is (= {:base_type :type/Text,
                   :name "expr",
-                  :desired_column_alias "expr",
                   :display_name "expr",
                   :expression_name "expr",
                   :field_ref [:expression "expr"],
@@ -544,7 +528,6 @@
           (is (= {:semantic_type :type/Name,
                   :coercion_strategy nil,
                   :name "expr",
-                  :desired_column_alias "expr",
                   :expression_name "expr",
                   :source :fields,
                   :field_ref [:expression "expr"],
@@ -654,13 +637,12 @@
 
 (deftest ^:parallel expressions-keys-test
   (testing "make sure expressions come back with the right set of keys, including `:expression_name` (#8854)"
-    (is (= {:name                 "discount_price"
-            :desired_column_alias "discount_price"
-            :display_name         "discount_price"
-            :base_type            :type/Float
-            :expression_name      "discount_price"
-            :source               :fields
-            :field_ref            [:expression "discount_price"]}
+    (is (= {:name            "discount_price"
+            :display_name    "discount_price"
+            :base_type       :type/Float
+            :expression_name "discount_price"
+            :source          :fields
+            :field_ref       [:expression "discount_price"]}
            (-> (add-column-info
                 (lib.tu.macros/mbql-query venues
                   {:expressions {"discount_price" [:* 0.9 $price]}
