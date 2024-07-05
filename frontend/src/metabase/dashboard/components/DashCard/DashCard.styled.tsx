@@ -41,8 +41,6 @@ export const DashCardRoot = styled.div<DashCardRootProps>`
   ${({ shouldForceHiddenBackground }) =>
     shouldForceHiddenBackground && hiddenBackgroundStyle}
 
-  border: 1px solid var(--mb-color-border);
-
   &.${SAVING_DOM_IMAGE_CLASS} {
     border-radius: 0;
     border: none !important;
