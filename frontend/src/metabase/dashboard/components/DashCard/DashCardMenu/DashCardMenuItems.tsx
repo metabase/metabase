@@ -29,11 +29,13 @@ export const DashCardMenuItems = ({
     plugins,
     onEditQuestion = question => dispatch(editQuestion(question)),
   } = useInteractiveDashboardContext();
-  const dashcardMenuItems = plugins?.dashboard
-    ?.dashcardMenu as DashCardCustomMenuItem;
+  const dashcardMenuItems = plugins?.dashboard?.dashcardMenu as
+    | DashCardCustomMenuItem
+    | undefined;
 
   const showEditLink = dashcardMenuItems?.withEditLink ?? true;
   const showDownloads = dashcardMenuItems?.withDownloads ?? true;
+  const customItems = dashcardMenuItems?.customItems;
 
   const menuItems = useMemo(() => {
     const items: (DashCardMenuItem & {
@@ -60,20 +62,26 @@ export const DashCardMenuItems = ({
       });
     }
 
-    dashcardMenuItems.customItems?.map(item => {
-      const customItem = typeof item === "function" ? item({ question }) : item;
-      items.push({
-        ...customItem,
-        key: `MB_CUSTOM_${customItem.label}`,
-      });
-    });
+    if (customItems) {
+      items.push(
+        ...customItems.map(item => {
+          const customItem =
+            typeof item === "function" ? item({ question }) : item;
+
+          return {
+            ...customItem,
+            key: `MB_CUSTOM_${customItem.label}`,
+          };
+        }),
+      );
+    }
 
     return items;
   }, [
+    customItems,
     loading,
     onDownload,
     onEditQuestion,
-    dashcardMenuItems.customItems,
     question,
     result,
     showDownloads,
