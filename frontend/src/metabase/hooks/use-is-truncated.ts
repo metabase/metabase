@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import _ from "underscore";
 
-// import resizeObserver from "metabase/lib/resize-observer";
+import resizeObserver from "metabase/lib/resize-observer";
 
 type UseIsTruncatedProps = {
   disabled?: boolean;
