@@ -10,15 +10,18 @@ import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
 import { VisualizerAxis } from "../components/VisualizerAxis";
-import { useVizSettings } from "../useVizSettings";
 
 interface VisualizerCanvasProps {
   series: Series;
+  onToggleVizSettings: () => void;
   onChange: (settings: VisualizationSettings) => void;
 }
 
-export function VisualizerCanvas({ series, onChange }: VisualizerCanvasProps) {
-  const { toggleVizSettings } = useVizSettings();
+export function VisualizerCanvas({
+  series,
+  onToggleVizSettings,
+  onChange,
+}: VisualizerCanvasProps) {
   const metadata = useSelector(getMetadata);
 
   const { metrics, dimensions } = useMemo(
@@ -79,7 +82,7 @@ export function VisualizerCanvas({ series, onChange }: VisualizerCanvasProps) {
         <>
           <Flex mx="xs" mb="md">
             <Title>{displaySeries[0].card.name}</Title>
-            <ActionIcon ml="auto" onClick={() => toggleVizSettings()}>
+            <ActionIcon ml="auto" onClick={onToggleVizSettings}>
               <Icon name="gear" />
             </ActionIcon>
           </Flex>

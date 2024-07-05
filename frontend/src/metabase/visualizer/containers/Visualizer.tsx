@@ -1,4 +1,5 @@
 import type { Location } from "history";
+import { useState } from "react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import type { WithRouterProps } from "react-router";
 import _ from "underscore";
@@ -7,13 +8,14 @@ import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { useVisualizerSeries } from "../hooks/useVisualizerSeries";
-import { useVizSettings } from "../useVizSettings";
 
 import { VisualizerCanvas } from "./VisualizerCanvas";
 import { VisualizerMenu } from "./VisualizerMenu/VisualizerMenu";
 import { VisualizerUsed } from "./VisualizerUsed";
 
 export function Visualizer({ location }: WithRouterProps) {
+  const [isVizSettingsOpen, setVizSettingsOpen] = useState(false);
+
   const {
     series,
     settings,
@@ -25,8 +27,6 @@ export function Visualizer({ location }: WithRouterProps) {
     setCardDisplay,
     setVizSettings,
   } = useVisualizerSeries(getInitialCardIds(location));
-
-  const { isVizSettingsOpen, closeVizSettings } = useVizSettings();
 
   const hasInitialCardsSelected =
     "c1" in location.query && "c2" in location.query;
@@ -89,6 +89,7 @@ export function Visualizer({ location }: WithRouterProps) {
       <Panel defaultSize={75} minSize={60}>
         <VisualizerCanvas
           series={series}
+          onToggleVizSettings={() => setVizSettingsOpen(isOpen => !isOpen)}
           onChange={settings => {
             if (question) {
               setVizSettings(question.id(), settings);
@@ -106,7 +107,7 @@ export function Visualizer({ location }: WithRouterProps) {
             onChange={(settings: VisualizationSettings) =>
               setVizSettings(question.id(), settings)
             }
-            onClose={closeVizSettings}
+            onClose={() => setVizSettingsOpen(false)}
           />
         </Panel>
       )}

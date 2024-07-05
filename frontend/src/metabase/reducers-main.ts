@@ -11,7 +11,6 @@ import * as qb from "metabase/query_builder/reducers";
 import revisions from "metabase/redux/revisions";
 import reference from "metabase/reference/reference";
 import { reducer as setup } from "metabase/setup/reducers";
-import { visualizer } from "metabase/visualizer/store";
 
 import { commonReducers } from "./reducers-common";
 
@@ -27,6 +26,5 @@ export const mainReducers = {
   revisions,
   setup,
   admin,
-  visualizer,
   plugins: combineReducers(PLUGIN_REDUCERS),
 };
