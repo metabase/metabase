@@ -8,37 +8,34 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import { migrateVizSettings } from "./migrate-settings";
+
 export function syncVizSettingsWithSeries(
   settings: VisualizationSettings,
-  _series?: Series | null,
-  _previousSeries?: Series | null,
+  series?: Series | null,
+  previousSeries?: Series | null,
 ): VisualizationSettings {
-  let newSettings = settings;
+  let newSettings = migrateVizSettings(settings, series, previousSeries);
 
-  const series = _series?.[0];
-  const previousSeries = _previousSeries?.[0];
+  const singleSeries = series?.[0];
+  const previousSingleSeries = previousSeries?.[0];
 
-  if (series?.data && !series?.error) {
-    if (previousSeries?.data && !previousSeries?.error) {
+  if (singleSeries?.data && !singleSeries?.error) {
+    newSettings = syncTableColumnSettings(newSettings, singleSeries);
+
+    if (previousSingleSeries?.data && !previousSingleSeries?.error) {
       newSettings = syncGraphMetricSettings(
         newSettings,
-        series,
-        previousSeries,
-      );
-
-      newSettings = syncTableColumnSettingsWithoutAlias(
-        newSettings,
-        previousSeries,
+        singleSeries,
+        previousSingleSeries,
       );
     }
-
-    newSettings = syncNewTableColumnSettings(newSettings, series);
   }
 
   return newSettings;
 }
 
-function syncNewTableColumnSettings(
+function syncTableColumnSettings(
   settings: VisualizationSettings,
   { data }: SingleSeries,
 ): VisualizationSettings {
@@ -83,37 +80,6 @@ function syncNewTableColumnSettings(
   return {
     ...settings,
     "table.columns": [...existingColumnSettings, ...addedColumnSettings],
-  };
-}
-
-// Legacy `table.columns` might not have `desired_column_alias` set.
-// We can set `desired_column_alias` based on the previous (current, not new)
-// query results here, and it will be saved when the current ad-hoc question
-// is saved.
-function syncTableColumnSettingsWithoutAlias(
-  settings: VisualizationSettings,
-  { data }: SingleSeries,
-): VisualizationSettings {
-  const columnSettings = settings["table.columns"] ?? [];
-  if (columnSettings.every(setting => setting.desired_column_alias)) {
-    return settings;
-  }
-
-  const columnIndexes = findColumnIndexesForColumnSettings(
-    data.cols,
-    columnSettings,
-  );
-
-  const newColumnSettings = columnSettings.map((setting, settingIndex) => ({
-    ...setting,
-    desired_column_alias:
-      data.cols[columnIndexes[settingIndex]]?.desired_column_alias ??
-      setting.desired_column_alias,
-  }));
-
-  return {
-    ...settings,
-    "table.columns": newColumnSettings,
   };
 }
 
