@@ -21,5 +21,8 @@ interface EllipsifiedRootProps {
 }
 
 export const EllipsifiedRoot = styled.div<EllipsifiedRootProps>`
+  overflow-wrap: normal;
+  word-break: normal;
+
   ${props => ((props.lines ?? 1) > 1 ? clampCss(props) : ellipsifyCss)};
 `;
