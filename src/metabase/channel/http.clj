@@ -1,5 +1,6 @@
 (ns metabase.channel.http
   (:require
+   [cheshire.core :as json]
    [clj-http.client :as http]
    [metabase.channel.core :as channel]
    [metabase.channel.shared :as channel.shared]
@@ -22,16 +23,18 @@
 (mu/defmethod channel/send! :channel/http
   [{:keys [url method auth-method auth-info]} :- HTTPDetails
    request]
-  (http/request (merge
-                 {:accept       :json
-                  :content-type :json
-                  :method       :post}
-                 {:url    url
-                  :method method}
-                 (cond-> request
-                   (= :request-body auth-method) (update :body merge auth-info)
-                   (= :header auth-method)       (update :headers merge auth-info)
-                   (= :query-param auth-method)  (update :query-params merge auth-info)))))
+  (let [req (merge
+             {:accept       :json
+              :content-type :json
+              :method       :post}
+             {:url    url
+              :method method}
+             (cond-> request
+               (= :request-body auth-method) (update :body merge auth-info)
+               (= :header auth-method)       (update :headers merge auth-info)
+               (= :query-param auth-method)  (update :query-params merge auth-info)))]
+   (http/request (cond-> req
+                   (map? (:body req)) (update :body json/generate-string)))))
 
 (defmethod channel/can-connect? :channel/http
   [_channel-type details]
@@ -41,5 +44,8 @@
     true
     (catch Exception e
       (let [data (ex-data e)]
-        (throw (ex-info (tru "Failed to connect to channel") {:request-status (:status data)
-                                                              :request-body   (:body data)}))))))
+        ;; throw an appriopriate error if it's a connection error
+        (if (= ::http/unexceptional-status (:type data))
+          (throw (ex-info (tru "Failed to connect to channel") {:request-status (:status data)
+                                                                 :request-body  (:body data)}))
+          (throw e))))))
