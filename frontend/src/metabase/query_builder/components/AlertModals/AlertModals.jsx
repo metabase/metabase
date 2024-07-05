@@ -574,13 +574,13 @@ function getSchedulePickerSendTimeText(alert) {
     return;
   }
   if (channels.length === 2) {
-    return `Emails and Slack messages will be sent at`;
+    return t`Emails and Slack messages will be sent at`;
   }
   if (channel.channel_type === "email") {
-    return `Emails will be sent at`;
+    return t`Emails will be sent at`;
   }
   if (channel.channel_type === "slack") {
-    return `Slack messages will be sent at`;
+    return t`Slack messages will be sent at`;
   }
 }
 
