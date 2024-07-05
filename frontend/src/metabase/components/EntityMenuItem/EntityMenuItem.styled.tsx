@@ -40,28 +40,6 @@ export const MenuItemContent = styled.div<MenuItemProps>`
   :hover > .Icon {
     color: ${props => color((!props.disabled && props.hoverColor) || "brand")};
   }
-
-  /* icon specific tweaks
-     the alert icon should be optically aligned  with the x-height of the text */
-  > .Icon.Icon-alert {
-    transform: translateY(1px);
-  }
-
-  /* the embed icon should be optically aligned with the x-height of the text */
-  > .Icon.Icon-embed {
-    transform: translateY(1px);
-  }
-
-  /* the download icon should be optically aligned with the x-height of the text */
-  > .Icon.Icon-download {
-    transform: translateY(1px);
-  }
-
-  /* the history icon is wider so it needs adjustment to center it with other
-   icons */
-  > .Icon.Icon-history {
-    transform: translateX(-2px);
-  }
 `;
 
 export const MenuItemIcon = styled(Icon)`
