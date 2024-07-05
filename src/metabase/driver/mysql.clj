@@ -22,7 +22,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
@@ -657,7 +656,7 @@
       "UTC"
       offset)))
 
-(defmethod unprepare/unprepare-value [:mysql OffsetTime]
+(defmethod sql.qp/inline-value [:mysql OffsetTime]
   [_ t]
   ;; MySQL doesn't support timezone offsets in literals so pass in a local time literal wrapped in a call to convert
   ;; it to the appropriate timezone
@@ -665,13 +664,13 @@
           (t/format "HH:mm:ss.SSS" t)
           (format-offset t)))
 
-(defmethod unprepare/unprepare-value [:mysql OffsetDateTime]
+(defmethod sql.qp/inline-value [:mysql OffsetDateTime]
   [_ t]
   (format "convert_tz('%s', '%s', @@session.time_zone)"
           (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
           (format-offset t)))
 
-(defmethod unprepare/unprepare-value [:mysql ZonedDateTime]
+(defmethod sql.qp/inline-value [:mysql ZonedDateTime]
   [_ t]
   (format "convert_tz('%s', '%s', @@session.time_zone)"
           (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
