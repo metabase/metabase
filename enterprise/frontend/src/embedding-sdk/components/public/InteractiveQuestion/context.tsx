@@ -8,10 +8,10 @@ import {
 
 import type { SdkPluginsConfig } from "embedding-sdk";
 import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
-import type { LoadSdkQuestionParams } from "embedding-sdk/lib/load-question";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import type {
+  LoadSdkQuestionParams,
   NavigateToNewCardParams,
   SdkQuestionResult,
 } from "embedding-sdk/types/question";

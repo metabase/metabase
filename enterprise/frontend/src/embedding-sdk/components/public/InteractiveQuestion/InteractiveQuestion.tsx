@@ -4,8 +4,8 @@ import { useMemo } from "react";
 
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { LoadSdkQuestionParams } from "embedding-sdk/lib/load-question";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
+import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
 import type { CardId } from "metabase-types/api";
 
 import {

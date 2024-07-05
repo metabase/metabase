@@ -1,14 +1,12 @@
 import { useCallback, useState } from "react";
 
 import {
-  loadSdkQuestion,
-  type LoadSdkQuestionParams,
-} from "embedding-sdk/lib/load-question";
-import {
+  runQuestionOnLoadSdk,
   runQuestionOnNavigateSdk,
   runQuestionOnQueryChangeSdk,
 } from "embedding-sdk/lib/run-question-query";
 import type {
+  LoadSdkQuestionParams,
   NavigateToNewCardParams,
   SdkQuestionResult,
 } from "embedding-sdk/types/question";
@@ -46,7 +44,7 @@ export function useLoadQuestion(options: LoadSdkQuestionParams) {
   const loadQuestion = useCallback(
     () =>
       storeQuestionResult(() =>
-        dispatch(loadSdkQuestion({ location, params })),
+        dispatch(runQuestionOnLoadSdk({ location, params })),
       ),
     [dispatch, location, params],
   );

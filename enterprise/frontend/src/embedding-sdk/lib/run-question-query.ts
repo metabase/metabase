@@ -1,11 +1,18 @@
 import _ from "underscore";
 
 import type {
+  LoadSdkQuestionParams,
   NavigateToNewCardParams,
-  SdkQuestionResult as Result,
+  SdkQuestionResult,
 } from "embedding-sdk/types/question";
 import { loadCard } from "metabase/lib/card";
 import { defer } from "metabase/lib/promise";
+import * as Urls from "metabase/lib/urls";
+import {
+  deserializeCard,
+  parseHash,
+  resolveCards,
+} from "metabase/query_builder/actions";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { runQuestionQuery } from "metabase/services";
@@ -19,7 +26,9 @@ interface Options {
   originalQuestion?: Question;
 }
 
-export async function runQuestionQuerySdk(options: Options): Promise<Result> {
+export async function runQuestionQuerySdk(
+  options: Options,
+): Promise<SdkQuestionResult> {
   let { question, originalQuestion } = options;
 
   const query = question.query();
@@ -55,9 +64,38 @@ export async function runQuestionQuerySdk(options: Options): Promise<Result> {
   return { question, queryResults };
 }
 
+export const runQuestionOnLoadSdk =
+  ({ location, params }: LoadSdkQuestionParams) =>
+  async (
+    dispatch: Dispatch,
+    getState: GetState,
+  ): Promise<SdkQuestionResult> => {
+    const cardId = Urls.extractEntityId(params.slug);
+    const { options, serializedCard } = parseHash(location.hash);
+
+    const { card, originalCard } = await resolveCards({
+      cardId,
+      options,
+      dispatch,
+      getState,
+      deserializedCard: serializedCard && deserializeCard(serializedCard),
+    });
+
+    await dispatch(loadMetadataForCard(card));
+    const metadata = getMetadata(getState());
+
+    return runQuestionQuerySdk({
+      question: new Question(card, metadata),
+      originalQuestion: originalCard && new Question(originalCard, metadata),
+    });
+  };
+
 export const runQuestionOnQueryChangeSdk =
   (previousQuestion: Question, nextQuestion: Question) =>
-  async (dispatch: Dispatch, getState: GetState): Promise<Result> => {
+  async (
+    dispatch: Dispatch,
+    getState: GetState,
+  ): Promise<SdkQuestionResult> => {
     const currentDependencies = previousQuestion
       ? Lib.dependentMetadata(
           previousQuestion.query(),
@@ -85,7 +123,10 @@ export const runQuestionOnQueryChangeSdk =
 
 export const runQuestionOnNavigateSdk =
   (options: NavigateToNewCardParams) =>
-  async (dispatch: Dispatch, getState: GetState): Promise<Result | null> => {
+  async (
+    dispatch: Dispatch,
+    getState: GetState,
+  ): Promise<SdkQuestionResult | null> => {
     let { nextCard, previousCard } = options;
 
     // Do not reload questions with breakouts when clicking on a legend item
@@ -107,5 +148,5 @@ export const runQuestionOnNavigateSdk =
       runQuestionOnQueryChangeSdk(previousQuestion, nextQuestion),
     );
 
-    return result as Result;
+    return result as SdkQuestionResult;
   };
