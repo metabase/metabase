@@ -269,35 +269,6 @@ const dashcardData = handleActions(
   INITIAL_DASHBOARD_STATE.dashcardData,
 );
 
-const parameterValues = handleActions(
-  {
-    [INITIALIZE]: {
-      next: (state, { payload: { clearCache = true } = {} }) => {
-        return clearCache ? {} : state;
-      },
-    },
-    [fetchDashboard.fulfilled]: {
-      next: (state, { payload: { parameterValues } }) => parameterValues,
-    },
-    [SET_PARAMETER_VALUE]: {
-      next: (state, { payload: { id, value, isDraft } }) => {
-        if (!isDraft) {
-          return assoc(state, id, value);
-        }
-
-        return state;
-      },
-    },
-    [SET_PARAMETER_VALUES]: {
-      next: (state, { payload }) => payload,
-    },
-    [REMOVE_PARAMETER]: {
-      next: (state, { payload: { id } }) => dissoc(state, id),
-    },
-  },
-  INITIAL_DASHBOARD_STATE.parameterValues,
-);
-
 const draftParameterValues = handleActions(
   {
     [INITIALIZE]: {
@@ -396,7 +367,6 @@ export const dashboardReducers = reduceReducers(
     dashboards,
     dashcards,
     dashcardData,
-    parameterValues,
     draftParameterValues,
     loadingDashCards,
     // Combined reducer needs to init state for every slice

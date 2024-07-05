@@ -2,6 +2,7 @@ import { createReducer } from "@reduxjs/toolkit";
 
 import { handleActions } from "metabase/lib/redux";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
+import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
 
 import {
   INITIALIZE,
@@ -18,6 +19,8 @@ import {
   REMOVE_PARAMETER,
   CLOSE_SIDEBAR,
   setSidebar,
+  SET_PARAMETER_VALUE,
+  SET_PARAMETER_VALUES,
 } from "./actions";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 
@@ -136,5 +139,54 @@ export const sidebar = createReducer(
       name,
       props: props || {},
     }));
+  },
+);
+
+export const parameterValues = createReducer(
+  INITIAL_DASHBOARD_STATE.parameterValues,
+  builder => {
+    builder.addCase<
+      string,
+      { type: string; payload: { clearCache?: boolean } }
+    >(INITIALIZE, (state, { payload: { clearCache = true } = {} }) => {
+      return clearCache ? {} : state;
+    });
+
+    builder.addCase(fetchDashboard.fulfilled, (_state, { payload }) => {
+      return payload.parameterValues;
+    });
+
+    builder.addCase<
+      string,
+      {
+        type: string;
+        payload: {
+          id: ParameterId;
+          value: ParameterValueOrArray;
+          isDraft: boolean;
+        };
+      }
+    >(SET_PARAMETER_VALUE, (state, { payload: { id, value, isDraft } }) => {
+      if (!isDraft) {
+        state[id] = value;
+      }
+    });
+
+    builder.addCase<
+      string,
+      {
+        type: string;
+        payload: Record<ParameterId, ParameterValueOrArray>;
+      }
+    >(SET_PARAMETER_VALUES, (_state, { payload }) => {
+      return payload;
+    });
+
+    builder.addCase<string, { type: string; payload: { id: ParameterId } }>(
+      REMOVE_PARAMETER,
+      (state, { payload: { id } }) => {
+        delete state[id];
+      },
+    );
   },
 );
