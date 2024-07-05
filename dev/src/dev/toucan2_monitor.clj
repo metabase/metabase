@@ -8,6 +8,8 @@
     ;; => [[[\"SELECT * FROM report_card\"] 100]]
     (stop!)"
   (:require
+   [metabase.test.util.log :as tu.log]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.pipeline :as t2.pipeline]))
 
@@ -16,6 +18,9 @@
 (def queries*
   "An atom to store all the queries and its execution time."
   (atom []))
+
+
+(def ^:private log-future (atom nil))
 
 (defn queries
   "Get all the queries and its execution time in ms.
@@ -31,6 +36,13 @@
   []
   (reset! queries* []))
 
+(defn summary
+  "Get the total number of queries and total execution time in ms."
+  []
+  (let [qs (queries)]
+    {:total-queries (count qs)
+     :total-execution-time (->> qs (map second) (apply +))}))
+
 (defn- track-query-execution-fn
   [next-method rf conn query-type model query]
   (let [start (System/currentTimeMillis)
@@ -42,6 +54,12 @@
 (defn start!
   "Start tracking queries."
   []
+  (tu.log/set-ns-log-level! *ns* :debug)
+  (reset! log-future (future
+                      (while true
+                        (let [{:keys [total-queries total-execution-time]} (summary)]
+                          (log/infof "Total queries: %d, Total execution time: %dms" total-queries total-execution-time)
+                          (Thread/sleep 1000)))))
   (methodical/add-aux-method-with-unique-key!
    #'t2.pipeline/transduce-execute-with-connection
    :around
@@ -52,24 +70,18 @@
 (defn stop!
   "Stop tracking queries."
   []
+  (future-cancel @log-future)
   (methodical/remove-aux-method-with-unique-key!
    #'t2.pipeline/transduce-execute-with-connection
    :around
    :default
    ::monitor))
 
-(defn summary
-  "Get the total number of queries and total execution time in ms."
-  []
-  (let [qs (queries)]
-   [(count qs) (->> qs (map second) (apply +))]))
-
 (comment
  (start!)
  (queries)
  (stop!)
  (reset-queries!)
- (count (queries))
  (summary)
  (doseq [q (querles)]
    (println q)))
