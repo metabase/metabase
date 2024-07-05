@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 import _ from "underscore";
 
@@ -5,6 +6,8 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupEmbedDashboardEndpoints } from "__support__/server-mocks/embed";
 import { mockSettings } from "__support__/settings";
 import {
+  getIcon,
+  queryIcon,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
@@ -110,10 +113,33 @@ describe("PublicOrEmbeddedDashboardPage", () => {
     expect(screen.getByText("There's nothing here, yet.")).toBeInTheDocument();
   });
 
-  it("should show the 'Export as PDF' button even when titled=false", async () => {
-    await setup({ hash: "titled=false", numberOfTabs: 1 });
+  describe("downloads flag", () => {
+    it("should show the 'Export as PDF' button even when titled=false and there's one tab", async () => {
+      await setup({ hash: "titled=false", numberOfTabs: 1 });
 
-    expect(screen.getByText("Export as PDF")).toBeInTheDocument();
+      expect(screen.getByText("Export as PDF")).toBeInTheDocument();
+    });
+
+    it('should not show the "Export as PDF" button when downloads are disabled', async () => {
+      await setup({ hash: "downloads=false", numberOfTabs: 1 });
+
+      expect(screen.queryByText("Export as PDF")).not.toBeInTheDocument();
+    });
+
+    it("should allow downloading the dashcards results when downloads are enabled", async () => {
+      await setup({ numberOfTabs: 1, hash: "downloads=true" });
+
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(screen.getByText("Download results")).toBeInTheDocument();
+    });
+
+    it("should not allow downloading the dashcards results when downloads are disabled", async () => {
+      await setup({ numberOfTabs: 1, hash: "downloads=false" });
+
+      // in this case the dashcard menu would be empty so it's not rendered at all
+      expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+    });
   });
 });
 
@@ -133,7 +159,12 @@ async function setup({
       createMockDashboardCard({
         id: i + 1,
         card_id: i + 1,
-        card: createMockCard({ id: i + 1 }),
+        card: createMockCard({
+          id: i + 1,
+          //`can_write` is false in public or embedded contexts
+          // without this we'd have the "Edit" button in the dashcard menu
+          can_write: false,
+        }),
         dashboard_tab_id: tabId,
       }),
     );
