@@ -10,7 +10,11 @@ import {
 } from "metabase-lib/v1/references";
 import type { DatasetColumn } from "metabase-types/api";
 
-export const getColumnKey = (
+export const getColumnKey = (column: Pick<DatasetColumn, "name">) => {
+  return JSON.stringify(["name", column.name]);
+};
+
+export const getColumnKeyLegacy = (
   column: Pick<DatasetColumn, "name" | "field_ref">,
 ) => {
   let fieldRef = column.field_ref;
