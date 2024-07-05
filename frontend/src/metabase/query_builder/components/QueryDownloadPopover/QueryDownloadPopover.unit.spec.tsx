@@ -15,7 +15,7 @@ import {
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-import QueryDownloadPopover from "./QueryDownloadPopover";
+import { QueryDownloadPopover } from "./QueryDownloadPopover";
 
 registerVisualizations();
 
