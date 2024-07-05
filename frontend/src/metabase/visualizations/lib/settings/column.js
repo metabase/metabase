@@ -28,7 +28,6 @@ import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import {
   findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,
-  getColumnSettingKey,
 } from "metabase-lib/v1/queries/utils/dataset";
 import { nestedSettings } from "./nested";
 
@@ -549,15 +548,11 @@ export const buildTableColumnSettings = ({
         );
 
         return [
-          ...columnSettings.map(setting => ({
-            ...setting,
-            key: getColumnSettingKey(setting),
-          })),
+          ...columnSettings,
           ...cols
             .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
             .map(column => ({
               name: column.name,
-              key: getColumnKey(column),
               enabled: getIsColumnVisible(column),
               fieldRef: column.field_ref,
             })),
