@@ -6483,6 +6483,18 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
+  # The changesets from v49.2024-06-27T00:00:00 to v49.2024-06-27T00:00:08 prevent duplicate fields from being
+  # created on MySQL and H2. See #44866 for details. Below is an index of the changesets:
+  # - v49.2024-06-27T00:00:00: Make metabase_field.name use case-sensitive collation for MySQL
+  # - v49.2024-06-27T00:00:01: Add metabase_field.is_defective_duplicate
+  # - v49.2024-06-27T00:00:02: Populate metabase_field.is_defective_duplicate
+  # - v49.2024-06-27T00:00:03: Drop fk_field_parent_ref_field_id constraint with ON DELETE CASCADE
+  # - v49.2024-06-27T00:00:04: Add fk_field_parent_ref_field_id constraint with ON DELETE RESTRICT
+  # - v49.2024-06-27T00:00:05: Remove idx_uniq_field_table_id_parent_id_name because it is redundant with idx_unique_field
+  # - v49.2024-06-27T00:00:06: Remove the idx_uniq_field_table_id_parent_id_name_2col unique index because it blocks load-from-h2
+  # - v49.2024-06-27T00:00:07: Add unique_field_helper column to metabase_field
+  # - v49.2024-06-27T00:00:08: Add unique constraint on metabase_field's (name, table_id, unique_field_helper)
+
   # This is necessary to make unique indexes using metabase_field.name case-sensitive for MySQL.
   - changeSet:
       id: v49.2024-06-27T00:00:00
@@ -6575,7 +6587,7 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-06-27T00:00:04
       author: calherries
-      comment: Add fk_field_parent_ref_field_id constraint without ON DELETE CASCADE
+      comment: Add fk_field_parent_ref_field_id constraint with ON DELETE RESTRICT
       changes:
         - addForeignKeyConstraint:
             baseTableName: metabase_field
@@ -6606,7 +6618,7 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-06-27T00:00:06
       author: calherries
-      comment: Remove the idx_uniq_field_table_id_parent_id_name_2col unique index because it blocks load-from-h2 with there
+      comment: Remove the idx_uniq_field_table_id_parent_id_name_2col unique index because it blocks load-from-h2
       changes:
         - sql:
             dbms: postgresql
