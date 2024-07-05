@@ -36,7 +36,7 @@ export function useLoadQuestion({
   const [isQuestionLoading, setIsQuestionLoading] = useState(true);
 
   // Loading state for subsequent query runs; either query change or navigating to new card.
-  const [isQueryRunning, setIsQueryRunning] = useState(true);
+  const [isQueryRunning, setIsQueryRunning] = useState(false);
 
   const { question, originalQuestion, queryResults } = result;
 
