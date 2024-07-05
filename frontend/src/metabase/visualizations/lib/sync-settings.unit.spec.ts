@@ -258,5 +258,39 @@ describe("syncVizSettingsWithSeries", () => {
         ],
       });
     });
+
+    it("should not make name changes when there are multiple columns with the same id", () => {
+      const series = createSeries({
+        cols: [
+          createMockColumn({ id: 1, name: "ID" }),
+          createMockColumn({ id: 2, name: "ID_2" }),
+          createMockColumn({ id: 1, name: "ID_3" }),
+        ],
+      });
+      const prevSeries = createSeries({
+        cols: [
+          createMockColumn({ id: 1, name: "ID" }),
+          createMockColumn({ id: 2, name: "ID_2" }),
+        ],
+      });
+      const vizSettings: VisualizationSettings = {
+        "table.columns": [
+          { name: "ID", enabled: true },
+          { name: "ID_2", enabled: false },
+        ],
+      };
+      const newVizSettings = syncVizSettingsWithSeries(
+        vizSettings,
+        series,
+        prevSeries,
+      );
+      expect(newVizSettings).toEqual({
+        "table.columns": [
+          { name: "ID", enabled: true },
+          { name: "ID_2", enabled: false },
+          { name: "ID_3", enabled: true },
+        ],
+      });
+    });
   });
 });

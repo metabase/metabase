@@ -3,6 +3,7 @@ import {
   findColumnSettingIndexesForColumns,
 } from "metabase-lib/v1/queries/utils/dataset";
 import type {
+  FieldId,
   Series,
   SingleSeries,
   VisualizationSettings,
@@ -38,15 +39,19 @@ function syncTableColumnNames(
   settings: VisualizationSettings,
   { data: { cols } }: SingleSeries,
   { data: { cols: prevCols } }: SingleSeries,
-) {
+): VisualizationSettings {
   const columnSettings = settings["table.columns"] ?? [];
   if (columnSettings.length === 0) {
     return settings;
   }
 
-  const newNameById = new Map(
-    cols.filter(col => col.id != null).map(col => [col.id, col.name]),
-  );
+  const newNamesById = new Map<FieldId, string[]>();
+  cols.forEach(col => {
+    if (col.id) {
+      const names = newNamesById.get(col.id) ?? [];
+      newNamesById.set(col.id, [...names, col.name]);
+    }
+  });
   const prevIdByName = new Map(
     prevCols.filter(col => col.id != null).map(col => [col.name, col.id]),
   );
@@ -55,11 +60,18 @@ function syncTableColumnNames(
     ...settings,
     "table.columns": columnSettings.map(setting => {
       const prevId = prevIdByName.get(setting.name);
-      const newName = newNameById.get(prevId);
-      if (newName != null && newName !== setting.name) {
-        return { ...setting, name: newName };
+      if (prevId == null) {
+        return setting;
       }
-      return setting;
+      const newNames = newNamesById.get(prevId);
+      if (newNames == null || newNames.length !== 1) {
+        return setting;
+      }
+      const [newName] = newNames;
+      if (newName === setting.name) {
+        return setting;
+      }
+      return { ...setting, name: newName };
     }),
   };
 }
