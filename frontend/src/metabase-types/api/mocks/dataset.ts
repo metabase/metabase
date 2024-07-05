@@ -17,6 +17,7 @@ export const createMockColumn = (
     display_name: "Column",
     source: "native",
     name: "column",
+    desired_column_alias: "column",
     description: null,
     coercion_strategy: null,
     visibility_type: "normal",
