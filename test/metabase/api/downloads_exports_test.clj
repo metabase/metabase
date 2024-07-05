@@ -15,7 +15,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
-   [metabase.pulse]
+   [metabase.pulse :as pulse]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.streaming.csv :as qp.csv]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
@@ -25,8 +25,9 @@
 
 (defn- process-results
   [export-format results]
-  (case export-format
-    :csv (csv/read-csv results)))
+  (when (seq results)
+    (case export-format
+      :csv (csv/read-csv results))))
 
 (defn- card-download
   [{:keys [id] :as _card} export-format format-rows?]
@@ -53,10 +54,9 @@
   "Simulate sending the pulse email, get the attached text/csv content, and parse into a map of
   attachment name -> column name -> column data"
   [pulse export-format]
-  #_(with-redefs [email/bcc-enabled? (constantly false)])
   (->> (mt/with-test-user nil
          (pulse.test-util/with-captured-channel-send-messages!
-           (metabase.pulse/send-pulse! pulse)))
+           (pulse/send-pulse! pulse)))
        :channel/email
        first
        :message
@@ -68,18 +68,49 @@
             (slurp content))))
        first))
 
+(defn- alert-attachment!
+  [card export-format _format-rows?]
+  (letfn [(alert-attachment* [pulse]
+            (->> (run-pulse-and-return-attached-csv-data! pulse export-format)
+                 (process-results export-format)))]
+    (mt/with-temp [:model/Pulse {pulse-id :id
+                                 :as      pulse} {:name "Test Alert"
+                                                  :alert_condition "rows"}
+                   :model/PulseCard _ (merge
+                                       (when (= :csv  export-format) {:include_csv true})
+                                       (when (= :json export-format) {:include_json true})
+                                       (when (= :xlsx export-format) {:include_xlsx true})
+                                       {:pulse_id pulse-id
+                                        :card_id  (:id card)})
+                   :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                               :pulse_id     pulse-id
+                                                               :enabled      true}
+                   :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                   :user_id          (mt/user->id :rasta)}]
+      (alert-attachment* pulse))))
+
 (defn- subscription-attachment!
   [card-or-dashcard export-format _format-rows?]
   (letfn [(subscription-attachment* [pulse]
-            (run-pulse-and-return-attached-csv-data! pulse export-format))]
+            (->> (run-pulse-and-return-attached-csv-data! pulse export-format)
+                 (process-results export-format)))]
     (if (contains? card-or-dashcard :dashboard_id)
       ;; dashcard
       (mt/with-temp [:model/Pulse {pulse-id :id
                                    :as      pulse} {:name         "Test Pulse"
-                                                    :dashboard_id (:dashboard_id card-or-dashcard)}
-                     :model/PulseCard _ {:pulse_id          pulse-id
-                                         :card_id           (:card_id card-or-dashcard)
-                                         :dashboard_card_id (:id card-or-dashcard)}]
+                                   :dashboard_id (:dashboard_id card-or-dashcard)}
+                     :model/PulseCard _ (merge
+                                         (when (= :csv  export-format) {:include_csv true})
+                                         (when (= :json export-format) {:include_json true})
+                                         (when (= :xlsx export-format) {:include_xlsx true})
+                                         {:pulse_id          pulse-id
+                                          :card_id           (:card_id card-or-dashcard)
+                                          :dashboard_card_id (:id card-or-dashcard)})
+                     :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                                 :pulse_id     pulse-id
+                                                                 :enabled      true}
+                     :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                     :user_id          (mt/user->id :rasta)}]
         (subscription-attachment* pulse))
       ;; card
       (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
@@ -87,10 +118,19 @@
                                                              :card_id      (:id card-or-dashcard)}
                      :model/Pulse {pulse-id :id
                                    :as      pulse} {:name         "Test Pulse"
-                                                    :dashboard_id dashboard-id}
-                     :model/PulseCard _ {:pulse_id          pulse-id
-                                         :card_id           (:id card-or-dashcard)
-                                         :dashboard_card_id dashcard-id}]
+                                   :dashboard_id dashboard-id}
+                     :model/PulseCard _ (merge
+                                         (when (= :csv  export-format) {:include_csv true})
+                                         (when (= :json export-format) {:include_json true})
+                                         (when (= :xlsx export-format) {:include_xlsx true})
+                                         {:pulse_id          pulse-id
+                                          :card_id           (:id card-or-dashcard)
+                                          :dashboard_card_id dashcard-id})
+                     :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                                 :pulse_id     pulse-id
+                                                                 :enabled      true}
+                     :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                     :user_id          (mt/user->id :rasta)}]
         (subscription-attachment* pulse)))))
 
 (set! *warn-on-reflection* true)
@@ -504,15 +544,36 @@
   (testing "Dashcard visualization settings are respected in exports."
     (testing "for csv"
       (mt/dataset test-data
-        (mt/with-temp [:model/Card card
+        (mt/with-temp [:model/Card {card-id :id :as card}
                        {:display       :table
                         :dataset_query {:database (mt/id)
                                         :type     :query
-                                        :query    {:source-table (mt/id :orders)}}}]
-          (let [card-result     (card-download card :csv false)
-                dashcard-result (dashcard-download card :csv false)
-                subscription-result (subscription-attachment! card :csv false)]
-            (is (= {}
-                   {:card     (take 1 card-result)
-                    :dashcard (take 1 dashcard-result)
-                    :subscription (take 1 subscription-result)}))))))))
+                                        :query    {:source-table (mt/id :orders)}}}
+                       :model/Dashboard {dashboard-id :id}
+                       {}
+                       :model/DashboardCard dashcard
+                       {:dashboard_id dashboard-id
+                        :card_id      card-id
+                        :visualization_settings
+                        {:table.cell_column "TOTAL"
+                         #_#_:table.columns
+                         [{:name "ID" :key "[\"ref\",[\"field\",37,null]]" :enabled false :fieldRef [:field (mt/id :orders :id) nil]}
+                          {:name "USER_ID" :key "[\"ref\",[\"field\",43,null]]" :enabled false :fieldRef [:field (mt/id :orders :user_id) nil]}
+                          {:name "PRODUCT_ID" :key "[\"ref\",[\"field\",40,null]]" :enabled false :fieldRef [:field (mt/id :orders :product_id) nil]}
+                          {:name "SUBTOTAL" :key "[\"ref\",[\"field\",44,null]]" :enabled false :fieldRef [:field (mt/id :orders :subtotal) nil]}
+                          {:name "TAX" :key "[\"ref\",[\"field\",38,null]]" :enabled false :fieldRef [:field (mt/id :orders :tax) nil]}
+                          {:name "DISCOUNT" :key "[\"ref\",[\"field\",36,null]]" :enabled false :fieldRef [:field (mt/id :orders :discount) nil]}]
+                         :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :total)) {:column_title "CASH MONEY"}}}}]
+          (let [card-result         (card-download card :csv false)
+                dashcard-result     (dashcard-download dashcard :csv false)
+                subscription-result (subscription-attachment! dashcard :csv false)
+                header              ["ID" "User ID" "Product ID" "Subtotal" "Tax"
+                                     "Total" "Discount ($)" "Created At" "Quantity"]
+                expected            ["ID" "User ID" "Product ID" "Subtotal" "Tax"
+                                     "CASH MONEY" "Discount ($)" "Created At" "Quantity"]]
+            (is (= {:card-download           [header]
+                    :dashcard-download       [expected]
+                    :subscription-attachment [expected]}
+                   {:card-download           (take 1 card-result)
+                    :dashcard-download       (take 1 dashcard-result)
+                    :subscription-attachment (take 1 subscription-result)}))))))))
