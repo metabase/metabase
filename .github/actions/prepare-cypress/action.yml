@@ -5,7 +5,7 @@ runs:
   using: "composite"
   steps:
     - name: Install Replay.io browser
-      run: npx @replayio/cypress install
+      run: npx replayio install
       shell: bash
 
     - name: Check to see if dependencies should be cached
