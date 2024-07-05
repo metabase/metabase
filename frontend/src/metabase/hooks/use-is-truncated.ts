@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import _ from "underscore";
 
-import resizeObserver from "metabase/lib/resize-observer";
+// import resizeObserver from "metabase/lib/resize-observer";
 
 type UseIsTruncatedProps = {
   disabled?: boolean;
@@ -28,11 +28,13 @@ export const useIsTruncated = <E extends Element>({
     };
 
     handleResize();
-    // resizeObserver.subscribe(element, handleResize);
 
-    // return () => {
-    //   resizeObserver.unsubscribe(element, handleResize);
-    // };
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(element);
+
+    return () => {
+      resizeObserver.unobserve(element);
+    };
   }, [disabled, tolerance]);
 
   return { isTruncated, ref };
