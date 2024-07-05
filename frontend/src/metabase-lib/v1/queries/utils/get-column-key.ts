@@ -44,3 +44,7 @@ export const getLegacyColumnKey = (
 
   return JSON.stringify(isNameKey ? ["name", column.name] : ["ref", fieldRef]);
 };
+
+export function isLegacyColumnKey(key: string) {
+  return key.startsWith("[");
+}

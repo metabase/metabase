@@ -2,6 +2,7 @@ import { isQuestionDashCard } from "metabase/dashboard/utils";
 import {
   getColumnKey,
   getLegacyColumnKey,
+  isLegacyColumnKey,
 } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   Card,
@@ -14,6 +15,10 @@ export function migrateColumnSettings(
   columnSettings: VisualizationSettings["column_settings"],
   resultMetadata: Field[],
 ): VisualizationSettings {
+  if (!Object.keys(columnSettings).some(isLegacyColumnKey)) {
+    return columnSettings;
+  }
+
   const columnByKey = Object.fromEntries(
     resultMetadata.map(column => [getLegacyColumnKey(column), column]),
   );
@@ -21,7 +26,9 @@ export function migrateColumnSettings(
   return Object.fromEntries(
     Object.entries(columnSettings).map(([key, setting]) => {
       const column = columnByKey[key];
-      return column ? [getColumnKey(column), setting] : [key, setting];
+      return column && isLegacyColumnKey(key)
+        ? [getColumnKey(column), setting]
+        : [key, setting];
     }),
   );
 }
