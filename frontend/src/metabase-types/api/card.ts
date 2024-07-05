@@ -132,7 +132,7 @@ export type TableColumnOrderSetting = {
   // to a name-based ref (e.g. `["field", "ID", null]`) when a new query stage
   // is added. The name part in a name-based ref also changes when the column
   // name is deduplicated (e.g. to `["field", "ID_2", null]`).
-  // We keep these properties to 1) back-fill `desired_column_alias` and
+  // We keep these properties 1) to back-fill `desired_column_alias` and
   // 2) to enable downgrades to previous versions where the alias is not
   // available.
   name: string;
