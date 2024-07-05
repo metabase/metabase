@@ -1,5 +1,6 @@
 import { createAction, createReducer, createSelector } from "@reduxjs/toolkit";
-import { VisualizerState } from "metabase-types/store/visualizer";
+
+import type { VisualizerState } from "metabase-types/store/visualizer";
 
 const OPEN_VIZ_SETTINGS = "metabase/visualizer/OPEN_VIZ_SETTINGS";
 const CLOSE_VIZ_SETTINGS = "metabase/visualizer/CLOSE_VIZ_SETTINGS";
@@ -7,7 +8,7 @@ const TOGGLE_VIZ_SETTINGS = "metabase/visualizer/TOGGLE_VIZ_SETTINGS";
 
 export const openVizSettings = createAction(OPEN_VIZ_SETTINGS);
 export const closeVizSettings = createAction(CLOSE_VIZ_SETTINGS);
-const toggleVizSettings = createAction(TOGGLE_VIZ_SETTINGS);
+export const toggleVizSettings = createAction(TOGGLE_VIZ_SETTINGS);
 
 const initialState: VisualizerState = {
   ui: {

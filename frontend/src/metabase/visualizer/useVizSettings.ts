@@ -4,6 +4,7 @@ import {
   getVizSettingsDisplay,
   openVizSettings,
   closeVizSettings,
+  toggleVizSettings,
 } from "./store";
 
 export function useVizSettings() {
@@ -14,6 +15,7 @@ export function useVizSettings() {
   dispatch(openVizSettings);
   return {
     isVizSettingsOpen,
+    toggleVizSettings: () => dispatch(toggleVizSettings()),
     openVizSettings: () => dispatch(openVizSettings()),
     closeVizSettings: () => dispatch(closeVizSettings()),
   };

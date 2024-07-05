@@ -18,7 +18,7 @@ interface VisualizerCanvasProps {
 }
 
 export function VisualizerCanvas({ series, onChange }: VisualizerCanvasProps) {
-  const { openVizSettings } = useVizSettings();
+  const { toggleVizSettings } = useVizSettings();
   const metadata = useSelector(getMetadata);
 
   const { metrics, dimensions } = useMemo(
@@ -87,7 +87,7 @@ export function VisualizerCanvas({ series, onChange }: VisualizerCanvasProps) {
         <>
           <Flex mx="xs" mb="md">
             <Title>{displaySeries[0].card.name}</Title>
-            <ActionIcon ml="auto" onClick={() => openVizSettings()}>
+            <ActionIcon ml="auto" onClick={() => toggleVizSettings()}>
               <Icon name="gear" />
             </ActionIcon>
           </Flex>

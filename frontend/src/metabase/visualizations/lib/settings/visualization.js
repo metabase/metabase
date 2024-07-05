@@ -89,7 +89,7 @@ export function getStoredSettingsForSeries(series) {
 }
 
 export function getComputedSettingsForSeries(series) {
-  if (!series) {
+  if (!series || series.length === 0) {
     return {};
   }
   const settingsDefs = getSettingDefintionsForSeries(series);

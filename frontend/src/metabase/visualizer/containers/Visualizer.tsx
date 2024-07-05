@@ -1,12 +1,25 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import type { WithRouterProps } from "react-router";
 import { useMount } from "react-use";
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import type { CardId, RecentItem, Series } from "metabase-types/api";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
+import {
+  extractRemappings,
+  getVisualizationTransformed,
+} from "metabase/visualizations";
+import ChartSettings from "metabase/visualizations/components/ChartSettings";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import Question from "metabase-lib/v1/Question";
+import type {
+  CardId,
+  RecentItem,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import { useVizSettings } from "../useVizSettings";
 
@@ -16,10 +29,35 @@ import { VisualizerUsed } from "./VisualizerUsed";
 import { areSeriesCompatible } from "./utils";
 
 export function Visualizer({ location }: WithRouterProps) {
-  const [series, setSeries] = useState<Series>([]);
+  const [rawSeries, setRawSeries] = useState<Series>([]);
+
+  const metadata = useSelector(getMetadata);
   const dispatch = useDispatch();
 
   const { isVizSettingsOpen, closeVizSettings } = useVizSettings();
+
+  const transformedSeries = useMemo(() => {
+    if (rawSeries.length === 0) {
+      return [];
+    }
+    const transformed = getVisualizationTransformed(
+      extractRemappings(rawSeries),
+    );
+    return transformed.series;
+  }, [rawSeries]);
+
+  const mainQuestion = useMemo(() => {
+    if (rawSeries.length === 0) {
+      return null;
+    }
+    const [{ card }] = rawSeries;
+    return new Question(card, metadata);
+  }, [rawSeries, metadata]);
+
+  const computedSettings = useMemo(
+    () => getComputedSettingsForSeries(transformedSeries),
+    [transformedSeries],
+  );
 
   const _fetchCardAndData = async (
     cardId: CardId,
@@ -55,55 +93,70 @@ export function Visualizer({ location }: WithRouterProps) {
       return;
     }
 
-    const [mainSeries] = series;
+    const [mainSeries] = rawSeries;
     const mainCard = mainSeries?.card;
 
     if (!mainSeries) {
-      setSeries([newSeries]);
+      setRawSeries([newSeries]);
       return;
     }
 
     if (mainCard) {
       const canMerge = areSeriesCompatible(mainSeries, newSeries);
       if (canMerge) {
-        setSeries([...series, newSeries]);
+        setRawSeries([...rawSeries, newSeries]);
       } else {
-        setSeries([newSeries]);
+        setRawSeries([newSeries]);
       }
     } else {
-      setSeries([newSeries]);
+      setRawSeries([newSeries]);
     }
   };
 
   const handleReplace = async (item: RecentItem) => {
     const newSeries = await _fetchCardAndData(item.id);
     if (newSeries) {
-      setSeries([newSeries]);
+      setRawSeries([newSeries]);
     }
   };
 
   const handleChangeVizType = (cardId: CardId, vizType: string) => {
-    const nextSeries = series.map(series =>
+    const nextSeries = rawSeries.map(series =>
       series.card.id === cardId
         ? { ...series, card: { ...series.card, display: vizType } }
         : series,
     );
-    setSeries(nextSeries);
+    setRawSeries(nextSeries);
+  };
+
+  const handleChangeVizSettings = (settings: VisualizationSettings) => {
+    const mainCardId = mainQuestion?.id?.();
+    if (mainCardId) {
+      const nextSeries = rawSeries.map(series =>
+        series.card.id === mainCardId
+          ? {
+              ...series,
+              card: { ...series.card, visualization_settings: settings },
+            }
+          : series,
+      );
+      setRawSeries(nextSeries);
+    }
   };
 
   const handleRefresh = async (cardId: CardId) => {
     const newSeries = await _fetchCardAndData(cardId, { forceRefetch: true });
     if (newSeries) {
-      const nextSeries = series.map(series =>
+      const nextSeries = rawSeries.map(series =>
         series.card.id === cardId ? newSeries : series,
       );
-      setSeries(nextSeries);
+      setRawSeries(nextSeries);
     }
   };
 
   const handleRemove = (cardId: CardId) => {
-    const nextSeries = series.filter(series => series.card.id !== cardId);
-    setSeries(nextSeries);
+    const nextSeries = rawSeries.filter(series => series.card.id !== cardId);
+    setRawSeries(nextSeries);
   };
 
   useMount(() => {
@@ -121,7 +174,7 @@ export function Visualizer({ location }: WithRouterProps) {
         ]);
 
         if (series1 && series2 && areSeriesCompatible(series1, series2)) {
-          setSeries([series1, series2]);
+          setRawSeries([series1, series2]);
         }
       }
     }
@@ -161,7 +214,7 @@ export function Visualizer({ location }: WithRouterProps) {
             </PanelResizeHandle>
             <Panel defaultSize={30}>
               <VisualizerUsed
-                series={series}
+                series={transformedSeries}
                 onVizTypeChange={handleChangeVizType}
                 onRefreshCard={handleRefresh}
                 onRemoveCard={handleRemove}
@@ -187,14 +240,18 @@ export function Visualizer({ location }: WithRouterProps) {
         ></span>
       </PanelResizeHandle>
       <Panel defaultSize={75} minSize={60}>
-        <VisualizerCanvas series={series} onChange={setSeries} />
+        <VisualizerCanvas series={transformedSeries} onChange={setRawSeries} />
       </Panel>
-      {isVizSettingsOpen && (
-        <Panel minSize={40}>
-          <>
-            <h1>SETTINGS</h1>
-            <button onClick={() => closeVizSettings()}>Close</button>
-          </>
+      {isVizSettingsOpen && mainQuestion && (
+        <Panel defaultSize={20} minSize={20}>
+          <ChartSettings
+            question={mainQuestion}
+            series={transformedSeries}
+            computedSettings={computedSettings}
+            noPreview
+            onChange={handleChangeVizSettings}
+            onClose={closeVizSettings}
+          />
         </Panel>
       )}
     </PanelGroup>
