@@ -142,7 +142,6 @@ describe("dataset utils", () => {
       });
       const columnSetting = createMockTableColumnOrderSetting({
         name: "TOTAL",
-        key: `["ref",["field",${ORDERS.TOTAL},{"base-type":"type/Number"}]]`,
         fieldRef: ["field", ORDERS.TOTAL, { "base-type": "type/Number" }],
         enabled: true,
       });
