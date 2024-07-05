@@ -118,12 +118,26 @@ export type PivotTableCollapsedRowsSetting = {
 };
 
 export type TableColumnOrderSetting = {
-  name: string;
   enabled: boolean;
+
+  // `desired_column_alias` is a robust way to identify a column
+  // not available in settings that were saved before this property was added
   desired_column_alias?: string;
 
+  // `name` and `fieldRef` are legacy properties that were used before
+  // to identify a column. Both are not stable identifiers and can change,
+  // causing the FE to lose track of columns. `name` can change when a column
+  // with a duplicate name is added to the query (e.g. from `ID` to `ID_2`).
+  // `fieldRef` can change from an id-based ref (e.g. `["field", 1, null]`)
+  // to a name-based ref (e.g. `["field", "ID", null]`) when a new query stage
+  // is added. The name part in a name-based ref also changes when the column
+  // name is deduplicated (e.g. to `["field", "ID_2", null]`).
+  // We keep these properties to 1) back-fill `desired_column_alias` and
+  // 2) to enable downgrades to previous versions where the alias is not
+  // available.
+  name: string;
   // We have some corrupted visualization settings where both names are mixed
-  // We should settle on `fieldRef`, make it required and remove `field_ref`
+  // We set `fieldRef` in new settings
   fieldRef?: DimensionReference;
   field_ref?: DimensionReference;
 };
