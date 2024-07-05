@@ -90,6 +90,10 @@
     :cljs (glogi-logf (str *ns*) level x args)
     :clj  (tools-logf *ns*       level x args)))
 
+(comment
+  (.reconfigure (org.apache.logging.log4j.LogManager/getContext false))
+  )
+
 ;;; --------------------------------------------------- Public API ---------------------------------------------------
 (defmacro trace
   "Log one or more args at the `:trace` level."
