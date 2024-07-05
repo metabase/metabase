@@ -19,21 +19,26 @@ export function syncVizSettingsWithSeries(
   const previousSeries = _previousSeries?.[0];
 
   if (series?.data && !series?.error) {
-    newSettings = syncTableColumnSettings(newSettings, series);
-
     if (previousSeries?.data && !previousSeries?.error) {
       newSettings = syncGraphMetricSettings(
         newSettings,
         series,
         previousSeries,
       );
+
+      newSettings = syncTableColumnSettingsWithoutAlias(
+        newSettings,
+        previousSeries,
+      );
     }
+
+    newSettings = syncNewTableColumnSettings(newSettings, series);
   }
 
   return newSettings;
 }
 
-function syncTableColumnSettings(
+function syncNewTableColumnSettings(
   settings: VisualizationSettings,
   { data }: SingleSeries,
 ): VisualizationSettings {
@@ -78,6 +83,37 @@ function syncTableColumnSettings(
   return {
     ...settings,
     "table.columns": [...existingColumnSettings, ...addedColumnSettings],
+  };
+}
+
+// Legacy `table.columns` might not have `desired_column_alias` set.
+// We can set `desired_column_alias` based on the previous (current, not new)
+// query results here, and it will be saved when the current ad-hoc question
+// is saved.
+function syncTableColumnSettingsWithoutAlias(
+  settings: VisualizationSettings,
+  { data }: SingleSeries,
+): VisualizationSettings {
+  const columnSettings = settings["table.columns"] ?? [];
+  if (columnSettings.every(setting => setting.desired_column_alias)) {
+    return settings;
+  }
+
+  const columnIndexes = findColumnIndexesForColumnSettings(
+    data.cols,
+    columnSettings,
+  );
+
+  const newColumnSettings = columnSettings.map((setting, settingIndex) => ({
+    ...setting,
+    desired_column_alias:
+      data.cols[columnIndexes[settingIndex]]?.desired_column_alias ??
+      setting.desired_column_alias,
+  }));
+
+  return {
+    ...settings,
+    "table.columns": newColumnSettings,
   };
 }
 
