@@ -781,7 +781,7 @@ export class NativeQueryEditor extends Component<
 
     const isPromptInputVisible = this.isPromptInputVisible();
 
-    const parameters = query.question().parameters();
+    const parameters = query.parameters();
 
     const dragHandle = resizable ? (
       <DragHandleContainer>
