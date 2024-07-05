@@ -3,7 +3,10 @@ import type {
   TableColumnOrderSetting,
   VisualizationSettings,
 } from "metabase-types/api";
-import { createMockSingleSeries } from "metabase-types/api/mocks";
+import {
+  createMockColumn,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
 
 import { syncVizSettingsWithSeries } from "./sync-settings";
 
@@ -186,6 +189,40 @@ describe("syncVizSettingsWithSeries", () => {
       const series = createSeries({ cols: [columns[1], columns[0]] });
       const syncedSettings = syncVizSettingsWithSeries(vizSettings, series);
       expect(syncedSettings).toEqual(vizSettings);
+    });
+
+    it("should handle name changes when a column with a duplicate name is added", () => {
+      const series = createSeries({
+        cols: [
+          createMockColumn({ id: 1, name: "ID" }),
+          createMockColumn({ id: 2, name: "ID_2" }),
+          createMockColumn({ id: 3, name: "ID_3" }),
+        ],
+      });
+      const prevSeries = createSeries({
+        cols: [
+          createMockColumn({ id: 1, name: "ID" }),
+          createMockColumn({ id: 3, name: "ID_2" }),
+        ],
+      });
+      const vizSettings: VisualizationSettings = {
+        "table.columns": [
+          { name: "ID", enabled: true },
+          { name: "ID_2", enabled: false },
+        ],
+      };
+      const newVizSettings = syncVizSettingsWithSeries(
+        vizSettings,
+        series,
+        prevSeries,
+      );
+      expect(newVizSettings).toEqual({
+        "table.columns": [
+          { name: "ID", enabled: true },
+          { name: "ID_3", enabled: false },
+          { name: "ID_2", enabled: true },
+        ],
+      });
     });
   });
 });
