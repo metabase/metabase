@@ -654,6 +654,37 @@ return (
 );
 ```
 
+### Reloading Metabase components
+
+In case you need to reload a Metabase component, for example, your users modify your application data and that data is used to render a question in Metabase. If you embed this question and want to force Metabase to reload the question to show the latest data, you can do so by using the `key` prop to force a component to reload.
+
+```jsx
+// Inside your application component
+const [data, setData] = useState({});
+// This is used to force reloading Metabase components
+const [counter, setCounter] = useState(0);
+
+// This ensures we only change the `data` reference when it's actually changed
+const handleDataChange = (newData) => {
+  setData(prevData => {
+    if (isEqual(prevData, newData)) {
+      return prevData;
+    }
+
+    return newData
+  });
+};
+
+useEffect(() => {
+  // Follow eslint-plugin-react-hooks
+  if (data) {
+    setCounter(counter => counter + 1);
+  }
+}, [data])
+
+return <InteractiveQuestion key={counter} questionId={yourQuestionId} />
+```
+
 # Known limitations
 
 - The Metabase Embedding SDK does not support server-side rendering (SSR) at the moment.
