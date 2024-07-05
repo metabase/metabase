@@ -114,6 +114,7 @@ function normalizeAppearance(
     bordered: displayOptions.bordered,
     theme: displayOptions.theme ?? "light",
     font: displayOptions.font ? "custom" : "instance",
+    // TODO: replace with `downloads` when it's implemented
     hide_download_button: displayOptions.hide_download_button ?? null,
   };
 }
