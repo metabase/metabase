@@ -3,18 +3,36 @@
 import { schema } from "normalizr";
 
 import { entityTypeForObject } from "metabase/lib/schema";
+import {
+  migrateCardVizSettings,
+  migrateDashboardVizSettings,
+} from "metabase/visualizations/lib/migrate-settings";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 
 export const ActionSchema = new schema.Entity("actions");
 export const UserSchema = new schema.Entity("users");
-export const QuestionSchema = new schema.Entity("questions");
+
+export const QuestionSchema = new schema.Entity(
+  "questions",
+  {},
+  {
+    processStrategy: card => migrateCardVizSettings(card),
+  },
+);
+
 export const ModelIndexSchema = new schema.Entity("modelIndexes");
 export const CacheConfigSchema = new schema.Entity("cacheConfigs");
 export const IndexedEntitySchema = new schema.Entity("indexedEntities");
 export const BookmarkSchema = new schema.Entity("bookmarks");
-export const DashboardSchema = new schema.Entity("dashboards");
+export const DashboardSchema = new schema.Entity(
+  "dashboards",
+  {},
+  {
+    processStrategy: dashboard => migrateDashboardVizSettings(dashboard),
+  },
+);
 export const PulseSchema = new schema.Entity("pulses");
 export const CollectionSchema = new schema.Entity("collections");
 

@@ -101,7 +101,8 @@
                               (:name col))
           col-settings'   (update-keys col-settings #(select-keys % [::mb.viz/field-id ::mb.viz/column-name]))
           format-settings (or (get col-settings' {::mb.viz/field-id id-or-name})
-                              (get col-settings' {::mb.viz/column-name id-or-name}))
+                              (get col-settings' {::mb.viz/column-name id-or-name})
+                              (get col-settings' {::mb.viz/column-name (:name col)}))
           is-currency?    (or (isa? (:semantic_type col) :type/Currency)
                               (= (::mb.viz/number-style format-settings) "currency"))
           merged-settings (if is-currency?
@@ -188,7 +189,8 @@
                               ;; match a key with metadata, even if we do have the correct name or id
                               (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
         column-settings (or (all-cols-settings {::mb.viz/field-id field-id-or-name})
-                            (all-cols-settings {::mb.viz/column-name (or field-id-or-name column-name)}))]
+                            (all-cols-settings {::mb.viz/column-name field-id-or-name})
+                            (all-cols-settings {::mb.viz/column-name column-name}))]
     (merge
       ;; The default global settings based on the type of the column
       (global-type-settings col viz-settings)

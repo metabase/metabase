@@ -412,7 +412,8 @@
     (doseq [[value col styles index] (map vector values cols cell-styles (range (count values)))]
       (let [id-or-name   (or (:id col) (:name col))
             settings     (or (get col-settings {::mb.viz/field-id id-or-name})
-                             (get col-settings {::mb.viz/column-name id-or-name}))
+                             (get col-settings {::mb.viz/column-name id-or-name})
+                             (get col-settings {::mb.viz/column-name (:name col)}))
             scaled-val   (if (and value (::mb.viz/scale settings))
                            (* value (::mb.viz/scale settings))
                            value)
@@ -434,7 +435,8 @@
     (doseq [[value col styles index] (map vector values cols cell-styles (range (count values)))]
       (let [id-or-name   (or (:id col) (:name col))
             settings     (or (get col-settings {::mb.viz/field-id id-or-name})
-                             (get col-settings {::mb.viz/column-name id-or-name}))
+                             (get col-settings {::mb.viz/column-name id-or-name})
+                             (get col-settings {::mb.viz/column-name (:name col)}))
             scaled-val   (if (and value (::mb.viz/scale settings))
                            (* value (::mb.viz/scale settings))
                            value)

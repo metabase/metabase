@@ -14,7 +14,7 @@ export const getColumnKey = (column: Pick<DatasetColumn, "name">) => {
   return JSON.stringify(["name", column.name]);
 };
 
-export const getColumnKeyLegacy = (
+export const getLegacyColumnKey = (
   column: Pick<DatasetColumn, "name" | "field_ref">,
 ) => {
   let fieldRef = column.field_ref;
@@ -38,11 +38,9 @@ export const getColumnKeyLegacy = (
     fieldRef = getBaseDimensionReference(fieldRef);
   }
 
-  const isLegacyRef =
+  const isNameKey =
     (isFieldReference(fieldRef) && hasStringFieldName(fieldRef)) ||
     isAggregationReference(fieldRef);
 
-  return JSON.stringify(
-    isLegacyRef ? ["name", column.name] : ["ref", fieldRef],
-  );
+  return JSON.stringify(isNameKey ? ["name", column.name] : ["ref", fieldRef]);
 };

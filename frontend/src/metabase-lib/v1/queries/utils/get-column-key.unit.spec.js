@@ -1,4 +1,4 @@
-import { getColumnKeyLegacy } from "metabase-lib/v1/queries/utils/get-column-key";
+import { getLegacyColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 
 describe("getColumnKeyLegacy", () => {
   // NOTE: run legacy tests with and without a field_ref. without is disabled in latest since it now always uses
@@ -7,7 +7,7 @@ describe("getColumnKeyLegacy", () => {
     describe(fieldRefEnabled ? "with field_ref" : "without field_ref", () => {
       it("should return [ref [field ...]] for field", () => {
         expect(
-          getColumnKeyLegacy({
+          getLegacyColumnKey({
             name: "foo",
             id: 1,
             field_ref: fieldRefEnabled ? ["field", 1, null] : undefined,
@@ -16,7 +16,7 @@ describe("getColumnKeyLegacy", () => {
       });
       it("should return [ref [field ...]] for foreign field", () => {
         expect(
-          getColumnKeyLegacy({
+          getLegacyColumnKey({
             name: "foo",
             id: 1,
             fk_field_id: 2,
@@ -28,7 +28,7 @@ describe("getColumnKeyLegacy", () => {
       });
       it("should return [ref [expression ...]] for expression", () => {
         expect(
-          getColumnKeyLegacy({
+          getLegacyColumnKey({
             name: "foo",
             expression_name: "foo",
             field_ref: fieldRefEnabled ? ["expression", "foo"] : undefined,
@@ -41,7 +41,7 @@ describe("getColumnKeyLegacy", () => {
           source: "aggregation",
           field_ref: fieldRefEnabled ? ["aggregation", 0] : undefined,
         };
-        expect(getColumnKeyLegacy(col, [col])).toEqual(
+        expect(getLegacyColumnKey(col, [col])).toEqual(
           // NOTE: not ideal, matches existing behavior, but should be ["aggregation", 0]
           JSON.stringify(["name", "foo"]),
         );
@@ -54,14 +54,14 @@ describe("getColumnKeyLegacy", () => {
             ? ["field", "foo", { "base-type": "type/Integer" }]
             : undefined,
         };
-        expect(getColumnKeyLegacy(col, [col])).toEqual(
+        expect(getLegacyColumnKey(col, [col])).toEqual(
           // NOTE: not ideal, matches existing behavior, but should be ["field", "foo", {"base-type": "type/Integer"}]
           JSON.stringify(["name", "foo"]),
         );
       });
       it("should return [field ...] for native query column", () => {
         expect(
-          getColumnKeyLegacy({
+          getLegacyColumnKey({
             name: "foo",
             field_ref: fieldRefEnabled
               ? ["field", "foo", { "base-type": "type/Integer" }]
@@ -82,7 +82,7 @@ describe("getColumnKeyLegacy", () => {
         id: 1,
         field_ref: ["field", 1, { "join-alias": "x" }],
       };
-      expect(getColumnKeyLegacy(col)).toEqual(
+      expect(getLegacyColumnKey(col)).toEqual(
         JSON.stringify(["ref", ["field", 1, { "join-alias": "x" }]]),
       );
     });
