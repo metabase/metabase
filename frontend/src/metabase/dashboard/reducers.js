@@ -83,6 +83,7 @@ const editingDashboard = handleActions(
 const loadingControls = handleActions(
   {
     [INITIALIZE]: { next: () => INITIAL_DASHBOARD_STATE.loadingControls },
+
     [fetchDashboard.pending]: (state, { payload }) => ({
       ...state,
       isLoading: true,

@@ -112,7 +112,7 @@ export const getIsLoading = (state: State) =>
   !!state.dashboard.loadingControls.isLoading;
 
 export const getIsLoadingWithCards = (state: State) =>
-  getIsLoading(state) || getIsRunning(state);
+  getIsLoading(state) || !getIsLoadingComplete(state);
 
 export const getIsAddParameterPopoverOpen = (state: State) =>
   state.dashboard.isAddParameterPopoverOpen;
