@@ -6530,46 +6530,6 @@ databaseChangeLog:
       comment: Populate metabase_field.is_defective_duplicate
       changes:
         - sql:
-            # idx_uniq_field_table_id_parent_id_name_2col would prevent defective duplicates with Postgres but it
-            # can be removed by upgrading from 49 and downgrading again. We need to populate is_defective_duplicate
-            # in that case.
-            dbms: postgresql
-            sql: >-
-              WITH ranked_fields AS (
-                  SELECT
-                      mf.id,
-                      ROW_NUMBER() OVER (
-                          PARTITION BY mf.table_id, mf.name, mf.parent_id
-                          ORDER BY
-                              CASE WHEN mf.active THEN 0 ELSE 1 END,
-                              CASE WHEN mf.nfc_path IS NULL THEN 0 ELSE 1 END,
-                              mf.created_at
-                      ) AS rn
-                  FROM metabase_field mf
-              )
-              UPDATE metabase_field mf
-              SET is_defective_duplicate = TRUE
-              FROM ranked_fields rf
-              WHERE mf.id = rf.id AND rf.rn > 1;
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              UPDATE metabase_field mf
-              LEFT JOIN (
-                  SELECT
-                      mf.id,
-                      ROW_NUMBER() OVER (
-                          PARTITION BY mf.table_id, mf.name, mf.parent_id
-                          ORDER BY
-                              CASE WHEN mf.active THEN 0 ELSE 1 END,
-                              CASE WHEN mf.nfc_path IS NULL THEN 0 ELSE 1 END,
-                              mf.created_at
-                      ) AS rn
-                  FROM metabase_field mf
-              ) x ON mf.id = x.id
-              SET mf.is_defective_duplicate = x.rn > 1;
-        - sql:
-            dbms: h2
             sql: >-
               UPDATE metabase_field mf
               SET is_defective_duplicate = TRUE
