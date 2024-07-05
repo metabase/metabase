@@ -290,9 +290,9 @@
    (remove #(contains? inactive-card-ids (:card_id %)) dashcards)))
 
 (defmethod revision/revert-to-revision! :model/Dashboard
-  [_model dashboard-id _user-id serialized-dashboard]
+  [model dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
-  (t2/update! :model/Dashboard dashboard-id (dissoc serialized-dashboard :cards :tabs))
+  ((get-method revision/revert-to-revision! :default) model dashboard-id user-id (dissoc serialized-dashboard :cards :tabs))
   ;; Now update the tabs and cards as needed
   (let [serialized-dashcards      (:cards serialized-dashboard)
         current-tabs              (t2/select-fn-vec #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
