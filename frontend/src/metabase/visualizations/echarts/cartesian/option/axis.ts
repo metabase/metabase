@@ -161,6 +161,7 @@ const getCommonDimensionAxisOptions = (
   const nameGap = getAxisNameGap(
     chartMeasurements.ticksDimensions.xTicksHeight,
   );
+  const { getColor } = renderingContext;
   return {
     ...getAxisNameDefaultOption(
       renderingContext,
@@ -179,7 +180,7 @@ const getCommonDimensionAxisOptions = (
     axisLine: {
       show: !!settings["graph.x_axis.axis_enabled"],
       lineStyle: {
-        color: "var(--mb-color-border)",
+        color: getColor("border"),
       },
     },
   };
@@ -392,7 +393,7 @@ export const buildMetricAxis = (
         ? {
             lineStyle: {
               type: 5,
-              color: "var(--mb-color-border)",
+              color: renderingContext.getColor("border"),
             },
           }
         : undefined,
