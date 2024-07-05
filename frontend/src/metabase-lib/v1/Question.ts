@@ -602,7 +602,7 @@ class Question {
     });
   }
 
-  setResultsMetadataDiff(metadataDiff: Record<string, Partial<Field>>) {
+  setResultMetadataDiff(metadataDiff: Record<string, Partial<Field>>) {
     const metadata = this.getResultMetadata();
     const newMetadata = metadata.map(column => {
       const columnDiff = metadataDiff[column.name];

@@ -355,7 +355,7 @@ function DatasetEditor(props) {
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
-    const questionWithMetadata = question.setResultsMetadataDiff(metadataDiff);
+    const questionWithMetadata = question.setResultMetadataDiff(metadataDiff);
     const questionWithDisplay = isMetric
       ? questionWithMetadata.setDefaultDisplay()
       : questionWithMetadata;
