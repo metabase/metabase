@@ -25,8 +25,6 @@ export async function runQuestionQuerySdk(options: Options): Promise<Result> {
   const query = question.query();
   const { isNative } = Lib.queryDisplayInfo(query);
 
-  // TODO: do we need this at all?
-  //       what does "locking display to prevent auto-selection" mean?
   if (question.isSaved()) {
     const type = question.type();
 
@@ -34,8 +32,6 @@ export async function runQuestionQuerySdk(options: Options): Promise<Result> {
       question = question.lockDisplay();
     }
   }
-
-  const cancelQueryDeferred = defer();
 
   const isQueryDirty = originalQuestion
     ? question.isQueryDirtyComparedTo(new Question(originalQuestion))
@@ -45,7 +41,7 @@ export async function runQuestionQuerySdk(options: Options): Promise<Result> {
 
   if (question.canRun() && (question.isSaved() || !isNative)) {
     queryResults = await runQuestionQuery(question, {
-      cancelDeferred: cancelQueryDeferred,
+      cancelDeferred: defer(), // TODO: support query cancellation in the SDK
       ignoreCache: false,
       isDirty: isQueryDirty,
     });
@@ -60,10 +56,14 @@ export async function runQuestionQuerySdk(options: Options): Promise<Result> {
 }
 
 export const runQuestionOnQueryChangeSdk =
-  (question: Question, nextQuestion: Question) =>
+  (previousQuestion: Question, nextQuestion: Question) =>
   async (dispatch: Dispatch, getState: GetState): Promise<Result> => {
-    const currentDependencies = question
-      ? Lib.dependentMetadata(question.query(), question.id(), question.type())
+    const currentDependencies = previousQuestion
+      ? Lib.dependentMetadata(
+          previousQuestion.query(),
+          previousQuestion.id(),
+          previousQuestion.type(),
+        )
       : [];
 
     const nextDependencies = Lib.dependentMetadata(
@@ -78,15 +78,9 @@ export const runQuestionOnQueryChangeSdk =
 
     const metadata = getMetadata(getState());
 
-    const runResult = await runQuestionQuerySdk({
+    return runQuestionQuerySdk({
       question: new Question(nextQuestion.card(), metadata),
     });
-
-    // TODO: to remove
-    // eslint-disable-next-line no-console
-    console.log("Update Question:", { question, nextQuestion });
-
-    return runResult;
   };
 
 export const runQuestionOnNavigateSdk =
@@ -106,11 +100,11 @@ export const runQuestionOnNavigateSdk =
       nextCard = await loadCard(nextCard.id, { dispatch, getState });
     }
 
-    const question = new Question(previousCard, metadata);
+    const previousQuestion = new Question(previousCard, metadata);
     const nextQuestion = new Question(nextCard, metadata);
 
     const result = await dispatch(
-      runQuestionOnQueryChangeSdk(question, nextQuestion),
+      runQuestionOnQueryChangeSdk(previousQuestion, nextQuestion),
     );
 
     return result as Result;

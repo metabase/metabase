@@ -98,8 +98,7 @@ const InteractiveDashboardInner = ({
 
       if (url) {
         dispatch({ type: NAVIGATE_TO_NEW_CARD, payload: { dashboardId } });
-
-        // setAdhocQuestionUrl(url);
+        setAdhocQuestionUrl(url);
       }
     }
   };
@@ -114,8 +113,7 @@ const InteractiveDashboardInner = ({
     <Box w="100%" h="100%" ref={ref} className={className}>
       {adhocQuestionUrl ? (
         <InteractiveAdHocQuestion
-          // TODO: support ad-hoc question with url again...
-          questionId={10}
+          questionPath={adhocQuestionUrl}
           withTitle={withTitle}
           height={questionHeight}
           plugins={questionPlugins}

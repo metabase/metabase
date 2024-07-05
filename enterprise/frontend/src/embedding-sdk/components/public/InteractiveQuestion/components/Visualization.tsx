@@ -36,7 +36,6 @@ export const QuestionVisualization = () => {
       className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
       question={question}
       rawSeries={[{ card, data: result && result.data }]}
-      // TODO: should we have isQuestionRunning?
       isRunning={isQuestionLoading}
       isObjectDetail={false}
       isResultDirty={false}
