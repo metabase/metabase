@@ -70,7 +70,7 @@ const propTypes = {
   isRunning: PropTypes.bool.isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
   setDatasetEditorTab: PropTypes.func.isRequired,
-  setFieldMetadata: PropTypes.func.isRequired,
+  setMetadataDiff: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
   onCancelCreateNewModel: PropTypes.func.isRequired,
   onCancelDatasetChanges: PropTypes.func.isRequired,
@@ -209,7 +209,7 @@ function DatasetEditor(props) {
     setQueryBuilderMode,
     runQuestionQuery,
     setDatasetEditorTab,
-    setFieldMetadata,
+    setMetadataDiff,
     onCancelDatasetChanges,
     onCancelCreateNewModel,
     onSave,
@@ -293,17 +293,17 @@ function DatasetEditor(props) {
 
   const onFieldMetadataChange = useCallback(
     values => {
-      setFieldMetadata({ name: focusedFieldName, changes: values });
+      setMetadataDiff({ name: focusedFieldName, changes: values });
     },
-    [focusedFieldName, setFieldMetadata],
+    [focusedFieldName, setMetadataDiff],
   );
 
   const onMappedDatabaseColumnChange = useCallback(
     value => {
       const changes = inheritMappedFieldProperties({ id: value });
-      setFieldMetadata({ name: focusedFieldName, changes });
+      setMetadataDiff({ name: focusedFieldName, changes });
     },
-    [focusedFieldName, setFieldMetadata, inheritMappedFieldProperties],
+    [focusedFieldName, setMetadataDiff, inheritMappedFieldProperties],
   );
 
   const [isTabHintVisible, { turnOn: showTabHint, turnOff: hideTabHint }] =

@@ -1,4 +1,3 @@
-import { merge } from "icepick";
 import { push } from "react-router-redux";
 import { createAction } from "redux-actions";
 import { t } from "ttag";
@@ -8,7 +7,7 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import { getOriginalCard, getQuestion, getResultsMetadata } from "../selectors";
+import { getOriginalCard, getQuestion } from "../selectors";
 
 import { apiUpdateQuestion, updateQuestion, API_UPDATE_QUESTION } from "./core";
 import { runDirtyQuestionQuery, runQuestionQuery } from "./querying";
@@ -81,28 +80,6 @@ export const turnModelIntoQuestion = () => async (dispatch, getState) => {
 
 export const SET_METADATA_DIFF = "metabase/qb/SET_METADATA_DIFF";
 export const setMetadataDiff = createAction(SET_METADATA_DIFF);
-
-export const setFieldMetadata =
-  ({ name, changes }) =>
-  (dispatch, getState) => {
-    const question = getQuestion(getState());
-    const resultsMetadata = getResultsMetadata(getState());
-
-    const nextColumnMetadata = resultsMetadata.columns.map(fieldMetadata => {
-      const isTargetField = fieldMetadata.name === name;
-      return isTargetField ? merge(fieldMetadata, changes) : fieldMetadata;
-    });
-
-    const nextResultsMetadata = {
-      ...resultsMetadata,
-      columns: nextColumnMetadata,
-    };
-
-    const nextQuestion = question.setResultsMetadata(nextResultsMetadata);
-
-    dispatch(updateQuestion(nextQuestion));
-    dispatch(setMetadataDiff({ name, changes }));
-  };
 
 export const onModelPersistenceChange = isEnabled => (dispatch, getState) => {
   const question = getQuestion(getState());
