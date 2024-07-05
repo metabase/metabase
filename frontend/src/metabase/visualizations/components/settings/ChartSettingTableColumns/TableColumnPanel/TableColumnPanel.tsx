@@ -95,5 +95,5 @@ export const TableColumnPanel = ({
 };
 
 function getId(columnItem: ColumnItem) {
-  return columnItem.column.desired_column_alias;
+  return columnItem.column.desired_column_alias ?? columnItem.column.name;
 }

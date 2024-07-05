@@ -39,7 +39,7 @@ export function findColumnIndexesForColumnSettings(
   );
   return columnSettings.map(
     columnSetting =>
-      columnIndexByAlias.get(columnSetting.desired_column_alias ?? "") ?? -1,
+      columnIndexByAlias.get(columnSetting.desired_column_alias) ?? -1,
   );
 }
 
