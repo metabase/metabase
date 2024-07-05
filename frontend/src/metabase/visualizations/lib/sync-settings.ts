@@ -2,8 +2,8 @@ import {
   findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,
 } from "metabase-lib/v1/queries/utils/dataset";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
+  FieldId,
   Series,
   SingleSeries,
   VisualizationSettings,
@@ -20,21 +20,63 @@ export function syncVizSettingsWithSeries(
   const previousSeries = _previousSeries?.[0];
 
   if (series?.data && !series.error) {
-    newSettings = syncTableColumnSettings(newSettings, series);
-
     if (previousSeries?.data && !previousSeries.error) {
+      newSettings = syncTableColumnNames(settings, series, previousSeries);
       newSettings = syncGraphMetricSettings(
         newSettings,
         series,
         previousSeries,
       );
     }
+
+    newSettings = syncNewTableColumnSettings(newSettings, series);
   }
 
   return newSettings;
 }
 
-function syncTableColumnSettings(
+function syncTableColumnNames(
+  settings: VisualizationSettings,
+  { data: { cols } }: SingleSeries,
+  { data: { cols: prevCols } }: SingleSeries,
+): VisualizationSettings {
+  const columnSettings = settings["table.columns"] ?? [];
+  if (columnSettings.length === 0) {
+    return settings;
+  }
+
+  const newNamesById = new Map<FieldId, string[]>();
+  cols.forEach(col => {
+    if (col.id) {
+      const names = newNamesById.get(col.id) ?? [];
+      newNamesById.set(col.id, [...names, col.name]);
+    }
+  });
+  const prevIdByName = new Map(
+    prevCols.filter(col => col.id != null).map(col => [col.name, col.id]),
+  );
+
+  return {
+    ...settings,
+    "table.columns": columnSettings.map(setting => {
+      const prevId = prevIdByName.get(setting.name);
+      if (prevId == null) {
+        return setting;
+      }
+      const newNames = newNamesById.get(prevId);
+      if (newNames == null || newNames.length !== 1) {
+        return setting;
+      }
+      const [newName] = newNames;
+      if (newName === setting.name) {
+        return setting;
+      }
+      return { ...setting, name: newName };
+    }),
+  };
+}
+
+function syncNewTableColumnSettings(
   settings: VisualizationSettings,
   { data }: SingleSeries,
 ): VisualizationSettings {
@@ -71,7 +113,6 @@ function syncTableColumnSettings(
 
   const addedColumnSettings = addedColumns.map(col => ({
     name: col.name,
-    key: getColumnKey(col),
     fieldRef: col.field_ref,
     enabled: true,
   }));
