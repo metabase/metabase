@@ -6583,6 +6583,7 @@ databaseChangeLog:
             referencedTableName: metabase_field
             referencedColumnNames: id
             constraintName: fk_field_parent_ref_field_id
+            onDelete: RESTRICT
       rollback:
         - dropForeignKeyConstraint:
             baseTableName: metabase_field
