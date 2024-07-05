@@ -15,6 +15,9 @@ import {
   markCardAsSlow,
   setDocumentTitle,
   setShowLoadingCompleteFavicon,
+  REMOVE_PARAMETER,
+  CLOSE_SIDEBAR,
+  setSidebar,
 } from "./actions";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 
@@ -43,7 +46,6 @@ export const missingActionParameters = handleActions(
   INITIAL_DASHBOARD_STATE.missingActionParameters,
 );
 
-// TODO: double check if this reducer is used
 export const autoApplyFilters = createReducer(
   INITIAL_DASHBOARD_STATE.autoApplyFilters,
   builder => {
@@ -98,7 +100,7 @@ export const editingDashboard = handleActions(
   {
     [INITIALIZE]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
     [SET_EDITING_DASHBOARD]: {
-      next: (state, { payload }) => payload ?? null,
+      next: (_state, { payload }) => payload ?? null,
     },
     [RESET]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
   },
@@ -117,5 +119,22 @@ export const loadingControls = createReducer(
     });
 
     builder.addCase(RESET, () => INITIAL_DASHBOARD_STATE.loadingControls);
+  },
+);
+
+const DEFAULT_SIDEBAR = { props: {} };
+export const sidebar = createReducer(
+  INITIAL_DASHBOARD_STATE.sidebar,
+  builder => {
+    builder.addCase(INITIALIZE, () => DEFAULT_SIDEBAR);
+    builder.addCase(RESET, () => DEFAULT_SIDEBAR);
+    builder.addCase(REMOVE_PARAMETER, () => DEFAULT_SIDEBAR);
+    builder.addCase(SET_EDITING_DASHBOARD, () => DEFAULT_SIDEBAR);
+    builder.addCase(CLOSE_SIDEBAR, () => DEFAULT_SIDEBAR);
+
+    builder.addCase(setSidebar, (_state, { payload: { name, props } }) => ({
+      name,
+      props: props || {},
+    }));
   },
 );

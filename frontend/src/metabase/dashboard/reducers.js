@@ -11,7 +11,6 @@ import { handleActions, combineReducers } from "metabase/lib/redux";
 
 import {
   INITIALIZE,
-  SET_EDITING_DASHBOARD,
   SET_DASHBOARD_ATTRIBUTES,
   ADD_CARD_TO_DASH,
   ADD_MANY_CARDS_TO_DASH,
@@ -32,8 +31,6 @@ import {
   SET_PARAMETER_VALUE,
   FETCH_DASHBOARD_CARD_DATA,
   CANCEL_FETCH_CARD_DATA,
-  SET_SIDEBAR,
-  CLOSE_SIDEBAR,
   RESET,
   SET_PARAMETER_VALUES,
   UNDO_REMOVE_CARD_FROM_DASH,
@@ -392,34 +389,6 @@ const loadingDashCards = handleActions(
   INITIAL_DASHBOARD_STATE.loadingDashCards,
 );
 
-const DEFAULT_SIDEBAR = { props: {} };
-const sidebar = handleActions(
-  {
-    [INITIALIZE]: {
-      next: () => DEFAULT_SIDEBAR,
-    },
-    [SET_SIDEBAR]: {
-      next: (state, { payload: { name, props } }) => ({
-        name,
-        props: props || {},
-      }),
-    },
-    [CLOSE_SIDEBAR]: {
-      next: () => DEFAULT_SIDEBAR,
-    },
-    [SET_EDITING_DASHBOARD]: {
-      next: () => DEFAULT_SIDEBAR,
-    },
-    [REMOVE_PARAMETER]: {
-      next: () => DEFAULT_SIDEBAR,
-    },
-    [RESET]: {
-      next: () => DEFAULT_SIDEBAR,
-    },
-  },
-  INITIAL_DASHBOARD_STATE.sidebar,
-);
-
 export const dashboardReducers = reduceReducers(
   INITIAL_DASHBOARD_STATE,
   combineReducers({
@@ -430,7 +399,6 @@ export const dashboardReducers = reduceReducers(
     parameterValues,
     draftParameterValues,
     loadingDashCards,
-    sidebar,
     // Combined reducer needs to init state for every slice
     selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
     tabDeletions: (state = INITIAL_DASHBOARD_STATE.tabDeletions) => state,
