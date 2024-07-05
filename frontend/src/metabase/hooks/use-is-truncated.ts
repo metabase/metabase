@@ -45,10 +45,11 @@ const cloneAndMeasure = (element: HTMLElement) => {
   }
 
   cloned.style.textOverflow = "clip";
+  cloned.style.position = "fixed";
 
-  document.body.appendChild(cloned);
+  element.parentElement?.appendChild(cloned);
   const measured = cloned.getBoundingClientRect();
-  document.body.removeChild(cloned);
+  element.parentElement?.removeChild(cloned);
 
   return measured;
 };
