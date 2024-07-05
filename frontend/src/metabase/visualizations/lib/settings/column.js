@@ -542,19 +542,29 @@ export const buildTableColumnSettings = ({
       }
 
       function getValue(columnSettings) {
+        const columnIndexes = findColumnIndexesForColumnSettings(
+          cols,
+          columnSettings,
+        );
         const settingIndexes = findColumnSettingIndexesForColumns(
           cols,
           columnSettings,
         );
 
         return [
-          ...columnSettings,
+          ...columnSettings.map((columnSetting, columnSettingIndex) => ({
+            ...columnSetting,
+            desired_column_alias:
+              cols[columnIndexes[columnSettingIndex]]?.desired_column_alias ??
+              columnSetting.desired_column_alias,
+          })),
           ...cols
             .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
             .map(column => ({
               name: column.name,
               enabled: getIsColumnVisible(column),
               fieldRef: column.field_ref,
+              desired_column_alias: column.desired_column_alias,
             })),
         ];
       }
