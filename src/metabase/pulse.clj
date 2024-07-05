@@ -261,7 +261,7 @@
     (apply channel/send! args)
     (catch Exception e
       ;; Token errors have already been logged and we should not retry.
-      (when-not (and (= :channel/slack (first args))
+      (when-not (and (= :channel/slack (:type (first args)))
                      (contains? (:errors (ex-data e)) :slack-token))
         (throw e)))))
 
@@ -303,13 +303,13 @@
         (u/prog1 (doseq [channel channels]
                    (try
                      (let [channel-type (if (= :email (keyword (:channel_type channel)))
-                                          :channel/email
-                                          :channel/slack)
+                                            :channel/email
+                                            :channel/slack)
                            messages     (channel/render-notification channel-type
                                                                      (get-notification-info pulse parts channel)
                                                                      (channels-to-channel-recipients channel))]
                        (doseq [message messages]
-                         (send-retrying! channel-type message)))
+                         (send-retrying! {:type channel-type} message)))
                      (catch Exception e
                        (log/errorf e "Error sending %s %d to channel %s" (alert-or-pulse pulse) (:id pulse) (:channel_type channel)))))
           (when (:alert_first_only pulse)

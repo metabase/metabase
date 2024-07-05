@@ -47,7 +47,7 @@
     nil))
 
 (mu/defmethod channel/send! :channel/email
-  [_channel-type {:keys [subject recipients message-type message]} :- EmailMessage]
+  [_channel {:keys [subject recipients message-type message]} :- EmailMessage]
   (email/send-message-or-throw! {:subject      subject
                                  :recipients   recipients
                                  :message-type message-type
@@ -86,7 +86,7 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard-subscription] :- [:sequential EmailMessage]
-  [_channel-details {:keys [dashboard payload pulse]} recipients]
+  [_channel-type {:keys [dashboard payload pulse]} recipients]
   (let [{:keys [user-emails
                 non-user-emails]} (recipients->emails recipients)
         timezone                  (some->> payload (some :card) channel.shared/defaulted-timezone)
