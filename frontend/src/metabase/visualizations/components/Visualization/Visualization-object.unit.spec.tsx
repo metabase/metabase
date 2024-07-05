@@ -31,11 +31,13 @@ function setup({
             createMockColumn({
               base_type: "string",
               name: "Short name",
+              desired_column_alias: "Short name",
               display_name: "Short name",
             }),
             createMockColumn({
               base_type: "string",
               name: "Long name",
+              desired_column_alias: "Long name",
               display_name: "Long name",
               visibility_type: longNameVisibility,
             }),

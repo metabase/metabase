@@ -17,24 +17,28 @@ const COLUMNS = [
   createMockColumn({
     id: ORDERS.ID,
     name: "ID",
+    desired_column_alias: "ID",
     display_name: "ID",
     field_ref: ["field", ORDERS.ID, null],
   }),
   createMockColumn({
     id: ORDERS.TOTAL,
     name: "TOTAL",
+    desired_column_alias: "TOTAL",
     display_name: "Total",
     field_ref: ["field", ORDERS.TOTAL, null],
   }),
   createMockColumn({
     id: ORDERS.TAX,
     name: "TAX",
+    desired_column_alias: "TAX",
     display_name: "Tax",
     field_ref: ["field", ORDERS.TAX, null],
   }),
   createMockColumn({
     id: ORDERS.SUBTOTAL,
     name: "SUBTOTAL",
+    desired_column_alias: "SUBTOTAL",
     display_name: "Subtotal",
     field_ref: ["field", ORDERS.SUBTOTAL, null],
   }),

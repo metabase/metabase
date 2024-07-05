@@ -54,7 +54,12 @@ const setup = ({ vizType }) => {
             card: question.card(),
             data: {
               rows: [],
-              cols: ordersTable.fields.map(f => f.column()),
+              cols: ordersTable.fields
+                .map(field => field.column())
+                .map(column => ({
+                  ...column,
+                  desired_column_alias: column.name,
+                })),
             },
           },
         ]}
