@@ -19,6 +19,8 @@ export function syncVizSettingsWithSeries(
   const previousSeries = _previousSeries?.[0];
 
   if (series?.data && !series?.error) {
+    newSettings = syncTableColumnSettings(newSettings, series);
+
     if (previousSeries?.data && !previousSeries?.error) {
       newSettings = syncGraphMetricSettings(
         newSettings,
@@ -26,14 +28,12 @@ export function syncVizSettingsWithSeries(
         previousSeries,
       );
     }
-
-    newSettings = syncNewTableColumnSettings(newSettings, series);
   }
 
   return newSettings;
 }
 
-function syncNewTableColumnSettings(
+function syncTableColumnSettings(
   settings: VisualizationSettings,
   { data }: SingleSeries,
 ): VisualizationSettings {
