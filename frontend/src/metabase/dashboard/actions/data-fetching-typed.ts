@@ -19,8 +19,6 @@ import { AutoApi, DashboardApi, EmbedApi, PublicApi } from "metabase/services";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import type { Card, DashboardCard, DashboardId } from "metabase-types/api";
 
-import { MARK_CARD_AS_SLOW } from "./data-fetching";
-
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");
 const dashboard = new schema.Entity("dashboard", {
@@ -180,6 +178,7 @@ export const fetchDashboard = createAsyncThunk(
   },
 );
 
+export const MARK_CARD_AS_SLOW = "metabase/dashboard/MARK_CARD_AS_SLOW";
 export const markCardAsSlow = RTKCreateAction(
   MARK_CARD_AS_SLOW,
   (card: Card) => {
