@@ -30,6 +30,7 @@ const mockSavedCard = createMockCard({
     },
   }),
 });
+const mockSavedModel = { ...mockSavedCard, type: "model" };
 const mockUnsavedCard = createMockUnsavedCard();
 
 const noop = () => null;
@@ -43,6 +44,7 @@ const defaultDatasetEditorProps = {
   isShowingTemplateTagsEditor: false,
   parameterValues: {},
   params: { slug: "query" },
+  updateQuestion: noop,
   handleResize: noop,
   onCancelCreateNewModel: noop,
   onCancelDatasetChanges: noop,
@@ -63,11 +65,7 @@ const renderDatasetEditor = (card: Card | UnsavedCard) => {
   const question = new Question(card);
 
   renderWithProviders(
-    <DatasetEditor
-      {...defaultDatasetEditorProps}
-      question={question}
-      query={question.legacyQuery({ useStructuredQuery: true })}
-    />,
+    <DatasetEditor {...defaultDatasetEditorProps} question={question} />,
   );
 };
 
@@ -79,13 +77,18 @@ describe("DatasetEditor", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
-  it("tries to load a model index when card is already saved", () => {
-    renderDatasetEditor(mockSavedCard);
+  it("tries to load a model index for a saved model", () => {
+    renderDatasetEditor(mockSavedModel);
     const calls = fetchMock.calls("path:/api/model-index");
     expect(calls).toHaveLength(1);
     expect(
       new URL(calls[0]?.request?.url ?? "").searchParams.get("model_id"),
-    ).toBe(`${mockSavedCard.id}`);
+    ).toBe(`${mockSavedModel.id}`);
+  });
+  it("does not try to load a model index for a saved question", () => {
+    renderDatasetEditor(mockSavedCard);
+    const calls = fetchMock.calls("path:/api/model-index");
+    expect(calls).toHaveLength(0);
   });
   it("does not try to load a model index when card is unsaved", () => {
     renderDatasetEditor(mockUnsavedCard);
