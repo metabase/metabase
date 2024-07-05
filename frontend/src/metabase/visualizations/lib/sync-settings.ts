@@ -19,21 +19,52 @@ export function syncVizSettingsWithSeries(
   const previousSeries = _previousSeries?.[0];
 
   if (series?.data && !series?.error) {
-    newSettings = syncTableColumnSettings(newSettings, series);
-
     if (previousSeries?.data && !previousSeries?.error) {
+      newSettings = syncTableColumnNames(settings, series, previousSeries);
       newSettings = syncGraphMetricSettings(
         newSettings,
         series,
         previousSeries,
       );
     }
+
+    newSettings = syncNewTableColumnSettings(newSettings, series);
   }
 
   return newSettings;
 }
 
-function syncTableColumnSettings(
+function syncTableColumnNames(
+  settings: VisualizationSettings,
+  { data: { cols } }: SingleSeries,
+  { data: { cols: prevCols } }: SingleSeries,
+) {
+  const columnSettings = settings["table.columns"] ?? [];
+  if (columnSettings.length === 0) {
+    return settings;
+  }
+
+  const newNameById = new Map(
+    cols.filter(col => col.id != null).map(col => [col.id, col.name]),
+  );
+  const prevIdByName = new Map(
+    prevCols.filter(col => col.id != null).map(col => [col.name, col.id]),
+  );
+
+  return {
+    ...settings,
+    "table.columns": columnSettings.map(setting => {
+      const prevId = prevIdByName.get(setting.name);
+      const newName = newNameById.get(prevId);
+      if (newName != null && newName !== setting.name) {
+        return { ...setting, name: newName };
+      }
+      return setting;
+    }),
+  };
+}
+
+function syncNewTableColumnSettings(
   settings: VisualizationSettings,
   { data }: SingleSeries,
 ): VisualizationSettings {
