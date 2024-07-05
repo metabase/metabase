@@ -26,7 +26,10 @@ export const MarkdownPreview = ({
      * We can acquire the reference through its parent.
      */
     const reactMarkdownRoot = div?.firstElementChild;
-    ref.current = reactMarkdownRoot || null;
+
+    if (reactMarkdownRoot instanceof HTMLElement) {
+      ref.current = reactMarkdownRoot || null;
+    }
   };
 
   return (
