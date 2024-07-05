@@ -27,7 +27,6 @@ export const ResultTitle = styled(Anchor)<
   line-height: unset;
   font-weight: 700;
   font-size: ${({ theme }) => theme.fontSizes.md};
-
   color: var(--mb-color-text-dark);
 
   &:hover,
@@ -55,7 +54,6 @@ export const SearchResultContainer = styled(Box, {
   justify-content: center;
   align-items: start;
   gap: 0.5rem 0.75rem;
-
   padding: ${({ theme }) => theme.spacing.sm};
 
   ${({ theme, isActive, isSelected }) =>
