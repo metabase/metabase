@@ -1,5 +1,5 @@
 (ns dev.toucan2-monitor
-  "Utilities to track and monitor queries using toucan2
+  "Utilities to track and monitor queries made by toucan2.
 
   Usage:
     (start!) ;; start tracking
@@ -56,14 +56,13 @@
    #'t2.pipeline/transduce-execute-with-connection
    :around
    :default
-   ::tracking))
+   ::monitor))
 
-(defn total-execution-time-ms
-  "Get the total execution time of all queries in ms."
+(defn summary
+  "Get the total number of queries and total execution time in ms."
   []
-  (->> (queries)
-       (map second)
-       (apply +)))
+  (let [qs (queries)]
+   [(count qs) (->> qs (map second) (apply +))]))
 
 (comment
  (start!)
@@ -71,4 +70,6 @@
  (stop!)
  (reset-queries!)
  (count (queries))
- (total-execution-time-ms))
+ (summary)
+ (doseq [q (querles)]
+   (println q)))
