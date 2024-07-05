@@ -1,28 +1,38 @@
 import { useEffect, useState } from "react";
 import { usePrevious, useUnmount } from "react-use";
 
-import type { SdkClickActionPluginsConfig } from "embedding-sdk";
+import type {
+  SdkClickActionPluginsConfig,
+  SdkPluginsConfig,
+} from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
+import { useSdkSelector } from "embedding-sdk/store";
+import { getPlugins } from "embedding-sdk/store/selectors";
 import { NAVIGATE_TO_NEW_CARD, reset } from "metabase/dashboard/actions";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import { useDispatch, useStore } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
 import type { QuestionDashboardCard } from "metabase-types/api";
+
+import { InteractiveDashboardProvider } from "./context";
 
 export type InteractiveDashboardProps = SdkDashboardDisplayProps & {
   questionHeight?: number;
   questionPlugins?: SdkClickActionPluginsConfig;
+  dashboardPlugins?: SdkPluginsConfig;
 
   className?: string;
 };
@@ -36,6 +46,7 @@ const InteractiveDashboardInner = ({
   hiddenParameters = [],
   questionHeight,
   questionPlugins,
+  dashboardPlugins,
   className,
 }: InteractiveDashboardProps) => {
   const {
@@ -60,6 +71,8 @@ const InteractiveDashboardInner = ({
 
   const store = useStore();
   const [adhocQuestionUrl, setAdhocQuestionUrl] = useState<string | null>(null);
+
+  const globalPlugins = useSdkSelector(getPlugins);
 
   const previousDashboardId = usePrevious(dashboardId);
 
@@ -121,23 +134,32 @@ const InteractiveDashboardInner = ({
           onNavigateBack={handleNavigateBackToDashboard}
         />
       ) : (
-        <PublicOrEmbeddedDashboard
-          dashboardId={dashboardId}
-          parameterQueryParams={initialParameterValues}
-          hideDownloadButton={displayOptions.hideDownloadButton}
-          hideParameters={displayOptions.hideParameters}
-          titled={displayOptions.titled}
-          cardTitled={withCardTitle}
-          theme={theme}
-          isFullscreen={isFullscreen}
-          onFullscreenChange={onFullscreenChange}
-          refreshPeriod={refreshPeriod}
-          onRefreshPeriodChange={onRefreshPeriodChange}
-          setRefreshElapsedHook={setRefreshElapsedHook}
-          font={font}
-          bordered={displayOptions.bordered}
-          navigateToNewCardFromDashboard={handleNavigateToNewCardFromDashboard}
-        />
+        <InteractiveDashboardProvider
+          plugins={{ ...globalPlugins, ...dashboardPlugins }}
+          onEditQuestion={(question: Question) =>
+            setAdhocQuestionUrl(Urls.question(question.card()))
+          }
+        >
+          <PublicOrEmbeddedDashboard
+            dashboardId={dashboardId}
+            parameterQueryParams={initialParameterValues}
+            hideDownloadButton={displayOptions.hideDownloadButton}
+            hideParameters={displayOptions.hideParameters}
+            titled={displayOptions.titled}
+            cardTitled={withCardTitle}
+            theme={theme}
+            isFullscreen={isFullscreen}
+            onFullscreenChange={onFullscreenChange}
+            refreshPeriod={refreshPeriod}
+            onRefreshPeriodChange={onRefreshPeriodChange}
+            setRefreshElapsedHook={setRefreshElapsedHook}
+            font={font}
+            bordered={displayOptions.bordered}
+            navigateToNewCardFromDashboard={
+              handleNavigateToNewCardFromDashboard
+            }
+          />
+        </InteractiveDashboardProvider>
       )}
     </Box>
   );
