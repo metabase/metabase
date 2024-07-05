@@ -1,4 +1,3 @@
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -38,7 +37,6 @@ const columns: DatasetColumn[] = [
 ];
 
 const vizSettingColumns: TableColumnOrderSetting[] = columns.map(column => ({
-  key: getColumnKey(column),
   name: column.name,
   fieldRef: column.field_ref,
   enabled: true,
@@ -112,7 +110,6 @@ describe("syncVizSettingsWithSeries", () => {
         "table.columns": [
           ...vizSettingColumns.slice(1),
           {
-            key: getColumnKey(addedColumn),
             name: addedColumn.name,
             fieldRef: addedColumn.field_ref,
             enabled: true,
@@ -145,7 +142,6 @@ describe("syncVizSettingsWithSeries", () => {
         "table.columns": [
           ...vizSettingColumns.slice(1),
           {
-            key: getColumnKey(updatedColumn),
             name: updatedColumn.name,
             fieldRef: updatedColumn.field_ref,
             enabled: true,
@@ -178,7 +174,6 @@ describe("syncVizSettingsWithSeries", () => {
         "table.columns": [
           ...vizSettingColumns.slice(1),
           {
-            key: getColumnKey(updatedColumn),
             name: updatedColumn.name,
             fieldRef: updatedColumn.field_ref,
             enabled: true,
