@@ -1028,21 +1028,18 @@ saved later when it is ready."
   ;; :table_id and :database_id are extracted as just :table_id [database_name schema table_name].
   ;; :collection_id is extracted as its entity_id or identity-hash.
   ;; :creator_id as the user's email.
-  (try
-    (-> (serdes/extract-one-basics "Card" card)
-        (update :database_id            serdes/*export-fk-keyed* 'Database :name)
-        (update :table_id               serdes/*export-table-fk*)
-        (update :collection_id          serdes/*export-fk* 'Collection)
-        (update :creator_id             serdes/*export-user*)
-        (update :made_public_by_id      serdes/*export-user*)
-        (update :dataset_query          serdes/export-mbql)
-        (update :parameters             serdes/export-parameters)
-        (update :parameter_mappings     serdes/export-parameter-mappings)
-        (update :visualization_settings serdes/export-visualization-settings)
-        (update :result_metadata        export-result-metadata)
-        (dissoc :cache_invalidated_at :view_count :last_used_at :initially_published_at))
-    (catch Exception e
-      (throw (ex-info (format "Failed to export Card: %s" (ex-message e)) {:card card} e)))))
+  (-> (serdes/extract-one-basics "Card" card)
+      (update :database_id            serdes/*export-fk-keyed* 'Database :name)
+      (update :table_id               serdes/*export-table-fk*)
+      (update :collection_id          serdes/*export-fk* 'Collection)
+      (update :creator_id             serdes/*export-user*)
+      (update :made_public_by_id      serdes/*export-user*)
+      (update :dataset_query          serdes/export-mbql)
+      (update :parameters             serdes/export-parameters)
+      (update :parameter_mappings     serdes/export-parameter-mappings)
+      (update :visualization_settings serdes/export-visualization-settings)
+      (update :result_metadata        export-result-metadata)
+      (dissoc :cache_invalidated_at :view_count :last_used_at :initially_published_at)))
 
 (defmethod serdes/load-xform "Card"
   [card]
