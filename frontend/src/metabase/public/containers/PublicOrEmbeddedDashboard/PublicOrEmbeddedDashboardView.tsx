@@ -18,7 +18,6 @@ import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
-  EmbedHideDownloadButton,
   EmbedHideParameters,
   EmbedThemeControls,
   RefreshPeriod,
@@ -63,7 +62,6 @@ export function PublicOrEmbeddedDashboardView({
   titled,
   theme,
   hideParameters,
-  hideDownloadButton,
   navigateToNewCardFromDashboard,
   slowCards,
   cardTitled,
@@ -93,7 +91,6 @@ export function PublicOrEmbeddedDashboardView({
   titled: boolean;
   theme: DisplayTheme;
   hideParameters: EmbedHideParameters;
-  hideDownloadButton: EmbedHideDownloadButton;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
@@ -156,7 +153,7 @@ export function PublicOrEmbeddedDashboardView({
       titled={titled}
       theme={theme}
       hide_parameters={hideParameters}
-      hide_download_button={hideDownloadButton}
+      downloadsEnabled={downloadsEnabled}
     >
       <LoadingAndErrorWrapper
         className={cx({

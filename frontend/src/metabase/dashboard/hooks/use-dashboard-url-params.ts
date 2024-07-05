@@ -24,7 +24,7 @@ export const useDashboardUrlParams = ({
 }) => {
   const { font, setFont } = useEmbedFont();
 
-  const { bordered, titled, hide_parameters, hide_download_button } =
+  const { bordered, titled, hide_parameters, downloadsEnabled } =
     useEmbedFrameOptions({ location });
 
   const {
@@ -81,8 +81,8 @@ export const useDashboardUrlParams = ({
     onRefreshPeriodChange,
     bordered,
     titled,
-    hideDownloadButton: hide_download_button,
     font,
     setFont,
+    downloadsEnabled,
   };
 };

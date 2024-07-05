@@ -21,8 +21,8 @@ import {
   getIsLoading,
   getIsLoadingWithCards,
   getIsNavigatingBackToDashboard,
-  getParameters,
   getParameterValues,
+  getParameters,
   getSelectedTabId,
   getSlowCards,
 } from "metabase/dashboard/selectors";
@@ -32,7 +32,7 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
-import { type DispatchFn, useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector, type DispatchFn } from "metabase/lib/redux";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
@@ -40,7 +40,6 @@ import type { DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
-import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
 
 const mapStateToProps = (state: State) => {
   return {
@@ -71,7 +70,7 @@ type ReduxProps = ConnectedProps<typeof connector>;
 type OwnProps = {
   dashboardId: DashboardId;
   parameterQueryParams: Query;
-
+  downloadsEnabled?: boolean;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
@@ -150,7 +149,7 @@ const PublicOrEmbeddedDashboardInner = ({
   bordered,
   titled,
   theme,
-  hideDownloadButton,
+  downloadsEnabled = true,
   hideParameters,
   navigateToNewCardFromDashboard,
   selectedTabId,
@@ -259,8 +258,6 @@ const PublicOrEmbeddedDashboardInner = ({
     dashboard,
   ]);
 
-  const downloadsEnabled = PLUGIN_RESOURCE_DOWNLOADS.areDownloadsEnabled();
-
   return (
     <PublicOrEmbeddedDashboardView
       dashboard={dashboard}
@@ -283,7 +280,6 @@ const PublicOrEmbeddedDashboardInner = ({
       titled={titled}
       theme={theme}
       hideParameters={hideParameters}
-      hideDownloadButton={hideDownloadButton}
       navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
       slowCards={slowCards}
       cardTitled={cardTitled}
