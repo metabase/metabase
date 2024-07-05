@@ -175,7 +175,10 @@
                                             (update-keys (comp :name table-id->table))
                                             (update-vals (partial m/index-by :name)))
           table-name->pk-field (into {}
-                                     (comp (filter #(= (:semantic_type %) :type/PK))
+                                     (comp (filter #(or (= (:semantic_type %) :type/PK)
+                                                        ;; Heuristic that should work. Better approach would
+                                                        ;; be to add also type PK semantic types.
+                                                        (= (u/lower-case-en (:name %)) "id")))
                                            (map #(vector (-> % :table_id table-id->table :name)
                                                          %)))
                                      fields)]
