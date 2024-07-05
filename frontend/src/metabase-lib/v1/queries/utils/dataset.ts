@@ -10,34 +10,26 @@ export const datasetContainsNoResults = (data: DatasetData) =>
   data.rows == null || data.rows.length === 0;
 
 export function getColumnSettingKey(
-  { name, fieldRef }: TableColumnOrderSetting,
+  { key, name, fieldRef }: TableColumnOrderSetting,
   ignoreBaseType = false,
 ) {
-  return getColumnKey({ name, field_ref: normalize(fieldRef) }, ignoreBaseType);
+  if (ignoreBaseType) {
+    return getColumnKey({ name, field_ref: normalize(fieldRef) }, true);
+  }
+
+  return key ?? getColumnKey({ name, field_ref: normalize(fieldRef) });
 }
 
 export function findColumnIndexesForColumnSettings(
   columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
 ) {
-  if (
-    !columnSettings.every(columnSetting => columnSetting.desired_column_alias)
-  ) {
-    const columnIndexByKey = new Map(
-      columns.map((column, index) => [getColumnKey(column, true), index]),
-    );
-    return columnSettings.map(
-      columnSetting =>
-        columnIndexByKey.get(getColumnSettingKey(columnSetting, true)) ?? -1,
-    );
-  }
-
-  const columnIndexByAlias = new Map(
-    columns.map((column, index) => [column.desired_column_alias, index]),
+  const columnIndexByKey = new Map(
+    columns.map((column, index) => [getColumnKey(column, true), index]),
   );
   return columnSettings.map(
     columnSetting =>
-      columnIndexByAlias.get(columnSetting.desired_column_alias ?? "") ?? -1,
+      columnIndexByKey.get(getColumnSettingKey(columnSetting, true)) ?? -1,
   );
 }
 
@@ -45,27 +37,13 @@ export function findColumnSettingIndexesForColumns(
   columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
 ) {
-  if (
-    !columnSettings.every(columnSetting => columnSetting.desired_column_alias)
-  ) {
-    const columnSettingIndexByKey = new Map(
-      columnSettings.map((columnSetting, index) => [
-        getColumnSettingKey(columnSetting, true),
-        index,
-      ]),
-    );
-    return columns.map(
-      column => columnSettingIndexByKey.get(getColumnKey(column, true)) ?? -1,
-    );
-  }
-
-  const columnSettingIndexByAlias = new Map(
+  const columnSettingIndexByKey = new Map(
     columnSettings.map((columnSetting, index) => [
-      columnSetting.desired_column_alias,
+      getColumnSettingKey(columnSetting, true),
       index,
     ]),
   );
   return columns.map(
-    column => columnSettingIndexByAlias.get(column.desired_column_alias) ?? -1,
+    column => columnSettingIndexByKey.get(getColumnKey(column, true)) ?? -1,
   );
 }

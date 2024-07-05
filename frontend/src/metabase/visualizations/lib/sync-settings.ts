@@ -2,6 +2,7 @@ import {
   findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,
 } from "metabase-lib/v1/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   Series,
   SingleSeries,
@@ -70,7 +71,7 @@ function syncTableColumnSettings(
 
   const addedColumnSettings = addedColumns.map(col => ({
     name: col.name,
-    desired_column_alias: col.desired_column_alias,
+    key: getColumnKey(col),
     fieldRef: col.field_ref,
     enabled: true,
   }));
