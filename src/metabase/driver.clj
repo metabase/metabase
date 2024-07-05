@@ -362,7 +362,7 @@
 (defmethod escape-entity-name-for-metadata :default [_driver table-name] table-name)
 
 (defmulti describe-table-fks
-  "Return information about the foreign keys in a `table`. Required for drivers that support :metadata/keys-constraints
+  "Return information about the foreign keys in a `table`. Required for drivers that support :metadata/key-constraints
   but not :describe-fks. Results should match the [[metabase.sync.interface/FKMetadata]] schema."
   {:added "0.32.0" :deprecated "0.49.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
