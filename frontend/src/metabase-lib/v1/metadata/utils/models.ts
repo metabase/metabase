@@ -86,21 +86,12 @@ function isSupportedTemplateTagForModel(tag: TemplateTag) {
   return ["card", "snippet"].includes(tag.type);
 }
 
-function checkDatabaseSupportsModels(database?: Database | null) {
-  return database && database.hasFeature("nested-queries");
-}
-
 export function checkDatabaseCanPersistDatasets(database?: Database | null) {
   return database && database.supportsPersistence() && database.isPersisted();
 }
 
 export function checkCanBeModel(question: Question) {
-  if (!checkDatabaseSupportsModels(question.database())) {
-    return false;
-  }
-
   const { isNative } = Lib.queryDisplayInfo(question.query());
-
   if (!isNative) {
     return true;
   }
