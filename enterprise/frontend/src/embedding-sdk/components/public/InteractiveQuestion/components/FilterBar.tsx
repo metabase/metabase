@@ -22,7 +22,7 @@ export const FilterBar = () => {
     <QuestionFiltersHeader
       expanded
       question={question}
-      updateQuestion={question => onQuestionChange(question)}
+      updateQuestion={onQuestionChange}
     />
   );
 };

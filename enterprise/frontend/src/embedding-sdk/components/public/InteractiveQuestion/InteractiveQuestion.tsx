@@ -1,11 +1,8 @@
-import type React from "react";
-import type { PropsWithChildren } from "react";
-import { useMemo } from "react";
+import { type PropsWithChildren, useMemo } from "react";
 
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
-import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
 import type { CardId } from "metabase-types/api";
 
 import {
@@ -40,10 +37,11 @@ export const _InteractiveQuestion = ({
   plugins,
   height,
   children = null,
-}: InteractiveQuestionProps): React.JSX.Element | null => {
-  const { location, params } = useMemo(() => {
-    return getQuestionParameters(questionId);
-  }, [questionId]);
+}: InteractiveQuestionProps): JSX.Element | null => {
+  const { location, params } = useMemo(
+    () => getQuestionParameters(questionId),
+    [questionId],
+  );
 
   return (
     <InteractiveQuestionProvider
@@ -63,16 +61,16 @@ export const _InteractiveQuestion = ({
   );
 };
 
-export const getQuestionParameters = (
-  questionId: CardId,
-): LoadSdkQuestionParams => {
+export const getQuestionParameters = (questionId: CardId) => {
   return {
     location: {
-      query: {}, // TODO: add wrapped parameterValues here.
+      query: {}, // TODO: add here wrapped parameterValues
       hash: "",
       pathname: `/question/${questionId}`,
     },
-    params: { slug: questionId.toString() },
+    params: {
+      slug: questionId.toString(),
+    },
   };
 };
 
