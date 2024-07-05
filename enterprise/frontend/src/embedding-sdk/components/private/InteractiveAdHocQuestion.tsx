@@ -39,7 +39,10 @@ export const InteractiveAdHocQuestion = ({
   );
 };
 
-// This generates route parameters based on provided URL path to use it QB (QueryBuilder) initialization logic, which loads question and all it needs. See "initializeQBRaw" redux action.
+/**
+ * This generates route parameters based on the provided URL path
+ * to load the interactive questions. See [use-load-question.ts]
+ */
 export const getQuestionParameters = (questionPath: string) => {
   const url = new URL(`http://metabase.com${questionPath}`); // we use a dummy host name to fill-in full URL
   const pathSections = questionPath.split("/").slice(1); // remove first empty section
