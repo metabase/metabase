@@ -9,13 +9,14 @@ import { loadCard } from "metabase/lib/card";
 import { defer } from "metabase/lib/promise";
 import * as Urls from "metabase/lib/urls";
 import {
-  deserializeCard,
   parseHash,
   resolveCards,
+  deserializeCard,
 } from "metabase/query_builder/actions";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { runQuestionQuery } from "metabase/services";
+import { syncVizSettingsWithSeries } from "metabase/visualizations/lib/sync-settings";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
@@ -30,6 +31,8 @@ interface RunQuestionOnQueryChangeParams {
   previousQuestion: Question;
   nextQuestion: Question;
   originalQuestion?: Question;
+  shouldStartAdHocQuestion?: boolean;
+  queryResults?: any[];
 }
 
 interface RunQuestionOnNavigateParams extends NavigateToNewCardParams {
@@ -106,7 +109,43 @@ export const runQuestionOnQueryChangeSdk =
     dispatch: Dispatch,
     getState: GetState,
   ): Promise<SdkQuestionResult> => {
-    const { previousQuestion, nextQuestion, originalQuestion } = params;
+    let {
+      previousQuestion,
+      nextQuestion,
+      originalQuestion,
+      queryResults,
+      shouldStartAdHocQuestion = true,
+    } = params;
+
+    const { isEditable } = Lib.queryDisplayInfo(nextQuestion.query());
+
+    const shouldTurnIntoAdHoc =
+      shouldStartAdHocQuestion && nextQuestion.isSaved() && isEditable;
+
+    if (shouldTurnIntoAdHoc) {
+      nextQuestion = nextQuestion.withoutNameAndId();
+
+      // When the dataset query changes, we should change the question type,
+      // to start building a new ad-hoc question based on a dataset
+      // NOTE: we do not support model and metric questions in the SDK yet.
+      if (nextQuestion.type() === "model" || nextQuestion.type() === "metric") {
+        nextQuestion = nextQuestion.setType("question");
+      }
+    }
+
+    if (queryResults) {
+      const [queryResult] = queryResults;
+
+      nextQuestion = nextQuestion.setSettings(
+        syncVizSettingsWithSeries(nextQuestion.settings(), [
+          {
+            card: nextQuestion.card(),
+            data: queryResult?.data,
+            error: queryResult?.error,
+          },
+        ]),
+      );
+    }
 
     const currentDependencies = previousQuestion
       ? Lib.dependentMetadata(
