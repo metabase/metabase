@@ -1,11 +1,12 @@
 import type { ChangeEvent } from "react";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
-import { t } from "ttag";
+import { t, jt } from "ttag";
 import _ from "underscore";
 
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import type { RadioOption } from "metabase/core/components/Radio";
 import Radio from "metabase/core/components/Radio";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
@@ -14,6 +15,10 @@ import SelectButton from "metabase/core/components/SelectButton";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
+import { useSelector } from "metabase/lib/redux";
+import { getLearnUrl } from "metabase/selectors/settings";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { Box, Flex, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -33,6 +38,7 @@ import type { FetchParameterValuesOpts } from "../../actions";
 import { fetchParameterValues } from "../../actions";
 
 import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
+import S from "./ValuesSourceTypeModal.module.css";
 import {
   ModalHelpMessage,
   ModalLabel,
@@ -44,8 +50,7 @@ import {
   ModalErrorMessage,
   ModalEmptyState,
 } from "./ValuesSourceTypeModal.styled";
-
-const NEW_LINE = "\n";
+import { getValuesText, getStaticValues } from "./utils";
 
 interface ModalOwnProps {
   parameter: UiParameter;
@@ -361,6 +366,12 @@ const getErrorMessage = (question: Question) => {
   throw new Error(`Unsupported or unknown question.type(): ${type}`);
 };
 
+const getLabel = (value: string | ParameterValue): string | undefined =>
+  Array.isArray(value) ? value[1] : undefined;
+
+const valueHasLabel = (value: string | ParameterValue) =>
+  getLabel(value) !== undefined;
+
 interface ListSourceModalProps {
   parameter: Parameter;
   sourceType: ValuesSourceType;
@@ -383,6 +394,8 @@ const ListSourceModal = ({
     [onChangeSourceConfig],
   );
 
+  const hasCustomLabels = sourceConfig.values?.some(valueHasLabel);
+
   return (
     <ModalBodyWithPane>
       <ModalPane>
@@ -395,7 +408,9 @@ const ListSourceModal = ({
             onChangeSourceType={onChangeSourceType}
             onChangeSourceConfig={onChangeSourceConfig}
           />
-          <ModalHelpMessage>{t`Enter one value per line.`}</ModalHelpMessage>
+          <ModalHelpMessage>{t`Enter one value per line. You can optionally give each value a display label after a comma.`}</ModalHelpMessage>
+
+          {hasCustomLabels && <ModelHint />}
         </ModalSection>
       </ModalPane>
       <ModalMain>
@@ -409,19 +424,33 @@ const ListSourceModal = ({
   );
 };
 
-const getValuesText = (values: string[] = []) => {
-  return values.join(NEW_LINE);
-};
+function ModelHint() {
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+
+  const href = getLearnUrl("learn/data-modeling/models");
+  const text = t`do it once in a model`;
+  const link = showMetabaseLinks ? (
+    <strong>
+      <ExternalLink href={href}>{text}</ExternalLink>
+    </strong>
+  ) : (
+    <strong>{text}</strong>
+  );
+
+  return (
+    <Box mt="lg" p="md" className={S.info}>
+      <Flex gap="md" align="center">
+        <Icon name="info_filled" color="text-dark" className={S.icon} />
+        <div>
+          {jt`If you find yourself doing value-label mapping often, you might want to ${link}.`}
+        </div>
+      </Flex>
+    </Box>
+  );
+}
 
 const getSourceValues = (values: ParameterValue[] = []) => {
   return values.map(([value]) => String(value));
-};
-
-const getStaticValues = (value: string) => {
-  return value
-    .split(NEW_LINE)
-    .map(line => line.trim())
-    .filter(line => line.length > 0);
 };
 
 const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
