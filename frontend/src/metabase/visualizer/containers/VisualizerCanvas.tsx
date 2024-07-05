@@ -7,14 +7,14 @@ import { Card, Flex, Group, Icon, Title, Stack } from "metabase/ui";
 import { hasAxes as checkHasAxes } from "metabase/visualizations";
 import BaseVisualization from "metabase/visualizations/components/Visualization";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { Series } from "metabase-types/api";
+import type { Series, VisualizationSettings } from "metabase-types/api";
 
 import { VisualizerAxis } from "../components/VisualizerAxis";
 import { useVizSettings } from "../useVizSettings";
 
 interface VisualizerCanvasProps {
   series: Series;
-  onChange: (series: Series) => void;
+  onChange: (settings: VisualizationSettings) => void;
 }
 
 export function VisualizerCanvas({ series, onChange }: VisualizerCanvasProps) {
@@ -58,27 +58,19 @@ export function VisualizerCanvas({ series, onChange }: VisualizerCanvasProps) {
   }, [series, hasAxes]);
 
   const handleMetricsChange = (metrics: string[]) => {
-    const mainSeries = { ...series[0] };
-    mainSeries.card = {
-      ...mainSeries.card,
-      visualization_settings: {
-        ...mainSeries.card.visualization_settings,
-        "graph.metrics": metrics,
-      },
-    };
-    onChange([mainSeries, ...series.slice(1)]);
+    const [{ card: mainCard }] = series;
+    onChange({
+      ...mainCard.visualization_settings,
+      "graph.metrics": metrics,
+    });
   };
 
   const handleDimensionsChange = (dimensions: string[]) => {
-    const mainSeries = { ...series[0] };
-    mainSeries.card = {
-      ...mainSeries.card,
-      visualization_settings: {
-        ...mainSeries.card.visualization_settings,
-        "graph.dimensions": dimensions,
-      },
-    };
-    onChange([mainSeries, ...series.slice(1)]);
+    const [{ card: mainCard }] = series;
+    onChange({
+      ...mainCard.visualization_settings,
+      "graph.dimensions": dimensions,
+    });
   };
 
   return (
