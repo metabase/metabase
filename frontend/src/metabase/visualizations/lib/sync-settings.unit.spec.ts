@@ -191,7 +191,7 @@ describe("syncVizSettingsWithSeries", () => {
       expect(syncedSettings).toEqual(vizSettings);
     });
 
-    it("should handle name changes when a column with a duplicate name is added", () => {
+    it("should handle name changes when a column with a duplicate name is added and ids are available", () => {
       const series = createSeries({
         cols: [
           createMockColumn({ id: 1, name: "ID" }),
@@ -221,6 +221,40 @@ describe("syncVizSettingsWithSeries", () => {
           { name: "ID", enabled: true },
           { name: "ID_3", enabled: false },
           { name: "ID_2", enabled: true },
+        ],
+      });
+    });
+
+    it("should not make name changes when a column with a duplicate name is added and ids are not available", () => {
+      const series = createSeries({
+        cols: [
+          createMockColumn({ id: undefined, name: "ID" }),
+          createMockColumn({ id: undefined, name: "ID_2" }),
+          createMockColumn({ id: undefined, name: "ID_3" }),
+        ],
+      });
+      const prevSeries = createSeries({
+        cols: [
+          createMockColumn({ id: undefined, name: "ID" }),
+          createMockColumn({ id: undefined, name: "ID_2" }),
+        ],
+      });
+      const vizSettings: VisualizationSettings = {
+        "table.columns": [
+          { name: "ID", enabled: true },
+          { name: "ID_2", enabled: false },
+        ],
+      };
+      const newVizSettings = syncVizSettingsWithSeries(
+        vizSettings,
+        series,
+        prevSeries,
+      );
+      expect(newVizSettings).toEqual({
+        "table.columns": [
+          { name: "ID", enabled: true },
+          { name: "ID_2", enabled: false },
+          { name: "ID_3", enabled: true },
         ],
       });
     });
