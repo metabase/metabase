@@ -119,6 +119,7 @@ export type PivotTableCollapsedRowsSetting = {
 
 export type TableColumnOrderSetting = {
   name: string;
+  key: string;
   enabled: boolean;
 
   // We have some corrupted visualization settings where both names are mixed
