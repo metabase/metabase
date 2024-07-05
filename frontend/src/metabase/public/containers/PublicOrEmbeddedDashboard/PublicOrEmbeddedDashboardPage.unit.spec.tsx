@@ -1,7 +1,9 @@
 import { Route } from "react-router";
 import _ from "underscore";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupEmbedDashboardEndpoints } from "__support__/server-mocks/embed";
+import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
@@ -13,6 +15,7 @@ import {
   createMockDashboard,
   createMockDashboardCard,
   createMockDashboardTab,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -23,6 +26,14 @@ const MOCK_TOKEN =
 const DASHBOARD_TITLE = '"My test dash"';
 
 describe("PublicOrEmbeddedDashboardPage", () => {
+  beforeAll(() => {
+    mockSettings({
+      "token-features": createMockTokenFeatures({ whitelabel: true }),
+    });
+
+    setupEnterprisePlugins();
+  });
+
   it("should display dashboard tabs", async () => {
     await setup({ numberOfTabs: 2 });
 
@@ -37,8 +48,8 @@ describe("PublicOrEmbeddedDashboardPage", () => {
     expect(screen.getByText("Tab 2")).toBeInTheDocument();
   });
 
-  it("should not display the header if title is disabled and there is only one tab (metabase#41393)", async () => {
-    await setup({ hash: "titled=false", numberOfTabs: 1 });
+  it("should not display the header if title is disabled and there is only one tab (metabase#41393) and downloads are disabled", async () => {
+    await setup({ hash: "titled=false&downloads=false", numberOfTabs: 1 });
 
     expect(screen.queryByText("Tab 1")).not.toBeInTheDocument();
     expect(screen.queryByTestId("embed-frame-header")).not.toBeInTheDocument();
@@ -97,6 +108,12 @@ describe("PublicOrEmbeddedDashboardPage", () => {
     await waitForLoaderToBeRemoved();
 
     expect(screen.getByText("There's nothing here, yet.")).toBeInTheDocument();
+  });
+
+  it("should show the 'Export as PDF' button even when titled=false", async () => {
+    await setup({ hash: "titled=false", numberOfTabs: 1 });
+
+    expect(screen.getByText("Export as PDF")).toBeInTheDocument();
   });
 });
 
