@@ -118,10 +118,12 @@ export type PivotTableCollapsedRowsSetting = {
 };
 
 export type TableColumnOrderSetting = {
+  name: string;
   enabled: boolean;
 
   // `desired_column_alias` is a robust way to identify a column
-  // not available in settings that were saved before this property was added
+  // not available for non-MBQL queries or in settings that were saved before
+  // this property was added
   desired_column_alias?: string;
 
   // `name` and `fieldRef` are legacy properties that were used before
@@ -132,10 +134,9 @@ export type TableColumnOrderSetting = {
   // to a name-based ref (e.g. `["field", "ID", null]`) when a new query stage
   // is added. The name part in a name-based ref also changes when the column
   // name is deduplicated (e.g. to `["field", "ID_2", null]`).
-  // We keep these properties 1) to back-fill `desired_column_alias` and
+  // We keep these properties 1) to back-fill `desired_column_alias`,
   // 2) to enable downgrades to previous versions where the alias is not
-  // available.
-  name: string;
+  // available, 3) `desired_column_alias` is set for MBQL queries only.
   // We have some corrupted visualization settings where both names are mixed
   // We set `fieldRef` in new settings
   fieldRef?: DimensionReference;
