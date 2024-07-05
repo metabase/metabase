@@ -1,3 +1,5 @@
+import "./resize-observer-polyfill";
+
 type ResizeObserverCallback = (
   entry: ResizeObserverEntry,
   observer: ResizeObserver,
