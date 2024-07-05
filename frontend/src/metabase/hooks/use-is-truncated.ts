@@ -28,12 +28,10 @@ export const useIsTruncated = <E extends Element>({
     };
 
     handleResize();
-
-    const resizeObserver = new ResizeObserver(handleResize);
-    resizeObserver.observe(element);
+    resizeObserver.subscribe(element, handleResize);
 
     return () => {
-      resizeObserver.unobserve(element);
+      resizeObserver.unsubscribe(element, handleResize);
     };
   }, [disabled, tolerance]);
 
