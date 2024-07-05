@@ -27,7 +27,6 @@ export const PreviewPaneContainer = styled.div<{
         () =>
           css`
             background-image: url("${getCheckerBoardDataUri("light")}");
-            border-radius: var(--mb-default-border-radius);
           `,
       )
       .with(
@@ -35,7 +34,6 @@ export const PreviewPaneContainer = styled.div<{
         () =>
           css`
             background-image: url("${getCheckerBoardDataUri("dark")}");
-            border-radius: var(--mb-default-border-radius);
           `,
       )
       .with("no-background", () => null)
