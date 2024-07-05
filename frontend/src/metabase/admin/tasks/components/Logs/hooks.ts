@@ -1,6 +1,6 @@
 import { useInterval } from "@mantine/hooks";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useMount } from "react-use";
+import { useMount, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -50,10 +50,11 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
     isMountedRef.current = true;
     fetchLogs();
     pollingInterval.start();
-    return () => {
-      isMountedRef.current = false;
-      pollingInterval.stop();
-    };
+  });
+
+  useUnmount(() => {
+    isMountedRef.current = false;
+    pollingInterval.stop();
   });
 
   return { loaded, error, logs };
