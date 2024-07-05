@@ -46,5 +46,5 @@ export const getLegacyColumnKey = (
 };
 
 export function isLegacyColumnKey(key: string) {
-  return key.startsWith("[");
+  return key.startsWith('["ref"');
 }
