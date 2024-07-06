@@ -19,10 +19,12 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations.metrics-v2 :as metrics-v2]
+   [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -1465,3 +1467,48 @@
     (run! decrypt! ["query-caching-ttl-ratio"
                     "query-caching-min-ttl"
                     "enable-query-caching"])))
+
+(defn- replace-field [s from to]
+  (-> s
+      (str/replace (re-pattern (str "\"source-field\":" from "(,|})"))
+                   (str "\"source-field\":" to "$1"))
+      (str/replace (re-pattern (str "\\[\"field\"," from ","))
+                   (str "[\"field\"," to ","))))
+
+(define-migration ReplaceDefectiveDuplicateFields
+  (when-let [defective-fields (t2/query {:select [:id :name :table_id]
+                                         :from   [:metabase_field]
+                                         :where  [:and
+                                                  [:= :is_defective_duplicate true]
+                                                  [:raw "(nfc_path = concat('[\"', name, '\"]') OR nfc_path IS NULL)"]]})]
+    (doseq [from defective-fields]
+      (when-let [to (t2/select-one :metabase_field :name (:name from), :table_id (:table_id from), :active true)]
+        (->> (t2/reducible-query {:select [:id :dataset_query :result_metadata :visualization_settings]
+                                  :from   [:report_card]
+                                  :where  [:and
+                                           [:= :query_type "query"]
+                                           [:raw (case (mdb.connection/db-type)
+                                                   :postgres
+                                                   (str "(dataset_query ~ concat('\"source-field\":', " (:name from) ") OR"
+                                                        " dataset_query ~ concat('\\[\"field\",' " (:name from) "))")
+                                                   :mysql
+                                                   (str "(dataset_query REGEXP CONCAT('\"source-field\":', " (:name from) ") OR"
+                                                        " dataset_query REGEXP CONCAT('\\\\[\"field\",' " (:name from) "))")
+                                                   :h2
+                                                   (str "(dataset_query REGEXP concat('\"source-field\":', " (:name from) ") OR"
+                                                        " dataset_query REGEXP concat('\\[\"field\",' " (:name from) "))"))]]})
+             (run! (fn [{:keys [id dataset_query result_metadata visualization_settings]}]
+                     (let [;; TODO: check there is no reference to the 'to' field in the dataset_query
+                           dataset_query          (replace-field dataset_query (:id from) (:id to))
+                             ;; check that the card passes query validation
+                           validate-dataset-query (:out mi/transform-metabase-query)
+                           valid-dataset-query?   (boolean (try (mc/validate dataset_query)
+                                                                (catch Exception _e false)))
+                             ;; TODO: visualization_settings & result_metadata
+                           ]
+                       (when valid-dataset-query?
+                         (t2/query-one {:update :report_card
+                                        :set    {:dataset_query          dataset_query
+                                                 :result_metadata        result_metadata
+                                                 :visualization_settings visualization_settings}
+                                        :where  [:= :id id]}))))))))))

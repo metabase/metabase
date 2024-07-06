@@ -6704,6 +6704,14 @@ databaseChangeLog:
       rollback: # No rollback needed since this is backward compatible
 
   - changeSet:
+      id: v49.2024-06-27T00:00:10
+      author: calherries
+      comment: Replace inactive fields with is_defective_duplicate=TRUE with their non-defective counterparts
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.ReplaceDefectiveDuplicateFields"
+
+  - changeSet:
       id: v50.2024-01-04T13:52:51
       author: noahmoss
       comment: Data permissions table
