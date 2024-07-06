@@ -1,5 +1,12 @@
 (ns dev.debug-qp
-  "TODO -- I think this should be moved to something like [[metabase.test.util.debug-qp]]"
+  "Debug QP stuff as follows:
+
+    ;; start Portal if you have not done so already. Open http://localhost:4000 in your browser
+    (dev.debug-qp/start-portal!)
+
+    ;; run a query with debugging enabled
+    (binding [metabase.query-processor.debug/*debug* true]
+      (metabase.query-processor/process-query query)"
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -13,6 +20,7 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.util :as u]
+   [portal.api]
    [toucan2.core :as t2]))
 
 ;;;; [[->sorted-mbql-query-map]]
@@ -394,3 +402,11 @@
   ([driver sql]
    #_{:clj-kondo/ignore [:discouraged-var]}
    (println (driver/prettify-native-form driver sql))))
+
+(defn start-portal! []
+  (portal.api/start {:port 4000})
+  (add-tap #'portal.api/submit))
+
+(defn stop-portal! []
+  (portal.api/stop)
+  (remove-tap #'portal.api/submit))

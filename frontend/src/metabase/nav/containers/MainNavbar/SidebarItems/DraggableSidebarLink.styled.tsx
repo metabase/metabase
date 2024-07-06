@@ -27,6 +27,7 @@ export const StyledSidebarLink = styled(SidebarLink)<{ isDragging: boolean }>`
     props.isDragging &&
     css`
       pointer-events: none;
+
       &:hover {
         background: var(--mb-color-bg-white);
 

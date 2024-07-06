@@ -1,21 +1,30 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  type StructuredQuestionDetails,
   createNativeQuestion,
   createQuestion,
   enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalTab,
+  getNotebookStep,
   hovercard,
   join,
+  mapColumnTo,
   modal,
+  openColumnOptions,
   openNotebook,
   openQuestionActions,
   popover,
   queryBuilderMain,
+  renameColumn,
   restore,
+  saveMetadataChanges,
   saveQuestion,
   startNewModel,
+  startNewQuestion,
   tableHeaderClick,
+  undoToast,
+  visitModel,
   visualize,
 } from "e2e/support/helpers";
 import type { FieldReference } from "metabase-types/api";
@@ -442,5 +451,353 @@ describe("issue 41785", () => {
     queryBuilderMain()
       .findByText("There was a problem with your question")
       .should("not.exist");
+  });
+});
+
+describe.skip("issue 40635", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("correctly displays question's and nested model's column names (metabase#40635)", () => {
+    startNewQuestion();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+
+    getNotebookStep("data").button("Pick columns").click();
+    popover().findByText("Select none").click();
+
+    join();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
+
+    getNotebookStep("join", { stage: 0, index: 0 })
+      .button("Pick columns")
+      .click();
+    popover().within(() => {
+      cy.findByText("Select none").click();
+      cy.findByText("ID").click();
+    });
+
+    join();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
+
+    getNotebookStep("join", { stage: 0, index: 1 })
+      .button("Pick columns")
+      .click();
+    popover().within(() => {
+      cy.findByText("Select none").click();
+      cy.findByText("ID").click();
+    });
+
+    getNotebookStep("join", { stage: 0, index: 1 })
+      .findByText("Product ID")
+      .click();
+    popover().findByText("User ID").click();
+
+    visualize();
+    assertSettingsSidebar();
+    assertVisualizationColumns();
+
+    cy.button("Save").click();
+    modal().button("Save").click();
+    modal().findByText("Not now").click();
+
+    assertSettingsSidebar();
+    assertVisualizationColumns();
+
+    openQuestionActions();
+    popover().findByTextEnsureVisible("Turn into a model").click();
+    modal().button("Turn this into a model").click();
+    undoToast().should("contain", "This is a model now").icon("close").click();
+
+    assertSettingsSidebar();
+    assertVisualizationColumns();
+
+    openNotebook();
+    getNotebookStep("data").button("Pick columns").click();
+    popover().within(() => {
+      cy.findAllByText("ID").should("have.length", 1);
+      cy.findAllByText("Products → ID").should("have.length", 1);
+      cy.findAllByText("Products_2 → ID").should("have.length", 1);
+    });
+  });
+
+  function assertVisualizationColumns() {
+    assertTableHeader(0, "ID");
+    assertTableHeader(1, "Products → ID");
+    assertTableHeader(2, "Products_2 → ID");
+  }
+
+  function assertTableHeader(index: number, name: string) {
+    cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
+  }
+
+  function assertSettingsSidebar() {
+    cy.findByTestId("viz-settings-button").click();
+
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.findAllByText("ID").should("have.length", 1);
+      cy.findAllByText("Products → ID").should("have.length", 1);
+      cy.findAllByText("Products_2 → ID").should("have.length", 1);
+
+      cy.findByRole("button", { name: "Add or remove columns" }).click();
+      cy.findAllByText("ID").should("have.length", 4);
+      cy.findAllByText("Products").should("have.length", 1);
+      cy.findAllByText("Products 2").should("have.length", 1);
+    });
+
+    cy.button("Done").click();
+  }
+});
+
+describe("issue 33427", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("does not confuse the names of various native model columns mapped to the same database field (metabase#33427)", () => {
+    createNativeQuestion(
+      {
+        type: "model",
+        native: {
+          query: `
+            select o.ID, p1.title as created_by, p2.title as updated_by
+            from ORDERS o
+            join PRODUCTS p1 on p1.ID = o.PRODUCT_ID
+            join PRODUCTS p2 on p2.ID = o.USER_ID;
+        `,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    assertColumnHeaders();
+
+    cy.findByLabelText("Move, trash, and more...").click();
+    popover().findByText("Edit metadata").click();
+
+    openColumnOptions("CREATED_BY");
+    mapColumnTo({ table: "Products", column: "Title" });
+    renameColumn("Title", "CREATED_BY");
+
+    openColumnOptions("UPDATED_BY");
+    mapColumnTo({ table: "Products", column: "Title" });
+    renameColumn("Title", "UPDATED_BY");
+
+    assertColumnHeaders();
+    saveMetadataChanges();
+
+    assertColumnHeaders();
+
+    openNotebook();
+    getNotebookStep("data").button("Pick columns").click();
+    popover().within(() => {
+      cy.findByText("CREATED_BY").should("be.visible");
+      cy.findByText("UPDATED_BY").should("be.visible");
+    });
+  });
+
+  function assertColumnHeaders() {
+    cy.findAllByTestId("header-cell")
+      .should("contain", "CREATED_BY")
+      .and("contain", "UPDATED_BY");
+  }
+});
+
+describe("issue 39749", () => {
+  const modelDetails: StructuredQuestionDetails = {
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["count"],
+        ["sum", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }]],
+      ],
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "year" },
+        ],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/*").as("updateModel");
+  });
+
+  it("should not overwrite the description of one column with the description of another column (metabase#39749)", () => {
+    createQuestion(modelDetails).then(({ body: card }) => visitModel(card.id));
+
+    cy.log("edit metadata");
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    tableHeaderClick("Count");
+    cy.findByLabelText("Description").type("A");
+    tableHeaderClick("Sum of Total");
+    cy.findByLabelText("Description").should("have.text", "").type("B");
+    tableHeaderClick("Count");
+    cy.findByLabelText("Description").should("have.text", "A");
+    tableHeaderClick("Sum of Total");
+    cy.findByLabelText("Description").should("have.text", "B");
+    cy.button("Save changes").click();
+    cy.wait("@updateModel");
+
+    cy.log("verify that the description was updated successfully");
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    tableHeaderClick("Count");
+    cy.findByLabelText("Description").should("have.text", "A");
+    tableHeaderClick("Sum of Total");
+    cy.findByLabelText("Description").should("have.text", "B");
+  });
+});
+
+describe("issue 25885", () => {
+  const mbqlModelDetails: StructuredQuestionDetails = {
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+      fields: [["field", ORDERS.ID, { "base-type": "type/BigInteger" }]],
+      joins: [
+        {
+          fields: [
+            [
+              "field",
+              ORDERS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Orders" },
+            ],
+          ],
+          strategy: "left-join",
+          alias: "Orders",
+          condition: [
+            "=",
+            ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+            [
+              "field",
+              ORDERS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Orders" },
+            ],
+          ],
+          "source-table": ORDERS_ID,
+        },
+        {
+          fields: [
+            [
+              "field",
+              ORDERS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Orders_2" },
+            ],
+          ],
+          strategy: "left-join",
+          alias: "Orders_2",
+          condition: [
+            "=",
+            ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+            [
+              "field",
+              ORDERS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Orders_2" },
+            ],
+          ],
+          "source-table": ORDERS_ID,
+        },
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/*").as("updateModel");
+  });
+
+  function setColumnName(oldName: string, newName: string) {
+    tableHeaderClick(oldName);
+    cy.findByLabelText("Display name")
+      .should("have.value", oldName)
+      .clear()
+      .type(newName);
+  }
+
+  function verifyColumnName(name: string) {
+    tableHeaderClick(name);
+    cy.findByLabelText("Display name").should("have.value", name);
+  }
+
+  it("should allow to edit metadata for mbql models with self joins columns (metabase#25885)", () => {
+    createQuestion(mbqlModelDetails).then(({ body: card }) =>
+      visitModel(card.id),
+    );
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    setColumnName("ID", "ID1");
+    setColumnName("Orders → ID", "ID2");
+    setColumnName("Orders_2 → ID", "ID3");
+    verifyColumnName("ID1");
+    verifyColumnName("ID2");
+    verifyColumnName("ID3");
+  });
+});
+
+describe("issue 39993", () => {
+  const columnName = "Exp";
+
+  const modelDetails: StructuredQuestionDetails = {
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+      fields: [
+        ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+        ["expression", columnName, { "base-type": "type/Integer" }],
+      ],
+      expressions: { [columnName]: ["+", 1, 1] },
+    },
+  };
+
+  function dragAndDrop(column: string, distance: number) {
+    cy.findAllByTestId("header-cell")
+      .contains(column)
+      .then(element => {
+        const rect = element[0].getBoundingClientRect();
+        cy.wrap(element)
+          .trigger("mousedown")
+          .trigger("mousemove", { clientX: rect.x + distance, clientY: rect.y })
+          .trigger("mouseup");
+      });
+  }
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/*").as("updateModel");
+  });
+
+  it("should preserve viz settings for models with custom expressions (metabase#39993)", () => {
+    createQuestion(modelDetails).then(({ body: card }) => visitModel(card.id));
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    cy.log("drag & drop the custom column 100 px to the left");
+    dragAndDrop(columnName, -100);
+    cy.button("Save changes").click();
+    cy.wait("@updateModel");
+    cy.findAllByTestId("header-cell").eq(0).should("have.text", "Exp");
+    cy.findAllByTestId("header-cell").eq(1).should("have.text", "ID");
   });
 });

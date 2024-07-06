@@ -3,10 +3,8 @@ import styled from "@emotion/styled";
 export const ErrorBox = styled.div`
   padding: 0.5rem 1rem;
   border-radius: 4px;
-
   color: var(--mb-color-text-dark);
   background-color: var(--mb-color-bg-light);
-
   font-family: Monaco, monospace;
   font-weight: 400;
   font-size: 12px;

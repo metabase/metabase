@@ -6483,6 +6483,18 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
+  # The changesets from v49.2024-06-27T00:00:00 to v49.2024-06-27T00:00:08 prevent duplicate fields from being
+  # created on MySQL and H2. See #44866 for details. Below is an index of the changesets:
+  # - v49.2024-06-27T00:00:00: Make metabase_field.name use case-sensitive collation for MySQL
+  # - v49.2024-06-27T00:00:01: Add metabase_field.is_defective_duplicate
+  # - v49.2024-06-27T00:00:02: Populate metabase_field.is_defective_duplicate
+  # - v49.2024-06-27T00:00:03: Drop fk_field_parent_ref_field_id constraint with ON DELETE CASCADE
+  # - v49.2024-06-27T00:00:04: Add fk_field_parent_ref_field_id constraint with ON DELETE RESTRICT
+  # - v49.2024-06-27T00:00:05: Remove idx_uniq_field_table_id_parent_id_name because it is redundant with idx_unique_field
+  # - v49.2024-06-27T00:00:06: Remove the idx_uniq_field_table_id_parent_id_name_2col unique index because it blocks load-from-h2
+  # - v49.2024-06-27T00:00:07: Add unique_field_helper column to metabase_field
+  # - v49.2024-06-27T00:00:08: Add unique constraint on metabase_field's (name, table_id, unique_field_helper)
+
   # This is necessary to make unique indexes using metabase_field.name case-sensitive for MySQL.
   - changeSet:
       id: v49.2024-06-27T00:00:00
@@ -6533,43 +6545,6 @@ databaseChangeLog:
             # idx_uniq_field_table_id_parent_id_name_2col would prevent defective duplicates with Postgres but it
             # can be removed by upgrading from 49 and downgrading again. We need to populate is_defective_duplicate
             # in that case.
-            dbms: postgresql
-            sql: >-
-              WITH ranked_fields AS (
-                  SELECT
-                      mf.id,
-                      ROW_NUMBER() OVER (
-                          PARTITION BY mf.table_id, mf.name, mf.parent_id
-                          ORDER BY
-                              CASE WHEN mf.active THEN 0 ELSE 1 END,
-                              CASE WHEN mf.nfc_path IS NULL THEN 0 ELSE 1 END,
-                              mf.created_at
-                      ) AS rn
-                  FROM metabase_field mf
-              )
-              UPDATE metabase_field mf
-              SET is_defective_duplicate = TRUE
-              FROM ranked_fields rf
-              WHERE mf.id = rf.id AND rf.rn > 1;
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              UPDATE metabase_field mf
-              LEFT JOIN (
-                  SELECT
-                      mf.id,
-                      ROW_NUMBER() OVER (
-                          PARTITION BY mf.table_id, mf.name, mf.parent_id
-                          ORDER BY
-                              CASE WHEN mf.active THEN 0 ELSE 1 END,
-                              CASE WHEN mf.nfc_path IS NULL THEN 0 ELSE 1 END,
-                              mf.created_at
-                      ) AS rn
-                  FROM metabase_field mf
-              ) x ON mf.id = x.id
-              SET mf.is_defective_duplicate = x.rn > 1;
-        - sql:
-            dbms: h2
             sql: >-
               UPDATE metabase_field mf
               SET is_defective_duplicate = TRUE
@@ -6615,7 +6590,7 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-06-27T00:00:04
       author: calherries
-      comment: Add fk_field_parent_ref_field_id constraint without ON DELETE CASCADE
+      comment: Add fk_field_parent_ref_field_id constraint with ON DELETE RESTRICT
       changes:
         - addForeignKeyConstraint:
             baseTableName: metabase_field
@@ -6623,6 +6598,7 @@ databaseChangeLog:
             referencedTableName: metabase_field
             referencedColumnNames: id
             constraintName: fk_field_parent_ref_field_id
+            onDelete: RESTRICT
       rollback:
         - dropForeignKeyConstraint:
             baseTableName: metabase_field
@@ -6645,7 +6621,7 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-06-27T00:00:06
       author: calherries
-      comment: Remove the idx_uniq_field_table_id_parent_id_name_2col unique index because it blocks load-from-h2 with there
+      comment: Remove the idx_uniq_field_table_id_parent_id_name_2col unique index because it blocks load-from-h2
       changes:
         - sql:
             dbms: postgresql
@@ -7797,6 +7773,7 @@ databaseChangeLog:
             tableName: task_history
             columnDataType: ${timestamp_type}
             columnName: ended_at
+      rollback: # we can't reliably add back the constraint while downgrading
 
   - changeSet:
       id: v50.2024-05-08T09:00:04
@@ -7807,6 +7784,7 @@ databaseChangeLog:
             tableName: task_history
             columnDataType: int
             columnName: duration
+      rollback: # we can't reliably add back the constraint while downgrading
 
   - changeSet:
       id: v50.2024-05-08T09:00:05
@@ -8150,6 +8128,63 @@ databaseChangeLog:
                   defaultValue: null
 
   - changeSet:
+      id: v50.2024-06-28T12:35:50
+      author: piranha
+      comment: 'Clean databasechangelog table of migration that was once deleted'
+      changes:
+        - sql: "DELETE FROM ${databasechangelog.name} WHERE id = 'v50.2024-04-12T12:33:09'"
+      rollback: # nothing to do here
+
+  - changeSet:
+      id: v50.2024-07-02T16:48:21
+      author: adam-james
+      comment: Remove existing user_parameter_value entries as we want to add dashboard_id, and can't easily backfill
+      rollback: # none, entries already removed and are non-critical to app functionality
+      changes:
+        - delete:
+           tableName: user_parameter_value
+
+  - changeSet:
+      id: v50.2024-07-02T16:49:29
+      author: adam-james
+      comment: Add dashboard_id column to user_parameter_value to keep values unique per dashboard
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The ID of the dashboard
+            tableName: user_parameter_value
+
+  - changeSet:
+      id: v50.2024-07-02T16:55:42
+      author: adam-james
+      comment: Add fk constraint to user_parameter_value.dashboard_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: user_parameter_value
+            baseColumnNames: dashboard_id
+            referencedTableName: report_dashboard
+            referencedColumnNames: id
+            constraintName: fk_user_parameter_value_dashboard_id
+            nullable: false
+            deleteCascade: true
+
+  - changeSet:
+      id: v50.2024-07-02T17:07:15
+      author: adam-james
+      comment: Index user_parameter_value.dashboard_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: user_parameter_value
+            indexName: idx_user_parameter_value_dashboard_id
+            columns:
+              column:
+                name: dashboard_id
+
+  - changeSet:
       id: v51.2024-05-13T15:30:57
       author: metamben
       comment: Backup of dataset_query rewritten by the metrics v2 migration
@@ -8233,7 +8268,6 @@ databaseChangeLog:
             tableName: login_history
             indexName: idx_user_id_device_id
 
-
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
@@ -8246,6 +8280,8 @@ databaseChangeLog:
 #    - If you still need to, make sure it works when Metabase is encrypted. Fields like `metabase_database.details`
 #      or `setting.value` can be encrypted, so you need to decrypt them in your migration. See #42617, #44048.
 #    - Prefer SQL migrations over custom migrations.
+#    - Still, make sure your migration is backward compatible: it might not be possible to add a constraint back
+#      if you are dropping it in a migration.
 #    - Postgres, MySQL and H2 have their differences. Make sure your migration works for all.
 #    - Custom migrations and their tests demand a high level of reliability. They should only use code from the standard library.
 #      Requiring code from the Metabase codebase is a bad idea because it can change and break your migration.

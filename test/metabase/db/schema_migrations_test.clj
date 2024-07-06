@@ -22,6 +22,7 @@
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations-test :as custom-migrations-test]
+   [metabase.db.liquibase :as liquibase]
    [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.driver :as driver]
@@ -1599,6 +1600,25 @@
                   (-> (t2/select-one :cache_config)
                       (update :config json/decode true)))))))))
 
+(deftest cache-config-old-id-cleanup
+  (testing "Cache config migration old id is removed from databasechangelog"
+    (impl/test-migrations ["v50.2024-06-28T12:35:50"] [migrate!]
+      (let [clog       (keyword (liquibase/changelog-table-name (mdb/data-source)))
+            last-order (:orderexecuted (t2/select-one clog {:order-by [[:orderexecuted :desc]]}))]
+        (t2/insert! clog [{:id            "v50.2024-04-12T12:33:09"
+                           :author        "piranha"
+                           :filename      "001_update_migrations.yaml"
+                           :dateexecuted  :%now
+                           :orderexecuted (inc last-order)
+                           :exectype      "EXECUTED"}])
+
+        (is (=? {:id            "v50.2024-04-12T12:33:09"
+                 :orderexecuted pos?}
+                (t2/select-one clog :id "v50.2024-04-12T12:33:09")))
+
+        (migrate!)
+        (is (nil? (t2/select-one clog :id "v50.2024-04-12T12:33:09")))))))
+
 (deftest split-data-permissions-migration-test
   (testing "View Data and Create Query permissions are created correctly based on existing data permissions"
     (impl/test-migrations ["v50.2024-02-26T22:15:54" "v50.2024-02-26T22:15:55"] [migrate!]
@@ -2258,7 +2278,7 @@
                        field-with-parent-2 false}
               assert-defective-cases (fn [field->defective?]
                                        (doseq [[field-before defective?] field->defective?]
-                                         (let [field-after (t2/select-one (t2/table-name Field) :id (:id field-before))]
+                                         (let [field-after (t2/select-one :metabase_field :id (:id field-before))]
                                            (is (= defective? (:is_defective_duplicate field-after))))))]
           (migrate!)
           (testing "1. Active is 1st preference"
@@ -2271,7 +2291,7 @@
             (assert-defective-cases cases-4))
           (testing "5. Fields with different parent_id's are not defective duplicates"
             (assert-defective-cases cases-5))
-          (when true ;; TODO UNCOMMENT THIS BEFORE MERGING #_(not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+          (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
             (testing "Migrate down succeeds"
               (migrate! :down 48))))))))
 
@@ -2309,7 +2329,7 @@
                                    [false #(field! {:name "F1", :active true, :parent_id (:id field-no-parent-2)})]]
             fields-to-clean-up    (atom [])
             clean-up-fields!      (fn []
-                                    (t2/delete! (t2/table-name Field) :id [:in (map :id @fields-to-clean-up)])
+                                    (t2/delete! :metabase_field :id [:in (map :id @fields-to-clean-up)])
                                     (reset! fields-to-clean-up []))]
         (if (= driver/*driver* :postgres)
           (testing "Before the migrations, Postgres does not allow fields to have the same table, name, but different parent_id"
@@ -2333,7 +2353,7 @@
               (let [field (field-thunk)]
                 (is (some? field))
                 (swap! fields-to-clean-up conj field)))))
-        (when true ;; TODO UNCOMMENT THIS BEFORE MERGING #_(not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+        (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
           (testing "Migrate down succeeds"
             (migrate! :down 48))
           (clean-up-fields!)
@@ -2402,7 +2422,7 @@
                        (testing "The defective field should still exist after loading from H2"
                          (is (= #{defective-field-id}
                                 (t2/select-pks-set (t2/table-name :model/Field) :is_defective_duplicate true)))))
-                     (when true ;; TODO UNCOMMENT THIS BEFORE MERGING #_(not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+                     (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
                        (testing "Migrating down to 48 should still work"
                          (migrate! :down 48))
                        (testing "The defective field should still exist after loading from H2 and downgrading"
@@ -2436,7 +2456,7 @@
                                                                    :created_at    :%now
                                                                    :updated_at    :%now}
                                                                   values)))
-            active+field [[true (field! {:name "x",  :is_defective_duplicate true, :nfc_path "[\"x\",\"y\""})]
+            active+field [[true  (field! {:name "x",  :is_defective_duplicate true, :nfc_path "[\"x\",\"y\""})]
                           [false (field! {:name "x", :is_defective_duplicate true, :nfc_path nil})]
                           [false (field! {:name "x", :is_defective_duplicate true, :nfc_path "[\"x\"]"})]]]
         (migrate!)
