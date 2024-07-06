@@ -127,6 +127,10 @@
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?))
 
+(t2/define-after-select :model/Field
+  [field]
+  (dissoc field :is_defective_duplicate :unique_field_helper))
+
 (t2/define-before-insert :model/Field
   [field]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
@@ -139,6 +143,13 @@
       (t2/update! :model/Field {:fk_target_field_id (:id field)} {:semantic_type      nil
                                                                   :fk_target_field_id nil}))))
 
+(t2/define-before-delete :model/Field
+  [field]
+  ; Cascading deletes through parent_id cannot be done with foreign key constraints in the database
+  ; because parent_id constributes to a generated column, and MySQL doesn't support columns with cascade delete
+  ;; foreign key constraints in generated columns. #44866
+  (t2/delete! :model/Field :parent_id (:id field)))
+
 ;;; Field permissions
 ;; There are several API endpoints where large instances can return many thousands of Fields. Normally Fields require
 ;; a DB call to fetch information about their Table, because a Field's permissions set is the same as its parent
@@ -146,7 +157,6 @@
 ;; 1)  If a Field's Table is already hydrated, there is no need to manually fetch the information a second time
 ;; 2)  Failing that, we cache the corresponding permissions sets for each *Table ID* for a few seconds to minimize the
 ;;     number of DB calls that are made. See discussion below for more details.
-
 (defn- perms-objects-set*
   [db-id schema table-id read-or-write]
   #{(case read-or-write

@@ -62,8 +62,11 @@
     (merge defaults table)))
 
 (t2/define-before-delete :model/Table
-  [{:keys [db_id schema id]}]
-  (t2/delete! Permissions :object [:like (str "%" (perms/data-perms-path db_id schema id) "%")]))
+  [table]
+  ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
+  ;; foreign key constraints in generated columns. #44866
+  (t2/delete! :model/Field :table_id (:id table))
+  (t2/delete! Permissions :object [:like (str "%" (perms/data-perms-path (:db_id table) (:schema table) (:id table)) "%")]))
 
 (defmethod mi/perms-objects-set :model/Table
   [{db-id :db_id, schema :schema, table-id :id, :as table} read-or-write]
