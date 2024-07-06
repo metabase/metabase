@@ -438,9 +438,9 @@
                Collection coll1s {:name "My Collection"}
                Table      table1s {:name  "CUSTOMERS"
                                    :db_id (:id db1s)}
-               Field      field1s {:name     "NAME"
+               Field      field1s {:name     (mt/random-name)
                                    :table_id (:id table1s)}
-               Card       card1s  {:name "Source card"}
+               Card       card1s  {:name (mt/random-name)}
                Card       card2s  {:name          "Card with parameter"
                                    :database_id   (:id db1s)
                                    :table_id      (:id table1s)
@@ -452,7 +452,7 @@
                                                     ;; card_id is in a different collection with dashboard's collection
                                                     :values_source_config {:card_id     (:id card1s)
                                                                            :value_field [:field (:id field1s) nil]}}]}
-               Dashboard  dash1s {:name          "A dashboard"
+               Dashboard  dash1s {:name          (mt/random-name)
                                   :collection_id (:id coll1s)
                                   :parameters    [{:id                   "abc"
                                                    :type                 "category"
@@ -473,7 +473,7 @@
                            :type                 :category,
                            :values_source_config {:card_id     (:entity_id card1s),
                                                   :value_field [:field
-                                                                ["my-db" nil "CUSTOMERS" "NAME"]
+                                                                ["my-db" nil "CUSTOMERS" (:name field1s)]
                                                                 nil]},
                            :values_source_type   "card"}]
                          (:parameters (first (by-model extraction "Dashboard")))))
@@ -483,7 +483,7 @@
                            :type                 :category,
                            :values_source_config {:card_id     (:entity_id card1s),
                                                   :value_field [:field
-                                                                ["my-db" nil "CUSTOMERS" "NAME"]
+                                                                ["my-db" nil "CUSTOMERS" (:name field1s)]
                                                                 nil]},
                            :values_source_type   "card"}]
                          (:parameters (first (by-model extraction "Card")))))
