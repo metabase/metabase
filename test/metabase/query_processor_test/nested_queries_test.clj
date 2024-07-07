@@ -1443,7 +1443,8 @@
                                                             :fields       :all}]
                                             :breakout     [[:field %products.category {:join-alias table-alias}]]
                                             :aggregation  [[:count]]}
-                             :filter       [:> *count/Integer 0]})]
+                             :filter       [:> *count/Integer 0]
+                             :order-by     [[:asc [:field %products.cateogory {:join-alias table-alias}]]]})]
           (mt/with-native-query-testing-context query
             (is (= [["Doohickey" 3976]
                     ["Gadget"    4939]
