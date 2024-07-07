@@ -999,6 +999,7 @@
                                              !month.created_at]
                                   :aggregation [[:sum $subtotal]]}
                    :expressions {:strange [:/ [:field "sum" {:base-type "type/Float"}] 100]}
+                   :order-by [[:asc &Products.products.category]]
                    :limit 3})]
       (mt/with-native-query-testing-context query
         (is (= [["Doohickey" "Balistreri-Ankunding" "2018-01-01T00:00:00Z" 210.24 2.1024]
