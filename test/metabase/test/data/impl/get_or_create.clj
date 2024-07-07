@@ -150,7 +150,7 @@
 
 (defn- preprocess-dbdef-for-fks
   "Return vector of form [[table-name field-name fk-table-name]...]"
-  [dbdef]
+  [driver dbdef]
   (loop [[table-def & table-defs] (:table-definitions dbdef)
          result []]
     (if (nil? table-def)
@@ -158,16 +158,21 @@
       (recur table-defs
              (into result
                    (comp (filter (comp some? :fk))
-                         (map #(vector (:table-name table-def)
+                         ;; meh
+                         (map #(vector (if-some [qualified-name-components (get-method @(requiring-resolve 'metabase.test.data.sql/qualified-name-components) driver)]
+                                         (last (qualified-name-components driver (:database-name dbdef) (:table-name table-def)))
+                                         (:table-name table-def))
                                        (:field-name %)
-                                       (name (:fk %)))))
+                                       (if-some [qualified-name-components (get-method @(requiring-resolve 'metabase.test.data.sql/qualified-name-components) driver)]
+                                         (last (qualified-name-components driver (:database-name dbdef) (name (:fk %))))
+                                         (name (:fk %))))))
                    (:field-definitions table-def))))))
 
 (defn- dbdef->fk-field-infos
   "Generate `fk-field-infos` structure. It is a seq of maps of 2 keys: :id and :fk-target-field-id. Existing database,
   tables and fields in app db are examined to get the required info."
-  [dbdef db]
-  (when-some [table-field-fk (not-empty (preprocess-dbdef-for-fks dbdef))]
+  [driver dbdef db]
+  (when-some [table-field-fk (not-empty (preprocess-dbdef-for-fks driver dbdef))]
     (let [tables (t2/select :model/Table :db_id (:id db))
           fields (t2/select :model/Field {:where [:in :table_id (map :id tables)]})
           table-id->table (m/index-by :id tables)
@@ -199,8 +204,8 @@
 
   This function simulates those user added fks, based on dataset definition. Therefore, it enables tests for eg.
   implicit joins to work."
-  [dbdef db]
-  (let [fk-field-infos (dbdef->fk-field-infos dbdef db)]
+  [driver dbdef db]
+  (let [fk-field-infos (dbdef->fk-field-infos driver dbdef db)]
     (doseq [{:keys [id fk-target-field-id]} fk-field-infos]
       (t2/update! :model/Field :id id {:semantic_type :type/FK
                                        :fk_target_field_id fk-target-field-id}))))
@@ -230,7 +235,7 @@
                 ;; Foreign keys inference seems broken for :sqlite. Add foreign keys to Metabase test instance manually
                 ;; until it is fixed.
                 (#{:sqlite} driver))
-        (add-foreign-key-relationships! database-definition db))
+        (add-foreign-key-relationships! driver database-definition db))
       ;; make sure we're returing an up-to-date copy of the DB
       (t2/select-one Database :id (u/the-id db)))
     (catch Throwable e
