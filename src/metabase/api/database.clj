@@ -176,7 +176,7 @@
                                            [:not= :result_metadata nil]
                                            [:= :archived false]
                                            ;; always return metrics for now
-                                                  [:in :type [(u/qualified-name card-type) "metric"]]
+                                           [:in :type [(u/qualified-name card-type) "metric"]]
                                            [:in :database_id ids-of-dbs-that-support-source-queries]
                                            (collection/visible-collection-ids->honeysql-filter-clause
                                             (collection/permissions-set->visible-collection-ids
@@ -380,6 +380,8 @@
   (get-database id {:include include
                     :include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)
                     :exclude-uneditable-details? (Boolean/parseBoolean exclude_uneditable_details)}))
+
+(:details (metabase.test/user-http-request :rasta :get 200 "database/1"))
 
 (def ^:private database-usage-models
   "List of models that are used to report usage on a database."
