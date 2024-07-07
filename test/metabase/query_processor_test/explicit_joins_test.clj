@@ -868,6 +868,7 @@
                                        :alias        "Cat"
                                        :condition    [:= $id $id]
                                        :fields       [&Cat.categories.id]}]
+                              :order-by [[:asc $id] [:asc &Cat.categories.id]]
                               :limit 1}))]
         (is (= 1
                (count expected-rows)))
@@ -879,15 +880,18 @@
                                  "users.id\\u0022 AS user_id, u.* FROM categories LEFT JOIN users u ON 1 = 1; --"
                                  "users.id` AS user_id, u.* FROM categories LEFT JOIN users u ON 1 = 1; --"
                                  "users.id\\` AS user_id, u.* FROM categories LEFT JOIN users u ON 1 = 1; --"]]
-          (let [evil-query (mt/mbql-query venues
-                             {:joins [{:source-table $$categories
-                                       :alias        evil-join-alias
-                                       :condition    [:= $id $id]
-                                       :fields       [[:field %categories.id {:join-alias evil-join-alias}]]}]
-                              :limit 1})]
-            (mt/with-native-query-testing-context evil-query
-              (is (= expected-rows
-                     (mt/rows (qp/process-query evil-query)))))))))))
+          (testing (format "Join alias: `%s`" (pr-str evil-join-alias))
+            (let [evil-query (mt/mbql-query
+                              venues
+                              {:joins [{:source-table $$categories
+                                        :alias        evil-join-alias
+                                        :condition    [:= $id $id]
+                                        :fields       [[:field %categories.id {:join-alias evil-join-alias}]]}]
+                               :order-by [[:asc $id] [:asc [:field %categories.id {:join-alias evil-join-alias}]]]
+                               :limit 1})]
+              (mt/with-native-query-testing-context evil-query
+                (is (= expected-rows
+                       (mt/rows (qp/process-query evil-query))))))))))))
 
 (def ^:private charsets
   {:ascii   (into (vec (for [i (range 26)]
@@ -999,7 +1003,10 @@
                                              !month.created_at]
                                   :aggregation [[:sum $subtotal]]}
                    :expressions {:strange [:/ [:field "sum" {:base-type "type/Float"}] 100]}
-                   :order-by [[:asc &Products.products.category]]
+                   :order-by [[:asc &Products.products.category]
+                              [:asc &Products.products.vendor]
+                              [:asc !month.created_at]
+                              [:asc [:field "sum" {:base-type "type/Float"}]]]
                    :limit 3})]
       (mt/with-native-query-testing-context query
         (is (= [["Doohickey" "Balistreri-Ankunding" "2018-01-01T00:00:00Z" 210.24 2.1024]
