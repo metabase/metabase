@@ -1,4 +1,6 @@
-(ns metabase.native-query-analyzer.impl)
+(ns metabase.native-query-analyzer.impl
+  (:require
+   [metabase.driver :as driver]))
 
 ;; NOTE: In the future we should replace [[considered-drivers]] and [[macaw-options]] with (a) driver method(s),
 ;; but given that the interface with Macaw is still in a state of flux, and how simple the current configuration is,
@@ -41,7 +43,7 @@
      ;; For both MySQL and SQL Server, whether identifiers are case-sensitive depends on database configuration only,
      ;; and quoting has no effect on this, so we disable this option for consistency with `:case-insensitive`.
      :quotes-preserve-case? (not (contains? #{:mysql :sqlserver} driver))
-     :features              {:postgres-syntax        (= :postgres driver) ;; todo, handle things that inherit, like redshift
+     :features              {:postgres-syntax        (isa? driver/hierarchy driver :postgres)
                              :square-bracket-quotes  (= :sqlserver driver)
                              :unsupported-statements true
                              :backslash-escape-char  true
