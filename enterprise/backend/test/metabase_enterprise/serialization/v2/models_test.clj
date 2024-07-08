@@ -46,11 +46,27 @@
           :let  [spec (serdes/make-spec m)]
           :when spec]
     (let [t      (t2/table-name (keyword "model" m))
-          fields (u.conn/app-db-column-types (mdb/app-db) (name t))]
+          fields (u.conn/app-db-column-types (mdb/app-db) t)
+          spec'  (merge (zipmap (:copy spec) (repeat :copy))
+                        (zipmap (:skip spec) (repeat :skip))
+                        (:transform spec))]
       (testing (format "%s should declare every column in serialization spec" m)
         (is (= (->> (keys fields)
                     (map u/lower-case-en)
                     set)
-               (->> (concat (:copy spec) (:skip spec) (keys (:transform spec)))
+               (->> (keys spec')
                     (map name)
-                    set)))))))
+                    set))))
+      (testing "Foreign keys should be declared as such\n"
+        (doseq [[fk _] (filter #(:fk (second %)) fields)
+                :let   [fk (u/lower-case-en fk)
+                        action (get spec' (keyword fk))]]
+          (testing (format "%s.%s is foreign key which is handled correctly" m fk)
+            ;; FIXME: maybe serialization can guess where FK points by itself?
+            (when-not (#{"collection_id" "database_id"} fk)
+              (is (#{:skip
+                     serdes/*export-fk*
+                     serdes/*export-fk-keyed*
+                     serdes/*export-table-fk*
+                     serdes/*export-user*}
+                   (or (:ser action) action))))))))))

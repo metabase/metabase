@@ -563,7 +563,7 @@
 (defn- ->table-name
   "Returns the table name that a particular ingested entity should finally be inserted into."
   [ingested]
-  (->> ingested ingested-model (keyword "model") t2/table-name name))
+  (->> ingested ingested-model (keyword "model") t2/table-name))
 
 (defmulti ingested-model-columns
   "Called by `drop-excess-keys` (which is in turn called by `load-xform-basics`) to determine the full set of keys that
