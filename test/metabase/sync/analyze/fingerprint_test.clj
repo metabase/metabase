@@ -36,8 +36,7 @@
     "type/Dictionary"
     "type/Array"
     "type/Collection"
-    "type/XML"
-    "type/DruidJSON"})
+    "type/XML"})
 
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test
   (testing (str "Make sure we generate the correct HoneySQL WHERE clause based on whatever is in "
