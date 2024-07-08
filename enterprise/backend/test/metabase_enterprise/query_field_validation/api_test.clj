@@ -63,9 +63,10 @@
 
 (defn- none-found?
   [blacklist actual]
-  (if (nil? blacklist)
-    true
-    (not-any? #(some (partial approx= %) actual) blacklist)))
+  (empty? (for [b blacklist
+                a actual
+                :when (approx= b a)]
+            :found)))
 
 (defn- resp=
   "Is the response close enough to what we expect? Accounts for extra data from the app DB that could sneak in. If
