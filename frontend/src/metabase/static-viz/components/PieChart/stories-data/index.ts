@@ -21,6 +21,7 @@ import mixedPostiiveNegative from "./mixed-positive-negative.json";
 import noSingleColumnLegend45149 from "./no-single-column-legend-45149.json";
 import nullDimension from "./null-dimension.json";
 import numericDimension from "./numeric-dimension.json";
+import numericSQLColumnCrashes28568 from "./numeric-sql-column-crashes-28568.json";
 import percentagesOnChartBooleanDimensionCrashes44085 from "./percentages-on-chart-boolean-dimension-crashes-44085.json";
 import relativeDateDimension from "./relative-date-dimension.json";
 import showPercentagesOff from "./show-percentages-off.json";
@@ -68,4 +69,5 @@ export const data = {
   percentagesOnChartBooleanDimensionCrashes44085,
   allZeroMetric44847,
   noSingleColumnLegend45149,
+  numericSQLColumnCrashes28568,
 };

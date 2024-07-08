@@ -272,3 +272,10 @@ NoSingleColumnLegend45149.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const NumericSQLColumnCrashes28568 = Template.bind({});
+NumericSQLColumnCrashes28568.args = {
+  rawSeries: data.numericSQLColumnCrashes28568 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
