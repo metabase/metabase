@@ -41,6 +41,14 @@
      ;; For both MySQL and SQL Server, whether identifiers are case-sensitive depends on database configuration only,
      ;; and quoting has no effect on this, so we disable this option for consistency with `:case-insensitive`.
      :quotes-preserve-case? (not (contains? #{:mysql :sqlserver} driver))
+     :features              {:postgres-syntax        (= :postgres driver) ;; todo, handle things that inherit, like redshift
+                             :square-bracket-quotes  (= :sqlserver driver)
+                             :unsupported-statements true
+                             :backslash-escape-char  true
+                             ;; This will slow things down, but until we measure the difference, opt for correctness.
+                             :complex-parsing        true}
+     ;; 10 seconds
+     :timout                10000
      ;; There is no plan to be exhaustive yet.
      ;; Note that while an allowed list would be more conservative, at the time of writing only 2 of the bundled
      ;; drivers use FINAL as a reserved word, and mentioning them all would be prohibitive.
