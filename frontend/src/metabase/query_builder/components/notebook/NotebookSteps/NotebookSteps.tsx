@@ -15,7 +15,7 @@ interface NotebookStepsProps {
   question: Question;
   sourceQuestion?: Question;
   reportTimezone: string;
-  updateQuestion: (question: Question) => Promise<void>;
+  updateQuestion: (question: Question) => void | Promise<void>;
   readOnly?: boolean;
 }
 

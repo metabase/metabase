@@ -17,6 +17,7 @@ import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   CardId,
+  DatasetQuery,
   RawSeries,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -99,6 +100,27 @@ export function useVisualizerSeries(initialCardIds: CardId[] = []) {
     setRawSeries(nextSeries);
   };
 
+  const updateSeriesQuery = async (index: number, query: DatasetQuery) => {
+    const previousCard = rawSeries[index]?.card;
+    if (!previousCard) {
+      return;
+    }
+    const previousQuestion = new Question(previousCard, metadata);
+    let nextQuestion = previousQuestion
+      .setDatasetQuery(query)
+      .withoutNameAndId();
+
+    nextQuestion = nextQuestion.setDisplayName(
+      nextQuestion.generateQueryDescription(),
+    );
+
+    const nextSeries = await _fetchAdHocCardData(nextQuestion.card());
+
+    if (nextSeries) {
+      setRawSeries(assocIn(rawSeries, [index], nextSeries));
+    }
+  };
+
   const addCardSeries = async (cardId: CardId) => {
     const newSeries = await _fetchCardAndData(cardId);
     if (!newSeries) {
@@ -179,6 +201,7 @@ export function useVisualizerSeries(initialCardIds: CardId[] = []) {
     question: mainQuestion,
     addCardSeries,
     updateSeriesCard,
+    updateSeriesQuery,
     replaceAllWithCardSeries,
     refreshSeriesData,
     removeSeries,
