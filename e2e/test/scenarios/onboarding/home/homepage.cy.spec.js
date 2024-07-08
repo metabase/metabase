@@ -132,9 +132,22 @@ describe("scenarios > home > homepage", () => {
     });
 
     it("should be able to dismiss qbnewq modal using keyboard (metabase#44754)", () => {
-      cy.intercept("PUT", "/api/user/*/modal/qbnewb").as("modalDismiss");
+      const randomUser = {
+        email: "random@metabase.test",
+        password: "12341234",
+      };
 
-      cy.signInAsNormalUser();
+      // We've already dismissed qbnewq modal for all existing users.
+      cy.log("Create a new admin user and log in as that user");
+      cy.request("POST", "/api/user", randomUser).then(({ body: { id } }) => {
+        cy.request("PUT", `/api/user/${id}`, { is_superuser: true });
+        cy.request("POST", "/api/session", {
+          username: randomUser.email,
+          password: randomUser.password,
+        });
+      });
+
+      cy.intercept("PUT", "/api/user/*/modal/qbnewb").as("modalDismiss");
       visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       modal()
         .should("be.visible")
