@@ -10,12 +10,12 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(api/defendpoint GET "/api/channel"
+(api/defendpoint GET "/"
   "Get all channels"
   [_]
   (t2/select :model/Channel :active true))
 
-(api/defendpoint POST "/api/channel"
+(api/defendpoint POST "/"
   "Create a channel"
   [:as {{:keys [name type active details]} :body}]
   {name    ms/NonBlankString
@@ -28,19 +28,19 @@
                                    :details details
                                    :active  active}))
 
-(api/defendpoint GET "/api/channel/:id"
+(api/defendpoint GET "/:id"
   "Get a channel"
   [id]
   (t2/select-one :model/Channel id))
 
-(api/defendpoint PUT "/api/channel/:id"
+(api/defendpoint PUT "/:id"
   "Update a channel"
   [id :as {{:keys [name type details active]} :body}]
   {id      ms/PositiveInt
    name    [:maybe ms/NonBlankString]
    type    [:maybe :keyword]
    details [:maybe :map]
-   active [:maybe {:default false} :boolean]}
+   active  [:maybe {:default false} :boolean]}
   (let [channel-before-update (api/check-404 (t2/select-one :model/Channel id))]
     (when (and (some? details)
                (not= details (:details channel-before-update))
@@ -51,7 +51,9 @@
                                    :details details
                                    :active  active})))
 
-(api/defendpoint POST "/api/channel/test"
+(api/defendpoint POST "/test"
   "Test a channel connection"
   [:as {{:keys [type details]} :body}]
   (channel/can-connect? (models.channel/keywordize-type type) details))
+
+(api/define-routes)
