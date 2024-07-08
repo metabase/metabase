@@ -194,9 +194,16 @@ export const queryCompleted = (question, queryResults) => {
         prevCard && (prevData || prevError)
           ? [{ card: prevCard, data: prevData, error: prevError }]
           : null;
-      question = question.setSettings(
-        syncVizSettingsWithSeries(question.settings(), series, previousSeries),
-      );
+      if (series && previousSeries) {
+        question = question.setSettings(
+          syncVizSettingsWithSeries(
+            question.query(),
+            question.settings(),
+            series,
+            previousSeries,
+          ),
+        );
+      }
 
       question = question.maybeResetDisplay(
         data,

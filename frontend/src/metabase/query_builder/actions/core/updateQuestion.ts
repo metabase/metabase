@@ -136,13 +136,15 @@ export const updateQuestion = (
       }
     }
 
-    newQuestion = newQuestion.setSettings(
-      syncVizSettingsWithQuery(
-        newQuestion.settings(),
-        newQuestion.query(),
-        currentQuestion?.query(),
-      ),
-    );
+    if (currentQuestion) {
+      newQuestion = newQuestion.setSettings(
+        syncVizSettingsWithQuery(
+          newQuestion.settings(),
+          newQuestion.query(),
+          currentQuestion.query(),
+        ),
+      );
+    }
 
     if (!newQuestion.canAutoRun()) {
       run = false;
