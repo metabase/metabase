@@ -3,6 +3,7 @@
   details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
+   [metabase.async.util :as async.u]
    [metabase.audit :as audit]
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection :refer [Collection]]
@@ -85,10 +86,11 @@
   ([collection-ids collection-namespace]
    (let [group-id->perms (group-id->permissions-set)]
      {:revision (c-perm-revision/latest-id)
-      :groups   (into {} (for [group-id (t2/select-pks-set PermissionsGroup)]
-                           {group-id (group-permissions-graph collection-namespace
-                                                              (group-id->perms group-id)
-                                                              collection-ids)}))})))
+      :groups   (async.u/process->hashmap
+                 (fn [group-id]
+                   [group-id
+                    (group-permissions-graph collection-namespace (group-id->perms group-id) collection-ids)])
+                 (t2/select-pks-set PermissionsGroup))})))
 
 (defn- modify-instance-analytics-for-admins
   "In the graph, override the instance analytics collection within the admin group to read."
