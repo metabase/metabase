@@ -75,7 +75,7 @@ const InteractiveDashboardInner = ({
   });
 
   useEffect(() => {
-    if (dashboardId !== previousDashboardId) {
+    if (previousDashboardId && dashboardId !== previousDashboardId) {
       dispatch(dashboardReset()); // reset "isNavigatingBackToDashboard" state
       setAdhocQuestionUrl(null);
     }
