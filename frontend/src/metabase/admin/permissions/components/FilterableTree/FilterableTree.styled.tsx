@@ -30,7 +30,6 @@ export const EmptyStateContainer = styled.div`
 export const AdminTreeNode = styled(Tree.Node)`
   color: ${props =>
     props.isSelected ? color("text-white") : color("text-medium")};
-
   background-color: ${props => (props.isSelected ? color("filter") : "unset")};
 
   &:hover {

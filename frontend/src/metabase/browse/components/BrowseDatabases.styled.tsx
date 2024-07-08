@@ -11,6 +11,7 @@ export const DatabaseCard = styled(Card)`
   padding: 1.5rem;
   margin-bottom: 1rem;
   box-shadow: none;
+
   &:hover {
     color: var(--mb-color-brand);
   }
