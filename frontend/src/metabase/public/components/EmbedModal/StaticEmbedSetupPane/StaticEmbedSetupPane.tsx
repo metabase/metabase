@@ -14,10 +14,8 @@ import {
   trackStaticEmbedUnpublished,
 } from "metabase/public/lib/analytics";
 import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
-import {
-  getSignedPreviewUrlWithoutHash,
-  optionsToHashParams,
-} from "metabase/public/lib/embed";
+import { getIframeQueryWithoutDefaults } from "metabase/public/lib/code-templates";
+import { getSignedPreviewUrlWithoutHash } from "metabase/public/lib/embed";
 import type {
   EmbeddingDisplayOptions,
   EmbeddingParameters,
@@ -155,7 +153,8 @@ export const StaticEmbedSetupPane = ({
     ],
   );
 
-  const iframeUrl = iframeUrlWithoutHash + optionsToHashParams(displayOptions);
+  const iframeUrl =
+    iframeUrlWithoutHash + getIframeQueryWithoutDefaults(displayOptions);
 
   const handleSave = async () => {
     if (!resource.enable_embedding) {
