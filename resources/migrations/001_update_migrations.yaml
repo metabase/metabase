@@ -6605,6 +6605,11 @@ databaseChangeLog:
       id: v49.2024-06-27T00:00:05
       author: calherries
       comment: Remove idx_uniq_field_table_id_parent_id_name because it is redundant with idx_unique_field
+      preConditions:
+        - onFail: MARK_RAN
+        - uniqueConstraintExists:
+            constraintName: idx_uniq_field_table_id_parent_id_name
+            tableName: metabase_field
       changes:
         - dropUniqueConstraint:
             tableName: metabase_field
