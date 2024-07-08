@@ -197,8 +197,8 @@ export const queryCompleted = (question, queryResults) => {
       if (series && previousSeries) {
         question = question.setSettings(
           syncVizSettingsWithSeries(
-            question.query(),
             question.settings(),
+            question.query(),
             series,
             previousSeries,
           ),
