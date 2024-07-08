@@ -38,13 +38,7 @@
                            :model/QueryField {qf-3 :id}    {:card_id  card-3
                                                             :field_id field-3}]
     (mt/with-premium-features #{:query-field-validation}
-      (f {:card-1 card-1
-          :card-2 card-2
-          :card-3 card-3
-          :card-4 card-4
-          :qf-1   qf-1
-          :qf-2   qf-2
-          :qf-3   qf-3}))))
+      (mt/call-with-map-params f [card-1 card-2 card-3 card-4 qf-1 qf-2 qf-3]))))
 
 (defmacro ^:private with-test-setup
   "Creates some non-stale QueryFields and anaphorical provides stale QueryField IDs called `qf-{1-3}` and their
@@ -53,7 +47,7 @@
 
   `card-4` is guaranteed not to have problems"
   [& body]
-  `(do-with-test-setup (fn [{:keys [~'qf-1 ~'qf-2 ~'qf-3 ~'card-1 ~'card-2 ~'card-3 ~'card-4]}]
+  `(do-with-test-setup (mt/call-with-anaphora [qf-1 qf-2 qf-3 card-1 card-2 card-3 card-4]
                          ~@body)))
 
 (def ^:private url "ee/query-field-validation/invalid-cards")
@@ -81,33 +75,32 @@
   ([expected actual]
    (resp= expected actual nil))
   ([expected actual unexpected]
-   (and
-    (<= (:total expected)  (:total actual))
-    (=  (:limit expected)  (:limit actual))
-    (=  (:offset expected) (:offset actual))
-    (mt/ordered-subset? (:data expected) (:data actual) approx=)
-    (none-found? unexpected (:data actual)))))
+   (is (<= (:total expected)  (:total actual)))
+   (is (=  (:limit expected)  (:limit actual)))
+   (is (=  (:offset expected) (:offset actual)))
+   (is (mt/ordered-subset? (:data expected) (map #(select-keys % (keys (first (:data expected)))) (:data actual)) approx=))
+   (is (none-found? unexpected (:data actual)))))
 
 (deftest list-invalid-cards-basic-test
   (testing "Only returns cards with problematic field refs"
     (with-test-setup
-      (is (resp= {:total 3,
-                  :data
-                  [{:id     card-1
-                    :name   "A"
-                    :errors {:inactive-fields [{:field "FA"
-                                                :table "T"}]}}
-                   {:id     card-2
-                    :name   "B"
-                    :errors {:inactive-fields [{:field "FB"
-                                                :table "T"}]}}
-                   {:id     card-3
-                    :name   "C"
-                    :errors {:inactive-fields [{:field "FC"
-                                                :table "T"}]}}]}
-                 (get!)
-                 [{:id   card-4
-                   :name "D"}]))))
+      (resp= {:total 3,
+              :data
+              [{:id     card-1
+                :name   "A"
+                :errors {:inactive-fields [{:field "FA"
+                                            :table "T"}]}}
+               {:id     card-2
+                :name   "B"
+                :errors {:inactive-fields [{:field "FB"
+                                            :table "T"}]}}
+               {:id     card-3
+                :name   "C"
+                :errors {:inactive-fields [{:field "FC"
+                                            :table "T"}]}}]}
+             (get!)
+             [{:id   card-4
+               :name "D"}])))
   (testing "It requires the premium feature"
     (mt/with-premium-features #{}
       (is (= "Query Field Validation is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
@@ -116,48 +109,48 @@
 (deftest pagination-test
   (testing "Lets you page results"
     (with-test-setup
-      (is (resp= {:total  3
-                  :limit  2
-                  :offset 0
-                  :data
-                  [{:id     card-1
-                    :name   "A"
-                    :errors {:inactive-fields [{:field "FA"
-                                                :table "T"}]}}
-                   {:id     card-2
-                    :name   "B"
-                    :errors {:inactive-fields [{:field "FB"
-                                                :table "T"}]}}]}
-                 (get! {:limit 2})
-                 [{:id   card-3
-                   :name "C"}
-                  {:id   card-4
-                   :name "D"}]))
-      (is (resp= {:total  3
-                  :limit  2
-                  :offset 2
-                  :data
-                  [{:id     card-3
-                    :name   "C"
-                    :errors {:inactive-fields [{:field "FC"
-                                                :table "T"}]}}]}
-                 (get! {:limit 2 :offset 2})
-                 [{:id   card-1
-                   :name "A"}
-                  {:id   card-2
-                   :name "B"}
-                  {:id   card-4
-                   :name "D"}])))))
+      (resp= {:total  3
+              :limit  2
+              :offset 0
+              :data
+              [{:id     card-1
+                :name   "A"
+                :errors {:inactive-fields [{:field "FA"
+                                            :table "T"}]}}
+               {:id     card-2
+                :name   "B"
+                :errors {:inactive-fields [{:field "FB"
+                                            :table "T"}]}}]}
+             (get! {:limit 2})
+             [{:id   card-3
+               :name "C"}
+              {:id   card-4
+               :name "D"}])
+      (resp= {:total  3
+              :limit  2
+              :offset 2
+              :data
+              [{:id     card-3
+                :name   "C"
+                :errors {:inactive-fields [{:field "FC"
+                                            :table "T"}]}}]}
+             (get! {:limit 2 :offset 2})
+             [{:id   card-1
+               :name "A"}
+              {:id   card-2
+               :name "B"}
+              {:id   card-4
+               :name "D"}]))))
 
 (deftest sorting-test
   (testing "Lets you specify the sort key"
     (with-test-setup
-      (is (resp= {:total 3
-                  :data
-                  [{:id card-3}
-                   {:id card-2}
-                   {:id card-1}]}
-                 (get! {:sort_column "last_edited_at" :sort_direction "desc"})))))
+      (resp= {:total 3
+              :data
+              [{:id card-3}
+               {:id card-2}
+               {:id card-1}]}
+             (get! {:sort_column "last_edited_at" :sort_direction "desc"}))))
   (testing "Rejects bad keys"
     (with-test-setup
       (is (str/starts-with? (:sort_column

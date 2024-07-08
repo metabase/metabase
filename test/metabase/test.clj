@@ -231,6 +231,7 @@
 
  [tu
   boolean-ids-and-timestamps
+  call-with-map-params
   call-with-paused-query
   discard-setting-changes
   doall-recursive
@@ -258,6 +259,7 @@
   with-non-admin-groups-no-root-collection-perms
   with-non-admin-groups-no-collection-perms
   with-all-users-data-perms-graph!
+  with-anaphora
   with-temp-env-var-value!
   with-temp-dir
   with-temp-file

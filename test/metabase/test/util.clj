@@ -1438,3 +1438,17 @@
             (if (eq? x y)
               (recur rest-x rest-y eq?)
               (recur xs rest-y eq?))))))
+
+(defmacro call-with-map-params
+  "Execute `f` with each `binding` available by name in a params map. This is useful in conjunction with
+  `with-anaphora` (below)."
+  [f bindings]
+  (let [binding-map (into {} (for [b bindings] [(keyword b) b]))]
+    (list f binding-map)))
+
+(defmacro with-anaphora
+  "Execute the body with the given bindings plucked out of a params map (which was probably created by
+  `call-with-map-params` above."
+  [bindings & body]
+  `(fn [{:keys ~(mapv (comp symbol name) bindings)}]
+     ~@body))
