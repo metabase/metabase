@@ -239,7 +239,7 @@ const PublicOrEmbeddedDashboardInner = ({
 
   useEffect(() => {
     if (!isLoadingWithCards && previousIsLoadingWithCards && !isErrorPage) {
-      sdkEventHandlers?.onDashboardLoad?.(dashboard);
+      sdkEventHandlers?.onDashboardLoadWithCards?.(dashboard);
       onLoadWithCards?.(dashboard);
     }
   }, [
