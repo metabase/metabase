@@ -1,7 +1,7 @@
 import * as Lib from "metabase-lib";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
-type ColumnInfo = {
+export type ColumnInfo = {
   name: string;
   desiredColumnAlias?: string;
   isAggregation?: boolean;

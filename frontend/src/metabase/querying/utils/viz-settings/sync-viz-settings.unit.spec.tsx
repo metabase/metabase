@@ -3,18 +3,18 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { syncVizSettings } from "./sync-viz-settings";
+import { syncVizSettings, type ColumnInfo } from "./sync-viz-settings";
 
 describe("syncVizSettings", () => {
   it("should handle column.name updates", () => {
-    const oldColumns = [
+    const oldColumns: ColumnInfo[] = [
       { name: "ID", desiredColumnAlias: "ID" },
       { name: "TOTAL", desiredColumnAlias: "TOTAL" },
       { name: "ID_2", desiredColumnAlias: "PRODUCTS__ID" },
       { name: "ID_3", desiredColumnAlias: "PEOPLE__ID" },
     ];
 
-    const newColumns = [
+    const newColumns: ColumnInfo[] = [
       { name: "ID", desiredColumnAlias: "ID" },
       { name: "TOTAL", desiredColumnAlias: "TOTAL" },
       { name: "ID_2", desiredColumnAlias: "PEOPLE__ID" },
