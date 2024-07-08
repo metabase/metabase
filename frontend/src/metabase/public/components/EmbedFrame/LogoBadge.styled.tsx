@@ -10,7 +10,6 @@ export type Variant = "default" | "large";
 export const MetabaseLink = styled(ExternalLink)<{ variant: Variant }>`
   display: flex;
   align-items: center;
-
   font-size: 0.85rem;
   font-weight: bold;
   text-decoration: none;
@@ -25,7 +24,6 @@ export const MetabaseLink = styled(ExternalLink)<{ variant: Variant }>`
 const messageVariantStyles = {
   default: css`
     color: ${color("text-medium")};
-
     margin-left: 0.5rem;
     ${breakpointMinMedium} {
       margin-left: 1rem;

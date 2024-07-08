@@ -9,14 +9,11 @@ export const CellRoot = styled.td<{
 }>`
   padding-left: 0.5rem;
   padding-right: 0.5rem;
-
   color: ${color("text-dark")};
   font-weight: bold;
   text-align: ${props => (props.isRightAligned ? "right" : "unset")};
   white-space: nowrap;
-
   border-bottom: 1px solid ${color("border")};
-
   background-color: ${props => props.backgroundColor ?? "unset"};
 `;
 
@@ -36,6 +33,7 @@ export const CellContent = styled.span<{
     props.isClickable &&
     css`
       cursor: pointer;
+
       &:hover {
         color: ${props.theme.fn.themeColor("brand")};
       }

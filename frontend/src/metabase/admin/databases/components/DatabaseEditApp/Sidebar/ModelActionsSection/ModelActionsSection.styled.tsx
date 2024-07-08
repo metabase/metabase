@@ -12,14 +12,12 @@ export const ToggleContainer = styled.div`
 export const Label = styled.label`
   width: 100%;
   cursor: pointer;
-
   color: ${color("text-medium")};
   font-weight: 700;
 `;
 
 export const Description = styled.p`
   margin-top: 24px;
-
   color: ${color("text-medium")};
   line-height: 22px;
 `;

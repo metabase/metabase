@@ -15,6 +15,7 @@ export const OptionButton = styled(Button)<OptionButtonProps>`
   color: ${({ primaryColor = color("brand"), selected }) =>
     selected ? primaryColor : undefined};
   border: none;
+
   &:hover {
     color: ${props => props.primaryColor || color("brand")};
     background: none;
