@@ -1,9 +1,14 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createQuestion,
   modal,
+  getDraggableElements,
+  moveDnDKitElement,
   popover,
   restore,
+  sidebar,
+  visitQuestionAdhoc,
   type StructuredQuestionDetails,
 } from "e2e/support/helpers";
 
@@ -59,5 +64,40 @@ describe("issue 41133", () => {
       cy.findByText("Created At").scrollIntoView().should("be.visible");
       cy.findByText("is connected to:").scrollIntoView().should("be.visible");
     });
+  });
+});
+
+describe("issue 45255", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query:
+            "select 'foo' step, 10 v union all select 'baz', 8 union all select null, 6 union all select 'bar', 4",
+          "template-tags": {},
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "funnel",
+    });
+  });
+
+  it("should work on native queries with null dimension values (metabase#45255)", () => {
+    cy.findByTestId("viz-settings-button").click();
+
+    // Has (empty) in the settings sidebar
+    sidebar().findByText("(empty)");
+
+    // Can reorder (empty)
+    getDraggableElements().eq(2).should("have.text", "(empty)");
+    moveDnDKitElement(getDraggableElements().first(), { vertical: 100 });
+    getDraggableElements().eq(1).should("have.text", "(empty)");
+
+    // Has (empty) in the chart
+    cy.findByTestId("funnel-chart").findByText("(empty)");
   });
 });
