@@ -8206,6 +8206,7 @@ databaseChangeLog:
                   defaultValue: "view"
                   constraints:
                     nullable: false
+      preConditions:
 
   - changeSet:
       id: v51.2024-06-07T12:37:36
@@ -8235,6 +8236,7 @@ databaseChangeLog:
                   name: session_id
               - column:
                   name: device_id
+      preConditions:
 
   - changeSet:
       id: v51.2024-06-12T18:53:03
@@ -8253,6 +8255,7 @@ databaseChangeLog:
         - dropIndex:
             tableName: login_history
             indexName: idx_user_id_device_id
+      preConditions:
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
