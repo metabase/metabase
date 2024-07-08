@@ -1718,7 +1718,7 @@ describe("issue 41464", () => {
       .click();
 
     cy.findByTestId("query-builder-main").within(() => {
-      cy.findByTestId("loading-indicator").should("be.visible");
+      cy.findByTestId("loading-spinner").should("be.visible");
       cy.findByText("No results!", { timeout: 500 }).should("not.exist");
     });
   });
