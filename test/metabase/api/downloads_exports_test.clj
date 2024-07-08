@@ -540,8 +540,8 @@
                     [nil 1.0 11149.28]]
                  (take 6 data)))))))))
 
-(deftest dashcard-viz-settings-export-test
-  (testing "Dashcard visualization settings are respected in exports."
+(deftest ^:parallel dashcard-viz-settings-downloads-test
+  (testing "Dashcard visualization settings are respected in downloads."
     (testing "for csv"
       (mt/dataset test-data
         (mt/with-temp [:model/Card {card-id :id :as card}
@@ -562,19 +562,46 @@
                         {:table.cell_column "TOTAL"
                          :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :total))
                                              {:column_title "CASH MONEY"}}}}]
-          (let [card-result         (card-download card :csv true)
-                dashcard-result     (dashcard-download dashcard :csv true)
-                subscription-result (subscription-attachment! dashcard :csv true)
+          (let [card-result     (card-download card :csv true)
+                dashcard-result (dashcard-download dashcard :csv true)
+                card-header     ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
+                                 "Total" "Discount ($)" "Created At" "Quantity"]
+                dashcard-header ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
+                                 "CASH MONEY" "Discount ($)" "Created At" "Quantity"]]
+            (is (= {:card-download     [card-header]
+                    :dashcard-download [dashcard-header]}
+                   {:card-download     (take 1 card-result)
+                    :dashcard-download (take 1 dashcard-result)}))))))))
+
+(deftest dashcard-viz-settings-attachments-test
+  (testing "Dashcard visualization settings are respected in subscription attachments."
+    (testing "for csv"
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card {card-id :id :as card}
+                       {:display       :table
+                        :dataset_query {:database (mt/id)
+                                        :type     :query
+                                        :query    {:source-table (mt/id :orders)}}
+                        :visualization_settings
+                        {:table.cell_column "SUBTOTAL"
+                         :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :subtotal))
+                                             {:column_title "SUB CASH MONEY"}}}}
+                       :model/Dashboard {dashboard-id :id}
+                       {}
+                       :model/DashboardCard dashcard
+                       {:dashboard_id dashboard-id
+                        :card_id      card-id
+                        :visualization_settings
+                        {:table.cell_column "TOTAL"
+                         :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :total))
+                                             {:column_title "CASH MONEY"}}}}]
+          (let [subscription-result (subscription-attachment! dashcard :csv true)
                 alert-result        (alert-attachment! card :csv true)
-                header              ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
+                alert-header        ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
                                      "Total" "Discount ($)" "Created At" "Quantity"]
-                expected            ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
+                subscription-header ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
                                      "CASH MONEY" "Discount ($)" "Created At" "Quantity"]]
-            (is (= {:card-download           [header]
-                    :dashcard-download       [expected]
-                    :subscription-attachment [expected]
-                    :alert-attachment        [header]}
-                   {:card-download           (take 1 card-result)
-                    :dashcard-download       (take 1 dashcard-result)
-                    :subscription-attachment (take 1 subscription-result)
-                    :alert-attachment        (take 1 alert-result)}))))))))
+            (is (= {:alert-attachment        [alert-header]
+                    :subscription-attachment [subscription-header]}
+                   {:alert-attachment        (take 1 alert-result)
+                    :subscription-attachment (take 1 subscription-result)}))))))))
