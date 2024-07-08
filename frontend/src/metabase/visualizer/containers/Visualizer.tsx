@@ -11,7 +11,6 @@ import type { WithRouterProps } from "react-router";
 import _ from "underscore";
 
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
-import type { VisualizationSettings } from "metabase-types/api";
 
 import { handleDragEnd } from "../dnd";
 import { useVisualizerSeries } from "../hooks/useVisualizerSeries";
@@ -29,10 +28,10 @@ export function Visualizer({ location }: WithRouterProps) {
     question,
     addCardSeries,
     replaceAllWithCardSeries,
-    refreshCardData,
-    removeCardSeries,
-    setCardDisplay,
+    refreshSeriesData,
+    removeSeries,
     setVizSettings,
+    updateSeriesCard,
   } = useVisualizerSeries(getInitialCardIds(location));
 
   const mouseSensor = useSensor(MouseSensor, {
@@ -45,7 +44,7 @@ export function Visualizer({ location }: WithRouterProps) {
   const onDragEnd = (event: DragEndEvent) => {
     if (question) {
       const nextVizSettings = handleDragEnd(event, question.settings());
-      setVizSettings(question.id(), nextVizSettings);
+      setVizSettings(nextVizSettings);
     }
   };
 
@@ -66,9 +65,11 @@ export function Visualizer({ location }: WithRouterProps) {
               <Panel defaultSize={30}>
                 <VisualizerUsed
                   series={series}
-                  onVizTypeChange={setCardDisplay}
-                  onRefreshCard={refreshCardData}
-                  onRemoveCard={removeCardSeries}
+                  onVizTypeChange={(index, display) =>
+                    updateSeriesCard(index, { display })
+                  }
+                  onRefreshData={refreshSeriesData}
+                  onRemoveSeries={removeSeries}
                 />
               </Panel>
             </PanelGroup>
@@ -79,11 +80,7 @@ export function Visualizer({ location }: WithRouterProps) {
           <VisualizerCanvas
             series={series}
             onToggleVizSettings={() => setVizSettingsOpen(isOpen => !isOpen)}
-            onChange={settings => {
-              if (question) {
-                setVizSettings(question.id(), settings);
-              }
-            }}
+            onChange={setVizSettings}
           />
         </Panel>
         {isVizSettingsOpen && (
@@ -93,11 +90,7 @@ export function Visualizer({ location }: WithRouterProps) {
               series={series}
               computedSettings={settings}
               noPreview
-              onChange={(settings: VisualizationSettings) => {
-                if (question) {
-                  setVizSettings(question.id(), settings);
-                }
-              }}
+              onChange={setVizSettings}
               onClose={() => setVizSettingsOpen(false)}
             />
           </Panel>

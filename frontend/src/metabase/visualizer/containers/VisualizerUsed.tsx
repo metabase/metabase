@@ -3,7 +3,7 @@
 import { t } from "ttag";
 
 import { Menu, Flex, Card, Title, Icon, IconName, Text } from "metabase/ui";
-import type { CardId, Series, SingleSeries } from "metabase-types/api";
+import type { Series, SingleSeries } from "metabase-types/api";
 import { ActionIcon } from "@mantine/core";
 import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
@@ -11,16 +11,16 @@ import visualizations from "metabase/visualizations";
 
 interface VisualizerUsedProps {
   series: Series;
-  onVizTypeChange: (card: CardId, vizType: string) => void;
-  onRefreshCard: (card: CardId) => void;
-  onRemoveCard: (card: CardId) => void;
+  onVizTypeChange: (index: number, vizType: string) => void;
+  onRefreshData: (index: number) => void;
+  onRemoveSeries: (index: number) => void;
 }
 
 export function VisualizerUsed({
   series,
   onVizTypeChange,
-  onRefreshCard,
-  onRemoveCard,
+  onRefreshData,
+  onRemoveSeries,
 }: VisualizerUsedProps) {
   return (
     <Card h="100%">
@@ -31,7 +31,7 @@ export function VisualizerUsed({
             {/* TODO - create a dark variant  */}
             <VisualizationPicker
               series={{ card, data }}
-              onChange={vizType => onVizTypeChange(card.id, vizType)}
+              onChange={vizType => onVizTypeChange(index, vizType)}
             />
             <div>{card.name}</div>
             <Flex ml="auto">
@@ -51,10 +51,10 @@ export function VisualizerUsed({
                 </Menu.Target>
                 <Menu.Dropdown>
                   <Menu.Item
-                    onClick={() => onRefreshCard(card.id)}
+                    onClick={() => onRefreshData(index)}
                   >{t`Refresh`}</Menu.Item>
                   <Menu.Item
-                    onClick={() => onRemoveCard(card.id)}
+                    onClick={() => onRemoveSeries(index)}
                   >{t`Remove`}</Menu.Item>
                 </Menu.Dropdown>
               </Menu>
