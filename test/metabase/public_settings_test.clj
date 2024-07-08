@@ -1,6 +1,7 @@
 (ns ^:mb/once metabase.public-settings-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -370,3 +371,29 @@
             (public-settings/show-metabase-links! true)))
 
         (is (= true (public-settings/show-metabase-links)))))))
+
+(def ^:private after+value->expected {[true true]   false
+                                      [true false]  false
+                                      [false true]  true
+                                      [false false] false})
+
+(deftest show-updated-permission-banner-modal-test
+  (doseq [instance-creation-time [(t/local-date-time 2020) (t/local-date-time 2022)]
+          fifty-migration-time [(t/local-date-time 2021) (t/local-date-time 2023)]
+          banner-setting-value [true false]
+          modal-setting-value [true false]]
+    (testing (str "instance-creation-time: " instance-creation-time
+                  ", migration-time: " fifty-migration-time
+                  ", banner-setting-value: " banner-setting-value
+                  ", modal-setting-value: " modal-setting-value)
+      (mt/with-current-user (mt/user->id :crowberto)
+        (public-settings/show-updated-permission-banner! banner-setting-value)
+        (public-settings/show-updated-permission-modal! modal-setting-value)
+        (with-redefs [public-settings/instance-create-time (constantly instance-creation-time)
+                      public-settings/v-fifty-migration-time (constantly fifty-migration-time)]
+          (let [expected-banner-value (get after+value->expected
+                                           [(t/after? instance-creation-time fifty-migration-time) banner-setting-value])]
+            (is (= expected-banner-value (public-settings/show-updated-permission-banner))))
+          (let [expected-modal-value (get after+value->expected
+                                          [(t/after? instance-creation-time fifty-migration-time) modal-setting-value])]
+            (is (= expected-modal-value (public-settings/show-updated-permission-modal)))))))))

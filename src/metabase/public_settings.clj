@@ -816,39 +816,47 @@ See [fonts](../configuring-metabase/fonts.md).")
                     ;; frontend should set this value to `true` after the modal has been shown once
                     v))))
 
-(let [v50-migration-id "v50.2024-01-04T13:52:51"
-      instance-create-time (->> (t2/select-one [:model/User [:%min.date_joined :min]]) :min t/local-date-time)
-      v-fifty-migration-time (->> (t2/query-one (format "select dateexecuted from databasechangelog where id = '%s'" v50-migration-id))
-                                  :dateexecuted)]
-  ;; Bryan (7/8/24): These 2 settings are meant to mitigate any confusion over the new and improved permissions format
-  ;; We switched to in v50 for users who were around proir to v50. We never show the banner or modal on instances
-  ;; created after v50.
-  ;; We should come back around and delete them in a few months.
-  (defsetting show-updated-permission-modal
-    (deferred-tru
-      "Whether an introductory modal should be shown for admins when they first upgrade to the new data-permissions format.")
-    :visibility :admin
-    :export?    false
-    :default    true
-    :user-local :only
-    :getter (fn [] (if (t/after? instance-create-time v-fifty-migration-time)
-                    false
-                    (setting/get-value-of-type :boolean :show-updated-permission-modal)))
-    :type       :boolean
-    :audit      :never)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; v50 Permissions Tutorial settings
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Bryan (7/8/24): These 2 settings are meant to mitigate any confusion over the new and improved permissions format
+;; We switched to in v50 for users who were around proir to v50. We never show the banner or modal on instances
+;; created after v50.
+;; We should come back around and delete them in a few months.
 
-  (defsetting show-updated-permission-banner
-    (deferred-tru
-      "Whether an informational header should be displayed in the permissions editor about the new data-permissions format.")
-    :visibility :admin
-    :export?    false
-    :default    true
-    :user-local :only
-    :getter (fn [] (if (t/after? instance-create-time v-fifty-migration-time)
-                    false
-                    (setting/get-value-of-type :boolean :show-updated-permission-banner)))
-    :type       :boolean
-    :audit      :never))
+(defn- instance-create-time []
+  (->> (t2/select-one [:model/User [:%min.date_joined :min]]) :min t/local-date-time))
+
+(defn- v-fifty-migration-time []
+  (let [v50-migration-id "v50.2024-01-04T13:52:51"]
+    (->> (t2/query-one (format "select dateexecuted from databasechangelog where id = '%s'" v50-migration-id))
+         :dateexecuted)))
+
+(defsetting show-updated-permission-modal
+  (deferred-tru
+    "Whether an introductory modal should be shown for admins when they first upgrade to the new data-permissions format.")
+  :visibility :admin
+  :export?    false
+  :default    true
+  :user-local :only
+  :getter (fn [] (if (t/after? (instance-create-time) (v-fifty-migration-time))
+                   false
+                   (setting/get-value-of-type :boolean :show-updated-permission-modal)))
+  :type       :boolean
+  :audit      :never)
+
+(defsetting show-updated-permission-banner
+  (deferred-tru
+    "Whether an informational header should be displayed in the permissions editor about the new data-permissions format.")
+  :visibility :admin
+  :export?    false
+  :default    true
+  :user-local :only
+  :getter (fn [] (if (t/after? (instance-create-time) (v-fifty-migration-time))
+                   false
+                   (setting/get-value-of-type :boolean :show-updated-permission-banner)))
+  :type       :boolean
+  :audit      :never)
 
 (defn- not-handling-api-request?
   []
