@@ -1,3 +1,4 @@
+import { assocIn } from "icepick";
 import { useMemo, useState } from "react";
 import { useMount } from "react-use";
 
@@ -5,6 +6,7 @@ import { cardApi } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
+import { MetabaseApi } from "metabase/services";
 import {
   extractRemappings,
   getVisualizationTransformed,
@@ -19,6 +21,8 @@ import type {
 } from "metabase-types/api";
 
 import { areSeriesCompatible } from "../utils";
+
+const MAIN_SERIES_INDEX = 0;
 
 export function useVisualizerSeries(initialCardIds: CardId[] = []) {
   const [rawSeries, setRawSeries] = useState<RawSeries>([]);
@@ -76,12 +80,18 @@ export function useVisualizerSeries(initialCardIds: CardId[] = []) {
     return { card, data: dataset.data };
   };
 
-  const _updateCard = (cardId: CardId, attrs: Partial<Card>) => {
-    const nextSeries = rawSeries.map(series =>
-      series.card.id === cardId
-        ? { ...series, card: { ...series.card, ...attrs } }
-        : series,
-    );
+  const _fetchAdHocCardData = async (card: Card) => {
+    const result = await MetabaseApi.dataset(card.dataset_query);
+    if (result.data) {
+      return { card, data: result.data };
+    }
+  };
+
+  const updateSeriesCard = (index: number, attrs: Partial<Card>) => {
+    const nextSeries = assocIn(rawSeries, [index, "card"], {
+      ...rawSeries[index].card,
+      ...attrs,
+    });
     setRawSeries(nextSeries);
   };
 
@@ -118,30 +128,26 @@ export function useVisualizerSeries(initialCardIds: CardId[] = []) {
     }
   };
 
-  const refreshCardData = async (cardId: CardId) => {
-    const newSeries = await _fetchCardAndData(cardId, { forceRefetch: true });
+  const refreshSeriesData = async (index: number) => {
+    const series = rawSeries[index];
+
+    const newSeries = series.card.id
+      ? await _fetchCardAndData(series.card.id, { forceRefetch: true })
+      : await _fetchAdHocCardData(series.card);
+
     if (newSeries) {
-      const nextSeries = rawSeries.map(series =>
-        series.card.id === cardId ? newSeries : series,
-      );
+      const nextSeries = assocIn(rawSeries, [index], newSeries);
       setRawSeries(nextSeries);
     }
   };
 
-  const removeCardSeries = (cardId: CardId) => {
-    const nextSeries = rawSeries.filter(series => series.card.id !== cardId);
+  const removeSeries = (index: number) => {
+    const nextSeries = rawSeries.filter((_, i) => i !== index);
     setRawSeries(nextSeries);
   };
 
-  const setCardDisplay = (cardId: CardId, display: string) => {
-    _updateCard(cardId, { display });
-  };
-
-  const setVizSettings = (
-    cardId: CardId,
-    visualization_settings: VisualizationSettings,
-  ) => {
-    _updateCard(cardId, { visualization_settings });
+  const setVizSettings = (settings: VisualizationSettings) => {
+    updateSeriesCard(MAIN_SERIES_INDEX, { visualization_settings: settings });
   };
 
   useMount(() => {
@@ -168,10 +174,10 @@ export function useVisualizerSeries(initialCardIds: CardId[] = []) {
     settings: computedSettings,
     question: mainQuestion,
     addCardSeries,
+    updateSeriesCard,
     replaceAllWithCardSeries,
-    refreshCardData,
-    removeCardSeries,
-    setCardDisplay,
+    refreshSeriesData,
+    removeSeries,
     setVizSettings,
   };
 }
