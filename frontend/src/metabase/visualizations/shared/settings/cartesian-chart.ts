@@ -35,21 +35,18 @@ export function getDefaultMetricFilter(display: string) {
   return display === "scatter" ? isNumeric : isMetric;
 }
 
-export function getAreDimensionsAndMetricsValid(
-  rawSeries: RawSeries,
-  settings: ComputedVisualizationSettings,
-) {
+export function getAreDimensionsAndMetricsValid(rawSeries: RawSeries) {
   return rawSeries.some(
     ({ card, data }) =>
       columnsAreValid(
         card.visualization_settings["graph.dimensions"],
         data,
-        settings["graph._dimension_filter"],
+        getDefaultDimensionFilter(card.display),
       ) &&
       columnsAreValid(
         card.visualization_settings["graph.metrics"],
         data,
-        settings["graph._metric_filter"],
+        getDefaultMetricFilter(card.display),
       ),
   );
 }
