@@ -150,7 +150,7 @@ export type ColumnDisplayInfo = {
   longDisplayName: string;
   semanticType: string | null;
   effectiveType: string;
-  desiredColumnAlis?: string;
+  desiredColumnAlias?: string;
 
   isCalculated: boolean;
   isFromJoin: boolean;
