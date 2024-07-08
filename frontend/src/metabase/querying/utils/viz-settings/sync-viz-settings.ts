@@ -113,21 +113,22 @@ function syncColumns<T>({
   const oldNameByAlias = Object.fromEntries(
     oldColumns.map(column => [column.alias, column.name]),
   );
-  const existingSettings = settings
-    .map(setting => ({
-      alias: oldAliasByName[getColumnName(setting)],
-      setting,
-    }))
-    .filter(({ alias }) => !alias || newNameByAlias[alias])
-    .map(({ alias, setting }) =>
-      alias ? setColumnName(setting, newNameByAlias[alias]) : setting,
-    );
+  const remappedSettings = settings.reduce((settings: T[], setting) => {
+    const oldAlias = oldAliasByName[getColumnName(setting)];
+    const newName = newNameByAlias[oldAlias];
+    if (!oldAlias) {
+      settings.push(setting);
+    } else if (newName) {
+      settings.push(setColumnName(setting, newName));
+    }
+    return settings;
+  }, []);
   const addedSettings = newColumns
     .filter(column => !oldNameByAlias[column.alias])
     .filter(shouldCreateSetting)
     .map(createSetting);
 
-  return [...existingSettings, ...addedSettings];
+  return [...remappedSettings, ...addedSettings];
 }
 
 function syncTableColumns(
