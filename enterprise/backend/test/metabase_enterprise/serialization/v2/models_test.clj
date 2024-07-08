@@ -4,9 +4,13 @@
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
-   [metabase.models.serialization :as serdes]))
+   [metabase.db :as mdb]
+   [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
+   [metabase.util.connection :as u.conn]
+   [toucan2.core :as t2]))
 
-(deftest every-model-is-supported-test
+(deftest ^:parallel every-model-is-supported-test
   (testing "Serialization support\n"
     (testing "We know about every model"
       (is (= (set (concat serdes.models/exported-models
@@ -35,3 +39,18 @@
               ;; TODO: strip serialization stuff off Pulse*
               (when-not (#{"Pulse" "PulseChannel" "PulseCard" "User" "PermissionsGroup"} (name model))
                 (is (not random-entity-id?))))))))))
+
+(deftest ^:parallel serialization-complete-spec-test
+  ;; When serialization spec is defined, it describes every column
+  (doseq [m     serdes.models/exported-models
+          :let  [spec (serdes/make-spec m)]
+          :when spec]
+    (let [t      (t2/table-name (keyword "model" m))
+          fields (u.conn/app-db-column-types (mdb/app-db) (name t))]
+      (testing (format "%s should declare every column in serialization spec" m)
+        (is (= (->> (keys fields)
+                    (map u/lower-case-en)
+                    set)
+               (->> (concat (:copy spec) (:skip spec) (keys (:transform spec)))
+                    (map name)
+                    set)))))))
