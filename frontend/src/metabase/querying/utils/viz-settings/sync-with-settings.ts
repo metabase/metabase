@@ -36,6 +36,7 @@ function syncVizSettings(
   if (newColumns) {
     if (oldColumns) {
       nextSettings = syncTableColumnNames(nextSettings, newColumns, oldColumns);
+      nextSettings = syncGraphMetricNames(nextSettings, newColumns, oldColumns);
     }
     nextSettings = syncAddedAndRemovedTableColumns(nextSettings, newColumns);
     nextSettings = syncAddedAndRemovedGraphMetrics(nextSettings, newColumns);
@@ -98,6 +99,36 @@ function syncTableColumnNames(
         return setting;
       }
       return { ...setting, name: newName };
+    }),
+  };
+}
+
+function syncGraphMetricNames(
+  settings: VisualizationSettings,
+  newColumns: ColumnInfo[],
+  oldColumns: ColumnInfo[],
+): VisualizationSettings {
+  const graphMetrics = settings["graph.metrics"];
+  if (!graphMetrics) {
+    return settings;
+  }
+
+  const newNameByAlias = new Map(
+    newColumns.map(col => [col.desiredColumnAlias, col.name]),
+  );
+  const oldAliasByName = new Map(
+    oldColumns.map(col => [col.name, col.desiredColumnAlias]),
+  );
+
+  return {
+    ...settings,
+    "graph.metrics": graphMetrics.map(columnName => {
+      const oldAlias = oldAliasByName.get(columnName);
+      const newName = newNameByAlias.get(oldAlias);
+      if (!oldAlias || !newName) {
+        return columnName;
+      }
+      return newName;
     }),
   };
 }
