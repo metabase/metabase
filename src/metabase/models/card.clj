@@ -154,13 +154,11 @@
   [dataset-cards]
   (let [db-id->table-ids (-> (group-by :database_id dataset-cards)
                              (update-vals (partial into #{} (comp (mapcat card->integer-table-ids)
-                                                                  (remove nil?)))))
-        db-id->mp (into {}
-                        (map (juxt identity lib.metadata.jvm/application-database-metadata-provider))
-                        (keys db-id->table-ids))]
+                                                                  (remove nil?)))))]
     (doseq [[db-id table-ids] db-id->table-ids
+            :let  [mp (lib.metadata.jvm/application-database-metadata-provider db-id)]
             :when (seq table-ids)]
-      (lib.metadata.protocols/metadatas (db-id->mp db-id) :metadata/table table-ids))))
+      (lib.metadata.protocols/metadatas mp :metadata/table table-ids))))
 
 (defn with-can-run-adhoc-query
   "Adds can_run_adhoc_query to each card."
