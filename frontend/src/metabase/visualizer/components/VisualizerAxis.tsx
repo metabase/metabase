@@ -1,6 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+// eslint-disable-next-line no-restricted-imports
 import { ActionIcon } from "@mantine/core";
 
 import { Flex, Icon, Menu, Text } from "metabase/ui";
@@ -49,6 +50,9 @@ export function VisualizerAxis({
       align="center"
       gap="md"
       bg="bg-light"
+      py="sm"
+      px="md"
+      style={{ borderRadius: 99 }}
     >
       {columns.map(column => (
         <ColumnPicker
@@ -115,14 +119,26 @@ function ColumnPicker({
           {...attributes}
           {...listeners}
           align="center"
-          gap="4px"
           style={containerStyle}
           ref={setNodeRef}
         >
-          <Text color="text-medium" fw="bold">
-            {option?.label ?? column}
-          </Text>
-          <Icon name="chevrondown" size={12} />
+          <Flex
+            align="center"
+            style={{
+              border: "1px solid #ddd",
+              borderRadius: 99,
+              boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
+            }}
+            bg="white"
+            px="sm"
+            gap="4px"
+          >
+            <Icon name="grabber" size={12} />
+            <Text color="text-medium" fw="bold">
+              {option?.label ?? column}
+            </Text>
+            <Icon name="chevrondown" size={12} />
+          </Flex>
         </Flex>
       </Menu.Target>
       <Menu.Dropdown>
