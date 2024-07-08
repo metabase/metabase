@@ -58,9 +58,8 @@ export const DashCardMenu = ({
 }: DashCardMenuProps) => {
   const store = useStore();
   const { plugins } = useInteractiveDashboardContext();
-  const [menuView, setMenuView] = useState<string | null>(null);
 
-  const [{ loading }, handleDownload] = useDownloadData({
+  const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
     question,
     result,
     dashboardId,
@@ -70,6 +69,7 @@ export const DashCardMenu = ({
     params: getParameterValuesBySlugMap(store.getState()),
   });
 
+  const [menuView, setMenuView] = useState<string | null>(null);
   const [isOpen, { close, toggle }] = useDisclosure(false, {
     onClose: () => {
       setMenuView(null);
@@ -98,7 +98,7 @@ export const DashCardMenu = ({
       <DashCardMenuItems
         question={question}
         result={result}
-        loading={loading}
+        isDownloadingData={isDownloadingData}
         onDownload={() => setMenuView("download")}
       />
     );

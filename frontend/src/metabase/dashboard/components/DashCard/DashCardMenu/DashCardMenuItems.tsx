@@ -12,17 +12,18 @@ import type { Dataset } from "metabase-types/api";
 
 import { canDownloadResults, canEditQuestion } from "./utils";
 
+type DashCardMenuItemsProps = {
+  question: Question;
+  result: Dataset;
+  isDownloadingData: boolean;
+  onDownload: () => void;
+};
 export const DashCardMenuItems = ({
   question,
   result,
-  loading,
+  isDownloadingData,
   onDownload,
-}: {
-  question: Question;
-  result: Dataset;
-  loading: boolean;
-  onDownload: () => void;
-}) => {
+}: DashCardMenuItemsProps) => {
   const dispatch = useDispatch();
 
   const {
@@ -55,9 +56,9 @@ export const DashCardMenuItems = ({
       items.push({
         key: "MB_DOWNLOAD_RESULTS",
         iconName: "download",
-        label: loading ? t`Downloading…` : t`Download results`,
+        label: isDownloadingData ? t`Downloading…` : t`Download results`,
         onClick: onDownload,
-        disabled: loading,
+        disabled: isDownloadingData,
         closeMenuOnClick: false,
       });
     }
@@ -79,7 +80,7 @@ export const DashCardMenuItems = ({
     return items;
   }, [
     customItems,
-    loading,
+    isDownloadingData,
     onDownload,
     onEditQuestion,
     question,

@@ -6,6 +6,7 @@ import {
 } from "react";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
+import { initializePlugins } from "embedding-sdk/lib/plugins/initialize";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
@@ -75,7 +76,7 @@ export const InteractiveQuestionProvider = ({
         onReset: onReset || resetQuestion,
         onNavigateBack,
         mode,
-        plugins,
+        plugins: initializePlugins(plugins),
       }}
     >
       {children}

@@ -1,14 +1,19 @@
-import { createContext, type PropsWithChildren, useContext } from "react";
+import {
+  createContext,
+  type PropsWithChildren,
+  useContext,
+  useMemo,
+} from "react";
 
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
+import { initializePlugins } from "embedding-sdk/lib/plugins/initialize";
 import type Question from "metabase-lib/v1/Question";
 
 type InteractiveDashboardContextType = Partial<{
   plugins: SdkPluginsConfig;
   onEditQuestion?: (question: Question) => void;
 }>;
-
-export const InteractiveDashboardContext =
+const InteractiveDashboardContext =
   createContext<InteractiveDashboardContextType>({});
 
 export const InteractiveDashboardProvider = ({
@@ -16,13 +21,15 @@ export const InteractiveDashboardProvider = ({
   plugins,
   onEditQuestion,
 }: PropsWithChildren<InteractiveDashboardContextType>) => {
+  const value = useMemo(
+    () => ({
+      plugins: initializePlugins(plugins),
+      onEditQuestion,
+    }),
+    [onEditQuestion, plugins],
+  );
   return (
-    <InteractiveDashboardContext.Provider
-      value={{
-        plugins,
-        onEditQuestion,
-      }}
-    >
+    <InteractiveDashboardContext.Provider value={value}>
       {children}
     </InteractiveDashboardContext.Provider>
   );

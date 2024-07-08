@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
 import { usePrevious, useUnmount } from "react-use";
 
-import type {
-  SdkClickActionPluginsConfig,
-  SdkPluginsConfig,
-} from "embedding-sdk";
+import type { SdkPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
@@ -31,9 +28,7 @@ import { InteractiveDashboardProvider } from "./context";
 
 export type InteractiveDashboardProps = SdkDashboardDisplayProps & {
   questionHeight?: number;
-  questionPlugins?: SdkClickActionPluginsConfig;
-  dashboardPlugins?: SdkPluginsConfig;
-
+  plugins?: SdkPluginsConfig;
   className?: string;
 };
 
@@ -45,8 +40,7 @@ const InteractiveDashboardInner = ({
   withDownloads = true,
   hiddenParameters = [],
   questionHeight,
-  questionPlugins,
-  dashboardPlugins,
+  plugins,
   className,
 }: InteractiveDashboardProps) => {
   const {
@@ -130,12 +124,12 @@ const InteractiveDashboardInner = ({
           questionPath={adhocQuestionUrl}
           withTitle={withTitle}
           height={questionHeight}
-          plugins={questionPlugins}
+          plugins={plugins}
           onNavigateBack={handleNavigateBackToDashboard}
         />
       ) : (
         <InteractiveDashboardProvider
-          plugins={{ ...globalPlugins, ...dashboardPlugins }}
+          plugins={{ ...globalPlugins, ...plugins }}
           onEditQuestion={(question: Question) =>
             setAdhocQuestionUrl(Urls.question(question.card()))
           }

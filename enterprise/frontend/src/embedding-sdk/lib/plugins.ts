@@ -20,13 +20,16 @@ type DashCardMenuCustomElement = ({
   question: Question;
 }) => ReactNode;
 
+type CustomDashCardMenuItem = ({
+  question,
+}: {
+  question?: Question;
+}) => DashCardMenuItem;
+
 export type DashCardCustomMenuItem = {
   withDownloads?: boolean;
   withEditLink?: boolean;
-  customItems?: (
-    | DashCardMenuItem
-    | (({ question }: { question?: Question }) => DashCardMenuItem)
-  )[];
+  customItems?: (DashCardMenuItem | CustomDashCardMenuItem)[];
 };
 
 export type SdkDashcardMenuPluginsConfig = {
