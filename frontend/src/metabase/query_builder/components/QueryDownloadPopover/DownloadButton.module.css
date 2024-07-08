@@ -1,0 +1,19 @@
+.UnformattedTextInfo {
+  visibility: hidden;
+}
+
+.DownloadButton {
+  cursor: pointer;
+  border-radius: 0.5rem;
+  background: var(--mb-color-bg-white);
+  color: var(--mb-color-text-dark);
+}
+
+.DownloadButton:hover {
+  background: var(--mb-color-brand);
+  color: var(--mb-color-text-white);
+
+  & .UnformattedTextInfo {
+    visibility: visible;
+  }
+}

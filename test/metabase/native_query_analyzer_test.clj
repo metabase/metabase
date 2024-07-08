@@ -1,7 +1,6 @@
 (ns metabase.native-query-analyzer-test
   (:require
    [clojure.test :refer :all]
-   [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
    [metabase.native-query-analyzer :as query-analyzer]
    [metabase.public-settings :as public-settings]
@@ -39,13 +38,8 @@
         (is (= {:explicit #{(mt/id :venues :id)} :implicit nil}
                (q "select id from venues"))))
       (testing "quotes stop case matching"
-        ;; MySQL does case-insensitive string comparisons by default; quoting does not make it consider case
-        ;; in field names either, so it's consistent behavior
-        (if (= (mdb.connection/db-type) :mysql)
-          (is (= {:explicit #{(mt/id :venues :id)} :implicit nil}
-                 (q "select \"id\" from venues")))
-          (is (= {:explicit nil :implicit nil}
-                 (q "select \"id\" from venues"))))
+        (is (= {:explicit nil :implicit nil}
+               (q "select \"id\" from venues")))
         (is (= {:explicit #{(mt/id :venues :id)} :implicit nil}
                (q "select \"ID\" from venues"))))
       (testing "you can mix quoted and unquoted names"
