@@ -106,13 +106,18 @@ export function useVisualizerSeries(initialCardIds: CardId[] = []) {
       return;
     }
     const previousQuestion = new Question(previousCard, metadata);
+    const wasSaved = previousQuestion.isSaved();
     let nextQuestion = previousQuestion
       .setDatasetQuery(query)
       .withoutNameAndId();
 
-    nextQuestion = nextQuestion.setDisplayName(
-      nextQuestion.generateQueryDescription(),
-    );
+    let nextName = nextQuestion.generateQueryDescription();
+    if (!nextName && wasSaved) {
+      const previousName = previousQuestion.displayName();
+      nextName = previousName + " — Modified";
+    }
+
+    nextQuestion = nextQuestion.setDisplayName(nextName);
 
     const nextSeries = await _fetchAdHocCardData(nextQuestion.card());
 
