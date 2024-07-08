@@ -136,9 +136,30 @@ function syncGraphMetricNames(
       newColumns,
       oldColumns,
       setting => setting,
-      (setting, newName) => newName,
+      (_, newName) => newName,
     ),
   };
+}
+
+function syncAddedAndRemovedColumns<T>(
+  settings: T[],
+  newColumns: ColumnInfo[],
+  getColumnName: (setting: T) => string,
+  createSetting: (newName: string) => T,
+): T[] {
+  const oldColumnNames = new Set(
+    settings.map(setting => getColumnName(setting)),
+  );
+  const addedSettings = newColumns
+    .filter(column => !oldColumnNames.has(column.name))
+    .map(column => createSetting(column.name));
+
+  const newColumnNames = new Set(newColumns.map(column => column.name));
+  const retainedSettings = settings.filter(setting =>
+    newColumnNames.has(getColumnName(setting)),
+  );
+
+  return [...retainedSettings, ...addedSettings];
 }
 
 function syncAddedAndRemovedTableColumns(
@@ -150,24 +171,14 @@ function syncAddedAndRemovedTableColumns(
     return settings;
   }
 
-  const oldColumnNames = new Set(
-    columnSettings.map(columnSetting => columnSetting.name),
-  );
-  const addedColumnSettings = newColumns
-    .filter(column => !oldColumnNames.has(column.name))
-    .map(column => ({
-      name: column.name,
-      enabled: true,
-    }));
-
-  const newColumnNames = new Set(newColumns.map(column => column.name));
-  const retainedColumnSettings = columnSettings.filter(columnSetting =>
-    newColumnNames.has(columnSetting.name),
-  );
-
   return {
     ...settings,
-    "table.columns": [...retainedColumnSettings, ...addedColumnSettings],
+    "table.columns": syncAddedAndRemovedColumns(
+      columnSettings,
+      newColumns,
+      setting => setting.name,
+      name => ({ name, enabled: true }),
+    ),
   };
 }
 
@@ -180,18 +191,13 @@ function syncAddedAndRemovedGraphMetrics(
     return settings;
   }
 
-  const oldColumnNames = new Set(graphMetrics);
-  const addedGraphMetrics = newColumns
-    .filter(column => !oldColumnNames.has(column.name) && column.isAggregation)
-    .map(column => column.name);
-
-  const newColumnNames = new Set(newColumns.map(column => column.name));
-  const retainedGraphMetrics = graphMetrics.filter(columnName =>
-    newColumnNames.has(columnName),
-  );
-
   return {
     ...settings,
-    "graph.metrics": [...retainedGraphMetrics, ...addedGraphMetrics],
+    "graph.metrics": syncAddedAndRemovedColumns(
+      graphMetrics,
+      newColumns,
+      setting => setting,
+      name => name,
+    ),
   };
 }
