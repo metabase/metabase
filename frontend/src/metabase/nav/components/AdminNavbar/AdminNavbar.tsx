@@ -100,7 +100,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
         />
       </Button>
       {mobileNavOpen && (
-        <AdminMobileNavBarItems aria-label="nav-list">
+        <AdminMobileNavBarItems aria-label={t`Navigation links`}>
           {adminPaths.map(({ name, key, path }) => (
             <AdminNavItem
               name={name}
