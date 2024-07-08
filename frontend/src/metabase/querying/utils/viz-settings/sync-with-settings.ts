@@ -4,6 +4,7 @@ import type { Series, VisualizationSettings } from "metabase-types/api";
 type ColumnInfo = {
   name: string;
   desiredColumnAlias?: string;
+  isAggregation: boolean;
 };
 
 export function syncVizSettingsWithQuery(
@@ -37,6 +38,7 @@ function syncVizSettings(
       nextSettings = syncTableColumnNames(nextSettings, newColumns, oldColumns);
     }
     nextSettings = syncAddedAndRemovedTableColumns(nextSettings, newColumns);
+    nextSettings = syncAddedAndRemovedGraphMetrics(nextSettings, newColumns);
   }
   return nextSettings;
 }
@@ -53,6 +55,7 @@ function getReturnedColumns(query: Lib.Query): ColumnInfo[] | undefined {
     .map(columnInfo => ({
       name: columnInfo.name,
       desiredColumnAlias: columnInfo.desiredColumnAlis,
+      isAggregation: columnInfo.isAggregation,
     }));
 }
 
@@ -65,6 +68,7 @@ function getSeriesColumns(series?: Series | null): ColumnInfo[] | undefined {
   return singleSeries.data.cols.map(column => ({
     name: column.name,
     desiredColumnAlias: undefined,
+    isAggregation: column.source === "aggregation",
   }));
 }
 
@@ -110,22 +114,45 @@ function syncAddedAndRemovedTableColumns(
   const oldColumnNames = new Set(
     columnSettings.map(columnSetting => columnSetting.name),
   );
+  const addedColumnSettings = newColumns
+    .filter(column => !oldColumnNames.has(column.name))
+    .map(column => ({
+      name: column.name,
+      enabled: true,
+    }));
+
   const newColumnNames = new Set(newColumns.map(column => column.name));
-  const addedColumns = newColumns.filter(
-    column => !oldColumnNames.has(column.name),
-  );
   const retainedColumnSettings = columnSettings.filter(columnSetting =>
     newColumnNames.has(columnSetting.name),
   );
 
   return {
     ...settings,
-    "table.columns": [
-      ...retainedColumnSettings,
-      ...addedColumns.map(column => ({
-        name: column.name,
-        enabled: true,
-      })),
-    ],
+    "table.columns": [...retainedColumnSettings, ...addedColumnSettings],
+  };
+}
+
+function syncAddedAndRemovedGraphMetrics(
+  settings: VisualizationSettings,
+  newColumns: ColumnInfo[],
+): VisualizationSettings {
+  const graphMetrics = settings["graph.metrics"];
+  if (!graphMetrics) {
+    return settings;
+  }
+
+  const oldColumnNames = new Set(graphMetrics);
+  const addedGraphMetrics = newColumns
+    .filter(column => !oldColumnNames.has(column.name) && column.isAggregation)
+    .map(column => column.name);
+
+  const newColumnNames = new Set(newColumns.map(column => column.name));
+  const retainedGraphMetrics = graphMetrics.filter(columnName =>
+    newColumnNames.has(columnName),
+  );
+
+  return {
+    ...settings,
+    "graph.metrics": [...retainedGraphMetrics, ...addedGraphMetrics],
   };
 }
