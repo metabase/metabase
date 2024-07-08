@@ -9,6 +9,7 @@ import {
 } from "metabase/dashboard/hooks";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import { isNotNull } from "metabase/lib/types";
+import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import type { DashboardId } from "metabase-types/api";
 
 export type SdkDashboardDisplayProps = {
@@ -20,10 +21,8 @@ export type SdkDashboardDisplayProps = {
   hiddenParameters?: string[];
 };
 
-export type SdkDashboardEventHandlersProps = {
-  onLoad?: () => void;
-  onLoadWithCards?: () => void;
-};
+export type SdkDashboardEventHandlersProps =
+  PublicOrEmbeddedDashboardEventHandlersProps;
 
 export const useSdkDashboardParams = ({
   dashboardId,

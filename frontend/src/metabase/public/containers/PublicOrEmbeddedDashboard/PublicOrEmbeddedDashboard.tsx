@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
 
+import { getEventHandlers } from "embedding-sdk/store/selectors";
 import {
   cancelFetchDashboardCardData,
   fetchDashboard,
@@ -31,7 +32,8 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
-import { type DispatchFn, useDispatch } from "metabase/lib/redux";
+import { type DispatchFn, useDispatch, useSelector } from "metabase/lib/redux";
+import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import type { DashboardId } from "metabase-types/api";
@@ -72,10 +74,7 @@ type OwnProps = {
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
-
-  onLoad?: () => void;
-  onLoadWithCards?: () => void;
-};
+} & PublicOrEmbeddedDashboardEventHandlersProps;
 
 type DisplayProps = Pick<
   DashboardDisplayOptionControls,
@@ -171,11 +170,14 @@ const PublicOrEmbeddedDashboardInner = ({
 }: PublicOrEmbeddedDashboardProps) => {
   const dispatch = useDispatch();
   const didMountRef = useRef(false);
+
   const previousDashboardId = usePrevious(dashboardId);
   const previousSelectedTabId = usePrevious(selectedTabId);
   const previousParameterValues = usePrevious(parameterValues);
   const previousIsLoading = usePrevious(isLoading);
   const previousIsLoadingWithCards = usePrevious(isLoadingWithCards);
+
+  const sdkEventHandlers = useSelector(getEventHandlers);
 
   const shouldFetchCardData = dashboard?.tabs?.length === 0;
 
@@ -223,19 +225,30 @@ const PublicOrEmbeddedDashboardInner = ({
 
   useEffect(() => {
     if (!isLoading && previousIsLoading && !isErrorPage) {
-      onLoad?.();
+      sdkEventHandlers?.onDashboardLoad?.(dashboard);
+      onLoad?.(dashboard);
     }
-  }, [isLoading, isErrorPage, onLoad, previousIsLoading]);
+  }, [
+    isLoading,
+    isErrorPage,
+    onLoad,
+    previousIsLoading,
+    dashboard,
+    sdkEventHandlers,
+  ]);
 
   useEffect(() => {
     if (!isLoadingWithCards && previousIsLoadingWithCards && !isErrorPage) {
-      onLoadWithCards?.();
+      sdkEventHandlers?.onDashboardLoad?.(dashboard);
+      onLoadWithCards?.(dashboard);
     }
   }, [
     isLoadingWithCards,
     isErrorPage,
     onLoadWithCards,
     previousIsLoadingWithCards,
+    sdkEventHandlers,
+    dashboard,
   ]);
 
   return (
