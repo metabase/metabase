@@ -4,7 +4,7 @@ import type { Series, VisualizationSettings } from "metabase-types/api";
 type ColumnInfo = {
   name: string;
   desiredColumnAlias?: string;
-  isAggregation: boolean;
+  isAggregation?: boolean;
 };
 
 export function syncVizSettingsWithQuery(
@@ -27,7 +27,7 @@ export function syncVizSettingsWithSeries(
   return syncVizSettings(settings, newColumns, oldColumns);
 }
 
-function syncVizSettings(
+export function syncVizSettings(
   settings: VisualizationSettings,
   newColumns: ColumnInfo[] | undefined,
   oldColumns: ColumnInfo[] | undefined,
@@ -225,7 +225,7 @@ function syncAddedAndRemovedGraphMetrics(
       newColumns,
       getColumnName: setting => setting,
       createSetting: column => column.name,
-      canCreateSetting: column => column.isAggregation,
+      canCreateSetting: column => column.isAggregation ?? false,
     }),
   };
 }
