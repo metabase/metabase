@@ -548,7 +548,11 @@
                        {:display       :table
                         :dataset_query {:database (mt/id)
                                         :type     :query
-                                        :query    {:source-table (mt/id :orders)}}}
+                                        :query    {:source-table (mt/id :orders)}}
+                        :visualization_settings
+                        {:table.cell_column "SUBTOTAL"
+                         :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :subtotal))
+                                             {:column_title "SUB CASH MONEY"}}}}
                        :model/Dashboard {dashboard-id :id}
                        {}
                        :model/DashboardCard dashcard
@@ -556,24 +560,21 @@
                         :card_id      card-id
                         :visualization_settings
                         {:table.cell_column "TOTAL"
-                         #_#_:table.columns
-                         [{:name "ID" :key "[\"ref\",[\"field\",37,null]]" :enabled false :fieldRef [:field (mt/id :orders :id) nil]}
-                          {:name "USER_ID" :key "[\"ref\",[\"field\",43,null]]" :enabled false :fieldRef [:field (mt/id :orders :user_id) nil]}
-                          {:name "PRODUCT_ID" :key "[\"ref\",[\"field\",40,null]]" :enabled false :fieldRef [:field (mt/id :orders :product_id) nil]}
-                          {:name "SUBTOTAL" :key "[\"ref\",[\"field\",44,null]]" :enabled false :fieldRef [:field (mt/id :orders :subtotal) nil]}
-                          {:name "TAX" :key "[\"ref\",[\"field\",38,null]]" :enabled false :fieldRef [:field (mt/id :orders :tax) nil]}
-                          {:name "DISCOUNT" :key "[\"ref\",[\"field\",36,null]]" :enabled false :fieldRef [:field (mt/id :orders :discount) nil]}]
-                         :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :total)) {:column_title "CASH MONEY"}}}}]
-          (let [card-result         (card-download card :csv false)
-                dashcard-result     (dashcard-download dashcard :csv false)
-                subscription-result (subscription-attachment! dashcard :csv false)
-                header              ["ID" "User ID" "Product ID" "Subtotal" "Tax"
+                         :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :total))
+                                             {:column_title "CASH MONEY"}}}}]
+          (let [card-result         (card-download card :csv true)
+                dashcard-result     (dashcard-download dashcard :csv true)
+                subscription-result (subscription-attachment! dashcard :csv true)
+                alert-result        (alert-attachment! card :csv true)
+                header              ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
                                      "Total" "Discount ($)" "Created At" "Quantity"]
-                expected            ["ID" "User ID" "Product ID" "Subtotal" "Tax"
+                expected            ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
                                      "CASH MONEY" "Discount ($)" "Created At" "Quantity"]]
             (is (= {:card-download           [header]
                     :dashcard-download       [expected]
-                    :subscription-attachment [expected]}
+                    :subscription-attachment [expected]
+                    :alert-attachment        [header]}
                    {:card-download           (take 1 card-result)
                     :dashcard-download       (take 1 dashcard-result)
-                    :subscription-attachment (take 1 subscription-result)}))))))))
+                    :subscription-attachment (take 1 subscription-result)
+                    :alert-attachment        (take 1 alert-result)}))))))))
