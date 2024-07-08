@@ -2,7 +2,7 @@ import type { Query } from "history";
 import { useEffect, useRef } from "react";
 import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
-import { useMount, usePrevious, useUnmount } from "react-use";
+import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
 
 import {
@@ -179,23 +179,21 @@ const PublicOrEmbeddedDashboardInner = ({
 
   const shouldFetchCardData = dashboard?.tabs?.length === 0;
 
-  useMount(() => {
-    initializeData({
-      dashboardId: String(dashboardId),
-      shouldReload: !isNavigatingBackToDashboard,
-      parameterQueryParams,
-      dispatch,
-    }).then(() => {
-      didMountRef.current = true;
-    });
-  });
-
   useUnmount(() => {
     cancelFetchDashboardCardData();
   });
 
   useEffect(() => {
-    if (didMountRef.current) {
+    if (!didMountRef.current) {
+      initializeData({
+        dashboardId: String(dashboardId),
+        shouldReload: !isNavigatingBackToDashboard,
+        parameterQueryParams,
+        dispatch,
+      });
+
+      didMountRef.current = true;
+    } else {
       if (dashboardId !== previousDashboardId) {
         initializeData({
           dashboardId: String(dashboardId),
@@ -213,6 +211,7 @@ const PublicOrEmbeddedDashboardInner = ({
     dashboardId,
     dispatch,
     fetchDashboardCardData,
+    isNavigatingBackToDashboard,
     parameterQueryParams,
     parameterValues,
     previousDashboardId,
