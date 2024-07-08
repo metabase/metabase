@@ -1,14 +1,24 @@
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import {
+  columnFinder,
+  createQuery,
+  SAMPLE_METADATA,
+} from "metabase-lib/test-helpers";
+import type { Series } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDatasetData,
   createMockTableColumnOrderSetting,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
+import { SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 
 import {
   syncVizSettings,
   syncVizSettingsWithQuery,
   type ColumnInfo,
+  syncVizSettingsWithSeries,
 } from "./sync-viz-settings";
 
 describe("syncVizSettings", () => {
@@ -284,6 +294,94 @@ describe("syncVizSettingsWithQuery", () => {
           { name: "ID_2", enabled: true },
         ],
       });
+    });
+  });
+});
+
+describe("syncVizSettingsWithSeries", () => {
+  const query = Lib.nativeQuery(
+    SAMPLE_DB_ID,
+    Lib.metadataProvider(SAMPLE_DB_ID, SAMPLE_METADATA),
+    "SELECT * FROM ORDERS",
+  );
+
+  describe("table.columns", () => {
+    const newSeries: Series = [
+      {
+        card: createMockCard(),
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({ name: "ID", source: "native" }),
+            createMockColumn({ name: "ID_2", source: "native" }),
+            createMockColumn({ name: "ID_3", source: "native" }),
+          ],
+        }),
+      },
+    ];
+    const oldSeries: Series = [
+      {
+        card: createMockCard(),
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({ name: "ID", source: "native" }),
+            createMockColumn({ name: "ID_2", source: "native" }),
+          ],
+        }),
+      },
+    ];
+    const oldSettings = createMockVisualizationSettings({
+      "table.columns": [
+        createMockTableColumnOrderSetting({
+          name: "ID",
+          enabled: true,
+        }),
+        createMockTableColumnOrderSetting({
+          name: "ID_2",
+          enabled: false,
+        }),
+      ],
+    });
+
+    it("should handle adding new columns without column.name changes", () => {
+      const newSettings = syncVizSettingsWithSeries(
+        oldSettings,
+        query,
+        newSeries,
+        oldSeries,
+      );
+      expect(newSettings).toEqual({
+        "table.columns": [
+          { name: "ID", enabled: true },
+          { name: "ID_2", enabled: false },
+          { name: "ID_3", enabled: true },
+        ],
+      });
+    });
+
+    it("should ignore updates if there are errors in new query results", () => {
+      const newSettings = syncVizSettingsWithSeries(
+        oldSettings,
+        query,
+        newSeries.map(singleSeries => ({
+          ...singleSeries,
+          error: { status: 500 },
+        })),
+        oldSeries,
+      );
+      expect(newSettings).toBe(oldSettings);
+    });
+
+    it("should ignore updates if there are errors in old query results", () => {
+      const newSettings = syncVizSettingsWithSeries(
+        oldSettings,
+        query,
+        newSeries,
+        oldSeries.map(singleSeries => ({
+          ...singleSeries,
+          error: { status: 500 },
+        })),
+      );
+      expect(newSettings).toBe(oldSettings);
     });
   });
 });
