@@ -28,6 +28,7 @@ export const ListItemLink = styled(Link)`
 export const ListItemName = styled(Ellipsified)`
   max-width: 100%;
   overflow: hidden;
+
   &:hover {
     color: var(--mb-color-brand);
   }

@@ -668,3 +668,136 @@ describe("issue 39749", () => {
     cy.findByLabelText("Description").should("have.text", "B");
   });
 });
+
+describe("issue 25885", () => {
+  const mbqlModelDetails: StructuredQuestionDetails = {
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+      fields: [["field", ORDERS.ID, { "base-type": "type/BigInteger" }]],
+      joins: [
+        {
+          fields: [
+            [
+              "field",
+              ORDERS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Orders" },
+            ],
+          ],
+          strategy: "left-join",
+          alias: "Orders",
+          condition: [
+            "=",
+            ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+            [
+              "field",
+              ORDERS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Orders" },
+            ],
+          ],
+          "source-table": ORDERS_ID,
+        },
+        {
+          fields: [
+            [
+              "field",
+              ORDERS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Orders_2" },
+            ],
+          ],
+          strategy: "left-join",
+          alias: "Orders_2",
+          condition: [
+            "=",
+            ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+            [
+              "field",
+              ORDERS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Orders_2" },
+            ],
+          ],
+          "source-table": ORDERS_ID,
+        },
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/*").as("updateModel");
+  });
+
+  function setColumnName(oldName: string, newName: string) {
+    tableHeaderClick(oldName);
+    cy.findByLabelText("Display name")
+      .should("have.value", oldName)
+      .clear()
+      .type(newName);
+  }
+
+  function verifyColumnName(name: string) {
+    tableHeaderClick(name);
+    cy.findByLabelText("Display name").should("have.value", name);
+  }
+
+  it("should allow to edit metadata for mbql models with self joins columns (metabase#25885)", () => {
+    createQuestion(mbqlModelDetails).then(({ body: card }) =>
+      visitModel(card.id),
+    );
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    setColumnName("ID", "ID1");
+    setColumnName("Orders → ID", "ID2");
+    setColumnName("Orders_2 → ID", "ID3");
+    verifyColumnName("ID1");
+    verifyColumnName("ID2");
+    verifyColumnName("ID3");
+  });
+});
+
+describe("issue 39993", () => {
+  const columnName = "Exp";
+
+  const modelDetails: StructuredQuestionDetails = {
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+      fields: [
+        ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+        ["expression", columnName, { "base-type": "type/Integer" }],
+      ],
+      expressions: { [columnName]: ["+", 1, 1] },
+    },
+  };
+
+  function dragAndDrop(column: string, distance: number) {
+    cy.findAllByTestId("header-cell")
+      .contains(column)
+      .then(element => {
+        const rect = element[0].getBoundingClientRect();
+        cy.wrap(element)
+          .trigger("mousedown")
+          .trigger("mousemove", { clientX: rect.x + distance, clientY: rect.y })
+          .trigger("mouseup");
+      });
+  }
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/*").as("updateModel");
+  });
+
+  it("should preserve viz settings for models with custom expressions (metabase#39993)", () => {
+    createQuestion(modelDetails).then(({ body: card }) => visitModel(card.id));
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    cy.log("drag & drop the custom column 100 px to the left");
+    dragAndDrop(columnName, -100);
+    cy.button("Save changes").click();
+    cy.wait("@updateModel");
+    cy.findAllByTestId("header-cell").eq(0).should("have.text", "Exp");
+    cy.findAllByTestId("header-cell").eq(1).should("have.text", "ID");
+  });
+});
