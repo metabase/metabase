@@ -1,0 +1,54 @@
+import {
+  createMockTableColumnOrderSetting,
+  createMockVisualizationSettings,
+} from "metabase-types/api/mocks";
+
+import { syncVizSettings } from "./sync-viz-settings";
+
+describe("syncVizSettings", () => {
+  it("should handle column.name updates", () => {
+    const oldColumns = [
+      { name: "ID", desiredColumnAlias: "ID" },
+      { name: "TOTAL", desiredColumnAlias: "TOTAL" },
+      { name: "ID_2", desiredColumnAlias: "PRODUCTS__ID" },
+      { name: "ID_3", desiredColumnAlias: "PEOPLE__ID" },
+    ];
+
+    const newColumns = [
+      { name: "ID", desiredColumnAlias: "ID" },
+      { name: "TOTAL", desiredColumnAlias: "TOTAL" },
+      { name: "ID_2", desiredColumnAlias: "PEOPLE__ID" },
+    ];
+
+    const oldSettings = createMockVisualizationSettings({
+      "table.columns": [
+        createMockTableColumnOrderSetting({
+          name: "ID",
+          enabled: true,
+        }),
+        createMockTableColumnOrderSetting({
+          name: "TOTAL",
+          enabled: false,
+        }),
+        createMockTableColumnOrderSetting({
+          name: "ID_2",
+          enabled: false,
+        }),
+        createMockTableColumnOrderSetting({
+          name: "ID_3",
+          enabled: true,
+        }),
+      ],
+    });
+
+    const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
+
+    expect(newSettings).toEqual({
+      "table.columns": [
+        { name: "ID", enabled: true },
+        { name: "TOTAL", enabled: false },
+        { name: "ID_2", enabled: true },
+      ],
+    });
+  });
+});
