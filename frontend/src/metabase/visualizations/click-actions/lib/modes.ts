@@ -15,5 +15,5 @@ export function getEmbeddingMode(
   question: Question,
   plugins?: SdkPluginsConfig,
 ): Mode | null {
-  return new Mode(question, EmbeddingSdkMode, plugins?.mapQuestionClickActions);
+  return new Mode(question, EmbeddingSdkMode, plugins);
 }
