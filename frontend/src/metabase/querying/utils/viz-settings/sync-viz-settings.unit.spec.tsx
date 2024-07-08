@@ -112,6 +112,134 @@ describe("syncVizSettings", () => {
         ],
       });
     });
+
+    it("should preserve settings for columns that are not present both in old and new columns", () => {
+      const oldColumns: ColumnInfo[] = [
+        { name: "ID", alias: "ID" },
+        { name: "TOTAL", alias: "TOTAL" },
+      ];
+      const newColumns: ColumnInfo[] = [{ name: "ID", alias: "ID" }];
+      const oldSettings = createMockVisualizationSettings({
+        "table.columns": [
+          createMockTableColumnOrderSetting({
+            name: "ID",
+            enabled: true,
+          }),
+          createMockTableColumnOrderSetting({
+            name: "TOTAL",
+            enabled: true,
+          }),
+          createMockTableColumnOrderSetting({
+            name: "TAX",
+            enabled: false,
+          }),
+        ],
+      });
+
+      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
+      expect(newSettings).toEqual({
+        "table.columns": [
+          { name: "ID", enabled: true },
+          { name: "TAX", enabled: false },
+        ],
+      });
+    });
+  });
+
+  describe("graph.metrics", () => {
+    it("should not update the setting if the order of columns has changed", () => {
+      const oldColumns: ColumnInfo[] = [
+        { name: "ID", alias: "ID" },
+        { name: "ID_2", alias: "PEOPLE__ID" },
+      ];
+      const newColumns: ColumnInfo[] = [oldColumns[1], oldColumns[0]];
+      const oldSettings = createMockVisualizationSettings({
+        "graph.metrics": ["ID", "ID_2"],
+      });
+
+      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
+      expect(newSettings).toEqual(oldSettings);
+    });
+
+    it("should handle adding new columns with column.name changes", () => {
+      const oldColumns: ColumnInfo[] = [
+        { name: "ID", alias: "ID" },
+        { name: "ID_2", alias: "PEOPLE__ID" },
+      ];
+      const newColumns: ColumnInfo[] = [
+        { name: "ID", alias: "ID" },
+        { name: "ID_2", alias: "PRODUCTS__ID", isAggregation: true },
+        { name: "ID_3", alias: "PEOPLE__ID" },
+      ];
+
+      const oldSettings = createMockVisualizationSettings({
+        "graph.metrics": ["ID", "ID_2"],
+      });
+
+      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
+      expect(newSettings).toEqual({
+        "graph.metrics": ["ID", "ID_3", "ID_2"],
+      });
+    });
+
+    it("should not add new columns if they are not coming from aggregation", () => {
+      const oldColumns: ColumnInfo[] = [
+        { name: "ID", alias: "ID" },
+        { name: "ID_2", alias: "PEOPLE__ID" },
+      ];
+      const newColumns: ColumnInfo[] = [
+        { name: "ID", alias: "ID" },
+        { name: "ID_2", alias: "PRODUCTS__ID" },
+        { name: "ID_3", alias: "PEOPLE__ID" },
+      ];
+
+      const oldSettings = createMockVisualizationSettings({
+        "graph.metrics": ["ID", "ID_2"],
+      });
+
+      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
+      expect(newSettings).toEqual({
+        "graph.metrics": ["ID", "ID_3"],
+      });
+    });
+
+    it("should handle removing columns with column.name changes", () => {
+      const oldColumns: ColumnInfo[] = [
+        { name: "ID", alias: "ID" },
+        { name: "TOTAL", alias: "TOTAL" },
+        { name: "ID_2", alias: "PRODUCTS__ID" },
+        { name: "ID_3", alias: "PEOPLE__ID" },
+      ];
+      const newColumns: ColumnInfo[] = [
+        { name: "ID", alias: "ID" },
+        { name: "TOTAL", alias: "TOTAL" },
+        { name: "ID_2", alias: "PEOPLE__ID" },
+      ];
+      const oldSettings = createMockVisualizationSettings({
+        "graph.metrics": ["ID", "TOTAL", "ID_2", "ID_3"],
+      });
+
+      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
+      expect(newSettings).toEqual({
+        "graph.metrics": ["ID", "TOTAL", "ID_2"],
+      });
+    });
+
+    it("should preserve settings for columns that are not present both in old and new columns", () => {
+      const oldColumns: ColumnInfo[] = [
+        { name: "ID", alias: "ID" },
+        { name: "TOTAL", alias: "TOTAL" },
+      ];
+      const newColumns: ColumnInfo[] = [{ name: "ID", alias: "ID" }];
+      const oldSettings = createMockVisualizationSettings({
+        "graph.metrics": ["ID", "TOTAL", "TAX"],
+      });
+
+      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
+      expect(newSettings).toEqual({
+        "graph.metrics": ["ID", "TAX"],
+      });
+    });
   });
 });
 
