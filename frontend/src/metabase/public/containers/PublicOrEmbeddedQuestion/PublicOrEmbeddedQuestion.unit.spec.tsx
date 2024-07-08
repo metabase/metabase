@@ -99,6 +99,7 @@ async function setup({
 describe("PublicOrEmbeddedQuestion", () => {
   beforeAll(() => {
     mockSettings({
+      // the `whitelabel` feature is needed to test #downloads=false
       "token-features": createMockTokenFeatures({ whitelabel: true }),
     });
 

@@ -32,6 +32,7 @@ const DASHBOARD_TITLE = '"My test dash"';
 describe("PublicOrEmbeddedDashboardPage", () => {
   beforeAll(() => {
     mockSettings({
+      // the `whitelabel` feature is needed to test #downloads=false
       "token-features": createMockTokenFeatures({ whitelabel: true }),
     });
 
