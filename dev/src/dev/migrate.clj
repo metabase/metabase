@@ -122,7 +122,7 @@
                   (catch RollbackImpossibleException e
                     (str "Rollback impossible " e)))})
 
-(defn- get-database-instance [db-type]
+(defn- liquibase-database [db-type]
   (case db-type
     :postgres (PostgresDatabase.)
     :mysql    (MySQLDatabase.)
@@ -141,7 +141,7 @@
   ([id db-type :- [:enum :postgres :mysql :mariadb :h2]]
    (t2/with-connection [conn]
      (liquibase/with-liquibase [^Liquibase liquibase conn]
-       (let [database            (get-database-instance db-type)
+       (let [database            (liquibase-database db-type)
              change-log-iterator (ChangeLogIterator. (.getDatabaseChangeLog liquibase) (into-array ChangeSetFilter []))
              list-visistor       (ListVisitor.)
              runtime-env         (RuntimeEnvironment. database (Contexts.) nil)
