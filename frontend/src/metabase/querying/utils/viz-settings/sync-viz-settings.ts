@@ -89,20 +89,23 @@ function syncColumnNames<T>(
   setColumnName: (setting: T, newName: string) => T,
 ): T[] {
   const newNameByAlias = new Map(
-    newColumns.map(col => [col.desiredColumnAlias, col.name]),
+    newColumns.map(column => [column.desiredColumnAlias, column.name]),
   );
   const oldAliasByName = new Map(
-    oldColumns.map(col => [col.name, col.desiredColumnAlias]),
+    oldColumns.map(column => [column.name, column.desiredColumnAlias]),
   );
 
-  return settings.map(setting => {
-    const oldAlias = oldAliasByName.get(getColumnName(setting));
+  return settings.reduce((newSettings: T[], setting: T) => {
+    const oldName = getColumnName(setting);
+    const oldAlias = oldAliasByName.get(oldName);
     const newName = newNameByAlias.get(oldAlias);
-    if (!oldAlias || !newName) {
-      return setting;
+    if (!oldAlias) {
+      newSettings.push(setting);
+    } else if (newName) {
+      newSettings.push(setColumnName(setting, newName));
     }
-    return setColumnName(setting, newName);
-  });
+    return newSettings;
+  }, []);
 }
 
 function syncTableColumnNames(
@@ -155,16 +158,14 @@ function syncAddedAndRemovedColumns<T>(
   getColumnName: (setting: T) => string,
   createSetting: (newName: string) => T,
 ): T[] {
-  const oldColumnNames = new Set(
-    settings.map(setting => getColumnName(setting)),
-  );
+  const oldNames = new Set(settings.map(setting => getColumnName(setting)));
   const addedSettings = newColumns
-    .filter(column => !oldColumnNames.has(column.name))
+    .filter(column => !oldNames.has(column.name))
     .map(column => createSetting(column.name));
 
-  const newColumnNames = new Set(newColumns.map(column => column.name));
+  const newNames = new Set(newColumns.map(column => column.name));
   const retainedSettings = settings.filter(setting =>
-    newColumnNames.has(getColumnName(setting)),
+    newNames.has(getColumnName(setting)),
   );
 
   return [...retainedSettings, ...addedSettings];
