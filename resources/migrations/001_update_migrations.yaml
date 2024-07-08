@@ -6607,9 +6607,26 @@ databaseChangeLog:
       comment: Remove idx_uniq_field_table_id_parent_id_name because it is redundant with idx_unique_field
       preConditions:
         - onFail: MARK_RAN
-        - uniqueConstraintExists:
-            constraintName: idx_uniq_field_table_id_parent_id_name
-            tableName: metabase_field
+        - or:
+            - and:
+                - dbms:
+                    type: h2,postgresql
+                    uniqueConstraintExists:
+                      tableName: metabase_field
+                      constraintName: idx_uniq_field_table_id_parent_id_name
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: >-
+                      SELECT EXISTS (
+                        SELECT *
+                        FROM information_schema.statistics
+                        WHERE table_schema = DATABASE()
+                          AND table_name = 'metabase_field'
+                          AND index_name = 'idx_uniq_field_table_id_parent_id_name'
+                      )
       changes:
         - dropUniqueConstraint:
             tableName: metabase_field
