@@ -184,7 +184,7 @@
 
 (defn check-data-perms
   "Checks whether the current user has sufficient data permissions to run `query`. Returns `true` if the user has data
-  perms for the query, and throws an exception otherwise (exceptions cna be disabled by setting `throw-exceptions?` to
+  perms for the query, and throws an exception otherwise (exceptions can be disabled by setting `throw-exceptions?` to
   `false`).
 
   If the [:gtap ::perms] path is present in the query, these perms are implicitly granted to the current user."

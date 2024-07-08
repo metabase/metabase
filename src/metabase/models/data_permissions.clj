@@ -351,7 +351,7 @@
 (mu/defn full-db-permission-for-user :- PermissionValue
   "Returns the effective *db-level* permission value for a given user, permission type, and database ID. If the user
   has multiple permissions for the given type in different groups, they are coalesced into a single value. The
-  db-level permission is the *most* restrictive table-level permission within that schema."
+  db-level permission is the *most* restrictive table-level permission within that database."
   [user-id perm-type database-id]
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
