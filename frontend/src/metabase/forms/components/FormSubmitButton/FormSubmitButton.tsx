@@ -44,7 +44,6 @@ export const FormSubmitButton = forwardRef(function FormSubmitButton(
       type="submit"
       color={submitColor}
       disabled={isDisabled}
-      variant="filled"
     >
       {submitLabel}
     </Button>
