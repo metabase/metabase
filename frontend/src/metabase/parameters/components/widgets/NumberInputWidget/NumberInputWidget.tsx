@@ -82,18 +82,23 @@ export function NumberInputWidget({
       .filter((item): item is SelectItem => item !== null) ?? [];
 
   const valueOptions = unsavedArrayValue
-    .map((value): SelectItem | null => {
+    .map((item): SelectItem | null => {
       const option = parameter?.values_source_config?.values?.find(
-        option => option[0]?.toString() === value?.toString(),
+        option => getValue(option)?.toString() === item?.toString(),
       );
 
-      if (!option || typeof option[0] !== "string") {
+      if (!option) {
+        return null;
+      }
+
+      const value = getValue(option)?.toString();
+      if (typeof value !== "string") {
         return null;
       }
 
       return {
-        label: option[1],
-        value: option[0].toString(),
+        label: getLabel(option),
+        value,
       };
     })
     .filter(isNotNull);
@@ -192,10 +197,9 @@ type SelectItem = {
   label: string | undefined;
 };
 
-function getOption(entry: ParameterValue): SelectItem | null {
-  const tuple = Array.isArray(entry) ? entry : [entry];
-  const value = tuple[0]?.toString();
-  const label = tuple[1] ?? value;
+function getOption(entry: string | ParameterValue): SelectItem | null {
+  const value = getValue(entry)?.toString();
+  const label = getLabel(entry);
 
   if (!value) {
     return null;
@@ -243,4 +247,15 @@ function useLoadParameterValues({
     return searchValues;
   }
   return values;
+}
+
+function getLabel(option: string | ParameterValue) {
+  return option[1] ?? option[0]?.toString();
+}
+
+function getValue(option: string | ParameterValue) {
+  if (typeof option === "string") {
+    return option;
+  }
+  return option[0];
 }
