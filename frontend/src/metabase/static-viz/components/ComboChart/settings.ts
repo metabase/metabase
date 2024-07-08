@@ -193,7 +193,7 @@ export const computeStaticComboChartSettings = (
     settings,
     "stackable.stack_type",
     getDefaultStackingValue(settings, mainCard),
-    isStackingValueValid(mainCard.display, settings, seriesDisplays),
+    isStackingValueValid(settings, seriesDisplays),
   );
 
   fillWithDefaultValue(
