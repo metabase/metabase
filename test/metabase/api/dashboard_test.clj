@@ -4712,3 +4712,44 @@
           (testing "only construct the MetadataProvider once"
             (is (= {(mt/id) 1}
                    @provider-counts))))))))
+
+(deftest ^:synchronized dashboard-table-prefetch-test
+  (t2.with-temp/with-temp
+    [:model/Dashboard     d  {:name "D"}
+     :model/Card          c1 {:name "C1"
+                              :dataset_query {:database (mt/id)
+                                              :type     :query
+                                              :query    {:source-table (mt/id :products)}}}
+     :model/Card          c2 {:name "C2"
+                              :dataset_query {:database (mt/id)
+                                              :type     :query
+                                              :query    {:source-table (mt/id :orders)}}}
+     :model/DashboardCard _  {:dashboard_id       (:id d)
+                              :card_id            (:id c1)}
+     :model/DashboardCard _  {:dashboard_id       (:id d)
+                              :card_id            (:id c2)}]
+    (let [original-select-fn   @#'t2/select
+          uncached-calls-count (atom 0)
+          cached-calls-count   (atom 0)]
+      ;; Get _uncached_ call count of t2/select count for :metadata/table
+      (with-redefs [t2/select (fn [& args]
+                                (when (= :metadata/table (first args))
+                                  (swap! uncached-calls-count inc))
+                                (apply original-select-fn args))]
+        (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id d)))
+        (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id d))))
+      ;; Get _cached_ call count of t2/select count for :metadata/table
+      (let [load-id (str (random-uuid))]
+        (with-redefs [t2/select (fn [& args]
+                                  (when (= :metadata/table (first args))
+                                    (swap! cached-calls-count inc))
+                                  (apply original-select-fn args))]
+          (mt/user-http-request :crowberto :get 200
+                                (format "dashboard/%d?dashboard_load_id=%s" (:id d) load-id))
+          (mt/user-http-request :crowberto :get 200
+                                (format "dashboard/%d/query_metadata?dashboard_load_id=%s" (:id d) load-id))))
+      (testing "Call count for :metadata/table is smaller with caching in place"
+        (is (< @cached-calls-count @uncached-calls-count)))
+      ;; If we need more for _some reason_, this test should be updated accordingly.
+      (testing "At most 1 db call should be executed for :metadata/tables"
+        (is (= @cached-calls-count 1))))))
