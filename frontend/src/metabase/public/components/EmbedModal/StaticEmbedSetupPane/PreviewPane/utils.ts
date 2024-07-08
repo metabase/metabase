@@ -1,11 +1,17 @@
 import { match } from "ts-pattern";
 
-type Theme = "light" | "dark";
-export function getCheckerBoardDataUri(theme: Theme) {
+import type { PreviewBackgroundType } from "./PreviewPane";
+
+export function getCheckerBoardDataUri(
+  theme: Extract<
+    PreviewBackgroundType,
+    "checkerboard-light" | "checkerboard-dark"
+  >,
+) {
   const [color1, color2] = match(theme)
     .returnType<[string, string]>()
-    .with("light", () => ["#ededed", "transparent"])
-    .with("dark", () => ["#000000", "#323232"])
+    .with("checkerboard-light", () => ["#ededed", "transparent"])
+    .with("checkerboard-dark", () => ["#000000", "#323232"])
     .exhaustive();
 
   const svg = `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">

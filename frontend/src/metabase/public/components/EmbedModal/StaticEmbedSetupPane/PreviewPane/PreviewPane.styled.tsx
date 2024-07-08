@@ -22,20 +22,18 @@ export const PreviewPaneContainer = styled.div<{
   ${({ backgroundType }) =>
     match(backgroundType)
       .returnType<SerializedStyles | null>()
-      .with(
-        "checkerboard-light",
-        () =>
-          css`
-            background-image: url("${getCheckerBoardDataUri("light")}");
-          `,
-      )
-      .with(
-        "checkerboard-dark",
-        () =>
-          css`
-            background-image: url("${getCheckerBoardDataUri("dark")}");
-          `,
-      )
+      .with("checkerboard-light", () => {
+        const dataUri = getCheckerBoardDataUri("checkerboard-light");
+        return css`
+          background-image: url("${dataUri}");
+        `;
+      })
+      .with("checkerboard-dark", () => {
+        const dataUri = getCheckerBoardDataUri("checkerboard-dark");
+        return css`
+          background-image: url("${dataUri}");
+        `;
+      })
       .with("no-background", () => null)
       .exhaustive()};
 `;
