@@ -757,13 +757,15 @@
   [driver clause]
   ((get-method sql.qp/->honeysql [:sql :asc])
    driver
-   (sql.qp/rewrite-fields-to-force-using-column-aliases clause)))
+   #_(sql.qp/rewrite-fields-to-force-using-column-aliases clause)
+   clause))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :desc]
   [driver clause]
   ((get-method sql.qp/->honeysql [:sql :desc])
    driver
-   (sql.qp/rewrite-fields-to-force-using-column-aliases clause)))
+   #_(sql.qp/rewrite-fields-to-force-using-column-aliases clause)
+   clause))
 
 (defmethod temporal-type ::sql.qp/compiled
   [[_compiled x, :as form]]
