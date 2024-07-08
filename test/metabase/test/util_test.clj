@@ -127,6 +127,7 @@
   (is (mt/ordered-subset? [1 2 3] [0 1 2 3 4 5]))
   (is (not (mt/ordered-subset? [1 2 3] [1 2])))
   (is (mt/ordered-subset? [] []))
+  (is (mt/ordered-subset? [] [1]))
   (is (not (mt/ordered-subset? [1] [])))
   (is (mt/ordered-subset? [            "foo"   "bar"              "baz"]
                           ["elephants" "foxes" "badgers" "zebras" "beavers" "platypi"]

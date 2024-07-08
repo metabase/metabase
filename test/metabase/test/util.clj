@@ -1433,9 +1433,8 @@
   ([xs ys]
    (ordered-subset? xs ys =))
   ([[x & rest-x :as xs] [y & rest-y :as ys] eq?]
-   (or (zero? (count xs))
-       (if (> (count xs) (count ys))
-         false
-         (if (eq? x y)
-           (recur rest-x rest-y eq?)
-           (recur xs rest-y eq?))))))
+   (or (empty? xs)
+       (and (boolean (seq ys))
+            (if (eq? x y)
+              (recur rest-x rest-y eq?)
+              (recur xs rest-y eq?))))))
