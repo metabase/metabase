@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Modal, Button, Box } from "metabase/ui";
+import { Modal, Button, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 interface Props {
@@ -51,9 +51,9 @@ export const SavedQuestionIntroModal = ({
           <Modal.Title>{title}</Modal.Title>
         </Modal.Header>
         <Modal.Body ta="center">
-          <Box mb="md" ta="left">
+          <Text mb="lg" align="left">
             {message}
-          </Box>
+          </Text>
           <Button variant="filled" onClick={onClose}>{t`Okay`}</Button>
         </Modal.Body>
       </Modal.Content>
