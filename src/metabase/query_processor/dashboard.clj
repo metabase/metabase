@@ -146,7 +146,7 @@
                                                request-param-id->param))]
     (when-let [user-id api/*current-user-id*]
       (doseq [{:keys [id value]} request-params]
-        (user-parameter-value/upsert! user-id id value)))
+        (user-parameter-value/upsert! user-id dashboard-id id value)))
     (log/tracef "Dashboard parameters:\n%s\nRequest parameters:\n%s\nMerged:\n%s"
                 (u/pprint-to-str (update-vals dashboard-param-id->param
                                               (fn [param]

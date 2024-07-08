@@ -15,6 +15,8 @@
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.models.audit-log :as audit-log]
@@ -140,6 +142,24 @@
       :mbql/query (-> query lib/normalize lib.util/source-card-id)
       nil)))
 
+(defn- card->integer-table-ids
+  "Return integer source table ids for card's :dataset_query."
+  [card]
+  (when-some [query (-> card :dataset_query :query)]
+    (not-empty (filter pos-int? (lib.util/collect-source-tables query)))))
+
+(defn- prefetch-tables-for-cards!
+  "Collect tables from `dataset-cards` and prefetch metadata. Should be used only with metdata provider caching
+  enabled, as per https://github.com/metabase/metabase/pull/45050. Returns `nil`."
+  [dataset-cards]
+  (let [db-id->table-ids (-> (group-by :database_id dataset-cards)
+                             (update-vals (partial into #{} (comp (mapcat card->integer-table-ids)
+                                                                  (remove nil?)))))]
+    (doseq [[db-id table-ids] db-id->table-ids
+            :let  [mp (lib.metadata.jvm/application-database-metadata-provider db-id)]
+            :when (seq table-ids)]
+      (lib.metadata.protocols/metadatas mp :metadata/table table-ids))))
+
 (defn with-can-run-adhoc-query
   "Adds can_run_adhoc_query to each card."
   [cards]
@@ -147,6 +167,12 @@
         source-card-ids (into #{}
                               (keep (comp source-card-id :dataset_query))
                               dataset-cards)]
+    ;; Prefetching code should not propagate any exceptions.
+    (when lib.metadata.jvm/*metadata-provider-cache*
+      (try
+        (prefetch-tables-for-cards! dataset-cards)
+      (catch Throwable t
+        (log/errorf t "Failed prefething cards `%s`." (pr-str (map :id dataset-cards))))))
     (binding [query-perms/*card-instances*
               (when (seq source-card-ids)
                 (t2/select-fn->fn :id identity [Card :id :collection_id] :id [:in source-card-ids]))]
@@ -856,22 +882,19 @@
   ;; :table_id and :database_id are extracted as just :table_id [database_name schema table_name].
   ;; :collection_id is extracted as its entity_id or identity-hash.
   ;; :creator_id as the user's email.
-  (try
-    (-> (serdes/extract-one-basics "Card" card)
-        (update :database_id            serdes/*export-fk-keyed* 'Database :name)
-        (update :table_id               serdes/*export-table-fk*)
-        (update :collection_id          serdes/*export-fk* 'Collection)
-        (update :creator_id             serdes/*export-user*)
-        (update :made_public_by_id      serdes/*export-user*)
-        (update :dataset_query          serdes/export-mbql)
-        (update :parameters             serdes/export-parameters)
-        (update :parameter_mappings     serdes/export-parameter-mappings)
-        (update :visualization_settings serdes/export-visualization-settings)
-        (update :result_metadata        export-result-metadata)
-        (dissoc :cache_invalidated_at :view_count :last_used_at :initially_published_at
-                :dataset_query_metrics_v2_migration_backup))
-    (catch Exception e
-      (throw (ex-info (format "Failed to export Card: %s" (ex-message e)) {:card card} e)))))
+  (-> (serdes/extract-one-basics "Card" card)
+      (update :database_id            serdes/*export-fk-keyed* 'Database :name)
+      (update :table_id               serdes/*export-table-fk*)
+      (update :collection_id          serdes/*export-fk* 'Collection)
+      (update :creator_id             serdes/*export-user*)
+      (update :made_public_by_id      serdes/*export-user*)
+      (update :dataset_query          serdes/export-mbql)
+      (update :parameters             serdes/export-parameters)
+      (update :parameter_mappings     serdes/export-parameter-mappings)
+      (update :visualization_settings serdes/export-visualization-settings)
+      (update :result_metadata        export-result-metadata)
+      (dissoc :cache_invalidated_at :view_count :last_used_at :initially_published_at
+              :dataset_query_metrics_v2_migration_backup)))
 
 (defmethod serdes/load-xform "Card"
   [card]

@@ -59,7 +59,6 @@ export const FunnelStart = styled.div<SharedProps>`
   flex-direction: column;
   text-align: right;
   flex-grow: 1;
-
   padding-right: 0.5em;
   font-size: 1.72em;
 

@@ -1,10 +1,12 @@
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
   VisualizationSettings,
 } from "metabase-types/api";
-import { createMockSingleSeries } from "metabase-types/api/mocks";
+import {
+  createMockColumn,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
 
 import { syncVizSettingsWithSeries } from "./sync-settings";
 
@@ -38,7 +40,6 @@ const columns: DatasetColumn[] = [
 ];
 
 const vizSettingColumns: TableColumnOrderSetting[] = columns.map(column => ({
-  key: getColumnKey(column),
   name: column.name,
   fieldRef: column.field_ref,
   enabled: true,
@@ -112,7 +113,6 @@ describe("syncVizSettingsWithSeries", () => {
         "table.columns": [
           ...vizSettingColumns.slice(1),
           {
-            key: getColumnKey(addedColumn),
             name: addedColumn.name,
             fieldRef: addedColumn.field_ref,
             enabled: true,
@@ -145,7 +145,6 @@ describe("syncVizSettingsWithSeries", () => {
         "table.columns": [
           ...vizSettingColumns.slice(1),
           {
-            key: getColumnKey(updatedColumn),
             name: updatedColumn.name,
             fieldRef: updatedColumn.field_ref,
             enabled: true,
@@ -178,7 +177,6 @@ describe("syncVizSettingsWithSeries", () => {
         "table.columns": [
           ...vizSettingColumns.slice(1),
           {
-            key: getColumnKey(updatedColumn),
             name: updatedColumn.name,
             fieldRef: updatedColumn.field_ref,
             enabled: true,
@@ -191,6 +189,108 @@ describe("syncVizSettingsWithSeries", () => {
       const series = createSeries({ cols: [columns[1], columns[0]] });
       const syncedSettings = syncVizSettingsWithSeries(vizSettings, series);
       expect(syncedSettings).toEqual(vizSettings);
+    });
+
+    it("should handle name changes when a column with a duplicate name is added and ids are available", () => {
+      const series = createSeries({
+        cols: [
+          createMockColumn({ id: 1, name: "ID" }),
+          createMockColumn({ id: 2, name: "ID_2" }),
+          createMockColumn({ id: 3, name: "ID_3" }),
+        ],
+      });
+      const prevSeries = createSeries({
+        cols: [
+          createMockColumn({ id: 1, name: "ID" }),
+          createMockColumn({ id: 3, name: "ID_2" }),
+        ],
+      });
+      const vizSettings: VisualizationSettings = {
+        "table.columns": [
+          { name: "ID", enabled: true },
+          { name: "ID_2", enabled: false },
+        ],
+      };
+      const newVizSettings = syncVizSettingsWithSeries(
+        vizSettings,
+        series,
+        prevSeries,
+      );
+      expect(newVizSettings).toEqual({
+        "table.columns": [
+          { name: "ID", enabled: true },
+          { name: "ID_3", enabled: false },
+          { name: "ID_2", enabled: true },
+        ],
+      });
+    });
+
+    it("should not make name changes when a column with a duplicate name is added and ids are not available", () => {
+      const series = createSeries({
+        cols: [
+          createMockColumn({ id: undefined, name: "ID" }),
+          createMockColumn({ id: undefined, name: "ID_2" }),
+          createMockColumn({ id: undefined, name: "ID_3" }),
+        ],
+      });
+      const prevSeries = createSeries({
+        cols: [
+          createMockColumn({ id: undefined, name: "ID" }),
+          createMockColumn({ id: undefined, name: "ID_2" }),
+        ],
+      });
+      const vizSettings: VisualizationSettings = {
+        "table.columns": [
+          { name: "ID", enabled: true },
+          { name: "ID_2", enabled: false },
+        ],
+      };
+      const newVizSettings = syncVizSettingsWithSeries(
+        vizSettings,
+        series,
+        prevSeries,
+      );
+      expect(newVizSettings).toEqual({
+        "table.columns": [
+          { name: "ID", enabled: true },
+          { name: "ID_2", enabled: false },
+          { name: "ID_3", enabled: true },
+        ],
+      });
+    });
+
+    it("should not make name changes when there are multiple columns with the same id", () => {
+      const series = createSeries({
+        cols: [
+          createMockColumn({ id: 1, name: "ID" }),
+          createMockColumn({ id: 2, name: "ID_2" }),
+          createMockColumn({ id: 1, name: "ID_3" }),
+        ],
+      });
+      const prevSeries = createSeries({
+        cols: [
+          createMockColumn({ id: 1, name: "ID" }),
+          createMockColumn({ id: 2, name: "ID_2" }),
+        ],
+      });
+      const vizSettings: VisualizationSettings = {
+        "table.columns": [
+          { name: "ID", enabled: true },
+          { name: "ID_2", enabled: false },
+        ],
+      };
+      const newVizSettings = syncVizSettingsWithSeries(
+        vizSettings,
+        series,
+        prevSeries,
+      );
+      expect(newVizSettings).toEqual({
+        "table.columns": [
+          { name: "ID", enabled: true },
+          { name: "ID_2", enabled: false },
+          { name: "ID_3", enabled: true },
+        ],
+      });
     });
   });
 });

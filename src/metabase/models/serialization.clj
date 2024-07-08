@@ -338,7 +338,18 @@
 (defn- log-and-extract-one
   [model opts instance]
   (log/infof "Extracting %s %s" model (:id instance))
-  (extract-one model opts instance))
+  (try
+    (extract-one model opts instance)
+    (catch Exception e
+      (if (:skip (ex-data e))
+        (log/warnf "Skipping %s %s because of an error extracting it: %s %s"
+                   model (:id instance) (.getMessage e) (dissoc (ex-data e) :skip))
+        (throw (ex-info (format "Exception extracting %s %s" model (:id instance))
+                        {:model     model
+                         :id        (:id instance)
+                         :entity_id (:entity_id instance)
+                         :cause     (.getMessage e)}
+                        e))))))
 
 (defmethod extract-all :default [model opts]
   (eduction (map (partial log-and-extract-one model opts))
@@ -741,10 +752,13 @@
     (let [model-name (name model)
           model      (t2.model/resolve-model (symbol model-name))
           entity     (t2/select-one model (first (t2/primary-keys model)) id)
-          path       (mapv :id (generate-path model-name entity))]
-      (if (= (count path) 1)
-        (first path)
-        path))))
+          path       (when entity (mapv :id (generate-path model-name entity)))]
+      (cond
+        (nil? entity)      (throw (ex-info "FK target not found" {:model model
+                                                                  :id    id
+                                                                  :skip  true}))
+        (= (count path) 1) (first path)
+        :else              path))))
 
 (defn ^:dynamic ^::cache *import-fk*
   "Given an identifier, and the model it represents (symbol, name or IModel), looks up the corresponding
@@ -919,7 +933,7 @@
        [:dimension (mbql-id->fully-qualified-name dim)]
 
        [:metric (id :guard integer?)]
-       [:metric (*export-fk* id 'LegacyMetric)]
+       [:metric (*export-fk* id 'Card)]
 
        [:segment (id :guard integer?)]
        [:segment (*export-fk* id 'Segment)])))
