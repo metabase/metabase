@@ -18,6 +18,8 @@
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.models.audit-log :as audit-log]
@@ -153,6 +155,24 @@
       :mbql/query (-> query lib/normalize lib.util/source-card-id)
       nil)))
 
+(defn- card->integer-table-ids
+  "Return integer source table ids for card's :dataset_query."
+  [card]
+  (when-some [query (-> card :dataset_query :query)]
+    (not-empty (filter pos-int? (lib.util/collect-source-tables query)))))
+
+(defn- prefetch-tables-for-cards!
+  "Collect tables from `dataset-cards` and prefetch metadata. Should be used only with metdata provider caching
+  enabled, as per https://github.com/metabase/metabase/pull/45050. Returns `nil`."
+  [dataset-cards]
+  (let [db-id->table-ids (-> (group-by :database_id dataset-cards)
+                             (update-vals (partial into #{} (comp (mapcat card->integer-table-ids)
+                                                                  (remove nil?)))))]
+    (doseq [[db-id table-ids] db-id->table-ids
+            :let  [mp (lib.metadata.jvm/application-database-metadata-provider db-id)]
+            :when (seq table-ids)]
+      (lib.metadata.protocols/metadatas mp :metadata/table table-ids))))
+
 (defn with-can-run-adhoc-query
   "Adds can_run_adhoc_query to each card."
   [cards]
@@ -160,6 +180,12 @@
         source-card-ids (into #{}
                               (keep (comp source-card-id :dataset_query))
                               dataset-cards)]
+    ;; Prefetching code should not propagate any exceptions.
+    (when lib.metadata.jvm/*metadata-provider-cache*
+      (try
+        (prefetch-tables-for-cards! dataset-cards)
+      (catch Throwable t
+        (log/errorf t "Failed prefething cards `%s`." (pr-str (map :id dataset-cards))))))
     (binding [query-perms/*card-instances*
               (when (seq source-card-ids)
                 (t2/select-fn->fn :id identity [Card :id :collection_id] :id [:in source-card-ids]))]

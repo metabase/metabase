@@ -28,6 +28,7 @@ export const variants = {
   default: "",
   brand: css`
     color: ${metabaseColor("brand")};
+
     &:hover {
       text-decoration: underline;
     }
@@ -35,6 +36,7 @@ export const variants = {
   brandBold: css`
     color: ${metabaseColor("brand")};
     font-weight: bold;
+
     &:hover {
       text-decoration: underline;
     }

@@ -24,14 +24,11 @@ export const TriggerButton = styled.button`
   display: flex;
   align-items: center;
   min-width: 0;
-
   color: ${alpha(color("white"), 0.5)};
   font-weight: 700;
-  border-left: 2px solid transparent;
   padding: 0.5rem;
   border-left: 2px solid ${alpha(color("border"), 0.1)};
   margin-left: auto;
-
   cursor: pointer;
 
   ${ChevronDown} {
@@ -81,7 +78,6 @@ export const MoreButton = styled(Button)`
   width: 100%;
   height: 36px;
   padding: 8px 16px;
-
   transition: none !important;
 
   ${Button.Content} {

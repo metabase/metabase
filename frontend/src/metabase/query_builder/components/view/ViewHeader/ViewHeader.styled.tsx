@@ -83,11 +83,14 @@ export const HeaderButton = styled(Button)<{ active: boolean }>`
   background-color: ${({ active, color = getDefaultColor() }) =>
     active ? color : "transparent"};
   color: ${({ active }) => (active ? "white" : color("text-dark"))};
+
   &:hover {
     background-color: ${({ color = getDefaultColor() }) => alpha(color, 0.15)};
     color: ${({ color }) => color};
   }
+
   transition: background 300ms linear, border 300ms linear;
+
   > .Icon {
     opacity: 0.6;
   }
@@ -105,7 +108,6 @@ export const IconHeaderButton = styled(HeaderButton)`
 const getDefaultColor = () => color("brand");
 export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
   color: ${color("text-light")};
-  //margin-left: 4px;
 
   ${breakpointMaxSmall} {
     margin-left: 0;
@@ -144,7 +146,7 @@ export const SavedQuestionLeftSideRoot = styled.div<{ showSubHeader: boolean }>`
   &:hover,
   &:focus-within {
     ${SavedQuestionHeaderButtonContainer} {
-      top: 0px;
+      top: 0;
     }
 
     ${ViewHeaderLeftSubHeading} {
@@ -156,7 +158,7 @@ export const SavedQuestionLeftSideRoot = styled.div<{ showSubHeader: boolean }>`
     padding: 0 1.25rem;
 
     ${SavedQuestionHeaderButtonContainer} {
-      top: 0px;
+      top: 0;
     }
 
     ${ViewHeaderLeftSubHeading} {
