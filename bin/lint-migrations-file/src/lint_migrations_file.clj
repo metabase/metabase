@@ -38,7 +38,7 @@
         :when id]
     id))
 
-(defn- require-distinct-change-set-ids! [change-log]
+(defn- require-distinct-change-set-ids [change-log]
   (let [ids (change-set-ids change-log)
         duplicates (->> ids
                         (group-by identity)
@@ -48,7 +48,7 @@
     (when (seq duplicates)
       (throw (validation-error "Change set IDs are not distinct." {:duplicates duplicates})))))
 
-(defn- require-change-set-ids-in-order! [change-log]
+(defn- require-change-set-ids-in-order [change-log]
   (let [ids (change-set-ids change-log)
         out-of-order-ids (->> ids
                              (partition 2 1)
@@ -106,18 +106,18 @@
              {:invalid-ids using-types?
               :target-types target-types})))))
 
-(defn require-no-bare-blob-or-text-types!
+(defn require-no-bare-blob-or-text-types
   "Ensures that no \"text\" or \"blob\" type columns are added in any changesets."
   [change-log]
   (require-no-types-in-change-log! #{"blob" "text"} change-log))
 
-(defn require-no-bare-boolean-types!
+(defn require-no-bare-boolean-types
   "Ensures that no \"boolean\" type columns are added in changesets with id later than v49.00-032. From that point on,
   \"${boolean.type}\" should be used instead, so that we can consistently use `BIT(1)` for Boolean columns on MySQL."
   [change-log]
   (require-no-types-in-change-log! #{"boolean"} change-log #(pos? (compare % "v49.00-032"))))
 
-(defn require-no-datetime-type!
+(defn require-no-datetime-type
   "Ensures that no \"datetime\" or \"timestamp without time zone\".
   From that point on, \"${timestamp_type}\" should be used instead, so that all of our time related columsn are tz-aware."
   [change-log]
@@ -135,12 +135,12 @@
       (throw (validation-error "Expected exactly one key." {:keys keys})))
     (first keys)))
 
-(defn- validate-database-change-log! [change-log]
-  (require-distinct-change-set-ids! change-log)
-  (require-change-set-ids-in-order! change-log)
-  (require-no-bare-blob-or-text-types! change-log)
-  (require-no-bare-boolean-types! change-log)
-  (require-no-datetime-type! change-log)
+(defn- validate-database-change-log [change-log]
+  (require-distinct-change-set-ids change-log)
+  (require-change-set-ids-in-order change-log)
+  (require-no-bare-blob-or-text-types change-log)
+  (require-no-bare-boolean-types change-log)
+  (require-no-datetime-type change-log)
   (let [{:keys [changeSet]
          :as all} (group-by only-key change-log)]
     (when-not (set/subset? (set (keys all)) #{:property :objectQuotingStrategy :changeSet})
@@ -150,9 +150,9 @@
             :when (not (s/valid? ::changeSet changeSet))]
       (throw (validation-error "Invalid change set." (s/explain-data ::changeSet changeSet))))))
 
-(defn- validate-migrations! [migrations]
+(defn- validate-migrations [migrations]
   (require-database-change-log! migrations)
-  (validate-database-change-log! (:databaseChangeLog migrations))
+  (validate-database-change-log (:databaseChangeLog migrations))
   :ok)
 
 (def ^:private filename
@@ -169,7 +169,7 @@
       (fix-vals (yaml/parse-string (slurp file))))))
 
 (defn- validate-all []
-  (validate-migrations! (migrations)))
+  (validate-migrations (migrations)))
 
 (defn -main
   "Entry point for Clojure CLI task `lint-migrations-file`. Run it with
