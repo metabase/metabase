@@ -1674,3 +1674,52 @@ describe("issue 38989", () => {
       .should("exist");
   });
 });
+
+describe("issue 41464", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not overlap 'no results' and the loading state (metabase#41464)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          filter: [
+            ">",
+            ["field", ORDERS.TOTAL, { "base-type": "type/Float" }],
+            1000,
+          ],
+        },
+        parameters: [],
+      },
+    });
+
+    cy.intercept(
+      {
+        method: "POST",
+        url: "/api/dataset",
+        middleware: true,
+      },
+      req => {
+        req.on("response", res => {
+          // Throttle the response to 50kbps
+          res.setThrottle(50);
+        });
+      },
+    );
+
+    cy.findByTestId("filter-pill")
+      .should("have.text", "Total is greater than 1000")
+      .icon("close")
+      .click();
+
+    cy.findByTestId("query-builder-main").within(() => {
+      cy.findByTestId("loading-spinner").should("be.visible");
+      cy.findByText("No results!", { timeout: 500 }).should("not.exist");
+    });
+  });
+});
