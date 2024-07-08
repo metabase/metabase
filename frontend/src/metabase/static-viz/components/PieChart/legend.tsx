@@ -7,6 +7,7 @@ import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/ty
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 
 import { Legend } from "../Legend";
+import { LEGEND_ITEM_MARGIN_RIGHT_GRID } from "../Legend/constants";
 import { calculateLegendRowsWithColumns } from "../Legend/utils";
 
 export function getPieChartLegend(
@@ -52,6 +53,7 @@ export function getPieChartLegend(
             legendWidth) /
           2
         }
+        legendItemMarginRight={LEGEND_ITEM_MARGIN_RIGHT_GRID}
       />
     ),
   };

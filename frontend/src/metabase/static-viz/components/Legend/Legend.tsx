@@ -17,6 +17,7 @@ type LegendProps = {
   left?: number;
   fontSize?: number;
   fontWeight?: number;
+  legendItemMarginRight?: number;
   items: PositionedLegendItem[];
 };
 
@@ -25,6 +26,7 @@ export const Legend = ({
   left,
   fontSize = DEFAULT_LEGEND_FONT_SIZE,
   fontWeight = DEFAULT_LEGEND_FONT_WEIGHT,
+  legendItemMarginRight = LEGEND_ITEM_MARGIN_RIGHT,
   items,
 }: LegendProps) => {
   return (
@@ -46,7 +48,7 @@ export const Legend = ({
                   percentTextWidth -
                   LEGEND_CIRCLE_SIZE -
                   LEGEND_CIRCLE_MARGIN_RIGHT -
-                  LEGEND_ITEM_MARGIN_RIGHT,
+                  legendItemMarginRight,
                 fontSize,
                 fontWeight,
               )
@@ -58,7 +60,7 @@ export const Legend = ({
         // percent with the name, separated by a dash.
         let percentX;
         if (percent != null && width != null) {
-          percentX = width - percentTextWidth - LEGEND_ITEM_MARGIN_RIGHT;
+          percentX = width - percentTextWidth - legendItemMarginRight;
         } else if (percent != null) {
           name = `${name} - ${percent}`;
         }

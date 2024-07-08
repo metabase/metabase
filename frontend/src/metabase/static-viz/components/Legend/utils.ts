@@ -8,6 +8,7 @@ import {
   LEGEND_CIRCLE_SIZE,
   LEGEND_ITEM_MARGIN_RIGHT,
   DEFAULT_LEGEND_LINE_HEIGHT,
+  LEGEND_ITEM_MARGIN_RIGHT_GRID,
 } from "./constants";
 import type { PositionedLegendItem } from "./types";
 
@@ -38,6 +39,7 @@ interface CalculateLegendInput {
   lineHeight?: number;
   fontSize?: number;
   fontWeight?: number;
+  legendItemMarginRight?: number;
   isReversed?: boolean;
 }
 
@@ -49,6 +51,7 @@ export const calculateLegendRows = ({
   lineHeight = DEFAULT_LEGEND_LINE_HEIGHT,
   fontSize = DEFAULT_LEGEND_FONT_SIZE,
   fontWeight = DEFAULT_LEGEND_FONT_WEIGHT,
+  legendItemMarginRight = LEGEND_ITEM_MARGIN_RIGHT,
   isReversed,
 }: CalculateLegendInput) => {
   if (items.length === 0) {
@@ -82,7 +85,7 @@ export const calculateLegendRows = ({
         top: currentRowIndex * lineHeight + verticalPadding,
       });
 
-      currentRowX += itemWidth + LEGEND_ITEM_MARGIN_RIGHT;
+      currentRowX += itemWidth + legendItemMarginRight;
       continue;
     }
 
@@ -94,7 +97,7 @@ export const calculateLegendRows = ({
           top: (currentRowIndex + 1) * lineHeight + verticalPadding,
         },
       ]);
-      currentRowX = horizontalPadding + itemWidth + LEGEND_ITEM_MARGIN_RIGHT;
+      currentRowX = horizontalPadding + itemWidth + legendItemMarginRight;
     } else {
       currentRow.push({
         key: item.key,
@@ -119,7 +122,7 @@ export const calculateLegendRows = ({
         (currRowWidth, item) =>
           currRowWidth +
           calculateItemWidth(item, fontSize, fontWeight) +
-          LEGEND_ITEM_MARGIN_RIGHT,
+          legendItemMarginRight,
         0,
       ),
     ),
@@ -139,6 +142,7 @@ function calculateNumRowsCols(
   width: number,
   fontSize: number,
   fontWeight: number,
+  legendItemMarginRight: number,
 ) {
   let colWidth: number;
   let numCols = 2;
@@ -153,7 +157,7 @@ function calculateNumRowsCols(
     items.every(
       item =>
         calculateItemWidth(item, fontSize, fontWeight) +
-          LEGEND_ITEM_MARGIN_RIGHT <=
+          legendItemMarginRight <=
         colWidth,
     )
   );
@@ -179,6 +183,7 @@ export const calculateLegendRowsWithColumns = ({
   lineHeight = DEFAULT_LEGEND_LINE_HEIGHT,
   fontSize = DEFAULT_LEGEND_FONT_SIZE,
   fontWeight = DEFAULT_LEGEND_FONT_WEIGHT,
+  legendItemMarginRight = LEGEND_ITEM_MARGIN_RIGHT_GRID,
   isReversed,
 }: CalculateLegendInput) => {
   if (items.length === 0) {
@@ -198,6 +203,7 @@ export const calculateLegendRowsWithColumns = ({
     availableTotalWidth,
     fontSize,
     fontWeight,
+    legendItemMarginRight,
   );
 
   if (numRows === 1) {
