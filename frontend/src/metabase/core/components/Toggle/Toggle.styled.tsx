@@ -40,7 +40,6 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   height: ${props => (props.small ? "17px" : "24px")};
   border-radius: 99px;
   border: 1px solid ${color("border")};
-  background-color: ${color("bg-medium")};
   background-color: ${getBackgroundColor};
   transition: background-color 0.3s;
   flex-shrink: 0;

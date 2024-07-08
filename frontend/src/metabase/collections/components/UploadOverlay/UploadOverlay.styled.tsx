@@ -14,7 +14,6 @@ export const DragOverlay = styled.div<{ isDragActive: boolean }>`
   justify-content: center;
   align-items: center;
   gap: 1rem;
-
   background-color: ${color("brand-lighter")};
   opacity: ${props => (props.isDragActive ? 0.9 : 0)};
   transition: opacity 0.2s;
@@ -22,10 +21,8 @@ export const DragOverlay = styled.div<{ isDragActive: boolean }>`
   border-radius: 0.5rem;
   margin: 0.5rem 4%;
   padding: 4rem;
-
   color: ${color("brand")};
   font-size: 1.125rem;
   font-weight: bold;
-
   pointer-events: none;
 `;

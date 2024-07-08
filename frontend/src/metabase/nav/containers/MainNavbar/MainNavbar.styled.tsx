@@ -14,7 +14,6 @@ import { SidebarLink } from "./SidebarItems";
 
 const openSidebarCSS = css`
   width: ${NAV_SIDEBAR_WIDTH};
-
   border-inline-end: 1px solid ${color("border")};
 
   ${breakpointMaxSmall} {
@@ -29,12 +28,10 @@ const closeSidebarCSS = css`
 export const Sidebar = styled.aside<{ isOpen: boolean }>`
   width: 0;
   height: 100%;
-
   position: relative;
   flex-shrink: 0;
   align-items: center;
   background-color: ${color("white")};
-
   overflow: auto;
   overflow-x: hidden;
   z-index: 4;
@@ -44,7 +41,7 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   ${breakpointMaxSmall} {
     position: absolute;
     top: 0;
-    inline-start: 0;
+    inset-inline-start: 0;
   }
 `;
 
@@ -55,10 +52,8 @@ export const NavRoot = styled.nav<{ isOpen: boolean }>`
   padding-top: ${space(1)};
   height: 100%;
   background-color: transparent;
-
   overflow-x: hidden;
   overflow-y: auto;
-
   opacity: ${props => (props.isOpen ? 1 : 0)};
   transition: opacity 0.2s;
 
@@ -149,9 +144,11 @@ export const AddYourOwnDataLink = styled(SidebarLink)`
   color: ${color("white")};
   margin: ${space(1)};
   padding: 2px 6px;
+
   svg {
     color: ${color("brand-light")};
   }
+
   transition: background-color 0.3s linear;
 
   @media (prefers-reduced-motion) {

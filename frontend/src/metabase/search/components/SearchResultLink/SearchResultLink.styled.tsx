@@ -8,7 +8,6 @@ type ResultLinkProps = AnchorProps | TextProps;
 
 export const ResultLink = styled.a<ResultLinkProps>`
   line-height: unset;
-
   ${({ theme, href }) => {
     return (
       href &&
@@ -22,7 +21,6 @@ export const ResultLink = styled.a<ResultLinkProps>`
       `
     );
   }};
-
   transition: color 0.2s ease-in-out;
 `;
 
