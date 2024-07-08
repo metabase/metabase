@@ -28,6 +28,18 @@
   ;; assoc the card with the current time minus 7 months
   (assoc card :last_used_at (datetime-months-ago 7)))
 
+(defmacro with-stale-card-in-collection [card-binding coll-id & body]
+  `(mt/with-temp [:model/Card ~card-binding (stale-card
+                                             {:name          (str (random-uuid))
+                                              :collection_id ~coll-id})]
+     ~@body))
+
+(defmacro with-stale-dashboard-in-collection [dashboard-binding coll-id & body]
+  `(mt/with-temp [:model/Dashboard ~dashboard-binding (stale-dashboard
+                                                       {:name          (str (random-uuid))
+                                                        :collection_id ~coll-id})]
+     ~@body))
+
 (deftest can-find-stale-dashboards
   (mt/with-temp [:model/Dashboard {id :id} (stale-dashboard
                                             {:name "My Stale Dashboard"

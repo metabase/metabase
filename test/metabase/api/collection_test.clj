@@ -18,6 +18,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
+   [metabase.stale-test :as stale.test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -2278,3 +2279,15 @@
                                      :groups {}
                                      :skip_graph true}))
       "PUTs with skip_graph should not return the coll permission graph."))
+
+;; Stale API
+
+(deftest can-fetch-stale-candidates
+  (with-collection-hierarchy [a b c d e]
+    (stale.test/with-stale-card-in-collection card (:id a)
+      (stale.test/with-stale-dashboard-in-collection dashboard (:id a)
+        (is (= (dissoc
+                (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/items")
+                                      :models "dashboard" :models "card")
+                :models)
+               (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale"))))))))

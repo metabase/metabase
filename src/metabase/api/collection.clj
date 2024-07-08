@@ -520,7 +520,8 @@
       false)))
 
 (defn- fully-parameterized-query? [row]
-  (let [parsed-query (-> row :dataset_query json/parse-string)
+  (let [parsed-query (cond-> (:dataset_query row)
+                       (string? (:dataset_query row)) json/parse-string)
         ;; TODO TB handle pMBQL native queries
         native-query (when (contains? parsed-query "native")
                        (-> parsed-query mbql.normalize/normalize :native))]
@@ -962,6 +963,68 @@
         all-descendants (map :id (collection/descendants-flat collection))]
     (filterv visible-collection-ids all-descendants)))
 
+(defmulti present-model-items
+  "Given a model and a list of items, return the items in the format the API client expects. Note that order does not
+  matter! The calling function, `present-items`, is responsible for ensuring the order is maintained."
+  (fn [model items] model))
+
+(defmethod present-model-items :model/Card [_ cards]
+  (->> (t2/hydrate (t2/select [:model/Card
+                               :id
+                               :description
+                               :collection_id
+                               :name
+                               :entity_id
+                               :archived
+                               :collection_position
+                               :display
+                               :collection_preview
+                               [nil :database_id]
+                               [nil :location]
+                               :dataset_query
+                               [{:select   [:status]
+                                 :from     [:moderation_review]
+                                 :where    [:and
+                                            [:= :moderated_item_type "card"]
+                                            [:= :moderated_item_id :report_card.id]
+                                            [:= :most_recent true]]
+                                 ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
+                                 ;; protecting against potential bugs
+                                 :order-by [[:id :desc]]
+                                 :limit    1}
+                                :moderated_status]]
+                              :id [:in (set (map :id cards))])
+                   :can_write :can_delete :can_restore)
+       (map (fn [card]
+              (-> card
+                  (assoc :model (if (card/model? card) "dataset" "card"))
+                  (assoc :fully_parameterized (fully-parameterized-query? card))
+                  (dissoc :dataset_query))))))
+
+(defmethod present-model-items :model/Dashboard [_ dashboards]
+  (->> (t2/hydrate (t2/select [:model/Dashboard
+                               :id
+                               :description
+                               :collection_id
+                               :name
+                               :entity_id
+                               :archived
+                               :collection_position
+                               ["dashboard" :model]
+                               [nil :location]
+                               [nil :database_id]]
+
+                              :id [:in (set (map :id dashboards))])
+                   :can_write :can_delete :can_restore)))
+
+(defn- present-items [items]
+  (let [id->order (into {} (map-indexed (fn [i row] [(:id row) i]) items))]
+    (->> items
+         (group-by :model)
+         (mapcat (fn [[model items]]
+                   (present-model-items model items)))
+         (sort-by (comp id->order :id)))))
+
 (api/defendpoint GET "/:id/stale"
   "A flexible endpoint that returns stale entities, in the same shape as collections/items, with the following options:
   - `before_date` - only return entities that were last edited before this date (default: 6 months ago)
@@ -991,13 +1054,17 @@
                               [id])
                             (mapv (fn root->nil [x] (if (= :root x) nil x)))
                             set)
-        candidates (stale/find-candidates {:collection-ids collection-ids
+        {:keys [total rows]}
+        (stale/find-candidates {:collection-ids collection-ids
                                            :cutoff-date before-date
                                            :limit mw.offset-paging/*limit*
                                            :offset mw.offset-paging/*offset*
                                            :sort-column sort_column
                                            :sort-direction sort_direction})]
-    candidates))
+    {:total 2
+     :data (present-items rows)
+     :limit mw.offset-paging/*limit*
+     :offset mw.offset-paging/*offset*}))
 
 (api/defendpoint GET "/trash"
   "Fetch the trash collection, as in `/api/collection/:trash-id`"

@@ -90,9 +90,9 @@
            :from [[{:union-all (queries args)} :dummy_alias]]
            :order-by [[(sort-column (:sort-column args))
                        (:sort-direction args)]]}
-    false ;; limit
+    (some? limit) ;; limit
     (assoc :limit limit)
-    false ;; offset
+    (some? offset) ;; offset
     (assoc :offset offset)))
 
 (mu/defn ^:private total-query [args :- FindStaleContentArgs]
