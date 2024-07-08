@@ -676,7 +676,10 @@ const handleDataChange = (newData) => {
 };
 
 useEffect(() => {
-  // Follow eslint-plugin-react-hooks
+  /**
+   * When you set `data` as the `useEffect` hook's dependency, it will trigger the effect
+   * and increment the counter which is used in a Metabase component's `key` prop, forcing it to reload.
+   */
   if (data) {
     setCounter(counter => counter + 1);
   }
