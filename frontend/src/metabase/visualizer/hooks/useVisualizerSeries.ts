@@ -5,6 +5,7 @@ import { useMount } from "react-use";
 import { cardApi } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { MetabaseApi } from "metabase/services";
 import {
@@ -77,12 +78,15 @@ export function useVisualizerSeries(initialCardIds: CardId[] = []) {
       return;
     }
 
+    dispatch(loadMetadataForCard(card));
+
     return { card, data: dataset.data };
   };
 
   const _fetchAdHocCardData = async (card: Card) => {
     const result = await MetabaseApi.dataset(card.dataset_query);
     if (result.data) {
+      dispatch(loadMetadataForCard(card));
       return { card, data: result.data };
     }
   };
