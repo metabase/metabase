@@ -2017,3 +2017,65 @@
       (is (= "true" (t2/select-one-fn :value :setting :key "enable-query-caching")))
       (is (= "100" (t2/select-one-fn :value :setting :key "query-caching-ttl-ratio")))
       (is (= "123" (t2/select-one-fn :value :setting :key "query-caching-min-ttl"))))))
+
+(def table (t2/select-one :model/Table))
+(t2/delete! :model/Field 77)
+(t2/insert-returning-instance! (t2/table-name :model/Field)
+                               {:table_id               (:id table)
+                                :name                   "F1"
+                                :is_defective_duplicate true
+                                :parent_id              nil
+                                :nfc_path               "[\"F1\"]"
+                                :base_type              "type/Text"
+                                :database_type          "TEXT"
+                                :created_at             :%now
+                                :updated_at             :%now
+                                :active                 true})
+
+;; ReplaceDefectiveDuplicateFields
+(let [(def db-id (t2/insert-returning-pk! :metabase_database
+                                          {:details    "{}"
+                                           :created_at :%now
+                                           :updated_at :%now
+                                           :engine     "h2"
+                                           :is_sample  false
+                                           :name       "some_db"}))
+      (def table (t2/insert-returning-instance! :metabase_table
+                                                {:db_id      db-id
+                                                 :name       "some_table"
+                                                 :created_at :%now
+                                                 :updated_at :%now
+                                                 :active     true}))
+      (def field (t2/insert-returning-instance! :metabase_field
+                                                {:table_id               (:id table)
+                                                 :name                   "F1"
+                                                 :is_defective_duplicate true
+                                                 :parent_id              nil
+                                                 :nfc_path               "[\"F1\"]"
+                                                 :base_type              "type/Text"
+                                                 :database_type          "TEXT"
+                                                 :created_at             :%now
+                                                 :updated_at             :%now
+                                                 :active                 true}))
+      (def field-ref [:field (:id field) {:base-type "type/Integer"}])
+      (def card (t2/insert-returning-instance!
+                 :model/Card
+                 {:name                   "some_card"
+                  :type                   "question"
+                  :creator_id             1
+                  :database_id            db-id
+                  :created_at             :%now
+                  :updated_at             :%now
+                  :collection_id          nil
+                  :description            nil
+                  :display                "table"
+                  :visualization_settings "{}"
+                  :dataset_query (json/generate-string {:database db-id,
+                                                        :type     :query,
+                                                        :query    {:source-table (:id table),
+                                                                   :aggregation  [[:count]],
+                                                                   :expressions  {"ID concat" [:concat field-ref field-ref]},
+                                                                   :breakout     [field-ref
+                                                                                  [:expression "ID concat" {:base-type "type/Text"}]],
+                                                                   :filter       [:= field-ref 1]}})}))]
+  )

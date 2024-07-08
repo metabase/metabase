@@ -24,6 +24,7 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations.metrics-v2 :as metrics-v2]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.date-2 :as u.date]
@@ -1475,6 +1476,72 @@
       (str/replace (re-pattern (str "\\[\"field\"," from ","))
                    (str "[\"field\"," to ","))))
 
+(defn- references-field? [s field-id]
+  (or (re-find (re-pattern (str "\"source-field\":" field-id "(,|})")) s)
+      (re-find (re-pattern (str "\\[\"field\"," field-id ",")) s)))
+
+(def from 72)
+(def from 37) ;; normal references
+(def to 73)
+(def from 40) ;; source-field ref
+(def to 43)   ;; source-field ref
+
+(def from 43) ;; source-field ref
+(def to 40)   ;; source-field ref
+(:dataset_query (t2/select-one :model/Card 6))
+
+(defn- migrate []
+  (when-some [from+to (not-empty
+                       (t2/query
+                        {:select [[:fr.id :from] [:to.id :to]]
+                         :from   [[:metabase_field :fr]]
+                         :join   [[:metabase_field :to]
+                                  [:and
+                                   [:= :fr.name :to.name]
+                                   [:= :fr.table_id :to.table_id]
+                                   [:= :to.active true]]]
+                         :where  [:and
+                                  [:= :fr.is_defective_duplicate true]
+                                  [:raw "(fr.nfc_path = concat('[\"', fr.name, '\"]') OR fr.nfc_path IS NULL)"]]}))]
+   (doseq [{:keys [from to]} from+to]
+     ;; TODO make this reducible
+     (->> (t2/query {:select [:id :dataset_query :result_metadata :visualization_settings]
+                     :from   [:report_card]
+                     :where  [:and
+                              [:= :query_type [:inline "query"]]
+                              [:raw (case (mdb.connection/db-type)
+                                      :postgres
+                                      (str "(dataset_query ~ concat('\"source-field\":', " from ") OR"
+                                           " dataset_query ~ concat('\\[\"field\",', " from "))")
+                                      :mysql
+                                      (str "(dataset_query REGEXP CONCAT('\"source-field\":', " from ") OR"
+                                           " dataset_query REGEXP CONCAT('\\\\[\"field\",', " from "))")
+                                      :h2
+                                      (str "(dataset_query REGEXP concat('\"source-field\":', " from ") OR"
+                                           " dataset_query REGEXP concat('\\[\"field\",', " from "))"))]]})
+          (run! (fn [{:keys [id dataset_query result_metadata visualization_settings]}]
+                  ;; if there are any references to `to` field, we don't want to replace `from`, because it could create
+                  ;; duplicate references to the same field in the same clause, which is invalid.
+                  (when (not (references-field? dataset_query to))
+                    (let [dataset_query          (replace-field dataset_query from to)
+                          ;; check that the card passes query validation
+                          parsed-dataset-query   ((:out mi/transform-metabase-query) dataset_query)
+                          _ (sc.api/spy)
+                          _ (cal/spy (mc/validate mbql.s/MBQLQuery parsed-dataset-query))
+                          valid-dataset-query?   (boolean (try (mc/validate mbql.s/MBQLQuery parsed-dataset-query)
+                                                               (catch Exception _e
+                                                                 ;; TODO: remove this before merging
+                                                                 (prn "Failed to validate query" parsed-dataset-query)
+                                                                 false)))
+                             ;; TODO: visualization_settings & result_metadata
+                          ]
+                      (when valid-dataset-query?
+                        (t2/query-one {:update :report_card
+                                       :set    {:dataset_query          dataset_query
+                                                :result_metadata        result_metadata
+                                                :visualization_settings visualization_settings}
+                                       :where  [:= :id id]}))))))))))
+
 (define-migration ReplaceDefectiveDuplicateFields
   (when-let [defective-fields (t2/query {:select [:id :name :table_id]
                                          :from   [:metabase_field]
@@ -1482,7 +1549,7 @@
                                                   [:= :is_defective_duplicate true]
                                                   [:raw "(nfc_path = concat('[\"', name, '\"]') OR nfc_path IS NULL)"]]})]
     (doseq [from defective-fields]
-      (when-let [to (t2/select-one :metabase_field :name (:name from), :table_id (:table_id from), :active true)]
+      (when-let [to ]
         (->> (t2/reducible-query {:select [:id :dataset_query :result_metadata :visualization_settings]
                                   :from   [:report_card]
                                   :where  [:and
