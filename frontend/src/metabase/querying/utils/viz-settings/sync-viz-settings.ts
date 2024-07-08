@@ -32,15 +32,23 @@ export function syncVizSettings(
   newColumns: ColumnInfo[] | undefined,
   oldColumns: ColumnInfo[] | undefined,
 ): VisualizationSettings {
-  let nextSettings = settings;
-  if (newColumns) {
-    if (oldColumns) {
-      nextSettings = syncTableColumnNames(nextSettings, newColumns, oldColumns);
-      nextSettings = syncGraphMetricNames(nextSettings, newColumns, oldColumns);
-    }
-    nextSettings = syncAddedAndRemovedTableColumns(nextSettings, newColumns);
-    nextSettings = syncAddedAndRemovedGraphMetrics(nextSettings, newColumns);
+  if (!newColumns || !oldColumns) {
+    return settings;
   }
+
+  let nextSettings = settings;
+  nextSettings = syncTableColumnNames(nextSettings, newColumns, oldColumns);
+  nextSettings = syncGraphMetricNames(nextSettings, newColumns, oldColumns);
+  nextSettings = syncAddedAndRemovedTableColumns(
+    nextSettings,
+    newColumns,
+    oldColumns,
+  );
+  nextSettings = syncAddedAndRemovedGraphMetrics(
+    nextSettings,
+    newColumns,
+    oldColumns,
+  );
   return nextSettings;
 }
 
@@ -96,21 +104,21 @@ function syncColumnNames<T>({
   getColumnName,
   setColumnName,
 }: SyncColumnNamesOpts<T>): T[] {
-  const newNameByAlias = new Map(
+  const newColumnNameByAlias = new Map(
     newColumns.map(column => [column.desiredColumnAlias, column.name]),
   );
-  const oldAliasByName = new Map(
+  const oldColumnAliasByName = new Map(
     oldColumns.map(column => [column.name, column.desiredColumnAlias]),
   );
 
   return settings.reduce((newSettings: T[], setting: T) => {
-    const oldName = getColumnName(setting);
-    const oldAlias = oldAliasByName.get(oldName);
-    const newName = newNameByAlias.get(oldAlias);
-    if (!oldAlias) {
+    const oldColumnName = getColumnName(setting);
+    const oldColumnAlias = oldColumnAliasByName.get(oldColumnName);
+    const newColumnName = newColumnNameByAlias.get(oldColumnAlias);
+    if (!oldColumnAlias) {
       newSettings.push(setting);
-    } else if (newName) {
-      newSettings.push(setColumnName(setting, newName));
+    } else if (newColumnName) {
+      newSettings.push(setColumnName(setting, newColumnName));
     }
     return newSettings;
   }, []);
@@ -163,27 +171,34 @@ function syncGraphMetricNames(
 type SyncAddedAndRemovedColumnsOpts<T> = {
   settings: T[];
   newColumns: ColumnInfo[];
+  oldColumns: ColumnInfo[];
   getColumnName: (setting: T) => string;
   createSetting: (column: ColumnInfo) => T;
-  canCreateSetting: (column: ColumnInfo) => boolean;
+  canCreateSetting: (column: ColumnInfo) => boolean | undefined;
 };
 
 function syncAddedAndRemovedColumns<T>({
   settings,
   newColumns,
+  oldColumns,
   getColumnName,
   createSetting,
   canCreateSetting,
 }: SyncAddedAndRemovedColumnsOpts<T>): T[] {
-  const oldNames = new Set(settings.map(setting => getColumnName(setting)));
+  const oldColumnNames = new Set(oldColumns.map(column => column.name));
   const addedSettings = newColumns
-    .filter(column => !oldNames.has(column.name) && canCreateSetting(column))
-    .map(column => createSetting(column));
+    .filter(column => !oldColumnNames.has(column.name))
+    .filter(canCreateSetting)
+    .map(createSetting);
 
-  const newNames = new Set(newColumns.map(column => column.name));
-  const retainedSettings = settings.filter(setting =>
-    newNames.has(getColumnName(setting)),
-  );
+  const newColumnNames = new Set(newColumns.map(column => column.name));
+  const retainedSettings = settings.filter(setting => {
+    const columnName = getColumnName(setting);
+    return (
+      !oldColumnNames.has(columnName) ||
+      newColumnNames.has(getColumnName(setting))
+    );
+  });
 
   return [...retainedSettings, ...addedSettings];
 }
@@ -191,6 +206,7 @@ function syncAddedAndRemovedColumns<T>({
 function syncAddedAndRemovedTableColumns(
   settings: VisualizationSettings,
   newColumns: ColumnInfo[],
+  oldColumns: ColumnInfo[],
 ) {
   const columnSettings = settings["table.columns"];
   if (!columnSettings) {
@@ -202,6 +218,7 @@ function syncAddedAndRemovedTableColumns(
     "table.columns": syncAddedAndRemovedColumns({
       settings: columnSettings,
       newColumns,
+      oldColumns,
       getColumnName: setting => setting.name,
       createSetting: column => ({ name: column.name, enabled: true }),
       canCreateSetting: () => true,
@@ -212,6 +229,7 @@ function syncAddedAndRemovedTableColumns(
 function syncAddedAndRemovedGraphMetrics(
   settings: VisualizationSettings,
   newColumns: ColumnInfo[],
+  oldColumns: ColumnInfo[],
 ): VisualizationSettings {
   const graphMetrics = settings["graph.metrics"];
   if (!graphMetrics) {
@@ -223,9 +241,10 @@ function syncAddedAndRemovedGraphMetrics(
     "graph.metrics": syncAddedAndRemovedColumns({
       settings: graphMetrics,
       newColumns,
+      oldColumns,
       getColumnName: setting => setting,
       createSetting: column => column.name,
-      canCreateSetting: column => column.isAggregation ?? false,
+      canCreateSetting: column => column.isAggregation,
     }),
   };
 }
