@@ -31,7 +31,7 @@ import {
   VirtualDashCardOverlayRoot,
   VirtualDashCardOverlayText,
 } from "./DashCard.styled";
-import { DashCardMenuConnected } from "./DashCardMenu/DashCardMenu";
+import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import type {
   CardSlownessStatus,
@@ -180,7 +180,7 @@ export function DashCardVisualization({
     }
 
     const mainSeries = series[0] as unknown as Dataset;
-    const shouldShowDashCardMenu = DashCardMenuConnected.shouldRender({
+    const shouldShowDashCardMenu = DashCardMenu.shouldRender({
       question,
       result: mainSeries,
       isXray,
@@ -194,7 +194,7 @@ export function DashCardVisualization({
     }
 
     return (
-      <DashCardMenuConnected
+      <DashCardMenu
         question={question}
         result={mainSeries}
         dashcardId={dashcard.id}
