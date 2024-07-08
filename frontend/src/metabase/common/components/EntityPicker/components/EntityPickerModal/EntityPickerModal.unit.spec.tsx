@@ -110,7 +110,7 @@ const setup = ({
 };
 
 describe("EntityPickerModal", () => {
-  afterAll(() => {
+  afterEach(() => {
     jest.restoreAllMocks();
   });
 

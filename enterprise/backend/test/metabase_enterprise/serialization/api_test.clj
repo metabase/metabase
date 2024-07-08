@@ -87,7 +87,7 @@
                       (testing "First three lines for coll+dash+card, and then error during compression"
                         (is (= #{"Collection" "Dashboard" "Card"}
                                (log-types (take 3 lines))))
-                        (is (re-find #"ERROR" (nth lines 3))))))))
+                        (is (re-find #"deliberate error message" (str/join "\n" (->> lines (drop 3) (take 3))))))))))
 
               (testing "You can pass specific directory name"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}

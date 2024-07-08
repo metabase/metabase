@@ -4,9 +4,8 @@ import {
   getColumnGroupIcon,
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
+import type { GroupItem } from "metabase/querying/components/FilterContent";
 import * as Lib from "metabase-lib";
-
-import type { GroupItem, SegmentItem } from "../types";
 
 export function appendStageIfAggregated(query: Lib.Query) {
   const aggregations = Lib.aggregations(query, -1);
@@ -74,54 +73,4 @@ export function removeFilters(query: Lib.Query) {
     (newQuery, stageIndex) => Lib.removeFilters(newQuery, stageIndex),
     query,
   );
-}
-
-export function addSegmentFilters(
-  query: Lib.Query,
-  segmentItems: SegmentItem[],
-) {
-  return segmentItems.reduce((query, { segment, stageIndex }) => {
-    return Lib.filter(query, stageIndex, segment);
-  }, query);
-}
-
-export function removeSegmentFilters(
-  query: Lib.Query,
-  segmentItems: SegmentItem[],
-) {
-  const filterGroups = segmentItems.map(({ stageIndex, filterPositions }) => {
-    const filters = Lib.filters(query, stageIndex);
-    return {
-      filters: filterPositions.map(filterPosition => filters[filterPosition]),
-      stageIndex,
-    };
-  });
-
-  return filterGroups.reduce((query, { filters, stageIndex }) => {
-    return filters.reduce(
-      (newQuery, filter) => Lib.removeClause(newQuery, stageIndex, filter),
-      query,
-    );
-  }, query);
-}
-
-export function findColumnFilters(
-  query: Lib.Query,
-  stageIndex: number,
-  column: Lib.ColumnMetadata,
-): Lib.FilterClause[] {
-  const filters = Lib.filters(query, stageIndex);
-  const { filterPositions } = Lib.displayInfo(query, stageIndex, column);
-  return filterPositions != null
-    ? filterPositions.map(index => filters[index])
-    : [];
-}
-
-export function findVisibleFilters(
-  filters: Lib.FilterClause[],
-  initialFilterCount: number,
-): (Lib.FilterClause | undefined)[] {
-  return Array(Math.max(filters.length, initialFilterCount, 1))
-    .fill(undefined)
-    .map((_, i) => filters[i]);
 }

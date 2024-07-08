@@ -395,7 +395,7 @@ describe("#22206 adding and removing columns doesn't duplicate columns", () => {
     cy.signInAsNormalUser();
     openOrdersTable();
 
-    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
   });
 
   it("should not duplicate column in settings when removing and adding it back", () => {
@@ -411,7 +411,7 @@ describe("#22206 adding and removing columns doesn't duplicate columns", () => {
     // rerun query
     cy.findAllByTestId("run-button").first().click();
     cy.wait("@dataset");
-    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
 
     // add column back again
     cy.findByTestId("sidebar-content")

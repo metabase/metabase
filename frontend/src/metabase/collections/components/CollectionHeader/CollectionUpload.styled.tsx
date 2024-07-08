@@ -1,9 +1,5 @@
 import styled from "@emotion/styled";
 
-export const UploadInput = styled.input`
-  display: none;
-`;
-
 export const LoadingStateContainer = styled.div`
   display: flex;
   transform: translateY(10px);
@@ -14,7 +10,7 @@ export const LoadingStateContainer = styled.div`
 
 export const InfoModalTitle = styled.h2`
   text-align: center;
-  font-size: 1.375rem; // 22px 🤦‍♀️
+  font-size: 1.375rem; /* 22px 🤦‍♀️ */
 `;
 
 export const InfoModalBody = styled.div`

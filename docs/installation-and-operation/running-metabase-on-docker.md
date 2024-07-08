@@ -44,7 +44,7 @@ docker run -d -p 12345:3000 --name metabase metabase/metabase
 
 ## Pro or Enterprise quick start
 
-Use this quick start if you have a [license token](../paid-features/activating-the-enterprise-edition.md) for a [paid version](https://www.metabase.com/pricing) of Metabase, and you want to run Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
+Use this quick start if you have a [license token](../paid-features/activating-the-enterprise-edition.md) for a [Pro or Enterprise version](https://www.metabase.com/pricing) of Metabase, and you want to run Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
 
 Assuming you have [Docker](https://www.docker.com/) installed and running, get the latest Docker image:
 
@@ -92,7 +92,6 @@ createdb metabaseappdb
 
 No need to add any tables; Metabase will create those on startup. And let's assume that database is accessible via `my-database-host:5432` with username `name` and password `password`.
 
-
 Here's an example Docker command that tells Metabase to use that database:
 
 ```
@@ -117,14 +116,14 @@ If you've already been running Metabase with the default application database (H
 Here's an example `docker-compose.yml` file for running Metabase with a PostgreSQL database `metabaseappdb`:
 
 ```yml
-version: '3.9'
+version: "3.9"
 services:
   metabase:
     image: metabase/metabase:latest
     container_name: metabase
     hostname: metabase
     volumes:
-    - /dev/urandom:/dev/random:ro
+      - /dev/urandom:/dev/random:ro
     ports:
       - 3000:3000
     environment:
@@ -280,14 +279,14 @@ These files should be in the same directory as the `docker-compose.yml`. Put the
 Notice the "\_FILE" on the environment variables that have a secret:
 
 ```yml
-version: '3.9'
+version: "3.9"
 services:
   metabase:
     image: metabase/metabase:latest
     container_name: metabase
     hostname: metabase
     volumes:
-    - /dev/urandom:/dev/random:ro
+      - /dev/urandom:/dev/random:ro
     ports:
       - 3000:3000
     environment:
@@ -324,10 +323,10 @@ networks:
   metanet1:
     driver: bridge
 secrets:
-   db_password:
-     file: db_password.txt
-   db_user:
-     file: db_user.txt
+  db_password:
+    file: db_password.txt
+  db_user:
+    file: db_user.txt
 ```
 
 We currently support the following [environment variables](../configuring-metabase/environment-variables.md) to be used as secrets:

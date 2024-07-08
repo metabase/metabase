@@ -131,6 +131,7 @@
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/quick-filter
   [_query _stage-number drill-thru]
   (-> (select-keys drill-thru [:type :operators :value])
+      (update :value lib.drill-thru.common/drill-value->js)
       (update :operators (fn [operators]
                            (mapv :name operators)))))
 

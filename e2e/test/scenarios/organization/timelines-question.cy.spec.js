@@ -7,6 +7,7 @@ import {
   rightSidebar,
   visitQuestionAdhoc,
   echartsIcon,
+  popover,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -437,6 +438,74 @@ describe("scenarios > organization > timelines > question", () => {
         "border-left",
         "4px solid rgba(0, 0, 0, 0)",
       );
+    });
+
+    it("should not filter out events in last period (metabase#23336)", () => {
+      cy.createTimelineWithEvents({
+        events: [
+          { name: "Last week", timestamp: "2026-04-21T12:00:00Z" },
+          { name: "Last month", timestamp: "2026-04-27T12:00:00Z" },
+          { name: "Last quarter", timestamp: "2026-05-10T12:00:00Z" },
+          { name: "Last year", timestamp: "2026-09-10T12:00:00Z" },
+        ],
+      });
+
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }],
+            ],
+            "source-table": ORDERS_ID,
+          },
+        },
+      });
+
+      cy.icon("calendar").click();
+
+      // Week
+      rightSidebar().within(() => {
+        cy.findByText("Last week").should("exist");
+        cy.findByText("Last month").should("not.exist");
+        cy.findByText("Last quarter").should("not.exist");
+        cy.findByText("Last year").should("not.exist");
+      });
+
+      // Month
+      cy.findByTestId("timeseries-chrome").findByText("Week").click();
+      popover().findByText("Month").click();
+      cy.wait("@dataset");
+      rightSidebar().within(() => {
+        cy.findByText("Last week").should("exist");
+        cy.findByText("Last month").should("exist");
+        cy.findByText("Last quarter").should("not.exist");
+        cy.findByText("Last year").should("not.exist");
+      });
+
+      // Quarter
+      cy.findByTestId("timeseries-chrome").findByText("Month").click();
+      popover().findByText("Quarter").click();
+      cy.wait("@dataset");
+      rightSidebar().within(() => {
+        cy.findByText("Last week").should("exist");
+        cy.findByText("Last month").should("exist");
+        cy.findByText("Last quarter").should("exist");
+        cy.findByText("Last year").should("not.exist");
+      });
+
+      // Year
+      cy.findByTestId("timeseries-chrome").findByText("Quarter").click();
+      popover().findByText("Year").click();
+      cy.wait("@dataset");
+      rightSidebar().within(() => {
+        cy.findByText("Last week").should("exist");
+        cy.findByText("Last month").should("exist");
+        cy.findByText("Last quarter").should("exist");
+        cy.findByText("Last year").should("exist");
+      });
     });
   });
 

@@ -22,7 +22,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
@@ -522,7 +521,14 @@
    :characterEncoding    "UTF8"
    :characterSetResults  "UTF8"
    ;; GZIP compress packets sent between Metabase server and MySQL/MariaDB database
-   :useCompression       true})
+   :useCompression       true
+   ;; record transaction isolation level and auto-commit locally, and avoid hitting the DB if we do something like
+   ;; `.setTransactionIsolation()` to something we previously set it to. Since we do this every time we run a
+   ;; query (see [[metabase.driver.sql-jdbc.execute/set-best-transaction-level!]]) this should speed up things a bit by
+   ;; removing that overhead. See also
+   ;; https://dev.mysql.com/doc/connector-j/en/connector-j-connp-props-performance-extensions.html#cj-conn-prop_useLocalSessionState
+   ;; and #44507
+   :useLocalSessionState true})
 
 (defn- maybe-add-program-name-option [jdbc-spec additional-options-map]
   ;; connectionAttributes (if multiple) are separated by commas, so values that contain spaces are OK, so long as they
@@ -650,7 +656,7 @@
       "UTC"
       offset)))
 
-(defmethod unprepare/unprepare-value [:mysql OffsetTime]
+(defmethod sql.qp/inline-value [:mysql OffsetTime]
   [_ t]
   ;; MySQL doesn't support timezone offsets in literals so pass in a local time literal wrapped in a call to convert
   ;; it to the appropriate timezone
@@ -658,13 +664,13 @@
           (t/format "HH:mm:ss.SSS" t)
           (format-offset t)))
 
-(defmethod unprepare/unprepare-value [:mysql OffsetDateTime]
+(defmethod sql.qp/inline-value [:mysql OffsetDateTime]
   [_ t]
   (format "convert_tz('%s', '%s', @@session.time_zone)"
           (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
           (format-offset t)))
 
-(defmethod unprepare/unprepare-value [:mysql ZonedDateTime]
+(defmethod sql.qp/inline-value [:mysql ZonedDateTime]
   [_ t]
   (format "convert_tz('%s', '%s', @@session.time_zone)"
           (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)

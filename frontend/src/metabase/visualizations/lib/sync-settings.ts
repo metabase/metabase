@@ -1,21 +1,13 @@
-import { isNotNull } from "metabase/lib/types";
-import {
-  getMaxDimensionsSupported,
-  getMaxMetricsSupported,
-  hasGraphDataSettings,
-} from "metabase/visualizations";
 import {
   findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,
 } from "metabase-lib/v1/queries/utils/dataset";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
+  FieldId,
   Series,
   SingleSeries,
   VisualizationSettings,
 } from "metabase-types/api";
-
-import { getSingleSeriesDimensionsAndMetrics } from "./utils";
 
 export function syncVizSettingsWithSeries(
   settings: VisualizationSettings,
@@ -27,81 +19,64 @@ export function syncVizSettingsWithSeries(
   const series = _series?.[0];
   const previousSeries = _previousSeries?.[0];
 
-  if (series && !series.error) {
-    newSettings = syncTableColumnSettings(newSettings, series);
-
-    if (previousSeries && !previousSeries.error) {
+  if (series?.data && !series?.error) {
+    if (previousSeries?.data && !previousSeries?.error) {
+      newSettings = syncTableColumnNames(settings, series, previousSeries);
       newSettings = syncGraphMetricSettings(
         newSettings,
         series,
         previousSeries,
       );
-
-      if (hasGraphDataSettings(series.card.display)) {
-        newSettings = ensureMetricsAndDimensions(
-          newSettings,
-          series,
-          previousSeries,
-        );
-      }
     }
+
+    newSettings = syncNewTableColumnSettings(newSettings, series);
   }
 
   return newSettings;
 }
 
-function ensureMetricsAndDimensions(
+function syncTableColumnNames(
   settings: VisualizationSettings,
-  series: SingleSeries,
-  previousSeries: SingleSeries,
-) {
-  const hasExplicitGraphDataSettings =
-    "graph.dimensions" in settings || "graph.metrics" in settings;
-
-  if (hasExplicitGraphDataSettings) {
+  { data: { cols } }: SingleSeries,
+  { data: { cols: prevCols } }: SingleSeries,
+): VisualizationSettings {
+  const columnSettings = settings["table.columns"] ?? [];
+  if (columnSettings.length === 0) {
     return settings;
   }
 
-  const nextSettings = { ...settings };
+  const newNamesById = new Map<FieldId, string[]>();
+  cols.forEach(col => {
+    if (col.id) {
+      const names = newNamesById.get(col.id) ?? [];
+      newNamesById.set(col.id, [...names, col.name]);
+    }
+  });
+  const prevIdByName = new Map(
+    prevCols.filter(col => col.id != null).map(col => [col.name, col.id]),
+  );
 
-  const availableColumnNames = series.data.cols.map(col => col.name);
-  const maxDimensions = getMaxDimensionsSupported(series.card.display);
-  const maxMetrics = getMaxMetricsSupported(series.card.display);
-
-  const { dimensions: currentDimensions, metrics: currentMetrics } =
-    getSingleSeriesDimensionsAndMetrics(series, maxDimensions, maxMetrics);
-  const { dimensions: previousDimensions, metrics: previousMetrics } =
-    getSingleSeriesDimensionsAndMetrics(
-      previousSeries,
-      maxDimensions,
-      maxMetrics,
-    );
-
-  const dimensions =
-    currentDimensions.filter(isNotNull).length > 0
-      ? currentDimensions
-      : previousDimensions.filter((columnName: string) =>
-          availableColumnNames.includes(columnName),
-        );
-
-  const metrics =
-    currentMetrics.filter(isNotNull).length > 0
-      ? currentMetrics
-      : previousMetrics.filter((columnName: string) =>
-          availableColumnNames.includes(columnName),
-        );
-
-  if (dimensions.length > 0) {
-    nextSettings["graph.dimensions"] = dimensions;
-  }
-  if (metrics.length > 0) {
-    nextSettings["graph.metrics"] = metrics;
-  }
-
-  return nextSettings;
+  return {
+    ...settings,
+    "table.columns": columnSettings.map(setting => {
+      const prevId = prevIdByName.get(setting.name);
+      if (prevId == null) {
+        return setting;
+      }
+      const newNames = newNamesById.get(prevId);
+      if (newNames == null || newNames.length !== 1) {
+        return setting;
+      }
+      const [newName] = newNames;
+      if (newName === setting.name) {
+        return setting;
+      }
+      return { ...setting, name: newName };
+    }),
+  };
 }
 
-function syncTableColumnSettings(
+function syncNewTableColumnSettings(
   settings: VisualizationSettings,
   { data }: SingleSeries,
 ): VisualizationSettings {
@@ -138,7 +113,6 @@ function syncTableColumnSettings(
 
   const addedColumnSettings = addedColumns.map(col => ({
     name: col.name,
-    key: getColumnKey(col),
     fieldRef: col.field_ref,
     enabled: true,
   }));
@@ -166,6 +140,7 @@ function syncGraphMetricSettings(
     return settings;
   }
 
+  const allColumnNames = new Set(cols.map(column => column.name));
   const metricColumnNames = new Set(
     cols
       .filter(column => column.source === "aggregation")
@@ -180,7 +155,7 @@ function syncGraphMetricSettings(
     [...metricColumnNames].filter(name => !prevMetricColumnNames.has(name)),
   );
   const removedMetricColumnNames = new Set(
-    [...prevMetricColumnNames].filter(name => !metricColumnNames.has(name)),
+    [...prevMetricColumnNames].filter(name => !allColumnNames.has(name)),
   );
   if (
     addedMetricColumnNames.size === 0 &&

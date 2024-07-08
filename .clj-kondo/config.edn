@@ -162,6 +162,7 @@
     metabase.audit                 #{metabase.audit}
     metabase.bootstrap             #{metabase.bootstrap}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
+    metabase.channel               #{metabase.channel.core}
     metabase.config                #{metabase.config}
     metabase.core                  #{metabase.core.initialization-status}                           ; TODO -- only namespace used outside of EE, this probably belongs in `metabase.server` anyway since that's the only place it's used.
     metabase.db                    #{metabase.db
@@ -265,6 +266,7 @@
     metabase.bootstrap             #{}
     metabase.cmd                   :any
     metabase.compatibility         :any
+    metabase.channel               :any
     metabase.config                #{metabase.plugins}
     metabase.core                  :any
     metabase.db                    :any
@@ -281,7 +283,12 @@
     metabase.metabot               :any
     metabase.models                :any
     metabase.moderation            :any
-    metabase.native-query-analyzer :any
+    metabase.native-query-analyzer #{metabase.config
+                                     metabase.driver
+                                     metabase.lib
+                                     metabase.public-settings
+                                     metabase.query-processor
+                                     metabase.util}
     metabase.permissions           :any
     metabase.plugins               :any
     metabase.public-settings       :any
@@ -412,6 +419,7 @@
     metabase.api.user                                             api.user
     metabase.api.util                                             api.util
     metabase.async.streaming-response.thread-pool                 thread-pool
+    metabase.channel.core                                         channel
     metabase.cmd.copy.h2                                          copy.h2
     metabase.config                                               config
     metabase.config.file                                          config.file

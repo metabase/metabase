@@ -26,7 +26,6 @@
    :card_id              true
    :table_id             true
    :group_id             true
-   :permission_id        false
    :attribute_remappings {:foo 1}})
 
 (defmacro ^:private with-gtap-cleanup
@@ -248,8 +247,7 @@
                         :table_id             table-id-1
                         :group_id             group-id
                         :card_id              card-id-1
-                        :attribute_remappings {:foo 1}
-                        :permission_id        (mt/malli=? [:maybe :int])}]
+                        :attribute_remappings {:foo 1}}]
                       (:sandboxes result)))
               (is (t2/exists? GroupTableAccessPolicy :table_id table-id-1 :group_id group-id))))
 

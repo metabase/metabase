@@ -240,6 +240,7 @@ export async function updateTemplateTagNames(
   return query;
 }
 
+// TODO: extract getting params from URL, then use clear part in SDK - InteractiveQuestion
 async function handleQBInit(
   dispatch: Dispatch,
   getState: GetState,

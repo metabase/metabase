@@ -8,12 +8,12 @@ redirect_from:
 
 Metabase's [Enterprise and Pro](https://www.metabase.com/pricing) plans provide additional features that help organizations scale Metabase and deliver self-service internal or embedded analytics.
 
-- **If you're on Metabase Cloud**, your paid features will activate automatically.
+- **If you're on Metabase Cloud**, your Pro/Enterprise features will activate automatically.
 - **If you're self-hosting,** you'll need to [activate your license](./activating-the-enterprise-edition.md).
 
 ## Authentication
 
-Paid plans include more ways to authenticate people and manage groups.
+Pro and Enterprise plans include more ways to authenticate people and manage groups.
 
 - [Authenticating with SAML](../people-and-groups/authenticating-with-saml.md)
   - [Setting up SAML with Auth0](../people-and-groups/saml-auth0.md)
@@ -26,7 +26,7 @@ Paid plans include more ways to authenticate people and manage groups.
 
 ## Permissions
 
-Paid plans include more ways to manage permissions, including data sandboxing, which brings row and column-level permissions to Metabase.
+Pro and Enterprise plans include more ways to manage permissions, including data sandboxing, which brings row and column-level permissions to Metabase.
 
 - [Data sandboxes](../permissions/data-sandboxes.md)
 - [Blocked view data permissions](../permissions/data.md#blocked-view-data-permission)
@@ -77,7 +77,7 @@ Tools for keeping your Metabase organized, so people can find your most importan
 
 ## Advanced caching controls
 
-All Metabase editions include global caching controls. Paid plans includes additional caching options that let you control caching for individual questions.
+All Metabase editions include global caching controls. Pro and Enterprise plans includes additional caching options that let you control caching for individual questions.
 
 - [Caching questions](../configuring-metabase/caching.md#question-caching-policy)
 - [Caching dashboards](../configuring-metabase/caching.md#dashboard-caching-policy)

@@ -1,17 +1,16 @@
+import type * as d3 from "d3";
 import _ from "underscore";
 
 import type { StackedTooltipModel } from "metabase/visualizations/types";
 
 export function getMaxLabelDimension(
-  d3Arc: d3.svg.Arc<d3.svg.arc.Arc>,
-  slice: d3.svg.arc.Arc,
+  d3Arc: d3.Arc<unknown, d3.DefaultArcObject>,
+  slice: d3.DefaultArcObject,
 ) {
-  // @ts-expect-error Invalid library typings
-  const innerRadius = d3Arc.innerRadius()();
-  // @ts-expect-error Invalid library typings
-  const outerRadius = d3Arc.outerRadius()();
-  const donutWidth = outerRadius - innerRadius;
+  const innerRadius = d3Arc.innerRadius()(slice);
+  const outerRadius = d3Arc.outerRadius()(slice);
 
+  const donutWidth = outerRadius - innerRadius;
   const arcAngle = slice.startAngle - slice.endAngle;
 
   // using law of cosines to calculate the arc length

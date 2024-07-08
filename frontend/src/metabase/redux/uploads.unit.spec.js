@@ -62,7 +62,7 @@ describe("csv uploads", () => {
       jest.useFakeTimers({ advanceTimers: true }).setSystemTime(now);
     });
 
-    afterAll(() => {
+    afterEach(() => {
       jest.useRealTimers();
     });
 

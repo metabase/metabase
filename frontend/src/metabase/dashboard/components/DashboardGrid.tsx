@@ -17,6 +17,7 @@ import Modal from "metabase/components/Modal";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import ModalS from "metabase/css/components/modal.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
+import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import {
   isQuestionDashCard,
   getVisibleCardIds,
@@ -39,6 +40,7 @@ import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import type {
   BaseDashboardCard,
   Card,
@@ -135,11 +137,13 @@ type OwnProps = {
   isNightMode: boolean;
   withCardTitle?: boolean;
   clickBehaviorSidebarDashcard: DashboardCard | null;
-  mode?: Mode;
+  mode?: QueryClickActionsMode | Mode;
   // public dashboard passes it explicitly
   width?: number;
   // public dashboard passes it as noop
-  navigateToNewCardFromDashboard?: () => void;
+  navigateToNewCardFromDashboard?: (
+    opts: NavigateToNewCardFromDashboardOpts,
+  ) => void;
   onEditingChange?: (dashboard: Dashboard | null) => void;
 };
 

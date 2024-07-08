@@ -155,7 +155,8 @@ export type TimeSeriesXAxisModel = BaseXAxisModel &
   TimeSeriesAxisScaleTransforms & {
     axisType: "time";
     columnUnit?: DateTimeAbsoluteUnit;
-    timezone: string;
+    timezone?: string;
+    offsetMinutes?: number;
     interval: TimeSeriesInterval;
     intervalsCount: number;
     range: DateRange;

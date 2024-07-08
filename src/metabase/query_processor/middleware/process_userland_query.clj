@@ -94,7 +94,7 @@
        add-running-time
        (dissoc :error :hash :executor_id :action_id :is_sandboxed :card_id :dashboard_id :pulse_id :result_rows :native))
    (dissoc result :cache/details)
-   {:cached                 (boolean (:cached cache))
+   {:cached                 (when (:cached cache) (:updated_at cache))
     :status                 :completed
     :average_execution_time (when (:cached cache)
                               (query/average-execution-time-ms query-hash))}))

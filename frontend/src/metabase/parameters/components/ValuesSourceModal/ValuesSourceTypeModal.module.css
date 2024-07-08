@@ -1,0 +1,8 @@
+.info {
+  background-color: var(--mb-color-bg-light);
+  border-radius: var(--default-border-radius);
+}
+
+.icon {
+  flex-shrink: 0;
+}

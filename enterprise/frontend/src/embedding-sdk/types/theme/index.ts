@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 import type { ColorName } from "metabase/lib/colors/types";
 
 import type { MetabaseFontFamily } from "../fonts";
@@ -124,6 +126,11 @@ export type MetabaseComponentTheme = {
 
   /** Pivot table **/
   pivotTable: {
+    cell: {
+      /** Font size of cell values, defaults to ~12px */
+      fontSize: string;
+    };
+
     /** Button to toggle pivot table rows */
     rowToggle: {
       textColor: string;
@@ -135,13 +142,16 @@ export type MetabaseComponentTheme = {
   scalar?: {
     /** The primary numerical value */
     value?: {
-      fontSize?: string;
+      fontSize?: CSSProperties["fontSize"];
       lineHeight?: string;
     };
   };
 
   /** Cartesian charts */
   cartesian: {
+    /** Padding around the chart. */
+    padding?: string;
+
     label: {
       /** Labels used in cartesian charts, such as axis ticks and series. */
       fontSize: string;
@@ -162,6 +172,18 @@ export type MetabaseComponentTheme = {
         hoverBackgroundColor: ColorCssVariableOrString;
         textColor: ColorCssVariableOrString;
         hoverTextColor: ColorCssVariableOrString;
+      };
+    };
+    emptyContent: {
+      icon: {
+        width: CSSProperties["width"];
+        height: CSSProperties["width"];
+      };
+      title: {
+        fontSize: CSSProperties["fontSize"];
+      };
+      subtitle: {
+        fontSize: CSSProperties["fontSize"];
       };
     };
   };

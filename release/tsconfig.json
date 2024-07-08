@@ -9,7 +9,8 @@
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
     "lib": ["dom", "dom.iterable", "esnext"],
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "target": "esnext"
   },
   "include": ["src/**/*.ts", "src/index.mts"]
 }

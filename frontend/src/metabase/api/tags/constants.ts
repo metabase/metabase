@@ -13,6 +13,7 @@ export const TAG_TYPES = [
   "field",
   "field-values",
   "indexed-entity",
+  "parameter-values",
   "permissions-group",
   "persisted-info",
   "persisted-model",

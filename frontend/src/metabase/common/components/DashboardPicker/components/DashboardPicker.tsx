@@ -169,7 +169,7 @@ const DashboardPickerInner = (
         const idPath = getCollectionIdPath(
           {
             id: currentCollection.id,
-            location: currentCollection.location,
+            location: currentCollection.effective_location,
             is_personal: currentCollection.is_personal,
           },
           userPersonalCollectionId,

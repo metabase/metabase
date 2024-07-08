@@ -313,6 +313,43 @@
                           (assoc :info {:visualization-settings viz-settings})
                           qp.pivot/run-pivot-query))))))))))
 
+(deftest nested-models-with-expressions-pivot-breakout-names-test
+  (testing "#43993 again - breakouts on an expression from the inner model should pass"
+    (mt/with-temp [Card model1 {:type :model
+                                :dataset_query
+                                (mt/mbql-query products
+                                               {:source-table $$products
+                                                :expressions  {"Rating Bucket" [:floor $products.rating]}})}
+                   Card model2 {:type :model
+                                :dataset_query
+                                (mt/mbql-query orders
+                                               {:source-table $$orders
+                                                :joins        [{:source-table (str "card__" (u/the-id model1))
+                                                                :alias        "model A - Product"
+                                                                :fields       :all
+                                                                :condition    [:= $orders.product_id
+                                                                               [:field %products.id
+                                                                                {:join-alias "model A - Product"}]]}]})}]
+      (testing "Column aliasing works when joining an expression in an inner model"
+        (let [query        (mt/mbql-query
+                             orders {:source-table (str "card__" (u/the-id model2))
+                                     :aggregation  [[:sum [:field "SUBTOTAL" {:base-type :type/Number}]]]
+                                     :breakout     [[:field "Rating Bucket" {:base-type  :type/Number
+                                                                             :join-alias "model A - Product"}]]})
+              viz-settings (mt/$ids orders {:pivot_table.column_split
+                                            {:columns     [[:field "Rating Bucket"
+                                                            {:base-type  :type/Number
+                                                             :join-alias "model A - Product"}]]}})]
+          (testing "for a regular query"
+            (is (=? {:status :completed}
+                    (qp/process-query query))))
+          (testing "and a pivot query"
+            (is (=? {:status    :completed
+                     :row_count 6}
+                    (-> query
+                        (assoc :info {:visualization-settings viz-settings})
+                        qp.pivot/run-pivot-query)))))))))
+
 (deftest ^:parallel dont-return-too-many-rows-test
   (testing "Make sure pivot queries don't return too many rows (#14329)"
     (let [results (qp.pivot/run-pivot-query (test-query))

@@ -28,8 +28,12 @@ const SHORTCUTS: Shortcut[] = [
     operator: ["=", "<", ">"],
     values: [["relative-datetime", -1, "day"]],
   },
-  { name: t`Past 7 days`, operator: "time-interval", values: [-7, "day"] },
-  { name: t`Past 30 days`, operator: "time-interval", values: [-30, "day"] },
+  { name: t`Previous 7 days`, operator: "time-interval", values: [-7, "day"] },
+  {
+    name: t`Previous 30 days`,
+    operator: "time-interval",
+    values: [-30, "day"],
+  },
 ];
 
 const RELATIVE_SHORTCUTS: ShortcutMap = {

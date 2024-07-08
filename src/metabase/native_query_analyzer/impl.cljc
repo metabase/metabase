@@ -29,7 +29,7 @@
     ;; For MySQL, columns and aliases can never be case-sensitive, and for SQL Server the default collation is case-
     ;; insensitive too, so it makes sense to just treat all databases as case-insensitive as a whole.
     ;;
-    ;; In future Macaw may support discriminating on the identifier type, in which case we could be more precise for
+    ;; In future, Macaw may support discriminating on the identifier type, in which case we could be more precise for
     ;; these databases. Being 100% correct would require querying system variables and schema configuration however,
     ;; which is likely a step too far in complexity.
     ;;
@@ -40,4 +40,11 @@
     {:case-insensitive      :agnostic
      ;; For both MySQL and SQL Server, whether identifiers are case-sensitive depends on database configuration only,
      ;; and quoting has no effect on this, so we disable this option for consistency with `:case-insensitive`.
-     :quotes-preserve-case? (not (#{:mysql :sqlserver} driver))}))
+     :quotes-preserve-case? (not (contains? #{:mysql :sqlserver} driver))
+     ;; There is no plan to be exhaustive yet.
+     ;; Note that while an allowed list would be more conservative, at the time of writing only 2 of the bundled
+     ;; drivers use FINAL as a reserved word, and mentioning them all would be prohibitive.
+     ;; In the future, we will use multimethods to define this explicitly per driver, or even discover it automatically
+     ;; through the JDBC connection, where possible.
+     :non-reserved-words    (vec (remove nil? [(when-not (contains? #{:snowflake :oracle} driver)
+                                                 :final)]))}))

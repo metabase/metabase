@@ -59,7 +59,7 @@ describe("metabase/parameters/utils/formatting", () => {
       {
         type: "date/relative",
         value: "past30days",
-        expected: "Past 30 Days",
+        expected: "Previous 30 Days",
       },
       {
         type: "date/month-year",

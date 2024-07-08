@@ -112,6 +112,11 @@
         (not (every? auto-bucketable-value? values)))
       :do-not-bucket-reason/not-all-values-are-auto-bucketable)
 
+    ;; *  do not autobucket fields that are updating the time interval
+    (lib.util.match/match-one x
+      [(_tag :guard #{:+ :-}) _ [:field _ _] [:interval _ _n (unit :guard #{:minute :hour :second})]])
+    :do-not-bucket-reason/bucket-between-relative-starting-from
+
     ;; do not auto-bucket fields inside a `:time-interval` filter: it already supplies its own unit
     ;; do not auto-bucket fields inside a `:datetime-diff` clause: the precise timestamp is needed for the difference
     (mbql.u/is-clause? #{:time-interval :datetime-diff} x)

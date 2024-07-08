@@ -21,6 +21,7 @@ import {
 } from "metabase/collections/utils";
 import { ConfirmDeleteModal } from "metabase/components/ConfirmDeleteModal";
 import EventSandbox from "metabase/components/EventSandbox";
+import { bookmarks as BookmarkEntity } from "metabase/entities";
 import { useDispatch } from "metabase/lib/redux";
 import { entityForObject } from "metabase/lib/schema";
 import * as Urls from "metabase/lib/urls";
@@ -140,6 +141,7 @@ function ActionMenu({
     const result = await dispatch(
       Entity.actions.update({ id: item.id, archived: false }),
     );
+    await dispatch(BookmarkEntity.actions.invalidateLists());
     const parent = HACK_getParentCollectionFromEntityUpdateAction(item, result);
     const redirect = parent ? Urls.collection(parent) : `/collection/root`;
 

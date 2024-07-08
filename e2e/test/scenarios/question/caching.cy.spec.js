@@ -13,7 +13,6 @@ describeEE("scenarios > question > caching", () => {
     restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
-    cy.request("PUT", "/api/setting/enable-query-caching", { value: true });
   });
 
   /**

@@ -613,7 +613,7 @@ describe("scenarios > dashboard > parameters", () => {
       setFilter("Time", "Relative Date");
 
       sidebar().findByText("Default value").next().click();
-      popover().contains("Past 7 days").click({ force: true });
+      popover().contains("Previous 7 days").click({ force: true });
       saveDashboard();
 
       const { interceptor } = spyRequestFinished("dashcardRequestSpy");

@@ -21,9 +21,10 @@
   ;; stuff doesn't belong in the Dashboard QP namespace
   (binding [api/*current-user-permissions-set* (atom #{"/"})]
     (qp.card/process-query-for-card
-     card-id :api
-     :run (fn [query info]
-            (qp/process-query (assoc query :info info))))))
+      card-id :api
+      :make-run (constantly
+                  (fn [query info]
+                    (qp/process-query (assoc query :info info)))))))
 
 (defn field-filter-query
   "A query with a Field Filter parameter"
@@ -170,6 +171,17 @@
       (is (= [[100]]
              (mt/rows (run-query-for-card card-id)))))))
 
+(deftest ^:parallel pivot-tables-should-not-override-the-run-function
+  (testing "Pivot tables should not override the run function (#44160)"
+    (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query
+                                                        (mt/mbql-query venues
+                                                                       {:aggregation [[:count]]})
+                                                        :display :pivot}]
+      (let [result (run-query-for-card card-id)]
+        (is (=? {:status :completed}
+                result))
+        (is (= [[100]] (mt/rows result)))))))
+
 (deftest nested-query-permissions-test
   (testing "Should be able to run a Card with another Card as its source query with just perms for the former (#15131)"
     (mt/with-no-data-perms-for-all-users!
@@ -190,9 +202,10 @@
             (letfn [(process-query-for-card [card]
                       (qp.card/process-query-for-card
                        (u/the-id card) :api
-                       :run (fn [query info]
-                              (let [info (assoc info :query-hash (byte-array 0))]
-                                (qp/process-query (assoc query :info info))))))]
+                       :make-run (constantly
+                                   (fn [query info]
+                                     (let [info (assoc info :query-hash (byte-array 0))]
+                                       (qp/process-query (assoc query :info info)))))))]
               (testing "Should not be able to run the parent Card"
                 (is (not (mi/can-read? disallowed-collection)))
                 (is (not (mi/can-read? parent-card)))

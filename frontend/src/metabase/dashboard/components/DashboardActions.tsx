@@ -36,12 +36,12 @@ export const getDashboardActions = ({
   canManageSubscriptions = false,
   dashboard,
   formInput,
-  hasNightModeToggle,
+  hasNightModeToggle = false,
   isAdmin,
   isEditing = false,
   isEmpty = false,
   isFullscreen,
-  isNightMode,
+  isNightMode = false,
   isPublic = false,
   onFullscreenChange,
   onNightModeChange,
@@ -115,7 +115,8 @@ export const getDashboardActions = ({
     !isEditing &&
     isFullscreen &&
     !dashboard?.archived &&
-    hasNightModeToggle
+    hasNightModeToggle &&
+    onNightModeChange
   ) {
     buttons.push(
       <Tooltip

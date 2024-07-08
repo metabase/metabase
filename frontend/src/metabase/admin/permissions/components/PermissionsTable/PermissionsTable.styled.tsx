@@ -66,6 +66,7 @@ export const PermissionTableHeaderCell = styled(
   &:first-of-type {
     background: ${({ theme }) => getHeaderBackground(theme)};
     z-index: 2;
+
     &:after {
       display: none;
     }

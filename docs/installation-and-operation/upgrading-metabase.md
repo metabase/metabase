@@ -144,18 +144,29 @@ But if you've made changes to your application database since upgrading that you
 
 ### Using the migrate down command
 
-Stop your Metabase and use the current, upgraded Metabase JAR (not the Metabase JAR you want to roll back to) to complete the rollback with the following command:
+Stop your Metabase and use the current, upgraded Metabase JAR (not the Metabase JAR you want to roll back to) to complete the rollback with the `migrate down` command. Make sure that the connection details for your application database are set in the environment variables, for example:
 
 ```
+export MB_DB_TYPE=postgres
+export MB_DB_DBNAME=metabaseappdb
+export MB_DB_PORT=5432
+export MB_DB_USER=username
+export MB_DB_PASS=password
+export MB_DB_HOST=localhost
 java -jar metabase.jar migrate down
 ```
 
-If you're running Docker, the command would be:
+If you're running Docker, use the command `"migrate down"` (with the quotes around `"migrate down"`), and include the connection details for your application database, for example:
 
 ```
-docker run --rm metabase/metabase "migrate down"
+docker run
+  -e "MB_DB_TYPE=postgres" \
+  -e "MB_DB_DBNAME=metabaseappdb" \
+  -e "MB_DB_PORT=5432" \
+  -e "MB_DB_USER=name" \
+  -e "MB_DB_PASS=password" \
+  -e "MB_DB_HOST=my-database-host" \
+--rm metabase/metabase "migrate down"
 ```
-
-Note the quotes around `"migrate down"` for the Docker command.
 
 Once the migration process completes, start up Metabase using the JAR or Docker image for the version you want to run.

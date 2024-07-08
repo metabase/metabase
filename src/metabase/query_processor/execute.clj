@@ -1,10 +1,10 @@
 (ns metabase.query-processor.execute
   (:require
+   #_[metabase.query-processor.middleware.update-used-cards :as update-used-cards]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.middleware.update-used-cards :as update-used-cards]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
@@ -19,7 +19,9 @@
   (fn [query rff]
     (letfn [(rff* [metadata]
               {:pre [(map? metadata)]}
-              (rff (assoc metadata :native_form ((some-fn :native :qp/compiled) query))))]
+              (rff (cond-> metadata
+                     (not (:native_form metadata))
+                     (assoc :native_form ((some-fn :qp/compiled-inline :qp/compiled :native) query)))))]
       (qp query rff*))))
 
 (defn- add-preprocessed-query-to-result-metadata-for-userland-query [qp]
@@ -41,7 +43,7 @@
   e.g.
 
     (f (f query rff)) -> (f query rff)"
-  [#'update-used-cards/update-used-cards!
+  [#_#'update-used-cards/update-used-cards! ;; Disable report_card updates to handle perf issues  (for now) (#44359)
    #'add-native-form-to-result-metadata
    #'add-preprocessed-query-to-result-metadata-for-userland-query
    #'cache/maybe-return-cached-results

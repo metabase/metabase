@@ -163,9 +163,14 @@ const StrategyFormBody = ({
     }
   }, [selectedStrategyType, values, setFieldValue]);
 
+  const headingId = "strategy-form-heading";
+
   return (
     <FormWrapper>
-      <StyledForm style={{ overflow: isInSidebar ? undefined : "auto" }}>
+      <StyledForm
+        style={{ overflow: isInSidebar ? undefined : "auto" }}
+        aria-labelledby={headingId}
+      >
         <FormBox>
           {shouldShowName && (
             <Box lh="1rem" pt="md" color="text-medium">
@@ -180,7 +185,11 @@ const StrategyFormBody = ({
             </Box>
           )}
           <Stack maw="35rem" pt={targetId === rootId ? "xl" : 0} spacing="xl">
-            <StrategySelector targetId={targetId} model={targetModel} />
+            <StrategySelector
+              targetId={targetId}
+              model={targetModel}
+              headingId={headingId}
+            />
             {selectedStrategyType === "ttl" && (
               <>
                 <Field
@@ -375,9 +384,11 @@ const SaveAndDiscardButtons = ({
 const StrategySelector = ({
   targetId,
   model,
+  headingId,
 }: {
   targetId: number | null;
   model?: CacheableModel;
+  headingId: string;
 }) => {
   const { strategies } = PLUGIN_CACHING;
 
@@ -392,7 +403,7 @@ const StrategySelector = ({
       <FormRadioGroup
         label={
           <Stack spacing="xs">
-            <Text lh="1rem" color="text-medium">
+            <Text lh="1rem" color="text-medium" id={headingId}>
               {t`Select the cache invalidation policy`}
             </Text>
             <Text lh="1rem" fw="normal" size="sm" color="text-medium">
@@ -419,6 +430,7 @@ const StrategySelector = ({
                 key={name}
                 label={optionLabelFormatted}
                 autoFocus={values.type === name}
+                role="radio"
               />
             );
           })}

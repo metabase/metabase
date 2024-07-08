@@ -59,7 +59,7 @@ export const ItemList = <
 
   if (isLoading && !filteredItems) {
     return (
-      <Box miw={310} h="100%" aria-label={t`loading`}>
+      <Box miw={310} h="100%" aria-label={t`Loading...`}>
         <Center p="lg" h="100%">
           <DelayedLoadingSpinner delay={300} />
         </Center>

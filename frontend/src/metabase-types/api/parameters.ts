@@ -65,7 +65,7 @@ export type ValuesQueryType = "list" | "search" | "none";
 export type ValuesSourceType = null | "card" | "static-list";
 
 export interface ValuesSourceConfig {
-  values?: string[];
+  values?: string[] | ParameterValue[];
   card_id?: CardId;
   value_field?: unknown[];
 }
@@ -91,7 +91,11 @@ export type StructuredParameterDimensionTarget = [
 ];
 
 export type ParameterValueOrArray = string | number | Array<any>;
-export type ParameterValue = [RowValue];
+
+export type HumanReadableParameterValue = string;
+export type NotRemappedParameterValue = [RowValue];
+export type RemappedParameterValue = [RowValue, HumanReadableParameterValue];
+export type ParameterValue = NotRemappedParameterValue | RemappedParameterValue;
 
 export type ParameterValuesMap = Record<
   ParameterId,
@@ -119,4 +123,27 @@ export type ParameterQueryObject = {
   type: string;
   target: ParameterTarget;
   value: ParameterValueOrArray;
+};
+
+export type NormalizedParameter = {
+  id: ParameterId;
+  name: string;
+  slug: string;
+  type: string;
+  target?: ParameterTarget;
+  options?: ParameterOptions;
+  values_query_type?: ValuesQueryType;
+  values_source_type?: ValuesSourceType;
+  values_source_config?: ValuesSourceConfig;
+};
+
+export type GetParameterValuesRequest = {
+  parameter: NormalizedParameter;
+  field_ids: number[];
+};
+
+export type SearchParameterValuesRequest = {
+  parameter: Parameter;
+  field_ids: number[];
+  query: string;
 };

@@ -16,6 +16,7 @@ import type { IconName, IconProps } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import Visualization from "metabase/visualizations/components/Visualization";
+import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {
   Dashboard,
@@ -32,7 +33,7 @@ import {
   VirtualDashCardOverlayRoot,
   VirtualDashCardOverlayText,
 } from "./DashCard.styled";
-import { DashCardMenuConnected } from "./DashCardMenu/DashCardMenu";
+import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import type {
   CardSlownessStatus,
@@ -44,8 +45,8 @@ interface DashCardVisualizationProps {
   dashboard: Dashboard;
   dashcard: DashboardCard;
   series: Series;
-  mode?: Mode;
-  href: string | undefined;
+  mode?: QueryClickActionsMode | Mode;
+  getHref?: () => string | undefined;
 
   gridSize: {
     width: number;
@@ -93,7 +94,7 @@ export function DashCardVisualization({
   dashboard,
   series,
   mode,
-  href,
+  getHref,
   gridSize,
   gridItemWidth,
   totalNumGridCols,
@@ -194,7 +195,7 @@ export function DashCardVisualization({
     }
 
     const mainSeries = series[0] as unknown as Dataset;
-    const shouldShowDashCardMenu = DashCardMenuConnected.shouldRender({
+    const shouldShowDashCardMenu = DashCardMenu.shouldRender({
       question,
       result: mainSeries,
       isXray,
@@ -208,7 +209,7 @@ export function DashCardVisualization({
     }
 
     return (
-      <DashCardMenuConnected
+      <DashCardMenu
         question={question}
         result={mainSeries}
         dashcardId={dashcard.id}
@@ -245,7 +246,7 @@ export function DashCardVisualization({
       rawSeries={series}
       metadata={metadata}
       mode={mode}
-      href={href}
+      getHref={getHref}
       gridSize={gridSize}
       totalNumGridCols={totalNumGridCols}
       headerIcon={headerIcon}
