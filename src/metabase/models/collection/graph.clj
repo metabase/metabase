@@ -170,13 +170,15 @@
          new-perms          (into {} (for [[group-id collection-id->perms] new-perms]
                                       [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
          [diff-old changes] (data/diff old-perms new-perms)]
-     (data-perms.graph/log-permissions-changes diff-old changes)
      (data-perms.graph/check-revision-numbers old-graph new-graph)
      (when (seq changes)
        (t2/with-transaction [_conn]
          (doseq [[group-id changes] changes]
            (update-audit-collection-permissions! group-id changes)
-           (update-group-permissions! collection-namespace group-id changes))
+           (update-group-permissions! collection-namespace group-id changes)))
+       ;; The graph is updated infrequently, but `diff-old` and `old-graph` can get huge on larger instances.
+       (future
+         (data-perms.graph/log-permissions-changes diff-old changes)
          (data-perms.graph/save-perms-revision! CollectionPermissionGraphRevision
                                                 (:revision old-graph)
                                                 (assoc old-graph :namespace collection-namespace)
