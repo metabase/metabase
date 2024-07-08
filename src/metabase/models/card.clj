@@ -878,11 +878,18 @@
 
 (defmethod serdes/make-spec "Card"
   [_model-name]
-  {:copy [:name :description :archived :collection_position :enable_embedding :type :query_type
-          :display :archived_directly :entity_id :collection_preview :metabase_version :public_uuid
-          :created_at :embedding_params]
-   :skip [:id :updated_at :cache_invalidated_at :view_count :last_used_at :initially_published_at
-          :dataset_query_metrics_v2_migration_backup :cache_ttl]
+  {:copy [:archived :archived_directly :collection_position :collection_preview :created_at :description :display
+          :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name]
+   :skip [ ;; always instance-specific
+          :id :updated_at
+          ;; cache invalidation is instance-specific
+          :cache_invalidated_at
+          ;; those are instance-specific analytic columns
+          :view_count :last_used_at :initially_published_at
+          ;; this is data migration column
+          :dataset_query_metrics_v2_migration_backup
+          ;; this column is not used anymore
+          :cache_ttl]
    :transform
    {:database_id            {:ser #(serdes/*export-fk-keyed* % 'Database :name)
                              :des #(serdes/*import-fk-keyed* % 'Database :name)}
