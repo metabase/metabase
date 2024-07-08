@@ -152,7 +152,6 @@
           (log/error e "Pulse card render error")
           (body/render :render-error nil nil nil nil nil))))))
 
-
 (mu/defn render-pulse-card :- formatter/RenderedPulseCard
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results. Returns a map with keys
 
@@ -173,18 +172,9 @@
                                                     (fn [viz-settings]
                                                       (merge viz-settings (mb.viz/db->norm
                                                                            (:visualization_settings dashcard)))))
-        viz                              (merge
-                                          (get-in results [:data :viz-settings])
-                                          (mb.viz/db->norm
-                                           (:visualization_settings card))
-                                          #_(mb.viz/db->norm
-                                           (:visualization_settings dashcard)))
         {pulse-body       :content
          body-attachments :attachments
-         text             :render/text}  (render-pulse-card-body render-type timezone-id
-                                                                 card #_(assoc card :visualization_settings viz)
-                                                                 (assoc dashcard :visualization_settings viz)
-                                                                 results)]
+         text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)]
     (cond-> {:attachments (merge title-attachments body-attachments)
              :content [:p
                        ;; Provide a horizontal scrollbar for tables that overflow container width.
