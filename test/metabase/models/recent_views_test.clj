@@ -293,7 +293,6 @@
     (t2.with-temp/with-temp [:model/Dashboard {dash-id :id} {}
                              :model/Dashboard {dash-id-2 :id} {}
                              :model/Dashboard {dash-id-3 :id} {}]
-
       (is (nil? (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
 
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
@@ -306,7 +305,11 @@
 
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id-3 :view)
-      (is (= dash-id-3 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta)))))))
+      (is (= dash-id-3 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
+
+      (testing "archived dashboards are not returned (#45223)"
+        (t2/update! :model/Dashboard dash-id-3 {:archived true})
+        (is (= dash-id (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))))))
 
 (deftest id-pruning-test
   (mt/with-temp [:model/Database a-db     {}
