@@ -11,6 +11,7 @@ import visualizations from "metabase/visualizations";
 
 interface VisualizerUsedProps {
   series: Series;
+  onFocusSeries: (index: number) => void;
   onVizTypeChange: (index: number, vizType: string) => void;
   onRefreshData: (index: number) => void;
   onRemoveSeries: (index: number) => void;
@@ -18,6 +19,7 @@ interface VisualizerUsedProps {
 
 export function VisualizerUsed({
   series,
+  onFocusSeries,
   onVizTypeChange,
   onRefreshData,
   onRemoveSeries,
@@ -35,14 +37,13 @@ export function VisualizerUsed({
             />
             <div>{card.name}</div>
             <Flex ml="auto">
-              <Link to={Urls.question(card)} style={{ marginRight: "6px" }}>
+              <ActionIcon onClick={() => onFocusSeries(index)}>
                 <Icon
                   name={
                     card.dataset_query.type === "native" ? "sql" : "notebook"
                   }
-                  style={{ marginTop: "6px" }}
                 />
-              </Link>
+              </ActionIcon>
               <Menu>
                 <Menu.Target>
                   <ActionIcon>

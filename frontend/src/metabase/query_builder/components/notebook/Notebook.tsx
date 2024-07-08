@@ -15,9 +15,9 @@ export type NotebookProps = {
   isResultDirty: boolean;
   reportTimezone: string;
   hasVisualizeButton?: boolean;
-  updateQuestion: (question: Question) => Promise<void>;
+  updateQuestion: (question: Question) => void | Promise<void>;
   runQuestionQuery: () => void;
-  setQueryBuilderMode: (mode: string) => void;
+  setQueryBuilderMode?: (mode: string) => void;
   readOnly?: boolean;
 };
 
@@ -56,13 +56,13 @@ const Notebook = ({
       cleanupQuestion();
     }
     // switch mode before running otherwise URL update may cause it to switch back to notebook mode
-    await setQueryBuilderMode("view");
+    setQueryBuilderMode?.("view");
     if (isResultDirty) {
       await runQuestionQuery();
     }
   }
 
-  const handleUpdateQuestion = (question: Question): Promise<void> => {
+  const handleUpdateQuestion = (question: Question) => {
     dispatch(setUIControls({ isModifiedFromNotebook: true }));
     return updateQuestion(question);
   };
