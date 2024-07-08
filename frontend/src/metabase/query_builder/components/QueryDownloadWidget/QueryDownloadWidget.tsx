@@ -1,40 +1,32 @@
 import { useState } from "react";
-import { connect } from "react-redux";
-import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
-import { downloadQueryResults } from "metabase/query_builder/actions";
 import { Flex, Popover, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type { Dataset, VisualizationSettings } from "metabase-types/api";
+import type {
+  DashboardId,
+  DashCardId,
+  Dataset,
+  VisualizationSettings,
+} from "metabase-types/api";
 
-import QueryDownloadPopover from "../QueryDownloadPopover";
+import { QueryDownloadPopover } from "../QueryDownloadPopover";
+import { useDownloadData } from "../QueryDownloadPopover/use-download-data";
 
 import { DownloadIcon } from "./QueryDownloadWidget.styled";
 
-interface OwnProps {
+interface QueryDownloadWidgetProps {
   className?: string;
   question: Question;
   result: Dataset;
   uuid?: string;
   token?: string;
   visualizationSettings?: VisualizationSettings;
-  dashcardId?: number;
-  dashboardId?: number;
+  dashcardId?: DashCardId;
+  dashboardId?: DashboardId;
 }
-
-interface DispatchProps {
-  onDownload: (opts: DownloadQueryResultsOpts) => void;
-}
-
-type QueryDownloadWidgetProps = OwnProps & DispatchProps;
-
-const mapDispatchToProps: DispatchProps = {
-  onDownload: downloadQueryResults,
-};
 
 const QueryDownloadWidget = ({
   className,
@@ -45,25 +37,18 @@ const QueryDownloadWidget = ({
   uuid,
   token,
   visualizationSettings,
-  onDownload,
 }: QueryDownloadWidgetProps) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-  const [{ loading }, handleDownload] = useAsyncFn(
-    async (opts: { type: string; enableFormatting: boolean }) => {
-      await onDownload({
-        ...opts,
-        question,
-        result,
-        dashboardId,
-        dashcardId,
-        uuid,
-        token,
-        visualizationSettings,
-      });
-    },
-    [question, result, uuid, token, visualizationSettings],
-  );
+  const [{ loading }, handleDownload] = useDownloadData({
+    question,
+    result,
+    dashboardId,
+    dashcardId,
+    uuid,
+    token,
+    visualizationSettings,
+  });
 
   return (
     <Popover opened={isPopoverOpen} onClose={() => setIsPopoverOpen(false)}>
@@ -112,4 +97,4 @@ QueryDownloadWidget.shouldRender = ({ result }: QueryDownloadWidgetOpts) => {
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(null, mapDispatchToProps)(QueryDownloadWidget);
+export default QueryDownloadWidget;
