@@ -73,6 +73,30 @@ function getSeriesColumns(series?: Series | null): ColumnInfo[] | undefined {
   }));
 }
 
+function syncColumnNames<T>(
+  settings: T[],
+  newColumns: ColumnInfo[],
+  oldColumns: ColumnInfo[],
+  getColumnName: (setting: T) => string,
+  setColumnName: (setting: T, newName: string) => T,
+): T[] {
+  const newNameByAlias = new Map(
+    newColumns.map(col => [col.desiredColumnAlias, col.name]),
+  );
+  const oldAliasByName = new Map(
+    oldColumns.map(col => [col.name, col.desiredColumnAlias]),
+  );
+
+  return settings.map(setting => {
+    const oldAlias = oldAliasByName.get(getColumnName(setting));
+    const newName = newNameByAlias.get(oldAlias);
+    if (!oldAlias || !newName) {
+      return setting;
+    }
+    return setColumnName(setting, newName);
+  });
+}
+
 function syncTableColumnNames(
   settings: VisualizationSettings,
   newColumns: ColumnInfo[],
@@ -83,23 +107,15 @@ function syncTableColumnNames(
     return settings;
   }
 
-  const newNameByAlias = new Map(
-    newColumns.map(col => [col.desiredColumnAlias, col.name]),
-  );
-  const oldAliasByName = new Map(
-    oldColumns.map(col => [col.name, col.desiredColumnAlias]),
-  );
-
   return {
     ...settings,
-    "table.columns": columnSettings.map(setting => {
-      const oldAlias = oldAliasByName.get(setting.name);
-      const newName = newNameByAlias.get(oldAlias);
-      if (!oldAlias || !newName) {
-        return setting;
-      }
-      return { ...setting, name: newName };
-    }),
+    "table.columns": syncColumnNames(
+      columnSettings,
+      newColumns,
+      oldColumns,
+      setting => setting.name,
+      (setting, newName) => ({ ...setting, name: newName }),
+    ),
   };
 }
 
@@ -113,23 +129,15 @@ function syncGraphMetricNames(
     return settings;
   }
 
-  const newNameByAlias = new Map(
-    newColumns.map(col => [col.desiredColumnAlias, col.name]),
-  );
-  const oldAliasByName = new Map(
-    oldColumns.map(col => [col.name, col.desiredColumnAlias]),
-  );
-
   return {
     ...settings,
-    "graph.metrics": graphMetrics.map(columnName => {
-      const oldAlias = oldAliasByName.get(columnName);
-      const newName = newNameByAlias.get(oldAlias);
-      if (!oldAlias || !newName) {
-        return columnName;
-      }
-      return newName;
-    }),
+    "graph.metrics": syncColumnNames(
+      graphMetrics,
+      newColumns,
+      oldColumns,
+      setting => setting,
+      (setting, newName) => newName,
+    ),
   };
 }
 
