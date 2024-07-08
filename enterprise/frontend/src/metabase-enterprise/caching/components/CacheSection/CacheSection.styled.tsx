@@ -17,7 +17,7 @@ export const Text = styled.span`
   font-weight: 700;
   font-size: 0.875rem;
   line-height: 1rem;
-  margin: 0.5rem 0rem;
+  margin: 0.5rem 0;
 `;
 
 export const CachePopover = styled.div`
@@ -38,7 +38,6 @@ export const CachePopover = styled.div`
     line-height: 1rem;
     padding: 0.625rem;
     margin: 0 0.5rem;
-
     border: 1px solid var(--mb-color-border);
   }
 
