@@ -8,33 +8,14 @@
 
 (set! *warn-on-reflection* true)
 
-(def CollectionIds
-  "The set of collection IDs to search for stale content."
-  [:set [:maybe integer?]])
-(def CutoffDate
-  "The cutoff date for stale content."
-  :time/local-date)
-(def Limit
-  "The limit for pagination."
-  integer?)
-(def Offset
-  "The offset for pagination."
-  integer?)
-(def SortColumn
-  "The column to sort by."
-  [:enum :name :last_viewed_at :last_viewed_by])
-(def SortDirection
-  "The direction to sort by."
-  [:enum :asc :desc])
-
 (def ^:private FindStaleContentArgs
   [:map {}
-   [:collection-ids CollectionIds]
-   [:cutoff-date CutoffDate]
-   [:limit Limit]
-   [:offset Offset]
-   [:sort-column SortColumn]
-   [:sort-direction SortDirection]])
+   [:collection-ids [:set {:doc "The set of collection IDs to search for stale content."} [:maybe :int]]]
+   [:cutoff-date [:time/local-date {:doc "The cutoff date for stale content."}]]
+   [:limit  [:maybe {:doc "The limit for pagination."} :int]]
+   [:offset [:maybe {:doc "The offset for pagination."} :int]]
+   [:sort-column  [:enum {:doc "The column to sort by."} :name :last_viewed_at :last_viewed_by]]
+   [:sort-direction  [:enum {:doc "The direction to sort by."} :asc :desc]]])
 
 (defmulti ^:private find-stale-query
   "Find stale content of a given model type."
@@ -104,22 +85,28 @@
   (for [model [:model/Card :model/Dashboard]]
     (find-stale-query model args)))
 
-(mu/defn ^:private rows-query [args :- FindStaleContentArgs]
-  {:select [:id :model]
-   :from [[{:union-all (queries args)} :dummy_alias]]
-   :order-by [[(sort-column (:sort-column args))
-               (:sort-direction args)]]
-   :limit (:limit args)
-   :offset (:offset args)})
+(mu/defn ^:private rows-query [{:keys [limit offset] :as args} :- FindStaleContentArgs]
+  (cond-> {:select [:id :model]
+           :from [[{:union-all (queries args)} :dummy_alias]]
+           :order-by [[(sort-column (:sort-column args))
+                       (:sort-direction args)]]}
+    false ;; limit
+    (assoc :limit limit)
+    false ;; offset
+    (assoc :offset offset)))
 
 (mu/defn ^:private total-query [args :- FindStaleContentArgs]
   {:select [[:%count.* :count]]
    :from [[{:union-all (queries args)} :dummy_alias]]})
 
-(mu/defn find-candidates
+(mu/defn find-candidates :- [:map
+                             [:rows [:sequential [:map
+                                                  [:id pos-int?]
+                                                  [:model keyword?]]]]
+                             [:total :int]]
   "Find stale content in the given collections.
 
-  Arguments:
+  Arguments are defined by [[FindStaleContentArgs]]:
 
   - `collection-ids`: the set of collection IDs to look for stale content in. Non-recursive, the exact set you pass in
   will be searched
@@ -138,8 +125,11 @@
 
   - `:total` (the total count of stale elements that could be found if you iterated through all pages)
   "
-  [args :- FindStaleContentArgs]
-  {:rows (->> (t2/query (rows-query args))
-              (map #(select-keys % [:id :model]))
-              (map (fn [v] (update v :model #(keyword "model" %)))))
+  [{:keys [collection-ids] :as args} :- FindStaleContentArgs]
+  (when (contains? collection-ids :root) (throw (ex-info "not implemented." {:collection-ids collection-ids})))
+  {:rows (into []
+               (comp
+                (map #(select-keys % [:id :model]))
+                (map (fn [v] (update v :model #(keyword "model" %)))))
+               (t2/query (rows-query args)))
    :total (:count (t2/query-one (total-query args)))})
