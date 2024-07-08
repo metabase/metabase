@@ -81,7 +81,7 @@ function getSeriesColumns(series: SingleSeries): ColumnInfo[] {
   return series.data.cols.map(column => ({
     name: column.name,
     alias: column.name,
-    isAggregation: column.source === "aggregation",
+    isAggregation: false,
   }));
 }
 

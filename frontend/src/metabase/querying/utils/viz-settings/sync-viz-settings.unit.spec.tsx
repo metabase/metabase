@@ -368,7 +368,7 @@ describe("syncVizSettingsWithSeries", () => {
         })),
         oldSeries,
       );
-      expect(newSettings).toBe(oldSettings);
+      expect(newSettings).toEqual(oldSettings);
     });
 
     it("should ignore updates if there are errors in old query results", () => {
@@ -381,7 +381,46 @@ describe("syncVizSettingsWithSeries", () => {
           error: { status: 500 },
         })),
       );
-      expect(newSettings).toBe(oldSettings);
+      expect(newSettings).toEqual(oldSettings);
+    });
+  });
+
+  describe("graph.metrics", () => {
+    const newSeries: Series = [
+      {
+        card: createMockCard(),
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({ name: "COUNT", source: "native" }),
+            createMockColumn({ name: "AVG", source: "native" }),
+            createMockColumn({ name: "CREATED_AT", source: "native" }),
+          ],
+        }),
+      },
+    ];
+    const oldSeries: Series = [
+      {
+        card: createMockCard(),
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({ name: "COUNT", source: "native" }),
+            createMockColumn({ name: "CREATED_AT", source: "native" }),
+          ],
+        }),
+      },
+    ];
+    const oldSettings = createMockVisualizationSettings({
+      "graph.metrics": ["COUNT"],
+    });
+
+    it("should ignore metric column updates for native queries", () => {
+      const newSettings = syncVizSettingsWithSeries(
+        oldSettings,
+        query,
+        newSeries,
+        oldSeries,
+      );
+      expect(newSettings).toEqual(oldSettings);
     });
   });
 });
