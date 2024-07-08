@@ -16,42 +16,63 @@
 
 (def ^:private default-sort-direction "asc")
 
-(def ^:private sort-column->keyfn
-  {"name"           :name
-   "collection"     (comp :name :collection)
-   "created_by"     (comp :common_name :creator)
-   "last_edited_at" :updated_at})
+(def ^:private card-joins
+  [[(t2/table-name :model/QueryField) :qf] [:and
+                                            [:= :qf.card_id :c.id]
+                                            [:= :qf.explicit_reference true]]
+   [(t2/table-name :model/Field) :f] [:and
+                                      [:= :qf.field_id :f.id]
+                                      [:= :f.active false]]])
 
 (defn- cards-with-inactive-fields
-  [sort-column sort-direction]
-  (let [card-id->query-fields (group-by :card_id
-                                        (t2/select :model/QueryField
-                                                   {:select [:qf.* [:f.name :column_name] [:t.name :table_name]]
-                                                    :from   [[(t2/table-name :model/QueryField) :qf]]
-                                                    :join   [[(t2/table-name :model/Card)  :c] [:= :c.id :qf.card_id]
-                                                             [(t2/table-name :model/Field) :f] [:= :f.id :qf.field_id]
-                                                             [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
-                                                    :where  [:and
-                                                             [:= :c.archived false]
-                                                             [:= :f.active false]
-                                                             [:= :qf.explicit_reference true]]}))
-        card-ids              (keys card-id->query-fields)
+  [sort-column sort-direction offset limit]
+  (let [additional-join       (condp = sort-column
+                                "name"           []
+                                "collection"     [[(t2/table-name :model/Collection) :coll] [:= :coll.id :c.collection_id]]
+                                "created_by"     [[(t2/table-name :model/User) :u] [:= :u.id :c.creator_id]]
+                                "last_edited_at" [])
+        order-by-column       (condp = sort-column
+                                "name"           :c.name
+                                "collection"     :coll.name
+                                "created_by"     [:coalesce [:|| :u.first_name :u.last_name] :u.first_name :u.last_name :u.email]
+                                "last_edited_at" :c.updated_at)
+        cards                 (t2/select :model/Card
+                                         (merge
+                                          {:from     [[(t2/table-name :model/Card) :c]]
+                                           :join     (concat card-joins additional-join)
+                                           :where    [:= :c.archived false]
+                                           :order-by [[order-by-column (keyword sort-direction)]]}
+                                          (when limit
+                                            {:limit limit})
+                                          (when offset
+                                            {:offset offset})))
+        card-id->query-fields (when (seq cards)
+                                (group-by :card_id (t2/select :model/QueryField
+                                                              {:select [:qf.* [:f.name :column_name] [:t.name :table_name]]
+                                                               :from   [[(t2/table-name :model/QueryField) :qf]]
+                                                               :join   [[(t2/table-name :model/Field) :f] [:= :f.id :qf.field_id]
+                                                                        [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
+                                                               :where  [:and
+                                                                        [:= :qf.explicit_reference true]
+                                                                        [:= :f.active false]
+                                                                        [:in :card_id (map :id cards)]]})))
+
         add-errors            (fn [{:keys [id] :as card}]
                                 (update-in card
                                            [:errors :inactive-fields]
                                            concat
                                            (for [{:keys [table_name column_name]} (card-id->query-fields id)]
                                              {:table table_name :field column_name})))]
-    ;; In theory this second query is unnecessary since we could include Card.* in the SELECT above and do more
-    ;; processing in Clojure, but since that increases the Clojure-side processing I'm not convinced it's actually any
-    ;; better. The second query also makes it much simpler to add the ORDER BY
-    (when (seq card-ids)
-      (let [sort-direction-fn ({"asc"  identity
-                                "desc" reverse} sort-direction)]
-        (sort-direction-fn
-         (sort-by (sort-column->keyfn sort-column)
-                  (map add-errors (t2/hydrate (t2/select :model/Card :id [:in card-ids])
-                                              :collection :creator))))))))
+    (map add-errors (t2/hydrate cards :collection :creator))))
+
+(defn- invalid-card-count
+  []
+  (:count
+   (first
+    (t2/query {:select [[:%count.* :count]]
+               :from   [[(t2/table-name :model/Card) :c]]
+               :join   card-joins
+               :where  [:= :c.archived false]}))))
 
 (api/defendpoint GET "/invalid-cards"
   "List of cards that have an invalid reference in their query. Shape of each card is standard, with the addition of an
@@ -67,9 +88,11 @@
   {sort_column    [:maybe (into [:enum] valid-sort-columns)]
    sort_direction [:maybe (into [:enum] valid-sort-directions)]}
   (let [cards (cards-with-inactive-fields (or sort_column default-sort-column)
-                                          (or sort_direction default-sort-direction))]
-    {:total  (count cards)
-     :data   (mw.offset-paging/page-result cards)
+                                          (or sort_direction default-sort-direction)
+                                          mw.offset-paging/*offset*
+                                          mw.offset-paging/*limit*)]
+    {:total  (invalid-card-count)
+     :data   cards
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
 

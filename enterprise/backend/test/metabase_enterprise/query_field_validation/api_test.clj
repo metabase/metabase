@@ -47,7 +47,7 @@
 
   `card-4` is guaranteed not to have problems"
   [& body]
-  `(do-with-test-setup (mt/call-with-anaphora [qf-1 qf-2 qf-3 card-1 card-2 card-3 card-4]
+  `(do-with-test-setup (mt/with-anaphora [qf-1 qf-2 qf-3 card-1 card-2 card-3 card-4]
                          ~@body)))
 
 (def ^:private url "ee/query-field-validation/invalid-cards")
@@ -79,7 +79,8 @@
    (is (<= (:total expected)  (:total actual)))
    (is (=  (:limit expected)  (:limit actual)))
    (is (=  (:offset expected) (:offset actual)))
-   (is (mt/ordered-subset? (:data expected) (map #(select-keys % (keys (first (:data expected)))) (:data actual)) approx=))
+   (is (mt/ordered-subset? (:data expected)
+                           (map #(select-keys % (keys (first (:data expected)))) (:data actual)) approx=))
    (is (none-found? unexpected (:data actual)))))
 
 (deftest list-invalid-cards-basic-test
@@ -110,7 +111,7 @@
 (deftest pagination-test
   (testing "Lets you page results"
     (with-test-setup
-      (resp= {:total  3
+      (resp= {:total  4
               :limit  2
               :offset 0
               :data
@@ -127,15 +128,15 @@
                :name "C"}
               {:id   card-4
                :name "D"}])
-      (resp= {:total  3
-              :limit  2
+      (resp= {:total  4
+              :limit  1
               :offset 2
               :data
               [{:id     card-3
                 :name   "C"
                 :errors {:inactive-fields [{:field "FC"
                                             :table "T"}]}}]}
-             (get! {:limit 2 :offset 2})
+             (get! {:limit 1 :offset 2})
              [{:id   card-1
                :name "A"}
               {:id   card-2
