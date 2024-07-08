@@ -10,7 +10,7 @@ type ColumnInfo = {
 export function syncVizSettingsWithQuery(
   settings: VisualizationSettings,
   newQuery: Lib.Query,
-  oldQuery: Lib.Query,
+  oldQuery: Lib.Query | undefined,
 ): VisualizationSettings {
   const newColumns = getReturnedColumns(newQuery);
   const oldColumns = getReturnedColumns(oldQuery);
@@ -19,8 +19,8 @@ export function syncVizSettingsWithQuery(
 
 export function syncVizSettingsWithSeries(
   settings: VisualizationSettings,
-  newSeries?: Series | null,
-  oldSeries?: Series | null,
+  newSeries: Series | null | undefined,
+  oldSeries: Series | null | undefined,
 ): VisualizationSettings {
   const newColumns = getSeriesColumns(newSeries);
   const oldColumns = getSeriesColumns(oldSeries);
@@ -29,8 +29,8 @@ export function syncVizSettingsWithSeries(
 
 function syncVizSettings(
   settings: VisualizationSettings,
-  newColumns?: ColumnInfo[],
-  oldColumns?: ColumnInfo[],
+  newColumns: ColumnInfo[] | undefined,
+  oldColumns: ColumnInfo[] | undefined,
 ): VisualizationSettings {
   let nextSettings = settings;
   if (newColumns) {
@@ -44,7 +44,13 @@ function syncVizSettings(
   return nextSettings;
 }
 
-function getReturnedColumns(query: Lib.Query): ColumnInfo[] | undefined {
+function getReturnedColumns(
+  query: Lib.Query | undefined,
+): ColumnInfo[] | undefined {
+  if (!query) {
+    return undefined;
+  }
+
   const { isNative } = Lib.queryDisplayInfo(query);
   if (isNative) {
     return undefined;
@@ -60,7 +66,9 @@ function getReturnedColumns(query: Lib.Query): ColumnInfo[] | undefined {
     }));
 }
 
-function getSeriesColumns(series?: Series | null): ColumnInfo[] | undefined {
+function getSeriesColumns(
+  series: Series | null | undefined,
+): ColumnInfo[] | undefined {
   const singleSeries = series?.[0];
   if (!singleSeries?.data || singleSeries?.error) {
     return undefined;
