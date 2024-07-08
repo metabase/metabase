@@ -3,7 +3,7 @@ import { useRegisterActions, useKBar, Priority } from "kbar";
 import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
-import { t } from "ttag";
+import { t, jt } from "ttag";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getSectionsWithPlugins } from "metabase/admin/settings/selectors";
@@ -193,9 +193,7 @@ export const useCommandPalette = ({
                 dispatch(push(wrappedResult.getUrl()));
               },
               extra: {
-                parentCollection: wrappedResult.getCollection().name,
                 isVerified: result.moderated_status === "verified",
-                database: result.database_name,
                 href: wrappedResult.getUrl(),
                 iconColor: icon.color,
                 subtext: getSearchResultSubtext(wrappedResult),
@@ -246,9 +244,7 @@ export const useCommandPalette = ({
           },
           extra: {
             isVerified:
-              item.model === "table"
-                ? false
-                : item.moderated_status === "verified",
+              item.model !== "table" && item.moderated_status === "verified",
             href: Urls.modelToUrl(item),
             iconColor: icon.color,
             subtext: getRecentItemSubtext(item),
@@ -299,19 +295,15 @@ export const useCommandPalette = ({
 
 export const getSearchResultSubtext = (wrappedSearchResult: any) => {
   if (wrappedSearchResult.model === "indexed-entity") {
-    return (
-      <>
-        {t`a record in`}{" "}
-        <Icon
-          name="model"
-          style={{
-            verticalAlign: "bottom",
-            marginLeft: "0.25rem",
-          }}
-        />
-        {`${wrappedSearchResult.model_name}`}
-      </>
-    );
+    return jt`a record in ${(
+      <Icon
+        name="model"
+        style={{
+          verticalAlign: "bottom",
+          marginInlineStart: "0.25rem",
+        }}
+      />
+    )} ${wrappedSearchResult.model_name}`;
   } else {
     return (
       wrappedSearchResult.getCollection().name ||

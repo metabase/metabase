@@ -89,8 +89,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
               lh="1rem"
               fw="normal"
             >
-              {`—`}
-              {subtext}
+              — {subtext}
             </Text>
           )}
         </Box>

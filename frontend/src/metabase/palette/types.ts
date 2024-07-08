@@ -12,9 +12,9 @@ interface PaletteActionExtras {
      * browser interactions to open items in new tabs/windows
      */
     href?: LocationDescriptor | null;
-    /** iconColor: Color of the icon in the  */
+    /** iconColor: Color of the icon in the list item*/
     iconColor?: string;
-    /**subtext: text to come after the item name */
+    /** subtext: text to come after the item name */
     subtext?: string;
   };
 }
