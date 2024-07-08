@@ -41,7 +41,7 @@ import {
   getAreDimensionsAndMetricsValid,
   getDefaultDimensions,
   getDefaultShowStackValues,
-  STACKABLE_DISPLAY_TYPES,
+  STACKABLE_SERIES_DISPLAY_TYPES,
   getDefaultMetrics,
   isShowStackValuesValid,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
@@ -235,11 +235,7 @@ export const STACKABLE_SETTINGS = {
     isValid: (series, settings) => {
       const seriesDisplays = getSeriesDisplays(series, settings);
 
-      return isStackingValueValid(
-        series[0].card.display,
-        settings,
-        seriesDisplays,
-      );
+      return isStackingValueValid(settings, seriesDisplays);
     },
     getDefault: ([{ card, data }], settings) => {
       return getDefaultStackingValue(settings, card);
@@ -247,7 +243,7 @@ export const STACKABLE_SETTINGS = {
     getHidden: (series, settings) => {
       const displays = series.map(single => settings.series(single).display);
       const stackableDisplays = displays.filter(display =>
-        STACKABLE_DISPLAY_TYPES.has(display),
+        STACKABLE_SERIES_DISPLAY_TYPES.has(display),
       );
 
       return stackableDisplays.length <= 1;

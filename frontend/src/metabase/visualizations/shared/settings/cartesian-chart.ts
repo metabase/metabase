@@ -20,7 +20,6 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
-  CardDisplayType,
   DatasetColumn,
   DatasetData,
   RawSeries,
@@ -65,22 +64,18 @@ export function getDefaultMetrics(rawSeries: RawSeries) {
   return getDefaultColumns(rawSeries).metrics;
 }
 
-export const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar", "combo"]);
+export const STACKABLE_SERIES_DISPLAY_TYPES = new Set(["area", "bar"]);
 
 export const isStackingValueValid = (
-  cardDisplay: CardDisplayType,
   settings: ComputedVisualizationSettings,
   seriesDisplays: string[],
 ) => {
   if (settings["stackable.stack_type"] == null) {
     return true;
   }
-  if (!STACKABLE_DISPLAY_TYPES.has(cardDisplay)) {
-    return false;
-  }
 
   const stackableDisplays = seriesDisplays.filter(display =>
-    STACKABLE_DISPLAY_TYPES.has(display),
+    STACKABLE_SERIES_DISPLAY_TYPES.has(display),
   );
   return stackableDisplays.length > 1;
 };
