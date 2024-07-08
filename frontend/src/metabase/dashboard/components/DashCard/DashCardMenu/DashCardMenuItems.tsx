@@ -30,20 +30,15 @@ export const DashCardMenuItems = ({
     plugins,
     onEditQuestion = question => dispatch(editQuestion(question)),
   } = useInteractiveDashboardContext();
-  const dashcardMenuItems = plugins?.dashboard?.dashcardMenu as
-    | DashCardCustomMenuItem
-    | undefined;
-
-  const showEditLink = dashcardMenuItems?.withEditLink ?? true;
-  const showDownloads = dashcardMenuItems?.withDownloads ?? true;
-  const customItems = dashcardMenuItems?.customItems;
+  const dashcardMenuItems = plugins?.dashboard
+    ?.dashcardMenu as DashCardCustomMenuItem;
 
   const menuItems = useMemo(() => {
     const items: (DashCardMenuItem & {
       key: string;
     })[] = [];
 
-    if (showEditLink && canEditQuestion(question)) {
+    if (dashcardMenuItems.withEditLink && canEditQuestion(question)) {
       items.push({
         key: "MB_EDIT_QUESTION",
         iconName: "pencil",
@@ -52,7 +47,7 @@ export const DashCardMenuItems = ({
       });
     }
 
-    if (showDownloads && canDownloadResults(result)) {
+    if (dashcardMenuItems.withDownloads && canDownloadResults(result)) {
       items.push({
         key: "MB_DOWNLOAD_RESULTS",
         iconName: "download",
@@ -63,9 +58,9 @@ export const DashCardMenuItems = ({
       });
     }
 
-    if (customItems) {
+    if (dashcardMenuItems.customItems) {
       items.push(
-        ...customItems.map(item => {
+        ...dashcardMenuItems.customItems.map(item => {
           const customItem =
             typeof item === "function" ? item({ question }) : item;
 
@@ -79,14 +74,14 @@ export const DashCardMenuItems = ({
 
     return items;
   }, [
-    customItems,
+    dashcardMenuItems.customItems,
     isDownloadingData,
     onDownload,
     onEditQuestion,
     question,
     result,
-    showDownloads,
-    showEditLink,
+    dashcardMenuItems.withDownloads,
+    dashcardMenuItems.withEditLink,
   ]);
 
   return menuItems.map(item => (
