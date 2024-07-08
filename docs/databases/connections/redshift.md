@@ -30,6 +30,8 @@ The name of the database you want to connect to.
 
 ### Schemas
 
+> To improve syncing and scanning, make sure you include `information_schema` in the list of schemas.
+
 Here you can specify which schemas you want to sync and scan. Options are:
 
 - All
@@ -52,6 +54,8 @@ Let's say you have three schemas: foo, bar, and baz.
 Note that only the `*` wildcard is supported; you can't use other special characters or regexes.
 
 ### Username
+
+> To improve syncing and scanning, make sure this database user account has access to the `information_schema`.
 
 The database username for the account that you want to use to connect to your database. You can set up multiple connections to the same database using different user accounts to connect to the same database, each with different sets of [privileges](../users-roles-privileges.md).
 
