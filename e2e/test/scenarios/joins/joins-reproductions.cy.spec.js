@@ -1340,7 +1340,6 @@ describe.skip("issue 45300", () => {
 
       // main panel
       cy.findAllByTestId("filter-column-Category")
-
         .should("have.length", 1)
         .within(() => {
           cy.findByText("Doohickey").click();
