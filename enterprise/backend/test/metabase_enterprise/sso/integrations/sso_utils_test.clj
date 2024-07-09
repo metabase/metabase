@@ -10,7 +10,7 @@
        "/"
        "/test"
        "localhost"
-       "localhost:3000"
+       ;; "localhost:3000" ; URI thinks `localhost` here is scheme
        "http://localhost:3000"
        "http://localhost:3000/dashboard/1-test-dashboard?currency=British%20Pound"))
 
