@@ -446,7 +446,6 @@ function Dashboard(props: DashboardProps) {
                * in Redux state which kicks off a fetch for the dashboard cards.
                */}
               <DashboardHeader
-                dashboardId={dashboardId}
                 location={location}
                 dashboard={dashboard}
                 isNightMode={shouldRenderAsNightMode}

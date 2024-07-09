@@ -65,7 +65,7 @@ import {
   shouldRenderSubscriptionButton,
 } from "./buttons";
 
-type DashboardHeaderProps = {
+export type DashboardHeaderProps = {
   dashboard: Dashboard;
   dashboardBeforeEditing?: Dashboard | null;
   location: Location;
