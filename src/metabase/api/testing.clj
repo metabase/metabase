@@ -4,9 +4,12 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [compojure.core :refer [POST]]
+   [java-time.api :as t]
+   [java-time.clock]
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.db :as mdb]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms])
@@ -124,5 +127,20 @@
      :body {:error-code "oops"}}
     {:status 200
      :body body}))
+
+(api/defendpoint POST "/set-time"
+  "Make java-time see world at exact time."
+  [:as {{:keys [time add-ms]} :body}]
+  {time   [:maybe ms/TemporalString]
+   add-ms [:maybe ms/Int]}
+  (let [clock (when-let [time' (cond
+                                 time   (u.date/parse time)
+                                 add-ms (t/plus (t/zoned-date-time)
+                                                (t/duration add-ms :millis)))]
+                (t/mock-clock (t/instant time') (t/zone-id time')))]
+    ;; if time' is `nil`, we'll get system clock back
+    (alter-var-root #'java-time.clock/*clock* (constantly clock))
+    {:result (if clock :set :reset)
+     :time   (t/instant)}))
 
 (api/define-routes)
