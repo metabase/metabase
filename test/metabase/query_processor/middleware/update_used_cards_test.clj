@@ -26,14 +26,13 @@
 (defn do-test!
   "Check if `last_used_at` of `card-id` is nil, then execute `f`, then check that `last_used_at` is non nil."
   [card-id thunk]
-  (mt/with-grouper-batches! [process-batch!]
-    (assert (fn? thunk))
-    (testing "last_used_at should be nil to start with"
-      (is (nil? (card-last-used-at card-id))))
-    (thunk)
-    (process-batch!)
-    (testing "last_used_at should be updated to non nil"
-      (is (some? (card-last-used-at card-id))))))
+  (assert (fn? thunk))
+  (testing "last_used_at should be nil to start with"
+    (is (nil? (card-last-used-at card-id))))
+  (mt/with-temporary-setting-values [disable-grouper-batch-processing true]
+    (thunk))
+  (testing "last_used_at should be updated to non nil"
+    (is (some? (card-last-used-at card-id)))))
 
 (deftest nested-cards-test
   (with-used-cards-setup!

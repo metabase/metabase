@@ -178,7 +178,7 @@
   (testing "execute an userland query will capture field usages"
     (mt/test-helpers-set-global-values!
       (mt/with-model-cleanup [:model/FieldUsage]
-        (mt/with-grouper-batches! [process-batch!]
+        (mt/with-temporary-setting-values [disable-grouper-batch-processing true]
           (mt/with-temp [:model/Field {field-id :id} {:table_id (mt/id :products)
                                                       :name     "very_interesting_field"
                                                       :base_type :type/Integer}
@@ -188,7 +188,6 @@
                       qp.pipeline/*execute*    (fn [_driver _query respond]
                                                  (respond {} []))]
               (mt/user-http-request :crowberto :post 202 (format "/card/%d/query" (:id card)))
-              (process-batch!)
               (is (=? [{:filter_op                  :>
                         :breakout_temporal_unit     nil
                         :breakout_binning_strategy  nil

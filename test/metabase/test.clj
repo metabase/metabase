@@ -269,8 +269,7 @@
 
  [tu.async
   wait-for-result
-  with-open-channels
-  with-grouper-batches!]
+  with-open-channels]
 
  [tu.log
   ns-log-level

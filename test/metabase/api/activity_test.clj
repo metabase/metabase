@@ -25,7 +25,7 @@
   (clear-recent-views-for-user :crowberto)
   (clear-recent-views-for-user :rasta)
   (mt/test-helpers-set-global-values!
-    (mt/with-grouper-batches! [process-batch!]
+    (mt/with-temporary-setting-values [disable-grouper-batch-processing true]
       (mt/with-temp [Card      card-1  {:name       "rand-name"
                                         :creator_id (mt/user->id :crowberto)
                                         :display    "table"}
@@ -47,7 +47,6 @@
                                          {:topic :event/card-query :event {:card-id (:id card-1)}}
                                          {:topic :event/table-read :event {:object table-1}}]]
             (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
-          (process-batch!)
           (testing "most_recently_viewed_dashboard endpoint shows the current user's most recently viewed dashboard."
             (is (= (assoc dash-3 :collection nil :view_count 1) #_dash-2 ;; TODO: this should be dash-2, because dash-3 is archived
                    (mt/user-http-request :crowberto :get 200 "activity/most_recently_viewed_dashboard")))))
@@ -56,7 +55,6 @@
             (is (nil? (mt/user-http-request :rasta :get 204
                                             "activity/most_recently_viewed_dashboard"))))
           (events/publish-event! :event/dashboard-read {:object-id (:id dash-1) :user-id (mt/user->id :rasta)})
-          (process-batch!)
           (testing "Only the user's own views are returned."
             (is (= (assoc dash-1 :collection nil :view_count 2)
                    (mt/user-http-request :rasta :get 200
@@ -69,26 +67,24 @@
 
 (deftest most-recently-viewed-dashboard-views-include-collection-test
   (mt/test-helpers-set-global-values!
-    (mt/with-grouper-batches! [process-batch!]
-     (mt/with-temp [:model/Collection coll   {:name "Analytics"}
-                    :model/Dashboard  dash-1 {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto))}
-                    :model/Dashboard  dash-2 {:collection_id (:id coll)}]
-       (mt/with-model-cleanup [:model/RecentViews]
-         (mt/with-test-user :crowberto
-           (testing "view a dashboard in a personal collection"
-             (events/publish-event! :event/dashboard-read {:object-id (:id dash-1) :user-id (mt/user->id :crowberto)})
-             (process-batch!)
-             (let [crowberto-personal-coll (t2/select-one :model/Collection :personal_owner_id (mt/user->id :crowberto))]
-               (is (= (assoc dash-1 :collection (assoc crowberto-personal-coll :is_personal true) :view_count 1)
-                      (mt/user-http-request :crowberto :get 200
-                                            "activity/most_recently_viewed_dashboard")))))
+    (mt/with-temporary-setting-values [disable-grouper-batch-processing true]
+      (mt/with-temp [:model/Collection coll   {:name "Analytics"}
+                     :model/Dashboard  dash-1 {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto))}
+                     :model/Dashboard  dash-2 {:collection_id (:id coll)}]
+        (mt/with-model-cleanup [:model/RecentViews]
+          (mt/with-test-user :crowberto
+            (testing "view a dashboard in a personal collection"
+              (events/publish-event! :event/dashboard-read {:object-id (:id dash-1) :user-id (mt/user->id :crowberto)})
+              (let [crowberto-personal-coll (t2/select-one :model/Collection :personal_owner_id (mt/user->id :crowberto))]
+                (is (= (assoc dash-1 :collection (assoc crowberto-personal-coll :is_personal true) :view_count 1)
+                       (mt/user-http-request :crowberto :get 200
+                                             "activity/most_recently_viewed_dashboard")))))
 
-           (testing "view a dashboard in a public collection"
-             (events/publish-event! :event/dashboard-read {:object-id (:id dash-2) :user-id (mt/user->id :crowberto)})
-             (process-batch!)
-             (is (= (assoc dash-2 :collection (assoc coll :is_personal false) :view_count 1)
-                    (mt/user-http-request :crowberto :get 200
-                                          "activity/most_recently_viewed_dashboard"))))))))))
+            (testing "view a dashboard in a public collection"
+              (events/publish-event! :event/dashboard-read {:object-id (:id dash-2) :user-id (mt/user->id :crowberto)})
+              (is (= (assoc dash-2 :collection (assoc coll :is_personal false) :view_count 1)
+                     (mt/user-http-request :crowberto :get 200
+                                           "activity/most_recently_viewed_dashboard"))))))))))
 
 (deftest recent-views-test
   (clear-recent-views-for-user :crowberto)

@@ -91,7 +91,21 @@ const TAB_2 = {
   name: "Tab 2",
 };
 
+const changeDisableGrouperBatchProcessingSetting = value => {
+  cy.request("PUT", "/api/setting/disable-grouper-batch-processing", {
+    value: value,
+  });
+};
+
 describe("scenarios > dashboard > tabs", () => {
+  beforeAll(() => {
+    changeDisableGrouperBatchProcessingSetting(true);
+  });
+
+  afterAll(() => {
+    changeDisableGrouperBatchProcessingSetting(false);
+  });
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
