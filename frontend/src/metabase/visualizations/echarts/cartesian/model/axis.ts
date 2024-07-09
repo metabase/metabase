@@ -337,26 +337,35 @@ const getYAxisSplit = (
 const calculateStackedExtent = (
   seriesKeys: DataKey[],
   dataset: ChartDataset,
-): Extent => {
-  let min = 0;
-  let max = 0;
+): Extent | null => {
+  let min: number | null = null;
+  let max: number | null = null;
 
   dataset.forEach(entry => {
-    let positiveStack = 0;
-    let negativeStack = 0;
+    let positiveStack: number | null = null;
+    let negativeStack: number | null = null;
+
     seriesKeys.forEach(key => {
       const value = entry[key];
       if (typeof value === "number") {
         if (value >= 0) {
-          positiveStack += value;
+          positiveStack = (positiveStack ?? 0) + value;
         } else {
-          negativeStack += value;
+          negativeStack = (negativeStack ?? 0) + value;
         }
       }
+
+      const values = [positiveStack, negativeStack, min, max].filter(isNotNull);
+      if (values.length !== 0) {
+        min = Math.min(...values);
+        max = Math.max(...values);
+      }
     });
-    min = Math.min(min, negativeStack);
-    max = Math.max(max, positiveStack);
   });
+
+  if (min == null || max == null) {
+    return null;
+  }
 
   return [min, max];
 };
@@ -364,7 +373,7 @@ const calculateStackedExtent = (
 function calculateNonStackedExtent(
   seriesKeys: DataKey[],
   dataset: ChartDataset,
-): Extent {
+): Extent | null {
   let min = Infinity;
   let max = -Infinity;
 
@@ -378,8 +387,8 @@ function calculateNonStackedExtent(
     });
   });
 
-  if (min === Infinity || max === -Infinity) {
-    return [0, 0];
+  if (!isFinite(min) || !isFinite(max)) {
+    return null;
   }
 
   return [min, max];
@@ -441,9 +450,9 @@ const getYAxisLabel = (
   return seriesNames[0];
 };
 
-function findWidestRange(extents: Extent[]): Extent {
+function findWidestRange(extents: Extent[]): Extent | null {
   if (extents.length === 0) {
-    throw new Error("The array of extents cannot be empty.");
+    return null;
   }
 
   let min = Infinity;
@@ -488,7 +497,11 @@ function getYAxisExtent(
   );
   const nonStackedExtent = calculateNonStackedExtent(nonStackedKeys, dataset);
 
-  return findWidestRange([...stacksExtents, nonStackedExtent]);
+  const combinedExtent = findWidestRange(
+    [...stacksExtents, nonStackedExtent].filter(isNotNull),
+  );
+
+  return combinedExtent != null ? combinedExtent : [0, 0];
 }
 
 export function getYAxisModel(
