@@ -2,6 +2,7 @@ import * as Lib from "metabase-lib";
 import {
   columnFinder,
   createQuery,
+  createQueryWithClauses,
   SAMPLE_METADATA,
 } from "metabase-lib/test-helpers";
 import type { Series } from "metabase-types/api";
@@ -293,6 +294,36 @@ describe("syncVizSettingsWithQuery", () => {
           { name: "ID_3", enabled: false },
           { name: "ID_2", enabled: true },
         ],
+      });
+    });
+  });
+
+  describe("graph.metrics", () => {
+    it("should handle adding new columns", () => {
+      const oldQuery = createQueryWithClauses({
+        aggregations: [
+          { operatorName: "sum", tableName: "ORDERS", columnName: "TOTAL" },
+        ],
+        breakouts: [{ tableName: "ORDERS", columnName: "CREATED_AT" }],
+      });
+      const newQuery = createQueryWithClauses({
+        aggregations: [
+          { operatorName: "sum", tableName: "ORDERS", columnName: "TOTAL" },
+          { operatorName: "sum", tableName: "ORDERS", columnName: "SUBTOTAL" },
+        ],
+        breakouts: [{ tableName: "ORDERS", columnName: "CREATED_AT" }],
+      });
+      const oldSettings = createMockVisualizationSettings({
+        "graph.metrics": ["sum"],
+      });
+
+      const newSettings = syncVizSettingsWithQuery(
+        oldSettings,
+        newQuery,
+        oldQuery,
+      );
+      expect(newSettings).toEqual({
+        "graph.metrics": ["sum", "sum_2"],
       });
     });
   });
