@@ -28,11 +28,11 @@
               :content-type :json
               :method       :post}
              {:url    url
-              :method method}
+              :method (keyword method)}
              (cond-> request
-               (= :request-body auth-method) (update :body merge auth-info)
-               (= :header auth-method)       (update :headers merge auth-info)
-               (= :query-param auth-method)  (update :query-params merge auth-info)))]
+               (= "request-body" auth-method) (update :body merge auth-info)
+               (= "header" auth-method)       (update :headers merge auth-info)
+               (= "query-param" auth-method)  (update :query-params merge auth-info)))]
    (http/request (cond-> req
                    (map? (:body req)) (update :body json/generate-string)))))
 
@@ -47,5 +47,5 @@
         ;; throw an appriopriate error if it's a connection error
         (if (= ::http/unexceptional-status (:type data))
           (throw (ex-info (tru "Failed to connect to channel") {:request-status (:status data)
-                                                                 :request-body  (:body data)}))
+                                                                :request-body  (:body data)}))
           (throw e))))))

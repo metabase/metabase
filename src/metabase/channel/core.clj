@@ -18,10 +18,9 @@
   "Check whether we can connect to a `channel-type` with `detail`.
 
   Returns `true` if can connect to the channel, otherwise return falsy or throw an appropriate exception.
-  In case of failure, to provide a field-specific error message on UI, return or throw an :errors map where key is the
+  o provide a field-specific error message on UI, return or throw an :errors map where key is the
   field name and value is the error message.
 
-  Otherwise returns false or an errors map in which the key is the details key and value is the error message.
   E.g:
     (can-connect? :slack {:email \"name\"})
     ;; => {:errors {:email \"Invalid email\"}}"
