@@ -32,11 +32,11 @@ export type DashCardCustomMenuItem = {
   customItems?: (DashCardMenuItem | CustomDashCardMenuItem)[];
 };
 
-export type SdkDashcardMenuPluginsConfig = {
+export type SdkDashCardMenuPluginsConfig = {
   dashcardMenu?: DashCardMenuCustomElement | DashCardCustomMenuItem;
 };
 
 export type SdkPluginsConfig = {
   mapQuestionClickActions?: SdkClickActionPluginsConfig;
-  dashboard?: SdkDashcardMenuPluginsConfig;
+  dashboard?: SdkDashCardMenuPluginsConfig;
 };

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePrevious, useUnmount } from "react-use";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
@@ -117,6 +117,15 @@ const InteractiveDashboardInner = ({
     setAdhocQuestionUrl(null);
   };
 
+  const onEditQuestion = useCallback(
+    (question: Question) => setAdhocQuestionUrl(Urls.question(question.card())),
+    [],
+  );
+
+  const providerPlugins = useMemo(() => {
+    return { ...globalPlugins, ...plugins };
+  }, [globalPlugins, plugins]);
+
   return (
     <Box w="100%" h="100%" ref={ref} className={className}>
       {adhocQuestionUrl ? (
@@ -124,15 +133,13 @@ const InteractiveDashboardInner = ({
           questionPath={adhocQuestionUrl}
           withTitle={withTitle}
           height={questionHeight}
-          plugins={plugins}
+          plugins={providerPlugins}
           onNavigateBack={handleNavigateBackToDashboard}
         />
       ) : (
         <InteractiveDashboardProvider
-          plugins={{ ...globalPlugins, ...plugins }}
-          onEditQuestion={(question: Question) =>
-            setAdhocQuestionUrl(Urls.question(question.card()))
-          }
+          plugins={providerPlugins}
+          onEditQuestion={onEditQuestion}
         >
           <PublicOrEmbeddedDashboard
             dashboardId={dashboardId}

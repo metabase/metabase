@@ -1,11 +1,11 @@
 import { merge } from "lodash";
 
 import type {
-  SdkDashcardMenuPluginsConfig,
+  SdkDashCardMenuPluginsConfig,
   SdkPluginsConfig,
 } from "embedding-sdk";
 
-const DEFAULT_DASHCARD_MENU_ITEMS: SdkDashcardMenuPluginsConfig = {
+const DEFAULT_DASHCARD_MENU_ITEMS: SdkDashCardMenuPluginsConfig = {
   dashcardMenu: {
     withDownloads: true,
     withEditLink: true,
@@ -24,7 +24,7 @@ const getDashcardMenu = (plugins: SdkPluginsConfig) => {
   );
 };
 
-export const initializeDashboardPlugin = (
+export const addDefaultDashboardPluginValues = (
   plugins: SdkPluginsConfig = {},
 ): SdkPluginsConfig => {
   return {
