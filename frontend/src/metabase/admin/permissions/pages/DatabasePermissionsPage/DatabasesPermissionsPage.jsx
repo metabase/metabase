@@ -163,12 +163,12 @@ function DatabasesPermissionsPage({
           onBreadcrumbsItemSelect={handleBreadcrumbsItemSelect}
           onChange={handlePermissionChange}
           onAction={handleAction}
-          messages={() => (
+          preHeaderContent={() => (
             <>
               {showSplitPermsMessage && <PermissionsEditorSplitPermsMessage />}
             </>
           )}
-          warnings={() => (
+          postHeaderContent={() => (
             <>
               {showLegacyNoSelfServiceWarning && (
                 <PermissionsEditorLegacyNoSelfServiceWarning />

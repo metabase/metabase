@@ -41,7 +41,7 @@ export const LegacyPermissionsModal = ({
               <Text span color="brand" fw="bold">{t`View data`}</Text>
             )} and ${(
               <Text span color="brand" fw="bold">{t`Create queries`}</Text>
-            )} . Having separate settings for what people can view and what they can query makes data permissions more expressive and easier to reason about.`}
+            )}. Having separate settings for what people can view and what they can query makes data permissions more expressive and easier to reason about.`}
           </Text>
           <Text mb="1.5rem">
             {t`Your permissions have been automatically converted to the new settings, with no change in data access for your groups.`}
