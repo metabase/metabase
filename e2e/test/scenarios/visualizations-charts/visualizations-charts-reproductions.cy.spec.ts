@@ -1,6 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createQuestion,
+  modal,
   popover,
   restore,
   type StructuredQuestionDetails,
@@ -34,6 +35,29 @@ describe("issue 43075", () => {
       expect(win.document.documentElement.scrollHeight).to.be.lte(
         win.document.documentElement.offsetHeight,
       );
+    });
+  });
+});
+
+describe("issue 41133", () => {
+  const questionDetails: StructuredQuestionDetails = {
+    query: {
+      "source-table": PRODUCTS_ID,
+    },
+  };
+  beforeEach(() => {
+    cy.viewport(600, 400);
+    restore();
+    cy.signInAsAdmin();
+    createQuestion(questionDetails, { visitQuestion: true });
+  });
+
+  it("object detail view should be scrollable on narrow screens (metabase#41133)", () => {
+    cy.findByTestId("detail-shortcut").eq(0).click();
+
+    modal().within(() => {
+      cy.findByText("Created At").scrollIntoView().should("be.visible");
+      cy.findByText("is connected to:").scrollIntoView().should("be.visible");
     });
   });
 });
