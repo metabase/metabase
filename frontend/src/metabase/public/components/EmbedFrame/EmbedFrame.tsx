@@ -158,7 +158,7 @@ export const EmbedFrame = ({
     : [];
   const hasVisibleParameters = visibleParameters.length > 0;
 
-  const hasHeader = Boolean(finalName || dashboardTabs || downloadsEnabled);
+  const hasHeader = Boolean(finalName || dashboardTabs) || downloadsEnabled;
   const isParameterPanelSticky =
     !!dashboard &&
     theme !== "transparent" && // https://github.com/metabase/metabase/pull/38766#discussion_r1491549200
