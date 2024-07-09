@@ -27,7 +27,6 @@ import {
   entityPickerModal,
   chartPathWithFillColor,
   entityPickerModalTab,
-  dismissSplitPermsModal,
 } from "e2e/support/helpers";
 
 const {
@@ -796,7 +795,6 @@ describeEE("formatting > sandboxes", () => {
       cy.visit(
         `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
       );
-      dismissSplitPermsModal();
       cy.wait("@tablePermissions");
       cy.icon("eye")
         .eq(1) // No better way of doing this, unfortunately (see table above)

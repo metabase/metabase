@@ -182,12 +182,12 @@ function GroupsPermissionsPage({
           onChange={handlePermissionChange}
           onAction={handleAction}
           onBreadcrumbsItemSelect={handleBreadcrumbsItemSelect}
-          messages={() => (
+          preHeaderContent={() => (
             <>
               {showSplitPermsMessage && <PermissionsEditorSplitPermsMessage />}
             </>
           )}
-          warnings={() => (
+          postHeaderContent={() => (
             <>
               {showLegacyNoSelfServiceWarning && (
                 <PermissionsEditorLegacyNoSelfServiceWarning />

@@ -30,8 +30,8 @@ export const permissionEditorContentPropTypes = {
   onAction: PropTypes.func,
   onBreadcrumbsItemSelect: PropTypes.func,
   breadcrumbs: PropTypes.array,
-  warnings: PropTypes.func,
-  messages: PropTypes.func,
+  postHeaderContent: PropTypes.func,
+  preHeaderContent: PropTypes.func,
 };
 
 export function PermissionsEditorContent({
@@ -45,8 +45,8 @@ export function PermissionsEditorContent({
   onChange,
   onSelect,
   onAction,
-  warnings: Warnings = () => null,
-  messages: Messages = () => null,
+  postHeaderContent: PostHeaderContent = () => null,
+  preHeaderContent: PreHeaderContent = () => null,
 }) {
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, SEARCH_DEBOUNCE_DURATION);
@@ -67,7 +67,7 @@ export function PermissionsEditorContent({
 
   return (
     <PermissionEditorContentRoot data-testid="permissions-editor">
-      <Messages />
+      <PreHeaderContent />
       <Subhead>
         {title}{" "}
         {breadcrumbs && (
@@ -80,7 +80,7 @@ export function PermissionsEditorContent({
 
       {description && <Text>{description}</Text>}
 
-      <Warnings />
+      <PostHeaderContent />
 
       <EditorFilterContainer>
         <Input
