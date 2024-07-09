@@ -191,7 +191,7 @@
          (doseq [[group-id changes] changes]
            (update-audit-collection-permissions! group-id changes)
            (update-group-permissions! collection-namespace group-id changes)))
-       (let [revision-id (create-perms-revision! (:revision old-graph))]
+       (let [revision-id (:id (create-perms-revision! (:revision old-graph)))]
          ;; The graph is updated infrequently, but `diff-old` and `old-graph` can get huge on larger instances.
          (data-perms.graph/log-permissions-changes diff-old changes)
          (future (update-perms-revision! revision-id (assoc old-graph :namespace collection-namespace) changes)))))))
