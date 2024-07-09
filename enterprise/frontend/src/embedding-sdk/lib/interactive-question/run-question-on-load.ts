@@ -16,11 +16,11 @@ import type { Dispatch, GetState } from "metabase-types/store";
 import { runQuestionQuerySdk } from "./run-question-query";
 
 export const runQuestionOnLoadSdk =
-  ({ location, params }: LoadSdkQuestionParams) =>
+  ({ location, params, cancelDeferred }: LoadSdkQuestionParams) =>
   async (
     dispatch: Dispatch,
     getState: GetState,
-  ): Promise<SdkQuestionResult> => {
+  ): Promise<SdkQuestionResult & { originalQuestion?: Question }> => {
     const cardId = Urls.extractEntityId(params.slug);
     const { options, serializedCard } = parseHash(location.hash);
 
@@ -35,8 +35,14 @@ export const runQuestionOnLoadSdk =
     await dispatch(loadMetadataForCard(card));
     const metadata = getMetadata(getState());
 
-    return runQuestionQuerySdk({
+    const originalQuestion =
+      originalCard && new Question(originalCard, metadata);
+
+    const result = await runQuestionQuerySdk({
       question: new Question(card, metadata),
-      originalQuestion: originalCard && new Question(originalCard, metadata),
+      originalQuestion,
+      cancelDeferred,
     });
+
+    return { ...result, originalQuestion };
   };

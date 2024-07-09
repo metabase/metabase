@@ -1,5 +1,5 @@
 import type { SdkQuestionResult } from "embedding-sdk/types/question";
-import { defer } from "metabase/lib/promise";
+import type { Deferred } from "metabase/lib/promise";
 import { runQuestionQuery } from "metabase/services";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -7,12 +7,13 @@ import type Question from "metabase-lib/v1/Question";
 interface RunQuestionQueryParams {
   question: Question;
   originalQuestion?: Question;
+  cancelDeferred?: Deferred;
 }
 
 export async function runQuestionQuerySdk(
   params: RunQuestionQueryParams,
 ): Promise<SdkQuestionResult> {
-  let { question, originalQuestion } = params;
+  let { question, originalQuestion, cancelDeferred } = params;
 
   const query = question.query();
   const { isNative } = Lib.queryDisplayInfo(query);
@@ -33,7 +34,7 @@ export async function runQuestionQuerySdk(
 
   if (question.canRun() && (question.isSaved() || !isNative)) {
     queryResults = await runQuestionQuery(question, {
-      cancelDeferred: defer(), // TODO: support query cancellation in the SDK
+      cancelDeferred,
       ignoreCache: false,
       isDirty: isQueryDirty,
     });
@@ -44,5 +45,5 @@ export async function runQuestionQuerySdk(
     question.alertType = () => null;
   }
 
-  return { question, originalQuestion, queryResults };
+  return { question, queryResults };
 }

@@ -6,7 +6,6 @@ import Questions from "metabase/entities/questions";
 import { createThunkAction } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { addUndo } from "metabase/redux/undo";
-import { syncVizSettingsWithSeries } from "metabase/visualizations/lib/sync-settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -30,7 +29,10 @@ import { updateUrl } from "../navigation";
 import { runQuestionQuery } from "../querying";
 import { onCloseQuestionInfo, setQueryBuilderMode, setUIControls } from "../ui";
 
-import { getQuestionWithDefaultVisualizationSettings } from "./utils";
+import {
+  getAdHocQuestionWithVizSettings,
+  getQuestionWithDefaultVisualizationSettings,
+} from "./utils";
 
 function checkShouldRerunPivotTableQuestion({
   isPivot,
@@ -118,35 +120,16 @@ export const updateQuestion = (
   return async (dispatch: Dispatch, getState: GetState) => {
     const currentQuestion = getQuestion(getState());
     const queryBuilderMode = getQueryBuilderMode(getState());
-    const { isEditable } = Lib.queryDisplayInfo(newQuestion.query());
-
-    const shouldTurnIntoAdHoc =
-      shouldStartAdHocQuestion &&
-      newQuestion.isSaved() &&
-      isEditable &&
-      queryBuilderMode !== "dataset";
-
-    if (shouldTurnIntoAdHoc) {
-      newQuestion = newQuestion.withoutNameAndId();
-
-      // When the dataset query changes, we should change the question type,
-      // to start building a new ad-hoc question based on a dataset
-      if (newQuestion.type() === "model" || newQuestion.type() === "metric") {
-        newQuestion = newQuestion.setType("question");
-        dispatch(onCloseQuestionInfo());
-      }
-    }
 
     const queryResult = getFirstQueryResult(getState());
-    newQuestion = newQuestion.setSettings(
-      syncVizSettingsWithSeries(newQuestion.settings(), [
-        {
-          card: newQuestion.card(),
-          data: queryResult?.data,
-          error: queryResult?.error,
-        },
-      ]),
-    );
+
+    newQuestion = getAdHocQuestionWithVizSettings({
+      question: newQuestion,
+      queryResult,
+      onCloseQuestionInfo: () => dispatch(onCloseQuestionInfo()),
+      shouldStartAdHocQuestion:
+        shouldStartAdHocQuestion && queryBuilderMode !== "dataset",
+    });
 
     if (!newQuestion.canAutoRun()) {
       run = false;

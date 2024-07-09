@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { useRef, useState } from "react";
+import { useAsyncFn, useUnmount } from "react-use";
 
 import {
   runQuestionOnLoadSdk,
@@ -10,16 +11,18 @@ import type {
   NavigateToNewCardParams,
   SdkQuestionResult,
 } from "embedding-sdk/types/question";
+import { defer, type Deferred } from "metabase/lib/promise";
 import { useDispatch } from "metabase/lib/redux";
 import type Question from "metabase-lib/v1/Question";
 
 export interface LoadQuestionHookResult {
   question?: Question;
   queryResults?: any[];
+
   isQuestionLoading: boolean;
   isQueryRunning: boolean;
 
-  loadQuestion(): Promise<void>;
+  loadQuestion(): Promise<SdkQuestionResult & { originalQuestion?: Question }>;
   onQuestionChange(question: Question): Promise<void>;
   onNavigateToNewCard(params: NavigateToNewCardParams): Promise<void>;
 }
@@ -30,85 +33,88 @@ export function useLoadQuestion({
 }: LoadSdkQuestionParams): LoadQuestionHookResult {
   const dispatch = useDispatch();
 
+  // Keep track of the latest question and query results.
+  // They can be updated from the below actions.
   const [result, setQuestionResult] = useState<SdkQuestionResult>({});
+  const { question, queryResults } = result;
 
-  // Loading state for initial question load.
-  const [isQuestionLoading, setIsQuestionLoading] = useState(true);
+  const deferredRef = useRef<Deferred>();
 
-  // Loading state for subsequent query runs; either query change or navigating to new card.
-  const [isQueryRunning, setIsQueryRunning] = useState(false);
+  function deferred() {
+    // Cancel the previous query when a new one is started.
+    deferredRef.current?.resolve();
+    deferredRef.current = defer();
 
-  const { question, originalQuestion, queryResults } = result;
+    return deferredRef.current;
+  }
 
-  const storeQuestionResult = async (
-    getQuestionResult: () => Promise<SdkQuestionResult | null>,
-  ) => {
-    setIsQueryRunning(true);
+  // Cancel the running query when the component unmounts.
+  useUnmount(() => {
+    deferredRef.current?.resolve();
+  });
 
-    try {
-      const nextResult = await getQuestionResult();
+  const [loadQuestionState, loadQuestion] = useAsyncFn(async () => {
+    const result = await dispatch(
+      runQuestionOnLoadSdk({
+        location,
+        params,
+        cancelDeferred: deferred(),
+      }),
+    );
 
-      if (nextResult) {
-        setQuestionResult(result => ({ ...result, ...nextResult }));
-      }
-    } catch (e) {
-      console.error(`Failed to update question result`, e);
-    } finally {
-      setIsQueryRunning(false);
-    }
-  };
+    setQuestionResult(result);
 
-  const loadQuestion = useCallback(async () => {
-    setIsQuestionLoading(true);
-
-    try {
-      const nextResult = await dispatch(
-        runQuestionOnLoadSdk({ location, params }),
-      );
-
-      if (nextResult) {
-        setQuestionResult(result => ({ ...result, ...nextResult }));
-      }
-    } catch (e) {
-      console.error(`Failed to update question result`, e);
-    } finally {
-      setIsQuestionLoading(false);
-    }
+    return result;
   }, [dispatch, location, params]);
 
-  const onQuestionChange = useCallback(
-    async (nextQuestion: Question) =>
-      question &&
-      storeQuestionResult(() =>
-        dispatch(
-          runQuestionOnQueryChangeSdk({
-            nextQuestion,
-            previousQuestion: question,
-            originalQuestion,
-          }),
-        ),
-      ),
+  const { originalQuestion } = loadQuestionState.value ?? {};
+
+  const [questionChangeState, onQuestionChange] = useAsyncFn(
+    async (nextQuestion: Question) => {
+      if (!question) {
+        return;
+      }
+
+      const result = await dispatch(
+        runQuestionOnQueryChangeSdk({
+          nextQuestion,
+          previousQuestion: question,
+          originalQuestion,
+          cancelDeferred: deferred(),
+        }),
+      );
+
+      setQuestionResult(result);
+    },
     [dispatch, question, originalQuestion],
   );
 
-  const onNavigateToNewCard = useCallback(
-    async (params: NavigateToNewCardParams) =>
-      storeQuestionResult(() =>
-        dispatch(
-          runQuestionOnNavigateSdk({
-            ...params,
-            originalQuestion,
-          }),
-        ),
-      ),
+  const [navigateToNewCardState, onNavigateToNewCard] = useAsyncFn(
+    async (params: NavigateToNewCardParams) => {
+      const result = await dispatch(
+        runQuestionOnNavigateSdk({
+          ...params,
+          originalQuestion,
+          cancelDeferred: deferred(),
+        }),
+      );
+
+      if (!result) {
+        return;
+      }
+
+      setQuestionResult(result);
+    },
     [dispatch, originalQuestion],
   );
 
   return {
     question,
     queryResults,
-    isQuestionLoading,
-    isQueryRunning,
+
+    isQuestionLoading: loadQuestionState.loading,
+    isQueryRunning:
+      questionChangeState.loading || navigateToNewCardState.loading,
 
     loadQuestion,
     onQuestionChange,

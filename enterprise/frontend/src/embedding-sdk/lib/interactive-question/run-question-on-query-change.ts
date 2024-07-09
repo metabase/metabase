@@ -1,9 +1,10 @@
 import _ from "underscore";
 
 import type { SdkQuestionResult } from "embedding-sdk/types/question";
+import type { Deferred } from "metabase/lib/promise";
+import { getAdHocQuestionWithVizSettings } from "metabase/query_builder/actions/core/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
-import { syncVizSettingsWithSeries } from "metabase/visualizations/lib/sync-settings";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Dispatch, GetState } from "metabase-types/store";
@@ -16,6 +17,7 @@ interface RunQuestionOnQueryChangeParams {
   originalQuestion?: Question;
   shouldStartAdHocQuestion?: boolean;
   queryResults?: any[];
+  cancelDeferred?: Deferred;
 }
 
 export const runQuestionOnQueryChangeSdk =
@@ -30,37 +32,14 @@ export const runQuestionOnQueryChangeSdk =
       originalQuestion,
       queryResults,
       shouldStartAdHocQuestion = true,
+      cancelDeferred,
     } = params;
 
-    const { isEditable } = Lib.queryDisplayInfo(nextQuestion.query());
-
-    const shouldTurnIntoAdHoc =
-      shouldStartAdHocQuestion && nextQuestion.isSaved() && isEditable;
-
-    if (shouldTurnIntoAdHoc) {
-      nextQuestion = nextQuestion.withoutNameAndId();
-
-      // When the dataset query changes, we should change the question type,
-      // to start building a new ad-hoc question based on a dataset
-      // NOTE: we do not support model and metric questions in the SDK yet.
-      if (nextQuestion.type() === "model" || nextQuestion.type() === "metric") {
-        nextQuestion = nextQuestion.setType("question");
-      }
-    }
-
-    if (queryResults) {
-      const [queryResult] = queryResults;
-
-      nextQuestion = nextQuestion.setSettings(
-        syncVizSettingsWithSeries(nextQuestion.settings(), [
-          {
-            card: nextQuestion.card(),
-            data: queryResult?.data,
-            error: queryResult?.error,
-          },
-        ]),
-      );
-    }
+    nextQuestion = getAdHocQuestionWithVizSettings({
+      question: nextQuestion,
+      queryResult: queryResults?.[0],
+      shouldStartAdHocQuestion,
+    });
 
     const currentDependencies = previousQuestion
       ? Lib.dependentMetadata(
@@ -85,5 +64,6 @@ export const runQuestionOnQueryChangeSdk =
     return runQuestionQuerySdk({
       question: new Question(nextQuestion.card(), metadata),
       originalQuestion,
+      cancelDeferred,
     });
   };
