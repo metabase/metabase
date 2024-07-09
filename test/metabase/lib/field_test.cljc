@@ -109,15 +109,19 @@
         (is (= ["Grandparent: Parent: Child" "Grandparent" "Grandparent: Parent"]
                (map #(lib/display-name query -1 % :long) cols)))
         (is (=? [{:display-name "Grandparent: Parent: Child"
-                  :long-display-name "Grandparent: Parent: Child"}
+                  :long-display-name "Grandparent: Parent: Child"
+                  :desired-column-alias "child"}
                  {:display-name "Grandparent"
-                  :long-display-name "Grandparent"}
+                  :long-display-name "Grandparent"
+                  :desired-column-alias "grandparent"}
                  {:display-name "Grandparent: Parent"
-                  :long-display-name "Grandparent: Parent"}]
+                  :long-display-name "Grandparent: Parent"
+                  :desired-column-alias "parent"}]
                 (map #(lib/display-info query -1 %) cols)))))
     (testing "breakout"
       (is (=? [{:display-name "Grandparent: Parent: Child"
-                :long-display-name "Grandparent: Parent: Child"}]
+                :long-display-name "Grandparent: Parent: Child"
+                :desired-column-alias "grandparent.parent.child"}]
               (->> base
                    lib/breakoutable-columns
                    first
@@ -136,17 +140,23 @@
                           (lib/with-join-alias "alias"))))]
         (doseq [query [base (lib/append-stage base)]]
           (is (=? [{:display-name "Grandparent: Parent: Child"
-                    :long-display-name "Grandparent: Parent: Child"}
+                    :long-display-name "Grandparent: Parent: Child"
+                    :desired-column-alias "child"}
                    {:display-name "Grandparent"
-                    :long-display-name "Grandparent"}
+                    :long-display-name "Grandparent"
+                    :desired-column-alias "grandparent"}
                    {:display-name "Grandparent: Parent"
-                    :long-display-name "Grandparent: Parent"}
+                    :long-display-name "Grandparent: Parent"
+                    :desired-column-alias "parent"}
                    {:display-name "Grandparent: Parent: Child"
-                    :long-display-name "alias → Grandparent: Parent: Child"}
+                    :long-display-name "alias → Grandparent: Parent: Child"
+                    :desired-column-alias "alias__child"}
                    {:display-name "Grandparent"
-                    :long-display-name "alias → Grandparent"}
+                    :long-display-name "alias → Grandparent"
+                    :desired-column-alias "alias__grandparent"}
                    {:display-name "Grandparent: Parent"
-                    :long-display-name "alias → Grandparent: Parent"}]
+                    :long-display-name "alias → Grandparent: Parent"
+                    :desired-column-alias "alias__parent"}]
                   (->> query
                        lib/visible-columns
                        (map #(lib/display-info base -1 %))))))))))
