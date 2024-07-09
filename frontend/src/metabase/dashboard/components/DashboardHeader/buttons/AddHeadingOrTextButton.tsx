@@ -27,10 +27,12 @@ export const AddHeadingOrTextButton = () => {
 
   const onAddHeading = () => {
     if (dashboard) {
-      addHeadingDashCardToDashboard({
-        dashId: dashboard.id,
-        tabId: selectedTabId,
-      });
+      dispatch(
+        addHeadingDashCardToDashboard({
+          dashId: dashboard.id,
+          tabId: selectedTabId,
+        }),
+      );
     }
   };
 

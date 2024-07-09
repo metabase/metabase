@@ -34,7 +34,7 @@ export const AddFilterParameterButton = () => {
             <DashboardHeaderButton
               key="parameters"
               icon="filter"
-              onClick={() => dispatch(showAddParameterPopover)}
+              onClick={() => dispatch(showAddParameterPopover())}
               aria-label={t`Add a filter`}
             />
           </Tooltip>

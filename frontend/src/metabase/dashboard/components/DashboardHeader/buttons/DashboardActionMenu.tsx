@@ -20,6 +20,7 @@ export const DashboardActionMenu = (props: { items: any[] }) => (
     transitionDuration={0}
   />
 );
+
 export const getExtraButtons = ({
   onFullscreenChange,
   isFullscreen,
