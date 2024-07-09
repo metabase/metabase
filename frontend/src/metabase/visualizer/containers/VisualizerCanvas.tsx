@@ -86,15 +86,21 @@ export function VisualizerCanvas({
     });
   };
 
+  const title = displaySeries[0].card.name;
+
   return (
     <Card w="100%" h="100%" ref={setNodeRef}>
       {displaySeries.length > 0 && (
         <>
-          <Flex mx="xs" mb="md">
-            <Title size="h2">{displaySeries[0].card.name}</Title>
-            <ActionIcon ml="auto" onClick={onToggleVizSettings}>
-              <Icon name="gear" />
-            </ActionIcon>
+          <Flex mx="xs" mb="md" align="center">
+            <Title size="h2" truncate title={title}>
+              {title}
+            </Title>
+            <Flex miw={200}>
+              <ActionIcon ml="auto" onClick={onToggleVizSettings}>
+                <Icon name="gear" />
+              </ActionIcon>
+            </Flex>
           </Flex>
           {hasAxes ? (
             <Group w="100%" h="90%">

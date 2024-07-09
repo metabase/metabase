@@ -35,7 +35,9 @@ export function VisualizerUsed({
               series={{ card, data }}
               onChange={vizType => onVizTypeChange(index, vizType)}
             />
-            <div>{card.name}</div>
+            <Text truncate title={card.name}>
+              {card.name}
+            </Text>
             <Flex ml="auto">
               <ActionIcon onClick={() => onFocusSeries(index)}>
                 <Icon
