@@ -418,7 +418,7 @@
    & {:keys [preview] :or {preview false}}]
   (let [unsigned-token                       (embed/unsign token)
         dashboard-id                         (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        _                                    (when-not preview (check-embedding-enabled-for-card dashboard-id))
+        _                                    (when-not preview (check-embedding-enabled-for-dashboard dashboard-id))
         slug-token-params                    (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         {parameters       :parameters
          embedding-params :embedding_params} (t2/select-one :model/Dashboard :id dashboard-id)
