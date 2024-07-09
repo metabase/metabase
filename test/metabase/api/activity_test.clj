@@ -26,44 +26,44 @@
   (clear-recent-views-for-user :rasta)
   (mt/test-helpers-set-global-values!
     (mt/with-temporary-setting-values [disable-grouper-batch-processing true]
-     (mt/with-temp [Card      card-1  {:name       "rand-name"
-                                       :creator_id (mt/user->id :crowberto)
-                                       :display    "table"}
-                    Dashboard dash-1  {:name        "rand-name2"
-                                       :description "rand-name2"
-                                       :creator_id  (mt/user->id :crowberto)}
-                    Dashboard dash-2  {:name        "rand-name2"
-                                       :description "rand-name2"
-                                       :creator_id  (mt/user->id :crowberto)}
-                    Dashboard dash-3  {:name        "rand-name2"
-                                       :description "rand-name2"
-                                       :archived    true
-                                       :creator_id  (mt/user->id :crowberto)}
-                    Table     table-1 {:name "rand-name"}]
-       (mt/with-test-user :crowberto
-         (doseq [{:keys [topic event]} [{:topic :event/dashboard-read :event {:object-id (:id dash-1)}}
-                                        {:topic :event/dashboard-read :event {:object-id (:id dash-2)}}
-                                        {:topic :event/dashboard-read :event {:object-id (:id dash-3)}}
-                                        {:topic :event/card-query :event {:card-id (:id card-1)}}
-                                        {:topic :event/table-read :event {:object table-1}}]]
-           (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
-         (testing "most_recently_viewed_dashboard endpoint shows the current user's most recently viewed non-archived dashboard."
-           (is (= (assoc dash-2 :collection nil :view_count 0)
-                  (mt/user-http-request :crowberto :get 200 "activity/most_recently_viewed_dashboard")))))
-       (mt/with-test-user :rasta
-         (testing "If nothing has been viewed, return a 204"
-           (is (nil? (mt/user-http-request :rasta :get 204
-                                           "activity/most_recently_viewed_dashboard"))))
-         (events/publish-event! :event/dashboard-read {:object-id (:id dash-1) :user-id (mt/user->id :rasta)})
-         (testing "Only the user's own views are returned."
-           (is (= (assoc dash-1 :collection nil :view_count 0)
-                  (mt/user-http-request :rasta :get 200
-                                        "activity/most_recently_viewed_dashboard"))))
-         (events/publish-event! :event/dashboard-read {:object-id (:id dash-1) :user-id (mt/user->id :rasta)})
-         (testing "If the user has no permissions for the dashboard, return a 204"
-           (mt/with-non-admin-groups-no-root-collection-perms
-             (is (nil? (mt/user-http-request :rasta :get 204
-                                             "activity/most_recently_viewed_dashboard"))))))))))
+      (mt/with-temp [Card      card-1  {:name       "rand-name"
+                                        :creator_id (mt/user->id :crowberto)
+                                        :display    "table"}
+                     Dashboard dash-1  {:name        "rand-name2"
+                                        :description "rand-name2"
+                                        :creator_id  (mt/user->id :crowberto)}
+                     Dashboard dash-2  {:name        "rand-name2"
+                                        :description "rand-name2"
+                                        :creator_id  (mt/user->id :crowberto)}
+                     Dashboard dash-3  {:name        "rand-name2"
+                                        :description "rand-name2"
+                                        :archived    true
+                                        :creator_id  (mt/user->id :crowberto)}
+                     Table     table-1 {:name "rand-name"}]
+        (mt/with-test-user :crowberto
+          (doseq [{:keys [topic event]} [{:topic :event/dashboard-read :event {:object-id (:id dash-1)}}
+                                         {:topic :event/dashboard-read :event {:object-id (:id dash-2)}}
+                                         {:topic :event/dashboard-read :event {:object-id (:id dash-3)}}
+                                         {:topic :event/card-query :event {:card-id (:id card-1)}}
+                                         {:topic :event/table-read :event {:object table-1}}]]
+            (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
+          (testing "most_recently_viewed_dashboard endpoint shows the current user's most recently viewed non-archived dashboard."
+            (is (= (assoc dash-2 :collection nil :view_count 1)
+                   (mt/user-http-request :crowberto :get 200 "activity/most_recently_viewed_dashboard")))))
+        (mt/with-test-user :rasta
+          (testing "If nothing has been viewed, return a 204"
+            (is (nil? (mt/user-http-request :rasta :get 204
+                                            "activity/most_recently_viewed_dashboard"))))
+          (events/publish-event! :event/dashboard-read {:object-id (:id dash-1) :user-id (mt/user->id :rasta)})
+          (testing "Only the user's own views are returned."
+            (is (= (assoc dash-1 :collection nil :view_count 2)
+                   (mt/user-http-request :rasta :get 200
+                                         "activity/most_recently_viewed_dashboard"))))
+          (events/publish-event! :event/dashboard-read {:object-id (:id dash-1) :user-id (mt/user->id :rasta)})
+          (testing "If the user has no permissions for the dashboard, return a 204"
+            (mt/with-non-admin-groups-no-root-collection-perms
+              (is (nil? (mt/user-http-request :rasta :get 204
+                                              "activity/most_recently_viewed_dashboard"))))))))))
 
 (deftest most-recently-viewed-dashboard-views-include-collection-test
   (mt/test-helpers-set-global-values!
