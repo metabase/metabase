@@ -20,19 +20,16 @@ const getId = (valuePopulatedParameter: Parameter) =>
 
 export const ParametersList = ({
   className,
-
   parameters,
   question,
   dashboard,
   editingParameter,
-
   isFullscreen,
   isNightMode,
   hideParameters,
   isEditing,
   vertical = false,
   commitImmediately = false,
-
   setParameterValueToDefault,
   setParameterValue,
   setParameterIndex,
@@ -46,7 +43,11 @@ export const ParametersList = ({
   const visibleValuePopulatedParameters = useMemo(() => {
     const visibleParams = getVisibleParameters(parameters, hideParameters);
     return visibleParams.filter(
-      parameter => isEditing || !parameter.name.includes("#hide"),
+      parameter =>
+        isEditing ||
+        !(
+          parameter.name.startsWith("#hide") || parameter.name.endsWith("#hide")
+        ),
     );
   }, [parameters, hideParameters, isEditing]);
 
