@@ -655,6 +655,60 @@ describe("StringFilterValuePicker", () => {
       expect(onChange).toHaveBeenLastCalledWith(["b", "a"]);
     });
 
+    it("should handle type/FK -> column field values remapping", async () => {
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        fields: [
+          createOrdersProductIdField({
+            base_type: "type/Text",
+            effective_type: "type/Text",
+            has_field_values: "search",
+            dimensions: [
+              createMockFieldDimension({
+                type: "external",
+                human_readable_field_id: PRODUCTS.TITLE,
+              }),
+            ],
+          }),
+        ],
+      });
+      const { query, stageIndex, findColumn } =
+        createQueryWithMetadata(metadata);
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column: findColumn("ORDERS", "PRODUCT_ID"),
+        values: ["b"],
+        fieldId: ORDERS.PRODUCT_ID,
+        searchFieldId: PRODUCTS.TITLE,
+        searchValues: [
+          {
+            value: "a",
+            response: createMockFieldValues({
+              field_id: ORDERS.PRODUCT_ID,
+              values: [["a", "a@metabase.test"]],
+            }),
+          },
+        ],
+        remappedValues: [
+          {
+            values: ["b"],
+            response: createMockFieldValues({
+              field_id: ORDERS.PRODUCT_ID,
+              values: [["b", "b@metabase.test"]],
+            }),
+          },
+        ],
+      });
+      expect(
+        await screen.findByText("b — b@metabase.test"),
+      ).toBeInTheDocument();
+
+      await userEvent.type(screen.getByLabelText("Filter value"), "a");
+      await userEvent.click(await screen.findByText("a — a@metabase.test"));
+      expect(onChange).toHaveBeenLastCalledWith(["b", "a"]);
+    });
+
     it("should handle custom field values", async () => {
       const { onChange } = await setupStringPicker({
         query,
