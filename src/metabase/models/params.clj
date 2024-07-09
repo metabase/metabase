@@ -139,7 +139,7 @@
           :let [name-field (table-id->name-field (:table_id field))]]
       (-> field
           (assoc :name_field name-field)
-          (assoc :name_field_id name-field)))))
+          (assoc :name_field_id (u/the-id name-field))))))
 
 ;; We hydrate the `:human_readable_field` for each Dimension using the usual hydration logic, so it contains columns we
 ;; don't want to return. The two functions below work to remove the unneeded ones.
