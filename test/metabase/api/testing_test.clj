@@ -3,10 +3,13 @@
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [java-time.api :as t]
+   [java-time.clock]
    [metabase.api.testing :as testing]
    [metabase.db :as mdb]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]))
 
 (set! *warn-on-reflection* true)
 
@@ -54,3 +57,24 @@
     (mt/with-temp-empty-app-db [_conn :h2]
       (#'testing/restore-snapshot! snapshot-name)
       (is (= [{:a 1}] (jdbc/query {:datasource (mdb/app-db)} ["select a from test_view"]))))))
+
+(deftest set-time-test
+  (try
+    (let [t (t/zoned-date-time 2024 7 8 15 00 00)]
+      (testing "You can set exact date and reset it back"
+        (is (= {:result "set" :time "2024-07-08T15:00:00Z"}
+               (mt/user-http-request :rasta :post 200 "testing/set-time"
+                                     {:time (u.date/format t)})))
+        (is (=? {:result "reset" :time string?}
+                (mt/user-http-request :rasta :post 200 "testing/set-time"))))
+      (testing "You can move date with `add-ms`"
+        (is (= {:result "set" :time "2024-07-08T15:00:00Z"}
+               (mt/user-http-request :rasta :post 200 "testing/set-time"
+                                     {:time (u.date/format t)})))
+        (is (= {:result "set" :time "2024-07-08T15:00:10Z"}
+               (mt/user-http-request :rasta :post 200 "testing/set-time"
+                                     {:add-ms 10000})))
+        (is (=? {:result "reset" :time string?}
+                (mt/user-http-request :rasta :post 200 "testing/set-time")))))
+    (finally
+      (alter-var-root #'java-time.clock/*clock* (constantly nil)))))

@@ -33,26 +33,26 @@
   (context
    "/ee" []
    (context
-    "/billing" []
-    billing/routes)
+    "/advanced-permissions" []
+    (ee.api.common/+require-premium-feature :advanced-permissions (deferred-tru "Advanced Permissions") advanced-permissions/routes))
    (context
     "/audit-app" []
     (ee.api.common/+require-premium-feature :audit-app (deferred-tru "Audit app") audit-app/routes))
    (context
-    "/advanced-permissions" []
-    (ee.api.common/+require-premium-feature :advanced-permissions (deferred-tru "Advanced Permissions") advanced-permissions/routes))
+    "/autodescribe" []
+    (ee.api.common/+require-premium-feature :llm-autodescription (deferred-tru "LLM Auto-description") llm.api/routes))
+   (context
+    "/billing" []
+     billing/routes)
    (context
     "/logs" []
-    (ee.api.common/+require-premium-feature :audit-app (deferred-tru "Audit app") logs/routes))
+     (ee.api.common/+require-premium-feature :audit-app (deferred-tru "Audit app") logs/routes))
    (context
     "/scim" []
     (ee.api.common/+require-premium-feature :scim (deferred-tru "SCIM configuration") scim/routes))
    (context
     "/serialization" []
     (ee.api.common/+require-premium-feature :serialization (deferred-tru "Serialization") api.serialization/routes))
-   (context
-    "/autodescribe" []
-    (ee.api.common/+require-premium-feature :llm-autodescription (deferred-tru "LLM Auto-description") llm.api/routes))
    (context
     "/upload-management" []
     (ee.api.common/+require-premium-feature :upload-management (deferred-tru "Upload Management") api.uploads/routes))))
