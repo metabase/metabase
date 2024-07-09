@@ -118,7 +118,7 @@ describe("scenarios > metrics > dashboard", () => {
       cy.log("Assert it's been added before the save");
       cy.location("pathname").should(
         "eq",
-        "/dashboard/1-orders-in-a-dashboard",
+        `/dashboard/${ORDERS_DASHBOARD_ID}-orders-in-a-dashboard`,
       );
       cy.location("hash").should("eq", `#add=${metricId}&edit`);
       cy.findByTestId("scalar-value").should("have.text", "18,760");
