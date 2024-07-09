@@ -8232,7 +8232,7 @@ databaseChangeLog:
             sql: >-
               ALTER TABLE report_card
               CHANGE last_used_at
-              created_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+              last_used_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
       rollback: # nothing to do, since this is backwards compatible
 
   - changeSet:
