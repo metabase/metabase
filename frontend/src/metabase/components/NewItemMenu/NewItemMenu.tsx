@@ -100,6 +100,7 @@ const NewItemMenu = ({
         title: t`Visualization`,
         icon: "bar",
         link: Urls.visualizer(),
+        onClose: onCloseNavbar,
       },
     );
 
