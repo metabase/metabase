@@ -74,18 +74,21 @@ function getIsLabelVisible(
   fontSize: number,
   renderingContext: RenderingContext,
 ) {
-  const donutWidth = outerRadius - innerRadius;
-  const arcAngle = slice.startAngle - slice.endAngle;
+  // We use the law of cosines to determine the length of the chord with the
+  // same endpoints as the arc. The label should be shorter than this chord, and
+  // it should be shorter than the donutWidth.
+  //
+  // See the following document for a more detailed explanation:
+  // https://www.notion.so/metabase/Pie-Chart-Label-Visibility-Explanation-4cf366a78c6a419d95763a431a36b175?pvs=4
+  let arcAngle = slice.startAngle - slice.endAngle;
+  arcAngle = Math.min(Math.abs(arcAngle), Math.PI - 0.001);
 
-  // using law of cosines to calculate the arc length
-  // c = sqrt(a^2 + b^2﹣2*a*b * cos(arcAngle))
-  // where a = b = innerRadius
-  const innerRadiusArcDistance = Math.sqrt(
+  const innerCircleChordLength = Math.sqrt(
     2 * innerRadius * innerRadius -
       2 * innerRadius * innerRadius * Math.cos(arcAngle),
   );
-
-  const maxLabelDimension = Math.min(innerRadiusArcDistance, donutWidth);
+  const donutWidth = outerRadius - innerRadius;
+  const maxLabelDimension = Math.min(innerCircleChordLength, donutWidth);
 
   const fontStyle = {
     size: fontSize,
