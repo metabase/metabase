@@ -9,7 +9,7 @@ import type {
 } from "embedding-sdk/store/types";
 import { createAsyncThunk } from "metabase/lib/redux";
 
-import { getSessionTokenState } from "./selectors";
+import { getRefreshAuthTokenFn, getSessionTokenState } from "./selectors";
 
 const SET_LOGIN_STATUS = "sdk/SET_LOGIN_STATUS";
 const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
@@ -48,11 +48,24 @@ export const getOrRefreshSession = createAsyncThunk(
 
 export const refreshTokenAsync = createAsyncThunk(
   REFRESH_TOKEN,
-  async (url: string): Promise<EmbeddingSessionTokenState["token"]> => {
+  async (
+    url: string,
+    { getState },
+  ): Promise<EmbeddingSessionTokenState["token"]> => {
+    const getAuthRefreshToken = getRefreshAuthTokenFn(
+      getState() as SdkStoreState,
+    );
+
+    // The SDK user has provided a custom function to refresh the token.
+    if (getAuthRefreshToken) {
+      return await getAuthRefreshToken(url);
+    }
+
     const response = await fetch(url, {
       method: "GET",
       credentials: "include",
     });
+
     return await response.json();
   },
 );
@@ -71,6 +84,7 @@ const initialState: SdkState = {
   plugins: null,
   loaderComponent: null,
   errorComponent: null,
+  refreshAuthTokenFn: null,
 };
 
 export const sdk = createReducer(initialState, builder => {

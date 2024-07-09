@@ -20,3 +20,6 @@ export const getErrorComponent = (state: SdkStoreState) =>
 
 export const getMetabaseInstanceUrl = (state: SdkStoreState) =>
   state.sdk?.metabaseInstanceUrl;
+
+export const getRefreshAuthTokenFn = (state: SdkStoreState) =>
+  state.sdk.refreshAuthTokenFn;

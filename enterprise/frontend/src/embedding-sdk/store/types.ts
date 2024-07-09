@@ -51,7 +51,12 @@ export type SdkState = {
   plugins: null | SdkPluginsConfig;
   loaderComponent: null | (() => JSX.Element);
   errorComponent: null | (({ message }: { message: string }) => JSX.Element);
+  refreshAuthTokenFn: null | RefreshAuthTokenFn;
 };
+
+type RefreshAuthTokenFn = (
+  url: string,
+) => Promise<EmbeddingSessionTokenState["token"]>;
 
 export interface SdkStoreState extends State {
   sdk: SdkState;
