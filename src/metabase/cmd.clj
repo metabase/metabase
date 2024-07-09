@@ -160,8 +160,8 @@
   ((resolve 'metabase.cmd.env-var-dox/generate-dox!)))
 
 (defn ^:command config-template
-  "Generates a yaml file with some configuration file boilerplate. The template includes all the settings and their defaults.
-   Metabase will save the template as `docs/configuring-metabase/config-template.yaml`."
+  "Generates a markdown file with some documentation and an example configuration file in YAML. The YAML template includes Metabase settings and their defaults.
+   Metabase will save the template as `docs/configuring-metabase/config-template.md`."
   []
   (classloader/require 'metabase.cmd.config-file-gen)
   ((resolve 'metabase.cmd.config-file-gen/generate-config-file!)))
