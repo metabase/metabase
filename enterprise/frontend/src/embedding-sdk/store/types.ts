@@ -51,10 +51,10 @@ export type SdkState = {
   plugins: null | SdkPluginsConfig;
   loaderComponent: null | (() => JSX.Element);
   errorComponent: null | (({ message }: { message: string }) => JSX.Element);
-  refreshTokenFn: null | GetRefreshTokenFn;
+  fetchRefreshTokenFn: null | FetchRequestTokenFn;
 };
 
-export type GetRefreshTokenFn = (
+export type FetchRequestTokenFn = (
   url: string,
 ) => Promise<EmbeddingSessionTokenState["token"]>;
 
