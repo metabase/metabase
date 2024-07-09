@@ -10,16 +10,13 @@ export const DropdownFieldSet = styled(FieldSet)<{
   min-width: 0;
   text-overflow: ellipsis;
   overflow: hidden;
-
   border: 2px solid
     ${({ fieldHasValueOrFocus }) =>
       fieldHasValueOrFocus
         ? "var(--mb-color-brand)"
         : "var(--mb-color-border)"};
-
   margin: 0;
   padding: 0.5rem 0.75rem;
-
   cursor: pointer;
 
   legend {
@@ -27,7 +24,6 @@ export const DropdownFieldSet = styled(FieldSet)<{
     max-width: 100%;
     white-space: nowrap;
     text-overflow: ellipsis;
-
     text-transform: none;
     position: relative;
     height: 2px;

@@ -5,13 +5,18 @@ import Databases from "metabase/entities/databases";
 import Fields from "metabase/entities/fields";
 import Segments from "metabase/entities/segments";
 import Tables from "metabase/entities/tables";
+import { isProduction } from "metabase/env";
 import { createThunkAction, fetchData } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { MetabaseApi, RevisionsApi } from "metabase/services";
 
 // NOTE: All of these actions are deprecated. Use metadata entities directly.
 
-const deprecated = message => console.warn("DEPRECATED: " + message);
+const deprecated = message => {
+  if (!isProduction) {
+    console.warn("DEPRECATED: " + message);
+  }
+};
 
 export const FETCH_SEGMENTS = Segments.actions.fetchList.toString();
 export const fetchSegments = (reload = false) => {

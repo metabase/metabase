@@ -919,6 +919,6 @@
                   str/join
                   pretty-sql-lines)
              (->> (mt/mbql-query venues {:aggregation [:count]})
-                  qp.compile/compile-and-splice-parameters
+                  qp.compile/compile-with-inline-parameters
                   :query
                   pretty-sql-lines))))))

@@ -35,6 +35,7 @@
    [malli.error :as me]
    [medley.core :as m]
    [metabase.config :as config]
+   [metabase.models.collection :as collection]
    [metabase.models.collection.root :as root]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -152,8 +153,11 @@
    {:where    [:and
                [:= :user_id user-id]
                [:= :model (h2x/literal "dashboard")]
-               [:> :timestamp (t/minus (t/zoned-date-time) (t/days 1))]]
-    :order-by [[:id :desc]]}))
+               [:> :timestamp (t/minus (t/zoned-date-time) (t/days 1))]
+               [:not= :d.archived true]]
+    :order-by [[:recent_views.id :desc]]
+    :left-join [[:report_dashboard :d]
+                [:= :recent_views.model_id :d.id]]}))
 
 (def Item
   "The shape of a recent view item, returned from `GET /recent_views`."
@@ -429,14 +433,31 @@
     (throw (ex-info "context must be non-empty" {:context context})))
   (t2/select :model/RecentViews {:select    [:rv.* [:rc.type :card_type]]
                                  :from      [[:recent_views :rv]]
-                                 :where     (into [:and
-                                                   [:= :rv.user_id user-id]
-                                                   [:in :rv.context (map query-context->recent-context context)]])
+                                 :where     [:and
+                                             [:= :rv.user_id user-id]
+                                             [:in :rv.context (map query-context->recent-context context)]
+                                             ;; include non-collections, or collections without a namespace/type.
+                                             [:or
+                                              [:= :coll.id nil]
+                                              [:and
+                                               ;; trash collection is never returned
+                                               [:or [:= nil :coll.type] [:not= :coll.type collection/trash-collection-type]]
+                                               ;; collections in a different namespace can't interact with collections
+                                               ;; in the normal NULL namespace.
+                                               [:= nil :coll.namespace]
+                                               ;; exclude instance analytics for selects
+                                               (when (contains? (set context) :selections)
+                                                 [:or [:= nil :coll.type] [:not= :coll.type collection/instance-analytics-collection-type]])]]]
                                  :left-join [[:report_card :rc]
                                              [:and
                                               ;; only want to join on card_type if it's a card
                                               [:= :rv.model "card"]
-                                              [:= :rc.id :rv.model_id]]]
+                                              [:= :rc.id :rv.model_id]]
+
+                                             [:collection :coll]
+                                             [:and
+                                              [:= :rv.model "collection"]
+                                              [:= :coll.id :rv.model_id]]]
                                  :order-by  [[:rv.timestamp :desc]]}))
 
 (mu/defn ^:private model->return-model [model :- :keyword]

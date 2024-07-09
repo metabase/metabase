@@ -16,10 +16,11 @@ import {
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
 import { color } from "metabase/lib/colors";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector, useStore } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
@@ -115,7 +116,12 @@ function DashCardInner({
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
   );
-  const href = useSelector(state => getDashcardHref(state, dashcard.id));
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+  const store = useStore();
+  const getHref = useCallback(
+    () => getDashcardHref(store.getState(), dashcard.id),
+    [store, dashcard.id],
+  );
   const [isPreviewingCard, setIsPreviewingCard] = useState(false);
   const cardRootRef = useRef<HTMLDivElement>(null);
 
@@ -176,7 +182,7 @@ function DashCardInner({
   );
 
   const isAction = isActionCard(mainCard);
-  const isEmbed = isJWT(dashcard.dashboard_id);
+  const isEmbed = isEmbeddingSdk || isJWT(dashcard.dashboard_id);
 
   const { expectedDuration, isSlow } = useMemo(() => {
     const expectedDuration = Math.max(
@@ -275,6 +281,7 @@ function DashCardInner({
     <ErrorBoundary>
       <DashCardRoot
         data-testid="dashcard"
+        data-dashcard-key={dashcard.id}
         className={cx(
           DashboardS.Card,
           EmbedFrameS.Card,
@@ -323,7 +330,7 @@ function DashCardInner({
           headerIcon={headerIcon}
           expectedDuration={expectedDuration}
           error={error}
-          href={navigateToNewCardFromDashboard ? href : undefined}
+          getHref={navigateToNewCardFromDashboard ? getHref : undefined}
           isAction={isAction}
           isEmbed={isEmbed}
           isXray={isXray}

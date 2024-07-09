@@ -147,6 +147,8 @@
    [:id             {:optional true} ::lib.schema.id/field]
    [:display-name   {:optional true} [:maybe :string]]
    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+   ;; type of this column in the data warehouse, e.g. `TEXT` or `INTEGER`
+   [:database-type  {:optional true} [:maybe :string]]
    ;; if this is a field from another table (implicit join), this is the field in the current table that should be
    ;; used to perform the implicit join. e.g. if current table is `VENUES` and this field is `CATEGORIES.ID`, then the
    ;; `fk_field_id` would be `VENUES.CATEGORY_ID`. In a `:field` reference this is saved in the options map as

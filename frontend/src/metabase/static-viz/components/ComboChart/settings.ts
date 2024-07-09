@@ -9,7 +9,6 @@ import {
   getAreDimensionsAndMetricsValid,
   getDefaultBubbleSizeCol,
   getDefaultDataLabelsFrequency,
-  getDefaultDimensionFilter,
   getDefaultDimensions,
   getDefaultGoalLabel,
   getDefaultIsAutoSplitEnabled,
@@ -17,7 +16,6 @@ import {
   getDefaultIsNumeric,
   getDefaultIsTimeSeries,
   getDefaultLegendIsReversed,
-  getDefaultMetricFilter,
   getDefaultMetrics,
   getDefaultShowDataLabels,
   getDefaultShowStackValues,
@@ -131,22 +129,8 @@ export const computeStaticComboChartSettings = (
 ): ComputedVisualizationSettings => {
   const { card: mainCard, data: mainDataset } = rawSeries[0];
   const settings = getCommonStaticVizSettings(rawSeries, dashcardSettings);
-
-  fillWithDefaultValue(
-    settings,
-    "graph._dimension_filter",
-    getDefaultDimensionFilter(mainCard.display),
-  );
-  fillWithDefaultValue(
-    settings,
-    "graph._metric_filter",
-    getDefaultMetricFilter(mainCard.display),
-  );
-
-  const areDimensionsAndMetricsValid = getAreDimensionsAndMetricsValid(
-    rawSeries,
-    settings,
-  );
+  const areDimensionsAndMetricsValid =
+    getAreDimensionsAndMetricsValid(rawSeries);
 
   fillWithDefaultValue(
     settings,
@@ -193,7 +177,7 @@ export const computeStaticComboChartSettings = (
     settings,
     "stackable.stack_type",
     getDefaultStackingValue(settings, mainCard),
-    isStackingValueValid(mainCard.display, settings, seriesDisplays),
+    isStackingValueValid(settings, seriesDisplays),
   );
 
   fillWithDefaultValue(
