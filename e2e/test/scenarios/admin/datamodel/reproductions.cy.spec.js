@@ -178,7 +178,8 @@ describe("issue 15542", () => {
     popover().findByText("Filter by this column").click();
 
     popover().within(() => {
-      cy.findByText("1 — Rustic Paper Wallet").should("be.visible");
+      cy.findByText("1").should("not.exist");
+      cy.findByText("Rustic Paper Wallet").should("be.visible");
     });
 
     openOrdersProductIdSettings();
@@ -194,7 +195,7 @@ describe("issue 15542", () => {
 
     popover().within(() => {
       cy.findByText("1").should("be.visible");
-      cy.findByText(/Rustic Paper Wallet/).should("not.exist");
+      cy.findByText("Rustic Paper Wallet").should("not.exist");
     });
   });
 });
