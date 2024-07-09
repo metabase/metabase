@@ -145,7 +145,7 @@ describe("issue 8030 + 32444", () => {
   };
 
   const interceptRequests = ({ dashboard_id, card1_id, card2_id }) => {
-    cy.intercept("GET", `/api/dashboard/${dashboard_id}`).as("getDashboard");
+    cy.intercept("GET", `/api/dashboard/${dashboard_id}*`).as("getDashboard");
     cy.intercept(
       "POST",
       `/api/dashboard/${dashboard_id}/dashcard/*/card/${card1_id}/query`,
