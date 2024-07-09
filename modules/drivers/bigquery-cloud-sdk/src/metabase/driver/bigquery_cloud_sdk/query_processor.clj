@@ -754,11 +754,15 @@
              (select-keys unqualified #{:group-by})))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :asc]
-  [driver clause]
+  [driver [dir clause]]
+  ;; alt would be computation of desired alias?
   ((get-method sql.qp/->honeysql [:sql :asc])
    driver
-   #_(sql.qp/rewrite-fields-to-force-using-column-aliases clause)
-   clause))
+   [dir (if (and (vector? clause)
+                 (= :field (first clause))
+                 (pos-int? (get-in clause [2 ::add/source-table])))
+          clause
+          (sql.qp/rewrite-fields-to-force-using-column-aliases clause))]))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :desc]
   [driver clause]
