@@ -96,7 +96,7 @@ export function VisualizerCanvas({
             <Title size="h2" truncate title={title}>
               {title}
             </Title>
-            <Flex miw={200}>
+            <Flex miw={200} ml="auto" align="center">
               <ActionIcon ml="auto" onClick={onToggleVizSettings}>
                 <Icon name="gear" />
               </ActionIcon>
