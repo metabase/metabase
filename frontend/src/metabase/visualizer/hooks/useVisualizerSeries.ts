@@ -1,6 +1,7 @@
 import { assocIn } from "icepick";
 import { useMemo, useState } from "react";
 import { useMount } from "react-use";
+import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -26,10 +27,18 @@ import { areSeriesCompatible } from "../utils";
 
 const MAIN_SERIES_INDEX = 0;
 
-export function useVisualizerSeries(initialCardIds: CardId[] = []) {
-  const [rawSeries, setRawSeries] = useState<RawSeries>([]);
+export function useVisualizerSeries(
+  initialCards: Card[],
+  { onSeriesChange }: { onSeriesChange: (series: RawSeries) => void },
+) {
+  const [rawSeries, _setRawSeries] = useState<RawSeries>([]);
   const metadata = useSelector(getMetadata);
   const dispatch = useDispatch();
+
+  const setRawSeries = (series: RawSeries) => {
+    _setRawSeries(series);
+    onSeriesChange(series);
+  };
 
   const transformedSeries = useMemo(() => {
     if (rawSeries.length === 0) {
@@ -56,7 +65,10 @@ export function useVisualizerSeries(initialCardIds: CardId[] = []) {
 
   const _fetchCardAndData = async (
     cardId: CardId,
-    { forceRefetch = false } = {},
+    {
+      cardAttrs,
+      forceRefetch = false,
+    }: { cardAttrs?: Partial<Card>; forceRefetch?: boolean } = {},
   ) => {
     const { data: card } = await dispatch(
       cardApi.endpoints.getCard.initiate(
@@ -81,7 +93,7 @@ export function useVisualizerSeries(initialCardIds: CardId[] = []) {
 
     await dispatch(loadMetadataForCard(card));
 
-    return { card, data: dataset.data };
+    return { card: { ...card, ...cardAttrs }, data: dataset.data };
   };
 
   const _fetchAdHocCardData = async (card: Card) => {
@@ -95,24 +107,36 @@ export function useVisualizerSeries(initialCardIds: CardId[] = []) {
   const updateSeriesCard = async (
     index: number,
     attrs: Partial<Card>,
-    { runQuery = false } = {},
+    { makeAdHoc = false, runQuery = false } = {},
   ) => {
     if (!rawSeries[index]?.card) {
       return;
     }
 
+    const { card } = rawSeries[index];
+    const wasSaved = "id" in card;
+
+    let nextQuestion = new Question({ ...card, ...attrs }, metadata);
+    if (makeAdHoc) {
+      nextQuestion = nextQuestion.withoutNameAndId();
+
+      let nextName = nextQuestion.generateQueryDescription();
+      if (!nextName && wasSaved) {
+        nextName = card.name + " — Modified";
+      }
+
+      nextQuestion = nextQuestion.setDisplayName(nextName);
+    }
+
+    const nextCard = nextQuestion.card();
+
     if (runQuery) {
-      const { card } = rawSeries[index];
-      const nextCard = { ...card, ...attrs };
       const nextSeries = await _fetchAdHocCardData(nextCard);
       if (nextSeries) {
         setRawSeries(assocIn(rawSeries, [index], nextSeries));
       }
     } else {
-      const nextSeries = assocIn(rawSeries, [index, "card"], {
-        ...rawSeries[index].card,
-        ...attrs,
-      });
+      const nextSeries = assocIn(rawSeries, [index, "card"], nextCard);
       setRawSeries(nextSeries);
     }
   };
@@ -169,6 +193,18 @@ export function useVisualizerSeries(initialCardIds: CardId[] = []) {
     }
   };
 
+  const replaceSeries = async (cards: Card[]) => {
+    const data = await Promise.all(
+      cards.map(card =>
+        card.id
+          ? _fetchCardAndData(card.id, { cardAttrs: card })
+          : _fetchAdHocCardData(card),
+      ),
+    );
+    const newSeries = data.filter(Boolean);
+    _setRawSeries(newSeries);
+  };
+
   const replaceAllWithCardSeries = async (cardId: CardId) => {
     const newSeries = await _fetchCardAndData(cardId);
     if (newSeries) {
@@ -180,7 +216,10 @@ export function useVisualizerSeries(initialCardIds: CardId[] = []) {
     const series = rawSeries[index];
 
     const newSeries = series.card.id
-      ? await _fetchCardAndData(series.card.id, { forceRefetch: true })
+      ? await _fetchCardAndData(series.card.id, {
+          cardAttrs: series.card,
+          forceRefetch: true,
+        })
       : await _fetchAdHocCardData(series.card);
 
     if (newSeries) {
@@ -201,7 +240,11 @@ export function useVisualizerSeries(initialCardIds: CardId[] = []) {
   useMount(() => {
     async function init() {
       const allSeries = await Promise.all(
-        initialCardIds.map(cardId => _fetchCardAndData(cardId)),
+        initialCards.map(card =>
+          card.id
+            ? _fetchCardAndData(card.id, { cardAttrs: card })
+            : _fetchAdHocCardData(card),
+        ),
       );
       const nonEmptySeries = allSeries.filter(isNotNull);
       const compatibleSeries = allSeries.filter((series, index) => {
@@ -210,9 +253,9 @@ export function useVisualizerSeries(initialCardIds: CardId[] = []) {
         }
         return areSeriesCompatible(nonEmptySeries[0], series);
       });
-      setRawSeries(compatibleSeries);
+      _setRawSeries(compatibleSeries);
     }
-    if (initialCardIds.length > 0) {
+    if (initialCards.length > 0) {
       init();
     }
   });
@@ -224,6 +267,7 @@ export function useVisualizerSeries(initialCardIds: CardId[] = []) {
     addCardSeries,
     updateSeriesCard,
     updateSeriesQuery,
+    replaceSeries,
     replaceAllWithCardSeries,
     refreshSeriesData,
     removeSeries,

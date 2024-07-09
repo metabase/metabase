@@ -5,11 +5,13 @@ import {
   useSensor,
 } from "@dnd-kit/core";
 import type { Location } from "history";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import type { WithRouterProps } from "react-router";
+import { usePrevious } from "react-use";
 import _ from "underscore";
 
+import { utf8_to_b64url, b64hash_to_utf8 } from "metabase/lib/encoding";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
@@ -24,7 +26,7 @@ import { VisualizerCanvas } from "./VisualizerCanvas";
 import { VisualizerMenu } from "./VisualizerMenu/VisualizerMenu";
 import { VisualizerUsed } from "./VisualizerUsed";
 
-export function Visualizer({ location }: WithRouterProps) {
+export function Visualizer({ router, location }: WithRouterProps) {
   const [focusedSeriesIndex, setFocusedSeriesIndex] = useState<number | null>(
     null,
   );
@@ -37,13 +39,33 @@ export function Visualizer({ location }: WithRouterProps) {
     settings,
     question,
     addCardSeries,
+    replaceSeries,
     replaceAllWithCardSeries,
     refreshSeriesData,
     removeSeries,
     setVizSettings,
     updateSeriesCard,
     updateSeriesQuery,
-  } = useVisualizerSeries(getInitialCardIds(location));
+  } = useVisualizerSeries(getInitialCards(location), {
+    onSeriesChange: nextSeries => {
+      const cards = nextSeries.map(({ card }) => card);
+      const hash =
+        cards.length > 0 ? utf8_to_b64url(JSON.stringify(cards)) : "";
+      router.push({ ...location, hash: hash ? `#${hash}` : undefined });
+    },
+  });
+
+  const previousLocation = usePrevious(location);
+
+  useEffect(() => {
+    if (previousLocation && location.hash !== previousLocation.hash) {
+      const seriesCards = series.map(({ card }) => card);
+      const hashCards = getInitialCards(location);
+      if (!_.isEqual(seriesCards, hashCards)) {
+        replaceSeries(hashCards);
+      }
+    }
+  }, [series, location, previousLocation, replaceSeries, router]);
 
   const focusedQuestion = useMemo(() => {
     if (focusedSeriesIndex === null || !series[focusedSeriesIndex]) {
@@ -67,7 +89,7 @@ export function Visualizer({ location }: WithRouterProps) {
   };
 
   const handleChangeCardAndRun: OnChangeCardAndRun = ({ nextCard }) => {
-    updateSeriesCard(0, nextCard, { runQuery: true });
+    updateSeriesCard(0, nextCard, { makeAdHoc: true, runQuery: true });
   };
 
   const onDragEnd = (event: DragEndEvent) => {
@@ -138,17 +160,17 @@ export function Visualizer({ location }: WithRouterProps) {
   );
 }
 
-function getInitialCardIds(location: Location) {
-  const ids: number[] = [];
-  const firstCardId = Number(location.query?.c1);
-  const secondCardId = Number(location.query?.c2);
-  if (Number.isSafeInteger(firstCardId)) {
-    ids.push(firstCardId);
+function getInitialCards(location: Location) {
+  if (!location.hash) {
+    return [];
   }
-  if (Number.isSafeInteger(secondCardId)) {
-    ids.push(secondCardId);
+  try {
+    const result = JSON.parse(b64hash_to_utf8(location.hash));
+    return Array.isArray(result) ? result : [];
+  } catch (e) {
+    // pass
+    return [];
   }
-  return ids;
 }
 
 function ResizeHandle({ direction }: { direction: "horizontal" | "vertical" }) {
