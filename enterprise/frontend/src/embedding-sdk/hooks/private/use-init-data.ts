@@ -5,6 +5,7 @@ import _ from "underscore";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
   getOrRefreshSession,
+  setFetchRefreshTokenFn,
   setLoginStatus,
 } from "embedding-sdk/store/reducer";
 import { getLoginStatus } from "embedding-sdk/store/selectors";
@@ -50,6 +51,8 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
   useEffect(() => {
     if (loginStatus.status === "uninitialized") {
       api.basename = config.metabaseInstanceUrl;
+
+      dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));
 
       if (isValidJwtAuth(config)) {
         setupJwtAuth(config, dispatch);

@@ -1,4 +1,5 @@
 import { createReducer, createAction } from "@reduxjs/toolkit";
+import { t } from "ttag";
 
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import { defaultGetRefreshTokenFn } from "embedding-sdk/store/refresh-token";
@@ -63,7 +64,18 @@ export const refreshTokenAsync = createAsyncThunk(
       getFetchRefreshTokenFn(getState() as SdkStoreState) ??
       defaultGetRefreshTokenFn;
 
-    return await getRefreshToken(url);
+    try {
+      return await getRefreshToken(url);
+    } catch (errorCause) {
+      // As this function can be supplied by the SDK user,
+      // we have to handle possible errors in refreshing the token.
+      const error = new Error(t`failed to refresh the auth token`);
+      error.cause = errorCause;
+
+      setLoginStatus({ status: "error", error });
+
+      return null;
+    }
   },
 );
 

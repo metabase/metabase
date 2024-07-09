@@ -693,9 +693,14 @@ return <InteractiveQuestion key={counter} questionId={yourQuestionId} />
 You can customize how the SDK fetches the refresh token by specifying the `fetchRefreshToken` function in the `config` prop:
 
 ```jsx
-// This is the default implementation used in the SDK.
-// You can customize this function to fit your needs, such as adding headers or excluding cookies.
-// The function must return a JWT token object in the format of {id: string, exp: number}
+/**
+  * This is the default implementation used in the SDK.
+  * You can customize this function to fit your needs, such as adding headers or excluding cookies.
+
+  * The function must return a JWT token object, or return "null" if the user is not authenticated.
+
+  * @returns {Promise<{id: string, exp: number} | null>}
+ */
 async function fetchRefreshToken(url) {
   const response = await fetch(url, {
     method: "GET",

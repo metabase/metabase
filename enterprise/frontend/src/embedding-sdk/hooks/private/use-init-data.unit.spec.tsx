@@ -174,5 +174,16 @@ describe("useInitData hook", () => {
         "TEST_JWT_TOKEN",
       );
     });
+
+    it("should use the custom fetchRefreshToken function when specified", async () => {
+      const fetchRequestToken = jest.fn(async () => {
+        return { id: "<TODO>", exp: 1 };
+      });
+
+      setup({ isValidConfig: true, fetchRequestToken });
+      expect(await screen.findByText("Test Component")).toBeInTheDocument();
+
+      expect(fetchRequestToken).toHaveBeenCalledTimes(1);
+    });
   });
 });

@@ -33,6 +33,7 @@ export const createMockSdkState = ({
     plugins: {},
     loaderComponent: null,
     errorComponent: null,
+    fetchRefreshTokenFn: null,
     ...opts,
   };
 };
