@@ -44,7 +44,7 @@
   We use grouper for fire-and-forget scenarios, so we don't care about the result."
   [& args]
   (let [p (apply grouper/submit! args)]
-    (when disable-grouper-batch-processing
+    (when (disable-grouper-batch-processing)
       ;; wake up the group immediately and wait for it to finish
       (.wakeUp (first args))
       (deref p))
