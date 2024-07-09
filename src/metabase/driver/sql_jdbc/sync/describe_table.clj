@@ -16,6 +16,7 @@
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.models :refer [Field]]
    [metabase.models.table :as table]
+   [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -580,6 +581,7 @@
 
 (defn- describe-json-fields
   [driver jdbc-spec table json-fields pks]
+  (log/infof "Inferring schema for %d JSON fields in %s" (count json-fields) (sync-util/name-for-logging table))
   (let [table-identifier-info [(:schema table) (:name table)]
         json-field-identifiers (mapv #(apply h2x/identifier :field (into table-identifier-info [(:name %)])) json-fields)
         table-identifier (apply h2x/identifier :table table-identifier-info)

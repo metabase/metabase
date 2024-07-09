@@ -18,6 +18,8 @@ import {
   createQuestion,
   dashboardCards,
   queryBuilderMain,
+  openNotebook,
+  getNotebookStep,
 } from "e2e/support/helpers";
 import { PIVOT_TABLE_BODY_LABEL } from "metabase/visualizations/visualizations/PivotTable/constants";
 
@@ -1271,6 +1273,129 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
       cy.findByTestId("qb-save-button").should("have.attr", "data-disabled");
     });
+  });
+
+  describe("issue 38265", () => {
+    beforeEach(() => {
+      createQuestion(
+        {
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["count"],
+              [
+                "sum",
+                ["field", ORDERS.SUBTOTAL, { "base-type": "type/Float" }],
+              ],
+            ],
+            breakout: [
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                { "base-type": "type/DateTime", "temporal-unit": "month" },
+              ],
+              [
+                "field",
+                PEOPLE.STATE,
+                { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+              ],
+              [
+                "field",
+                PRODUCTS.CATEGORY,
+                { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+              ],
+            ],
+          },
+          display: "pivot",
+        },
+        {
+          visitQuestion: true,
+        },
+      );
+    });
+
+    it("correctly filters the query when zooming in on a **row** header (metabase#38265)", () => {
+      cy.findByTestId("pivot-table").findByText("KS").click();
+      popover().findByText("Zoom in").click();
+
+      cy.log("Filter pills");
+      cy.findByTestId("filter-pill").should("have.text", "User → State is KS");
+
+      cy.log("Pivot table column headings");
+      cy.findByTestId("pivot-table")
+        .should("contain", "Created At: Month")
+        .and("contain", "User → Latitude")
+        .and("contain", "User → Longitude");
+    });
+  });
+
+  it("should be possible to switch between notebook and simple views when pivot table is the visualization (metabase#39504)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "sum",
+              [
+                "field",
+                ORDERS.SUBTOTAL,
+                {
+                  "base-type": "type/Float",
+                },
+              ],
+            ],
+            [
+              "sum",
+              [
+                "field",
+                ORDERS.TOTAL,
+                {
+                  "base-type": "type/Float",
+                },
+              ],
+            ],
+          ],
+          breakout: [
+            [
+              "field",
+              PEOPLE.SOURCE,
+              {
+                "base-type": "type/Text",
+                "source-field": ORDERS.USER_ID,
+              },
+            ],
+          ],
+        },
+        type: "query",
+      },
+    });
+
+    cy.log("Set the visualization to pivot table using the UI");
+    cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
+    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("Pivot Table-button").click();
+    cy.wait("@pivotDataset");
+    cy.findByTestId("pivot-table")
+      .should("contain", "User → Source")
+      .and("contain", "Sum of Subtotal")
+      .and("contain", "Sum of Total")
+      .and("contain", "Grand totals");
+
+    openNotebook();
+    getNotebookStep("summarize")
+      .should("be.visible")
+      .and("contain", "Sum of Subtotal")
+      .and("contain", "Sum of Total");
+
+    // Close the notebook editor
+    cy.findByTestId("qb-header-action-panel").icon("notebook").click();
+    cy.findByTestId("pivot-table")
+      .should("contain", "User → Source")
+      .and("contain", "Sum of Subtotal")
+      .and("contain", "Sum of Total")
+      .and("contain", "Grand totals");
   });
 });
 

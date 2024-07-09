@@ -1,6 +1,7 @@
 (ns metabase.driver.sql
   "Shared code for all drivers that use SQL under the hood."
   (:require
+   [clojure.set :as set]
    [metabase.driver :as driver]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.common.parameters.values :as params.values]
@@ -8,7 +9,6 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli :as mu]
    [potemkin :as p]))
@@ -56,21 +56,16 @@
 
 (mu/defmethod driver/substitute-native-parameters :sql
   [_driver {:keys [query] :as inner-query} :- [:and [:map-of :keyword :any] [:map {:query ::lib.schema.common/non-blank-string}]]]
-  (let [[query params] (-> query
-                           params.parse/parse
-                           (sql.params.substitute/substitute (params.values/query->params-map inner-query)))]
-    (assoc inner-query
-           :query query
-           :params params)))
-
-;; `:sql` drivers almost certainly don't need to override this method, and instead can implement
-;; `unprepare/unprepare-value` for specific classes, or, in extreme cases, `unprepare/unprepare` itself.
-(defmethod driver/splice-parameters-into-native-query :sql
-  [driver {:keys [params], sql :query, :as query}]
-  (cond-> query
-    (seq params)
-    (merge {:params nil
-            :query  (unprepare/unprepare driver (cons sql params))})))
+  (let [params-map          (params.values/query->params-map inner-query)
+        referenced-card-ids (params.values/referenced-card-ids params-map)
+        [query params]      (-> query
+                                params.parse/parse
+                                (sql.params.substitute/substitute params-map))]
+    (cond-> (assoc inner-query
+                   :query  query
+                   :params params)
+      (seq referenced-card-ids)
+      (update :metabase.models.query.permissions/referenced-card-ids set/union referenced-card-ids))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -104,5 +99,3 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (p/import-vars [sql.params.substitution ->prepared-substitution PreparedStatementSubstitution])
-
-;; TODO - we should add imports for `sql.qp` and other namespaces to make driver implementation more straightforward

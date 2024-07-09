@@ -39,14 +39,10 @@ export const Tab = styled.label<{ selected: boolean; disabled?: boolean }>`
   justify-content: center;
   align-items: center;
   padding: 6px 12px;
-
   color: var(--mb-color-text-white);
   font-weight: bold;
-
   border: 2px solid;
   border-radius: 8px;
-  cursor: pointer;
-
   transition: all 0.3s;
 
   .Icon {

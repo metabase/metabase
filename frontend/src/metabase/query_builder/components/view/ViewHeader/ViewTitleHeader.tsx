@@ -59,7 +59,7 @@ interface ViewTitleHeaderProps {
       datasetEditorTab?: DatasetEditorTab;
     },
   ) => void;
-  turnDatasetIntoQuestion: () => void;
+  turnModelIntoQuestion: () => void;
   areFiltersExpanded: boolean;
   onExpandFilters: () => void;
   onCollapseFilters: () => void;
@@ -99,7 +99,7 @@ export function ViewTitleHeader({
   onEditSummary,
   onCloseSummary,
   setQueryBuilderMode,
-  turnDatasetIntoQuestion,
+  turnModelIntoQuestion,
   isShowingQuestionInfoSidebar,
   onCloseQuestionInfo,
   onModelPersistenceChange,
@@ -192,7 +192,7 @@ export function ViewTitleHeader({
           onEditSummary={onEditSummary}
           onCloseSummary={onCloseSummary}
           setQueryBuilderMode={setQueryBuilderMode}
-          turnDatasetIntoQuestion={turnDatasetIntoQuestion}
+          turnModelIntoQuestion={turnModelIntoQuestion}
           toggleBookmark={toggleBookmark}
           onOpenQuestionInfo={onOpenQuestionInfo}
           onCloseQuestionInfo={onCloseQuestionInfo}
