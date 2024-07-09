@@ -100,9 +100,10 @@
                                    :as      pulse} {:name         "Test Pulse"
                                    :dashboard_id (:dashboard_id card-or-dashcard)}
                      :model/PulseCard _ (merge
-                                         (when (= :csv  export-format) {:include_csv true})
-                                         (when (= :json export-format) {:include_json true})
-                                         (when (= :xlsx export-format) {:include_xlsx true})
+                                         (case export-format
+                                           :csv  {:include_csv true}
+                                           :json {:include_json true}
+                                           :xlsx {:include_xlsx true})
                                          {:pulse_id          pulse-id
                                           :card_id           (:card_id card-or-dashcard)
                                           :dashboard_card_id (:id card-or-dashcard)})
