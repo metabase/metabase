@@ -576,6 +576,8 @@ export const createPeopleIdField = (opts?: Partial<Field>): Field =>
     effective_type: "type/BigInteger",
     semantic_type: "type/PK",
     fingerprint: null,
+    name_field: createPeopleNameField(),
+    name_field_id: PEOPLE.NAME,
     ...opts,
   });
 

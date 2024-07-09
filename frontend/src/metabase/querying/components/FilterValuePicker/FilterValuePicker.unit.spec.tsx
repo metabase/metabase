@@ -12,24 +12,19 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
-import type {
-  Field,
-  FieldId,
-  GetFieldValuesResponse,
-} from "metabase-types/api";
+import {
+  columnFinder,
+  createQuery,
+  SAMPLE_METADATA,
+} from "metabase-lib/test-helpers";
+import type { FieldId, GetFieldValuesResponse } from "metabase-types/api";
 import {
   createMockFieldDimension,
   createMockFieldValues,
 } from "metabase-types/api/mocks";
 import {
-  createOrdersIdField,
   createOrdersProductIdField,
-  createOrdersTable,
   createPeopleIdField,
-  createPeopleNameField,
-  createPeopleTable,
-  createProductsTable,
   createSampleDatabase,
   ORDERS,
   PEOPLE,
@@ -138,10 +133,7 @@ async function setupNumberPicker({
 }
 
 describe("StringFilterValuePicker", () => {
-  const query = createQuery();
-  const stageIndex = 0;
-  const availableColumns = Lib.filterableColumns(query, stageIndex);
-  const findColumn = columnFinder(query, availableColumns);
+  const { query, stageIndex, findColumn } = createQueryWithMetadata();
 
   describe("list values", () => {
     const column = findColumn("PRODUCTS", "CATEGORY");
@@ -711,10 +703,7 @@ describe("StringFilterValuePicker", () => {
 });
 
 describe("NumberFilterValuePicker", () => {
-  const query = createQuery();
-  const stageIndex = 0;
-  const availableColumns = Lib.filterableColumns(query, stageIndex);
-  const findColumn = columnFinder(query, availableColumns);
+  const { query, stageIndex, findColumn } = createQueryWithMetadata();
 
   describe("list values", () => {
     const column = findColumn("ORDERS", "QUANTITY");
@@ -739,10 +728,12 @@ describe("NumberFilterValuePicker", () => {
     });
 
     it("should handle type/PK -> type/Name field values remapping", async () => {
-      const metadata = createPkRemappingMetadata({ has_field_values: "list" });
-      const query = createQuery({ metadata });
-      const availableColumns = Lib.filterableColumns(query, stageIndex);
-      const findColumn = columnFinder(query, availableColumns);
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        fields: [createPeopleIdField({ has_field_values: "list" })],
+      });
+      const { query, stageIndex, findColumn } =
+        createQueryWithMetadata(metadata);
       const { onChange } = await setupNumberPicker({
         query,
         stageIndex,
@@ -771,10 +762,21 @@ describe("NumberFilterValuePicker", () => {
     });
 
     it("should handle type/FK -> column field values remapping", async () => {
-      const metadata = createFkRemappingMetadata({ has_field_values: "list" });
-      const query = createQuery({ metadata });
-      const availableColumns = Lib.filterableColumns(query, stageIndex);
-      const findColumn = columnFinder(query, availableColumns);
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        fields: [
+          createOrdersProductIdField({
+            dimensions: [
+              createMockFieldDimension({
+                human_readable_field_id: PRODUCTS.TITLE,
+              }),
+            ],
+            has_field_values: "list",
+          }),
+        ],
+      });
+      const { query, stageIndex, findColumn } =
+        createQueryWithMetadata(metadata);
       const { onChange } = await setupNumberPicker({
         query,
         stageIndex,
@@ -903,43 +905,10 @@ describe("NumberFilterValuePicker", () => {
   });
 });
 
-function createPkRemappingMetadata(opts?: Partial<Field>) {
-  return createMockMetadata({
-    databases: [
-      createSampleDatabase({
-        tables: [
-          createOrdersTable(),
-          createPeopleTable({
-            fields: [createPeopleIdField(opts), createPeopleNameField()],
-          }),
-        ],
-      }),
-    ],
-  });
-}
-
-function createFkRemappingMetadata(opts?: Partial<Field>) {
-  return createMockMetadata({
-    databases: [
-      createSampleDatabase({
-        tables: [
-          createOrdersTable({
-            fields: [
-              createOrdersIdField(),
-              createOrdersProductIdField({
-                ...opts,
-                dimensions: [
-                  createMockFieldDimension({
-                    type: "external",
-                    human_readable_field_id: PRODUCTS.TITLE,
-                  }),
-                ],
-              }),
-            ],
-          }),
-          createProductsTable(),
-        ],
-      }),
-    ],
-  });
+function createQueryWithMetadata(metadata = SAMPLE_METADATA) {
+  const query = createQuery({ metadata });
+  const stageIndex = 0;
+  const availableColumns = Lib.filterableColumns(query, stageIndex);
+  const findColumn = columnFinder(query, availableColumns);
+  return { query, stageIndex, findColumn };
 }
