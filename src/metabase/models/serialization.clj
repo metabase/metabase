@@ -82,6 +82,18 @@
 (defmethod entity-id :default [_ {:keys [entity_id]}]
   (str/trim entity_id))
 
+(defn eid->id
+  "Given model name and its entity id, returns it database-local id.
+
+  Is kind of reverse transformation to `entity-id` function defined here.
+
+  NOTE: Not implemented for `Database`, `Table` and `Field`, since those rely more on `path` than a single id. To be
+  done if a need arises."
+  [model-name eid]
+  (let [model (keyword "model" model-name)
+        pk    (first (t2/primary-keys model))]
+    (t2/select-one-fn pk [model pk] :entity_id eid)) )
+
 ;;; ## Hashing entities
 ;;; In the worst case, an entity is already present in two instances linked by serdes, and it doesn't have `entity_id`
 ;;; set because it existed before we added the column. If we write a migration to just generate random `entity_id`s on
