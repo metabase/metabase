@@ -381,8 +381,6 @@
                     :include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)
                     :exclude-uneditable-details? (Boolean/parseBoolean exclude_uneditable_details)}))
 
-(:details (metabase.test/user-http-request :rasta :get 200 "database/1"))
-
 (def ^:private database-usage-models
   "List of models that are used to report usage on a database."
   [:question :dataset :metric :segment]) ; TODO -- rename `:dataset` to `:model`?
