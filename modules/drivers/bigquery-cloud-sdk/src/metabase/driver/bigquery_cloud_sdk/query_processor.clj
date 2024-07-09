@@ -754,14 +754,19 @@
              (select-keys unqualified #{:group-by})))))
 
 (defn- adjust-order-by-clause
-  "Update :order-by clause to be usable in BigQuery.
-  WIP
-  It is not possible to use expressions in order by on BigQuery.
-
-  "
   [[dir [_clause _id-or-name opts :as clause]]]
   [dir
-   (if (::add/desired-alias opts)
+   (if (and
+        ;; Selected fields (desired-alias) that are from source query or joins (not (pos-int?...)) should
+        ;; use forced alias.
+        (::add/desired-alias opts)
+        ;; Following is necessary for cases where there is joined field of same name as field from source _table_,
+        ;; used for ordering. Bigquery would report ambiguous field error otherwise.
+        ;;
+        ;; Translate the following as field that is not from joins or source query and has no binning or bucketing set.
+        (not (and (pos-int? (::add/source-table opts))
+                  (not (or (:binning opts)
+                           (:temporal-unit opts))))))
      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
      clause)])
 
