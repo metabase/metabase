@@ -11,17 +11,17 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
-interface NotebookModalProps {
+interface QueryEditorModalProps {
   question?: Question | null;
   onChange: (question: Question) => void;
   onClose: () => void;
 }
 
-export function NotebookModal({
+export function QueryEditorModal({
   question: _question,
   onChange,
   onClose,
-}: NotebookModalProps) {
+}: QueryEditorModalProps) {
   const [question, setQuestion] = useState(_question);
 
   const reportTimezone = useSelector(state =>

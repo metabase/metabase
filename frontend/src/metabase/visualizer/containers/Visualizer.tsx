@@ -15,7 +15,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import Question from "metabase-lib/v1/Question";
 
-import { NotebookModal } from "../components/NotebookModal";
+import { QueryEditorModal } from "../components/QueryEditorModal";
 import { handleDragEnd } from "../dnd";
 import { useVisualizerSeries } from "../hooks/useVisualizerSeries";
 
@@ -123,7 +123,7 @@ export function Visualizer({ location }: WithRouterProps) {
           )}
         </PanelGroup>
       </DndContext>
-      <NotebookModal
+      <QueryEditorModal
         question={focusedQuestion}
         onChange={handleChangeQuery}
         onClose={() => setFocusedSeriesIndex(null)}
