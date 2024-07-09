@@ -149,7 +149,7 @@
                              "  `price`"
                              "ORDER BY"
                              "  `avg` ASC,"
-                             "  `price` ASC"]
+                             "  `v4_test_data.venues`.`price` ASC"]
                 :params     nil
                 :table-name "venues"
                 :mbql?      true})
