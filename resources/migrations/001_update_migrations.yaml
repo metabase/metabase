@@ -8195,6 +8195,18 @@ databaseChangeLog:
   # if the card is imported with serialization, we don't want to automatically clean up
   # newly imported cards, and we don't want to have to make it nullable.
   - changeSet:
+      id: v50.2024-07-09T20:04:01
+      author: calherries
+      comment: Populate default value for report_card.last_used_at
+      changes:
+        - sql:
+            sql: >-
+              UPDATE report_card
+              SET last_used_at = current_timestamp
+              WHERE last_used_at IS NULL;
+      rollback: # nothing to do, since this is backwards compatible
+
+  - changeSet:
       id: v50.2024-07-09T20:04:02
       author: calherries
       comment: Add default value to report_card.last_used_at
