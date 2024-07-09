@@ -9,6 +9,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.permission-graph :as api.permission-graph]
+   [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.models :refer [PermissionsGroupMembership User]]
    [metabase.models.data-permissions.graph :as data-perms.graph]
@@ -41,8 +42,7 @@
 
 (defn- v-fifty-migration-time []
   (let [v50-migration-id "v50.2024-01-04T13:52:51"]
-    (->> (t2/query-one (format "select dateexecuted from databasechangelog where id = '%s'" v50-migration-id))
-         :dateexecuted)))
+    (->> (mdb/changelog-by-id (mdb/app-db) v50-migration-id) :dateexecuted)))
 
 (defsetting show-updated-permission-modal
   (deferred-tru
