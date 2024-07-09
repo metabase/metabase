@@ -4,7 +4,7 @@ title: "Metabase config file template"
 
 # Config file template
 
-You can generate the following template by changing into the top-level Metabase repo directory and running:
+You can generate the following template by changing into the top-level Metabase directory and running:
 
 ```
 clojure -M:run:ee config-template

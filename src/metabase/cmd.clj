@@ -164,7 +164,7 @@
    Metabase will save the template as `docs/configuring-metabase/config-template.md`."
   []
   (classloader/require 'metabase.cmd.config-file-gen)
-  ((resolve 'metabase.cmd.config-file-gen/generate-config-file!)))
+  ((resolve 'metabase.cmd.config-file-gen/generate-config-file-doc!)))
 
 (defn ^:command driver-methods
   "Print a list of all multimethods available for a driver to implement, optionally with their docstrings."
