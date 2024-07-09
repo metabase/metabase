@@ -13,6 +13,7 @@ import {
   setLoaderComponent,
   setMetabaseClientUrl,
   setPlugins,
+  setRefreshTokenFn,
 } from "embedding-sdk/store/reducer";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import type { SDKConfig } from "embedding-sdk/types";
@@ -64,6 +65,10 @@ export const MetabaseProviderInternal = ({
   useEffect(() => {
     store.dispatch(setMetabaseClientUrl(config.metabaseInstanceUrl));
   }, [store, config.metabaseInstanceUrl]);
+
+  useEffect(() => {
+    store.dispatch(setRefreshTokenFn(config.getRefreshToken ?? null));
+  }, [store, config.getRefreshToken]);
 
   return (
     <Provider store={store}>

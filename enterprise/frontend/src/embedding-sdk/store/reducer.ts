@@ -1,20 +1,23 @@
 import { createReducer, createAction } from "@reduxjs/toolkit";
 
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
+import { defaultGetRefreshTokenFn } from "embedding-sdk/store/refresh-token";
 import type {
   EmbeddingSessionTokenState,
   LoginStatus,
+  GetRefreshTokenFn,
   SdkState,
   SdkStoreState,
 } from "embedding-sdk/store/types";
 import { createAsyncThunk } from "metabase/lib/redux";
 
-import { getRefreshAuthTokenFn, getSessionTokenState } from "./selectors";
+import { getRefreshTokenFn, getSessionTokenState } from "./selectors";
 
 const SET_LOGIN_STATUS = "sdk/SET_LOGIN_STATUS";
 const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
 const SET_LOADER_COMPONENT = "sdk/SET_LOADER_COMPONENT";
 const SET_ERROR_COMPONENT = "sdk/SET_ERROR_COMPONENT";
+const SET_REFRESH_TOKEN_FN = "sdk/SET_REFRESH_TOKEN_FN";
 
 export const setLoginStatus = createAction<LoginStatus>(SET_LOGIN_STATUS);
 export const setMetabaseClientUrl = createAction<string>(
@@ -26,6 +29,9 @@ export const setLoaderComponent = createAction<null | (() => JSX.Element)>(
 export const setErrorComponent = createAction<
   null | (({ message }: { message: string }) => JSX.Element)
 >(SET_ERROR_COMPONENT);
+export const setRefreshTokenFn = createAction<null | GetRefreshTokenFn>(
+  SET_REFRESH_TOKEN_FN,
+);
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 const REFRESH_TOKEN = "sdk/token/REFRESH_TOKEN";
@@ -52,21 +58,12 @@ export const refreshTokenAsync = createAsyncThunk(
     url: string,
     { getState },
   ): Promise<EmbeddingSessionTokenState["token"]> => {
-    const getAuthRefreshToken = getRefreshAuthTokenFn(
-      getState() as SdkStoreState,
-    );
+    // The SDK user can provide a custom function to refresh the token.
+    const getRefreshToken =
+      getRefreshTokenFn(getState() as SdkStoreState) ??
+      defaultGetRefreshTokenFn;
 
-    // The SDK user has provided a custom function to refresh the token.
-    if (getAuthRefreshToken) {
-      return await getAuthRefreshToken(url);
-    }
-
-    const response = await fetch(url, {
-      method: "GET",
-      credentials: "include",
-    });
-
-    return await response.json();
+    return await getRefreshToken(url);
   },
 );
 
@@ -84,7 +81,7 @@ const initialState: SdkState = {
   plugins: null,
   loaderComponent: null,
   errorComponent: null,
-  refreshAuthTokenFn: null,
+  refreshTokenFn: null,
 };
 
 export const sdk = createReducer(initialState, builder => {
@@ -137,5 +134,10 @@ export const sdk = createReducer(initialState, builder => {
   builder.addCase(setMetabaseClientUrl, (state, action) => ({
     ...state,
     metabaseInstanceUrl: action.payload,
+  }));
+
+  builder.addCase(setRefreshTokenFn, (state, action) => ({
+    ...state,
+    refreshTokenFn: action.payload,
   }));
 });
