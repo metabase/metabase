@@ -99,6 +99,7 @@ const setup = ({
 
   const config = createMockConfig({
     jwtProviderUri: isValidConfig ? "http://TEST_URI/sso/metabase" : "",
+    fetchRequestToken: configOpts.fetchRequestToken,
   });
 
   renderWithProviders(<TestComponent config={config} {...configOpts} />, {
@@ -176,9 +177,7 @@ describe("useInitData hook", () => {
     });
 
     it("should use the custom fetchRefreshToken function when specified", async () => {
-      const fetchRequestToken = jest.fn(async () => {
-        return { id: "<TODO>", exp: 1 };
-      });
+      const fetchRequestToken = jest.fn(async () => ({ id: "foobar", exp: 1 }));
 
       setup({ isValidConfig: true, fetchRequestToken });
       expect(await screen.findByText("Test Component")).toBeInTheDocument();
