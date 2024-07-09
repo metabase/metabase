@@ -753,24 +753,29 @@
       (merge qualified
              (select-keys unqualified #{:group-by})))))
 
-(defn- ahojcek
-  [clause]
-  (if (or (:binning (clause 2))
-          (:temporal-unit (clause 2)))
-    (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
-    clause))
+(defn- adjust-order-by-clause
+  "Update :order-by clause to be usable in BigQuery.
+  WIP
+  It is not possible to use expressions in order by on BigQuery.
+
+  "
+  [[dir [_clause _id-or-name opts :as clause]]]
+  [dir
+   (if (::add/desired-alias opts)
+     (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
+     clause)])
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :asc]
-  [driver [dir clause]]
+  [driver clause]
   ((get-method sql.qp/->honeysql [:sql :asc])
    driver
-   [dir (ahojcek clause) #_(maybe-adjust-alias-info clause)]))
+   (adjust-order-by-clause clause)))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :desc]
-  [driver [dir clause]]
+  [driver clause]
   ((get-method sql.qp/->honeysql [:sql :desc])
    driver
-   [dir (ahojcek clause) #_(maybe-adjust-alias-info clause)]))
+   (adjust-order-by-clause clause)))
 
 (defmethod temporal-type ::sql.qp/compiled
   [[_compiled x, :as form]]
