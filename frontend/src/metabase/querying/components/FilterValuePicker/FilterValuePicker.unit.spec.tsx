@@ -235,7 +235,92 @@ describe("StringFilterValuePicker", () => {
       expect(onChange).toHaveBeenCalledWith(["Test", "Gadget"]);
     });
 
-    it("should handle field values remapping", async () => {
+    it("should handle type/PK -> type/Name field values remapping", async () => {
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        fields: [
+          createPeopleIdField({
+            base_type: "type/Text",
+            effective_type: "type/Text",
+            has_field_values: "list",
+          }),
+        ],
+      });
+      const { query, stageIndex, findColumn } =
+        createQueryWithMetadata(metadata);
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column: findColumn("PEOPLE", "ID"),
+        values: ["1"],
+        fieldId: PEOPLE.ID,
+        searchFieldId: PEOPLE.NAME,
+        fieldValues: createMockFieldValues({
+          field_id: PEOPLE.ID,
+          values: [
+            ["1", "A"],
+            ["2", "B"],
+            ["3", "C"],
+          ],
+        }),
+      });
+      expect(screen.getByRole("checkbox", { name: "1 — A" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "2 — B" })).not.toBeChecked();
+
+      await userEvent.type(screen.getByPlaceholderText("Search the list"), "B");
+      expect(screen.getByText("2 — B")).toBeInTheDocument();
+      expect(screen.queryByText("3 — C")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("2 — B"));
+      expect(onChange).toHaveBeenCalledWith(["1", "2"]);
+    });
+
+    it("should handle type/FK -> column field values remapping", async () => {
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        fields: [
+          createOrdersProductIdField({
+            base_type: "type/Text",
+            effective_type: "type/Text",
+            dimensions: [
+              createMockFieldDimension({
+                human_readable_field_id: PRODUCTS.TITLE,
+              }),
+            ],
+            has_field_values: "list",
+          }),
+        ],
+      });
+      const { query, stageIndex, findColumn } =
+        createQueryWithMetadata(metadata);
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column: findColumn("ORDERS", "PRODUCT_ID"),
+        values: ["1"],
+        fieldId: ORDERS.PRODUCT_ID,
+        searchFieldId: PRODUCTS.TITLE,
+        fieldValues: createMockFieldValues({
+          field_id: ORDERS.PRODUCT_ID,
+          values: [
+            ["1", "A"],
+            ["2", "B"],
+            ["3", "C"],
+          ],
+        }),
+      });
+      expect(screen.getByRole("checkbox", { name: "1 — A" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "2 — B" })).not.toBeChecked();
+
+      await userEvent.type(screen.getByPlaceholderText("Search the list"), "B");
+      expect(screen.getByText("2 — B")).toBeInTheDocument();
+      expect(screen.queryByText("3 — C")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("2 — B"));
+      expect(onChange).toHaveBeenCalledWith(["1", "2"]);
+    });
+
+    it("should handle custom field values", async () => {
       const { onChange } = await setupStringPicker({
         query,
         stageIndex,
