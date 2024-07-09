@@ -26,8 +26,8 @@ describe("syncVizSettings", () => {
   describe("table.columns", () => {
     it("should not update the setting if the order of columns has changed", () => {
       const oldColumns: ColumnInfo[] = [
-        { name: "ID", alias: "ID" },
-        { name: "ID_2", alias: "PEOPLE__ID" },
+        { name: "ID", key: "ID" },
+        { name: "ID_2", key: "PEOPLE__ID" },
       ];
       const newColumns: ColumnInfo[] = [oldColumns[1], oldColumns[0]];
       const oldSettings = createMockVisualizationSettings({
@@ -49,13 +49,13 @@ describe("syncVizSettings", () => {
 
     it("should handle adding new columns with column.name changes", () => {
       const oldColumns: ColumnInfo[] = [
-        { name: "ID", alias: "ID" },
-        { name: "ID_2", alias: "PEOPLE__ID" },
+        { name: "ID", key: "ID" },
+        { name: "ID_2", key: "PEOPLE__ID" },
       ];
       const newColumns: ColumnInfo[] = [
-        { name: "ID", alias: "ID" },
-        { name: "ID_2", alias: "PRODUCTS__ID" },
-        { name: "ID_3", alias: "PEOPLE__ID" },
+        { name: "ID", key: "ID" },
+        { name: "ID_2", key: "PRODUCTS__ID" },
+        { name: "ID_3", key: "PEOPLE__ID" },
       ];
 
       const oldSettings = createMockVisualizationSettings({
@@ -83,15 +83,15 @@ describe("syncVizSettings", () => {
 
     it("should handle removing columns with column.name changes", () => {
       const oldColumns: ColumnInfo[] = [
-        { name: "ID", alias: "ID" },
-        { name: "TOTAL", alias: "TOTAL" },
-        { name: "ID_2", alias: "PRODUCTS__ID" },
-        { name: "ID_3", alias: "PEOPLE__ID" },
+        { name: "ID", key: "ID" },
+        { name: "TOTAL", key: "TOTAL" },
+        { name: "ID_2", key: "PRODUCTS__ID" },
+        { name: "ID_3", key: "PEOPLE__ID" },
       ];
       const newColumns: ColumnInfo[] = [
-        { name: "ID", alias: "ID" },
-        { name: "TOTAL", alias: "TOTAL" },
-        { name: "ID_2", alias: "PEOPLE__ID" },
+        { name: "ID", key: "ID" },
+        { name: "TOTAL", key: "TOTAL" },
+        { name: "ID_2", key: "PEOPLE__ID" },
       ];
       const oldSettings = createMockVisualizationSettings({
         "table.columns": [
@@ -126,10 +126,10 @@ describe("syncVizSettings", () => {
 
     it("should preserve settings for columns that are not present both in old and new columns", () => {
       const oldColumns: ColumnInfo[] = [
-        { name: "ID", alias: "ID" },
-        { name: "TOTAL", alias: "TOTAL" },
+        { name: "ID", key: "ID" },
+        { name: "TOTAL", key: "TOTAL" },
       ];
-      const newColumns: ColumnInfo[] = [{ name: "ID", alias: "ID" }];
+      const newColumns: ColumnInfo[] = [{ name: "ID", key: "ID" }];
       const oldSettings = createMockVisualizationSettings({
         "table.columns": [
           createMockTableColumnOrderSetting({
@@ -160,8 +160,8 @@ describe("syncVizSettings", () => {
   describe("graph.metrics", () => {
     it("should not update the setting if the order of columns has changed", () => {
       const oldColumns: ColumnInfo[] = [
-        { name: "ID", alias: "ID" },
-        { name: "ID_2", alias: "PEOPLE__ID" },
+        { name: "ID", key: "ID" },
+        { name: "ID_2", key: "PEOPLE__ID" },
       ];
       const newColumns: ColumnInfo[] = [oldColumns[1], oldColumns[0]];
       const oldSettings = createMockVisualizationSettings({
@@ -174,13 +174,13 @@ describe("syncVizSettings", () => {
 
     it("should handle adding new columns with column.name changes", () => {
       const oldColumns: ColumnInfo[] = [
-        { name: "ID", alias: "ID" },
-        { name: "ID_2", alias: "PEOPLE__ID" },
+        { name: "ID", key: "ID" },
+        { name: "ID_2", key: "PEOPLE__ID" },
       ];
       const newColumns: ColumnInfo[] = [
-        { name: "ID", alias: "ID" },
-        { name: "ID_2", alias: "PRODUCTS__ID", isAggregation: true },
-        { name: "ID_3", alias: "PEOPLE__ID" },
+        { name: "ID", key: "ID" },
+        { name: "ID_2", key: "PRODUCTS__ID", isAggregation: true },
+        { name: "ID_3", key: "PEOPLE__ID" },
       ];
 
       const oldSettings = createMockVisualizationSettings({
@@ -195,13 +195,13 @@ describe("syncVizSettings", () => {
 
     it("should not add new columns if they are not coming from aggregation", () => {
       const oldColumns: ColumnInfo[] = [
-        { name: "ID", alias: "ID" },
-        { name: "ID_2", alias: "PEOPLE__ID" },
+        { name: "ID", key: "ID" },
+        { name: "ID_2", key: "PEOPLE__ID" },
       ];
       const newColumns: ColumnInfo[] = [
-        { name: "ID", alias: "ID" },
-        { name: "ID_2", alias: "PRODUCTS__ID" },
-        { name: "ID_3", alias: "PEOPLE__ID" },
+        { name: "ID", key: "ID" },
+        { name: "ID_2", key: "PRODUCTS__ID" },
+        { name: "ID_3", key: "PEOPLE__ID" },
       ];
 
       const oldSettings = createMockVisualizationSettings({
@@ -216,15 +216,15 @@ describe("syncVizSettings", () => {
 
     it("should handle removing columns with column.name changes", () => {
       const oldColumns: ColumnInfo[] = [
-        { name: "ID", alias: "ID" },
-        { name: "TOTAL", alias: "TOTAL" },
-        { name: "ID_2", alias: "PRODUCTS__ID" },
-        { name: "ID_3", alias: "PEOPLE__ID" },
+        { name: "ID", key: "ID" },
+        { name: "TOTAL", key: "TOTAL" },
+        { name: "ID_2", key: "PRODUCTS__ID" },
+        { name: "ID_3", key: "PEOPLE__ID" },
       ];
       const newColumns: ColumnInfo[] = [
-        { name: "ID", alias: "ID" },
-        { name: "TOTAL", alias: "TOTAL" },
-        { name: "ID_2", alias: "PEOPLE__ID" },
+        { name: "ID", key: "ID" },
+        { name: "TOTAL", key: "TOTAL" },
+        { name: "ID_2", key: "PEOPLE__ID" },
       ];
       const oldSettings = createMockVisualizationSettings({
         "graph.metrics": ["ID", "TOTAL", "ID_2", "ID_3"],
@@ -238,10 +238,10 @@ describe("syncVizSettings", () => {
 
     it("should preserve settings for columns that are not present both in old and new columns", () => {
       const oldColumns: ColumnInfo[] = [
-        { name: "ID", alias: "ID" },
-        { name: "TOTAL", alias: "TOTAL" },
+        { name: "ID", key: "ID" },
+        { name: "TOTAL", key: "TOTAL" },
       ];
-      const newColumns: ColumnInfo[] = [{ name: "ID", alias: "ID" }];
+      const newColumns: ColumnInfo[] = [{ name: "ID", key: "ID" }];
       const oldSettings = createMockVisualizationSettings({
         "graph.metrics": ["ID", "TOTAL", "TAX"],
       });

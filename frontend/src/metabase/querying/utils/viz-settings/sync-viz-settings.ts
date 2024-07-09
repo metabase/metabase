@@ -6,8 +6,8 @@ import type {
 } from "metabase-types/api";
 
 export type ColumnInfo = {
+  key: string;
   name: string;
-  alias: string;
   isAggregation?: boolean;
 };
 
@@ -67,9 +67,8 @@ function getReturnedColumns(query: Lib.Query): ColumnInfo[] {
   return Lib.returnedColumns(query, stageIndex).map(column => {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
     return {
+      key: Lib.columnKey(column),
       name: columnInfo.name,
-      // TODO: "alias" is a slightly misleading name.
-      alias: Lib.columnKey(column),
       isAggregation: columnInfo.isAggregation,
     };
   });
@@ -81,8 +80,8 @@ function isValidSeries(series: SingleSeries) {
 
 function getSeriesColumns(series: SingleSeries): ColumnInfo[] {
   return series.data.cols.map(column => ({
+    key: column.name,
     name: column.name,
-    alias: column.name,
     isAggregation: false,
   }));
 }
@@ -106,19 +105,19 @@ function syncColumns<T>({
   createSetting,
   shouldCreateSetting,
 }: SyncColumnNamesOpts<T>): T[] {
-  const newNameByAlias = Object.fromEntries(
-    newColumns.map(column => [column.alias, column.name]),
+  const newNameByKey = Object.fromEntries(
+    newColumns.map(column => [column.key, column.name]),
   );
-  const oldAliasByName = Object.fromEntries(
-    oldColumns.map(column => [column.name, column.alias]),
+  const oldKeyByName = Object.fromEntries(
+    oldColumns.map(column => [column.name, column.key]),
   );
-  const oldNameByAlias = Object.fromEntries(
-    oldColumns.map(column => [column.alias, column.name]),
+  const oldNameByKey = Object.fromEntries(
+    oldColumns.map(column => [column.key, column.name]),
   );
   const remappedSettings = settings.reduce((settings: T[], setting) => {
-    const oldAlias = oldAliasByName[getColumnName(setting)];
-    const newName = newNameByAlias[oldAlias];
-    if (!oldAlias) {
+    const oldKey = oldKeyByName[getColumnName(setting)];
+    const newName = newNameByKey[oldKey];
+    if (!oldKey) {
       settings.push(setting);
     } else if (newName) {
       settings.push(setColumnName(setting, newName));
@@ -126,7 +125,7 @@ function syncColumns<T>({
     return settings;
   }, []);
   const addedSettings = newColumns
-    .filter(column => !oldNameByAlias[column.alias])
+    .filter(column => !oldNameByKey[column.key])
     .filter(shouldCreateSetting)
     .map(createSetting);
 
