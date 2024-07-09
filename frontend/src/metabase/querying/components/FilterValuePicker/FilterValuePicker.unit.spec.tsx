@@ -284,14 +284,14 @@ describe("StringFilterValuePicker", () => {
           ],
         }),
       });
-      expect(screen.getByRole("checkbox", { name: "1 — A" })).toBeChecked();
-      expect(screen.getByRole("checkbox", { name: "2 — B" })).not.toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "A" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "B" })).not.toBeChecked();
 
       await userEvent.type(screen.getByPlaceholderText("Search the list"), "B");
-      expect(screen.getByText("2 — B")).toBeInTheDocument();
-      expect(screen.queryByText("3 — C")).not.toBeInTheDocument();
+      expect(screen.getByText("B")).toBeInTheDocument();
+      expect(screen.queryByText("C")).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByText("2 — B"));
+      await userEvent.click(screen.getByText("B"));
       expect(onChange).toHaveBeenCalledWith(["1", "2"]);
     });
 
@@ -329,14 +329,14 @@ describe("StringFilterValuePicker", () => {
           ],
         }),
       });
-      expect(screen.getByRole("checkbox", { name: "1 — A" })).toBeChecked();
-      expect(screen.getByRole("checkbox", { name: "2 — B" })).not.toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "A" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "B" })).not.toBeChecked();
 
       await userEvent.type(screen.getByPlaceholderText("Search the list"), "B");
-      expect(screen.getByText("2 — B")).toBeInTheDocument();
-      expect(screen.queryByText("3 — C")).not.toBeInTheDocument();
+      expect(screen.getByText("B")).toBeInTheDocument();
+      expect(screen.queryByText("C")).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByText("2 — B"));
+      await userEvent.click(screen.getByText("B"));
       expect(onChange).toHaveBeenCalledWith(["1", "2"]);
     });
 
@@ -356,19 +356,19 @@ describe("StringFilterValuePicker", () => {
           ],
         }),
       });
-      expect(screen.getByRole("checkbox", { name: "t — To-do" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "To-do" })).toBeChecked();
       expect(
-        screen.getByRole("checkbox", { name: "p — In-progress" }),
+        screen.getByRole("checkbox", { name: "In-progress" }),
       ).not.toBeChecked();
 
       await userEvent.type(
         screen.getByPlaceholderText("Search the list"),
         "in",
       );
-      expect(screen.getByText("p — In-progress")).toBeInTheDocument();
-      expect(screen.queryByText("c — Completed")).not.toBeInTheDocument();
+      expect(screen.getByText("In-progress")).toBeInTheDocument();
+      expect(screen.queryByText("Completed")).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByText("p — In-progress"));
+      await userEvent.click(screen.getByText("In-progress"));
       expect(onChange).toHaveBeenCalledWith(["t", "p"]);
     });
 
@@ -390,11 +390,11 @@ describe("StringFilterValuePicker", () => {
       });
 
       const checkboxes = screen.getAllByRole("checkbox");
-      expect(checkboxes[0]).toHaveAccessibleName("p — In-progress");
+      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
       expect(checkboxes[0]).toBeChecked();
-      expect(checkboxes[1]).toHaveAccessibleName("t — To-do");
+      expect(checkboxes[1]).toHaveAccessibleName("To-do");
       expect(checkboxes[1]).not.toBeChecked();
-      expect(checkboxes[2]).toHaveAccessibleName("c — Completed");
+      expect(checkboxes[2]).toHaveAccessibleName("Completed");
       expect(checkboxes[2]).not.toBeChecked();
     });
 
@@ -425,11 +425,11 @@ describe("StringFilterValuePicker", () => {
         />,
       );
       const checkboxes = screen.getAllByRole("checkbox");
-      expect(checkboxes[0]).toHaveAccessibleName("p — In-progress");
+      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
       expect(checkboxes[0]).toBeChecked();
-      expect(checkboxes[1]).toHaveAccessibleName("t — To-do");
+      expect(checkboxes[1]).toHaveAccessibleName("To-do");
       expect(checkboxes[1]).not.toBeChecked();
-      expect(checkboxes[2]).toHaveAccessibleName("c — Completed");
+      expect(checkboxes[2]).toHaveAccessibleName("Completed");
       expect(checkboxes[2]).toBeChecked();
     });
 
@@ -460,11 +460,11 @@ describe("StringFilterValuePicker", () => {
         />,
       );
       const checkboxes = screen.getAllByRole("checkbox");
-      expect(checkboxes[0]).toHaveAccessibleName("p — In-progress");
+      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
       expect(checkboxes[0]).not.toBeChecked();
-      expect(checkboxes[1]).toHaveAccessibleName("c — Completed");
+      expect(checkboxes[1]).toHaveAccessibleName("Completed");
       expect(checkboxes[1]).toBeChecked();
-      expect(checkboxes[2]).toHaveAccessibleName("t — To-do");
+      expect(checkboxes[2]).toHaveAccessibleName("To-do");
       expect(checkboxes[2]).not.toBeChecked();
     });
 
@@ -646,12 +646,10 @@ describe("StringFilterValuePicker", () => {
           },
         ],
       });
-      expect(
-        await screen.findByText("b — b@metabase.test"),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("b@metabase.test")).toBeInTheDocument();
 
       await userEvent.type(screen.getByLabelText("Filter value"), "a");
-      await userEvent.click(await screen.findByText("a — a@metabase.test"));
+      await userEvent.click(await screen.findByText("a@metabase.test"));
       expect(onChange).toHaveBeenLastCalledWith(["b", "a"]);
     });
 
@@ -700,12 +698,10 @@ describe("StringFilterValuePicker", () => {
           },
         ],
       });
-      expect(
-        await screen.findByText("b — b@metabase.test"),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("b@metabase.test")).toBeInTheDocument();
 
       await userEvent.type(screen.getByLabelText("Filter value"), "a");
-      await userEvent.click(await screen.findByText("a — a@metabase.test"));
+      await userEvent.click(await screen.findByText("a@metabase.test"));
       expect(onChange).toHaveBeenLastCalledWith(["b", "a"]);
     });
 
@@ -728,9 +724,7 @@ describe("StringFilterValuePicker", () => {
       });
 
       await userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
-      await userEvent.click(
-        await screen.findByText("a-test — a@metabase.test"),
-      );
+      await userEvent.click(await screen.findByText("a@metabase.test"));
 
       expect(onChange).toHaveBeenLastCalledWith(["a-test"]);
     });
@@ -978,14 +972,14 @@ describe("NumberFilterValuePicker", () => {
           ],
         }),
       });
-      expect(screen.getByRole("checkbox", { name: "1 — A" })).toBeChecked();
-      expect(screen.getByRole("checkbox", { name: "2 — B" })).not.toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "A" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "B" })).not.toBeChecked();
 
       await userEvent.type(screen.getByPlaceholderText("Search the list"), "B");
-      expect(screen.getByText("2 — B")).toBeInTheDocument();
-      expect(screen.queryByText("3 — C")).not.toBeInTheDocument();
+      expect(screen.getByText("B")).toBeInTheDocument();
+      expect(screen.queryByText("C")).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByText("2 — B"));
+      await userEvent.click(screen.getByText("B"));
       expect(onChange).toHaveBeenCalledWith([1, 2]);
     });
 
@@ -1021,14 +1015,14 @@ describe("NumberFilterValuePicker", () => {
           ],
         }),
       });
-      expect(screen.getByRole("checkbox", { name: "1 — A" })).toBeChecked();
-      expect(screen.getByRole("checkbox", { name: "2 — B" })).not.toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "A" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "B" })).not.toBeChecked();
 
       await userEvent.type(screen.getByPlaceholderText("Search the list"), "B");
-      expect(screen.getByText("2 — B")).toBeInTheDocument();
-      expect(screen.queryByText("3 — C")).not.toBeInTheDocument();
+      expect(screen.getByText("B")).toBeInTheDocument();
+      expect(screen.queryByText("C")).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByText("2 — B"));
+      await userEvent.click(screen.getByText("B"));
       expect(onChange).toHaveBeenCalledWith([1, 2]);
     });
 
@@ -1050,11 +1044,11 @@ describe("NumberFilterValuePicker", () => {
       });
 
       const checkboxes = screen.getAllByRole("checkbox");
-      expect(checkboxes[0]).toHaveAccessibleName("20 — In-progress");
+      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
       expect(checkboxes[0]).toBeChecked();
-      expect(checkboxes[1]).toHaveAccessibleName("10 — To-do");
+      expect(checkboxes[1]).toHaveAccessibleName("To-do");
       expect(checkboxes[1]).not.toBeChecked();
-      expect(checkboxes[2]).toHaveAccessibleName("30 — Completed");
+      expect(checkboxes[2]).toHaveAccessibleName("Completed");
       expect(checkboxes[2]).not.toBeChecked();
     });
   });

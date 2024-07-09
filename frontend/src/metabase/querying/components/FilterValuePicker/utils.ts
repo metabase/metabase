@@ -32,9 +32,9 @@ export function canSearchFieldValues(
 export function getFieldOptions(fieldValues: FieldValue[]): SelectOption[] {
   return fieldValues
     .filter(([value]) => value != null)
-    .map(([value, label]) => ({
+    .map(([value, label = value]) => ({
       value: String(value),
-      label: label != null ? `${value} — ${label}` : String(value),
+      label: String(label),
     }));
 }
 
