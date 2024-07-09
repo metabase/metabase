@@ -248,7 +248,11 @@
           legacy-expr (lib.js/legacy-expression-for-expression-clause query 0 expr)
           price-id (meta/id :venues :price)]
       (is (=? [:< {} [:field {:base-type :type/Integer, :effective-type :type/Integer} price-id] 3] expr))
-      (is (= ["<" ["field" price-id {"base-type" "Integer"}] 3] (js->clj legacy-expr))))))
+      (is (= ["<" ["field" price-id {"base-type" "Integer"}] 3] (js->clj legacy-expr)))))
+  (testing "type namespaces are preserved (#44584)"
+    (let [expr [:field {:base-type :type/Text, :source-field 243, :lib/uuid (str (random-uuid))} 244]
+          legacy-expr (lib.js/legacy-expression-for-expression-clause lib.tu/venues-query 0 expr)]
+      (is (= "type/Text" (-> legacy-expr (aget 2) (gobject/get "base-type")))))))
 
 (deftest ^:parallel string-filter-clauses-test
   (doseq [tag                          [:contains :starts-with :ends-with :does-not-contain]
