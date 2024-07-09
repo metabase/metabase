@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
-  setupFieldSearchValuesEndpoints,
+  setupFieldSearchValuesEndpoint,
   setupFieldValuesEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -13,7 +13,7 @@ import {
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
-import type { GetFieldValuesResponse } from "metabase-types/api";
+import type { FieldId, GetFieldValuesResponse } from "metabase-types/api";
 import { createMockFieldValues } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -34,8 +34,11 @@ interface SetupOpts<T> {
   column: Lib.ColumnMetadata;
   values: T[];
   compact?: boolean;
+  fieldId?: FieldId;
+  searchFieldId?: FieldId;
   fieldValues?: GetFieldValuesResponse;
   searchValues?: Record<string, GetFieldValuesResponse>;
+  remappedValues?: Record<string, GetFieldValuesResponse>;
 }
 
 async function setupStringPicker({
@@ -44,6 +47,8 @@ async function setupStringPicker({
   column,
   values,
   compact,
+  fieldId,
+  searchFieldId = fieldId,
   fieldValues,
   searchValues = {},
 }: SetupOpts<string>) {
@@ -54,9 +59,16 @@ async function setupStringPicker({
   if (fieldValues) {
     setupFieldValuesEndpoints(fieldValues);
   }
-  Object.entries(searchValues).forEach(([value, result]) => {
-    setupFieldSearchValuesEndpoints(result.field_id, value, result.values);
-  });
+  if (fieldId != null && searchFieldId != null) {
+    Object.entries(searchValues).forEach(([value, result]) => {
+      setupFieldSearchValuesEndpoint(
+        fieldId,
+        searchFieldId,
+        value,
+        result.values,
+      );
+    });
+  }
 
   const { rerender } = renderWithProviders(
     <StringFilterValuePicker
@@ -126,6 +138,7 @@ describe("StringFilterValuePicker", () => {
 
   describe("list values", () => {
     const column = findColumn("PRODUCTS", "CATEGORY");
+    const fieldId = PRODUCTS.CATEGORY;
 
     it("should allow to pick a list value", async () => {
       const { onChange } = await setupStringPicker({
@@ -133,6 +146,7 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: [],
+        fieldId,
         fieldValues: PRODUCT_CATEGORY_VALUES,
       });
 
@@ -147,6 +161,7 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: [],
+        fieldId,
         fieldValues: PRODUCT_CATEGORY_VALUES,
       });
 
@@ -165,6 +180,7 @@ describe("StringFilterValuePicker", () => {
         column: findColumn("PEOPLE", "STATE"),
         values: [],
         compact: true,
+        fieldId: PEOPLE.STATE,
         fieldValues: PEOPLE_STATE_VALUES,
       });
 
@@ -185,6 +201,7 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: ["Gadget"],
+        fieldId,
         fieldValues: PRODUCT_CATEGORY_VALUES,
       });
       expect(screen.getByRole("checkbox", { name: "Gadget" })).toBeChecked();
@@ -202,6 +219,7 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: ["Test"],
+        fieldId,
         fieldValues: PRODUCT_CATEGORY_VALUES,
       });
       expect(screen.getByRole("checkbox", { name: "Test" })).toBeChecked();
@@ -224,8 +242,9 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: ["t"],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: PRODUCTS.CATEGORY,
+          field_id: fieldId,
           values: [
             ["t", "To-do"],
             ["p", "In-progress"],
@@ -233,19 +252,19 @@ describe("StringFilterValuePicker", () => {
           ],
         }),
       });
-      expect(screen.getByRole("checkbox", { name: "To-do" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "t — To-do" })).toBeChecked();
       expect(
-        screen.getByRole("checkbox", { name: "In-progress" }),
+        screen.getByRole("checkbox", { name: "p — In-progress" }),
       ).not.toBeChecked();
 
       await userEvent.type(
         screen.getByPlaceholderText("Search the list"),
         "in",
       );
-      expect(screen.getByText("In-progress")).toBeInTheDocument();
-      expect(screen.queryByText("Completed")).not.toBeInTheDocument();
+      expect(screen.getByText("p — In-progress")).toBeInTheDocument();
+      expect(screen.queryByText("c — Completed")).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByText("In-progress"));
+      await userEvent.click(screen.getByText("p — In-progress"));
       expect(onChange).toHaveBeenCalledWith(["t", "p"]);
     });
 
@@ -255,8 +274,9 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: ["p"],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: PRODUCTS.CATEGORY,
+          field_id: fieldId,
           values: [
             ["t", "To-do"],
             ["p", "In-progress"],
@@ -266,11 +286,11 @@ describe("StringFilterValuePicker", () => {
       });
 
       const checkboxes = screen.getAllByRole("checkbox");
-      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
+      expect(checkboxes[0]).toHaveAccessibleName("p — In-progress");
       expect(checkboxes[0]).toBeChecked();
-      expect(checkboxes[1]).toHaveAccessibleName("To-do");
+      expect(checkboxes[1]).toHaveAccessibleName("t — To-do");
       expect(checkboxes[1]).not.toBeChecked();
-      expect(checkboxes[2]).toHaveAccessibleName("Completed");
+      expect(checkboxes[2]).toHaveAccessibleName("c — Completed");
       expect(checkboxes[2]).not.toBeChecked();
     });
 
@@ -280,8 +300,9 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: ["p"],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: PRODUCTS.CATEGORY,
+          field_id: fieldId,
           values: [
             ["t", "To-do"],
             ["p", "In-progress"],
@@ -300,11 +321,11 @@ describe("StringFilterValuePicker", () => {
         />,
       );
       const checkboxes = screen.getAllByRole("checkbox");
-      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
+      expect(checkboxes[0]).toHaveAccessibleName("p — In-progress");
       expect(checkboxes[0]).toBeChecked();
-      expect(checkboxes[1]).toHaveAccessibleName("To-do");
+      expect(checkboxes[1]).toHaveAccessibleName("t — To-do");
       expect(checkboxes[1]).not.toBeChecked();
-      expect(checkboxes[2]).toHaveAccessibleName("Completed");
+      expect(checkboxes[2]).toHaveAccessibleName("c — Completed");
       expect(checkboxes[2]).toBeChecked();
     });
 
@@ -314,8 +335,9 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: ["p", "c"],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: PRODUCTS.CATEGORY,
+          field_id: fieldId,
           values: [
             ["t", "To-do"],
             ["p", "In-progress"],
@@ -334,11 +356,11 @@ describe("StringFilterValuePicker", () => {
         />,
       );
       const checkboxes = screen.getAllByRole("checkbox");
-      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
+      expect(checkboxes[0]).toHaveAccessibleName("p — In-progress");
       expect(checkboxes[0]).not.toBeChecked();
-      expect(checkboxes[1]).toHaveAccessibleName("Completed");
+      expect(checkboxes[1]).toHaveAccessibleName("c — Completed");
       expect(checkboxes[1]).toBeChecked();
-      expect(checkboxes[2]).toHaveAccessibleName("To-do");
+      expect(checkboxes[2]).toHaveAccessibleName("t — To-do");
       expect(checkboxes[2]).not.toBeChecked();
     });
 
@@ -348,8 +370,9 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: [],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: PRODUCTS.CATEGORY,
+          field_id: fieldId,
           values: [],
         }),
       });
@@ -373,8 +396,9 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: [],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: PRODUCTS.CATEGORY,
+          field_id: fieldId,
           values: [[null], ["Widget"]],
         }),
       });
@@ -393,14 +417,15 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: [],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: PRODUCTS.CATEGORY,
+          field_id: fieldId,
           values: [["Gadget"], ["Widget"]],
           has_more_values: true,
         }),
         searchValues: {
           g: createMockFieldValues({
-            field_id: PRODUCTS.CATEGORY,
+            field_id: fieldId,
             values: [["Gadget"], ["Gizmo"]],
             has_more_values: false,
           }),
@@ -422,6 +447,7 @@ describe("StringFilterValuePicker", () => {
 
   describe("search values", () => {
     const column = findColumn("PEOPLE", "EMAIL");
+    const fieldId = PEOPLE.EMAIL;
 
     it("should allow to search for a value", async () => {
       const { onChange } = await setupStringPicker({
@@ -429,9 +455,10 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: [],
+        fieldId,
         searchValues: {
           a: createMockFieldValues({
-            field_id: PEOPLE.EMAIL,
+            field_id: fieldId,
             values: [["a@metabase.test"]],
           }),
         },
@@ -450,9 +477,10 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: ["b@metabase.test"],
+        fieldId,
         searchValues: {
           a: createMockFieldValues({
-            field_id: PEOPLE.EMAIL,
+            field_id: fieldId,
             values: [["a@metabase.test"]],
           }),
         },
@@ -475,9 +503,10 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: [],
+        fieldId,
         searchValues: {
           a: createMockFieldValues({
-            field_id: PEOPLE.EMAIL,
+            field_id: fieldId,
             values: [["a-test", "a@metabase.test"]],
           }),
         },
@@ -485,7 +514,9 @@ describe("StringFilterValuePicker", () => {
 
       await userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
       act(() => jest.advanceTimersByTime(1000));
-      await userEvent.click(await screen.findByText("a@metabase.test"));
+      await userEvent.click(
+        await screen.findByText("a-test — a@metabase.test"),
+      );
 
       expect(onChange).toHaveBeenLastCalledWith(["a-test"]);
     });
@@ -496,9 +527,10 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: [],
+        fieldId,
         searchValues: {
           "a@b.com": createMockFieldValues({
-            field_id: PEOPLE.EMAIL,
+            field_id: fieldId,
             values: [["testa@b.com"]],
           }),
         },
@@ -517,9 +549,10 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: ["a@b.com"],
+        fieldId,
         searchValues: {
           "a@b.com": createMockFieldValues({
-            field_id: PEOPLE.EMAIL,
+            field_id: fieldId,
             values: [["testa@b.com"]],
           }),
         },
@@ -537,9 +570,10 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: ["a@b.com"],
+        fieldId,
         searchValues: {
           "a@b": createMockFieldValues({
-            field_id: PEOPLE.EMAIL,
+            field_id: fieldId,
             values: [["a@b.com"]],
           }),
         },
@@ -692,6 +726,7 @@ describe("NumberFilterValuePicker", () => {
 
   describe("list values", () => {
     const column = findColumn("ORDERS", "QUANTITY");
+    const fieldId = ORDERS.QUANTITY;
 
     it("should allow to pick a list value", async () => {
       const { onChange } = await setupNumberPicker({
@@ -699,8 +734,9 @@ describe("NumberFilterValuePicker", () => {
         stageIndex,
         column,
         values: [],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: ORDERS.QUANTITY,
+          field_id: fieldId,
           values: [[10], [20], [30]],
         }),
       });
@@ -716,8 +752,9 @@ describe("NumberFilterValuePicker", () => {
         stageIndex,
         column,
         values: [10],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: ORDERS.QUANTITY,
+          field_id: fieldId,
           values: [
             [10, "To-do"],
             [20, "In-progress"],
@@ -725,19 +762,21 @@ describe("NumberFilterValuePicker", () => {
           ],
         }),
       });
-      expect(screen.getByRole("checkbox", { name: "To-do" })).toBeChecked();
       expect(
-        screen.getByRole("checkbox", { name: "In-progress" }),
+        screen.getByRole("checkbox", { name: "10 — To-do" }),
+      ).toBeChecked();
+      expect(
+        screen.getByRole("checkbox", { name: "20 — In-progress" }),
       ).not.toBeChecked();
 
       await userEvent.type(
         screen.getByPlaceholderText("Search the list"),
         "in",
       );
-      expect(screen.getByText("In-progress")).toBeInTheDocument();
-      expect(screen.queryByText("Completed")).not.toBeInTheDocument();
+      expect(screen.getByText("20 — In-progress")).toBeInTheDocument();
+      expect(screen.queryByText("30 — Completed")).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByText("In-progress"));
+      await userEvent.click(screen.getByText("20 — In-progress"));
       expect(onChange).toHaveBeenCalledWith([10, 20]);
     });
 
@@ -747,8 +786,9 @@ describe("NumberFilterValuePicker", () => {
         stageIndex,
         column,
         values: [20],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: ORDERS.QUANTITY,
+          field_id: fieldId,
           values: [
             [10, "To-do"],
             [20, "In-progress"],
@@ -758,11 +798,11 @@ describe("NumberFilterValuePicker", () => {
       });
 
       const checkboxes = screen.getAllByRole("checkbox");
-      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
+      expect(checkboxes[0]).toHaveAccessibleName("20 — In-progress");
       expect(checkboxes[0]).toBeChecked();
-      expect(checkboxes[1]).toHaveAccessibleName("To-do");
+      expect(checkboxes[1]).toHaveAccessibleName("10 — To-do");
       expect(checkboxes[1]).not.toBeChecked();
-      expect(checkboxes[2]).toHaveAccessibleName("Completed");
+      expect(checkboxes[2]).toHaveAccessibleName("30 — Completed");
       expect(checkboxes[2]).not.toBeChecked();
     });
   });

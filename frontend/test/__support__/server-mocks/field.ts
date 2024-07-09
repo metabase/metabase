@@ -41,17 +41,37 @@ export function setupFieldsValuesEndpoints(
   fieldsValues.forEach(fieldValues => setupFieldValuesEndpoints(fieldValues));
 }
 
-export function setupFieldSearchValuesEndpoints(
+export function setupFieldSearchValuesEndpoint(
   fieldId: FieldId,
+  searchFieldId: FieldId,
   searchValue: string,
   result: FieldValue[] = [],
 ) {
   fetchMock.get(
     {
-      url: `path:/api/field/${fieldId}/search/${fieldId}`,
+      url: `path:/api/field/${fieldId}/search/${searchFieldId}`,
       query: {
         value: searchValue,
         limit: 100, // corresponds to MAX_SEARCH_RESULTS in FieldValuesWidget
+      },
+    },
+    {
+      body: result,
+    },
+  );
+}
+
+export function setupFieldRemappedValuesEndpoint(
+  fieldId: FieldId,
+  searchFieldId: FieldId,
+  values: string[],
+  result: FieldValue[] = [],
+) {
+  fetchMock.get(
+    {
+      url: `path:/api/field/${fieldId}/remapped/${searchFieldId}`,
+      query: {
+        values,
       },
     },
     {
