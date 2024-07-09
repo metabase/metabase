@@ -215,3 +215,31 @@
                        clojure.lang.ExceptionInfo
                        #"Blocked: you are not allowed to run queries against Database \d+"
                        (run-saved-question))))))))))))
+
+(deftest legacy-no-self-service-test
+  (mt/with-temp-copy-of-db
+    (let [query {:database (mt/id)
+                 :type     :query
+                 :query    {:source-table (mt/id :venues)
+                            :limit        1}}]
+      (mt/with-temp [User                       {user-id :id} {}
+                     PermissionsGroup           {group-id :id} {}
+                     PermissionsGroupMembership _ {:group_id group-id :user_id user-id}]
+        (mt/with-premium-features #{:advanced-permissions}
+          (mt/with-no-data-perms-for-all-users!
+            (testing "legacy-no-self-service does not override block perms for a table"
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+              (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :legacy-no-self-service)
+              (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"Blocked: you are not allowed to run queries against Database \d+"
+                   (mt/with-current-user user-id
+                     (#'qp.perms/check-block-permissions query)))))
+
+            (testing "unrestricted overrides block perms for a table even if other tables have legacy-no-self-service"
+              (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+              (data-perms/set-table-permission! group-id (mt/id :orders) :perms/view-data :legacy-no-self-service)
+              (is (true? (mt/with-current-user user-id
+                           (#'qp.perms/check-block-permissions query)))))))))))

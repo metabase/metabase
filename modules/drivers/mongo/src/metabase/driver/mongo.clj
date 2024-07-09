@@ -264,8 +264,9 @@
                               :inner-join                      true
                               :left-join                       true
                               :nested-fields                   true
-                              :nested-queries                  true
+                              :native-parameter-card-reference false
                               :native-parameters               true
+                              :nested-queries                  true
                               :set-timezone                    true
                               :standard-deviation-aggregations true
                               :test/jvm-timezone-setting       false
