@@ -17,6 +17,7 @@ import missingColors44087 from "./missing-colors-44087.json";
 import missingCurrencyFormatting2 from "./missing-currency-formatting-2.json";
 import missingCurrencyFormatting3 from "./missing-currency-formatting-3.json";
 import missingCurrencyFormatting44086 from "./missing-currency-formatting-44086.json";
+import missingLabelLargeSlice38424 from "./missing-label-large-slice-38424.json";
 import mixedPostiiveNegative from "./mixed-positive-negative.json";
 import noSingleColumnLegend45149 from "./no-single-column-legend-45149.json";
 import nullDimension from "./null-dimension.json";
@@ -70,4 +71,5 @@ export const data = {
   allZeroMetric44847,
   noSingleColumnLegend45149,
   numericSQLColumnCrashes28568,
+  missingLabelLargeSlice38424,
 };

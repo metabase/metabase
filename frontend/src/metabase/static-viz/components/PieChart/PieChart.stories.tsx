@@ -279,3 +279,10 @@ NumericSQLColumnCrashes28568.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const MissingLabelLargeSlice38424 = Template.bind({});
+MissingLabelLargeSlice38424.args = {
+  rawSeries: data.missingLabelLargeSlice38424 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
