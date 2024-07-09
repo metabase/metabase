@@ -122,7 +122,7 @@ const initializeData = async ({
   }
 
   try {
-    if (result.payload.dashboard?.tabs?.length === 0) {
+    if ((result.payload.dashboard?.tabs?.length || 0) === 0) {
       await dispatch(
         fetchDashboardCardData({ reload: false, clearCache: true }),
       );
@@ -208,7 +208,7 @@ const PublicOrEmbeddedDashboardInner = ({
       return;
     }
 
-    if (selectedTabId !== previousSelectedTabId) {
+    if (selectedTabId && selectedTabId !== previousSelectedTabId) {
       fetchDashboardCardData();
       return;
     }
