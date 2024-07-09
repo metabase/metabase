@@ -8216,7 +8216,6 @@ databaseChangeLog:
             tableName: report_card
             columnName: last_used_at
             columnDataType: ${timestamp_type}
-            defaultNullValue: current_timestamp
 
   - changeSet:
       id: v51.2024-05-13T15:30:57
