@@ -38,9 +38,13 @@ export const updateModelIndexes =
       return;
     }
 
-    const { data: existingIndexes = [] } = await (dispatch(
+    const { data: existingIndexes = [], error } = await (dispatch(
       listModelIndexes.initiate({ model_id: model.id() }),
-    ) as Promise<{ data: ModelIndex[] }>);
+    ) as Promise<{ data: ModelIndex[]; error: unknown }>);
+
+    if (error) {
+      throw new Error("Could not fetch model indexes");
+    }
 
     const newFieldsToIndex = getFieldsToIndex(
       fieldsWithIndexFlags,
