@@ -13,6 +13,8 @@ describe("fonts", () => {
   it("works", () => {
     openOrdersTable({ mode: "notebook" });
 
+    cy.wait(5000);
+
     cy.get("@font-regular.all").should("have.length", 1);
     cy.get("@font-regular").should(({ response }) => {
       expect(response).to.include({ statusCode: 200 });
