@@ -32,7 +32,10 @@ export const UploadInfoModal = ({
             <>
               <InfoModalBody>
                 <p>
-                  {t`Allow people to upload CSV files to your database so that they can query the CSV data just like any other table.`}
+                  {t`Team members will be able to upload CSV files and work with them just like any other data source.`}
+                </p>
+                <p>
+                  {t`You'll be able to pick the default database where the data should be stored when enabling the feature.`}
                 </p>
               </InfoModalBody>
               <Button
