@@ -91,7 +91,7 @@ export function VisualizerCanvas({
       {displaySeries.length > 0 && (
         <>
           <Flex mx="xs" mb="md">
-            <Title>{displaySeries[0].card.name}</Title>
+            <Title size="h2">{displaySeries[0].card.name}</Title>
             <ActionIcon ml="auto" onClick={onToggleVizSettings}>
               <Icon name="gear" />
             </ActionIcon>
