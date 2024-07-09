@@ -31,7 +31,7 @@ export const RootModal = styled(Modal)`
       height: calc(80vh - 4rem);
     }
 
-    height: calc(100vh - 8rem);
+    max-height: calc(100vh - 8rem);
   }
 
   ${ObjectDetailsTable} {
