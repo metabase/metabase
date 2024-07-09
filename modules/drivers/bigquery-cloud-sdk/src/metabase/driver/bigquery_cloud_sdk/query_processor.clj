@@ -753,23 +753,34 @@
       (merge qualified
              (select-keys unqualified #{:group-by})))))
 
+(defn- maybe-adjust-alias-info
+  "TBD, Fields comming from join would have join alias, ie desired join alias would be used."
+  [clause]
+   ;; Fields from current table that won't become expression
+   ;; TODO: Other way around case where joined field is used in order by
+  (if (and
+       ;; For fields...
+       (vector? clause)
+       (= :field (first clause))
+       ;; ...that come from this source table (no joins, no source query)...
+       (pos-int? (get-in clause [2 ::add/source-table]))
+       ;; ...and have no binning or temporal unit set (those fields become expressions, eg. date_trunc, and should be
+       ;; referred by alias)
+       (every? nil? ((juxt :binning :temporal-unit) (clause 2))))
+    clause
+    (sql.qp/rewrite-fields-to-force-using-column-aliases clause)))
+
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :asc]
   [driver [dir clause]]
-  ;; alt would be computation of desired alias?
   ((get-method sql.qp/->honeysql [:sql :asc])
    driver
-   [dir (if (and (vector? clause)
-                 (= :field (first clause))
-                 (pos-int? (get-in clause [2 ::add/source-table])))
-          clause
-          (sql.qp/rewrite-fields-to-force-using-column-aliases clause))]))
+   [dir (maybe-adjust-alias-info clause)]))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :desc]
-  [driver clause]
+  [driver [dir clause]]
   ((get-method sql.qp/->honeysql [:sql :desc])
    driver
-   #_(sql.qp/rewrite-fields-to-force-using-column-aliases clause)
-   clause))
+   [dir (maybe-adjust-alias-info clause)]))
 
 (defmethod temporal-type ::sql.qp/compiled
   [[_compiled x, :as form]]
