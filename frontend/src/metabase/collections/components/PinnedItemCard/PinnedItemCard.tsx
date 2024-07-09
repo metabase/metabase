@@ -60,6 +60,7 @@ const TOOLTIP_MAX_WIDTH = 450;
 
 const DEFAULT_DESCRIPTION: Record<string, string> = {
   card: t`A question`,
+  metric: t`A metric`,
   dashboard: t`A dashboard`,
   dataset: t`A model`,
 };

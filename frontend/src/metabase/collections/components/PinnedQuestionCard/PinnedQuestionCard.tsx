@@ -64,6 +64,11 @@ const PinnedQuestionCard = ({
     <CardActionMenuContainer>{actionMenu}</CardActionMenuContainer>
   );
 
+  const DEFAULT_DESCRIPTION: Record<string, string> = {
+    card: t`A question`,
+    metric: t`A metric`,
+  };
+
   return (
     <CardRoot
       to={item.getUrl()}
@@ -96,7 +101,9 @@ const PinnedQuestionCard = ({
       ) : (
         <CardStaticSkeleton
           name={item.name}
-          description={item.description ?? t`A question`}
+          description={
+            item.description || DEFAULT_DESCRIPTION[item.model] || ""
+          }
           icon={item.getIcon() as unknown as { name: IconName }}
           tooltip={getSkeletonTooltip(item)}
         />
