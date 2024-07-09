@@ -56,7 +56,7 @@
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
   [_nonce]
-  {"Content-Security-Policy"
+  {"Content-Security-Policy-2"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
                   :script-src   (concat
