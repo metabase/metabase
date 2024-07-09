@@ -11,10 +11,12 @@ export const EmotionCacheProvider = ({
   children,
 }: EmotionCacheProviderProps) => {
   const emotionCache = useMemo(() => {
-    const cache = createCache({ key: "emotion", nonce: window.MetabaseNonce });
+    const cache = createCache({
+      key: "emotion" /* nonce: window.MetabaseNonce */,
+    });
     // This disables :first-child not working in SSR warnings
     // Source: https://github.com/emotion-js/emotion/issues/1105#issuecomment-557726922
-    cache.compat = true;
+    // cache.compat = true;
     return cache;
   }, []);
 

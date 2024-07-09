@@ -55,7 +55,7 @@
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
-  [nonce]
+  [_nonce]
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
@@ -80,17 +80,7 @@
                                    (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
                                  "https://accounts.google.com"]
-                  :style-src    ["'self'"
-                                 ;; See [[generate-nonce]]
-                                 (when nonce
-                                   (format "'nonce-%s'" nonce))
-                                 ;; for webpack hot reloading
-                                 (when config/is-dev?
-                                   "http://localhost:8080")
-                                 ;; CLJS REPL
-                                 (when config/is-dev?
-                                   "http://localhost:9630")
-                                 "https://accounts.google.com"]
+                  :style-src    ["*"]
                   :font-src     ["*"]
                   :img-src      ["*"
                                  "'self' data:"]
