@@ -1,7 +1,6 @@
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   type SdkDashboardDisplayProps,
-  type SdkDashboardEventHandlersProps,
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import CS from "metabase/css/core/index.css";
@@ -9,10 +8,11 @@ import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
+import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { Box } from "metabase/ui";
 
 export type StaticDashboardProps = SdkDashboardDisplayProps &
-  SdkDashboardEventHandlersProps;
+  PublicOrEmbeddedDashboardEventHandlersProps;
 
 export const StaticDashboardInner = ({
   dashboardId,

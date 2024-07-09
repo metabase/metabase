@@ -9,7 +9,6 @@ import {
 } from "metabase/dashboard/hooks";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import { isNotNull } from "metabase/lib/types";
-import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import type { DashboardId } from "metabase-types/api";
 
 export type SdkDashboardDisplayProps = {
@@ -20,9 +19,6 @@ export type SdkDashboardDisplayProps = {
   withDownloads?: boolean;
   hiddenParameters?: string[];
 };
-
-export type SdkDashboardEventHandlersProps =
-  PublicOrEmbeddedDashboardEventHandlersProps;
 
 export const useSdkDashboardParams = ({
   dashboardId,

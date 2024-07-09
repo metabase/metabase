@@ -195,19 +195,26 @@ const PublicOrEmbeddedDashboardInner = ({
       });
 
       didMountRef.current = true;
-    } else {
-      if (dashboardId !== previousDashboardId) {
-        initializeData({
-          dashboardId: String(dashboardId),
-          shouldReload: true,
-          parameterQueryParams,
-          dispatch,
-        });
-      } else if (selectedTabId !== previousSelectedTabId) {
-        fetchDashboardCardData();
-      } else if (!_.isEqual(parameterValues, previousParameterValues)) {
-        fetchDashboardCardData({ reload: false, clearCache: true });
-      }
+      return;
+    }
+
+    if (dashboardId !== previousDashboardId) {
+      initializeData({
+        dashboardId: String(dashboardId),
+        shouldReload: true,
+        parameterQueryParams,
+        dispatch,
+      });
+      return;
+    }
+
+    if (selectedTabId !== previousSelectedTabId) {
+      fetchDashboardCardData();
+      return;
+    }
+
+    if (!_.isEqual(parameterValues, previousParameterValues)) {
+      fetchDashboardCardData({ reload: false, clearCache: true });
     }
   }, [
     dashboardId,

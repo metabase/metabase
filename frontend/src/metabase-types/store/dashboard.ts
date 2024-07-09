@@ -86,7 +86,7 @@ export type DashboardCardsLoadingState = {
 };
 
 export type DashboardLoadingControls = {
-  isLoading?: boolean;
+  isLoading: boolean;
   documentTitle?: string;
   showLoadCompleteFavicon?: boolean;
 };

@@ -6,7 +6,6 @@ import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/Inter
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   type SdkDashboardDisplayProps,
-  type SdkDashboardEventHandlersProps,
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import {
@@ -19,13 +18,14 @@ import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
+import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import type { QuestionDashboardCard } from "metabase-types/api";
 
 export type InteractiveDashboardProps = SdkDashboardDisplayProps &
-  SdkDashboardEventHandlersProps & {
+  PublicOrEmbeddedDashboardEventHandlersProps & {
     questionHeight?: number;
     questionPlugins?: SdkClickActionPluginsConfig;
 
