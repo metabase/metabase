@@ -162,6 +162,9 @@
       (map (fn [database]
              (cond-> database
                (= (:engine database) "h2") (assoc :details "{}")))))
+    :model/Field
+    ;; unique_field_helper is a computed/generated column
+    (map #(dissoc % :unique_field_helper))
     ;; else
     identity))
 
