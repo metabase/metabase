@@ -17,7 +17,6 @@ import {
   visitDashboard,
   selectPermissionRow,
   setTokenFeatures,
-  dismissSplitPermsModal,
 } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP, ADMIN_GROUP, COLLECTION_GROUP, DATA_GROUP } =
@@ -42,7 +41,6 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     cy.visit(
       `admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}`,
     );
-    dismissSplitPermsModal();
 
     assertPermissionTable([
       ["Accounts", "No"],
@@ -59,7 +57,6 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
   it("should display error on failed save", () => {
     // revoke some permissions
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-    dismissSplitPermsModal();
     cy.icon("close").first().click();
     cy.findAllByRole("option").contains("Query builder and native").click();
 
@@ -279,7 +276,6 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
   context("data permissions", () => {
     it("warns about leaving with unsaved changes", () => {
       cy.visit("/admin/permissions");
-      dismissSplitPermsModal();
 
       selectSidebarItem("All Users");
 
@@ -323,7 +319,6 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     context("group focused view", () => {
       it("shows filterable list of groups", () => {
         cy.visit("/admin/permissions");
-        dismissSplitPermsModal();
 
         // no groups selected initially and it shows an empty state
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -358,7 +353,6 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
       it("allows to only view Administrators permissions", () => {
         cy.visit("/admin/permissions");
-        dismissSplitPermsModal();
 
         selectSidebarItem("Administrators");
 
@@ -394,7 +388,6 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       it("should show a modal when a revision changes while an admin is editing", () => {
         cy.intercept("/api/permissions/graph/group/1").as("graph");
         cy.visit("/admin/permissions");
-        dismissSplitPermsModal();
 
         selectSidebarItem("collection");
 
@@ -421,7 +414,6 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       it("should show a modal when a revision changes while an admin is editing", () => {
         cy.intercept("/api/permissions/graph/group/1").as("graph");
         cy.visit("/admin/permissions/");
-        dismissSplitPermsModal();
 
         selectSidebarItem("collection");
 
@@ -508,7 +500,6 @@ describe("scenarios > admin > permissions", () => {
 
   it("shows permissions help", () => {
     cy.visit("/admin/permissions");
-    dismissSplitPermsModal();
 
     // Data permissions w/o `legacy-no-self-service` in graph
     cy.get("main").within(() => {
@@ -592,9 +583,33 @@ describe("scenarios > admin > permissions", () => {
   });
 
   it("should show a dismissable modal and banner showing split permermisson changes (#metabase#45073", () => {
-    cy.visit("/admin/permissions/");
+    const tempState = {
+      "show-updated-permission-modal": true,
+      "show-updated-permission-banner": true,
+    };
 
-    dismissSplitPermsModal();
+    cy.intercept("/api/session/properties", req => {
+      req.continue(res => {
+        res.body = { ...res.body, ...tempState };
+      });
+    }).as("sessionProps");
+
+    cy.intercept("api/setting/show-updated-permission-modal", () => {
+      tempState["show-updated-permission-modal"] = false;
+    });
+
+    cy.intercept("api/setting/show-updated-permission-banner", () => {
+      tempState["show-updated-permission-banner"] = false;
+    });
+
+    cy.visit("/admin/permissions/");
+    //Both the command palette and the admin app call refresh settings
+    cy.wait(["@sessionProps", "@sessionProps"]);
+
+    cy.findByRole("dialog", { name: /permissions may look different/ })
+      .findByRole("button", { name: "Got it" })
+      .click();
+    cy.wait("@sessionProps");
 
     cy.findByRole("menuitem", { name: "All Users" }).click();
     cy.findByRole("alert").should(
@@ -602,6 +617,7 @@ describe("scenarios > admin > permissions", () => {
       "Your data permissions may look different",
     );
     cy.findByRole("alert").findByRole("button").click();
+    cy.wait("@sessionProps");
 
     cy.reload();
 
@@ -621,7 +637,6 @@ describe("scenarios > admin > permissions", () => {
   it("partial data permission updates should not remove permissions from other unmodified groups", () => {
     // check the we have an expected initial state
     cy.visit(`admin/permissions/data/group/${DATA_GROUP}`);
-    dismissSplitPermsModal();
     assertPermissionTable([["Sample Database", "Query builder and native"]]);
 
     // make a change to the permissions of another group
