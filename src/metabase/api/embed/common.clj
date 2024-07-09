@@ -414,7 +414,7 @@
 
 (defn dashboard-param-values
   "Common implementation for fetching parameter values for embedding and preview-embedding."
-  [token prefix id-query-params searched-param-id
+  [token searched-param-id prefix id-query-params
    & {:keys [preview] :or {preview false}}]
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
