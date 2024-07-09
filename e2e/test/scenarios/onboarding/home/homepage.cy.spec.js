@@ -34,9 +34,7 @@ describe("scenarios > home > homepage", () => {
     cy.intercept("GET", "/api/dashboard/**").as("getDashboard");
     cy.intercept("GET", "/api/automagic-*/table/**").as("getXrayDashboard");
     cy.intercept("GET", "/api/automagic-*/database/**").as("getXrayCandidates");
-    cy.intercept("GET", "/api/activity/recents?context=views").as(
-      "getRecentItems",
-    );
+    cy.intercept("GET", "/api/activity/recents?*").as("getRecentItems");
     cy.intercept("GET", "/api/activity/popular_items").as("getPopularItems");
     cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
     cy.intercept("POST", "/api/card/*/query").as("getQuestionQuery");
@@ -470,7 +468,7 @@ describe("scenarios > home > custom homepage", () => {
     it("should not redirect when already on the dashboard homepage (metabase#43800)", () => {
       cy.intercept(
         "GET",
-        `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata`,
+        `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata*`,
       ).as("getDashboardMetadata");
       cy.intercept(
         "POST",
