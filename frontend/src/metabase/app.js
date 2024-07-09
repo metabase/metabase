@@ -69,14 +69,12 @@ function _init(reducers, getRoutes, callback) {
 
   root.render(
     <Provider store={store}>
-      <EmotionCacheProvider>
-        <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
-          <ThemeProvider>
-            <GlobalStyles />
-            <Router history={history}>{routes}</Router>
-          </ThemeProvider>
-        </DragDropContextProvider>
-      </EmotionCacheProvider>
+      <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
+        <ThemeProvider>
+          <GlobalStyles />
+          <Router history={history}>{routes}</Router>
+        </ThemeProvider>
+      </DragDropContextProvider>
     </Provider>,
   );
 
