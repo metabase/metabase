@@ -164,9 +164,10 @@
                                            :after ""))))
 
 (defn fill-revision-details!
-  "Updates perm revision, this is used for logging/auditing purposes, and in practice is called asynchonously after the revision number is updated."
+  "Updates perm revision, this is used for logging/auditing purposes, and can be quite expensive, so in practice is
+   called after the revision number is updated."
   [revision-id before changes]
-  (t2/update! :model/CollectionPermissionGraphRevision revision-id {:before before :after changes}))
+  (future (t2/update! :model/CollectionPermissionGraphRevision revision-id {:before before :after changes})))
 
 (mu/defn update-graph!
   "Update the Collections permissions graph for Collections of `collection-namespace` (default `nil`, the 'default'
@@ -184,14 +185,14 @@
          ;; filter out any collections not in the old graph
          new-perms          (into {} (for [[group-id collection-id->perms] new-perms]
                                        [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
-         [diff-old changes] (data/diff old-perms new-perms)
-         _ (data-perms.graph/check-revision-numbers old-graph new-graph)
-         revision-id (when (seq changes)
-                       (t2/with-transaction [_conn]
-                         (doseq [[group-id changes] changes]
-                           (update-audit-collection-permissions! group-id changes)
-                           (update-group-permissions! collection-namespace group-id changes))
-                         (:id (create-perms-revision! (:revision old-graph)))))]
-     ;; The graph is updated infrequently, but `diff-old` and `old-graph` can get huge on larger instances.
-     (data-perms.graph/log-permissions-changes diff-old changes)
-     (future (fill-revision-details! revision-id (assoc old-graph :namespace collection-namespace) changes)))))
+         [diff-old changes] (data/diff old-perms new-perms)]
+     (data-perms.graph/check-revision-numbers old-graph new-graph)
+     (when (seq changes)
+       (let [revision-id (t2/with-transaction [_conn]
+                           (doseq [[group-id changes] changes]
+                             (update-audit-collection-permissions! group-id changes)
+                             (update-group-permissions! collection-namespace group-id changes))
+                           (:id (create-perms-revision! (:revision old-graph))))]
+         ;; The graph is updated infrequently, but `diff-old` and `old-graph` can get huge on larger instances.
+         (data-perms.graph/log-permissions-changes diff-old changes)
+         (fill-revision-details! revision-id (assoc old-graph :namespace collection-namespace) changes))))))
