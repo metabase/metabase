@@ -12,11 +12,11 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- date-months-ago [n]
+(defn- date-months-ago ^LocalDate [n]
   (-> (LocalDate/now)
       (.minusMonths n)))
 
-(defn- datetime-months-ago [n]
+(defn datetime-months-ago ^LocalDateTime [n]
   (-> (LocalDateTime/now)
       (.minusMonths n)))
 
@@ -28,17 +28,16 @@
   ;; assoc the card with the current time minus 7 months
   (assoc card :last_used_at (datetime-months-ago 7)))
 
-(defmacro with-stale-card-in-collection [card-binding coll-id & body]
-  `(mt/with-temp [:model/Card ~card-binding (stale-card
-                                             {:name          (str (random-uuid))
-                                              :collection_id ~coll-id})]
-     ~@body))
-
-(defmacro with-stale-dashboard-in-collection [dashboard-binding coll-id & body]
-  `(mt/with-temp [:model/Dashboard ~dashboard-binding (stale-dashboard
-                                                       {:name          (str (random-uuid))
-                                                        :collection_id ~coll-id})]
-     ~@body))
+(defmacro with-stale-items [inputs & body]
+  (let [processed-inputs
+        (map (fn [[model binding args]]
+               (let [column (case model
+                              :model/Card :last_used_at
+                              :model/Dashboard :last_viewed_at)]
+                 [model binding `(assoc ~args ~column (datetime-months-ago 7))]))
+             (partition-all 3 inputs))]
+    `(mt/with-temp ~(vec (apply concat processed-inputs))
+       ~@body)))
 
 (deftest can-find-stale-dashboards
   (mt/with-temp [:model/Dashboard {id :id} (stale-dashboard
@@ -55,11 +54,8 @@
               :sort-direction :asc}))))))
 
 (deftest can-find-stale-cards
-  (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/Card {id :id} (stale-card
-                                       {:name "My Stale Card"
-                                        :collection_id nil
-                                        :database_id db-id})]
+  (with-stale-items [:model/Card {id :id} {:name "My Stale Card"
+                                           :collection_id nil}]
     (is (= [{:id id :model :model/Card}]
            (:rows
             (stale/find-candidates
@@ -72,9 +68,9 @@
 
 (deftest results-can-be-sorted
   (mt/with-temp [:model/Dashboard {id1 :id} {:name "Z"
-                                              :last_viewed_at (datetime-months-ago 10)}
+                                             :last_viewed_at (datetime-months-ago 10)}
                  :model/Dashboard {id2 :id} {:name "Y"
-                                              :last_viewed_at (datetime-months-ago 11)}
+                                             :last_viewed_at (datetime-months-ago 11)}
                  :model/Dashboard {id3 :id} {:name "X"
                                              :last_viewed_at (datetime-months-ago 12)}]
     (testing "by name"
@@ -129,8 +125,8 @@
                   :sort-direction :desc}))))))))
 
 (deftest limits-and-offset-work
-  (mt/with-temp [:model/Dashboard {id1 :id} (stale-dashboard {:name "A"})
-                 :model/Dashboard {id2 :id} (stale-dashboard {:name "B"})]
+  (with-stale-items [:model/Dashboard {id1 :id} {:name "A"}
+                     :model/Dashboard {id2 :id} {:name "B"}]
     (testing "limits"
       (is (= [{:id id1 :model :model/Dashboard}]
              (:rows

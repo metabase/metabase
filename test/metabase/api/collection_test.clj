@@ -2284,10 +2284,83 @@
 
 (deftest can-fetch-stale-candidates
   (with-collection-hierarchy [a b c d e]
-    (stale.test/with-stale-card-in-collection card (:id a)
-      (stale.test/with-stale-dashboard-in-collection dashboard (:id a)
-        (is (= (dissoc
-                (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/items")
-                                      :models "dashboard" :models "card")
-                :models)
-               (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale"))))))))
+    (stale.test/with-stale-items [:model/Card card {:collection_id (:id a)}
+                                  :model/Dashboard dashboard {:collection_id (:id a)}]
+      (let [result (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale"))]
+        (testing "The results look just like `/collection/:id/items`"
+          (is (= (dissoc
+                  (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/items")
+                                        :models "dashboard" :models "card")
+                  :models)
+                 result)))
+        (testing "The card and dashboard are in there"
+          (is (= #{["card" (u/the-id card)] ["dashboard" (u/the-id dashboard)]}
+                 (->> result
+                      :data
+                      (map (juxt :model :id))
+                      set))))
+        (testing "The count is correct"
+          (is (= 2 (:total result))))))
+    (testing "Recursive search works"
+      (stale.test/with-stale-items [:model/Card card {:collection_id (:id a)}
+                                    :model/Dashboard dashboard {:collection_id (:id a)}
+                                    :model/Card card-2 {:collection_id (:id b)}
+                                    :model/Dashboard dashboard-2 {:collection_id (:id b)}]
+        (let [result (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
+                                           :is_recursive true)]
+          (testing "count is correct"
+            (is (= 4 (:total result))))
+          (testing "Contains the correct data"
+            (= #{["card" (u/the-id card)] ["dashboard" (u/the-id dashboard)]
+                 ["card" (u/the-id card-2)] ["dashboard" (u/the-id dashboard-2)]}
+               (->> result :data (map (juxt :model :id)) set))))))
+    (testing "Sorting works"
+      (stale.test/with-stale-items [:model/Card card-a {:collection_id (:id a) :name "A"}
+                                    :model/Card card-b {:collection_id (:id b) :name "B"}
+                                    :model/Card card-c {:collection_id (:id c) :name "C"}
+                                    :model/Card card-d {:collection_id (:id d) :name "D"}
+                                    :model/Card card-e {:collection_id (:id e) :name "E"}]
+        (is (= ["A" "B" "C" "D" "E"]
+               (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
+                                          :is_recursive true)
+                    :data
+                    (map :name))))
+        (is (= ["E" "D" "C" "B" "A"]
+               (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
+                                          :is_recursive true :sort_direction "desc")
+                    :data
+                    (map :name))))
+        (is (= ["A" "B" "C" "D" "E"]
+               (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
+                                          :is_recursive true :sort_column "name")
+                    :data
+                    (map :name))))
+        (is (= ["E" "D" "C" "B" "A"]
+               (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
+                                          :is_recursive true :sort_column "name" :sort_direction "desc")
+                    :data
+                    (map :name))))))
+    (testing "Sanity check: we do actually include only stale items!"
+      (stale.test/with-stale-items [:model/Card card-a {:collection_id (:id a) :name "A"}
+                                    :model/Card card-e {:collection_id (:id e) :name "E"}]
+        (mt/with-temp [:model/Card _ {:collection_id (:id a) :name "NOT VISIBLE"}
+                       :model/Dashboard _ {:collection_id (:id a) :name "NOT VISIBLE"}
+                       :model/Card _ {:collection_id (:id e) :name "NOT VISIBLE"}
+                       :model/Dashboard _ {:collection_id (:id e) :name "NOT VISIBLE"}]
+          (is (= ["A" "E"]
+                 (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
+                                            :is_recursive true)
+                      :data
+                      (map :name)))))))
+    (testing "Before date is respected"
+      (let [cutoff (stale.test/date-months-ago 2)
+            before (.minusDays cutoff 1)
+            after (.plusDays cutoff 1)]
+        (mt/with-temp [:model/Card _ {:collection_id (:id a) :name "Just before" :last_used_at before}
+                       :model/Card _ {:collection_id (:id a) :name "Just after" :last_used_at after}]
+          (is (= #{"Just before"}
+                 (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
+                                            :before_date (str cutoff))
+                      :data
+                      (map :name)
+                      set))))))))

@@ -1050,18 +1050,19 @@
                      (t2/select-one :model/Collection id))
         _ (api/read-check collection)
         collection-ids (->> (if is_recursive
-                              (effective-children-ids collection @api/*current-user-permissions-set*)
+                              (conj (effective-children-ids collection @api/*current-user-permissions-set*)
+                                    id)
                               [id])
                             (mapv (fn root->nil [x] (if (= :root x) nil x)))
                             set)
         {:keys [total rows]}
         (stale/find-candidates {:collection-ids collection-ids
-                                           :cutoff-date before-date
-                                           :limit mw.offset-paging/*limit*
-                                           :offset mw.offset-paging/*offset*
-                                           :sort-column sort_column
-                                           :sort-direction sort_direction})]
-    {:total 2
+                                :cutoff-date before-date
+                                :limit mw.offset-paging/*limit*
+                                :offset mw.offset-paging/*offset*
+                                :sort-column sort_column
+                                :sort-direction sort_direction})]
+    {:total total
      :data (present-items rows)
      :limit mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
