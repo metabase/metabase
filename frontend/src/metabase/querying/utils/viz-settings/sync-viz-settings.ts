@@ -64,14 +64,15 @@ function isNativeQuery(query: Lib.Query) {
 
 function getReturnedColumns(query: Lib.Query): ColumnInfo[] {
   const stageIndex = -1;
-  return Lib.returnedColumns(query, stageIndex)
-    .map(column => Lib.displayInfo(query, stageIndex, column))
-    .map(columnInfo => ({
+  return Lib.returnedColumns(query, stageIndex).map(column => {
+    const columnInfo = Lib.displayInfo(query, stageIndex, column);
+    return {
       name: columnInfo.name,
       // TODO: "alias" is a slightly misleading name.
       alias: Lib.columnKey(column),
       isAggregation: columnInfo.isAggregation,
-    }));
+    };
+  });
 }
 
 function isValidSeries(series: SingleSeries) {
