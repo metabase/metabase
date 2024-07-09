@@ -1,4 +1,4 @@
-import { createAction as RTKCreateAction } from "@reduxjs/toolkit";
+import { createAction } from "@reduxjs/toolkit";
 import { denormalize, normalize, schema } from "normalizr";
 
 import {
@@ -179,23 +179,20 @@ export const fetchDashboard = createAsyncThunk(
 );
 
 export const MARK_CARD_AS_SLOW = "metabase/dashboard/MARK_CARD_AS_SLOW";
-export const markCardAsSlow = RTKCreateAction(
-  MARK_CARD_AS_SLOW,
-  (card: Card) => {
-    return {
-      payload: {
-        id: card.id,
-        result: true,
-      },
-    };
-  },
-);
+export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, (card: Card) => {
+  return {
+    payload: {
+      id: card.id,
+      result: true,
+    },
+  };
+});
 
 export const SET_DOCUMENT_TITLE = "metabase/dashboard/SET_DOCUMENT_TITLE";
-export const setDocumentTitle = RTKCreateAction<string>(SET_DOCUMENT_TITLE);
+export const setDocumentTitle = createAction<string>(SET_DOCUMENT_TITLE);
 
 export const SET_SHOW_LOADING_COMPLETE_FAVICON =
   "metabase/dashboard/SET_SHOW_LOADING_COMPLETE_FAVICON";
-export const setShowLoadingCompleteFavicon = RTKCreateAction<boolean>(
+export const setShowLoadingCompleteFavicon = createAction<boolean>(
   SET_SHOW_LOADING_COMPLETE_FAVICON,
 );
