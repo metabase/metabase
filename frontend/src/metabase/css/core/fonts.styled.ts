@@ -10,13 +10,7 @@ export const defaultFontFiles = ({ baseUrl = "./" } = {}) => {
         font-family: Lato;
         font-style: normal;
         font-weight: 400;
-        src: url("${basePath}/Lato/lato-v16-latin-regular.eot"); /* IE9 Compat Modes */
-        src: local("Lato Regular"), local("Lato-Regular"),
-        url("${basePath}/Lato/lato-v16-latin-regular.eot?#iefix") format("embedded-opentype"),
-          /* IE6-IE8 */ url("${basePath}/Lato/lato-v16-latin-regular.woff2") format("woff2"),
-          /* Super Modern Browsers */ url("${basePath}/Lato/lato-v16-latin-regular.woff") format("woff"),
-          /* Modern Browsers */ url("${basePath}/Lato/lato-v16-latin-regular.ttf") format("truetype"),
-          /* Safari, Android, iOS */ url("${basePath}/Lato/lato-v16-latin-regular.svg#Lato") format("svg"); /* Legacy iOS */
+        src: url("${basePath}/Lato/lato-v16-latin-regular.woff2") format("woff2");
       }
 
       /* lato-700 - latin */
@@ -24,13 +18,7 @@ export const defaultFontFiles = ({ baseUrl = "./" } = {}) => {
         font-family: Lato;
         font-style: normal;
         font-weight: 700;
-        src: url("${basePath}/Lato/lato-v16-latin-700.eot"); /* IE9 Compat Modes */
-        src: local("Lato Bold"), local("Lato-Bold"),
-        url("${basePath}/Lato/lato-v16-latin-700.eot?#iefix") format("embedded-opentype"),
-          /* IE6-IE8 */ url("${basePath}/Lato/lato-v16-latin-700.woff2") format("woff2"),
-          /* Super Modern Browsers */ url("${basePath}/Lato/lato-v16-latin-700.woff") format("woff"),
-          /* Modern Browsers */ url("${basePath}/Lato/lato-v16-latin-700.ttf") format("truetype"),
-          /* Safari, Android, iOS */ url("${basePath}/Lato/lato-v16-latin-700.svg#Lato") format("svg"); /* Legacy iOS */
+        src: url("${basePath}/Lato/lato-v16-latin-700.woff2") format("woff2");
       }
 
       /* lato-900 - latin */
