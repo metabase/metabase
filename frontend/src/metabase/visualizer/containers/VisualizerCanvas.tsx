@@ -122,10 +122,6 @@ export function VisualizerCanvas({
               <BaseVisualization
                 rawSeries={displaySeries}
                 metadata={metadata}
-                // isDashboard flag makes it use the TableSimple component
-                // TableInteractive does a lot of work with Question and Metadata
-                // and it's currently crashing
-                isDashboard={series[0].card.display === "table"}
                 onChangeCardAndRun={onChangeCardAndRun}
               />
             </div>
