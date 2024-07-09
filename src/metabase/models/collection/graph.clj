@@ -3,12 +3,11 @@
   details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
+   [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection :refer [Collection]]
-   [metabase.models.collection-permission-graph-revision
-    :as c-perm-revision
-    :refer [CollectionPermissionGraphRevision]]
+   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.permissions-group
@@ -153,6 +152,22 @@
   version."
   metabase-enterprise.audit-app.permissions [_ _] ::noop)
 
+(defn create-perms-revision!
+  "Increments the current revision number and writes it to the database. This lets us track the permissions graph
+  revision number, which is used for consistency checks when updating the graph."
+  [current-revision-number]
+  (when api/*current-user-id*
+    (first (t2/insert-returning-instances! :model/CollectionPermissionGraphRevision
+                                           :id      (inc current-revision-number)
+                                           :user_id api/*current-user-id*
+                                           :before ""
+                                           :after ""))))
+
+(defn update-perms-revision!
+  "Updates perm revision, this is used for logging/auditing purposes, and in practice is called asynchonously after the revision number is updated."
+  [revision-id before changes]
+  (t2/update! :model/CollectionPermissionGraphRevision revision-id {:before before :after changes}))
+
 (mu/defn update-graph!
   "Update the Collections permissions graph for Collections of `collection-namespace` (default `nil`, the 'default'
   namespace). This works just like [[metabase.models.permission/update-data-perms-graph!]], but for Collections;
@@ -176,10 +191,7 @@
          (doseq [[group-id changes] changes]
            (update-audit-collection-permissions! group-id changes)
            (update-group-permissions! collection-namespace group-id changes)))
-       ;; The graph is updated infrequently, but `diff-old` and `old-graph` can get huge on larger instances.
-       (future
+       (let [revision-id (create-perms-revision! (:revision old-graph))]
+         ;; The graph is updated infrequently, but `diff-old` and `old-graph` can get huge on larger instances.
          (data-perms.graph/log-permissions-changes diff-old changes)
-         (data-perms.graph/save-perms-revision! CollectionPermissionGraphRevision
-                                                (:revision old-graph)
-                                                (assoc old-graph :namespace collection-namespace)
-                                                changes))))))
+         (future (update-perms-revision! revision-id (assoc old-graph :namespace collection-namespace) changes)))))))
