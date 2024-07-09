@@ -39,7 +39,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
 (def ^:private ^Long entry-max-length
@@ -339,38 +338,24 @@
   very specific reason, such as certain cases where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
   [field]
   (try
-    (log/infof "Top of distinct-values %d %s" (:id field) (:name field))
     (let [distinct-values         (metadata-queries/field-distinct-values field)
-          _ (log/info "Inner field-distinct-values done")
-          limited-distinct-values (take-by-length *total-max-length* distinct-values)
-          _ (log/info "limited-distinct-values done")
-          res
-
+          limited-distinct-values (take-by-length *total-max-length* distinct-values)]
       {:values          limited-distinct-values
        ;; has_more_values=true means the list of values we return is a subset of all possible values.
-       :has_more_values (span/with-span! {:name "has-more-values"}
-                          (or
-                            ;; If the `distinct-values` has more elements than `limited-distinct-values`
-                            ;; it means the the `distinct-values` has exceeded our [[*total-max-length*]] limits.
-                            (> (count distinct-values)
-                               (count limited-distinct-values))
-                            ;; [[metabase.db.metadata-queries/field-distinct-values]] runs a query
-                            ;; with limit = [[metabase.db.metadata-queries/absolute-max-distinct-values-limit]].
-                            ;; So, if the returned `distinct-values` has length equal to that exact limit,
-                            ;; we assume the returned values is just a subset of what we have in DB.
-                            (= (count distinct-values)
-                               metadata-queries/absolute-max-distinct-values-limit)))}]
-      (log/info "done with distinct-values")
-      res
-      )
+       :has_more_values (or
+                          ;; If the `distinct-values` has more elements than `limited-distinct-values`
+                          ;; it means the the `distinct-values` has exceeded our [[*total-max-length*]] limits.
+                          (> (count distinct-values)
+                             (count limited-distinct-values))
+                          ;; [[metabase.db.metadata-queries/field-distinct-values]] runs a query
+                          ;; with limit = [[metabase.db.metadata-queries/absolute-max-distinct-values-limit]].
+                          ;; So, if the returned `distinct-values` has length equal to that exact limit,
+                          ;; we assume the returned values is just a subset of what we have in DB.
+                          (= (count distinct-values)
+                             metadata-queries/absolute-max-distinct-values-limit))})
     (catch Throwable e
       (log/error e "Error fetching field values")
       nil)))
-
-(comment
-  (require '[clj-async-profiler.core :as prof])
-  (time (distinct-values (t2/select-one :model/Field :id 7958)))
-  )
 
 (defn- delete-duplicates-and-return-latest!
   "This is a workaround for the issue of stale FieldValues rows (metabase#668)
@@ -403,11 +388,9 @@
 
   Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
   [field & [human-readable-values]]
-  (log/infof "Starting create-or-update-full-field-values! %d %s" (:id field) (:name field))
   (let [field-values              (get-latest-full-field-values (u/the-id field))
         {unwrapped-values :values
          :keys [has_more_values]} (distinct-values field)
-        _ (log/info "Got distinct-values")
         ;; unwrapped-values are 1-tuples, so we need to unwrap their values for storage
         values                    (map first unwrapped-values)
         field-name                (or (:name field) (:id field))]

@@ -11,8 +11,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]
-   [steffan-westcott.clj-otel.api.trace.span :as span]))
+   [toucan2.core :as t2]))
 
 (mu/defn ^:private clear-field-values-for-field!
   [field :- i/FieldInstance]
@@ -52,23 +51,19 @@
 (mu/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for `table`."
   [table :- i/TableInstance]
-  (log/infof "Starting update-field-values-for-table! %d %s" (:id table) (:name table))
-  (u/prog1 (reduce (fn [fv-change-counts field]
-                     (let [result (sync-util/with-error-handling (format "Error updating field values for %s" (sync-util/name-for-logging field))
-                                    (if (field-values/field-should-have-field-values? field)
-                                      (update-field-values-for-field! field)
-                                      (clear-field-values-for-field! field)))]
-                       (update-field-value-stats-count fv-change-counts result)))
-                   {:errors 0, :created 0, :updated 0, :deleted 0}
-                   (table->fields-to-scan table))
-           (log/infof "Done update-field-values-for-table! %d %s" (:id table) (:name table))))
+  (reduce (fn [fv-change-counts field]
+            (let [result (sync-util/with-error-handling (format "Error updating field values for %s" (sync-util/name-for-logging field))
+                           (if (field-values/field-should-have-field-values? field)
+                             (update-field-values-for-field! field)
+                             (clear-field-values-for-field! field)))]
+              (update-field-value-stats-count fv-change-counts result)))
+          {:errors 0, :created 0, :updated 0, :deleted 0}
+          (table->fields-to-scan table)))
 
 (mu/defn ^:private update-field-values-for-database!
   [_database :- i/DatabaseInstance
    tables    :- [:maybe [:sequential i/TableInstance]]]
-  (log/info "Starting update-field-values-for-database!")
-  (u/prog1 (apply merge-with + (map update-field-values-for-table! tables))
-           (log/info "Finished update-field-values-for-database!")))
+  (apply merge-with + (map update-field-values-for-table! tables)))
 
 (defn- update-field-values-summary [{:keys [created updated deleted errors]}]
   (format "Updated %d field value sets, created %d, deleted %d with %d errors"
@@ -128,13 +123,3 @@
                                                                  (sync-util/name-for-logging database))
     (let [tables (sync-util/db->sync-tables database)]
      (sync-util/run-sync-operation "field values scanning" database (make-sync-field-values-steps tables)))))
-
-(comment
-  (update-field-values! (t2/select-one :model/Database 604))
-  (update-field-values-for-database! (t2/select-one :model/Database 604)
-                                     [(t2/select-one :model/Table 1668)])
-  (System/exit 0)
-;(mu/defn ^:private update-field-values-for-database!
-;  [_database :- i/DatabaseInstance
-;   tables    :- [:maybe [:sequential i/TableInstance]]]
-  )
