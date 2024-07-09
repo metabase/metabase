@@ -372,7 +372,7 @@ export const fetchDashboardCardData =
 
       // TODO: There is a race condition here, when refreshing a dashboard before
       // the previous API calls finished.
-      Promise.all(promises).then(() => {
+      return Promise.all(promises).then(() => {
         dispatch(loadingComplete());
       });
     }

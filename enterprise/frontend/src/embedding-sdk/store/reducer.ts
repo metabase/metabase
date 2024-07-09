@@ -1,5 +1,6 @@
 import { createReducer, createAction } from "@reduxjs/toolkit";
 
+import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import type {
   EmbeddingSessionTokenState,
@@ -60,6 +61,11 @@ export const refreshTokenAsync = createAsyncThunk(
 const SET_PLUGINS = "sdk/SET_PLUGINS";
 export const setPlugins = createAction<SdkPluginsConfig | null>(SET_PLUGINS);
 
+const SET_EVENT_HANDLERS = "sdk/SET_EVENT_HANDLERS";
+export const setEventHandlers = createAction<SdkEventHandlersConfig | null>(
+  SET_EVENT_HANDLERS,
+);
+
 const initialState: SdkState = {
   metabaseInstanceUrl: "",
   token: {
@@ -69,6 +75,7 @@ const initialState: SdkState = {
   },
   loginStatus: { status: "uninitialized" },
   plugins: null,
+  eventHandlers: null,
   loaderComponent: null,
   errorComponent: null,
 };
@@ -113,6 +120,11 @@ export const sdk = createReducer(initialState, builder => {
   builder.addCase(setPlugins, (state, action) => ({
     ...state,
     plugins: action.payload,
+  }));
+
+  builder.addCase(setEventHandlers, (state, action) => ({
+    ...state,
+    eventHandlers: action.payload,
   }));
 
   builder.addCase(setErrorComponent, (state, action) => ({
