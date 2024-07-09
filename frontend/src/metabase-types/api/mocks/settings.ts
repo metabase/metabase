@@ -110,6 +110,7 @@ export const createMockTokenFeatures = (
   official_collections: false,
   llm_autodescription: false,
   sandboxes: false,
+  scim: false,
   sso_google: false,
   sso_jwt: false,
   sso_ldap: false,
