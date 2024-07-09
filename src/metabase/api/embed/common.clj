@@ -416,43 +416,43 @@
   "Common implementation for fetching parameter values for embedding and preview-embedding."
   [token searched-param-id prefix id-query-params
    & {:keys [preview] :or {preview false}}]
-  (let [unsigned-token (embed/unsign token)
-        dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
-    (when-not preview (check-embedding-enabled-for-card dashboard-id))
-    (let [slug-token-params                    (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-          {parameters       :parameters
-           embedding-params :embedding_params} (t2/select-one :model/Dashboard :id dashboard-id)
-          id->slug                             (into {} (map (juxt :id :slug) parameters))
-          slug->id                             (into {} (map (juxt :slug :id) parameters))
-          searched-param-slug                  (get id->slug searched-param-id)]
-      (try
-        ;; you can only search for values of a parameter if it is ENABLED and NOT PRESENT in the JWT.
-        (when-not (= (get embedding-params (keyword searched-param-slug)) "enabled")
-          (throw (ex-info (tru "Cannot search for values: {0} is not an enabled parameter." (pr-str searched-param-slug))
-                          {:status-code 400})))
-        (when (get slug-token-params (keyword searched-param-slug))
-          (throw (ex-info (tru "You can''t specify a value for {0} if it's already set in the JWT." (pr-str searched-param-slug))
-                          {:status-code 400})))
-        ;; ok, at this point we can run the query
-        (let [merged-id-params (param-values-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
-          (try
-            (binding [api/*current-user-permissions-set* (atom #{"/"})
-                      api/*is-superuser?*                true]
-              (api.dashboard/param-values (t2/select-one :model/Dashboard :id dashboard-id) searched-param-id merged-id-params prefix))
-            (catch Throwable e
-              (throw (ex-info (.getMessage e)
-                              {:merged-id-params merged-id-params}
-                              e)))))
-        (catch Throwable e
-          (let [e (ex-info (.getMessage e)
-                           {:dashboard-id        dashboard-id
-                            :dashboard-params    parameters
-                            :allowed-param-slugs embedding-params
-                            :slug->id            slug->id
-                            :id->slug            id->slug
-                            :param-id            searched-param-id
-                            :param-slug          searched-param-slug
-                            :token-params        slug-token-params}
-                           e)]
-            (log/errorf e "Chain filter error\n%s" (u/pprint-to-str (u/all-ex-data e)))
-            (throw e)))))))
+  (let [unsigned-token                       (embed/unsign token)
+        dashboard-id                         (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        _                                    (when-not preview (check-embedding-enabled-for-card dashboard-id))
+        slug-token-params                    (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+        {parameters       :parameters
+         embedding-params :embedding_params} (t2/select-one :model/Dashboard :id dashboard-id)
+        id->slug                             (into {} (map (juxt :id :slug) parameters))
+        slug->id                             (into {} (map (juxt :slug :id) parameters))
+        searched-param-slug                  (get id->slug searched-param-id)]
+    (try
+      ;; you can only search for values of a parameter if it is ENABLED and NOT PRESENT in the JWT.
+      (when-not (= (get embedding-params (keyword searched-param-slug)) "enabled")
+        (throw (ex-info (tru "Cannot search for values: {0} is not an enabled parameter." (pr-str searched-param-slug))
+                        {:status-code 400})))
+      (when (get slug-token-params (keyword searched-param-slug))
+        (throw (ex-info (tru "You can''t specify a value for {0} if it's already set in the JWT." (pr-str searched-param-slug))
+                        {:status-code 400})))
+      ;; ok, at this point we can run the query
+      (let [merged-id-params (param-values-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
+        (try
+          (binding [api/*current-user-permissions-set* (atom #{"/"})
+                    api/*is-superuser?*                true]
+            (api.dashboard/param-values (t2/select-one :model/Dashboard :id dashboard-id) searched-param-id merged-id-params prefix))
+          (catch Throwable e
+            (throw (ex-info (.getMessage e)
+                            {:merged-id-params merged-id-params}
+                            e)))))
+      (catch Throwable e
+        (let [e (ex-info (.getMessage e)
+                         {:dashboard-id        dashboard-id
+                          :dashboard-params    parameters
+                          :allowed-param-slugs embedding-params
+                          :slug->id            slug->id
+                          :id->slug            id->slug
+                          :param-id            searched-param-id
+                          :param-slug          searched-param-slug
+                          :token-params        slug-token-params}
+                         e)]
+          (log/errorf e "Chain filter error\n%s" (u/pprint-to-str (u/all-ex-data e)))
+          (throw e))))))
