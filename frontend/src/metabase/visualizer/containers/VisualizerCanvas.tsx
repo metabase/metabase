@@ -86,7 +86,7 @@ export function VisualizerCanvas({
     });
   };
 
-  const title = displaySeries[0].card.name;
+  const title = displaySeries.length > 0 ? displaySeries[0].card.name : "";
 
   return (
     <Card w="100%" h="100%" ref={setNodeRef}>
