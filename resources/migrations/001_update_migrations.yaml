@@ -42,6 +42,22 @@ databaseChangeLog:
       name: boolean.type
       value: bit(1)
       dbms: mysql,mariadb
+  - property:
+      name: boolean.true
+      value: true
+      dbms: postgresql,h2
+  - property:
+      name: boolean.true
+      value: b'1'
+      dbms: mysql,mariadb
+  - property:
+      name: boolean.false
+      value: false
+      dbms: postgresql,h2
+  - property:
+      name: boolean.false
+      value: b'0'
+      dbms: mysql,mariadb
 
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
 
@@ -8278,6 +8294,17 @@ databaseChangeLog:
             tableName: login_history
             indexName: idx_user_id_device_id
       preConditions:
+
+  - changeSet:
+      id: v51.2024-07-09T17:15:43
+      author: tsmacdonald
+      comment: Fix default boolean value for query_field.explicit_reference
+      dbms: mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: query_field
+            columnName: explicit_reference
+            defaultValueComputed: ${boolean.true}
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

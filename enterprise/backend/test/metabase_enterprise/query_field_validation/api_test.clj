@@ -9,9 +9,12 @@
 
 (defn- do-with-test-setup [f]
   (t2.with-temp/with-temp [:model/Table      {table  :id}  {:name "T"}
-                           :model/Card       {card-1 :id}  {:name "A"}
-                           :model/Card       {card-2 :id}  {:name "B"}
-                           :model/Card       {card-3 :id}  {:name "C"}
+                           :model/Collection {coll-1 :id}  {:name "ZZX"}
+                           :model/Collection {coll-2 :id}  {:name "ZZY"}
+                           :model/Collection {coll-3 :id}  {:name "ZZZ"}
+                           :model/Card       {card-1 :id}  {:name "A" :collection_id coll-1}
+                           :model/Card       {card-2 :id}  {:name "B" :collection_id coll-2}
+                           :model/Card       {card-3 :id}  {:name "C" :collection_id coll-3}
                            :model/Card       {card-4 :id}  {:name "D"}
                            :model/Field      {field-1 :id} {:active   false
                                                             :name     "FA"
@@ -147,6 +150,18 @@
 (deftest sorting-test
   (testing "Lets you specify the sort key"
     (with-test-setup
+      (resp= {:total 3
+              :data
+              [{:id card-3}
+               {:id card-2}
+               {:id card-1}]}
+             (get! {:sort_column "collection" :sort_direction "desc"}))
+      (resp= {:total 3
+              :data
+              [{:id card-1}
+               {:id card-2}
+               {:id card-3}]}
+             (get! {:sort_column "last_edited_at" :sort_direction "asc"}))
       (resp= {:total 3
               :data
               [{:id card-3}
