@@ -34,7 +34,7 @@ export function getFieldOptions(fieldValues: FieldValue[]): SelectOption[] {
     .filter(([value]) => value != null)
     .map(([value, label]) => ({
       value: String(value),
-      label: label ? `${value} — ${label}` : String(value),
+      label: label != null ? `${value} — ${label}` : String(value),
     }));
 }
 
