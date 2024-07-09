@@ -69,27 +69,3 @@
   {:style/indent 0}
   [& body]
   `(cancelable-thread-call (^:once fn* [] ~@body)))
-
-;;;;;;;;;;;;;;;;;;;;;
-;; core.async helpers
-;;;;;;;;;;;;;;;;;;;;;
-
-(defn process->hashmap
-  "Uses core.async to process items in parallel.
-  Returns a hashmap of the results.
-  `fxn` returns a vector of [key value]."
-  [fxn items]
-  (let [n-cores (.. Runtime getRuntime availableProcessors)
-        ch (a/chan (count items))
-        out (a/chan (count items))]
-    ;; start wokers
-    (dotimes [_ n-cores]
-      (a/go-loop []
-        (when-let [item (a/<! ch)]
-          (a/>! out (fxn item))
-          (recur))))
-    ;; put items into channel
-    (doseq [item items]
-      (a/>!! ch item))
-    (a/close! ch)
-    (a/<!! (a/into {} (a/take (count items) out)))))
