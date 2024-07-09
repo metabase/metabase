@@ -787,11 +787,18 @@
 (mu/defn ^:private remapped-field :- [:maybe ::lib.schema.metadata/column]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column]
-  (or
-    (when-let [name-field-id (:name-field column)]
+  (cond
+    (lib.types.isa/primary-key? column)
+    (when-let [name-field-id (:name-field-id column)]
       (lib.metadata/field metadata-providerable name-field-id))
-    (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
-      (lib.metadata/field metadata-providerable remap-field-id))))
+
+    (lib.types.isa/foreign-key? column)
+      (or
+       (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
+         (lib.metadata/field metadata-providerable remap-field-id))
+       (when-let [fk-target-field-id (:fk-target-field-id column)]
+         (when-let [fk-target-field (lib.metadata/field metadata-providerable fk-target-field-id)]
+           (recur metadata-providerable fk-target-field))))))
 
 (mu/defn ^:private search-field :- [:maybe ::lib.schema.metadata/column]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable

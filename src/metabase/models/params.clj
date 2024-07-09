@@ -134,10 +134,12 @@
   no more."
   [fields]
   (let [table-id->name-field (fields->table-id->name-field (pk-fields fields))]
-    (for [field fields]
-      ;; add matching `:name_field` if it's a PK
-      (assoc field :name_field (when (isa? (:semantic_type field) :type/PK)
-                                 (table-id->name-field (:table_id field)))))))
+    (for [field fields
+          :when (isa? (:semantic_type field) :type/PK)
+          :let [name-field (table-id->name-field (:table_id field))]]
+      (-> field
+          (assoc :name_field name-field)
+          (assoc :name_field_id name-field)))))
 
 ;; We hydrate the `:human_readable_field` for each Dimension using the usual hydration logic, so it contains columns we
 ;; don't want to return. The two functions below work to remove the unneeded ones.
