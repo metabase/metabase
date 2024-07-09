@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
+  setupFieldRemappingValuesEndpoint,
   setupFieldSearchValuesEndpoint,
   setupFieldValuesEndpoints,
 } from "__support__/server-mocks";
@@ -47,8 +48,18 @@ interface SetupOpts<T> {
   fieldId?: FieldId;
   searchFieldId?: FieldId;
   fieldValues?: GetFieldValuesResponse;
-  searchValues?: Record<string, GetFieldValuesResponse>;
-  remappedValues?: Record<string, GetFieldValuesResponse>;
+  searchValues?: SearchEntry[];
+  remappedValues?: RemappedEntry[];
+}
+
+interface SearchEntry {
+  value: string;
+  response: GetFieldValuesResponse;
+}
+
+interface RemappedEntry {
+  values: string[];
+  response: GetFieldValuesResponse;
 }
 
 async function setupStringPicker({
@@ -60,7 +71,8 @@ async function setupStringPicker({
   fieldId,
   searchFieldId = fieldId,
   fieldValues,
-  searchValues = {},
+  searchValues = [],
+  remappedValues = [],
 }: SetupOpts<string>) {
   const onChange = jest.fn();
   const onFocus = jest.fn();
@@ -70,12 +82,20 @@ async function setupStringPicker({
     setupFieldValuesEndpoints(fieldValues);
   }
   if (fieldId != null && searchFieldId != null) {
-    Object.entries(searchValues).forEach(([value, result]) => {
+    searchValues.forEach(({ value, response }) => {
       setupFieldSearchValuesEndpoint(
         fieldId,
         searchFieldId,
         value,
-        result.values,
+        response.values,
+      );
+    });
+    remappedValues.forEach(({ values, response }) => {
+      setupFieldRemappingValuesEndpoint(
+        fieldId,
+        searchFieldId,
+        values,
+        response.values,
       );
     });
   }
@@ -507,13 +527,16 @@ describe("StringFilterValuePicker", () => {
           values: [["Gadget"], ["Widget"]],
           has_more_values: true,
         }),
-        searchValues: {
-          g: createMockFieldValues({
-            field_id: fieldId,
-            values: [["Gadget"], ["Gizmo"]],
-            has_more_values: false,
-          }),
-        },
+        searchValues: [
+          {
+            value: "g",
+            response: createMockFieldValues({
+              field_id: fieldId,
+              values: [["Gadget"], ["Gizmo"]],
+              has_more_values: false,
+            }),
+          },
+        ],
       });
 
       const input = screen.getByPlaceholderText("Search by Category");
@@ -539,12 +562,15 @@ describe("StringFilterValuePicker", () => {
         column,
         values: [],
         fieldId,
-        searchValues: {
-          a: createMockFieldValues({
-            field_id: fieldId,
-            values: [["a@metabase.test"]],
-          }),
-        },
+        searchValues: [
+          {
+            value: "a",
+            response: createMockFieldValues({
+              field_id: fieldId,
+              values: [["a@metabase.test"]],
+            }),
+          },
+        ],
       });
 
       await userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
@@ -560,12 +586,15 @@ describe("StringFilterValuePicker", () => {
         column,
         values: ["b@metabase.test"],
         fieldId,
-        searchValues: {
-          a: createMockFieldValues({
-            field_id: fieldId,
-            values: [["a@metabase.test"]],
-          }),
-        },
+        searchValues: [
+          {
+            value: "a",
+            response: createMockFieldValues({
+              field_id: fieldId,
+              values: [["a@metabase.test"]],
+            }),
+          },
+        ],
       });
       expect(screen.getByText("b@metabase.test")).toBeInTheDocument();
 
@@ -578,19 +607,70 @@ describe("StringFilterValuePicker", () => {
       ]);
     });
 
-    it("should handle field values remapping", async () => {
+    it("should handle type/PK -> type/Name field values remapping", async () => {
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        fields: [
+          createPeopleIdField({
+            base_type: "type/Text",
+            effective_type: "type/Text",
+            has_field_values: "search",
+          }),
+        ],
+      });
+      const { query, stageIndex, findColumn } =
+        createQueryWithMetadata(metadata);
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column: findColumn("PEOPLE", "ID"),
+        values: ["b"],
+        fieldId: PEOPLE.ID,
+        searchFieldId: PEOPLE.NAME,
+        searchValues: [
+          {
+            value: "a",
+            response: createMockFieldValues({
+              field_id: PEOPLE.ID,
+              values: [["a", "a@metabase.test"]],
+            }),
+          },
+        ],
+        remappedValues: [
+          {
+            values: ["b"],
+            response: createMockFieldValues({
+              field_id: PEOPLE.ID,
+              values: [["b", "b@metabase.test"]],
+            }),
+          },
+        ],
+      });
+      expect(
+        await screen.findByText("b — b@metabase.test"),
+      ).toBeInTheDocument();
+
+      await userEvent.type(screen.getByLabelText("Filter value"), "a");
+      await userEvent.click(await screen.findByText("a — a@metabase.test"));
+      expect(onChange).toHaveBeenLastCalledWith(["b", "a"]);
+    });
+
+    it("should handle custom field values", async () => {
       const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
         values: [],
         fieldId,
-        searchValues: {
-          a: createMockFieldValues({
-            field_id: fieldId,
-            values: [["a-test", "a@metabase.test"]],
-          }),
-        },
+        searchValues: [
+          {
+            value: "a",
+            response: createMockFieldValues({
+              field_id: fieldId,
+              values: [["a-test", "a@metabase.test"]],
+            }),
+          },
+        ],
       });
 
       await userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
@@ -608,12 +688,15 @@ describe("StringFilterValuePicker", () => {
         column,
         values: [],
         fieldId,
-        searchValues: {
-          "a@b.com": createMockFieldValues({
-            field_id: fieldId,
-            values: [["testa@b.com"]],
-          }),
-        },
+        searchValues: [
+          {
+            value: "a@b.com",
+            response: createMockFieldValues({
+              field_id: fieldId,
+              values: [["testa@b.com"]],
+            }),
+          },
+        ],
       });
 
       await userEvent.type(
@@ -630,12 +713,15 @@ describe("StringFilterValuePicker", () => {
         column,
         values: ["a@b.com"],
         fieldId,
-        searchValues: {
-          "a@b.com": createMockFieldValues({
-            field_id: fieldId,
-            values: [["testa@b.com"]],
-          }),
-        },
+        searchValues: [
+          {
+            value: "a@b.com",
+            response: createMockFieldValues({
+              field_id: fieldId,
+              values: [["testa@b.com"]],
+            }),
+          },
+        ],
       });
 
       const input = screen.getByLabelText("Filter value");
@@ -651,12 +737,15 @@ describe("StringFilterValuePicker", () => {
         column,
         values: ["a@b.com"],
         fieldId,
-        searchValues: {
-          "a@b": createMockFieldValues({
-            field_id: fieldId,
-            values: [["a@b.com"]],
-          }),
-        },
+        searchValues: [
+          {
+            value: "a@b",
+            response: createMockFieldValues({
+              field_id: fieldId,
+              values: [["a@b.com"]],
+            }),
+          },
+        ],
       });
 
       await userEvent.type(screen.getByLabelText("Filter value"), "a@b");
