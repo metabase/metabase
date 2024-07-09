@@ -289,8 +289,6 @@
    ;; because the query processor doesn't produce nested display-names.
    {:display-name (lib.metadata.calculation/display-name query stage-number field-metadata)
     :long-display-name (lib.metadata.calculation/display-name query stage-number field-metadata :long)}
-   (when-let [desired-column-alias (:lib/desired-column-alias field-metadata)]
-     {:desired-column-alias desired-column-alias})
    ;; Include description and fingerprint if they're present on the column. Only proper fields or columns from a model
    ;; have these, not aggregations or expressions.
    (when-let [description (:description field-metadata)]

@@ -68,7 +68,8 @@ function getReturnedColumns(query: Lib.Query): ColumnInfo[] {
     .map(column => Lib.displayInfo(query, stageIndex, column))
     .map(columnInfo => ({
       name: columnInfo.name,
-      alias: columnInfo.desiredColumnAlias ?? columnInfo.name,
+      // TODO: "alias" is a slightly misleading name.
+      alias: Lib.columnKey(column),
       isAggregation: columnInfo.isAggregation,
     }));
 }
