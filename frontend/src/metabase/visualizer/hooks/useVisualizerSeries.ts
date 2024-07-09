@@ -79,7 +79,7 @@ export function useVisualizerSeries(initialCardIds: CardId[] = []) {
       return;
     }
 
-    dispatch(loadMetadataForCard(card));
+    await dispatch(loadMetadataForCard(card));
 
     return { card, data: dataset.data };
   };
@@ -87,17 +87,34 @@ export function useVisualizerSeries(initialCardIds: CardId[] = []) {
   const _fetchAdHocCardData = async (card: Card) => {
     const result = await MetabaseApi.dataset(card.dataset_query);
     if (result.data) {
-      dispatch(loadMetadataForCard(card));
+      await dispatch(loadMetadataForCard(card));
       return { card, data: result.data };
     }
   };
 
-  const updateSeriesCard = (index: number, attrs: Partial<Card>) => {
-    const nextSeries = assocIn(rawSeries, [index, "card"], {
-      ...rawSeries[index].card,
-      ...attrs,
-    });
-    setRawSeries(nextSeries);
+  const updateSeriesCard = async (
+    index: number,
+    attrs: Partial<Card>,
+    { runQuery = false } = {},
+  ) => {
+    if (!rawSeries[index]?.card) {
+      return;
+    }
+
+    if (runQuery) {
+      const { card } = rawSeries[index];
+      const nextCard = { ...card, ...attrs };
+      const nextSeries = await _fetchAdHocCardData(nextCard);
+      if (nextSeries) {
+        setRawSeries(assocIn(rawSeries, [index], nextSeries));
+      }
+    } else {
+      const nextSeries = assocIn(rawSeries, [index, "card"], {
+        ...rawSeries[index].card,
+        ...attrs,
+      });
+      setRawSeries(nextSeries);
+    }
   };
 
   const updateSeriesQuery = async (index: number, query: DatasetQuery) => {

@@ -13,6 +13,7 @@ import _ from "underscore";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
+import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 
 import { QueryEditorModal } from "../components/QueryEditorModal";
@@ -65,6 +66,10 @@ export function Visualizer({ location }: WithRouterProps) {
     }
   };
 
+  const handleChangeCardAndRun: OnChangeCardAndRun = ({ nextCard }) => {
+    updateSeriesCard(0, nextCard, { runQuery: true });
+  };
+
   const onDragEnd = (event: DragEndEvent) => {
     if (question) {
       const nextVizSettings = handleDragEnd(event, question.settings());
@@ -107,6 +112,7 @@ export function Visualizer({ location }: WithRouterProps) {
               series={series}
               onToggleVizSettings={() => setVizSettingsOpen(isOpen => !isOpen)}
               onChange={setVizSettings}
+              onChangeCardAndRun={handleChangeCardAndRun}
             />
           </Panel>
           {isVizSettingsOpen && (

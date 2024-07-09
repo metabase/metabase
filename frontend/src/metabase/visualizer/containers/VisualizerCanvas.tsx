@@ -1,4 +1,5 @@
 import { useDroppable } from "@dnd-kit/core";
+// eslint-disable-next-line no-restricted-imports
 import { ActionIcon } from "@mantine/core";
 import { useMemo } from "react";
 
@@ -7,6 +8,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Card, Flex, Group, Icon, Title, Stack } from "metabase/ui";
 import { hasAxes as checkHasAxes } from "metabase/visualizations";
 import BaseVisualization from "metabase/visualizations/components/Visualization";
+import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
@@ -17,18 +19,20 @@ interface VisualizerCanvasProps {
   series: Series;
   onToggleVizSettings: () => void;
   onChange: (settings: VisualizationSettings) => void;
+  onChangeCardAndRun: OnChangeCardAndRun;
 }
 
 export function VisualizerCanvas({
   series,
   onToggleVizSettings,
   onChange,
+  onChangeCardAndRun,
 }: VisualizerCanvasProps) {
   const metadata = useSelector(getMetadata);
 
-  const {setNodeRef} = useDroppable({
-    id: DROPPABLE_CANVAS_ID
-  })
+  const { setNodeRef } = useDroppable({
+    id: DROPPABLE_CANVAS_ID,
+  });
 
   const { metrics, dimensions } = useMemo(
     () => getMetricAndDimensionOptions(series),
@@ -104,6 +108,7 @@ export function VisualizerCanvas({
                 <BaseVisualization
                   rawSeries={displaySeries}
                   metadata={metadata}
+                  onChangeCardAndRun={onChangeCardAndRun}
                 />
                 <VisualizerAxis
                   columns={currentDimensions}
@@ -121,6 +126,7 @@ export function VisualizerCanvas({
                 // TableInteractive does a lot of work with Question and Metadata
                 // and it's currently crashing
                 isDashboard={series[0].card.display === "table"}
+                onChangeCardAndRun={onChangeCardAndRun}
               />
             </div>
           )}
