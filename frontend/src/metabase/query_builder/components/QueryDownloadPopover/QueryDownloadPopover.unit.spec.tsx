@@ -1,3 +1,4 @@
+import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
@@ -15,7 +16,7 @@ import {
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-import QueryDownloadPopover from "./QueryDownloadPopover";
+import { QueryDownloadPopover } from "./QueryDownloadPopover";
 
 registerVisualizations();
 
@@ -95,17 +96,22 @@ describe("QueryDownloadPopover", () => {
       const _userEvent = userEvent.setup();
 
       expect(screen.queryByText(/Unformatted/i)).not.toBeInTheDocument();
-      await fireEvent.keyDown(screen.getByText(new RegExp(format)), {
+      const downloadButton = () => {
+        return screen.getByRole("button", { name: new RegExp(format) });
+      };
+
+      await fireEvent.keyDown(downloadButton(), {
         key: "Alt",
       });
-      await act(
-        async () =>
-          await _userEvent.hover(screen.getByText(new RegExp(format))),
-      );
-      expect(await screen.findByText(/Unformatted/i)).toBeInTheDocument();
+
+      await act(async () => await _userEvent.hover(downloadButton()));
+
+      expect(
+        await within(downloadButton()).findByText(/Unformatted/i),
+      ).toBeVisible();
 
       await act(async () => {
-        await _userEvent.click(screen.getByText(new RegExp(format)));
+        await _userEvent.click(downloadButton());
       });
 
       expect(onDownload).toHaveBeenCalledWith({
@@ -120,15 +126,19 @@ describe("QueryDownloadPopover", () => {
     async format => {
       const { onDownload } = setup({ card: { ...TEST_CARD, display: "line" } });
 
+      const downloadButton = () => {
+        return screen.getByRole("button", { name: new RegExp(format) });
+      };
+
       expect(screen.queryByText(/Unformatted/i)).not.toBeInTheDocument();
-      await fireEvent.keyDown(screen.getByText(new RegExp(format)), {
+      await fireEvent.keyDown(downloadButton(), {
         key: "Alt",
       });
-      expect(screen.queryByText(/Unformatted/i)).not.toBeInTheDocument();
+      expect(
+        within(downloadButton()).queryByText(/Unformatted/i),
+      ).not.toBeInTheDocument();
 
-      await act(
-        async () => await userEvent.click(screen.getByText(new RegExp(format))),
-      );
+      await act(async () => await userEvent.click(downloadButton()));
 
       expect(onDownload).toHaveBeenCalledWith({
         type: format,
