@@ -793,12 +793,8 @@
       (lib.metadata/field metadata-providerable name-field-id))
 
     (lib.types.isa/foreign-key? column)
-      (or
-       (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
-         (lib.metadata/field metadata-providerable remap-field-id))
-       (when-let [fk-target-field-id (:fk-target-field-id column)]
-         (when-let [fk-target-field (lib.metadata/field metadata-providerable fk-target-field-id)]
-           (recur metadata-providerable fk-target-field))))))
+      (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
+        (lib.metadata/field metadata-providerable remap-field-id))))
 
 (mu/defn ^:private search-field :- [:maybe ::lib.schema.metadata/column]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
