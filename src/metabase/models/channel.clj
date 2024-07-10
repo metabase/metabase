@@ -18,6 +18,10 @@
   [_ {:keys [name]}]
   name)
 
+(defmethod serdes/hash-fields :model/Channel
+  [_database]
+  [:name :type])
+
 (doto :model/Channel
   (derive :metabase/model)
   (derive :hook/timestamped?))

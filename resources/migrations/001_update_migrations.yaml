@@ -8033,7 +8033,6 @@ databaseChangeLog:
                   name: details
                   remarks: Channel details, used to store authentication information or channel-specific settings
                   type: ${text.type}
-                  defaultValue: '{}'
                   constraints:
                     nullable: false
               - column:
