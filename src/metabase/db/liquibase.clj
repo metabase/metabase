@@ -13,7 +13,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.connection :as t2.conn])
+   [toucan2.connection :as t2.conn]
+   [toucan2.core :as t2])
   (:import
    (java.io StringWriter)
    (java.util List Map)
@@ -64,13 +65,6 @@
        :doc     "Liquibase setting used for upgrading a fresh instance or instances running version >= 45."}
   ^String changelog-file "liquibase.yaml")
 
-(defn changelog-table-name
-  "Return the proper changelog table name based on db type of the connection."
-  [^java.sql.Connection conn]
-  (if (= "PostgreSQL" (-> conn .getMetaData .getDatabaseProductName))
-    "databasechangelog"
-    "DATABASECHANGELOG"))
-
 (defn table-exists?
   "Check if a table exists."
   [table-name ^java.sql.Connection conn]
@@ -79,6 +73,26 @@
       jdbc/metadata-query
       seq
       boolean))
+
+(defmacro with-liquibase
+  "Execute body with an instance of a `Liquibase` bound to `liquibase-binding`.
+
+    (liquibase/with-liquibase [liquibase {:subname :postgres, ...}]
+      (liquibase/migrate-up-if-needed! liquibase))"
+  {:style/indent 1}
+  [[liquibase-binding conn-or-data-source] & body]
+  `(do-with-liquibase
+    ~conn-or-data-source
+    (fn [~(vary-meta liquibase-binding assoc :tag (symbol (.getCanonicalName Liquibase)))]
+      ~@body)))
+
+(defn changelog-table-name
+  "Return the proper changelog table name based on db type of the connection."
+  [liquibase-or-conn]
+  (if (instance? Liquibase liquibase-or-conn)
+    (.getDatabaseChangeLogTableName (.getDatabase ^Liquibase liquibase-or-conn))
+    (with-liquibase [liquibase liquibase-or-conn]
+      (changelog-table-name liquibase))))
 
 (defn- fresh-install?
   [^java.sql.Connection conn]
@@ -148,17 +162,13 @@
                     database       (database liquibase-conn)]
           (f* (liquibase conn database)))))))
 
-(defmacro with-liquibase
-  "Execute body with an instance of a `Liquibase` bound to `liquibase-binding`.
-
-    (liquibase/with-liquibase [liquibase {:subname :postgres, ...}]
-      (liquibase/migrate-up-if-needed! liquibase))"
-  {:style/indent 1}
-  [[liquibase-binding conn-or-data-source] & body]
-  `(do-with-liquibase
-    ~conn-or-data-source
-    (fn [~(vary-meta liquibase-binding assoc :tag (symbol (.getCanonicalName Liquibase)))]
-      ~@body)))
+(defn changelog-by-id
+  "Return the changelog row value for the given `changelog-id`."
+  [app-db changelog-id]
+  (let [table-name (case (:db-type app-db)
+                     (:postgres :h2) "databasechangelog"
+                     :mysql "DATABASECHANGELOG")]
+    (t2/query-one (format "select * from %s where id = '%s'" table-name changelog-id))))
 
 (defn migrations-sql
   "Return a string of SQL containing the DDL statements needed to perform unrun `liquibase` migrations, custom migrations will be ignored."
