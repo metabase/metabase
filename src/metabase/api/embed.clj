@@ -205,26 +205,26 @@
 (api/defendpoint GET "/card/:token/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
   embedded Cards."
-  [token field-id remapped-id value]
+  [token field-id remapped-id values]
   {field-id    ms/PositiveInt
    remapped-id ms/PositiveInt
-   value       ms/NonBlankString}
+   values      (ms/QueryVectorOf ms/NonBlankString)}
   (let [unsigned-token (embed/unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (api.embed.common/check-embedding-enabled-for-card card-id)
-    (api.public/card-field-remapped-values card-id field-id remapped-id value)))
+    (api.public/card-field-remapped-values card-id field-id remapped-id values)))
 
 (api/defendpoint GET "/dashboard/:token/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
   embedded Dashboards."
-  [token field-id remapped-id value]
+  [token field-id remapped-id values]
   {field-id    ms/PositiveInt
    remapped-id ms/PositiveInt
-   value       ms/NonBlankString}
+   values      (ms/QueryVectorOf ms/NonBlankString)}
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
-    (api.public/dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
+    (api.public/dashboard-field-remapped-values dashboard-id field-id remapped-id values)))
 
 (api/defendpoint GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
                                          :export-format api.dataset/export-format-regex]
