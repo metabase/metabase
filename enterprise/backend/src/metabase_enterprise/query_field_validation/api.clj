@@ -26,7 +26,7 @@
 
 (defn- cards-with-inactive-fields
   [sort-column sort-direction offset limit]
-  (let [additional-join       (condp = sort-column
+  (let [additional-joins      (condp = sort-column
                                 "name"           []
                                 "collection"     [[(t2/table-name :model/Collection) :coll] [:= :coll.id :c.collection_id]]
                                 "created_by"     [[(t2/table-name :model/User) :u] [:= :u.id :c.creator_id]]
@@ -34,12 +34,12 @@
         order-by-column       (condp = sort-column
                                 "name"           :c.name
                                 "collection"     :coll.name
-                                "created_by"     [:coalesce [:|| :u.first_name :u.last_name] :u.first_name :u.last_name :u.email]
+                                "created_by"     [:coalesce [:|| :u.first_name " " :u.last_name] :u.first_name :u.last_name :u.email]
                                 "last_edited_at" :c.updated_at)
         cards                 (t2/select :model/Card
                                          (merge
                                           {:from     [[(t2/table-name :model/Card) :c]]
-                                           :join     (concat card-joins additional-join)
+                                           :join     (concat card-joins additional-joins)
                                            :where    [:= :c.archived false]
                                            :order-by [[order-by-column (keyword sort-direction)]]}
                                           (when limit
@@ -58,9 +58,8 @@
                                                                         [:in :card_id (map :id cards)]]})))
 
         add-errors            (fn [{:keys [id] :as card}]
-                                (update-in card
+                                (assoc-in card
                                            [:errors :inactive-fields]
-                                           concat
                                            (for [{:keys [table_name column_name]} (card-id->query-fields id)]
                                              {:table table_name :field column_name})))]
     (map add-errors (t2/hydrate cards :collection :creator))))
