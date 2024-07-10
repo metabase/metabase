@@ -51,7 +51,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: | # js
-            github.rest.actions.createWorkflowDispatch({
+            await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'release-milestone-check.yml',

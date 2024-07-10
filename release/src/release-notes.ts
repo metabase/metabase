@@ -165,13 +165,7 @@ export async function publishRelease({
     throw new Error(`Invalid version string: ${version}`);
   }
 
-  const issues = await getMilestoneIssues({
-    version,
-    github,
-    owner,
-    repo,
-    milestoneStatus: 'open',
-  });
+  const issues = await getMilestoneIssues({ version, github, owner, repo });
 
   const isLatest: 'true' | 'false' = !isEnterpriseVersion(version) && await isLatestRelease({ version, github, owner, repo })
     ? 'true'

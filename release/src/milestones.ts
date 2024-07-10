@@ -87,11 +87,9 @@ async function getIssuesWithOlderMilestones({
   return new Set(issues
     .filter(isNotNull)
     .filter((issue) => {
-      if (issue.milestone) {
-        if (versionSort(issue.milestone.title, releaseMilestone.title) < 0) {
-          console.log(`  Issue #${issue.number} is in an older milestone`, issue.milestone.title);
-          return true;
-        }
+      if (issue.milestone && versionSort(issue.milestone.title, releaseMilestone.title) < 0) {
+        console.log(`  Issue #${issue.number} is in an older milestone`, issue.milestone.title);
+        return true;
       }
 
       return false;
@@ -519,7 +517,7 @@ const releaseIssueProject = {
   id: 'PVT_kwDOAKCINc4Ajw5A',
   commentColId: 'PVTF_lADOAKCINc4Ajw5AzgcE7NA',
   versionColId: 'PVTF_lADOAKCINc4Ajw5AzgcE7PY',
-}
+};
 
 async function addIssueToProject({
   github,
@@ -552,6 +550,11 @@ async function addIssueToProject({
   }`) as { addProjectV2ItemById: { item: { id: string } } };
 
   const itemId = response.addProjectV2ItemById.item.id;
+
+  if (!itemId) {
+    console.log(`Failed to add issue ${issueNumber} to project`);
+    return;
+  }
 
   await github.graphql(`
     mutation {
