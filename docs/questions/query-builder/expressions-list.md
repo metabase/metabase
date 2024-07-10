@@ -569,6 +569,8 @@ Syntax: `datetimeAdd(column, amount, unit)`.
 
 Example: `datetimeAdd("2021-03-25", 1, "month")` would return the value `2021-04-25`, displayed as `April 25, 2021`.
 
+`amount` must be an integer, not a fractional number.
+
 Related: [between](#between), [datetimeSubtract](#datetimesubtract).
 
 ### [datetimeDiff](./expressions/datetimediff.md)
@@ -586,6 +588,8 @@ Subtracts some unit of time from a date or timestamp value.
 Syntax: `datetimeSubtract(column, amount, unit)`.
 
 Example: `datetimeSubtract("2021-03-25", 1, "month")` would return the value `2021-02-25`, displayed as `February 25, 2021`.
+
+`amount` must be an integer, not a fractional number.
 
 Related: [between](#between), [datetimeAdd](#datetimeadd).
 
