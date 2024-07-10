@@ -1,7 +1,7 @@
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
-  ORDERS_QUESTION_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   assertNotEmpty,
@@ -39,7 +39,6 @@ describeEE(
           .findByTestId("public-link-input")
           .invoke("val")
           .then(url => {
-            // cy.wrap(url).as("publicLink");
             publicLink = url as string;
           });
 
@@ -86,9 +85,69 @@ describeEE(
           {
             publicUid: uuid,
             fileType: "csv",
-            questionId: ORDERS_QUESTION_ID,
+            questionId: ORDERS_BY_YEAR_QUESTION_ID,
             isDashboard: true,
             dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
+          },
+          assertNotEmpty,
+        );
+      });
+    });
+
+    describe("Public questions", () => {
+      let publicLink: string;
+
+      before(() => {
+        restore("default");
+        cy.signInAsAdmin();
+        setTokenFeatures("all");
+
+        cy.visit(`/question/${ORDERS_BY_YEAR_QUESTION_ID}`);
+
+        cy.icon("share").click();
+        popover().findByText("Create a public link").click();
+
+        popover()
+          .findByTestId("public-link-input")
+          .invoke("val")
+          .then(url => {
+            publicLink = url as string;
+          });
+
+        cy.signOut();
+      });
+
+      it("#downloads=false should disable result downloads", () => {
+        cy.visit(`${publicLink}#downloads=false`);
+        waitLoading();
+
+        cy.findByTestId("download-button").should("not.exist");
+      });
+
+      it("should be able to download as png", () => {
+        cy.visit(`${publicLink}`);
+        waitLoading();
+
+        cy.findByTestId("download-button").click();
+        popover().findByText(".png").click();
+
+        cy.verifyDownload(".png", { contains: true });
+      });
+
+      it("should be able to download a public dashcard as CSV", () => {
+        cy.visit(`${publicLink}`);
+        waitLoading();
+
+        cy.findByTestId("download-button").should("exist");
+
+        const uuid = publicLink.split("/").at(-1);
+
+        downloadAndAssert(
+          {
+            publicUid: uuid,
+            fileType: "csv",
+            questionId: ORDERS_BY_YEAR_QUESTION_ID,
+            isDashboard: false,
           },
           assertNotEmpty,
         );
