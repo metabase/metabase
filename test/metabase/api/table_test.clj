@@ -224,7 +224,15 @@
                                      :has_field_values           "none"
                                      :database_required          false
                                      :database_indexed           true
-                                     :database_is_auto_increment true)
+                                     :database_is_auto_increment true
+                                     :name_field                 {:base_type "type/Text",
+                                                                  :display_name "Name",
+                                                                  :fk_target_field_id nil,
+                                                                  :has_field_values "list",
+                                                                  :id (mt/id :users :name),
+                                                                  :name "NAME",
+                                                                  :semantic_type "type/Name",
+                                                                  :table_id (mt/id :users)})
                               (assoc (field-details (t2/select-one Field :id (mt/id :users :name)))
                                      :semantic_type              "type/Name"
                                      :table_id                   (mt/id :users)
@@ -240,7 +248,8 @@
                                      :position                   1
                                      :database_position          1
                                      :database_required          false
-                                     :database_is_auto_increment false)
+                                     :database_is_auto_increment false
+                                     :name_field                 nil)
                               (assoc (field-details (t2/select-one Field :id (mt/id :users :last_login)))
                                      :table_id                   (mt/id :users)
                                      :name                       "LAST_LOGIN"
@@ -255,7 +264,8 @@
                                      :position                   2
                                      :database_position          2
                                      :database_required          false
-                                     :database_is_auto_increment false)
+                                     :database_is_auto_increment false
+                                     :name_field                 nil)
                               (assoc (field-details (t2/select-one Field :table_id (mt/id :users), :name "PASSWORD"))
                                      :semantic_type              "type/Category"
                                      :table_id                   (mt/id :users)
@@ -269,7 +279,8 @@
                                      :position                   3
                                      :database_position          3
                                      :database_required          false
-                                     :database_is_auto_increment false)]
+                                     :database_is_auto_increment false
+                                     :name_field                 nil)]
                :id           (mt/id :users)})
              (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
           "Make sure that getting the User table *does* include info about the password field, but not actual values themselves"))))
@@ -295,7 +306,15 @@
                                      :has_field_values "none"
                                      :database_indexed  true
                                      :database_required false
-                                     :database_is_auto_increment true)
+                                     :database_is_auto_increment true
+                                     :name_field {:base_type "type/Text",
+                                                  :display_name "Name",
+                                                  :fk_target_field_id nil,
+                                                  :has_field_values "list",
+                                                  :id (mt/id :users :name),
+                                                  :name "NAME",
+                                                  :semantic_type "type/Name",
+                                                  :table_id (mt/id :users)})
                               (assoc (field-details (t2/select-one Field :id (mt/id :users :name)))
                                      :table_id         (mt/id :users)
                                      :semantic_type     "type/Name"
@@ -308,7 +327,8 @@
                                      :position          1
                                      :database_position 1
                                      :database_required false
-                                     :database_is_auto_increment false)
+                                     :database_is_auto_increment false
+                                     :name_field        nil)
                               (assoc (field-details (t2/select-one Field :id (mt/id :users :last_login)))
                                      :table_id                 (mt/id :users)
                                      :name                     "LAST_LOGIN"
@@ -322,7 +342,8 @@
                                      :position                 2
                                      :database_position        2
                                      :database_required        false
-                                     :database_is_auto_increment false)]
+                                     :database_is_auto_increment false
+                                     :name_field               nil)]
                :id           (mt/id :users)})
              (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users))))
           "Make sure that getting the User table does *not* include password info"))))
@@ -533,7 +554,15 @@
                               :has_field_values  "none"
                               :database_required false
                               :database_indexed  true
-                              :database_is_auto_increment true})
+                              :database_is_auto_increment true
+                              :name_field        {:base_type "type/Text",
+                                                  :display_name "Name",
+                                                  :fk_target_field_id nil,
+                                                  :has_field_values "list",
+                                                  :id (mt/id :categories :name),
+                                                  :name "NAME",
+                                                  :semantic_type "type/Name",
+                                                  :table_id (mt/id :categories)}})
                             (merge
                              (field-details (t2/select-one Field :id (mt/id :categories :name)))
                              {:table_id                   (mt/id :categories)
@@ -549,7 +578,8 @@
                               :database_position          1
                               :position                   1
                               :database_required          true
-                              :database_is_auto_increment false})]
+                              :database_is_auto_increment false
+                              :name_field                 nil})]
              :id           (mt/id :categories)})
            (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))))))
 

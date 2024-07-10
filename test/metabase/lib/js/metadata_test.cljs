@@ -38,7 +38,8 @@
                                  :id       72
                                  :name     "Category ID [external remap]"
                                  :field-id 67}}
-           (lib.metadata/field metadata-provider 36)))))
+           (let [x (lib.metadata/field metadata-provider 36)]
+             (js/console.log x))))))
 
 (def ^:private mock-field-metadata-with-internal-remap
   #js {"id"               33

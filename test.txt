@@ -1,0 +1,1276 @@
+yarn run v1.22.17
+$ yarn && shadow-cljs compile test && node target/node-tests.js
+$ echo $npm_execpath | grep -q yarn || echo '\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\033[0m'
+[1/5] Validating package.json...
+[2/5] Resolving packages...
+success Already up-to-date.
+$ patch-package
+patch-package 8.0.0
+Applying patches...
+@storybook/core-common@6.5.16 ✔
+echarts@5.5.0 ✔
+echarts@5.5.1-rc.1 ✔
+$ husky install
+husky - Git hooks installed
+shadow-cljs - connected to server
+[:test] Compiling ...
+Failed reading cache for metabase.lib.util.match-test: com.fasterxml.jackson.core.io.JsonEOFException: Unexpected end-of-input: expected close marker for Array (start marker at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 547664])
+ at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 547686]
+Failed writing cache for metabase.lib.util.match-test: java.lang.Exception: Not supported: class java.time.Instant
+========= Running Tests =======================
+
+Testing metabase.legacy-mbql.js-test
+
+Testing metabase.legacy-mbql.normalize-test
+[metabase.legacy-mbql.util] ":minute is not a valid temporal unit for :type/Date; not adding to clause [:field \"date_seen\" {:base-type :type/Date}]"
+
+Testing metabase.legacy-mbql.schema-test
+
+Testing metabase.legacy-mbql.util-test
+[metabase.legacy-mbql.util] ":minute is not a valid temporal unit for :type/Date; not adding to clause [:field \"t\" {:base-type :type/Date}]"
+
+Testing metabase.lib.aggregation-test
+
+Testing metabase.lib.binning-test
+
+Testing metabase.lib.binning.util-test
+
+Testing metabase.lib.breakout-test
+
+Testing metabase.lib.card-test
+
+Testing metabase.lib.column-group-test
+
+Testing metabase.lib.convert-test
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value {:lib/type :mbql/query, :stages [{:lib/type :mbql.stage/mbql}]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value {:lib/type :mbql/query, :stages [{:lib/type :mbql.stage/mbql}]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database],\n    :schema #object[malli.core.t_malli$core72512],\n    :value nil,\n    :type :malli.core/missing-key}\n   {:path [0 0 :stages 0 1 0 0 :mbql.stage/mbql],\n    :in [:stages 0], \n    :schema #object[malli.core.t_malli$core73185], \n    :value {:lib/type :mbql.stage/mbql}})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value {:lib/type :mbql/query, :stages [{:lib/type :mbql.stage/mbql}], :database 1},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value {:lib/type :mbql/query, :stages [{:lib/type :mbql.stage/mbql}], :database 1},\n  :errors\n  ({:path [0 0 :stages 0 1 0 0 :mbql.stage/mbql],\n    :in [:stages 0], \n    :schema #object[malli.core.t_malli$core73185], \n    :value {:lib/type :mbql.stage/mbql}})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value {:lib/type :mbql/query, :stages [{:lib/type :mbql.stage/mbql}], :database 1},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value {:lib/type :mbql/query, :stages [{:lib/type :mbql.stage/mbql}], :database 1},\n  :errors\n  ({:path [0 0 :stages 0 1 0 0 :mbql.stage/mbql],\n    :in [:stages 0], \n    :schema #object[malli.core.t_malli$core73185], \n    :value {:lib/type :mbql.stage/mbql}})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 224,\n    :order-by\n    [[:asc\n      {:lib/uuid \"ae3a5466-a9c3-4f0e-b717-beb03db71366\"}\n      [:xfield {:lib/uuid \"ada06acd-868e-4284-8167-ff344ea00500\"} 1 nil]]]}],\n  :database 1},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 224,\n     :order-by\n     [[:asc\n       {:lib/uuid \"ae3a5466-a9c3-4f0e-b717-beb03db71366\"}\n       [:xfield {:lib/uuid \"ada06acd-868e-4284-8167-ff344ea00500\"} 1 nil]]]}],\n   :database 1},\n  :errors\n  ({:path [0 0 :stages 0 0 0 0 1 :mbql.stage/mbql 0 0 :order-by 0 0 0 :asc 0 2 0 0 true 0 :malli.core/default],\n    :in [:stages 0 :order-by 0 2],\n    :schema #object[malli.core.t_malli$core73185],\n    :value [:xfield {:lib/uuid \"ada06acd-868e-4284-8167-ff344ea00500\"} 1 nil]}\n   {:path [0 0 :stages 0 0 0 0 1 :mbql.stage/mbql 0 0 :order-by 0 0 0 :asc 0 2 0 1],\n    :in [:stages 0 :order-by 0 2],\n    :schema #object[malli.core.t_malli$core73185],\n    :value [:xfield {:lib/uuid \"ada06acd-868e-4284-8167-ff344ea00500\"} 1 nil], \n    :type nil})}}\n"
+Clean: Removing bad clause due to error! {
+  meta: [1mnull[22m,
+  cnt: [33m3[39m,
+  shift: [33m5[39m,
+  root: {
+    edit: [1mnull[22m,
+    arr: [
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m
+    ]
+  },
+  tail: [
+    {
+      ns: [1mnull[22m,
+      name: [32m'order-by'[39m,
+      fqn: [32m'order-by'[39m,
+      _hash: [33m1527318070[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    [33m0[39m,
+    [33m2[39m
+  ],
+  __hash: [1mnull[22m,
+  [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m167666463[39m,
+  [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m401412[39m
+} {:order-by [[nil nil ["not a known MBQL clause"]]]} {:order-by [[nil nil [:xfield {:lib/uuid "ada06acd-868e-4284-8167-ff344ea00500"} 1 nil]]]}
+
+Clean: Removing bad clause due to error! {
+  meta: [1mnull[22m,
+  cnt: [33m2[39m,
+  shift: [33m5[39m,
+  root: {
+    edit: [1mnull[22m,
+    arr: [
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m
+    ]
+  },
+  tail: [
+    {
+      ns: [1mnull[22m,
+      name: [32m'order-by'[39m,
+      fqn: [32m'order-by'[39m,
+      _hash: [33m1527318070[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    [33m0[39m
+  ],
+  __hash: [1mnull[22m,
+  [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m167666463[39m,
+  [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m401412[39m
+} :malli.core/tuple-size {:order-by [[:asc {:lib/uuid "ae3a5466-a9c3-4f0e-b717-beb03db71366"}]]}
+
+Clean: Removing bad clause due to error! {
+  meta: [1mnull[22m,
+  cnt: [33m1[39m,
+  shift: [33m5[39m,
+  root: {
+    edit: [1mnull[22m,
+    arr: [
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m
+    ]
+  },
+  tail: [
+    {
+      ns: [1mnull[22m,
+      name: [32m'order-by'[39m,
+      fqn: [32m'order-by'[39m,
+      _hash: [33m1527318070[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    }
+  ],
+  __hash: [1mnull[22m,
+  [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m167666463[39m,
+  [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m401412[39m
+} :malli.core/limits {:order-by []}
+
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 224,\n    :filters\n    [[:=\n      {:lib/uuid \"86a6b5db-7540-44ff-af87-04d037b3d237\"}\n      [:xfield {:lib/uuid \"5e268592-ee98-4b1a-a3a0-bf86ba21461b\"} 1 nil]]]}],\n  :database 1},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 224,\n     :filters\n     [[:=\n       {:lib/uuid \"86a6b5db-7540-44ff-af87-04d037b3d237\"}\n       [:xfield {:lib/uuid \"5e268592-ee98-4b1a-a3a0-bf86ba21461b\"} 1 nil]]]}],\n   :database 1},\n  :errors\n  ({:path\n    [0\n     0\n     :stages\n     0\n     0\n     0\n     0\n     1\n     :mbql.stage/mbql\n     0\n     0\n     :filters\n     0\n     0\n     0\n     0\n     0\n     true\n     0\n     :=\n     0\n     0\n     :args\n     0\n     0\n     0\n     0\n     true\n     0\n     :malli.core/default],\n    :in [:stages 0 :filters 0 2],\n    :schema #object[malli.core.t_malli$core73185],\n    :value [:xfield {:lib/uuid \"5e268592-ee98-4b1a-a3a0-bf86ba21461b\"} 1 nil]}\n   {:path [0 0 :stages 0 0 0 0 1 :mbql.stage/mbql 0 0 :filters 0 0 0 0 0 true 0 := 0 0 :args 0 0 0 1],\n    :in [:stages 0 :filters 0 2],\n    :schema #object[malli.core.t_malli$core73185],\n    :value [:xfield {:lib/uuid \"5e268592-ee98-4b1a-a3a0-bf86ba21461b\"} 1 nil], \n    :type nil})}}\n"
+Clean: Removing bad clause due to error! {
+  meta: [1mnull[22m,
+  cnt: [33m3[39m,
+  shift: [33m5[39m,
+  root: {
+    edit: [1mnull[22m,
+    arr: [
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m
+    ]
+  },
+  tail: [
+    {
+      ns: [1mnull[22m,
+      name: [32m'filters'[39m,
+      fqn: [32m'filters'[39m,
+      _hash: [33m974726919[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    [33m0[39m,
+    [33m2[39m
+  ],
+  __hash: [1mnull[22m,
+  [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m167666463[39m,
+  [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m401412[39m
+} {:filters [[nil nil ["not a known MBQL clause"]]]} {:filters [[nil nil [:xfield {:lib/uuid "5e268592-ee98-4b1a-a3a0-bf86ba21461b"} 1 nil]]]}
+
+Clean: Removing bad clause due to error! {
+  meta: [1mnull[22m,
+  cnt: [33m3[39m,
+  shift: [33m5[39m,
+  root: {
+    edit: [1mnull[22m,
+    arr: [
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m
+    ]
+  },
+  tail: [
+    {
+      ns: [1mnull[22m,
+      name: [32m'filters'[39m,
+      fqn: [32m'filters'[39m,
+      _hash: [33m974726919[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    [33m0[39m,
+    [33m2[39m
+  ],
+  __hash: [1mnull[22m,
+  [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m167666463[39m,
+  [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m401412[39m
+} :malli.core/end-of-input {:filters [[:= {:lib/uuid "86a6b5db-7540-44ff-af87-04d037b3d237"}]]}
+
+Clean: Removing bad clause due to error! {
+  meta: [1mnull[22m,
+  cnt: [33m1[39m,
+  shift: [33m5[39m,
+  root: {
+    edit: [1mnull[22m,
+    arr: [
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m
+    ]
+  },
+  tail: [
+    {
+      ns: [1mnull[22m,
+      name: [32m'filters'[39m,
+      fqn: [32m'filters'[39m,
+      _hash: [33m974726919[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    }
+  ],
+  __hash: [1mnull[22m,
+  [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m167666463[39m,
+  [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m401412[39m
+} :malli.core/limits {:filters []}
+
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :joins\n    [{:conditions\n      [[:=\n        {:lib/uuid \"debba5fa-64c9-416e-931d-c183d5297202\"}\n        [:field {:lib/uuid \"91f6a7aa-a7c5-456f-be4c-f9faa734f557\"} 2]\n        [:xfield {:lib/uuid \"62a24aaa-0f2a-4dfd-abaa-2a2de51bacd1\"} 2 nil]]],\n      :lib/type :mbql/join,\n      :stages [{:lib/type :mbql.stage/mbql, :source-table 3}],\n      :lib/options {:lib/uuid \"43e7e78b-e2a2-419b-9ad5-bc35fd1c1a08\"},\n      :alias \"__join\"}],\n    :source-table 4}],\n  :database 5},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :joins\n     [{:conditions\n       [[:=\n         {:lib/uuid \"debba5fa-64c9-416e-931d-c183d5297202\"}\n         [:field {:lib/uuid \"91f6a7aa-a7c5-456f-be4c-f9faa734f557\"} 2]\n         [:xfield {:lib/uuid \"62a24aaa-0f2a-4dfd-abaa-2a2de51bacd1\"} 2 nil]]],\n       :lib/type :mbql/join,\n       :stages [{:lib/type :mbql.stage/mbql, :source-table 3}],\n       :lib/options {:lib/uuid \"43e7e78b-e2a2-419b-9ad5-bc35fd1c1a08\"},\n       :alias \"__join\"}],\n     :source-table 4}],\n   :database 5},\n  :errors\n  ({:path\n    [0\n     0\n     :stages\n     0\n     0\n     0\n     0\n     1\n     :mbql.stage/mbql\n     0\n     0\n     :joins\n     0\n     0\n     0\n     0\n     :conditions\n     0\n     0\n     0\n     0\n     true\n     0\n     :=\n     0\n     0\n     :args\n     0\n     0\n     0\n     0\n     true\n     0\n     :malli.core/default],\n    :in [:stages 0 :joins 0 :conditions 0 3],\n    :schema #object[malli.core.t_malli$core73185],\n    :value [:xfield {:lib/uuid \"62a24aaa-0f2a-4dfd-abaa-2a2de51bacd1\"} 2 nil]}\n   {:path [0 0 :stages 0 0 0 0 1 :mbql.stage/mbql 0 0 :joins 0 0 0 0 :conditions 0 0 0 0 true 0 := 0 0 :args 0 0 0 1],\n    :in [:stages 0 :joins 0 :conditions 0 3],\n    :schema #object[malli.core.t_malli$core73185],\n    :value [:xfield {:lib/uuid \"62a24aaa-0f2a-4dfd-abaa-2a2de51bacd1\"} 2 nil], \n    :type nil})}}\n"
+Clean: Removing bad clause due to error! {
+  meta: [1mnull[22m,
+  cnt: [33m5[39m,
+  shift: [33m5[39m,
+  root: {
+    edit: [1mnull[22m,
+    arr: [
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m
+    ]
+  },
+  tail: [
+    {
+      ns: [1mnull[22m,
+      name: [32m'joins'[39m,
+      fqn: [32m'joins'[39m,
+      _hash: [33m1033962699[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    [33m0[39m,
+    {
+      ns: [1mnull[22m,
+      name: [32m'conditions'[39m,
+      fqn: [32m'conditions'[39m,
+      _hash: [33m-1647236270[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    [33m0[39m,
+    [33m3[39m
+  ],
+  __hash: [1mnull[22m,
+  [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m167666463[39m,
+  [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m401412[39m
+} {:joins [{:conditions [[nil nil nil ["not a known MBQL clause"]]]}]} {:joins [{:conditions [[nil nil nil [:xfield {:lib/uuid "62a24aaa-0f2a-4dfd-abaa-2a2de51bacd1"} 2 nil]]]}]}
+
+Clean: Removing bad clause due to error! {
+  meta: [1mnull[22m,
+  cnt: [33m5[39m,
+  shift: [33m5[39m,
+  root: {
+    edit: [1mnull[22m,
+    arr: [
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m
+    ]
+  },
+  tail: [
+    {
+      ns: [1mnull[22m,
+      name: [32m'joins'[39m,
+      fqn: [32m'joins'[39m,
+      _hash: [33m1033962699[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    [33m0[39m,
+    {
+      ns: [1mnull[22m,
+      name: [32m'conditions'[39m,
+      fqn: [32m'conditions'[39m,
+      _hash: [33m-1647236270[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    [33m0[39m,
+    [33m3[39m
+  ],
+  __hash: [1mnull[22m,
+  [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m167666463[39m,
+  [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m401412[39m
+} :malli.core/end-of-input {:joins
+ [{:conditions
+   [[:=
+     {:lib/uuid "debba5fa-64c9-416e-931d-c183d5297202"}
+     [:field {:lib/uuid "91f6a7aa-a7c5-456f-be4c-f9faa734f557"} 2]]]}]}
+
+Clean: Removing bad clause due to error! {
+  meta: [1mnull[22m,
+  cnt: [33m3[39m,
+  shift: [33m5[39m,
+  root: {
+    edit: [1mnull[22m,
+    arr: [
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m
+    ]
+  },
+  tail: [
+    {
+      ns: [1mnull[22m,
+      name: [32m'joins'[39m,
+      fqn: [32m'joins'[39m,
+      _hash: [33m1033962699[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    [33m0[39m,
+    {
+      ns: [1mnull[22m,
+      name: [32m'conditions'[39m,
+      fqn: [32m'conditions'[39m,
+      _hash: [33m-1647236270[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    }
+  ],
+  __hash: [1mnull[22m,
+  [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m167666463[39m,
+  [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m401412[39m
+} :malli.core/limits {:joins [{:conditions []}]}
+
+Clean: Removing bad clause due to error! {
+  meta: [1mnull[22m,
+  cnt: [33m3[39m,
+  shift: [33m5[39m,
+  root: {
+    edit: [1mnull[22m,
+    arr: [
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m
+    ]
+  },
+  tail: [
+    {
+      ns: [1mnull[22m,
+      name: [32m'joins'[39m,
+      fqn: [32m'joins'[39m,
+      _hash: [33m1033962699[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    [33m0[39m,
+    {
+      ns: [1mnull[22m,
+      name: [32m'conditions'[39m,
+      fqn: [32m'conditions'[39m,
+      _hash: [33m-1647236270[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    }
+  ],
+  __hash: [1mnull[22m,
+  [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m167666463[39m,
+  [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m401412[39m
+} :malli.core/missing-key {:joins
+ [{:lib/type :mbql/join,
+   :stages [{:lib/type :mbql.stage/mbql, :source-table 3}],
+   :lib/options {:lib/uuid "43e7e78b-e2a2-419b-9ad5-bc35fd1c1a08"}, 
+   :alias "__join"}]}
+
+Clean: Removing bad clause due to error! {
+  meta: [1mnull[22m,
+  cnt: [33m1[39m,
+  shift: [33m5[39m,
+  root: {
+    edit: [1mnull[22m,
+    arr: [
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m
+    ]
+  },
+  tail: [
+    {
+      ns: [1mnull[22m,
+      name: [32m'joins'[39m,
+      fqn: [32m'joins'[39m,
+      _hash: [33m1033962699[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    }
+  ],
+  __hash: [1mnull[22m,
+  [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m167666463[39m,
+  [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m401412[39m
+} :malli.core/limits {:joins []}
+
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :joins\n    [{:fields [[:xfield {:lib/uuid \"f2a7d27c-4ec1-4183-9e6f-4219db11c409\"} 2 nil]],\n      :conditions\n      [[:=\n        {:lib/uuid \"736292c6-b1c5-459a-9d20-0f70f244fc23\"}\n        [:field {:lib/uuid \"90da0b68-f418-419f-a8ad-ed7000486d96\"} 2]\n        [:field {:lib/uuid \"a32633be-f8e1-49f7-91a3-960e8dceae75\"} 2]]],\n      :lib/type :mbql/join,\n      :stages [{:lib/type :mbql.stage/mbql, :source-table 3}],\n      :lib/options {:lib/uuid \"03cdd7b1-7258-473d-bb32-65d6212c60fd\"},\n      :alias \"__join\"}],\n    :source-table 4}],\n  :database 5},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :joins\n     [{:fields [[:xfield {:lib/uuid \"f2a7d27c-4ec1-4183-9e6f-4219db11c409\"} 2 nil]],\n       :conditions\n       [[:=\n         {:lib/uuid \"736292c6-b1c5-459a-9d20-0f70f244fc23\"}\n         [:field {:lib/uuid \"90da0b68-f418-419f-a8ad-ed7000486d96\"} 2]\n         [:field {:lib/uuid \"a32633be-f8e1-49f7-91a3-960e8dceae75\"} 2]]],\n       :lib/type :mbql/join,\n       :stages [{:lib/type :mbql.stage/mbql, :source-table 3}],\n       :lib/options {:lib/uuid \"03cdd7b1-7258-473d-bb32-65d6212c60fd\"},\n       :alias \"__join\"}],\n     :source-table 4}],\n   :database 5},\n  :errors\n  ({:path [0 0 :stages 0 0 0 0 1 :mbql.stage/mbql 0 0 :joins 0 0 0 0 :fields 0 false 0 0 0],\n    :in [:stages 0 :joins 0 :fields 0],\n    :schema #object[malli.core.t_malli$core72949],\n    :value [:xfield {:lib/uuid \"f2a7d27c-4ec1-4183-9e6f-4219db11c409\"} 2 nil],\n    :type :malli.core/tuple-size}\n   {:path [0 0 :stages 0 0 0 0 1 :mbql.stage/mbql 0 0 :joins 0 0 0 0 :fields 0 false 0 0 1 :dispatch-type/integer 0],\n    :in [:stages 0 :joins 0 :fields 0],\n    :schema #object[malli.core.t_malli$core72949],\n    :value [:xfield {:lib/uuid \"f2a7d27c-4ec1-4183-9e6f-4219db11c409\"} 2 nil], \n    :type :malli.core/tuple-size})}}\n"
+Clean: Removing bad clause due to error! {
+  meta: [1mnull[22m,
+  cnt: [33m4[39m,
+  shift: [33m5[39m,
+  root: {
+    edit: [1mnull[22m,
+    arr: [
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m
+    ]
+  },
+  tail: [
+    {
+      ns: [1mnull[22m,
+      name: [32m'joins'[39m,
+      fqn: [32m'joins'[39m,
+      _hash: [33m1033962699[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    [33m0[39m,
+    {
+      ns: [1mnull[22m,
+      name: [32m'fields'[39m,
+      fqn: [32m'fields'[39m,
+      _hash: [33m-1932066230[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    [33m0[39m
+  ],
+  __hash: [1mnull[22m,
+  [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m167666463[39m,
+  [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m401412[39m
+} :malli.core/tuple-size {:joins [{:fields [[:xfield {:lib/uuid "f2a7d27c-4ec1-4183-9e6f-4219db11c409"} 2 nil]]}]}
+
+Clean: Removing bad clause due to error! {
+  meta: [1mnull[22m,
+  cnt: [33m3[39m,
+  shift: [33m5[39m,
+  root: {
+    edit: [1mnull[22m,
+    arr: [
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m
+    ]
+  },
+  tail: [
+    {
+      ns: [1mnull[22m,
+      name: [32m'joins'[39m,
+      fqn: [32m'joins'[39m,
+      _hash: [33m1033962699[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    [33m0[39m,
+    {
+      ns: [1mnull[22m,
+      name: [32m'fields'[39m,
+      fqn: [32m'fields'[39m,
+      _hash: [33m-1932066230[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    }
+  ],
+  __hash: [1mnull[22m,
+  [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m167666463[39m,
+  [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m401412[39m
+} :malli.core/limits {:joins [{:fields []}]}
+
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :aggregation\n    [[:sum\n      {:lib/uuid \"292aedc3-d147-4058-82df-d3e52e078103\"}\n      [:case\n       {:lib/uuid \"2467a86a-347d-4b85-81f4-9fd020f50a0b\"}\n       [[[:<\n          {:lib/uuid \"66603308-1cb8-438a-b1e1-e18c91abc1b0\"}\n          [:field {:lib/uuid \"be40c6c2-6e58-4f0e-a5ff-4345e52e461f\"} 139657]\n          2]\n         [:field {:lib/uuid \"076e069c-b0a1-4be5-bf02-ecbce0540262\"} 139657]]]\n       0]]],\n    :expressions [[:+ {:lib/uuid \"2ba7fb17-6d83-4c57-8869-b4d536f49bc1\", :lib/expression-name \"custom\"} 1 1]],\n    :breakout\n    [[:expression {:lib/uuid \"1ad975ab-d0ed-420f-a6df-a17f1ed0902b\"} \"expr1\"]\n     [:expression {:lib/uuid \"c74e5344-be1a-4c32-b091-3f7710cdbcd0\"} \"expr2\"]],\n    :order-by [[:expression {:lib/uuid \"cb1f4e2c-585b-47db-9e9e-d83faedeeb77\"} \"expr2\"]],\n    :limit 4,\n    :source-table 33674}],\n  :database 2762},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :aggregation\n     [[:sum\n       {:lib/uuid \"292aedc3-d147-4058-82df-d3e52e078103\"}\n       [:case\n        {:lib/uuid \"2467a86a-347d-4b85-81f4-9fd020f50a0b\"}\n        [[[:<\n           {:lib/uuid \"66603308-1cb8-438a-b1e1-e18c91abc1b0\"}\n           [:field {:lib/uuid \"be40c6c2-6e58-4f0e-a5ff-4345e52e461f\"} 139657]\n           2]\n          [:field {:lib/uuid \"076e069c-b0a1-4be5-bf02-ecbce0540262\"} 139657]]]\n        0]]],\n     :expressions [[:+ {:lib/uuid \"2ba7fb17-6d83-4c57-8869-b4d536f49bc1\", :lib/expression-name \"custom\"} 1 1]],\n     :breakout\n     [[:expression {:lib/uuid \"1ad975ab-d0ed-420f-a6df-a17f1ed0902b\"} \"expr1\"]\n      [:expression {:lib/uuid \"c74e5344-be1a-4c32-b091-3f7710cdbcd0\"} \"expr2\"]],\n     :order-by [[:expression {:lib/uuid \"cb1f4e2c-585b-47db-9e9e-d83faedeeb77\"} \"expr2\"]],\n     :limit 4,\n     :source-table 33674}],\n   :database 2762},\n  :errors\n  ({:path [0 0 :stages 0 0 0 0 1 :mbql.stage/mbql 0 0 :order-by 0 0 0],\n    :in [:stages 0 :order-by 0],\n    :schema #object[malli.core.t_malli$core73289],\n    :value [:expression {:lib/uuid \"cb1f4e2c-585b-47db-9e9e-d83faedeeb77\"} \"expr2\"],\n    :type :malli.core/invalid-dispatch-value}\n   {:path [0 0 :stages 0 0 0 0 1 :mbql.stage/mbql 0 4 0],\n    :in [:stages 0],\n    :schema #object[malli.core.t_malli$core73185],\n    :value\n    {:lib/type :mbql.stage/mbql,\n     :aggregation\n     [[:sum\n       {:lib/uuid \"292aedc3-d147-4058-82df-d3e52e078103\"}\n       [:case\n        {:lib/uuid \"2467a86a-347d-4b85-81f4-9fd020f50a0b\"}\n        [[[:<\n           {:lib/uuid \"66603308-1cb8-438a-b1e1-e18c91abc1b0\"}\n           [:field {:lib/uuid \"be40c6c2-6e58-4f0e-a5ff-4345e52e461f\"} 139657]\n           2]\n          [:field {:lib/uuid \"076e069c-b0a1-4be5-bf02-ecbce0540262\"} 139657]]]\n        0]]],\n     :expressions [[:+ {:lib/uuid \"2ba7fb17-6d83-4c57-8869-b4d536f49bc1\", :lib/expression-name \"custom\"} 1 1]],\n     :breakout\n     [[:expression {:lib/uuid \"1ad975ab-d0ed-420f-a6df-a17f1ed0902b\"} \"expr1\"]\n      [:expression {:lib/uuid \"c74e5344-be1a-4c32-b091-3f7710cdbcd0\"} \"expr2\"]],\n     :order-by [[:expression {:lib/uuid \"cb1f4e2c-585b-47db-9e9e-d83faedeeb77\"} \"expr2\"]],\n     :limit 4, \n     :source-table 33674}})}}\n"
+Clean: Removing bad clause due to error! {
+  meta: [1mnull[22m,
+  cnt: [33m2[39m,
+  shift: [33m5[39m,
+  root: {
+    edit: [1mnull[22m,
+    arr: [
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m
+    ]
+  },
+  tail: [
+    {
+      ns: [1mnull[22m,
+      name: [32m'order-by'[39m,
+      fqn: [32m'order-by'[39m,
+      _hash: [33m1527318070[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    [33m0[39m
+  ],
+  __hash: [1mnull[22m,
+  [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m167666463[39m,
+  [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m401412[39m
+} :malli.core/invalid-dispatch-value {:order-by [[:expression {:lib/uuid "cb1f4e2c-585b-47db-9e9e-d83faedeeb77"} "expr2"]]}
+
+Clean: Removing bad clause due to error! {
+  meta: [1mnull[22m,
+  cnt: [33m1[39m,
+  shift: [33m5[39m,
+  root: {
+    edit: [1mnull[22m,
+    arr: [
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m
+    ]
+  },
+  tail: [
+    {
+      ns: [1mnull[22m,
+      name: [32m'order-by'[39m,
+      fqn: [32m'order-by'[39m,
+      _hash: [33m1527318070[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    }
+  ],
+  __hash: [1mnull[22m,
+  [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m167666463[39m,
+  [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m401412[39m
+} :malli.core/limits {:order-by []}
+
+Clean: Removing bad clause due to error! {
+  meta: [1mnull[22m,
+  cnt: [33m1[39m,
+  shift: [33m5[39m,
+  root: {
+    edit: [1mnull[22m,
+    arr: [
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m, [1mnull[22m,
+      [1mnull[22m, [1mnull[22m
+    ]
+  },
+  tail: [
+    {
+      ns: [1mnull[22m,
+      name: [32m'breakout'[39m,
+      fqn: [32m'breakout'[39m,
+      _hash: [33m-732419050[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    }
+  ],
+  __hash: [1mnull[22m,
+  [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m167666463[39m,
+  [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m401412[39m
+} :malli.core/limits {:breakout []}
+
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages [{:lib/type :mbql.stage/native, :parameters [{:target [:dimension [:template-tag \"x\"]]}]}],\n  :database 1},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages [{:lib/type :mbql.stage/native, :parameters [{:target [:dimension [:template-tag \"x\"]]}]}],\n   :database 1},\n  :errors\n  ({:path [0 0 :stages 0 0 0 0 1 :mbql.stage/native 0 0 :native],\n    :in [:stages 0 :native],\n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages [{:lib/type :mbql.stage/native, :parameters [{:target [:field 1 nil]}]}],\n  :database 1},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages [{:lib/type :mbql.stage/native, :parameters [{:target [:field 1 nil]}]}],\n   :database 1},\n  :errors\n  ({:path [0 0 :stages 0 0 0 0 1 :mbql.stage/native 0 0 :native],\n    :in [:stages 0 :native],\n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :filters\n    [[:between\n      {:lib/uuid \"0e58835b-f4da-443a-aff2-222ca35666ad\"}\n      [:+\n       {:lib/uuid \"9752cba9-fcef-45e4-8075-d61bbe44dc8d\"}\n       [:field {:base-type :type/Integer, :lib/uuid \"5a9b8322-f612-4cb8-8533-68274364d319\"} 40]\n       [:interval {:lib/uuid \"5a2624d4-3d72-4155-8bba-7166d9010e0f\"} 1 :year]]\n      [:relative-datetime {:lib/uuid \"fd0f7aa1-1b54-4759-be2b-719a955448c3\"} -2 :month]\n      [:relative-datetime {:lib/uuid \"1c5397d4-009d-4755-aba1-47ad4e585120\"} 0 :month]]]}],\n  :database 70001},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :filters\n     [[:between\n       {:lib/uuid \"0e58835b-f4da-443a-aff2-222ca35666ad\"}\n       [:+\n        {:lib/uuid \"9752cba9-fcef-45e4-8075-d61bbe44dc8d\"}\n        [:field {:base-type :type/Integer, :lib/uuid \"5a9b8322-f612-4cb8-8533-68274364d319\"} 40]\n        [:interval {:lib/uuid \"5a2624d4-3d72-4155-8bba-7166d9010e0f\"} 1 :year]]\n       [:relative-datetime {:lib/uuid \"fd0f7aa1-1b54-4759-be2b-719a955448c3\"} -2 :month]\n       [:relative-datetime {:lib/uuid \"1c5397d4-009d-4755-aba1-47ad4e585120\"} 0 :month]]]}],\n   :database 70001},\n  :errors\n  ({:path\n    [0\n     0\n     :stages\n     0\n     0\n     0\n     0\n     1\n     :mbql.stage/mbql\n     0\n     0\n     :filters\n     0\n     0\n     0\n     0\n     0\n     true\n     0\n     :between\n     0\n     0\n     2\n     0\n     0\n     true\n     0\n     :+\n     0\n     1\n     :temporal\n     0\n     0\n     2\n     0\n     0],\n    :in [:stages 0 :filters 0 2 2],\n    :schema #object[malli.core.t_malli$core72949],\n    :value [:field {:base-type :type/Integer, :lib/uuid \"5a9b8322-f612-4cb8-8533-68274364d319\"} 40],\n    :type :malli.core/tuple-size}\n   {:path\n    [0\n     0\n     :stages\n     0\n     0\n     0\n     0\n     1\n     :mbql.stage/mbql\n     0\n     0\n     :filters\n     0\n     0\n     0\n     0\n     0\n     true\n     0\n     :between\n     0\n     0\n     2\n     0\n     0\n     true\n     0\n     :+\n     0\n     1\n     :temporal\n     0\n     0\n     3\n     0\n     1],\n    :in [:stages 0 :filters 0 2 2],\n    :schema #object[malli.core.t_malli$core73185],\n    :value [:field {:base-type :type/Integer, :lib/uuid \"5a9b8322-f612-4cb8-8533-68274364d319\"} 40]}\n   {:path [0 0 :stages 0 0 0 0 1 :mbql.stage/mbql 0 0 :filters 0 0 0 0 0 true 0 :between 0 1],\n    :in [:stages 0 :filters 0],\n    :schema #object[malli.core.t_malli$core73185],\n    :value\n    [:between\n     {:lib/uuid \"0e58835b-f4da-443a-aff2-222ca35666ad\"}\n     [:+\n      {:lib/uuid \"9752cba9-fcef-45e4-8075-d61bbe44dc8d\"}\n      [:field {:base-type :type/Integer, :lib/uuid \"5a9b8322-f612-4cb8-8533-68274364d319\"} 40]\n      [:interval {:lib/uuid \"5a2624d4-3d72-4155-8bba-7166d9010e0f\"} 1 :year]]\n     [:relative-datetime {:lib/uuid \"fd0f7aa1-1b54-4759-be2b-719a955448c3\"} -2 :month]\n     [:relative-datetime {:lib/uuid \"1c5397d4-009d-4755-aba1-47ad4e585120\"} 0 :month]]}\n   {:path [0 0 :stages 0 1 0 0 :mbql.stage/mbql],\n    :in [:stages 0],\n    :schema #object[malli.core.t_malli$core73185],\n    :value\n    {:lib/type :mbql.stage/mbql,\n     :filters\n     [[:between\n       {:lib/uuid \"0e58835b-f4da-443a-aff2-222ca35666ad\"}\n       [:+\n        {:lib/uuid \"9752cba9-fcef-45e4-8075-d61bbe44dc8d\"}\n        [:field {:base-type :type/Integer, :lib/uuid \"5a9b8322-f612-4cb8-8533-68274364d319\"} 40]\n        [:interval {:lib/uuid \"5a2624d4-3d72-4155-8bba-7166d9010e0f\"} 1 :year]]\n       [:relative-datetime {:lib/uuid \"fd0f7aa1-1b54-4759-be2b-719a955448c3\"} -2 :month]\n       [:relative-datetime {:lib/uuid \"1c5397d4-009d-4755-aba1-47ad4e585120\"} 0 :month]]]}})}}\n"
+
+Testing metabase.lib.database-test
+
+Testing metabase.lib.drill-thru-test
+[metabase.lib.drill-thru-test] "drill-thru-method is not yet implemented for :drill-thru/pivot (#33559)"
+[metabase.lib.drill-thru-test] "drill-thru-method is not yet implemented for :drill-thru/pivot (#33559)"
+[metabase.lib.drill-thru-test] "drill-thru-method is not yet implemented for :drill-thru/pivot (#33559)"
+[metabase.lib.drill-thru-test] "drill-thru-method is not yet implemented for :drill-thru/pivot (#33559)"
+
+Testing metabase.lib.drill-thru.automatic-insights-test
+
+Testing metabase.lib.drill-thru.column-extract-test
+
+Testing metabase.lib.drill-thru.column-filter-test
+
+Testing metabase.lib.drill-thru.distribution-test
+
+Testing metabase.lib.drill-thru.fk-details-test
+
+Testing metabase.lib.drill-thru.fk-filter-test
+
+Testing metabase.lib.drill-thru.pivot-test
+
+Testing metabase.lib.drill-thru.pk-test
+
+Testing metabase.lib.drill-thru.quick-filter-test
+
+Testing metabase.lib.drill-thru.sort-test
+
+Testing metabase.lib.drill-thru.summarize-column-by-time-test
+
+Testing metabase.lib.drill-thru.summarize-column-test
+
+Testing metabase.lib.drill-thru.underlying-records-test
+
+Testing metabase.lib.drill-thru.zoom-in-bins-test
+
+Testing metabase.lib.drill-thru.zoom-in-geographic-test
+
+Testing metabase.lib.drill-thru.zoom-in-timeseries-test
+
+Testing metabase.lib.drill-thru.zoom-test
+
+Testing metabase.lib.equality-test
+
+Testing metabase.lib.expression-test
+
+Testing metabase.lib.extraction-test
+
+Testing metabase.lib.fe-util-test
+
+Testing metabase.lib.field-test
+
+Testing metabase.lib.filter-test
+[metabase.lib.field] "Cannot resolve column \"TEST_ME\": stage has no metadata"
+[metabase.lib.field] "Cannot resolve column \"TEST_ME\": stage has no metadata"
+[metabase.lib.field] "Cannot resolve column \"TEST_ME\": stage has no metadata"
+[metabase.lib.field] "Cannot resolve column \"TEST_ME\": stage has no metadata"
+[metabase.lib.field] "Cannot resolve column \"TEST_ME\": stage has no metadata"
+[metabase.lib.field] "Cannot resolve column \"TEST_ME\": stage has no metadata"
+[metabase.lib.field] "Cannot resolve column \"TEST_ME\": stage has no metadata"
+[metabase.lib.field] "Cannot resolve column \"TEST_ME\": stage has no metadata"
+[metabase.lib.field] "Cannot resolve column \"TEST_ME\": stage has no metadata"
+[metabase.lib.field] "Cannot resolve column \"TEST_ME\": stage has no metadata"
+[metabase.lib.field] "Cannot resolve column \"TEST_ME\": stage has no metadata"
+[metabase.lib.field] "Cannot resolve column \"TEST_ME\": stage has no metadata"
+[metabase.lib.field] "Cannot resolve column \"TEST_ME\": stage has no metadata"
+[metabase.lib.field] "Cannot resolve column \"TEST_ME\": stage has no metadata"
+[metabase.lib.field] "Cannot resolve column \"TEST_ME\": stage has no metadata"
+
+Testing metabase.lib.filter.update-test
+
+Testing metabase.lib.join-test
+
+Testing metabase.lib.js-test
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:contains\n      {:lib/uuid \"ae5d40cc-00c2-4a9f-a1aa-47b0f2431b07\"}\n      [:field {:base-type :type/Text, :lib/uuid \"3008d56f-38e9-408c-8c46-0c747acba3b1\"} 70401]\n      \"hotel\"]]}]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:contains\n       {:lib/uuid \"ae5d40cc-00c2-4a9f-a1aa-47b0f2431b07\"}\n       [:field {:base-type :type/Text, :lib/uuid \"3008d56f-38e9-408c-8c46-0c747acba3b1\"} 70401]\n       \"hotel\"]]}]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:contains\n      {:lib/uuid \"ae5d40cc-00c2-4a9f-a1aa-47b0f2431b07\"}\n      [:field {:base-type :type/Text, :lib/uuid \"3008d56f-38e9-408c-8c46-0c747acba3b1\"} 70401]\n      \"hotel\"]]}],\n  :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:contains\n       {:lib/uuid \"ae5d40cc-00c2-4a9f-a1aa-47b0f2431b07\"}\n       [:field {:base-type :type/Text, :lib/uuid \"3008d56f-38e9-408c-8c46-0c747acba3b1\"} 70401]\n       \"hotel\"]]}],\n   :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:contains\n      {:lib/uuid \"cb37cce2-7e20-46c2-a1cf-2ec40edbf3c1\"}\n      [:field {:base-type :type/Text, :lib/uuid \"3feed869-df90-4eae-9314-90beb03f3705\"} 70401]\n      \"hotel\"\n      \"motel\"]]}]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:contains\n       {:lib/uuid \"cb37cce2-7e20-46c2-a1cf-2ec40edbf3c1\"}\n       [:field {:base-type :type/Text, :lib/uuid \"3feed869-df90-4eae-9314-90beb03f3705\"} 70401]\n       \"hotel\"\n       \"motel\"]]}]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:contains\n      {:lib/uuid \"cb37cce2-7e20-46c2-a1cf-2ec40edbf3c1\"}\n      [:field {:base-type :type/Text, :lib/uuid \"3feed869-df90-4eae-9314-90beb03f3705\"} 70401]\n      \"hotel\"\n      \"motel\"]]}],\n  :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:contains\n       {:lib/uuid \"cb37cce2-7e20-46c2-a1cf-2ec40edbf3c1\"}\n       [:field {:base-type :type/Text, :lib/uuid \"3feed869-df90-4eae-9314-90beb03f3705\"} 70401]\n       \"hotel\"\n       \"motel\"]]}],\n   :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:contains\n      {:case-sensitive false, :lib/uuid \"7accc325-72e1-4fce-8145-c64bdcda26f7\"}\n      [:field {:base-type :type/Text, :lib/uuid \"e049e737-e0bd-497e-8a7b-b2194196d61f\"} 70401]\n      \"hotel\"]]}]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:contains\n       {:case-sensitive false, :lib/uuid \"7accc325-72e1-4fce-8145-c64bdcda26f7\"}\n       [:field {:base-type :type/Text, :lib/uuid \"e049e737-e0bd-497e-8a7b-b2194196d61f\"} 70401]\n       \"hotel\"]]}]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:contains\n      {:case-sensitive false, :lib/uuid \"7accc325-72e1-4fce-8145-c64bdcda26f7\"}\n      [:field {:base-type :type/Text, :lib/uuid \"e049e737-e0bd-497e-8a7b-b2194196d61f\"} 70401]\n      \"hotel\"]]}],\n  :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:contains\n       {:case-sensitive false, :lib/uuid \"7accc325-72e1-4fce-8145-c64bdcda26f7\"}\n       [:field {:base-type :type/Text, :lib/uuid \"e049e737-e0bd-497e-8a7b-b2194196d61f\"} 70401]\n       \"hotel\"]]}],\n   :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:contains\n      {:case-sensitive false, :lib/uuid \"65272183-9853-40e5-a6e5-db3230671eea\"}\n      [:field {:base-type :type/Text, :lib/uuid \"88de36d2-28ae-40cf-90c7-5708199c86b5\"} 70401]\n      \"hotel\"\n      \"motel\"]]}]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:contains\n       {:case-sensitive false, :lib/uuid \"65272183-9853-40e5-a6e5-db3230671eea\"}\n       [:field {:base-type :type/Text, :lib/uuid \"88de36d2-28ae-40cf-90c7-5708199c86b5\"} 70401]\n       \"hotel\"\n       \"motel\"]]}]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:contains\n      {:case-sensitive false, :lib/uuid \"65272183-9853-40e5-a6e5-db3230671eea\"}\n      [:field {:base-type :type/Text, :lib/uuid \"88de36d2-28ae-40cf-90c7-5708199c86b5\"} 70401]\n      \"hotel\"\n      \"motel\"]]}],\n  :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:contains\n       {:case-sensitive false, :lib/uuid \"65272183-9853-40e5-a6e5-db3230671eea\"}\n       [:field {:base-type :type/Text, :lib/uuid \"88de36d2-28ae-40cf-90c7-5708199c86b5\"} 70401]\n       \"hotel\"\n       \"motel\"]]}],\n   :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:starts-with\n      {:lib/uuid \"beed644e-dba8-4d29-b56f-a479ccaf30a3\"}\n      [:field {:base-type :type/Text, :lib/uuid \"058f8b2b-02a8-488b-bd8d-53f8698e9087\"} 70401]\n      \"hotel\"]]}]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:starts-with\n       {:lib/uuid \"beed644e-dba8-4d29-b56f-a479ccaf30a3\"}\n       [:field {:base-type :type/Text, :lib/uuid \"058f8b2b-02a8-488b-bd8d-53f8698e9087\"} 70401]\n       \"hotel\"]]}]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:starts-with\n      {:lib/uuid \"beed644e-dba8-4d29-b56f-a479ccaf30a3\"}\n      [:field {:base-type :type/Text, :lib/uuid \"058f8b2b-02a8-488b-bd8d-53f8698e9087\"} 70401]\n      \"hotel\"]]}],\n  :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:starts-with\n       {:lib/uuid \"beed644e-dba8-4d29-b56f-a479ccaf30a3\"}\n       [:field {:base-type :type/Text, :lib/uuid \"058f8b2b-02a8-488b-bd8d-53f8698e9087\"} 70401]\n       \"hotel\"]]}],\n   :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:starts-with\n      {:lib/uuid \"2638b226-99cf-4b95-adf0-2985df395552\"}\n      [:field {:base-type :type/Text, :lib/uuid \"87547518-e6a5-4464-81dc-f5c03cb1c72e\"} 70401]\n      \"hotel\"\n      \"motel\"]]}]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:starts-with\n       {:lib/uuid \"2638b226-99cf-4b95-adf0-2985df395552\"}\n       [:field {:base-type :type/Text, :lib/uuid \"87547518-e6a5-4464-81dc-f5c03cb1c72e\"} 70401]\n       \"hotel\"\n       \"motel\"]]}]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:starts-with\n      {:lib/uuid \"2638b226-99cf-4b95-adf0-2985df395552\"}\n      [:field {:base-type :type/Text, :lib/uuid \"87547518-e6a5-4464-81dc-f5c03cb1c72e\"} 70401]\n      \"hotel\"\n      \"motel\"]]}],\n  :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:starts-with\n       {:lib/uuid \"2638b226-99cf-4b95-adf0-2985df395552\"}\n       [:field {:base-type :type/Text, :lib/uuid \"87547518-e6a5-4464-81dc-f5c03cb1c72e\"} 70401]\n       \"hotel\"\n       \"motel\"]]}],\n   :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:starts-with\n      {:case-sensitive false, :lib/uuid \"3e63c890-5119-4cd5-9505-1cc1348fa974\"}\n      [:field {:base-type :type/Text, :lib/uuid \"de6085af-0135-4885-b31e-3ceac1bb9db3\"} 70401]\n      \"hotel\"]]}]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:starts-with\n       {:case-sensitive false, :lib/uuid \"3e63c890-5119-4cd5-9505-1cc1348fa974\"}\n       [:field {:base-type :type/Text, :lib/uuid \"de6085af-0135-4885-b31e-3ceac1bb9db3\"} 70401]\n       \"hotel\"]]}]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:starts-with\n      {:case-sensitive false, :lib/uuid \"3e63c890-5119-4cd5-9505-1cc1348fa974\"}\n      [:field {:base-type :type/Text, :lib/uuid \"de6085af-0135-4885-b31e-3ceac1bb9db3\"} 70401]\n      \"hotel\"]]}],\n  :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:starts-with\n       {:case-sensitive false, :lib/uuid \"3e63c890-5119-4cd5-9505-1cc1348fa974\"}\n       [:field {:base-type :type/Text, :lib/uuid \"de6085af-0135-4885-b31e-3ceac1bb9db3\"} 70401]\n       \"hotel\"]]}],\n   :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:starts-with\n      {:case-sensitive false, :lib/uuid \"f25d6174-08d4-40b2-9e66-b16ef32e2818\"}\n      [:field {:base-type :type/Text, :lib/uuid \"fff16ed2-9b91-4587-a1e8-171db883d366\"} 70401]\n      \"hotel\"\n      \"motel\"]]}]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:starts-with\n       {:case-sensitive false, :lib/uuid \"f25d6174-08d4-40b2-9e66-b16ef32e2818\"}\n       [:field {:base-type :type/Text, :lib/uuid \"fff16ed2-9b91-4587-a1e8-171db883d366\"} 70401]\n       \"hotel\"\n       \"motel\"]]}]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:starts-with\n      {:case-sensitive false, :lib/uuid \"f25d6174-08d4-40b2-9e66-b16ef32e2818\"}\n      [:field {:base-type :type/Text, :lib/uuid \"fff16ed2-9b91-4587-a1e8-171db883d366\"} 70401]\n      \"hotel\"\n      \"motel\"]]}],\n  :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:starts-with\n       {:case-sensitive false, :lib/uuid \"f25d6174-08d4-40b2-9e66-b16ef32e2818\"}\n       [:field {:base-type :type/Text, :lib/uuid \"fff16ed2-9b91-4587-a1e8-171db883d366\"} 70401]\n       \"hotel\"\n       \"motel\"]]}],\n   :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:ends-with\n      {:lib/uuid \"415d6e7a-d63e-473b-b7ef-c3d7e25e855b\"}\n      [:field {:base-type :type/Text, :lib/uuid \"20c92cc6-a8c1-473e-840d-f91b75a57534\"} 70401]\n      \"hotel\"]]}]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:ends-with\n       {:lib/uuid \"415d6e7a-d63e-473b-b7ef-c3d7e25e855b\"}\n       [:field {:base-type :type/Text, :lib/uuid \"20c92cc6-a8c1-473e-840d-f91b75a57534\"} 70401]\n       \"hotel\"]]}]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:ends-with\n      {:lib/uuid \"415d6e7a-d63e-473b-b7ef-c3d7e25e855b\"}\n      [:field {:base-type :type/Text, :lib/uuid \"20c92cc6-a8c1-473e-840d-f91b75a57534\"} 70401]\n      \"hotel\"]]}],\n  :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:ends-with\n       {:lib/uuid \"415d6e7a-d63e-473b-b7ef-c3d7e25e855b\"}\n       [:field {:base-type :type/Text, :lib/uuid \"20c92cc6-a8c1-473e-840d-f91b75a57534\"} 70401]\n       \"hotel\"]]}],\n   :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:ends-with\n      {:lib/uuid \"fbb495c9-7cf5-4e64-b437-2182185758e5\"}\n      [:field {:base-type :type/Text, :lib/uuid \"6d548418-9430-468f-b939-2538662701eb\"} 70401]\n      \"hotel\"\n      \"motel\"]]}]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:ends-with\n       {:lib/uuid \"fbb495c9-7cf5-4e64-b437-2182185758e5\"}\n       [:field {:base-type :type/Text, :lib/uuid \"6d548418-9430-468f-b939-2538662701eb\"} 70401]\n       \"hotel\"\n       \"motel\"]]}]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:ends-with\n      {:lib/uuid \"fbb495c9-7cf5-4e64-b437-2182185758e5\"}\n      [:field {:base-type :type/Text, :lib/uuid \"6d548418-9430-468f-b939-2538662701eb\"} 70401]\n      \"hotel\"\n      \"motel\"]]}],\n  :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:ends-with\n       {:lib/uuid \"fbb495c9-7cf5-4e64-b437-2182185758e5\"}\n       [:field {:base-type :type/Text, :lib/uuid \"6d548418-9430-468f-b939-2538662701eb\"} 70401]\n       \"hotel\"\n       \"motel\"]]}],\n   :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:ends-with\n      {:case-sensitive false, :lib/uuid \"b89f69f0-bb5a-469b-b6fb-f17208845bc0\"}\n      [:field {:base-type :type/Text, :lib/uuid \"1a60b90e-9ce6-421e-a55b-4600fd8fc768\"} 70401]\n      \"hotel\"]]}]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:ends-with\n       {:case-sensitive false, :lib/uuid \"b89f69f0-bb5a-469b-b6fb-f17208845bc0\"}\n       [:field {:base-type :type/Text, :lib/uuid \"1a60b90e-9ce6-421e-a55b-4600fd8fc768\"} 70401]\n       \"hotel\"]]}]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:ends-with\n      {:case-sensitive false, :lib/uuid \"b89f69f0-bb5a-469b-b6fb-f17208845bc0\"}\n      [:field {:base-type :type/Text, :lib/uuid \"1a60b90e-9ce6-421e-a55b-4600fd8fc768\"} 70401]\n      \"hotel\"]]}],\n  :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:ends-with\n       {:case-sensitive false, :lib/uuid \"b89f69f0-bb5a-469b-b6fb-f17208845bc0\"}\n       [:field {:base-type :type/Text, :lib/uuid \"1a60b90e-9ce6-421e-a55b-4600fd8fc768\"} 70401]\n       \"hotel\"]]}],\n   :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:ends-with\n      {:case-sensitive false, :lib/uuid \"c91b10ec-6bc7-437c-a365-a55d754336b3\"}\n      [:field {:base-type :type/Text, :lib/uuid \"0fdb20e5-5e87-4eb2-ad37-9f9b8685edfc\"} 70401]\n      \"hotel\"\n      \"motel\"]]}]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:ends-with\n       {:case-sensitive false, :lib/uuid \"c91b10ec-6bc7-437c-a365-a55d754336b3\"}\n       [:field {:base-type :type/Text, :lib/uuid \"0fdb20e5-5e87-4eb2-ad37-9f9b8685edfc\"} 70401]\n       \"hotel\"\n       \"motel\"]]}]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:ends-with\n      {:case-sensitive false, :lib/uuid \"c91b10ec-6bc7-437c-a365-a55d754336b3\"}\n      [:field {:base-type :type/Text, :lib/uuid \"0fdb20e5-5e87-4eb2-ad37-9f9b8685edfc\"} 70401]\n      \"hotel\"\n      \"motel\"]]}],\n  :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:ends-with\n       {:case-sensitive false, :lib/uuid \"c91b10ec-6bc7-437c-a365-a55d754336b3\"}\n       [:field {:base-type :type/Text, :lib/uuid \"0fdb20e5-5e87-4eb2-ad37-9f9b8685edfc\"} 70401]\n       \"hotel\"\n       \"motel\"]]}],\n   :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:does-not-contain\n      {:lib/uuid \"dcc79597-3086-4cd0-8478-4e57353dd70b\"}\n      [:field {:base-type :type/Text, :lib/uuid \"8bca45c8-bc43-4b78-bacb-8983d512fdc0\"} 70401]\n      \"hotel\"]]}]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:does-not-contain\n       {:lib/uuid \"dcc79597-3086-4cd0-8478-4e57353dd70b\"}\n       [:field {:base-type :type/Text, :lib/uuid \"8bca45c8-bc43-4b78-bacb-8983d512fdc0\"} 70401]\n       \"hotel\"]]}]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:does-not-contain\n      {:lib/uuid \"dcc79597-3086-4cd0-8478-4e57353dd70b\"}\n      [:field {:base-type :type/Text, :lib/uuid \"8bca45c8-bc43-4b78-bacb-8983d512fdc0\"} 70401]\n      \"hotel\"]]}],\n  :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:does-not-contain\n       {:lib/uuid \"dcc79597-3086-4cd0-8478-4e57353dd70b\"}\n       [:field {:base-type :type/Text, :lib/uuid \"8bca45c8-bc43-4b78-bacb-8983d512fdc0\"} 70401]\n       \"hotel\"]]}],\n   :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:does-not-contain\n      {:lib/uuid \"8d87d20c-a496-4961-8e91-45c0ce10f6b8\"}\n      [:field {:base-type :type/Text, :lib/uuid \"6dca0f93-a2c5-4404-8b85-ef2aa41fdb2c\"} 70401]\n      \"hotel\"\n      \"motel\"]]}]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:does-not-contain\n       {:lib/uuid \"8d87d20c-a496-4961-8e91-45c0ce10f6b8\"}\n       [:field {:base-type :type/Text, :lib/uuid \"6dca0f93-a2c5-4404-8b85-ef2aa41fdb2c\"} 70401]\n       \"hotel\"\n       \"motel\"]]}]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:does-not-contain\n      {:lib/uuid \"8d87d20c-a496-4961-8e91-45c0ce10f6b8\"}\n      [:field {:base-type :type/Text, :lib/uuid \"6dca0f93-a2c5-4404-8b85-ef2aa41fdb2c\"} 70401]\n      \"hotel\"\n      \"motel\"]]}],\n  :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:does-not-contain\n       {:lib/uuid \"8d87d20c-a496-4961-8e91-45c0ce10f6b8\"}\n       [:field {:base-type :type/Text, :lib/uuid \"6dca0f93-a2c5-4404-8b85-ef2aa41fdb2c\"} 70401]\n       \"hotel\"\n       \"motel\"]]}],\n   :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:does-not-contain\n      {:case-sensitive false, :lib/uuid \"0ebe64be-5466-4542-8310-0ad953475d94\"}\n      [:field {:base-type :type/Text, :lib/uuid \"91413baf-ced4-4a9e-bf72-12dc5ab0e3d3\"} 70401]\n      \"hotel\"]]}]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:does-not-contain\n       {:case-sensitive false, :lib/uuid \"0ebe64be-5466-4542-8310-0ad953475d94\"}\n       [:field {:base-type :type/Text, :lib/uuid \"91413baf-ced4-4a9e-bf72-12dc5ab0e3d3\"} 70401]\n       \"hotel\"]]}]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:does-not-contain\n      {:case-sensitive false, :lib/uuid \"0ebe64be-5466-4542-8310-0ad953475d94\"}\n      [:field {:base-type :type/Text, :lib/uuid \"91413baf-ced4-4a9e-bf72-12dc5ab0e3d3\"} 70401]\n      \"hotel\"]]}],\n  :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:does-not-contain\n       {:case-sensitive false, :lib/uuid \"0ebe64be-5466-4542-8310-0ad953475d94\"}\n       [:field {:base-type :type/Text, :lib/uuid \"91413baf-ced4-4a9e-bf72-12dc5ab0e3d3\"} 70401]\n       \"hotel\"]]}],\n   :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:does-not-contain\n      {:case-sensitive false, :lib/uuid \"70b70a44-c64d-4698-b235-19307790ab2e\"}\n      [:field {:base-type :type/Text, :lib/uuid \"ea2d25e2-aec2-4139-9bc3-aeab3f62a705\"} 70401]\n      \"hotel\"\n      \"motel\"]]}]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:does-not-contain\n       {:case-sensitive false, :lib/uuid \"70b70a44-c64d-4698-b235-19307790ab2e\"}\n       [:field {:base-type :type/Text, :lib/uuid \"ea2d25e2-aec2-4139-9bc3-aeab3f62a705\"} 70401]\n       \"hotel\"\n       \"motel\"]]}]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n {:lib/type :mbql/query,\n  :stages\n  [{:lib/type :mbql.stage/mbql,\n    :source-table 70040,\n    :filters\n    [[:does-not-contain\n      {:case-sensitive false, :lib/uuid \"70b70a44-c64d-4698-b235-19307790ab2e\"}\n      [:field {:base-type :type/Text, :lib/uuid \"ea2d25e2-aec2-4139-9bc3-aeab3f62a705\"} 70401]\n      \"hotel\"\n      \"motel\"]]}],\n  :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  {:lib/type :mbql/query,\n   :stages\n   [{:lib/type :mbql.stage/mbql,\n     :source-table 70040,\n     :filters\n     [[:does-not-contain\n       {:case-sensitive false, :lib/uuid \"70b70a44-c64d-4698-b235-19307790ab2e\"}\n       [:field {:base-type :type/Text, :lib/uuid \"ea2d25e2-aec2-4139-9bc3-aeab3f62a705\"} 70401]\n       \"hotel\"\n       \"motel\"]]}],\n   :lib/metadata #object[metabase.lib.test-metadata.graph-provider.SimpleGraphMetadataProvider]},\n  :errors\n  ({:path [0 0 :database],\n    :in [:database], \n    :schema #object[malli.core.t_malli$core72512], \n    :value nil, \n    :type :malli.core/missing-key})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n [:time-interval\n  {:lib/uuid \"1b7b51b8-c32c-4a9c-86e2-f217577e6824\"}\n  [:field\n   {:lib/uuid \"fdf3e40c-dfdd-4fc7-a70b-7789ec0126a3\",\n    :base-type :type/DateTimeWithLocalTZ,\n    :effective-type :type/DateTimeWithLocalTZ}\n   70505]\n  [:interval {:lib/uuid \"86197e23-19e7-4f3d-9ff7-286dbe741705\"} 10 :day]\n  :day],\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  [:time-interval\n   {:lib/uuid \"1b7b51b8-c32c-4a9c-86e2-f217577e6824\"}\n   [:field\n    {:lib/uuid \"fdf3e40c-dfdd-4fc7-a70b-7789ec0126a3\",\n     :base-type :type/DateTimeWithLocalTZ,\n     :effective-type :type/DateTimeWithLocalTZ}\n    70505]\n   [:interval {:lib/uuid \"86197e23-19e7-4f3d-9ff7-286dbe741705\"} 10 :day]\n   :day],\n  :errors\n  ({:path [0 3 false 0 1],\n    :in [3],\n    :schema #object[malli.core.t_malli$core73185],\n    :value [:interval {:lib/uuid \"86197e23-19e7-4f3d-9ff7-286dbe741705\"} 10 :day]})}}\n"
+[metabase.lib.normalize] "Error normalizing pMBQL:\n{:value\n [:/\n  {:lib/uuid \"0b7ea22a-b103-47c0-8dff-9541b50afaff\"}\n  [:field {:base-type :type/Address, :lib/uuid \"2eab133b-f507-488d-8375-dfa2ff1a5e2a\"} 1]\n  100],\n :schema #object[malli.core.t_malli$core73546],\n :explain\n {:schema #object[malli.core.t_malli$core73546],\n  :value\n  [:/\n   {:lib/uuid \"0b7ea22a-b103-47c0-8dff-9541b50afaff\"}\n   [:field {:base-type :type/Address, :lib/uuid \"2eab133b-f507-488d-8375-dfa2ff1a5e2a\"} 1]\n   100],\n  :errors\n  ({:path [0 0 :args 0 0 0 true 0 :field 0 0 1 0 :base-type 0 0 1],\n    :in [2 1 :base-type],\n    :schema #object[malli.core.t_malli$core73185],\n    :value :type/Address}\n   {:path [0 0 :args 0 0 0 true 0 :field 0 1 :dispatch-type/integer 0 1 0 :base-type 0 0 1],\n    :in [2 1 :base-type],\n    :schema #object[malli.core.t_malli$core73185],\n    :value :type/Address}\n   {:path [0 0 :args 0 0 1],\n    :in [2],\n    :schema #object[malli.core.t_malli$core73185],\n    :value [:field {:base-type :type/Address, :lib/uuid \"2eab133b-f507-488d-8375-dfa2ff1a5e2a\"} 1]})}}\n"
+
+Testing metabase.lib.js.metadata-test
+{
+  meta: [1mnull[22m,
+  cnt: [33m4[39m,
+  arr: [
+    {
+      ns: [1mnull[22m,
+      name: [32m'id'[39m,
+      fqn: [32m'id'[39m,
+      _hash: [1mnull[22m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    [33m36[39m,
+    {
+      ns: [1mnull[22m,
+      name: [32m'name'[39m,
+      fqn: [32m'name'[39m,
+      _hash: [1mnull[22m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    [32m'CATEGORY_ID'[39m,
+    {
+      ns: [1mnull[22m,
+      name: [32m'has-field-values'[39m,
+      fqn: [32m'has-field-values'[39m,
+      _hash: [1mnull[22m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    {
+      ns: [1mnull[22m,
+      name: [32m'none'[39m,
+      fqn: [32m'none'[39m,
+      _hash: [1mnull[22m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    {
+      ns: [32m'lib'[39m,
+      name: [32m'type'[39m,
+      fqn: [32m'lib/type'[39m,
+      _hash: [33m1175424801[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    },
+    {
+      ns: [32m'metadata'[39m,
+      name: [32m'column'[39m,
+      fqn: [32m'metadata/column'[39m,
+      _hash: [33m-1799249054[39m,
+      [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m2153775105[39m,
+      [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m4096[39m
+    }
+  ],
+  __hash: [1mnull[22m,
+  [32m'cljs$lang$protocol_mask$partition0$'[39m: [33m16647951[39m,
+  [32m'cljs$lang$protocol_mask$partition1$'[39m: [33m401412[39m
+}
+
+FAIL in (parse-field-with-external-remap-test) (metabase/lib/js/metadata_test.cljs:33:9)
+expected: (= {:lib/type :metadata/column, :id 36, :name "CATEGORY_ID", :has-field-values :none, :lib/external-remap {:lib/type :metadata.column.remapping/external, :id 72, :name "Category ID [external remap]", :field-id 67}} (let [x (lib.metadata/field metadata-provider 36)] (js/console.log x)))
+  actual: (not (= {:lib/type :metadata/column, :id 36, :name "CATEGORY_ID", :has-field-values :none, :lib/external-remap {:lib/type :metadata.column.remapping/external, :id 72, :name "Category ID [external remap]", :field-id 67}} nil))
+
+FAIL in (parse-field-with-internal-remap-test) (metabase/lib/js/metadata_test.cljs:63:9)
+expected: (= {:lib/type :metadata/column, :id 33, :name "ID", :has-field-values :none, :lib/internal-remap {:lib/type :metadata.column.remapping/internal, :id 66, :name "ID [internal remap]", :values [1 4 3 2], :human-readable-values ["African" "BBQ" "Artisan" "American"]}} (lib.metadata/field metadata-provider 33))
+  actual: (not (= {:lib/type :metadata/column, :id 33, :name "ID", :has-field-values :none, :lib/internal-remap {:lib/type :metadata.column.remapping/internal, :id 66, :name "ID [internal remap]", :values [1 4 3 2], :human-readable-values ["African" "BBQ" "Artisan" "American"]}} {:id 33, :name "ID", :has-field-values :none, :lib/type :metadata/column}))
+
+Testing metabase.lib.limit-test
+
+Testing metabase.lib.metadata-test
+
+Testing metabase.lib.metadata.cached-provider-test
+
+Testing metabase.lib.metadata.calculation-test
+[metabase.lib.field] "Invalid :field clause: column \"TOTAL\" does not exist. Found: [\"ID\" \"NAME\" \"CATEGORY_ID\" \"LATITUDE\" \"LONGITUDE\" \"PRICE\" \"CATEGORIES__via__CATEGORY_ID__ID\" \"CATEGORIES__via__CATEGORY_ID__NAME\"]"
+
+Testing metabase.lib.metadata.composed-provider-test
+
+Testing metabase.lib.metadata.invocation-tracker-test
+
+Testing metabase.lib.metric-test
+
+Testing metabase.lib.native-test
+
+Testing metabase.lib.normalize-test
+
+Testing metabase.lib.options-test
+
+Testing metabase.lib.order-by-test
+
+Testing metabase.lib.query-test
+
+Testing metabase.lib.remove-replace-test
+[metabase.lib.field] "Invalid :field clause: column \"ID\" does not exist. Found: [\"NAME\" \"count\"]"
+[metabase.lib.field] "Invalid :field clause: column \"ID\" does not exist. Found: [\"NAME\" \"count\"]"
+[metabase.lib.field] "Invalid :field clause: column \"ID\" does not exist. Found: [\"NAME\" \"myadd\"]"
+[metabase.lib.field] "Invalid :field clause: column \"ID\" does not exist. Found: [\"NAME\" \"myadd\"]"
+[metabase.lib.field] "Invalid :field clause: column \"Venues__PRICE\" does not exist. Found: [\"ID\" \"NAME\" \"Venues__ID\"]"
+[metabase.lib.field] "Invalid :field clause: column \"Venues__PRICE\" does not exist. Found: [\"ID\" \"NAME\" \"Venues__ID\"]"
+[metabase.lib.metadata.calculation] "Don't know how to calculate display name for [:length {:lib/uuid \"4fda7f88-87e9-4ff1-a936-fa7ff73c9941\"} [:field {:lib/uuid \"1f4ca58e-4efb-473c-aefc-289da2e6183a\", :base-type :type/Text, :effective-type :type/Text} 70401]]. Add an impl for metabase.lib.metadata.calculation/display-name-method for :length"
+[metabase.lib.metadata.calculation] "Don't know how to calculate display name for [:length {:lib/uuid \"4fda7f88-87e9-4ff1-a936-fa7ff73c9941\"} [:field {:lib/uuid \"1f4ca58e-4efb-473c-aefc-289da2e6183a\", :base-type :type/Text, :effective-type :type/Text} 70401]]. Add an impl for metabase.lib.metadata.calculation/display-name-method for :length"
+[metabase.lib.metadata.calculation] "Don't know how to calculate display name for [:length {:lib/uuid \"4fda7f88-87e9-4ff1-a936-fa7ff73c9941\"} [:field {:lib/uuid \"1f4ca58e-4efb-473c-aefc-289da2e6183a\", :base-type :type/Text, :effective-type :type/Text} 70401]]. Add an impl for metabase.lib.metadata.calculation/display-name-method for :length"
+[metabase.lib.metadata.calculation] "Don't know how to calculate display name for [:length {:lib/uuid \"4fda7f88-87e9-4ff1-a936-fa7ff73c9941\"} [:field {:lib/uuid \"1f4ca58e-4efb-473c-aefc-289da2e6183a\", :base-type :type/Text, :effective-type :type/Text} 70401]]. Add an impl for metabase.lib.metadata.calculation/display-name-method for :length"
+[metabase.lib.metadata.calculation] "Don't know how to calculate display name for [:length {:lib/uuid \"4fda7f88-87e9-4ff1-a936-fa7ff73c9941\"} [:field {:lib/uuid \"1f4ca58e-4efb-473c-aefc-289da2e6183a\", :base-type :type/Text, :effective-type :type/Text} 70401]]. Add an impl for metabase.lib.metadata.calculation/display-name-method for :length"
+[metabase.lib.metadata.calculation] "Don't know how to calculate display name for [:length {:lib/uuid \"4fda7f88-87e9-4ff1-a936-fa7ff73c9941\"} [:field {:lib/uuid \"1f4ca58e-4efb-473c-aefc-289da2e6183a\", :base-type :type/Text, :effective-type :type/Text} 70401]]. Add an impl for metabase.lib.metadata.calculation/display-name-method for :length"
+[metabase.lib.metadata.calculation] "Don't know how to calculate display name for [:length {:lib/uuid \"4fda7f88-87e9-4ff1-a936-fa7ff73c9941\"} [:field {:lib/uuid \"1f4ca58e-4efb-473c-aefc-289da2e6183a\", :base-type :type/Text, :effective-type :type/Text} 70401]]. Add an impl for metabase.lib.metadata.calculation/display-name-method for :length"
+[metabase.lib.metadata.calculation] "Don't know how to calculate display name for [:length {:lib/uuid \"4fda7f88-87e9-4ff1-a936-fa7ff73c9941\"} [:field {:lib/uuid \"1f4ca58e-4efb-473c-aefc-289da2e6183a\", :base-type :type/Text, :effective-type :type/Text} 70401]]. Add an impl for metabase.lib.metadata.calculation/display-name-method for :length"
+[metabase.lib.metadata.calculation] "Don't know how to calculate display name for [:get-month {:lib/uuid \"bd6cf45d-576c-4b1e-b38e-48e04eed17ee\"} [:field {:lib/uuid \"1351ce46-e3f5-4e05-be72-fecf24f36b8b\", :base-type :type/DateTimeWithLocalTZ, :effective-type :type/DateTimeWithLocalTZ, :temporal-unit :month} 70505]]. Add an impl for metabase.lib.metadata.calculation/display-name-method for :get-month"
+[metabase.lib.metadata.calculation] "Don't know how to calculate display name for [:get-month {:lib/uuid \"bd6cf45d-576c-4b1e-b38e-48e04eed17ee\"} [:field {:lib/uuid \"1351ce46-e3f5-4e05-be72-fecf24f36b8b\", :base-type :type/DateTimeWithLocalTZ, :effective-type :type/DateTimeWithLocalTZ, :temporal-unit :month} 70505]]. Add an impl for metabase.lib.metadata.calculation/display-name-method for :get-month"
+[metabase.lib.metadata.calculation] "Don't know how to calculate display name for [:get-month {:lib/uuid \"bd6cf45d-576c-4b1e-b38e-48e04eed17ee\"} [:field {:lib/uuid \"1351ce46-e3f5-4e05-be72-fecf24f36b8b\", :base-type :type/DateTimeWithLocalTZ, :effective-type :type/DateTimeWithLocalTZ, :temporal-unit :month} 70505]]. Add an impl for metabase.lib.metadata.calculation/display-name-method for :get-month"
+[metabase.lib.metadata.calculation] "Don't know how to calculate display name for [:get-month {:lib/uuid \"bd6cf45d-576c-4b1e-b38e-48e04eed17ee\"} [:field {:lib/uuid \"1351ce46-e3f5-4e05-be72-fecf24f36b8b\", :base-type :type/DateTimeWithLocalTZ, :effective-type :type/DateTimeWithLocalTZ, :temporal-unit :month} 70505]]. Add an impl for metabase.lib.metadata.calculation/display-name-method for :get-month"
+[metabase.lib.metadata.calculation] "Don't know how to calculate display name for [:get-month {:lib/uuid \"bd6cf45d-576c-4b1e-b38e-48e04eed17ee\"} [:field {:lib/uuid \"1351ce46-e3f5-4e05-be72-fecf24f36b8b\", :base-type :type/DateTimeWithLocalTZ, :effective-type :type/DateTimeWithLocalTZ, :temporal-unit :month} 70505]]. Add an impl for metabase.lib.metadata.calculation/display-name-method for :get-month"
+[metabase.lib.metadata.calculation] "Don't know how to calculate display name for [:get-month {:lib/uuid \"bd6cf45d-576c-4b1e-b38e-48e04eed17ee\"} [:field {:lib/uuid \"1351ce46-e3f5-4e05-be72-fecf24f36b8b\", :base-type :type/DateTimeWithLocalTZ, :effective-type :type/DateTimeWithLocalTZ, :temporal-unit :month} 70505]]. Add an impl for metabase.lib.metadata.calculation/display-name-method for :get-month"
+[metabase.lib.metadata.calculation] "Don't know how to calculate display name for [:get-month {:lib/uuid \"bd6cf45d-576c-4b1e-b38e-48e04eed17ee\"} [:field {:lib/uuid \"1351ce46-e3f5-4e05-be72-fecf24f36b8b\", :base-type :type/DateTimeWithLocalTZ, :effective-type :type/DateTimeWithLocalTZ, :temporal-unit :month} 70505]]. Add an impl for metabase.lib.metadata.calculation/display-name-method for :get-month"
+[metabase.lib.metadata.calculation] "Don't know how to calculate display name for [:get-month {:lib/uuid \"bd6cf45d-576c-4b1e-b38e-48e04eed17ee\"} [:field {:lib/uuid \"1351ce46-e3f5-4e05-be72-fecf24f36b8b\", :base-type :type/DateTimeWithLocalTZ, :effective-type :type/DateTimeWithLocalTZ, :temporal-unit :month} 70505]]. Add an impl for metabase.lib.metadata.calculation/display-name-method for :get-month"
+[metabase.lib.metadata.calculation] "Don't know how to calculate display name for [:get-month {:lib/uuid \"bd6cf45d-576c-4b1e-b38e-48e04eed17ee\"} [:field {:lib/uuid \"1351ce46-e3f5-4e05-be72-fecf24f36b8b\", :base-type :type/DateTimeWithLocalTZ, :effective-type :type/DateTimeWithLocalTZ, :temporal-unit :month} 70505]]. Add an impl for metabase.lib.metadata.calculation/display-name-method for :get-month"
+
+Testing metabase.lib.schema-test
+
+Testing metabase.lib.schema.aggregation-test
+
+Testing metabase.lib.schema.common-test
+
+Testing metabase.lib.schema.expression-test
+
+Testing metabase.lib.schema.expression.arithmetic-test
+
+Testing metabase.lib.schema.expression.conditional-test
+
+Testing metabase.lib.schema.expression.string-test
+
+Testing metabase.lib.schema.expression.temporal-test
+
+Testing metabase.lib.schema.expression.window-test
+
+Testing metabase.lib.schema.filter-test
+
+Testing metabase.lib.schema.join-test
+
+Testing metabase.lib.schema.literal-test
+
+Testing metabase.lib.schema.mbql-clause-test
+
+Testing metabase.lib.schema.ref-test
+
+Testing metabase.lib.schema.template-tag-test
+
+Testing metabase.lib.schema.util-test
+
+Testing metabase.lib.segment-test
+
+Testing metabase.lib.serialize-test
+
+Testing metabase.lib.stage-test
+
+Testing metabase.lib.swap-test
+{:result true, :num-tests 100, :seed 1720624296367, :time-elapsed-ms 5, :test-var "swap-clauses-on-aggregations-test-permutations"}
+{:result true, :num-tests 300, :seed 1720624296373, :time-elapsed-ms 16, :test-var "swap-clauses-on-breakouts-test-permutations"}
+{:result true, :num-tests 100, :seed 1720624296389, :time-elapsed-ms 4, :test-var "swap-clauses-on-filters-test-permutations"}
+{:result true, :num-tests 100, :seed 1720624296393, :time-elapsed-ms 5, :test-var "swap-clauses-on-expressions-test-permutations"}
+{:result true, :num-tests 100, :seed 1720624296398, :time-elapsed-ms 4, :test-var "swap-clauses-on-order-by-test-permutations"}
+[metabase.lib.swap] "No matching clause in swap-clauses [:count {:lib/uuid 8fd0cdf8-1b0b-484e-a9a2-953278d0692d}] {:lib/type :mbql.stage/mbql, :source-table 70060, :aggregation [[:count {:lib/uuid e7c91889-36c0-4060-bb90-6985d8b7b573}] [:sum {:lib/uuid d05beb48-996b-4d3d-98d7-419f3c0a71a3} [:field {:lib/uuid ee475fe7-0507-40aa-abb9-818b0f1eaade, :base-type :type/Float, :effective-type :type/Float} 70601]] [:min {:lib/uuid ea43c2a0-17bb-42eb-b0e8-f3273d406e00} [:field {:lib/uuid b6466f4a-80d5-4c9a-a3d6-a1f387615da5, :base-type :type/Float, :effective-type :type/Float} 70602]]]}"
+[metabase.lib.swap] "Ambiguous match for clause in swap-clauses [:sum {:lib/uuid 913135ab-8e67-4b5b-9bb3-1d9f795ca33c} [:field {:lib/uuid c4c0463c-7277-4a96-b56a-b8587c99aef1, :base-type :type/Float, :effective-type :type/Float} 70601]] ([:aggregation 1] [:aggregation 3])"
+
+Testing metabase.lib.table-test
+
+Testing metabase.lib.temporal-bucket-test
+
+Testing metabase.lib.test-metadata.graph-provider
+
+Testing metabase.lib.test-util
+
+Testing metabase.lib.test-util.matrix
+
+Testing metabase.lib.test-util.metadata-providers.merged-mock
+
+Testing metabase.lib.test-util.metadata-providers.mock
+
+Testing metabase.lib.types.isa-test
+
+Testing metabase.lib.underlying-test
+
+Testing metabase.lib.util-test
+
+Testing metabase.lib.util.match-test
+
+Testing metabase.lib.walk-test
+
+Testing metabase.shared.formatting.date-test
+[metabase.shared.formatting.internal.date-formatters] "Unrecognized date style {:date-style asdf, :unit :asdf}"
+
+Testing metabase.shared.formatting.internal.date-builder-test
+
+Testing metabase.shared.formatting.numbers-test
+
+Testing metabase.shared.formatting.time-test
+
+Testing metabase.shared.i18n-test
+
+Testing metabase.shared.models.visualization-settings-test
+
+Testing metabase.shared.parameters.parameters-test
+
+Testing metabase.shared.util.time-test
+
+Testing metabase.types-test
+
+Testing metabase.util-test
+{:result true, :num-tests 100, :seed 1720624296641, :time-elapsed-ms 9, :test-var "pick-first-test"}
+
+Testing metabase.util.humanization-test
+
+Testing metabase.util.log-test
+[metabase.util.log-test] "a message"
+[metabase.util.log-test] "here's one"
+[metabase.util.log-test] "a message"
+[metabase.util.log-test] ":keyword 78"
+[metabase.util.log-test] "fatal"
+[metabase.util.log-test] "fatal"
+[metabase.util.log-test] "error"
+[metabase.util.log-test] "fatal"
+[metabase.util.log-test] "error"
+[metabase.util.log-test] "warn"
+[metabase.util.log-test] "fatal"
+[metabase.util.log-test] "error"
+[metabase.util.log-test] "warn"
+[metabase.util.log-test] "info"
+[metabase.util.log-test] "fatal"
+[metabase.util.log-test] "error"
+[metabase.util.log-test] "warn"
+[metabase.util.log-test] "info"
+[metabase.util.log-test] "debug"
+[metabase.util.log-test] "fatal"
+[metabase.util.log-test] "error"
+[metabase.util.log-test] "warn"
+[metabase.util.log-test] "info"
+[metabase.util.log-test] "debug"
+[metabase.util.log-test] "trace"
+[metabase.util.log-test] "input: 8, 3; output: ignored"
+
+Testing metabase.util.malli.humanize-test
+
+Testing metabase.util.malli.registry-test
+
+Testing metabase.xrays.domain-entities.converters-test
+
+Ran 1093 tests containing 7915 assertions.
+2 failures, 0 errors.
+===============================================
+[:test] Build completed. (396 files, 2 compiled, 0 warnings, 46.65s)
+
+
+
+Testing metabase.legacy-mbql.js-test
+
+Testing metabase.legacy-mbql.normalize-test
+
+Testing metabase.legacy-mbql.schema-test
+
+Testing metabase.legacy-mbql.util-test
+
+Testing metabase.lib.aggregation-test
+
+Testing metabase.lib.binning-test
+
+Testing metabase.lib.binning.util-test
+
+Testing metabase.lib.breakout-test
+
+Testing metabase.lib.card-test
+
+Testing metabase.lib.column-group-test
+
+Testing metabase.lib.convert-test
+
+Testing metabase.lib.database-test
+
+Testing metabase.lib.drill-thru-test
+
+Testing metabase.lib.drill-thru.automatic-insights-test
+
+Testing metabase.lib.drill-thru.column-extract-test
+
+Testing metabase.lib.drill-thru.column-filter-test
+
+Testing metabase.lib.drill-thru.distribution-test
+
+Testing metabase.lib.drill-thru.fk-details-test
+
+Testing metabase.lib.drill-thru.fk-filter-test
+
+Testing metabase.lib.drill-thru.pivot-test
+
+Testing metabase.lib.drill-thru.pk-test
+
+Testing metabase.lib.drill-thru.quick-filter-test
+
+Testing metabase.lib.drill-thru.sort-test
+
+Testing metabase.lib.drill-thru.summarize-column-by-time-test
+
+Testing metabase.lib.drill-thru.summarize-column-test
+
+Testing metabase.lib.drill-thru.underlying-records-test
+
+Testing metabase.lib.drill-thru.zoom-in-bins-test
+
+Testing metabase.lib.drill-thru.zoom-in-geographic-test
+
+Testing metabase.lib.drill-thru.zoom-in-timeseries-test
+
+Testing metabase.lib.drill-thru.zoom-test
+
+Testing metabase.lib.equality-test
+
+Testing metabase.lib.expression-test
+
+Testing metabase.lib.extraction-test
+
+Testing metabase.lib.fe-util-test
+
+Testing metabase.lib.field-test
+
+Testing metabase.lib.filter-test
+
+Testing metabase.lib.filter.update-test
+
+Testing metabase.lib.join-test
+
+Testing metabase.lib.js-test
+
+Testing metabase.lib.js.metadata-test
+{
+  meta: null,
+  cnt: 4,
+  arr: [
+    {
+      ns: null,
+      name: 'id',
+      fqn: 'id',
+      _hash: null,
+      'cljs$lang$protocol_mask$partition0$': 2153775105,
+      'cljs$lang$protocol_mask$partition1$': 4096
+    },
+    36,
+    {
+      ns: null,
+      name: 'name',
+      fqn: 'name',
+      _hash: null,
+      'cljs$lang$protocol_mask$partition0$': 2153775105,
+      'cljs$lang$protocol_mask$partition1$': 4096
+    },
+    'CATEGORY_ID',
+    {
+      ns: null,
+      name: 'has-field-values',
+      fqn: 'has-field-values',
+      _hash: null,
+      'cljs$lang$protocol_mask$partition0$': 2153775105,
+      'cljs$lang$protocol_mask$partition1$': 4096
+    },
+    {
+      ns: null,
+      name: 'none',
+      fqn: 'none',
+      _hash: null,
+      'cljs$lang$protocol_mask$partition0$': 2153775105,
+      'cljs$lang$protocol_mask$partition1$': 4096
+    },
+    {
+      ns: 'lib',
+      name: 'type',
+      fqn: 'lib/type',
+      _hash: 1175424801,
+      'cljs$lang$protocol_mask$partition0$': 2153775105,
+      'cljs$lang$protocol_mask$partition1$': 4096
+    },
+    {
+      ns: 'metadata',
+      name: 'column',
+      fqn: 'metadata/column',
+      _hash: -1799249054,
+      'cljs$lang$protocol_mask$partition0$': 2153775105,
+      'cljs$lang$protocol_mask$partition1$': 4096
+    }
+  ],
+  __hash: null,
+  'cljs$lang$protocol_mask$partition0$': 16647951,
+  'cljs$lang$protocol_mask$partition1$': 401412
+}
+
+FAIL in (parse-field-with-external-remap-test) (metabase/lib/js/metadata_test.cljs:33:9)
+expected: (= {:lib/type :metadata/column, :id 36, :name "CATEGORY_ID", :has-field-values :none, :lib/external-remap {:lib/type :metadata.column.remapping/external, :id 72, :name "Category ID [external remap]", :field-id 67}} (let [x (lib.metadata/field metadata-provider 36)] (js/console.log x)))
+  actual: (not (= {:lib/type :metadata/column, :id 36, :name "CATEGORY_ID", :has-field-values :none, :lib/external-remap {:lib/type :metadata.column.remapping/external, :id 72, :name "Category ID [external remap]", :field-id 67}} nil))
+
+FAIL in (parse-field-with-internal-remap-test) (metabase/lib/js/metadata_test.cljs:63:9)
+expected: (= {:lib/type :metadata/column, :id 33, :name "ID", :has-field-values :none, :lib/internal-remap {:lib/type :metadata.column.remapping/internal, :id 66, :name "ID [internal remap]", :values [1 4 3 2], :human-readable-values ["African" "BBQ" "Artisan" "American"]}} (lib.metadata/field metadata-provider 33))
+  actual: (not (= {:lib/type :metadata/column, :id 33, :name "ID", :has-field-values :none, :lib/internal-remap {:lib/type :metadata.column.remapping/internal, :id 66, :name "ID [internal remap]", :values [1 4 3 2], :human-readable-values ["African" "BBQ" "Artisan" "American"]}} {:id 33, :name "ID", :has-field-values :none, :lib/type :metadata/column}))
+
+Testing metabase.lib.limit-test
+
+Testing metabase.lib.metadata-test
+
+Testing metabase.lib.metadata.cached-provider-test
+
+Testing metabase.lib.metadata.calculation-test
+
+Testing metabase.lib.metadata.composed-provider-test
+
+Testing metabase.lib.metadata.invocation-tracker-test
+
+Testing metabase.lib.metric-test
+
+Testing metabase.lib.native-test
+
+Testing metabase.lib.normalize-test
+
+Testing metabase.lib.options-test
+
+Testing metabase.lib.order-by-test
+
+Testing metabase.lib.query-test
+
+Testing metabase.lib.remove-replace-test
+
+Testing metabase.lib.schema-test
+
+Testing metabase.lib.schema.aggregation-test
+
+Testing metabase.lib.schema.common-test
+
+Testing metabase.lib.schema.expression-test
+
+Testing metabase.lib.schema.expression.arithmetic-test
+
+Testing metabase.lib.schema.expression.conditional-test
+
+Testing metabase.lib.schema.expression.string-test
+
+Testing metabase.lib.schema.expression.temporal-test
+
+Testing metabase.lib.schema.expression.window-test
+
+Testing metabase.lib.schema.filter-test
+
+Testing metabase.lib.schema.join-test
+
+Testing metabase.lib.schema.literal-test
+
+Testing metabase.lib.schema.mbql-clause-test
+
+Testing metabase.lib.schema.ref-test
+
+Testing metabase.lib.schema.template-tag-test
+
+Testing metabase.lib.schema.util-test
+
+Testing metabase.lib.segment-test
+
+Testing metabase.lib.serialize-test
+
+Testing metabase.lib.stage-test
+
+Testing metabase.lib.swap-test
+{:result true, :num-tests 100, :seed 1720624340463, :time-elapsed-ms 5, :test-var "swap-clauses-on-aggregations-test-permutations"}
+{:result true, :num-tests 300, :seed 1720624340468, :time-elapsed-ms 16, :test-var "swap-clauses-on-breakouts-test-permutations"}
+{:result true, :num-tests 100, :seed 1720624340484, :time-elapsed-ms 5, :test-var "swap-clauses-on-filters-test-permutations"}
+{:result true, :num-tests 100, :seed 1720624340490, :time-elapsed-ms 3, :test-var "swap-clauses-on-expressions-test-permutations"}
+{:result true, :num-tests 100, :seed 1720624340493, :time-elapsed-ms 4, :test-var "swap-clauses-on-order-by-test-permutations"}
+
+Testing metabase.lib.table-test
+
+Testing metabase.lib.temporal-bucket-test
+
+Testing metabase.lib.test-metadata.graph-provider
+
+Testing metabase.lib.test-util
+
+Testing metabase.lib.test-util.matrix
+
+Testing metabase.lib.test-util.metadata-providers.merged-mock
+
+Testing metabase.lib.test-util.metadata-providers.mock
+
+Testing metabase.lib.types.isa-test
+
+Testing metabase.lib.underlying-test
+
+Testing metabase.lib.util-test
+
+Testing metabase.lib.util.match-test
+
+Testing metabase.lib.walk-test
+
+Testing metabase.shared.formatting.date-test
+
+Testing metabase.shared.formatting.internal.date-builder-test
+
+Testing metabase.shared.formatting.numbers-test
+
+Testing metabase.shared.formatting.time-test
+
+Testing metabase.shared.i18n-test
+
+Testing metabase.shared.models.visualization-settings-test
+
+Testing metabase.shared.parameters.parameters-test
+
+Testing metabase.shared.util.time-test
+
+Testing metabase.types-test
+
+Testing metabase.util-test
+{:result true, :num-tests 100, :seed 1720624340644, :time-elapsed-ms 8, :test-var "pick-first-test"}
+
+Testing metabase.util.humanization-test
+
+Testing metabase.util.log-test
+[metabase.util.log-test] "here's one"
+[metabase.util.log-test] ":keyword 78"
+[metabase.util.log-test] "info"
+[metabase.util.log-test] "info"
+[metabase.util.log-test] "debug"
+[metabase.util.log-test] "info"
+[metabase.util.log-test] "debug"
+[metabase.util.log-test] "trace"
+[metabase.util.log-test] "input: 8, 3; output: ignored"
+
+Testing metabase.util.malli.humanize-test
+
+Testing metabase.util.malli.registry-test
+
+Testing metabase.xrays.domain-entities.converters-test
+
+Ran 1093 tests containing 7915 assertions.
+2 failures, 0 errors.
+info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command.
