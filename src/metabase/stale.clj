@@ -78,7 +78,7 @@
 
 (defn- sort-column [column]
   (case column
-    :name :name
+    :name :%lower.name
     :last_viewed_at :last_viewed_at))
 
 (defn- queries [args]

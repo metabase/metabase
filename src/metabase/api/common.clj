@@ -720,9 +720,10 @@
   of maps. `:id` is the only required key for these maps, and order *does not matter* - `present-items` is responsible
   for reordering items the way they were."
   [f items]
-  (let [id->order (into {} (map-indexed (fn [i row] [(:id row) i]) items))]
+  (let [id+model->order (into {} (map-indexed (fn [i row] [[(:id row) (:model row)] i]) items))]
     (->> items
          (group-by :model)
          (mapcat (fn [[model items]]
-                   (f model items)))
-         (sort-by (comp id->order :id)))))
+                   (map #(assoc % ::model model) (f model items))))
+         (sort-by (comp id+model->order (juxt :id ::model)))
+         (map #(dissoc % ::model)))))

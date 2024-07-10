@@ -2408,15 +2408,15 @@
                                     :data
                                     (map :name)))]
           (stale.test/with-stale-items [:model/Card card-a {:name "A" :collection_id (:id a)}
-                                        :model/Card card-b {:name "b" :collection_id (:id a)}
-                                        :model/Card card-c {:name "C" :collection_id (:id a)}
-                                        :model/Card card-d {:name "d" :collection_id (:id a)}
-                                        :model/Dashboard dashboard-a {:name "a" :collection_id (:id a)}
-                                        :model/Dashboard dashboard-b {:name "B" :collection_id (:id a)}
-                                        :model/Dashboard dashboard-c {:name "c" :collection_id (:id a)}
-                                        :model/Dashboard dashboard-d {:name "D" :collection_id (:id a)}]
-            (is (= ["a" "A" "b" "B" "c" "C" "d" "D"]
+                                        :model/Card card-b {:name "C" :collection_id (:id a)}
+                                        :model/Card card-c {:name "E" :collection_id (:id a)}
+                                        :model/Card card-d {:name "G" :collection_id (:id a)}
+                                        :model/Dashboard dashboard-a {:name "B" :collection_id (:id a)}
+                                        :model/Dashboard dashboard-b {:name "D" :collection_id (:id a)}
+                                        :model/Dashboard dashboard-c {:name "F" :collection_id (:id a)}
+                                        :model/Dashboard dashboard-d {:name "H" :collection_id (:id a)}]
+            (is (= (map str "ABCDEFGH")
                    (get-names-page 100 0)))
             (doseq [limit (range 1 5)
-                    [offset v] (map-indexed vector (partition limit 1 ["a" "A" "b" "B" "c" "C" "d" "D"]))]
+                    [offset v] (map-indexed vector (partition limit 1 (map str "ABCDEFGH")))]
               (is (= v (get-names-page limit offset))))))))))
