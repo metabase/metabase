@@ -31,7 +31,7 @@
 
 (defn slow-inc [x] (Thread/sleep 100) (inc x))
 
-(deftest test-concurrent-map-with-slow-function
+(deftest test-concurrent-map-with-a-slow-function
   (testing "Handling of slow functions without timeout"
     (let [start-time (System/currentTimeMillis)
           result (u/ecs-map slow-inc (range 10))
