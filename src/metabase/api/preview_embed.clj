@@ -59,7 +59,7 @@
 (api/defendpoint GET "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
   [token param-key :as {:keys [query-params]}]
-  (api.embed.common/dashboard-param-values token param-key nil query-params))
+  (api.embed.common/dashboard-param-values token param-key nil query-params {:preview true}))
 
 (api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
