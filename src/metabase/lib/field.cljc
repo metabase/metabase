@@ -789,8 +789,8 @@
    column                :- ::lib.schema.metadata/column]
   (cond
     (lib.types.isa/primary-key? column)
-    (when-let [name-field-id (:name-field-id column)]
-      (lib.metadata/field metadata-providerable name-field-id))
+    (when-let [name-field (:name-field column)]
+      (lib.metadata/field metadata-providerable (u/the-id name-field)))
 
     (lib.types.isa/foreign-key? column)
     (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]

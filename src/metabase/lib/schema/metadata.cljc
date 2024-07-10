@@ -201,11 +201,7 @@
    ;; in [[metabase.lib.metadata.jvm]]. I don't think this is really needed on the FE, at any rate the JS metadata
    ;; provider doesn't add these keys.
    [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
-   [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]
-   ;;
-   ;; The id of the field with `type/Name` semantic type from the same table. It is set for PKs only.
-   ;; PKs should automatically remap to the values of this field.
-   [:name-field-id {:optional true} [:maybe ::lib.schema.id/field]]])
+   [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]])
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."

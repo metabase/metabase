@@ -414,7 +414,7 @@
                  (-> col
                      (update :base_type keyword)
                      (merge (select-keys (underlying col-id)
-                                         [:semantic_type :fk_target_field_id :has_field_values :target :name_field :name_field_id]))
+                                         [:semantic_type :fk_target_field_id :has_field_values :target :name_field]))
                      (assoc
                       :table_id     (str "card__" card-id)
                       :id           (or col-id
