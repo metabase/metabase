@@ -46,6 +46,6 @@
   (let [p (apply grouper/submit! args)]
     (when (disable-grouper-batch-processing)
       ;; wake up the group immediately and wait for it to finish
-      (.wakeUp (first args))
+      (.wakeUp ^Grouper (first args))
       (deref p))
     nil))

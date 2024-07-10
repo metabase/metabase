@@ -98,17 +98,18 @@ const changeDisableGrouperBatchProcessingSetting = value => {
 };
 
 describe("scenarios > dashboard > tabs", () => {
-  beforeAll(() => {
+  before(() => {
     changeDisableGrouperBatchProcessingSetting(true);
   });
 
-  afterAll(() => {
+  after(() => {
     changeDisableGrouperBatchProcessingSetting(false);
   });
 
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    changeDisableGrouperBatchProcessingSetting(true);
   });
 
   it("should only display cards on the selected tab", () => {

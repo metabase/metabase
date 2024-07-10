@@ -14,6 +14,6 @@
                            (reset! processed? items))
                          :capacity 5
                          :interval (* 10 1000))]
-        (u/with-timeout 10
+        (u/with-timeout 1
           (grouper/submit! g 1))
         (is (= [1] @processed?))))))
