@@ -42,22 +42,6 @@ databaseChangeLog:
       name: boolean.type
       value: bit(1)
       dbms: mysql,mariadb
-  - property:
-      name: boolean.true
-      value: true
-      dbms: postgresql,h2
-  - property:
-      name: boolean.true
-      value: b'1'
-      dbms: mysql,mariadb
-  - property:
-      name: boolean.false
-      value: false
-      dbms: postgresql,h2
-  - property:
-      name: boolean.false
-      value: b'0'
-      dbms: mysql,mariadb
 
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
 
@@ -8304,7 +8288,7 @@ databaseChangeLog:
         - addDefaultValue:
             tableName: query_field
             columnName: explicit_reference
-            defaultValueComputed: ${boolean.true}
+            defaultValueBoolean: true
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
