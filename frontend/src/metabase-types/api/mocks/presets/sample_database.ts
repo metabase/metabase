@@ -577,7 +577,6 @@ export const createPeopleIdField = (opts?: Partial<Field>): Field =>
     semantic_type: "type/PK",
     fingerprint: null,
     name_field: createPeopleNameField(),
-    name_field_id: PEOPLE.NAME,
     ...opts,
   });
 
