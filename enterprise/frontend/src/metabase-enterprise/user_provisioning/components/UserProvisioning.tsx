@@ -11,8 +11,8 @@ import {
   Button,
   Divider,
   Flex,
-  Icon,
   Stack,
+  Text,
   TextInput,
 } from "metabase/ui";
 import {
@@ -23,7 +23,8 @@ import { hasAnySsoPremiumFeature } from "metabase-enterprise/settings";
 import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
 import type { Settings, SettingValue } from "metabase-types/api";
 
-import { CopyScimInput, textInputStyles } from "./ScimInputs";
+import { CopyScimInput, getTextInputStyles } from "./ScimInputs";
+import { ScimTextWarning } from "./ScimTextWarning";
 import {
   UserProvisioningFirstEnabledModal,
   UserProvisioningRegenerateTokenModal,
@@ -112,38 +113,42 @@ export const UserProvisioning = ({
   return (
     <>
       <AuthTabs activeKey="user-provisioning" />
-      <Stack pl="md" spacing="xl">
+      <Stack pl="md" spacing="2.5rem">
         <Box maw="35rem">
           <div>
-            <Stack spacing="xl">
-              <Box>
-                <h3>{t`User provisioning via SCIM`}</h3>
-                <p>{t`When enabled, you can use the settings below to set up user access on your identity management system.`}</p>
+            <Stack spacing="2.5rem">
+              <Stack spacing=".5rem">
+                <Text
+                  fz="1.25rem"
+                  fw="bold"
+                >{t`User provisioning via SCIM`}</Text>
+                <Text lh="1.5rem">{t`When enabled, you can use the settings below to set up user access on your identity management system.`}</Text>
                 {showSamlWarning && (
-                  <p>
-                    <Icon name="info_filled" />{" "}
+                  <ScimTextWarning>
                     {t`When enabled, SAML user provisioning will be turned off in favor of SCIM.`}
-                  </p>
+                  </ScimTextWarning>
                 )}
-                <SettingToggle
-                  disabled={false}
-                  hideLabel={false}
-                  tooltip={``}
-                  id="scim-enabled"
-                  setting={fields["scim-enabled"]}
-                  onChange={async (value: boolean) => {
-                    await updateSetting(fields["scim-enabled"], value);
-                    if (!isScimInitialized) {
-                      await regenerateToken();
-                      firstEnabledModal.open();
-                    }
-                  }}
-                />
-              </Box>
+                <Box ml="-4px">
+                  <SettingToggle
+                    disabled={false}
+                    hideLabel={false}
+                    tooltip={``}
+                    id="scim-enabled"
+                    setting={fields["scim-enabled"]}
+                    onChange={async (enabled: boolean) => {
+                      await updateSetting(fields["scim-enabled"], enabled);
+                      if (enabled && !isScimInitialized) {
+                        await regenerateToken();
+                        firstEnabledModal.open();
+                      }
+                    }}
+                  />
+                </Box>
+              </Stack>
 
               {isScimInitialized && (
                 <Stack
-                  spacing="xl"
+                  spacing="2rem"
                   opacity={isScimEnabled ? 1 : 0.5}
                   style={{ pointerEvents: isScimEnabled ? "auto" : "none" }}
                 >
@@ -159,7 +164,10 @@ export const UserProvisioning = ({
                       readOnly
                       disabled
                       w="100%"
-                      styles={textInputStyles}
+                      styles={getTextInputStyles({
+                        masked: true,
+                        disabled: true,
+                      })}
                     />
                     <Flex direction="column" justify="end">
                       <Button
@@ -181,21 +189,28 @@ export const UserProvisioning = ({
               <>
                 <Divider my="2.5rem" />
 
-                <h3>{t`Notify admins of new users provisioned from SSO`}</h3>
-                <p>{t`Send an email to admins whenever someone signs into SSO for the first time.`}</p>
-                <SettingToggle
-                  disabled={false}
-                  hideLabel={false}
-                  tooltip={``}
-                  id="send-new-sso-user-admin-email?"
-                  setting={fields["send-new-sso-user-admin-email?"]}
-                  onChange={(value: boolean) =>
-                    updateSetting(
-                      fields["send-new-sso-user-admin-email?"],
-                      value,
-                    )
-                  }
-                />
+                <Stack spacing=".5rem">
+                  <Text
+                    fz="1.25rem"
+                    fw="bold"
+                  >{t`Notify admins of new users provisioned from SSO`}</Text>
+                  <Text>{t`Send an email to admins whenever someone signs into SSO for the first time.`}</Text>
+                  <Box ml="-4px">
+                    <SettingToggle
+                      disabled={false}
+                      hideLabel={false}
+                      tooltip={``}
+                      id="send-new-sso-user-admin-email?"
+                      setting={fields["send-new-sso-user-admin-email?"]}
+                      onChange={(value: boolean) =>
+                        updateSetting(
+                          fields["send-new-sso-user-admin-email?"],
+                          value,
+                        )
+                      }
+                    />
+                  </Box>
+                </Stack>
               </>
             )}
           </div>

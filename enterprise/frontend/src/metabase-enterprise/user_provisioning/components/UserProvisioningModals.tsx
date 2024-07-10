@@ -2,18 +2,11 @@ import { useEffect, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import {
-  Flex,
-  Button,
-  Modal,
-  type ModalProps,
-  Stack,
-  Text,
-  Icon,
-} from "metabase/ui";
+import { Flex, Button, Modal, type ModalProps, Stack, Text } from "metabase/ui";
 import { useRegenerateScimTokenMutation } from "metabase-enterprise/api";
 
 import { CopyScimInput } from "./ScimInputs";
+import { ScimTextWarning } from "./ScimTextWarning";
 
 type BaseUserProvisiongModalProps = Pick<ModalProps, "opened" | "onClose">;
 
@@ -30,38 +23,36 @@ export const UserProvisioningFirstEnabledModal = ({
   unmaskedScimToken,
 }: UserProvisioningFirstEnabledModalProps) => {
   return (
-    <Modal
-      opened={opened}
-      title={
-        <Text size="lg" style={{ wordBreak: "break-all" }}>
-          {t`Here's what you'll need to set SCIM up`}
-        </Text>
-      }
-      onClose={onClose}
-      size="35rem"
-    >
-      <Stack spacing="lg">
-        <Text>
-          {t`To set up SCIM-based provisioning, you'll need to share this endpoint URL and token with your identity provider.`}
-        </Text>
-        <CopyScimInput label={t`SCIM endpoint URL`} value={scimBaseUrl} />
-        <CopyScimInput
-          label={t`SCIM token`}
-          value={unmaskedScimToken}
-          disabled={false}
-        />
-        <Text>
-          <Icon name="info_filled" />{" "}
-          {t`Please copy the token and save it somewhere safe. For security reasons, we can't show the token to you again.`}
-        </Text>
+    <Modal.Root opened={opened} onClose={onClose} size="35rem">
+      <Modal.Overlay />
+      <Modal.Content p="md">
+        <Modal.Header mb="sm">
+          <Modal.Title>{t`Here's what you'll need to set SCIM up`}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Stack spacing="lg">
+            <Text c="text-medium">
+              {t`To set up SCIM-based provisioning, you'll need to share this endpoint URL and token with your identity provider.`}
+            </Text>
+            <CopyScimInput label={t`SCIM endpoint URL`} value={scimBaseUrl} />
+            <CopyScimInput
+              label={t`SCIM token`}
+              value={unmaskedScimToken}
+              disabled={false}
+            />
+            <ScimTextWarning>
+              {t`Please copy the token and save it somewhere safe. For security reasons, we can't show the token to you again.`}
+            </ScimTextWarning>
 
-        <Flex justify="end">
-          <Button variant="filled" onClick={onClose}>
-            {t`Done`}
-          </Button>
-        </Flex>
-      </Stack>
-    </Modal>
+            <Flex justify="end">
+              <Button variant="filled" onClick={onClose}>
+                {t`Done`}
+              </Button>
+            </Flex>
+          </Stack>
+        </Modal.Body>
+      </Modal.Content>
+    </Modal.Root>
   );
 };
 
@@ -83,7 +74,7 @@ export const UserProvisioningRegenerateTokenModal = ({
     }
   }, [opened, regenerateTokenReq]);
 
-  const handleConfirm = async () => {
+  const handleConfirmRegenerate = async () => {
     setConfirmed(true);
     await regenerateToken();
   };
@@ -102,60 +93,56 @@ export const UserProvisioningRegenerateTokenModal = ({
 
   if (!confirmed) {
     return (
-      <Modal
-        opened={opened}
-        title={
-          <Text size="lg" style={{ wordBreak: "break-all" }}>
-            {t`Regenerate token?`}
-          </Text>
-        }
-        onClose={onClose}
-        size="35rem"
-      >
-        <Stack spacing="lg">
-          <Text size="lg" style={{ wordBreak: "break-all" }}>
-            {/* eslint-disable-next-line no-literal-metabase-strings -- in admin settings */}
-            {t`This will delete the existing token. You'll need to update your identity provider with the new token, otherwise people won't be able to log in to your Metabase.`}
-          </Text>
-          <Flex justify="end">
-            <Button onClick={onClose}>{t`Cancel`}</Button>
-            <Button variant="filled" onClick={handleConfirm}>
-              {t`Regenerate now`}
-            </Button>
-          </Flex>
-        </Stack>
-      </Modal>
+      <Modal.Root opened={opened} onClose={onClose} size="35rem">
+        <Modal.Overlay />
+        <Modal.Content p="md">
+          <Modal.Header mb="md">
+            <Modal.Title>{t`Regenerate token?`}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Stack spacing="lg">
+              <Text>
+                {/* eslint-disable-next-line no-literal-metabase-strings -- in admin settings */}
+                {t`This will delete the existing token. You'll need to update your identity provider with the new token, otherwise people won't be able to log in to your Metabase.`}
+              </Text>
+              <Flex justify="end" gap="md">
+                <Button onClick={onClose}>{t`Cancel`}</Button>
+                <Button variant="filled" onClick={handleConfirmRegenerate}>
+                  {t`Regenerate now`}
+                </Button>
+              </Flex>
+            </Stack>
+          </Modal.Body>
+        </Modal.Content>
+      </Modal.Root>
     );
   }
 
   return (
-    <Modal
-      opened={opened}
-      title={
-        <Text size="lg" style={{ wordBreak: "break-all" }}>
-          {t`Copy and save the SCIM token`}
-        </Text>
-      }
-      onClose={onClose}
-      size="35rem"
-    >
-      <Stack spacing="lg">
-        <CopyScimInput
-          label={t`SCIM token`}
-          value={scimTokenInputText}
-          disabled={false}
-        />
-        <Text>
-          <Icon name="info_filled" />{" "}
-          {t`Please copy the token and save it somewhere safe. For security reasons, we can't show the token to you again.`}
-        </Text>
-        <Flex justify="end">
-          <Button onClick={onClose}>{t`Cancel`}</Button>
-          <Button variant="filled" onClick={handleConfirm}>
-            {t`Regenerate now`}
-          </Button>
-        </Flex>
-      </Stack>
-    </Modal>
+    <Modal.Root opened={opened} onClose={onClose} size="35rem">
+      <Modal.Overlay />
+      <Modal.Content p="md">
+        <Modal.Header mb="md">
+          <Modal.Title>{t`Copy and save the SCIM token`}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Stack spacing="lg">
+            <CopyScimInput
+              label={t`SCIM token`}
+              value={scimTokenInputText}
+              disabled={false}
+            />
+            <ScimTextWarning>
+              {t`Please copy the token and save it somewhere safe. For security reasons, we can't show the token to you again.`}
+            </ScimTextWarning>
+            <Flex justify="end">
+              <Button variant="filled" onClick={onClose}>
+                {t`Done`}
+              </Button>
+            </Flex>
+          </Stack>
+        </Modal.Body>
+      </Modal.Content>
+    </Modal.Root>
   );
 };
