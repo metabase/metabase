@@ -1,13 +1,18 @@
-/* eslint-disable */
-/* Use ActionIcon */
+// eslint-disable-next-line no-restricted-imports
+import { ActionIcon } from "@mantine/core";
 import { t } from "ttag";
 
-import { Menu, Flex, Card, Title, Icon, IconName, Text } from "metabase/ui";
-import type { Series, SingleSeries } from "metabase-types/api";
-import { ActionIcon } from "@mantine/core";
-import Link from "metabase/core/components/Link";
-import * as Urls from "metabase/lib/urls";
+import {
+  Menu,
+  Flex,
+  Card,
+  Title,
+  Icon,
+  type IconName,
+  Text,
+} from "metabase/ui";
 import visualizations from "metabase/visualizations";
+import type { Series, SingleSeries } from "metabase-types/api";
 
 interface VisualizerUsedProps {
   series: Series;
