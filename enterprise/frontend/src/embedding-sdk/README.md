@@ -688,6 +688,32 @@ useEffect(() => {
 return <InteractiveQuestion key={counter} questionId={yourQuestionId} />
 ```
 
+### Customizing JWT authentication
+
+You can customize how the SDK fetches the refresh token by specifying the `fetchRefreshToken` function in the `config` prop:
+
+```jsx
+/**
+  * This is the default implementation used in the SDK.
+  * You can customize this function to fit your needs, such as adding headers or excluding cookies.
+
+  * The function must return a JWT token object, or return "null" if the user is not authenticated.
+
+  * @returns {Promise<{id: string, exp: number} | null>}
+ */
+async function fetchRefreshToken(url) {
+  const response = await fetch(url, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  return await response.json();
+}
+
+// Pass this configuration to MetabaseProvider.
+const config = { fetchRefreshToken }
+```
+
 # Known limitations
 
 - The Metabase Embedding SDK does not support server-side rendering (SSR) at the moment.

@@ -34,6 +34,7 @@ export const createMockSdkState = ({
     eventHandlers: {},
     loaderComponent: null,
     errorComponent: null,
+    fetchRefreshTokenFn: null,
     ...opts,
   };
 };
