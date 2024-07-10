@@ -99,10 +99,12 @@ const changeDisableGrouperBatchProcessingSetting = value => {
 
 describe("scenarios > dashboard > tabs", () => {
   before(() => {
+    cy.signInAsAdmin();
     changeDisableGrouperBatchProcessingSetting(true);
   });
 
   after(() => {
+    cy.signInAsAdmin();
     changeDisableGrouperBatchProcessingSetting(false);
   });
 
