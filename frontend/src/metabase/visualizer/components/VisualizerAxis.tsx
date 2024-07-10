@@ -3,6 +3,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 // eslint-disable-next-line no-restricted-imports
 import { ActionIcon } from "@mantine/core";
+import type { CSSProperties } from "react";
 
 import { Flex, Icon, Menu, Text } from "metabase/ui";
 
@@ -58,6 +59,7 @@ export function VisualizerAxis({
         <ColumnPicker
           key={column}
           column={column}
+          columns={columns}
           columnOptions={columnOptions}
           direction={direction}
           onChange={nextColumn => handleColumnChange(column, nextColumn)}
@@ -76,12 +78,14 @@ export function VisualizerAxis({
 interface ColumnPickerProps {
   direction?: "horizontal" | "vertical";
   column: string;
+  columns: string[];
   columnOptions: Array<{ label: string; value: string }>;
   onChange: (column: string) => void;
 }
 
 function ColumnPicker({
   column,
+  columns,
   columnOptions,
   direction = "horizontal",
   onChange,
@@ -98,7 +102,13 @@ function ColumnPicker({
 
   const option = columnOptions.find(option => option.value === column);
 
-  const containerStyle =
+  const filteredOptions = columnOptions.filter(
+    option => !columns.includes(option.value) && option.value !== column,
+  );
+
+  const hasOptions = filteredOptions.length > 0;
+
+  const containerStyle: CSSProperties =
     direction === "vertical"
       ? {
           position: "absolute",
@@ -108,12 +118,15 @@ function ColumnPicker({
           transform: transform
             ? CSS.Translate.toString(transform) + " rotate(-90deg)"
             : "rotate(-90deg)",
-          cursor: "pointer",
         }
-      : { cursor: "pointer", transform: CSS.Translate.toString(transform) };
+      : { transform: CSS.Translate.toString(transform) };
+
+  if (hasOptions) {
+    containerStyle.cursor = "pointer";
+  }
 
   return (
-    <Menu>
+    <Menu disabled={!hasOptions}>
       <Menu.Target>
         <Flex
           {...attributes}
@@ -137,7 +150,7 @@ function ColumnPicker({
             <Text color="text-medium" fw="bold">
               {option?.label ?? column}
             </Text>
-            <Icon name="chevrondown" size={12} />
+            {hasOptions && <Icon name="chevrondown" size={12} />}
           </Flex>
         </Flex>
       </Menu.Target>
@@ -174,6 +187,10 @@ function AddColumnButton({
   const filteredOptions = columnOptions.filter(
     option => !columns.includes(option.value),
   );
+
+  if (filteredOptions.length === 0) {
+    return null;
+  }
 
   return (
     <Menu>
