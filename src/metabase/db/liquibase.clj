@@ -158,17 +158,19 @@
 
 (defn changelog-table-name
   "Return the proper changelog table name based on db type of the connection."
-  [db-type]
-  (case db-type
-    (:postgres :h2) "databasechangelog"
-    :mysql "DATABASECHANGELOG"))
+  [liquibase-or-conn]
+  (if (instance? Liquibase liquibase-or-conn)
+    (.getDatabaseChangeLogTableName (.getDatabase ^Liquibase liquibase-or-conn))
+    (with-liquibase [liquibase liquibase-or-conn]
+      (changelog-table-name liquibase))))
 
 (defn changelog-by-id
   "Return the changelog row value for the given `changelog-id`."
   [app-db changelog-id]
-  (t2/query-one (format "select * from %s where id = '%s'"
-                        (changelog-table-name (:db-type app-db))
-                        changelog-id)))
+  (let [table-name (case (:db-type app-db)
+                     (:postgres :h2) "databasechangelog"
+                     :mysql "DATABASECHANGELOG")]
+    (t2/query-one (format "select * from %s where id = '%s'" table-name changelog-id))))
 
 (defn migrations-sql
   "Return a string of SQL containing the DDL statements needed to perform unrun `liquibase` migrations, custom migrations will be ignored."
