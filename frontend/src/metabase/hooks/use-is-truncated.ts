@@ -89,11 +89,6 @@ const getIsTruncated = (element: HTMLElement): boolean => {
 };
 
 const getUntruncatedBoundingClientRect = (element: HTMLElement): DOMRect => {
-  if (!element.parentElement) {
-    // this should never happen
-    throw new Error("Element does not have a parent");
-  }
-
   const cloned = element.cloneNode(true);
 
   if (!(cloned instanceof HTMLElement)) {
