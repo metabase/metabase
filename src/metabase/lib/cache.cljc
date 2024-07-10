@@ -1,5 +1,8 @@
 (ns metabase.lib.cache
-  #?@(:cljs ((:require [goog.object :as gobject]))))
+  #?@(:clj  ((:import
+              [java.util Collections Map WeakHashMap]
+              [java.util.function Function]))
+      :cljs ((:require [goog.object :as gobject]))))
 
 (defn- atomic-map-cache-fn
   "Caching wrapper for use in [[side-channel-cache]].
@@ -22,6 +25,10 @@
                                    (.get inner-cache x)))
      ([^js cache subkey x value] (let [inner-cache (gobject/setWithReturnValueIfNotSet cache subkey #(js/WeakMap.))]
                                    (.set inner-cache x value)))))
+
+#?(:clj
+   (defonce ^:private ^Map clj-weak-map-query-cache
+     (Collections/synchronizedMap (WeakHashMap.))))
 
 (defn- side-channel-cache*
   "(CLJS only; this is a pass-through in CLJ.)
@@ -59,7 +66,20 @@
   [subkey host x f {:keys [cache-fn force?]
                     :or {cache-fn atomic-map-cache-fn}}]
   (comment subkey, force?, cache-fn, host) ; Avoids lint warning for half-unused inputs.
-  #?(:clj  (f x)
+  #?(:clj  (if (or force? (map? host))
+             (let [cache-function (reify
+                                    Function
+                                    (apply [_this _arg]
+                                      (cache-fn)))]
+               (if-let [cache (.computeIfAbsent clj-weak-map-query-cache host cache-function)]
+                 (if-let [cached (cache-fn cache subkey x)]
+                   cached
+                   ;; Cache miss - generate the value and cache it.
+                   (let [value (f x)]
+                     (cache-fn cache subkey x value)
+                     value))
+                 (f x)))
+             (f x))
      :cljs (if (or force? (object? host) (map? host))
              (do
                (when-not (.-__mbcache ^js host)
