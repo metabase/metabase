@@ -87,7 +87,7 @@ describeEE(
 
         downloadAndAssert(
           {
-            publicUid: uuid,
+            publicUuid: uuid,
             fileType: "csv",
             questionId: ORDERS_BY_YEAR_QUESTION_ID,
             isDashboard: true,
