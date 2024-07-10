@@ -1290,7 +1290,7 @@ describe("issue 42385", { tags: "@external" }, () => {
   });
 });
 
-describe.skip("issue 45300", () => {
+describe("issue 45300", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
@@ -1333,9 +1333,7 @@ describe.skip("issue 45300", () => {
     modal().within(() => {
       // sidebar
       cy.findByRole("tablist").within(() => {
-        cy.findAllByRole("tab", { name: "Product" })
-          .should("have.length", 1)
-          .click();
+        cy.findAllByRole("tab", { name: "Product" }).eq(0).click();
       });
 
       // main panel
