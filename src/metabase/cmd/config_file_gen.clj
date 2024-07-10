@@ -34,23 +34,19 @@
   [{:keys [munged-name default]}]
   {(keyword munged-name) default})
 
-(defn- settings-map
-  "Converts a list of settings (their names and default values) into a sorted map."
-  [settings]
-  (reduce (fn [acc s]
-            (let [[k v] (first s)]
-              (assoc acc k v)))
-          (sorted-map)
-          settings))
-
 ;;;; Add settings to YAML template and build Markdown file
+
+(defn- create-settings-map
+  "Creates a sorted map of settings from their names and defaults."
+  []
+  (->> (get-settings)
+       (map get-name-and-default)
+       (into (sorted-map))))
 
 (defn- add-settings
   "Adds settings to the configuration template."
   [config]
-  (let [settings (map get-name-and-default (get-settings))
-        sm (settings-map settings)]
-    (assoc-in config [:config :settings] sm)))
+  (assoc-in config [:config :settings] (create-settings-map)))
 
 (defn- build-markdown-page
   "Take a YAML string and builds a Markdown page for docs on a configuration file."
