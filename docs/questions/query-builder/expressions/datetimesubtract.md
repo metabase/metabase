@@ -29,7 +29,7 @@ title: DatetimeSubtract
 - "millisecond"
 
 `amount`:
-- An integer. You cannot use fractional values. For example, you cannot add "half a year" (0.5).
+- An integer. You cannot use fractional values. For example, you cannot subtract "half a year" (0.5).
 - May be a negative number: `datetimeSubtract("2021-03-25", -1, "month")` will return `2021-04-25`.
 
 ## Calculating a start date
