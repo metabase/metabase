@@ -129,16 +129,16 @@
       (getPriority [_] 1024) ;; So that it has the highest priority in the parser factory.
       (parse [_ physicalChangeLogLocation changeLogParameters resourceAccessor]
         (let [key [physicalChangeLogLocation (.getDatabase changeLogParameters)]]
-          (.computeIfAbsent
-           -test-only-migration-file-cache key
-           (reify java.util.function.Function
-             (apply [_ _]
-               ;; Need to rebind the dynvar so that the ParserFactory doesn't return the caching parser again.
-               (let [real-parser (binding [-test-only-*return-caching-parser* false]
-                                   (.getParser (liquibase.parser.ChangeLogParserFactory/getInstance)
-                                               physicalChangeLogLocation resourceAccessor))]
-                 (.parse real-parser physicalChangeLogLocation changeLogParameters resourceAccessor)))))))
-      (supports [_ changeLogFile resourceAccessor]
+          (or (.get -test-only-migration-file-cache key)
+              ;; Need to rebind the dynvar so that the ParserFactory doesn't return the caching parser again.
+              (let [real-parser (binding [-test-only-*return-caching-parser* false]
+                                  (.getParser (liquibase.parser.ChangeLogParserFactory/getInstance)
+                                              physicalChangeLogLocation resourceAccessor))
+                    parsed (.parse ^liquibase.parser.ChangeLogParser real-parser
+                                   physicalChangeLogLocation changeLogParameters resourceAccessor)]
+                (.put -test-only-migration-file-cache key parsed)
+                parsed))))
+      (supports [_ _changeLogFile _resourceAccessor]
         -test-only-*return-caching-parser*)))
 
   (.register (liquibase.parser.ChangeLogParserFactory/getInstance) -test-only-caching-parser)
