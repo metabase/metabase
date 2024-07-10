@@ -1200,6 +1200,19 @@
     (fn [_]
       (visible-columns* a-query stage-number))))
 
+;; ## Column keys
+(defn ^:export column-key
+  "Given a column, as returned by [[visible-columns]], [[returned-columns]] etc., return a string suitable for uniquely
+  identifying the column on its query.
+
+  This key will generally not be changed by unrelated edits to the query.
+
+  (Currently this is powered by `:lib/desired-column-alias`, but it's deliberately opaque.)"
+  [a-column]
+  (or (:lib/desired-column-alias a-column)
+      (:name a-column)))
+
+;; ## Legacy refs
 (defn- normalize-legacy-ref
   [a-ref]
   (if (#{:aggregation :metric :segment} (first a-ref))

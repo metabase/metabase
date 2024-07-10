@@ -296,16 +296,19 @@
     user))
 
 (defn- add-has-question-and-dashboard
-  "True when the user has permissions for at least one un-archived question and one un-archived dashboard."
+  "True when the user has permissions for at least one un-archived question and one un-archived dashboard, excluding
+  internal/automatically-loaded content."
   [user]
   (let [coll-ids-filter (collection/visible-collection-ids->honeysql-filter-clause
                           :collection_id
                           (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))
-        perms-query {:where [:and
-                             [:= :archived false]
-                             coll-ids-filter]}]
-    (assoc user :has_question_and_dashboard (and (t2/exists? :model/Card perms-query)
-                                                 (t2/exists? :model/Dashboard perms-query)))))
+        entity-exists? (fn [model] (t2/exists? model
+                                    {:where [:and
+                                             [:= :archived false]
+                                             coll-ids-filter
+                                             (mi/exclude-internal-content-hsql model)]}))]
+    (assoc user :has_question_and_dashboard (and (entity-exists? :model/Card)
+                                                 (entity-exists? :model/Dashboard)))))
 
 (defn- add-first-login
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."

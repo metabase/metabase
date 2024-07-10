@@ -4,6 +4,7 @@ import _ from "underscore";
 import { getTrashUndoMessage } from "metabase/archive/utils";
 import Questions from "metabase/entities/questions";
 import { createThunkAction } from "metabase/lib/redux";
+import { syncVizSettingsWithQuery } from "metabase/querying";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { addUndo } from "metabase/redux/undo";
 import * as Lib from "metabase-lib";
@@ -121,11 +122,9 @@ export const updateQuestion = (
     const currentQuestion = getQuestion(getState());
     const queryBuilderMode = getQueryBuilderMode(getState());
 
-    const queryResult = getFirstQueryResult(getState());
-
     newQuestion = getAdHocQuestionWithVizSettings({
       question: newQuestion,
-      queryResult,
+      currentQuestion,
       onCloseQuestionInfo: () => dispatch(onCloseQuestionInfo()),
       shouldStartAdHocQuestion:
         shouldStartAdHocQuestion && queryBuilderMode !== "dataset",

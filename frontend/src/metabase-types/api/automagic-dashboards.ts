@@ -13,6 +13,7 @@ export type XrayEntityType =
 export interface GetXrayDashboardQueryMetadataRequest {
   entity: XrayEntityType;
   entityId: number | string;
+  dashboard_load_id?: string;
 }
 
 export interface DatabaseXray {

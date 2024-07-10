@@ -1077,6 +1077,9 @@
   "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`, check that you have
   Root Collection perms."
   [collection-id collection-namespace]
+  (when (collection/is-trash? collection-id)
+    (throw (ex-info (tru "You cannot modify the Trash Collection.")
+                    {:status-code 400})))
   (api/write-check (if collection-id
                      (t2/select-one Collection :id collection-id)
                      (cond-> collection/root-collection

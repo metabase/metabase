@@ -669,7 +669,7 @@ describe("scenarios > collections > trash", () => {
 
     cy.log("Make sure trash is selected for a trashed dashboard");
     cy.get("@dashboard").then(dashboard => {
-      cy.intercept("GET", `/api/dashboard/${dashboard.id}`).as("getDashboard");
+      cy.intercept("GET", `/api/dashboard/${dashboard.id}*`).as("getDashboard");
       visitDashboard(dashboard.id);
       cy.wait("@getDashboard");
       openNavigationSidebar();

@@ -6,6 +6,7 @@ import { syncVizSettingsWithSeries } from "metabase/visualizations/lib/sync-sett
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";
+import { syncVizSettingsWithQuery } from "metabase/querying";
 
 /**
  * Saves to `visualization_settings` property of a question those visualization settings that
@@ -34,11 +35,11 @@ export function getQuestionWithDefaultVisualizationSettings(
 
 export function getAdHocQuestionWithVizSettings(options: {
   question: Question;
-  queryResult?: any;
+  currentQuestion?: Question;
   shouldStartAdHocQuestion?: boolean;
   onCloseQuestionInfo?: () => void;
 }) {
-  const { shouldStartAdHocQuestion = false, queryResult } = options;
+  const { shouldStartAdHocQuestion = false, currentQuestion } = options;
   let { question } = options;
 
   const { isEditable } = Lib.queryDisplayInfo(question.query());
@@ -57,15 +58,13 @@ export function getAdHocQuestionWithVizSettings(options: {
     }
   }
 
-  if (queryResult) {
+  if (currentQuestion) {
     question = question.setSettings(
-      syncVizSettingsWithSeries(question.settings(), [
-        {
-          card: question.card(),
-          data: queryResult?.data,
-          error: queryResult?.error,
-        },
-      ]),
+      syncVizSettingsWithQuery(
+        question.settings(),
+        question.query(),
+        currentQuestion.query(),
+      ),
     );
   }
 
