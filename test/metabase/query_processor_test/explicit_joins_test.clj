@@ -606,7 +606,7 @@
 
 (deftest ^:parallel join-source-queries-with-joins-test
   (testing "Should be able to join against source queries that themselves contain joins (#12928)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :foreign-keys)
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
       (mt/dataset test-data
         (testing "(#12928)"
           (let [query (mt/mbql-query orders
