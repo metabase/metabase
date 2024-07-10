@@ -413,7 +413,10 @@
           (throw e))))))
 
 (defn dashboard-param-values
-  "Common implementation for fetching parameter values for embedding and preview-embedding."
+  "Common implementation for fetching parameter values for embedding and preview-embedding.
+  Optionally pass a map with `:preview` containing `true` (or some non-falsy value) to disable checking
+  if the dashboard is 'published'. This is intended to power the `preview_embed` api endpoints.
+  The `:preview` key will default to `false`."
   [token searched-param-id prefix id-query-params
    & {:keys [preview] :or {preview false}}]
   (let [unsigned-token                       (embed/unsign token)
