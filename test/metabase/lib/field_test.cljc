@@ -1508,6 +1508,7 @@
   (testing "external remaps (Field mapped to another Field)"
     (let [metadata-provider (-> meta/metadata-provider
                                 (lib.tu/merged-mock-metadata-provider {:fields [{:id               (meta/id :venues :name)
+                                                                                 :semantic-type    :type/FK
                                                                                  :has-field-values nil}]})
                                 (lib.tu/remap-metadata-provider (meta/id :venues :name) (meta/id :categories :name)))
           venues-name       (lib.metadata/field metadata-provider (meta/id :venues :name))]
