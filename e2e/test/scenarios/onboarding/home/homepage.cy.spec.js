@@ -457,7 +457,7 @@ describe("scenarios > home > custom homepage", () => {
     it("should not redirect when already on the dashboard homepage (metabase#43800)", () => {
       cy.intercept(
         "GET",
-        `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata`,
+        `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata*`,
       ).as("getDashboardMetadata");
       cy.intercept(
         "POST",
