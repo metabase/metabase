@@ -1,9 +1,8 @@
-import type { MockCall } from "fetch-mock";
 import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
 import { setupModelIndexEndpoints } from "__support__/server-mocks";
-import { Api, listModelIndexes } from "metabase/api";
+import { Api } from "metabase/api";
 import Question from "metabase-lib/v1/Question";
 import type { FieldReference, ModelIndex, Field } from "metabase-types/api";
 import {
@@ -30,14 +29,8 @@ const setup = () => {
     Api.middleware,
   ]);
 
-  const dispatchSpy = jest.spyOn(store, "dispatch");
-  const getStateSpy = jest.spyOn(store, "getState");
-
   return {
     dispatch: store.dispatch,
-    getState: store.getState,
-    dispatchSpy,
-    getStateSpy,
   };
 };
 
@@ -77,11 +70,13 @@ describe("Entities > model-indexes > actions", () => {
         createMockField(),
       ]);
 
-      const { dispatch, getState, dispatchSpy, getStateSpy } = setup();
-      await updateModelIndexes(model)(dispatch, getState);
+      const { dispatch } = setup();
+      await updateModelIndexes(model)(dispatch);
 
-      expect(dispatchSpy).not.toHaveBeenCalled();
-      expect(getStateSpy).not.toHaveBeenCalled();
+      const calls = fetchMock.calls();
+
+      // No API calls to fetch model indexes
+      expect(calls).toHaveLength(0);
     });
 
     it("should make a POST call for a newly-added index field", async () => {
@@ -96,14 +91,15 @@ describe("Entities > model-indexes > actions", () => {
 
       setupModelIndexEndpoints(model.id(), []);
 
-      const { dispatch, getState, dispatchSpy, getStateSpy } = setup();
+      const { dispatch } = setup();
 
-      await updateModelIndexes(model)(dispatch, getState);
+      await updateModelIndexes(model)(dispatch);
 
-      expect(dispatchSpy).toHaveBeenCalled();
-      expect(getStateSpy).toHaveBeenCalled();
+      const createCalls = await fetchMock.calls("createModelIndex");
 
-      const [, options] = (await fetchMock.lastCall()) as MockCall;
+      expect(createCalls).toHaveLength(1);
+
+      const [, options] = createCalls[0];
 
       expect(options?.method).toBe("POST");
       // @ts-expect-error ???
@@ -131,19 +127,15 @@ describe("Entities > model-indexes > actions", () => {
 
       setupModelIndexEndpoints(1, [existingModelIndex]);
 
-      const { dispatch, getState, dispatchSpy, getStateSpy } = setup();
+      const { dispatch } = setup();
 
-      await dispatch(listModelIndexes.initiate({ model_id: 1 }));
+      await updateModelIndexes(model)(dispatch);
 
-      await updateModelIndexes(model)(dispatch, getState);
+      const deleteCalls = fetchMock.calls("deleteModelIndex");
 
-      expect(dispatchSpy).toHaveBeenCalled();
-      expect(getStateSpy).toHaveBeenCalled();
+      expect(deleteCalls).toHaveLength(1);
 
-      const [url, options] = (await fetchMock.lastCall(
-        undefined,
-        "DELETE",
-      )) as MockCall;
+      const [url, options] = deleteCalls[0];
 
       expect(url).toContain("/api/model-index/99");
       expect(options?.method).toBe("DELETE");
@@ -164,21 +156,19 @@ describe("Entities > model-indexes > actions", () => {
         value_ref: indexFieldRef,
       });
 
-      setupModelIndexEndpoints(1, [existingModelIndex]);
+      setupModelIndexEndpoints(model.id(), [existingModelIndex]);
 
-      const { dispatch, getState, dispatchSpy, getStateSpy } = setup();
+      const { dispatch } = setup();
 
-      await dispatch(listModelIndexes.initiate({ model_id: 1 }));
+      await updateModelIndexes(model)(dispatch);
 
-      await updateModelIndexes(model)(dispatch, getState);
+      const fetchCalls = await fetchMock.calls(`getModelIndexes-${model.id()}`);
+      const createCalls = await fetchMock.calls("createModelIndex");
 
-      expect(dispatchSpy).toHaveBeenCalled();
-      expect(getStateSpy).toHaveBeenCalled();
-
-      const response = await fetchMock.lastCall(undefined, "POST");
-
-      // no calls to fetch
-      expect(response).toBeUndefined();
+      // no calls to Create
+      expect(createCalls).toHaveLength(0);
+      // Made a call to fetch
+      expect(fetchCalls).toHaveLength(1);
     });
 
     it("should not delete an index if there is no index for the field", async () => {
@@ -193,17 +183,18 @@ describe("Entities > model-indexes > actions", () => {
 
       setupModelIndexEndpoints(model.id(), []);
 
-      const { dispatch, getState, dispatchSpy, getStateSpy } = setup();
+      const { dispatch } = setup();
 
-      await updateModelIndexes(model)(dispatch, getState);
+      await updateModelIndexes(model)(dispatch);
 
-      expect(dispatchSpy).not.toHaveBeenCalled();
-      expect(getStateSpy).toHaveBeenCalled();
+      const fetchCalls = await fetchMock.calls(`getModelIndexes-${model.id()}`);
+      const deleteCalls = fetchMock.calls("deleteModelIndex");
 
-      const response = await fetchMock.lastCall();
+      // Expect 1 fetch for model indexes
+      expect(fetchCalls).toHaveLength(1);
 
-      // no calls to fetch
-      expect(response).toBeUndefined();
+      //Expect no calls to delete
+      expect(deleteCalls).toHaveLength(0);
     });
   });
 });

@@ -198,11 +198,11 @@ export function provideModelIndexTags(
 }
 
 export function provideModelIndexListTags(
-  modelIndexs: ModelIndex[],
+  modelIndexes: ModelIndex[],
 ): TagDescription<TagType>[] {
   return [
     listTag("model-index"),
-    ...modelIndexs.flatMap(modelIndex => provideModelIndexTags(modelIndex)),
+    ...modelIndexes.flatMap(modelIndex => provideModelIndexTags(modelIndex)),
   ];
 }
 
