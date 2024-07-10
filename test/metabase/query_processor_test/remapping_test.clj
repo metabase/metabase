@@ -297,32 +297,31 @@
         (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                              qp.test-util/mock-fks-application-database-metadata-provider
                                              (lib.tu/remap-metadata-provider (mt/id :orders :product_id) (mt/id :products :title)))
-          (binding [qp.test-util/*enable-fk-support-for-disabled-drivers-in-tests* true]
-            (let [query (mt/mbql-query products
-                          {:joins    [{:source-query {:source-table $$orders
-                                                      :breakout     [$orders.product_id]
-                                                      :aggregation  [[:sum $orders.quantity]]}
-                                       :alias        "Orders"
-                                       :condition    [:= $id &Orders.orders.product_id]
-                                       :fields       [&Orders.title
-                                                      &Orders.*sum/Integer]}]
-                           :fields   [$title $category]
-                           :order-by [[:asc $id]]
-                           :limit    3})]
-              (mt/with-native-query-testing-context query
-                (let [results (qp/process-query query)]
-                  (when (= driver/*driver* :h2)
-                    (testing "Metadata"
-                      (is (= [["TITLE"    "Title"]
-                              ["CATEGORY" "Category"]
-                              ["TITLE_2"  "Orders → Title"]
-                              ["sum"      "Orders → Sum"]]
-                             (map (juxt :name :display_name) (mt/cols results))))))
-                  (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
-                          ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]
-                          ["Synergistic Granite Chair" "Doohickey" "Synergistic Granite Chair" 286]]
-                         (mt/formatted-rows [str str str int]
-                           results))))))))))))
+          (let [query (mt/mbql-query products
+                                     {:joins    [{:source-query {:source-table $$orders
+                                                                 :breakout     [$orders.product_id]
+                                                                 :aggregation  [[:sum $orders.quantity]]}
+                                                  :alias        "Orders"
+                                                  :condition    [:= $id &Orders.orders.product_id]
+                                                  :fields       [&Orders.title
+                                                                 &Orders.*sum/Integer]}]
+                                      :fields   [$title $category]
+                                      :order-by [[:asc $id]]
+                                      :limit    3})]
+            (mt/with-native-query-testing-context query
+              (let [results (qp/process-query query)]
+                (when (= driver/*driver* :h2)
+                  (testing "Metadata"
+                    (is (= [["TITLE"    "Title"]
+                            ["CATEGORY" "Category"]
+                            ["TITLE_2"  "Orders → Title"]
+                            ["sum"      "Orders → Sum"]]
+                           (map (juxt :name :display_name) (mt/cols results))))))
+                (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
+                        ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]
+                        ["Synergistic Granite Chair" "Doohickey" "Synergistic Granite Chair" 286]]
+                       (mt/formatted-rows [str str str int]
+                                          results)))))))))))
 
 (deftest ^:parallel inception-style-nested-query-with-joins-test
   (testing "source query > source query > query with join (with remappings) should work (#14724)"

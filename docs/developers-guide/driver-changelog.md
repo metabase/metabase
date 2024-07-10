@@ -57,7 +57,7 @@ title: Driver interface changelog
 ## Metabase 0.50.12
 
 - `:foreign-keys` driver feature was removed. `:metadata/keys-constraints` should be set to false in drivers
-  that support do not support foreign keys relationships reporting during sync. Implicit joins and column remaps are
+  that support do not support foreign key relationships reporting during sync. Implicit joins and column remaps are
   now dependent on `:left-join` instead. All join features are now enabled for `:sql` based drivers. Previously those
   were dependent on `:foreign-keys`. If your driver does support `:left-join` also remapping and implicit joins tests
   will run on it.

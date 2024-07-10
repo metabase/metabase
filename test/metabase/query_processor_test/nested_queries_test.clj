@@ -1416,23 +1416,24 @@
     (testing (str "Should be able to breakout on a temporally-bucketed, implicitly-joined column from the source query "
                   "incorrectly using `:field` literals to refer to the Field (#16389)")
       ;; See #19757 for more details on why this query is broken
-      (mt/dataset test-data
-        (mt/with-mock-fks-for-drivers-without-fk-constraints
-          (let [query (mt/mbql-query orders
-                        {:source-query {:source-table $$orders
-                                        :breakout     [!month.product_id->products.created_at]
-                                        :aggregation  [[:count]]}
-                         :filter       [:time-interval
-                                        [:field (mt/format-name "created_at") {:base-type :type/DateTimeWithLocalTZ}]
-                                        -32
-                                        :year]
-                         :aggregation  [[:sum *count/Integer]]
-                         :breakout     [[:field (mt/format-name "created_at") {:base-type :type/DateTimeWithLocalTZ}]]
-                         :limit        1})]
-            (mt/with-native-query-testing-context query
-              (is (= [["2016-04-01T00:00:00Z" 175]]
-                     (mt/formatted-rows [u.date/temporal-str->iso8601-str int]
-                       (qp/process-query query)))))))))))
+      (mt/dataset
+       test-data
+       (let [query (mt/mbql-query
+                    orders
+                    {:source-query {:source-table $$orders
+                                    :breakout     [!month.product_id->products.created_at]
+                                    :aggregation  [[:count]]}
+                     :filter       [:time-interval
+                                    [:field (mt/format-name "created_at") {:base-type :type/DateTimeWithLocalTZ}]
+                                    -32
+                                    :year]
+                     :aggregation  [[:sum *count/Integer]]
+                     :breakout     [[:field (mt/format-name "created_at") {:base-type :type/DateTimeWithLocalTZ}]]
+                     :limit        1})]
+         (mt/with-native-query-testing-context query
+           (is (= [["2016-04-01T00:00:00Z" 175]]
+                  (mt/formatted-rows [u.date/temporal-str->iso8601-str int]
+                                     (qp/process-query query))))))))))
 
 (deftest ^:parallel really-really-long-identifiers-test
   (testing "Should correctly handle really really long table and column names (#20627)"

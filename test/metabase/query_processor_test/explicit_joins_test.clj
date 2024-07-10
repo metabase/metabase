@@ -700,22 +700,23 @@
 (deftest ^:parallel join-with-space-in-alias-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "Some drivers don't allow Table alises with spaces in them. Make sure joins still work."
-      (mt/dataset test-data
-        (mt/with-mock-fks-for-drivers-without-fk-constraints
-          (let [query (mt/mbql-query products
-                        {:joins    [{:source-query {:source-table $$orders}
-                                     :alias        "Q 1"
-                                     :condition    [:= $id [:field %orders.product_id {:join-alias "Q 1"}]]
-                                     :fields       :all}]
-                         :fields   [$id
-                                    [:field %orders.id {:join-alias "Q 1"}]]
-                         :order-by [[:asc $id]
-                                    [:asc [:field %orders.id {:join-alias "Q 1"}]]]
-                         :limit    2})]
-            (mt/with-native-query-testing-context query
-              (is (= [[1 448] [1 493]]
-                     (mt/formatted-rows [int int]
-                       (qp/process-query query)))))))))))
+      (mt/dataset
+       test-data
+       (let [query (mt/mbql-query
+                    products
+                    {:joins    [{:source-query {:source-table $$orders}
+                                 :alias        "Q 1"
+                                 :condition    [:= $id [:field %orders.product_id {:join-alias "Q 1"}]]
+                                 :fields       :all}]
+                     :fields   [$id
+                                [:field %orders.id {:join-alias "Q 1"}]]
+                     :order-by [[:asc $id]
+                                [:asc [:field %orders.id {:join-alias "Q 1"}]]]
+                     :limit    2})]
+         (mt/with-native-query-testing-context query
+           (is (= [[1 448] [1 493]]
+                  (mt/formatted-rows [int int]
+                                     (qp/process-query query))))))))))
 
 (deftest ^:parallel joining-nested-queries-with-same-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
@@ -940,25 +941,26 @@
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
                            ;; mongodb doesn't support foreign keys required by this test
                            :mongo)
-      (mt/dataset test-data
-        (mt/with-mock-fks-for-drivers-without-fk-constraints
-          (let [query (mt/mbql-query orders
-                        {:source-query {:source-table $$orders
-                                        :breakout     [$product_id->products.category]
-                                        :aggregation  [[:count]]}
-                         :joins        [{:source-table $$products
-                                         :alias        "Products"
-                                         :condition    [:= *products.category &Products.products.category]
-                                         :fields       [&Products.products.id
-                                                        &Products.products.title]}]
-                         :expressions  {"CC" [:+ 1 1]}
-                         :order-by     [[:asc &Products.products.id]]
-                         :limit        2})]
-            (mt/with-native-query-testing-context query
-              (is (= [["Gizmo"     4784 2 1 "Rustic Paper Wallet"]
-                      ["Doohickey" 3976 2 2 "Small Marble Shoes"]]
-                     (mt/formatted-rows [str int int int str]
-                       (qp/process-query query)))))))))))
+      (mt/dataset
+       test-data
+       (let [query (mt/mbql-query
+                    orders
+                    {:source-query {:source-table $$orders
+                                    :breakout     [$product_id->products.category]
+                                    :aggregation  [[:count]]}
+                     :joins        [{:source-table $$products
+                                     :alias        "Products"
+                                     :condition    [:= *products.category &Products.products.category]
+                                     :fields       [&Products.products.id
+                                                    &Products.products.title]}]
+                     :expressions  {"CC" [:+ 1 1]}
+                     :order-by     [[:asc &Products.products.id]]
+                     :limit        2})]
+         (mt/with-native-query-testing-context query
+           (is (= [["Gizmo"     4784 2 1 "Rustic Paper Wallet"]
+                   ["Doohickey" 3976 2 2 "Small Marble Shoes"]]
+                  (mt/formatted-rows [str int int int str]
+                                     (qp/process-query query))))))))))
 
 (deftest ^:parallel join-order-test
   (testing "Joins should be emitted in the same order as they were specified in MBQL (#15342)"

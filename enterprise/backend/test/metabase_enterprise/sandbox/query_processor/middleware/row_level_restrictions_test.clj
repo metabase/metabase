@@ -417,7 +417,7 @@
   not normally have FK tests ran for it. Excludes Presto JDBC, because that driver does NOT support fetching foreign
   keys from the JDBC metadata, even though we enable the feature in the UI."
   []
-  (cond-> (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
+  (cond-> (mt/normal-drivers-with-feature :nested-queries :metadata/key-constraints)
     (@tx.env/test-drivers :bigquery-cloud-sdk) (conj :bigquery-cloud-sdk)
     true                                       (disj :presto-jdbc)))
 
@@ -430,9 +430,8 @@
       (met/with-gtaps! {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
                                      :venues   nil}
                         :attributes {"user" 5}}
-        (mt/with-mock-fks-for-drivers-without-fk-constraints
-          (is (= [[1 10] [2 36] [3 4] [4 5]]
-                 (run-checkins-count-broken-out-by-price-query))))))))
+        (is (= [[1 10] [2 36] [3 4] [4 5]]
+               (run-checkins-count-broken-out-by-price-query)))))))
 
 (deftest e2e-fks-test-2
   (mt/test-drivers (row-level-restrictions-fk-drivers)
@@ -442,9 +441,8 @@
       (met/with-gtaps! {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
                                      :venues   (venues-price-mbql-gtap-def)}
                         :attributes {"user" 5, "price" 1}}
-        (mt/with-mock-fks-for-drivers-without-fk-constraints
-          (is (= #{[nil 45] [1 10]}
-                 (set (run-checkins-count-broken-out-by-price-query)))))))))
+        (is (= #{[nil 45] [1 10]}
+               (set (run-checkins-count-broken-out-by-price-query))))))))
 
 (deftest e2e-fks-test-3
   (mt/test-drivers (row-level-restrictions-fk-drivers)
@@ -452,9 +450,8 @@
       (met/with-gtaps! {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
                                      :venues   (dissoc (venues-price-mbql-gtap-def) :query)}
                         :attributes {"user" 5, "price" 1}}
-        (mt/with-mock-fks-for-drivers-without-fk-constraints
-          (is (= #{[nil 45] [1 10]}
-                 (set (run-checkins-count-broken-out-by-price-query)))))))))
+        (is (= #{[nil 45] [1 10]}
+               (set (run-checkins-count-broken-out-by-price-query))))))))
 
 (deftest e2e-fks-test-4
   (mt/test-drivers (row-level-restrictions-fk-drivers)
@@ -464,15 +461,14 @@
                                      :venues   (dissoc (venues-price-mbql-gtap-def) :query)
                                      :users    {:remappings {:user ["variable" [:field (mt/id :users :id) nil]]}}}
                         :attributes {"user" 5, "price" 1}}
-        (mt/with-mock-fks-for-drivers-without-fk-constraints
-          (is (= #{[nil "Quentin Sören" 45] [1 "Quentin Sören" 10]}
-                 (set
-                  (mt/format-rows-by [#(when % (int %)) str int]
-                    (mt/rows
-                     (mt/run-mbql-query checkins
-                       {:aggregation [[:count]]
-                        :order-by    [[:asc $venue_id->venues.price]]
-                        :breakout    [$venue_id->venues.price $user_id->users.name]})))))))))))
+        (is (= #{[nil "Quentin Sören" 45] [1 "Quentin Sören" 10]}
+               (set
+                (mt/format-rows-by [#(when % (int %)) str int]
+                                   (mt/rows
+                                    (mt/run-mbql-query checkins
+                                                       {:aggregation [[:count]]
+                                                        :order-by    [[:asc $venue_id->venues.price]]
+                                                        :breakout    [$venue_id->venues.price $user_id->users.name]}))))))))))
 
 (defn- run-query-returning-remark [run-query-fn]
   (let [remark (atom nil)
