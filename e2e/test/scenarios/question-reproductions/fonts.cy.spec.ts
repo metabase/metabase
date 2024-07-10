@@ -7,7 +7,7 @@ describe("fonts", () => {
       "font-regular",
     );
     cy.intercept("/app/fonts/Lato/lato-v16-latin-700.woff2").as("font-bold");
-    cy.signInAsAdmin();
+    cy.signInAsNormalUser();
   });
 
   it("works", () => {
