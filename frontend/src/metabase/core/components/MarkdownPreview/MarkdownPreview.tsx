@@ -27,9 +27,8 @@ export const MarkdownPreview = ({
      */
     const reactMarkdownRoot = div?.firstElementChild;
 
-    if (reactMarkdownRoot instanceof HTMLElement) {
-      ref.current = reactMarkdownRoot || null;
-    }
+    ref.current =
+      reactMarkdownRoot instanceof HTMLElement ? reactMarkdownRoot : null;
   };
 
   return (
