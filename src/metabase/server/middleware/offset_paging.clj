@@ -47,15 +47,3 @@
                 *paged?* true]
         (handler (with-paging-params request paging-params) respond raise))
       (handler request respond raise))))
-
-(defn page-result
-  "If *offset* and *limit* are defined, returns the appropriate segment of `result`. Otherwise returns the whole thing.
-
-  If at all possible, you should implement this logic in your SQL query, but if that's not possible this function may
-  be convenient."
-  [result]
-  (if (and *offset* *limit*)
-    (->> result
-         (drop *offset*)
-         (take *limit*))
-    result))

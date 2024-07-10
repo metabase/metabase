@@ -1,6 +1,7 @@
 (ns metabase-enterprise.query-field-validation.api
   (:require
    [compojure.core :refer [GET]]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
@@ -37,15 +38,13 @@
                                 "created_by"     [:coalesce [:|| :u.first_name " " :u.last_name] :u.first_name :u.last_name :u.email]
                                 "last_edited_at" :c.updated_at)
         cards                 (t2/select :model/Card
-                                         (merge
+                                         (m/assoc-some
                                           {:from     [[(t2/table-name :model/Card) :c]]
                                            :join     (concat card-joins additional-joins)
                                            :where    [:= :c.archived false]
                                            :order-by [[order-by-column (keyword sort-direction)]]}
-                                          (when limit
-                                            {:limit limit})
-                                          (when offset
-                                            {:offset offset})))
+                                          :limit limit
+                                          :offset offset))
         card-id->query-fields (when (seq cards)
                                 (group-by :card_id (t2/select :model/QueryField
                                                               {:select [:qf.* [:f.name :column_name] [:t.name :table_name]]

@@ -4,7 +4,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.server.handler :as handler]
-   [metabase.server.middleware.offset-paging :as mw.offset-paging :refer [page-result]]
+   [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [ring.mock.request :as ring.mock]
    [ring.util.response :as response])
   (:import
@@ -53,32 +53,3 @@
                     "paged?" false
                     "params" {}}}
             (read-response (handler (ring.mock/request :get "/" {:offset "foo" :limit "bar"})))))))
-
-(deftest page-result-test
-  (let [numbers (range 100)]
-
-    (testing "no paging params"
-      (is (= numbers (page-result numbers))))
-
-    (testing "offset but no limit"
-      (binding [mw.offset-paging/*offset* 10]
-        (is (= numbers (page-result numbers)))))
-
-    (testing "limit but no offset"
-      (binding [mw.offset-paging/*limit* 5]
-        (is (= numbers (page-result numbers)))))
-
-    (testing "With both limit and offset set, it pages results"
-      (binding [mw.offset-paging/*limit*  5
-                mw.offset-paging/*offset* 10]
-        (is (= [10 11 12 13 14] (page-result numbers)))))
-
-    (testing "It handles the end of the sequence"
-      (binding [mw.offset-paging/*limit*  5
-                mw.offset-paging/*offset* 98]
-        (is (= [98 99] (page-result numbers)))))
-
-    (testing "If the offset is out of bounds, it returns an empty seq"
-      (binding [mw.offset-paging/*limit*  5
-                mw.offset-paging/*offset* 200]
-        (is (= [] (page-result numbers)))))))
