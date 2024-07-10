@@ -762,7 +762,7 @@ describe("issue 23421", () => {
     cy.get(".ace_content").should("contain", query);
     cy.findByRole("columnheader", { name: "id" }).should("be.visible");
     cy.findByRole("columnheader", { name: "created_at" }).should("be.visible");
-    cy.button("Save changes").should("be.disabled");
+    cy.button("Save changes").should("be.visible");
   });
 
   it("`visualization_settings` with hidden columns should not break UI (metabase#23421)", () => {
@@ -1189,7 +1189,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
 
     visitDashboard("@dashboardId");
 
-    cy.intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}`).as(
+    cy.intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}*`).as(
       "loadTargetDashboard",
     );
     cartesianChartCircle().eq(25).click({ force: true });

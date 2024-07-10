@@ -554,7 +554,6 @@ export const buildTableColumnSettings = ({
             .map(column => ({
               name: column.name,
               enabled: getIsColumnVisible(column),
-              fieldRef: column.field_ref,
             })),
         ];
       }
