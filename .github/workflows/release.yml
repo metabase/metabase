@@ -549,11 +549,11 @@ jobs:
             const newReleaseText = releaseText
               .replace(
                 /## Metabase Enterprise Edition releases\n\n/,
-                `## Metabase Enterprise Edition releases\n\n- [${process.env.NEW_EE_VERSION}](https://github.com/metabase/metabase/releases/tag/${process.env.NEW_EE_VERSION})`
+                `## Metabase Enterprise Edition releases\n\n- [${process.env.NEW_EE_VERSION}](https://github.com/metabase/metabase/releases/tag/${process.env.NEW_EE_VERSION})\n`
               )
               .replace(
                 /## Metabase Open Source Edition releases\n\n/,
-                `## Metabase Open Source Edition releases\n\n- [${process.env.NEW_OSS_VERSION}](https://github.com/metabase/metabase/releases/tag/${process.env.NEW_OSS_VERSION})`
+                `## Metabase Open Source Edition releases\n\n- [${process.env.NEW_OSS_VERSION}](https://github.com/metabase/metabase/releases/tag/${process.env.NEW_OSS_VERSION})\n`
               );
 
             fs.writeFileSync('./docs/releases.md', newReleaseText);
@@ -563,16 +563,17 @@ jobs:
           git config --global user.email "metabase-bot@metabase.com"
           git config --global user.name "Metabase bot"
 
-          git checkout -b update-version-list-$NEW_OSS_VERSION
+          git checkout -b docs-add-$NEW_OSS_VERSION
           cd docs/
 
           git add releases.md
-          git commit -m "Update release version list to include $NEW_OSS_VERSION"
-          git push origin update-version-list-$NEW_OSS_VERSION
+          git commit -m "Add $NEW_OSS_VERSION to the list of releases"
+          git push origin docs-add-$NEW_OSS_VERSION --force
 
       - name: open pr with updates
         run: | # bash
           gh pr create --fill \
+            --body "Like it says on the tin 😁" \
             --label "Type:Documentation" \
             --label "backport" \
             --reviewer "jeff-bruemmer" \
