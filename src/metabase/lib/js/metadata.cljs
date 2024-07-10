@@ -265,17 +265,17 @@
   `:internal`."
   [dimensions]
   (when-let [dimension (m/find-first (fn [dimension]
-                                       (#{"external" "internal"} (get dimension "type")))
-                                     (vals dimensions))]
-    (let [dimension-type (keyword (get dimension "type"))]
+                                       (#{"external" "internal"} (object-get dimension "type")))
+                                     dimensions)]
+    (let [dimension-type (keyword (object-get dimension "type"))]
       (merge
-       {:id   (get dimension "id")
-        :name (get dimension "name")}
+       {:id   (object-get dimension "id")
+        :name (object-get dimension "name")}
        (case dimension-type
          ;; external = mapped to a different column
          :external
          {:lib/type :metadata.column.remapping/external
-          :field-id (get dimension "human_readable_field_id")}
+          :field-id (object-get dimension "human_readable_field_id")}
 
          ;; internal = mapped to FieldValues
          :internal
