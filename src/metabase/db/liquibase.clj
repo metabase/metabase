@@ -258,7 +258,7 @@
   (let [done? #(empty? (locked-instances))]
     (if (done?)
       :none
-      (do (log/infof "Waiting for migration lock(s) to be released (max %.1f secs)" (/ timeout-ms 1000))
+      (do (log/infof "Waiting for migration lock(s) to be released (max %.1f secs)" (double (/ timeout-ms 1000)))
           (wait-until done? sleep-ms timeout-ms)))))
 
 (defn- liquibase->url [^Liquibase liquibase]

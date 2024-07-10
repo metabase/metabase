@@ -87,9 +87,9 @@ export const getFavicon = (state: State) =>
     ? LOAD_COMPLETE_FAVICON
     : null;
 
-export const getIsRunning = (state: State) =>
+export const getIsDashCardsRunning = (state: State) =>
   state.dashboard.loadingDashCards.loadingStatus === "running";
-export const getIsLoadingComplete = (state: State) =>
+export const getIsDashCardsLoadingComplete = (state: State) =>
   state.dashboard.loadingDashCards.loadingStatus === "complete";
 
 export const getLoadingStartTime = (state: State) =>
@@ -107,6 +107,12 @@ export const getIsSlowDashboard = createSelector(
     }
   },
 );
+
+export const getIsLoading = (state: State) =>
+  state.dashboard.loadingControls.isLoading;
+
+export const getIsLoadingWithCards = (state: State) =>
+  getIsLoading(state) || !getIsDashCardsLoadingComplete(state);
 
 export const getIsAddParameterPopoverOpen = (state: State) =>
   state.dashboard.isAddParameterPopoverOpen;

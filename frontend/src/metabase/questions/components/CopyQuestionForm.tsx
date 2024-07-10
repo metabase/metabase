@@ -88,7 +88,7 @@ export const CopyQuestionForm = ({
           {!!onCancel && (
             <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
           )}
-          <FormSubmitButton label={t`Duplicate`} />
+          <FormSubmitButton label={t`Duplicate`} variant="filled" />
         </FormFooter>
       </Form>
     </FormProvider>

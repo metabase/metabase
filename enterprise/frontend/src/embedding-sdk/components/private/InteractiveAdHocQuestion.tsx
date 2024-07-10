@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type { SdkClickActionPluginsConfig } from "embedding-sdk";
+import type { SdkPluginsConfig } from "embedding-sdk";
 
 import { InteractiveQuestionProvider } from "../public/InteractiveQuestion/context";
 
@@ -12,7 +12,7 @@ interface InteractiveAdHocQuestionProps {
 
   withTitle?: boolean;
   height?: number;
-  plugins?: SdkClickActionPluginsConfig;
+  plugins?: SdkPluginsConfig;
 }
 
 export const InteractiveAdHocQuestion = ({

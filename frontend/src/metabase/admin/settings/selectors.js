@@ -142,10 +142,10 @@ export const ADMIN_SETTINGS_SECTIONS = {
         key: "anon-tracking-enabled",
         display_name: t`Anonymous Tracking`,
         type: "boolean",
-        onChanged: (oldValue, newValue) => {
+        onChanged: (_oldValue, newValue) => {
           trackTrackingPermissionChanged(newValue);
         },
-        onBeforeChanged: (oldValue, newValue) => {
+        onBeforeChanged: (_oldValue, newValue) => {
           trackTrackingPermissionChanged(newValue);
         },
       },
@@ -161,11 +161,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
           { value: "none", name: t`Disabled` },
         ],
         defaultValue: "simple",
-      },
-      {
-        key: "enable-nested-queries",
-        display_name: t`Enable Nested Queries`,
-        type: "boolean",
       },
       {
         key: "enable-xrays",

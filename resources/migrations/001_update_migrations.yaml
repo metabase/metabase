@@ -6605,6 +6605,28 @@ databaseChangeLog:
       id: v49.2024-06-27T00:00:05
       author: calherries
       comment: Remove idx_uniq_field_table_id_parent_id_name because it is redundant with idx_unique_field
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: h2,postgresql
+                - uniqueConstraintExists:
+                    tableName: metabase_field
+                    constraintName: idx_uniq_field_table_id_parent_id_name
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: >-
+                      SELECT EXISTS (
+                        SELECT *
+                        FROM information_schema.statistics
+                        WHERE table_schema = DATABASE()
+                          AND table_name = 'metabase_field'
+                          AND index_name = 'idx_uniq_field_table_id_parent_id_name'
+                      )
       changes:
         - dropUniqueConstraint:
             tableName: metabase_field
@@ -8181,6 +8203,7 @@ databaseChangeLog:
                   name: dataset_query_metrics_v2_migration_backup
                   remarks: The copy of dataset_query before the metrics v2 migration
                   type: ${text.type}
+      preConditions:
 
   - changeSet:
       id: v51.2024-05-13T16:00:00
@@ -8205,6 +8228,7 @@ databaseChangeLog:
                   defaultValue: "view"
                   constraints:
                     nullable: false
+      preConditions:
 
   - changeSet:
       id: v51.2024-06-07T12:37:36
@@ -8234,6 +8258,7 @@ databaseChangeLog:
                   name: session_id
               - column:
                   name: device_id
+      preConditions:
 
   - changeSet:
       id: v51.2024-06-12T18:53:03
@@ -8252,6 +8277,7 @@ databaseChangeLog:
         - dropIndex:
             tableName: login_history
             indexName: idx_user_id_device_id
+      preConditions:
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

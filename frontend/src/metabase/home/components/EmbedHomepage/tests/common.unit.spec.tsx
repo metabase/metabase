@@ -204,8 +204,6 @@ describe("EmbedHomepage (OSS)", () => {
         source: "embedding-homepage-dismiss",
       });
 
-      await waitForElementToBeRemoved(() => queryFeedbackModal());
-
       expect(
         screen.getByText("Your feedback was submitted, thank you."),
       ).toBeInTheDocument();

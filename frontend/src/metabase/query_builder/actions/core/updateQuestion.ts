@@ -4,9 +4,9 @@ import _ from "underscore";
 import { getTrashUndoMessage } from "metabase/archive/utils";
 import Questions from "metabase/entities/questions";
 import { createThunkAction } from "metabase/lib/redux";
+import { syncVizSettingsWithQuery } from "metabase/querying";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { addUndo } from "metabase/redux/undo";
-import { syncVizSettingsWithSeries } from "metabase/visualizations/lib/sync-settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -19,7 +19,6 @@ import type {
 } from "metabase-types/store";
 
 import {
-  getFirstQueryResult,
   getIsShowingTemplateTagsEditor,
   getQueryBuilderMode,
   getQuestion,
@@ -137,16 +136,15 @@ export const updateQuestion = (
       }
     }
 
-    const queryResult = getFirstQueryResult(getState());
-    newQuestion = newQuestion.setSettings(
-      syncVizSettingsWithSeries(newQuestion.settings(), [
-        {
-          card: newQuestion.card(),
-          data: queryResult?.data,
-          error: queryResult?.error,
-        },
-      ]),
-    );
+    if (currentQuestion) {
+      newQuestion = newQuestion.setSettings(
+        syncVizSettingsWithQuery(
+          newQuestion.settings(),
+          newQuestion.query(),
+          currentQuestion.query(),
+        ),
+      );
+    }
 
     if (!newQuestion.canAutoRun()) {
       run = false;

@@ -32,7 +32,9 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
     startTime: null,
     endTime: null,
   },
-  loadingControls: {},
+  loadingControls: {
+    isLoading: false,
+  },
   isAddParameterPopoverOpen: false,
   isNavigatingBackToDashboard: false,
   slowCards: {},

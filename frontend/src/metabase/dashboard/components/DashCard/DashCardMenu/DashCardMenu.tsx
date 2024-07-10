@@ -1,18 +1,24 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useCallback, useMemo } from "react";
-import { connect } from "react-redux";
-import { useAsyncFn } from "react-use";
-import { t } from "ttag";
+import { isValidElement, useState } from "react";
 
+import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
 import CS from "metabase/css/core/index.css";
-import { editQuestion } from "metabase/dashboard/actions";
+import {
+  canDownloadResults,
+  canEditQuestion,
+} from "metabase/dashboard/components/DashCard/DashCardMenu/utils";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
 import { useStore } from "metabase/lib/redux";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
-import { downloadQueryResults } from "metabase/query_builder/actions";
-import QueryDownloadPopover from "metabase/query_builder/components/QueryDownloadPopover";
-import { Icon } from "metabase/ui";
+import { QueryDownloadPopover } from "metabase/query_builder/components/QueryDownloadPopover";
+import { useDownloadData } from "metabase/query_builder/components/QueryDownloadPopover/use-download-data";
+import {
+  ActionIcon,
+  Icon,
+  type IconName,
+  Menu,
+  type MenuItemProps,
+} from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import type Question from "metabase-lib/v1/Question";
 import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
@@ -23,9 +29,9 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { CardMenuRoot } from "./DashCardMenu.styled";
+import { DashCardMenuItems } from "./DashCardMenuItems";
 
-interface OwnProps {
+interface DashCardMenuProps {
   question: Question;
   result: Dataset;
   dashboardId?: DashboardId;
@@ -35,97 +41,87 @@ interface OwnProps {
   visualizationSettings?: VisualizationSettings;
 }
 
-interface TriggerProps {
-  open: boolean;
+export type DashCardMenuItem = {
+  iconName: IconName;
+  label: string;
   onClick: () => void;
-}
+  disabled?: boolean;
+} & MenuItemProps;
 
-interface DispatchProps {
-  onEditQuestion: (question: Question) => void;
-  onDownloadResults: (opts: DownloadQueryResultsOpts) => void;
-}
-
-type DashCardMenuProps = OwnProps & DispatchProps;
-
-const mapDispatchToProps: DispatchProps = {
-  onEditQuestion: editQuestion,
-  onDownloadResults: downloadQueryResults,
-};
-
-const DashCardMenu = ({
+export const DashCardMenu = ({
   question,
   result,
   dashboardId,
   dashcardId,
   uuid,
   token,
-  onEditQuestion,
-  onDownloadResults,
 }: DashCardMenuProps) => {
   const store = useStore();
+  const { plugins } = useInteractiveDashboardContext();
 
-  const [{ loading }, handleDownload] = useAsyncFn(
-    async (opts: { type: string; enableFormatting: boolean }) => {
-      const params = getParameterValuesBySlugMap(store.getState());
+  const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
+    question,
+    result,
+    dashboardId,
+    dashcardId,
+    uuid,
+    token,
+    params: getParameterValuesBySlugMap(store.getState()),
+  });
 
-      await onDownloadResults({
-        ...opts,
-        question,
-        result,
-        dashboardId,
-        dashcardId,
-        uuid,
-        token,
-        params,
-      });
+  const [menuView, setMenuView] = useState<string | null>(null);
+  const [isOpen, { close, toggle }] = useDisclosure(false, {
+    onClose: () => {
+      setMenuView(null);
     },
-    [store, question, result, dashboardId, dashcardId, uuid, token],
-  );
+  });
 
-  const handleMenuContent = useCallback(
-    (toggleMenu: () => void) => (
-      <QueryDownloadPopover
+  const getMenuContent = () => {
+    if (isValidElement(plugins?.dashboard?.dashcardMenu)) {
+      return plugins.dashboard.dashcardMenu;
+    }
+
+    if (menuView === "download") {
+      return (
+        <QueryDownloadPopover
+          question={question}
+          result={result}
+          onDownload={opts => {
+            close();
+            handleDownload(opts);
+          }}
+        />
+      );
+    }
+
+    return (
+      <DashCardMenuItems
         question={question}
         result={result}
-        onDownload={opts => {
-          toggleMenu();
-          handleDownload(opts);
-        }}
+        isDownloadingData={isDownloadingData}
+        onDownload={() => setMenuView("download")}
       />
-    ),
-    [question, result, handleDownload],
-  );
-
-  const menuItems = useMemo(
-    () => [
-      canEditQuestion(question) && {
-        title: `Edit question`,
-        icon: "pencil",
-        action: () => onEditQuestion(question),
-      },
-      canDownloadResults(result) && {
-        title: loading ? t`Downloading…` : t`Download results`,
-        icon: "download",
-        disabled: loading,
-        content: handleMenuContent,
-      },
-    ],
-    [question, result, loading, handleMenuContent, onEditQuestion],
-  );
+    );
+  };
 
   return (
-    <CardMenuRoot
-      className={SAVING_DOM_IMAGE_HIDDEN_CLASS}
-      items={menuItems}
-      renderTrigger={({ open, onClick }: TriggerProps) => (
-        <Icon
-          name="ellipsis"
-          className={!open ? cx(CS.hoverChild, CS.hoverChildSmooth) : undefined}
+    <Menu offset={4} position="bottom-end" opened={isOpen} onClose={close}>
+      <Menu.Target>
+        <ActionIcon
+          size="xs"
+          className={cx({
+            [SAVING_DOM_IMAGE_HIDDEN_CLASS]: true,
+            [cx(CS.hoverChild, CS.hoverChildSmooth)]: !isOpen,
+          })}
+          onClick={toggle}
           data-testid="dashcard-menu"
-          onClick={onClick}
-        />
-      )}
-    />
+        >
+          <Icon name="ellipsis" />
+        </ActionIcon>
+      </Menu.Target>
+
+      <Menu.Dropdown>{getMenuContent()}</Menu.Dropdown>
+    </Menu>
   );
 };
 
@@ -138,18 +134,6 @@ interface QueryDownloadWidgetOpts {
   isPublicOrEmbedded?: boolean;
   isEditing: boolean;
 }
-
-const canEditQuestion = (question: Question) => {
-  return question.canWrite() && question.canRunAdhocQuery();
-};
-
-const canDownloadResults = (result?: Dataset) => {
-  return (
-    result != null &&
-    !result.error &&
-    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canDownloadResults(result)
-  );
-};
 
 DashCardMenu.shouldRender = ({
   question,
@@ -176,8 +160,3 @@ DashCardMenu.shouldRender = ({
     (canEditQuestion(question) || canDownloadResults(result))
   );
 };
-
-export const DashCardMenuConnected = connect(
-  null,
-  mapDispatchToProps,
-)(DashCardMenu);

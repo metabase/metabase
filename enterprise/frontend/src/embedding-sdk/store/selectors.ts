@@ -1,4 +1,5 @@
 import type { SdkStoreState } from "embedding-sdk/store/types";
+import type { State } from "metabase-types/store";
 
 export const getLoginStatus = (state: SdkStoreState) => state.sdk.loginStatus;
 
@@ -11,6 +12,9 @@ export const getIsLoggedIn = (state: SdkStoreState) =>
 export const getSessionTokenState = (state: SdkStoreState) => state.sdk.token;
 
 export const getPlugins = (state: SdkStoreState) => state.sdk.plugins;
+
+export const getEventHandlers = (state: SdkStoreState | State) =>
+  "sdk" in state ? state.sdk.eventHandlers : null;
 
 export const getLoaderComponent = (state: SdkStoreState) =>
   state.sdk.loaderComponent;
