@@ -414,7 +414,7 @@
                    {:database (db-id field)
                     :type     :query
                     :query    {:source-table (table-id field)
-                               :filter       (concat [:= [:field (u/the-id field) nil]] values)
+                               :filter       (into [[:= [:field (u/the-id field) nil]]] values)
                                :fields       [[:field (u/the-id field) nil]
                                               [:field (u/the-id remapped-field) nil]]
                                :limit (count values)}})]
