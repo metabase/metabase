@@ -19,7 +19,6 @@
 
 (driver/register! ::test-driver, :abstract? true)
 
-(defmethod driver/database-supports? [::test-driver :metadata/key-constraints] [_driver _feature _db] true)
 (defmethod driver/database-supports? [::test-driver :metadata/key-constraints] [_driver _feature db] (= db "dummy"))
 
 (deftest ^:parallel database-supports?-test

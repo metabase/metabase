@@ -518,14 +518,8 @@
   #{;; Does this database track and enforce primary key and foreign key constraints in the schema?
     ;; Is the database capable of reporting columns as PK or FK? (Relevant during sync.)
     ;;
-    ;; Not to be confused with Metabase notion of foreign key columns. Those are user definable and power eg.
+    ;; Not to be confused with Metabase's notion of foreign key columns. Those are user definable and power eg.
     ;; implicit joins.
-    ;;
-    ;; This feature supersedes :foreign-keys! Hence no product functionality depends on :foreign-keys anymore.
-    ;; Some functionality, eg. implicit joins, has a different dependency now, :left-join, while eg. sync related
-    ;; functionality depends on this new feature.
-    ;;
-    ;; More context on slack: https://metaboat.slack.com/archives/C04DN5VRQM6/p1720024835058369?thread_ts=1719971343.726209&cid=C04DN5VRQM6
     :metadata/key-constraints
 
     ;; Does this database support nested fields for any and every field except primary key (e.g. Mongo)?

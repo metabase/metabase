@@ -20,21 +20,19 @@
                  :binning
                  :expression-aggregations
                  :expressions
+                 :full-join
+                 :inner-join
+                 :left-join
                  :native-parameters
                  :nested-queries
                  :percentile-aggregations
                  :regex
+                 :right-join
                  :standard-deviation-aggregations
                  :metadata/key-constraints
                  :window-functions/cumulative
                  :window-functions/offset]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
-
-(doseq [join-feature [:left-join
-                      :right-join
-                      :inner-join
-                      :full-join]]
-  (defmethod driver/database-supports? [:sql join-feature] [_driver _feature _db] true))
 
 (defmethod driver/database-supports? [:sql :persist-models-enabled]
   [driver _feat db]

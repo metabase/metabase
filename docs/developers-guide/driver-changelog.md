@@ -54,6 +54,14 @@ title: Driver interface changelog
   Honey SQL version) has been removed; replace all usages with the two-arity version. Honey SQL 2 has been the only
   supported version since Metabase 0.49.0.
 
+## Metabase 0.50.12
+
+- `:foreign-keys` driver feature was removed. `:metadata/keys-constraints` should be set to false in drivers
+  that support do not support foreign keys relationships reporting during sync. Implicit joins and column remaps are
+  now dependent on `:left-join` instead. All join features are now enabled for `:sql` based drivers. Previously those
+  were dependent on `:foreign-keys`. If your driver does support `:left-join` also remapping and implicit joins tests
+  will run on it.
+
 ## Metabase 0.50.0
 
 - The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to
