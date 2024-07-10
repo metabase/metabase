@@ -39,7 +39,7 @@
                     :limit    4}))))))))
 
 (deftest ^:parallel basic-external-remapping-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                          (lib.tu/remap-metadata-provider (mt/id :venues :category_id)
                                                                          (mt/id :categories :name)))
@@ -115,7 +115,7 @@
              col)}))
 
 (deftest ^:parallel foreign-keys-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                          (lib.tu/remap-metadata-provider (mt/id :venues :category_id)
                                                                          (mt/id :categories :name)))
@@ -142,7 +142,7 @@
                (mt/formatted-rows [str int str] results)))))))
 
 (deftest ^:parallel remappings-with-field-clause-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing (str "Check that we can have remappings when we include a `:fields` clause that restricts the query "
                   "fields returned")
       (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -173,7 +173,7 @@
 
 (deftest ^:parallel remap-inside-mbql-query-test
   (testing "Test that we can remap inside an MBQL query"
-    (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :nested-queries)
       (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                            (lib.tu/remap-metadata-provider (mt/id :checkins :venue_id)
                                                                            (mt/id :venues :name)))
@@ -185,7 +185,7 @@
                     (map last))))))))
 
 (deftest ^:parallel remapping-with-conflicting-names-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :nested-queries)
     (testing (str "Test a remapping with conflicting names, in the case below there are two name fields, one from "
                   "Venues and the other from Categories")
       (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -204,7 +204,7 @@
   ;;
   ;; Having a self-referencing FK is currently broken with the Redshift and Oracle backends. The issue related to fix
   ;; this is https://github.com/metabase/metabase/issues/8510
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys) :redshift :oracle :vertica)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join) :redshift :oracle :vertica)
     (mt/dataset test-data-self-referencing-user
       (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                            (lib.tu/remap-metadata-provider (mt/id :users :created_by)
@@ -243,7 +243,7 @@
 
 (deftest remappings-with-implicit-joins-test
   (mt/with-temporary-setting-values [report-timezone "UTC"]
-    (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :nested-queries)
       (testing "Queries with implicit joins should still work when FK remaps are used (#13641)"
         (mt/dataset test-data
           (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))

@@ -538,7 +538,8 @@
                      (qp/process-query query))))))))))
 
 (deftest ^:parallel fk-field-and-duplicate-names-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :foreign-keys)
+  ;; TODO: Following _should probably_ work with Mongo, take a closer look working on #43901! -- lbrdnk
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions :left-join) :mongo)
     (testing "Expressions with `fk->` fields and duplicate names should work correctly (#14854)"
       (mt/dataset test-data
         (let [results (mt/run-mbql-query orders
