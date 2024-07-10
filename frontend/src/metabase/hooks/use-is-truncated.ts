@@ -90,6 +90,7 @@ const getIsTruncated = (element: HTMLElement): boolean => {
 
 const getUntruncatedBoundingClientRect = (element: HTMLElement): DOMRect => {
   if (!element.parentElement) {
+    // this should never happen
     throw new Error("Element does not have a parent");
   }
 
@@ -104,7 +105,7 @@ const getUntruncatedBoundingClientRect = (element: HTMLElement): DOMRect => {
   cloned.style.position = "fixed"; // remove element from the flow
   cloned.style.visibility = "hidden"; // prevent user from seeing this element
 
-  element.parentElement.appendChild(cloned); // temporarily add element to DOM so it can be measured
+  element.parentElement.appendChild(cloned); // temporarily add element to the DOM so it can be measured
   const rect = cloned.getBoundingClientRect(); // measure it
   element.parentElement.removeChild(cloned); // remove it from the DOM
 
