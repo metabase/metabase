@@ -77,10 +77,10 @@
 (derive :type/field-values-unsupported :type/*)
 (derive :type/Large :type/field-values-unsupported)
 
-;; `:type/fingerprinting-unsupported` enables driver developers to opt out of fingerprinting for specific
+;; `:type/fingerprint-unsupported` enables driver developers to opt out of fingerprinting for specific
 ;; fields.
-(derive :type/fingerprinting-unsupported :type/*)
-(derive :type/Large :type/fingerprinting-unsupported)
+(derive :type/fingerprint-unsupported :type/*)
+(derive :type/Large :type/fingerprint-unsupported)
 
 ;;; Numeric Types
 
@@ -189,6 +189,7 @@
 ;;; DateTime Types
 
 (derive :type/Temporal :type/*)
+(derive :type/Temporal :type/field-values-unsupported)
 
 (derive :type/Date :type/Temporal)
 ;; You could have Dates with TZ info but it's not supported by JSR-310 so we'll not worry about that for now.
@@ -290,10 +291,7 @@
 (derive :type/JSON :type/Structured)
 (derive :type/JSON :type/Collection)
 
-;; DruidJSON is specific -- it derives also :type/field-values-unsupported because the query to get unique values
-;; fails
 (derive :type/DruidJSON :type/JSON)
-(derive :type/DruidJSON :type/field-values-unsupported)
 
 ;; `:type/XML` -- an actual native XML data column
 (derive :type/XML :type/Structured)
