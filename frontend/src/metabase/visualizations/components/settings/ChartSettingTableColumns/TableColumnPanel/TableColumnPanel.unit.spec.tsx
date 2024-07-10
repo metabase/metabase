@@ -43,22 +43,18 @@ const COLUMNS = [
 const COLUMN_SETTINGS = [
   createMockTableColumnOrderSetting({
     name: "TOTAL",
-    fieldRef: ["field", ORDERS.TOTAL, null],
     enabled: true,
   }),
   createMockTableColumnOrderSetting({
     name: "ID",
-    fieldRef: ["field", ORDERS.ID, null],
     enabled: true,
   }),
   createMockTableColumnOrderSetting({
     name: "TAX",
-    fieldRef: ["field", ORDERS.TAX, null],
     enabled: false,
   }),
   createMockTableColumnOrderSetting({
     name: "SUBTOTAL",
-    fieldRef: ["field", ORDERS.SUBTOTAL, null],
     enabled: false,
   }),
 ];

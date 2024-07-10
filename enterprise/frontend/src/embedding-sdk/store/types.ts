@@ -10,6 +10,7 @@ import type {
   FetchRequestTokenFn,
   EmbeddingSessionToken,
 } from "embedding-sdk";
+import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import type { State } from "metabase-types/store";
 
@@ -50,6 +51,7 @@ export type SdkState = {
   token: EmbeddingSessionTokenState;
   loginStatus: LoginStatus;
   plugins: null | SdkPluginsConfig;
+  eventHandlers: null | SdkEventHandlersConfig;
   loaderComponent: null | (() => JSX.Element);
   errorComponent: null | (({ message }: { message: string }) => JSX.Element);
   fetchRefreshTokenFn: null | FetchRequestTokenFn;
