@@ -1,4 +1,4 @@
-import type { FetchRequestTokenFn } from "embedding-sdk/types";
+import type { FetchRequestTokenFn } from "embedding-sdk";
 
 /**
  * The default implementation of the function to get the refresh token.

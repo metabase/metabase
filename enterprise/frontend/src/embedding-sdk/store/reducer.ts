@@ -1,15 +1,14 @@
 import { createReducer, createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
+import type { EmbeddingSessionToken, FetchRequestTokenFn } from "embedding-sdk";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import { defaultGetRefreshTokenFn } from "embedding-sdk/store/refresh-token";
 import type {
-  EmbeddingSessionTokenState,
   LoginStatus,
   SdkState,
   SdkStoreState,
 } from "embedding-sdk/store/types";
-import type { FetchRequestTokenFn } from "embedding-sdk/types";
 import { createAsyncThunk } from "metabase/lib/redux";
 
 import { getFetchRefreshTokenFn, getSessionTokenState } from "./selectors";
@@ -55,10 +54,7 @@ export const getOrRefreshSession = createAsyncThunk(
 
 export const refreshTokenAsync = createAsyncThunk(
   REFRESH_TOKEN,
-  async (
-    url: string,
-    { getState },
-  ): Promise<EmbeddingSessionTokenState["token"]> => {
+  async (url: string, { getState }): Promise<EmbeddingSessionToken | null> => {
     // The SDK user can provide a custom function to refresh the token.
     const getRefreshToken =
       getFetchRefreshTokenFn(getState() as SdkStoreState) ??

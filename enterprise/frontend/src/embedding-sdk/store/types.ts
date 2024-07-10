@@ -5,16 +5,16 @@ import type {
 } from "@reduxjs/toolkit";
 import type { JSX } from "react";
 
-import type { SDKConfig } from "embedding-sdk";
+import type {
+  SDKConfig,
+  FetchRequestTokenFn,
+  EmbeddingSessionToken,
+} from "embedding-sdk";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
-import type { FetchRequestTokenFn } from "embedding-sdk/types";
 import type { State } from "metabase-types/store";
 
 export type EmbeddingSessionTokenState = {
-  token: {
-    id: string;
-    exp: number;
-  } | null;
+  token: EmbeddingSessionToken | null;
   loading: boolean;
   error: SerializedError | null;
 };
