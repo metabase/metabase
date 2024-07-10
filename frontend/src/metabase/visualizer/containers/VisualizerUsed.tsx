@@ -11,8 +11,9 @@ import {
   type IconName,
   Text,
 } from "metabase/ui";
-import visualizations from "metabase/visualizations";
-import type { Series, SingleSeries } from "metabase-types/api";
+import type { Series } from "metabase-types/api";
+
+import { VizTypePicker } from "../components/VizTypePicker";
 
 interface VisualizerUsedProps {
   series: Series;
@@ -36,8 +37,9 @@ export function VisualizerUsed({
         return (
           <Flex key={index} py="sm" align="center">
             {/* TODO - create a dark variant  */}
-            <VisualizationPicker
-              series={{ card, data }}
+            <VizTypePicker
+              value={card.display as IconName}
+              data={data}
               onChange={vizType => onVizTypeChange(index, vizType)}
             />
             <Text truncate title={card.name}>
@@ -71,51 +73,5 @@ export function VisualizerUsed({
         );
       })}
     </Card>
-  );
-}
-
-interface VisualizationPickerProps {
-  series: SingleSeries;
-  onChange: (vizType: string) => void;
-}
-
-function VisualizationPicker({ series, onChange }: VisualizationPickerProps) {
-  const { card, data } = series;
-
-  const vizOptions = Array.from(visualizations)
-    .filter(([, viz]) => {
-      if (viz.hidden) {
-        return false;
-      }
-      if (typeof viz.isSensible === "function") {
-        return viz.isSensible(data);
-      }
-      return true;
-    })
-    .map(([vizType, viz]) => ({
-      label: viz.uiName,
-      value: vizType,
-      icon: viz.iconName,
-    }));
-
-  return (
-    <Menu>
-      <Menu.Target>
-        <ActionIcon mr="sm">
-          <Icon name={card.display as IconName} />
-          <Icon name="chevrondown" size={8} />
-        </ActionIcon>
-      </Menu.Target>
-      <Menu.Dropdown bg="black.0">
-        {vizOptions.map(({ label, value, icon }) => (
-          <Menu.Item key={value} onClick={() => onChange(value)}>
-            <Flex align="center" color="white">
-              <Icon name={icon} />
-              <Text ml="sm">{label}</Text>
-            </Flex>
-          </Menu.Item>
-        ))}
-      </Menu.Dropdown>
-    </Menu>
   );
 }
