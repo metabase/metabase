@@ -140,12 +140,8 @@
         (when-let [cols (not-empty (cond
                                      (map? result-metadata)        (:columns result-metadata)
                                      (sequential? result-metadata) result-metadata))]
-          (let [all-cols (map (partial ->card-metadata-column metadata-providerable card) cols)
-                mapped-ids (into #{} (keep #(get-in % [:lib/external-remap :field-id])) all-cols)]
-            (into []
-                  (comp (remove (comp mapped-ids :id))
-                        (map #(dissoc % :lib/external-remap)))
-                  all-cols)))))))
+          (mapv (partial ->card-metadata-column metadata-providerable card)
+                cols))))))
 
 (mu/defn saved-question-metadata :- CardColumns
   "Metadata associated with a Saved Question with `card-id`."
