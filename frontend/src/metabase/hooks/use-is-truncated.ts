@@ -81,8 +81,8 @@ export const useAreAnyTruncated = <E extends HTMLElement>({
 const getIsTruncated = (element: HTMLElement): boolean => {
   const rect = element.getBoundingClientRect();
   const untruncatedRect = getUntruncatedBoundingClientRect(element);
-  const isWidthTruncated = rect.width !== untruncatedRect.width;
-  const isHeightTruncated = rect.height !== untruncatedRect.height;
+  const isWidthTruncated = rect.width < untruncatedRect.width;
+  const isHeightTruncated = rect.height < untruncatedRect.height;
   const isTruncated = isWidthTruncated || isHeightTruncated;
 
   return isTruncated;
