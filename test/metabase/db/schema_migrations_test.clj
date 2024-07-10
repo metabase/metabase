@@ -2457,7 +2457,7 @@
                                                                    :updated_at    :%now}
                                                                   values)))
             active+field [[true  (field! {:name "x", :is_defective_duplicate true,  :nfc_path "[\"x\",\"y\"]"})]
-                          [false (field! {:name "x", :is_defective_duplicate false, :nfc_path nil})]
+                          [true  (field! {:name "x", :is_defective_duplicate false, :nfc_path nil})]
                           [false (field! {:name "x", :is_defective_duplicate true,  :nfc_path nil})]
                           [false (field! {:name "x", :is_defective_duplicate true,  :nfc_path "[\"x\"]"})]]]
         (migrate!)
