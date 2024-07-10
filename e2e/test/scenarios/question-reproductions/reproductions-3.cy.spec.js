@@ -46,6 +46,8 @@ import {
   visitQuestion,
   tableHeaderClick,
   withDatabase,
+  visitModel,
+  setModelMetadata,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -1733,6 +1735,152 @@ describe("issue 39771", () => {
         // resort to asserting zIndex because should("be.visible") passes unexpectedly
         expect(tooltipZindex).to.be.gte(popoverZindex);
       });
+    });
+  });
+});
+
+describe("issue 45063", () => {
+  beforeEach(() => {
+    restore();
+  });
+
+  describe("type/PK -> type/Name remapping", () => {
+    function createGuiQuestion() {
+      const questionDetails = {
+        name: "Question",
+        query: {
+          "source-table": PEOPLE_ID,
+          limit: 1,
+        },
+      };
+      createQuestion(questionDetails, { wrapId: true });
+    }
+
+    function createGuiModel() {
+      const mbqlModelDetails = {
+        name: "Model",
+        type: "model",
+        query: {
+          "source-table": PEOPLE_ID,
+          limit: 1,
+        },
+      };
+      createQuestion(mbqlModelDetails, { wrapId: true, idAlias: "modelId" });
+    }
+
+    function createNativeModel() {
+      const nativeModelDetails = {
+        name: "Native Model",
+        type: "model",
+        native: {
+          query: "SELECT * FROM PEOPLE LIMIT 1",
+        },
+      };
+      createNativeQuestion(nativeModelDetails, {
+        wrapId: true,
+        idAlias: "modelId",
+      }).then(({ body: model }) => {
+        cy.log("populate result_metadata");
+        cy.request("POST", `/api/card/${model.id}/query`);
+        cy.log("map ID to PEOPLE.ID");
+        setModelMetadata(model.id, field => {
+          if (field.name === "ID") {
+            return { ...field, id: PEOPLE.ID };
+          }
+          return field;
+        });
+      });
+    }
+
+    function setListValues() {
+      cy.request("PUT", `/api/field/${PEOPLE.ID}`, {
+        has_field_values: "list",
+      });
+    }
+
+    function setSearchValues() {
+      cy.request("PUT", `/api/field/${PEOPLE.ID}`, {
+        has_field_values: "search",
+      });
+    }
+
+    function verifyListFilter() {
+      tableHeaderClick("ID");
+      popover().findByText("Filter by this column").click();
+      popover().within(() => {
+        cy.findByPlaceholderText("Search the list").type("Borer");
+        cy.findByText("Hudson Borer").click();
+        cy.button("Add filter").click();
+      });
+      cy.findByTestId("qb-filters-panel").findByText("ID is 1").click();
+      popover().findByLabelText("Hudson Borer").should("be.checked");
+    }
+
+    function verifySearchFilter() {
+      tableHeaderClick("ID");
+      popover().findByText("Filter by this column").click();
+      popover().findByPlaceholderText("Search by ID").type("Borer");
+      popover().last().findByText("Hudson Borer").click();
+      popover().first().click().button("Add filter").click();
+      cy.findByTestId("qb-filters-panel").findByText("ID is 1").click();
+      popover().findByText("Hudson Borer").should("be.visible");
+    }
+
+    it("should work with questions", () => {
+      cy.signInAsNormalUser();
+      createGuiQuestion();
+
+      cy.log("list values");
+      cy.signInAsAdmin();
+      setListValues();
+      cy.signInAsNormalUser();
+      visitQuestion("@questionId");
+      verifyListFilter();
+
+      cy.log("search values");
+      cy.signInAsAdmin();
+      setSearchValues();
+      cy.signInAsNormalUser();
+      visitQuestion("@questionId");
+      verifySearchFilter();
+    });
+
+    it("should work with models", () => {
+      cy.signInAsNormalUser();
+      createGuiModel();
+
+      cy.log("list values");
+      cy.signInAsAdmin();
+      setListValues();
+      cy.signInAsNormalUser();
+      cy.get("@modelId").then(modelId => visitModel(modelId));
+      verifyListFilter();
+
+      cy.log("search values");
+      cy.signInAsAdmin();
+      setSearchValues();
+      cy.signInAsNormalUser();
+      cy.get("@modelId").then(modelId => visitModel(modelId));
+      verifySearchFilter();
+    });
+
+    it("should work with native models", () => {
+      cy.signInAsNormalUser();
+      createNativeModel();
+
+      cy.log("list values");
+      cy.signInAsAdmin();
+      setListValues();
+      cy.signInAsNormalUser();
+      cy.get("@modelId").then(modelId => visitModel(modelId));
+      verifyListFilter();
+
+      cy.log("search values");
+      cy.signInAsAdmin();
+      setSearchValues();
+      cy.signInAsNormalUser();
+      cy.get("@modelId").then(modelId => visitModel(modelId));
+      verifySearchFilter();
     });
   });
 });

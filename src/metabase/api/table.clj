@@ -409,12 +409,12 @@
         underlying (m/index-by :id (or metadata-fields
                                        (when-let [ids (seq (keep :id metadata))]
                                          (-> (t2/select Field :id [:in ids])
-                                             (t2/hydrate [:target :has_field_values] :has_field_values)))))
+                                             (t2/hydrate [:target :has_field_values] :has_field_values :name_field)))))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
                      (update :base_type keyword)
                      (merge (select-keys (underlying col-id)
-                                         [:semantic_type :fk_target_field_id :has_field_values :target]))
+                                         [:semantic_type :fk_target_field_id :has_field_values :target :name_field]))
                      (assoc
                       :table_id     (str "card__" card-id)
                       :id           (or col-id
