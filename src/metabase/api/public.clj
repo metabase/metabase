@@ -540,14 +540,14 @@
 (api/defendpoint GET "/dashboard/:uuid/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
   Dashboards."
-  [uuid field-id remapped-id value]
+  [uuid field-id remapped-id values]
   {uuid        ms/UUIDString
    field-id    ms/PositiveInt
    remapped-id ms/PositiveInt
-   value       ms/NonBlankString}
+   values      (ms/QueryVectorOf ms/NonBlankString)}
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (t2/select-one-pk Dashboard :public_uuid uuid, :archived false)]
-    (dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
+    (dashboard-field-remapped-values dashboard-id field-id remapped-id values)))
 
 ;;; ------------------------------------------------ Param Values -------------------------------------------------
 
