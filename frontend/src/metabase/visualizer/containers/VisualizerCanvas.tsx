@@ -8,7 +8,10 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Card, Flex, Group, Icon, Title, Stack } from "metabase/ui";
 import { hasAxes as checkHasAxes } from "metabase/visualizations";
 import BaseVisualization from "metabase/visualizations/components/Visualization";
-import type { OnChangeCardAndRun } from "metabase/visualizations/types";
+import type {
+  ComputedVisualizationSettings,
+  OnChangeCardAndRun,
+} from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
@@ -17,6 +20,7 @@ import { DROPPABLE_CANVAS_ID } from "../dnd";
 
 interface VisualizerCanvasProps {
   series: Series;
+  settings: ComputedVisualizationSettings;
   onToggleVizSettings: () => void;
   onChange: (settings: VisualizationSettings) => void;
   onChangeCardAndRun: OnChangeCardAndRun;
@@ -24,6 +28,7 @@ interface VisualizerCanvasProps {
 
 export function VisualizerCanvas({
   series,
+  settings,
   onToggleVizSettings,
   onChange,
   onChangeCardAndRun,
@@ -39,8 +44,8 @@ export function VisualizerCanvas({
     [series],
   );
 
-  const currentMetrics = getCurrentMetrics(series);
-  const currentDimensions = getCurrentDimensions(series);
+  const currentMetrics = settings?.["graph.metrics"] ?? [];
+  const currentDimensions = settings?.["graph.dimensions"] ?? [];
 
   const hasAxes = useMemo(() => {
     if (series.length === 0) {
@@ -136,22 +141,6 @@ export function VisualizerCanvas({
       )}
     </Card>
   );
-}
-
-function getCurrentMetrics(series: Series) {
-  if (series.length === 0) {
-    return [];
-  }
-  const [{ card }] = series;
-  return card.visualization_settings["graph.metrics"] ?? [];
-}
-
-function getCurrentDimensions(series: Series) {
-  if (series.length === 0) {
-    return [];
-  }
-  const [{ card }] = series;
-  return card.visualization_settings["graph.dimensions"] ?? [];
 }
 
 function getMetricAndDimensionOptions(series: Series) {

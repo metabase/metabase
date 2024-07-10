@@ -132,6 +132,7 @@ export function Visualizer({ router, location }: WithRouterProps) {
           <Panel defaultSize={75} minSize={60}>
             <VisualizerCanvas
               series={series}
+              settings={settings}
               onToggleVizSettings={() => setVizSettingsOpen(isOpen => !isOpen)}
               onChange={setVizSettings}
               onChangeCardAndRun={handleChangeCardAndRun}
