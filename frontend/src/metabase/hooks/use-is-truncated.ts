@@ -102,12 +102,16 @@ const getUntruncatedBoundingClientRect = (element: HTMLElement): DOMRect => {
   }
 
   cloned.style.textOverflow = "clip"; // disable ellipsis
-  cloned.style.position = "fixed"; // remove element from the flow
+  cloned.style.position = "absolute"; // remove element from the flow
+  cloned.style.maxWidth = "none"; // allow overflow
   cloned.style.visibility = "hidden"; // prevent user from seeing this element
 
-  element.parentElement.appendChild(cloned); // temporarily add element to the DOM so it can be measured
+  const originalPosition = element.style.position;
+  element.style.position = "relative";
+  element.appendChild(cloned); // temporarily add element to the DOM so it can be measured
   const rect = cloned.getBoundingClientRect(); // measure it
-  element.parentElement.removeChild(cloned); // remove it from the DOM
+  element.removeChild(cloned); // remove it from the DOM
+  element.style.position = originalPosition;
 
   return rect;
 };
