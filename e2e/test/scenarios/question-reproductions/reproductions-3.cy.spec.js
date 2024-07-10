@@ -1718,21 +1718,7 @@ describe("issue 39771", () => {
       .findByText("Created At: Month: Quarter of year")
       .click();
 
-    popover().findByText("by quarter of year").realHover();
-    popover().then(([$popover]) => {
-      const popoverStyle = window.getComputedStyle($popover);
-      const popoverZindex = parseInt(popoverStyle.zIndex, 10);
-
-      cy.findByTestId("ellipsified-tooltip").within(([$tooltip]) => {
-        cy.findByText("by quarter of year").should("be.visible");
-
-        const tooltipStyle = window.getComputedStyle($tooltip);
-        const tooltipZindex = parseInt(tooltipStyle.zIndex, 10);
-
-        // resort to asserting zIndex because should("be.visible") passes unexpectedly
-        expect(tooltipZindex).to.be.gte(popoverZindex);
-      });
-    });
+    assertTooltip("by quarter of year");
 
     popover().findByText("by quarter of year").click();
     popover().last().findByText("Month of year").click();
@@ -1741,13 +1727,26 @@ describe("issue 39771", () => {
       .findByText("Created At: Month: Month of year")
       .click();
 
-    popover().findByText("by month of year").realHover();
+    assertTooltip("by month of year");
+
+    popover().findByText("by month of year").click();
+    popover().last().findByText("Week of year").click();
+    getNotebookStep("summarize", { stage: 1 })
+      .findByTestId("breakout-step")
+      .findByText("Created At: Month: Week of year")
+      .click();
+
+    assertTooltip("by week of year");
+  });
+
+  function assertTooltip(text) {
+    popover().findByText(text).realHover();
     popover().then(([$popover]) => {
       const popoverStyle = window.getComputedStyle($popover);
       const popoverZindex = parseInt(popoverStyle.zIndex, 10);
 
       cy.findByTestId("ellipsified-tooltip").within(([$tooltip]) => {
-        cy.findByText("by month of year").should("be.visible");
+        cy.findByText(text).should("be.visible");
 
         const tooltipStyle = window.getComputedStyle($tooltip);
         const tooltipZindex = parseInt(tooltipStyle.zIndex, 10);
@@ -1756,7 +1755,7 @@ describe("issue 39771", () => {
         expect(tooltipZindex).to.be.gte(popoverZindex);
       });
     });
-  });
+  }
 });
 
 describe("issue 41464", () => {
