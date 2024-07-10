@@ -23,7 +23,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { areSeriesCompatible } from "../utils";
+import { areCardsCompatible } from "../utils";
 
 const MAIN_SERIES_INDEX = 0;
 
@@ -182,7 +182,7 @@ export function useVisualizerSeries(
     }
 
     if (mainCard) {
-      const canMerge = areSeriesCompatible(mainSeries, newSeries);
+      const canMerge = areCardsCompatible(mainSeries.card, newSeries.card);
       if (canMerge) {
         setRawSeries([...rawSeries, newSeries]);
       } else {
@@ -251,7 +251,10 @@ export function useVisualizerSeries(
         if (index === 0) {
           return true;
         }
-        return areSeriesCompatible(nonEmptySeries[0], series);
+        return (
+          series?.card &&
+          areCardsCompatible(nonEmptySeries[0].card, series.card)
+        );
       });
       _setRawSeries(compatibleSeries);
     }

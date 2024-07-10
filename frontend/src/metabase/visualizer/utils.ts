@@ -4,22 +4,21 @@ import {
   isDateWithoutTime,
   isTime,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, SingleSeries } from "metabase-types/api";
+import type { Card, Field } from "metabase-types/api";
 
 const areBarLine = ["area", "bar", "line"];
 
-export function areSeriesCompatible(s1: SingleSeries, s2: SingleSeries) {
+export function areCardsCompatible(card1: Card, card2: Card) {
   if (
-    areBarLine.includes(s1.card.display) &&
-    areBarLine.includes(s2.card.display)
+    areBarLine.includes(card1.display) &&
+    areBarLine.includes(card2.display)
   ) {
-    return areAreaBarLineSeriesCompatible(s1, s2);
+    return areAreaBarLineSeriesCompatible(card1, card2);
   }
 
-  if (s1.card.display === "scalar" && s2.card.display === "scalar") {
+  if (card1.display === "scalar" && card2.display === "scalar") {
     return (
-      s1.card.result_metadata.length === 1 &&
-      s2.card.result_metadata.length === 1
+      card1.result_metadata.length === 1 && card2.result_metadata.length === 1
     );
   }
 
@@ -28,18 +27,15 @@ export function areSeriesCompatible(s1: SingleSeries, s2: SingleSeries) {
 
 // Mimics the `area-bar-line-series-are-compatible?` fn from `GET /api/card/:id/series`
 // https://github.com/metabase/metabase/blob/5cfc079d1db6e69bf42705f0eeba431a6e39c6b5/src/metabase/api/card.clj#L219
-function areAreaBarLineSeriesCompatible(s1: SingleSeries, s2: SingleSeries) {
-  const card1 = s1.card;
-  const card2 = s2.card;
-
+function areAreaBarLineSeriesCompatible(card1: Card, card2: Card) {
   const initialDimensions = (
     card1.visualization_settings["graph.dimensions"] ?? []
-  ).map(col => s1.data.cols.find(c => c.name === col));
+  ).map(col => card1.result_metadata.find(c => c.name === col));
   const newDimensions = (
     card2.visualization_settings["graph.dimensions"] ?? []
-  ).map(col => s2.data.cols.find(c => c.name === col));
+  ).map(col => card2.result_metadata.find(c => c.name === col));
   const newMetrics = (card2.visualization_settings["graph.metrics"] ?? []).map(
-    col => s2.data.cols.find(c => c.name === col),
+    col => card2.result_metadata.find(c => c.name === col),
   );
 
   if (
@@ -50,8 +46,8 @@ function areAreaBarLineSeriesCompatible(s1: SingleSeries, s2: SingleSeries) {
     return false;
   }
 
-  const primaryInitialDimension = initialDimensions[0] as DatasetColumn;
-  const primaryNewDimension = newDimensions[0] as DatasetColumn;
+  const primaryInitialDimension = initialDimensions[0] as Field;
+  const primaryNewDimension = newDimensions[0] as Field;
 
   // both or neither primary dimension must be dates
   // both or neither primary dimension must be numeric
@@ -63,6 +59,6 @@ function areAreaBarLineSeriesCompatible(s1: SingleSeries, s2: SingleSeries) {
   );
 }
 
-function isTemporal(col: DatasetColumn) {
+function isTemporal(col: Field) {
   return isDate(col) || isDateWithoutTime(col) || isTime(col);
 }
