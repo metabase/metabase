@@ -1505,7 +1505,31 @@
               (lib.metadata.calculation/metadata lib.tu/venues-query -1 [:field {:lib/uuid (str (random-uuid))} 12345]))))))
 
 (deftest ^:parallel field-values-search-info-test
-  (testing "external remaps (Field mapped to another Field)"
+  (testing "type/PK remapped to type/Name within the same table"
+    (let [name-field (lib.metadata/field meta/metadata-provider (meta/id :venues :name))
+          metadata-provider (lib.tu/merged-mock-metadata-provider
+                              meta/metadata-provider
+                              {:fields [{:id  (meta/id :venues :id)
+                                         :name-field       name-field
+                                         :has-field-values :search}
+                                        {:id               (meta/id :venues :name)
+                                         :semantic-type    :type/Name}]})
+          venues-id       (lib.metadata/field metadata-provider (meta/id :venues :id))]
+      (testing `lib.field/remapped-field
+               (let [remapped-field (#'lib.field/remapped-field metadata-provider venues-id)]
+                 (is (=? {:id   (meta/id :venues :name)
+                          :name "NAME"}
+                         (#'lib.field/remapped-field metadata-provider venues-id)))
+                 (is (lib.types.isa/searchable? remapped-field))))
+      (testing `lib.field/search-field
+               (is (=? {:id   (meta/id :venues :name)
+                        :name "NAME"}
+                       (#'lib.field/search-field metadata-provider venues-id))))
+      (is (= {:field-id         (meta/id :venues :id)
+              :search-field-id  (meta/id :venues :name)
+              :has-field-values :search}
+             (lib.field/field-values-search-info metadata-provider venues-id)))))
+  (testing "type/FK field remapped to a field in another table"
     (let [metadata-provider (-> meta/metadata-provider
                                 (lib.tu/merged-mock-metadata-provider {:fields [{:id               (meta/id :venues :name)
                                                                                  :semantic-type    :type/FK
