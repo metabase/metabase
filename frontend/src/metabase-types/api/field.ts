@@ -101,7 +101,6 @@ export interface Field {
   default_dimension_option?: FieldDimensionOption;
   dimension_options?: FieldDimensionOption[];
   name_field?: Field;
-  name_field_id?: FieldId | null;
 
   max_value?: number;
   min_value?: number;
