@@ -583,6 +583,7 @@
     ;; DEFAULTS TO TRUE.
     :case-sensitivity-string-filter-options
 
+    ;; Implicit joins require :left-join (only) to work.
     :left-join
     :right-join
     :inner-join
