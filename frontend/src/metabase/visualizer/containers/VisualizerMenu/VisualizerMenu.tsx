@@ -59,7 +59,11 @@ export function VisualizerMenu({
               )}
             </Tabs.List>
             <Tabs.Panel value="recents">
-              <VisualizerRecentsList onAdd={onAdd} onReplace={onReplace} />
+              <VisualizerRecentsList
+                series={series}
+                onAdd={onAdd}
+                onReplace={onReplace}
+              />
             </Tabs.Panel>
             {hasCompatibleTab && (
               <Tabs.Panel value="compatible">
