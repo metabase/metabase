@@ -160,8 +160,8 @@
     [:not (mdb.u/isa :semantic_type :type/PK)]
     [:= :semantic_type nil]]
    [:not-in :visibility_type ["retired" "sensitive"]]
-   [:not= :base_type (u/qualified-name :type/*)]
-   [:not (mdb.u/isa :base_type :type/Structured)]])
+   [:not-in :base_type (-> (set (mapcat mdb.u/type-keyword->descendants [:type/Structured :type/Collection]))
+                           (conj (u/qualified-name :type/*)))]])
 
 (def ^:dynamic *refingerprint?*
   "Whether we are refingerprinting or doing the normal fingerprinting. Refingerprinting should get fields that already

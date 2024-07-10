@@ -213,7 +213,10 @@
       (boolean
        (and
         (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
-        (not (isa? (keyword base-type) :type/Temporal))
+        (not (some #(isa? (keyword base-type) %) [:type/field-values-unsupported
+                                                  :type/Structured
+                                                  :type/Temporal
+                                                  :type/Collection]))
         (not (= (keyword base-type) :type/*))
         (#{:list :auto-list} (keyword has-field-values)))))))
 
