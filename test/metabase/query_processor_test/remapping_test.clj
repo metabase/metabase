@@ -12,7 +12,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.test.data.dataset-definitions :as defs]))
+   [metabase.test.data.dataset-definitions :as defs]
+   [metabase.util.date-2 :as u.date]))
 
 (deftest ^:parallel basic-internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
@@ -256,8 +257,8 @@
                            :order-by     [[:asc $id] [:asc $product_id->products.category]]
                            :limit        1})]
               (mt/with-native-query-testing-context query
-                (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 "Rustic Paper Car"]]
-                       (mt/formatted-rows [int int int 2.0 2.0 2.0 identity str int str]
+                (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50Z" 3 "Rustic Paper Car"]]
+                       (mt/formatted-rows [int int int 2.0 2.0 2.0 identity u.date/temporal-str->iso8601-str int str]
                          (qp/process-query query))))))))))))
 
 (deftest ^:parallel multiple-fk-remaps-test

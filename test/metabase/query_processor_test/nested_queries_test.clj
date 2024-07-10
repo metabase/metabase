@@ -29,6 +29,7 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -1371,7 +1372,7 @@
                                           :card-id      1}}})]
             (is (= [["2016-04-01T00:00:00Z" 1]
                     ["2016-05-01T00:00:00Z" 5]]
-                   (mt/formatted-rows [str int]
+                   (mt/formatted-rows [u.date/temporal-str->iso8601-str int]
                      (qp/process-query query))))))))))
 
 (deftest ^:parallel join-against-query-with-implicit-joins-test
@@ -1403,8 +1404,8 @@
                        "christ"
                        5
                        "Ad perspiciatis quis et consectetur. Laboriosam fuga voluptas ut et modi ipsum. Odio et eum numquam eos nisi. Assumenda aut magnam libero maiores nobis vel beatae officia."
-                       "2018-05-15T20:25:48.517Z"]]
-                     (mt/formatted-rows [int int int int str int str str]
+                       "2018-05-15T20:25:48Z"]]
+                     (mt/formatted-rows [int int int int str int str u.date/temporal-str->iso8601-str]
                        (qp/process-query query)))))))))))
 
 ;; TODO: Make this work with Mongo as part of #43901 work. -- lbrdnk
@@ -1430,7 +1431,7 @@
                          :limit        1})]
             (mt/with-native-query-testing-context query
               (is (= [["2016-04-01T00:00:00Z" 175]]
-                     (mt/formatted-rows [str int]
+                     (mt/formatted-rows [u.date/temporal-str->iso8601-str int]
                        (qp/process-query query)))))))))))
 
 (deftest ^:parallel really-really-long-identifiers-test

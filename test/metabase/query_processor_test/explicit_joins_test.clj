@@ -19,7 +19,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.test.data.interface :as tx]))
+   [metabase.test.data.interface :as tx]
+   [metabase.util.date-2 :as u.date]))
 
 (deftest ^:parallel explict-join-with-default-options-test
   (testing "Can we specify an *explicit* JOIN using the default options?"
@@ -453,7 +454,7 @@
                               ["2014-11-01T00:00:00Z" 74]
                               ["2014-12-01T00:00:00Z" 70]]
                     :columns [(mt/format-name "last_login") "avg"]}
-                   (mt/format-rows-by [identity int]
+                   (mt/format-rows-by [u.date/temporal-str->iso8601-str int]
                      (mt/rows+column-names
                       (qp/process-query query)))))))))))
 
@@ -566,8 +567,8 @@
                                    timezones-test/broken-drivers)
     (testing "Date filter should behave the same for joined columns"
       (mt/dataset attempted-murders
-        (is (= [["2019-11-01T07:23:18.331Z" "2019-11-01T07:23:18.331Z"]]
-               (mt/rows
+        (is (= [["2019-11-01T07:23:18Z" "2019-11-01T07:23:18Z"]]
+               (mt/formatted-rows [u.date/temporal-str->iso8601-str u.date/temporal-str->iso8601-str]
                 (mt/run-mbql-query attempts
                   {:fields [$datetime_tz]
                    :filter [:and
@@ -690,10 +691,10 @@
                      "Swaniawski, Casper and Hilll"
                      29.46
                      4.6
-                     "2017-07-19T19:44:56.582Z"
+                     "2017-07-19T19:44:56Z"
                      "Gizmo"
                      51]]
-                   (mt/formatted-rows [int str str str str 2.0 1.0 str str int]
+                   (mt/formatted-rows [int str str str str 2.0 1.0 u.date/temporal-str->iso8601-str str int]
                      (qp/process-query query))))))))))
 
 (deftest ^:parallel join-with-space-in-alias-test
@@ -751,7 +752,7 @@
             (is (= [["2016-05-01T00:00:00Z" 3 nil nil]
                     ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]
                     ["2016-08-01T00:00:00Z" 2 nil nil]]
-                   (mt/formatted-rows [str int str int]
+                   (mt/formatted-rows [u.date/temporal-str->iso8601-str int u.date/temporal-str->iso8601-str int]
                      (qp/process-query query))))))))))
 
 (deftest ^:parallel join-against-same-table-as-source-query-source-table-test
@@ -774,7 +775,7 @@
             (is (= [["2016-04-01T00:00:00Z" 26 nil nil]
                     ["2016-05-01T00:00:00Z" 77 nil nil]
                     ["2016-06-01T00:00:00Z" 82 nil nil]]
-                   (mt/formatted-rows [str int str int]
+                   (mt/formatted-rows [u.date/temporal-str->iso8601-str int u.date/temporal-str->iso8601-str int]
                      (qp/process-query query))))))))))
 
 (deftest ^:parallel join-against-multiple-saved-questions-with-same-column-test
@@ -851,12 +852,12 @@
                         "Products Renamed → Rating"
                         "Products Renamed → Created At"]
                        (map :display_name (get-in results [:data :results_metadata :columns])))))
-              (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 2
-                       60 "4819782507258" "Rustic Paper Car" "Doohickey" "Stroman-Carroll" 19.87 4.1 "2017-12-16T11:14:43.264Z"]
-                      [10 1 6 97.44 5.36 102.8 nil "2020-01-17T01:44:37.233Z" 2 2
-                       6 "2293343551454" "Small Marble Hat" "Doohickey" "Nolan-Wolff" 64.96 3.8 "2017-03-29T05:43:40.15Z"]]
-                     (mt/formatted-rows [int int int 2.0 2.0 2.0 2.0 str int int
-                                         int str str str str 2.0 2.0 str]
+              (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50Z" 3 2
+                       60 "4819782507258" "Rustic Paper Car" "Doohickey" "Stroman-Carroll" 19.87 4.1 "2017-12-16T11:14:43Z"]
+                      [10 1 6 97.44 5.36 102.8 nil "2020-01-17T01:44:37Z" 2 2
+                       6 "2293343551454" "Small Marble Hat" "Doohickey" "Nolan-Wolff" 64.96 3.8 "2017-03-29T05:43:40Z"]]
+                     (mt/formatted-rows [int int int 2.0 2.0 2.0 2.0 u.date/temporal-str->iso8601-str int int
+                                         int str str str str 2.0 2.0 u.date/temporal-str->iso8601-str]
                        results))))))))))
 
 (deftest ^:parallel double-quotes-in-join-alias-test
@@ -1012,7 +1013,7 @@
         (is (= [["Doohickey" "Balistreri-Ankunding" "2018-01-01T00:00:00Z" 210.24 2.1024]
                 ["Doohickey" "Balistreri-Ankunding" "2018-02-01T00:00:00Z" 315.36 3.1536]
                 ["Doohickey" "Balistreri-Ankunding" "2018-03-01T00:00:00Z" 315.36 3.1536]]
-               (mt/formatted-rows [str str str 2.0 4.0]
+               (mt/formatted-rows [str str u.date/temporal-str->iso8601-str 2.0 4.0]
                  (qp/process-query query))))))))
 
 (deftest ^:parallel mlv2-references-in-join-conditions-test

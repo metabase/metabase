@@ -9,7 +9,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.date-2 :as u.date]))
 
 (set! *warn-on-reflection* true)
 
@@ -170,7 +171,7 @@
                     ["Doohickey" "Google"   "2020-01-01T00:00:00Z" 0 100]
                     ["Gizmo"     "Facebook" "2020-01-01T00:00:00Z" 0 113]
                     ["Gizmo"     "Google"   "2020-01-01T00:00:00Z" 0 101]]
-                   (mt/formatted-rows [str str str int int]
+                   (mt/formatted-rows [str str u.date/temporal-str->iso8601-str int int]
                                       (qp/process-query query))))))))))
 
 (deftest ^:parallel test-23293

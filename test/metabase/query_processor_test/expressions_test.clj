@@ -550,9 +550,10 @@
                          :limit       2})]
           (is (= ["ID" "User ID" "Product ID" "Subtotal" "Tax" "Total" "Discount" "Created At" "Quantity" "CE"]
                  (map :display_name (mt/cols results))))
-          (is (= [[1 1  14  37.7  2.1  39.7 nil "2019-02-11T21:40:27.892Z" 2 "2017-12-31T14:41:56.87Z"]
-                  [2 1 123 110.9  6.1 117.0 nil "2018-05-15T08:04:04.58Z"  3 "2017-11-16T13:53:14.232Z"]]
-                 (mt/formatted-rows [int int int 1.0 1.0 1.0 identity str int str]
+          (is (= [[1 1  14  37.7  2.1  39.7 nil "2019-02-11T21:40:27Z" 2 "2017-12-31T14:41:56Z"]
+                  [2 1 123 110.9  6.1 117.0 nil "2018-05-15T08:04:04Z"  3 "2017-11-16T13:53:14Z"]]
+                 (mt/formatted-rows [int int int 1.0 1.0
+                                     1.0 identity u.date/temporal-str->iso8601-str int u.date/temporal-str->iso8601-str]
                    results))))))))
 
 (deftest ^:parallel string-operations-from-subquery
