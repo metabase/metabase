@@ -827,6 +827,13 @@ CombinedWithInvalidSettings.args = {
   renderingContext,
 };
 
+export const StackedChartCustomYAxisRange = Template.bind({});
+StackedChartCustomYAxisRange.args = {
+  rawSeries: data.stackedChartCustomYAxisRange as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
