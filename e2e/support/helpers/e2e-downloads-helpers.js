@@ -16,7 +16,7 @@ const xlsx = require("xlsx");
  * @param {boolean} [params.logResults] - preview the results in the console log
  * @param {boolean} [params.isEmbed] - downloading is tested on an embedded resource
  * @param {boolean} params.isDashboard - downloading is tested on a dashboard
- * @param {string|undefined} params.publicUid
+ * @param {string|undefined} params.publicUuid
  * @param {function} callback
  */
 export function downloadAndAssert(
@@ -25,7 +25,7 @@ export function downloadAndAssert(
     questionId,
     raw,
     logResults,
-    publicUid,
+    publicUuid,
     dashcardId,
     dashboardId,
     downloadUrl,
@@ -40,12 +40,12 @@ export function downloadAndAssert(
     getEndpoint(
       fileType,
       questionId,
-      publicUid,
+      publicUuid,
       dashcardId,
       dashboardId,
       isDashboard,
     );
-  const isPublicDownload = !!publicUid;
+  const isPublicDownload = !!publicUuid;
   const method = (isPublicDownload && !dashcardId) || isEmbed ? "GET" : "POST";
 
   /**
