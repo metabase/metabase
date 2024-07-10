@@ -406,9 +406,12 @@
 
 (defonce ^:private portal (atom nil))
 
-(defn- portal-setup []
+(defn- portal-setup
+  "Do setup after Portal has started, e.g. loading the custom viewers in [[dev.debug-qp.viewers]]. This is supposed to
+  be done automatically on start, but you can call this function to reload them if needed."
+  []
   (portal.api/eval-str
-   (slurp (io/resource "dev/debug_qp_viewers.cljs"))))
+   (slurp (io/resource "dev/debug_qp/viewers.cljs"))))
 
 (def ^:private default-portal-config
   {:port    1337
@@ -430,4 +433,4 @@
      (reset! portal (portal.api/start config))
      (add-tap #'portal.api/submit)
      #_{:clj-kondo/ignore [:discouraged-var]}
-     (printf "Started Portal on port %d." (:port config)))))
+     (printf "Started Portal on port %d.\n" (:port config)))))
