@@ -6612,9 +6612,9 @@ databaseChangeLog:
             - and:
                 - dbms:
                     type: h2,postgresql
-                    uniqueConstraintExists:
-                      tableName: metabase_field
-                      constraintName: idx_uniq_field_table_id_parent_id_name
+                - uniqueConstraintExists:
+                    tableName: metabase_field
+                    constraintName: idx_uniq_field_table_id_parent_id_name
             - and:
                 - dbms:
                     type: mysql,mariadb

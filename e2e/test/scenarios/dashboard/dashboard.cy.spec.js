@@ -884,7 +884,7 @@ describe("scenarios > dashboard", () => {
 
           cy.intercept(
             "GET",
-            `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata`,
+            `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata*`,
           ).as("queryMetadata");
         });
       },
