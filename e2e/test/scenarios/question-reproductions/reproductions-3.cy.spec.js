@@ -1719,13 +1719,35 @@ describe("issue 39771", () => {
       .click();
 
     popover().findByText("by quarter of year").realHover();
-
     popover().then(([$popover]) => {
       const popoverStyle = window.getComputedStyle($popover);
       const popoverZindex = parseInt(popoverStyle.zIndex, 10);
 
       cy.findByTestId("ellipsified-tooltip").within(([$tooltip]) => {
         cy.findByText("by quarter of year").should("be.visible");
+
+        const tooltipStyle = window.getComputedStyle($tooltip);
+        const tooltipZindex = parseInt(tooltipStyle.zIndex, 10);
+
+        // resort to asserting zIndex because should("be.visible") passes unexpectedly
+        expect(tooltipZindex).to.be.gte(popoverZindex);
+      });
+    });
+
+    popover().findByText("by quarter of year").click();
+    popover().last().findByText("Month of year").click();
+    getNotebookStep("summarize", { stage: 1 })
+      .findByTestId("breakout-step")
+      .findByText("Created At: Month: Month of year")
+      .click();
+
+    popover().findByText("by month of year").realHover();
+    popover().then(([$popover]) => {
+      const popoverStyle = window.getComputedStyle($popover);
+      const popoverZindex = parseInt(popoverStyle.zIndex, 10);
+
+      cy.findByTestId("ellipsified-tooltip").within(([$tooltip]) => {
+        cy.findByText("by month of year").should("be.visible");
 
         const tooltipStyle = window.getComputedStyle($tooltip);
         const tooltipZindex = parseInt(tooltipStyle.zIndex, 10);
