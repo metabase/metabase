@@ -569,6 +569,8 @@ Syntax: `datetimeAdd(column, amount, unit)`.
 
 Example: `datetimeAdd("2021-03-25", 1, "month")` would return the value `2021-04-25`, displayed as `April 25, 2021`.
 
+`amount` must be an integer, not a fractional number. For example, you cannot add "half a year" (0.5).
+
 Related: [between](#between), [datetimeSubtract](#datetimesubtract).
 
 ### [datetimeDiff](./expressions/datetimediff.md)
@@ -586,6 +588,8 @@ Subtracts some unit of time from a date or timestamp value.
 Syntax: `datetimeSubtract(column, amount, unit)`.
 
 Example: `datetimeSubtract("2021-03-25", 1, "month")` would return the value `2021-02-25`, displayed as `February 25, 2021`.
+
+`amount` must be an integer, not a fractional number. For example, you cannot subtract "half a year" (0.5).
 
 Related: [between](#between), [datetimeAdd](#datetimeadd).
 
@@ -612,6 +616,8 @@ Checks a date column's values to see if they're within the relative range.
 Syntax: `interval(column, number, text)`.
 
 Example: `interval([Created At], -1, "month")`.
+
+The `number` must be an integer. You cannot use a fractional value.
 
 Related: [between](#between).
 
@@ -651,7 +657,7 @@ Gets a timestamp relative to the current time.
 
 Syntax: `relativeDateTime(number, text)`
 
-`number`: Period of interval, where negative values are back in time.
+`number`: Period of interval, where negative values are back in time. The `number` must be an integer. You cannot use a fractional value.
 
 `text`: Type of interval like `"day"`, `"month"`, `"year"`
 
@@ -675,7 +681,7 @@ Gets a time interval of specified length.
 
 Syntax: `timeSpan(number, text)`.
 
-`number`: Period of interval, where negative values are back in time.
+`number`: Period of interval, where negative values are back in time. The `number` must be an integer. You cannot use a fractional value.
 
 `text`: Type of interval like `"day"`, `"month"`, `"year"`
 
