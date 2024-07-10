@@ -1740,147 +1740,233 @@ describe("issue 39771", () => {
 });
 
 describe("issue 45063", () => {
+  function createGuiQuestion({ sourceTableId }) {
+    const questionDetails = {
+      name: "Question",
+      query: {
+        "source-table": sourceTableId,
+      },
+    };
+    createQuestion(questionDetails, { wrapId: true });
+  }
+
+  function createGuiModel({ sourceTableId }) {
+    const mbqlModelDetails = {
+      name: "Model",
+      type: "model",
+      query: {
+        "source-table": sourceTableId,
+      },
+    };
+    createQuestion(mbqlModelDetails, { wrapId: true, idAlias: "modelId" });
+  }
+
+  function createNativeModel({
+    tableName,
+    fieldId,
+    fieldName,
+    fieldSemanticType,
+  }) {
+    const nativeModelDetails = {
+      name: "Native Model",
+      type: "model",
+      native: {
+        query: `SELECT * FROM ${tableName}`,
+      },
+    };
+    createNativeQuestion(nativeModelDetails, {
+      wrapId: true,
+      idAlias: "modelId",
+    }).then(({ body: model }) => {
+      cy.log("populate result_metadata");
+      cy.request("POST", `/api/card/${model.id}/query`);
+      cy.log("map columns to database fields");
+      setModelMetadata(model.id, field => {
+        if (field.name === fieldName) {
+          return { ...field, id: fieldId, semantic_type: fieldSemanticType };
+        }
+        return field;
+      });
+    });
+  }
+
+  function setListValues({ fieldId }) {
+    cy.request("PUT", `/api/field/${fieldId}`, {
+      has_field_values: "list",
+    });
+  }
+
+  function setSearchValues({ fieldId }) {
+    cy.request("PUT", `/api/field/${fieldId}`, {
+      has_field_values: "search",
+    });
+  }
+
+  function setForeignKeyRemapping({
+    sourceFieldId,
+    targetFieldId,
+    remappedDisplayName,
+  }) {
+    cy.request("POST", `/api/field/${sourceFieldId}/dimension`, {
+      type: "external",
+      name: remappedDisplayName,
+      human_readable_field_id: targetFieldId,
+    });
+  }
+
+  function verifyListFilter({ fieldDisplayName, fieldValue, fieldValueLabel }) {
+    tableHeaderClick(fieldDisplayName);
+    popover().findByText("Filter by this column").click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Search the list").type(fieldValueLabel);
+      cy.findByText(fieldValueLabel).click();
+      cy.button("Add filter").click();
+    });
+    cy.findByTestId("qb-filters-panel")
+      .findByText(`${fieldDisplayName} is ${fieldValue}`)
+      .click();
+    popover().findByLabelText(fieldValueLabel).should("be.checked");
+  }
+
+  function verifySearchFilter({
+    fieldDisplayName,
+    fieldValue,
+    fieldValueLabel,
+  }) {
+    tableHeaderClick(fieldDisplayName);
+    popover().findByText("Filter by this column").click();
+    popover()
+      .findByPlaceholderText(`Search by ${fieldDisplayName}`)
+      .type(fieldValueLabel);
+    popover().last().findByText(fieldValueLabel).click();
+    popover().first().click().button("Add filter").click();
+    cy.findByTestId("qb-filters-panel")
+      .findByText(`${fieldDisplayName} is ${fieldValue}`)
+      .click();
+    popover().findByText(fieldValueLabel).should("be.visible");
+  }
+
+  function verifyRemappedFilter({
+    visitCard,
+    fieldId,
+    fieldDisplayName,
+    fieldValue,
+    fieldValueLabel,
+    expectedRowCount,
+  }) {
+    cy.log("list values");
+    cy.signInAsAdmin();
+    setListValues({ fieldId });
+    cy.signInAsNormalUser();
+    visitCard();
+    verifyListFilter({ fieldDisplayName, fieldValue, fieldValueLabel });
+    assertQueryBuilderRowCount(expectedRowCount);
+
+    cy.log("search values");
+    cy.signInAsAdmin();
+    setSearchValues({ fieldId });
+    cy.signInAsNormalUser();
+    visitCard();
+    verifySearchFilter({ fieldDisplayName, fieldValue, fieldValueLabel });
+    assertQueryBuilderRowCount(expectedRowCount);
+  }
+
   beforeEach(() => {
     restore();
+    cy.signInAsAdmin();
   });
 
-  describe("type/PK -> type/Name remapping", () => {
-    function createGuiQuestion() {
-      const questionDetails = {
-        name: "Question",
-        query: {
-          "source-table": PEOPLE_ID,
-          limit: 1,
-        },
-      };
-      createQuestion(questionDetails, { wrapId: true });
-    }
-
-    function createGuiModel() {
-      const mbqlModelDetails = {
-        name: "Model",
-        type: "model",
-        query: {
-          "source-table": PEOPLE_ID,
-          limit: 1,
-        },
-      };
-      createQuestion(mbqlModelDetails, { wrapId: true, idAlias: "modelId" });
-    }
-
-    function createNativeModel() {
-      const nativeModelDetails = {
-        name: "Native Model",
-        type: "model",
-        native: {
-          query: "SELECT * FROM PEOPLE LIMIT 1",
-        },
-      };
-      createNativeQuestion(nativeModelDetails, {
-        wrapId: true,
-        idAlias: "modelId",
-      }).then(({ body: model }) => {
-        cy.log("populate result_metadata");
-        cy.request("POST", `/api/card/${model.id}/query`);
-        cy.log("map ID to PEOPLE.ID");
-        setModelMetadata(model.id, field => {
-          if (field.name === "ID") {
-            return { ...field, id: PEOPLE.ID };
-          }
-          return field;
-        });
-      });
-    }
-
-    function setListValues() {
-      cy.request("PUT", `/api/field/${PEOPLE.ID}`, {
-        has_field_values: "list",
-      });
-    }
-
-    function setSearchValues() {
-      cy.request("PUT", `/api/field/${PEOPLE.ID}`, {
-        has_field_values: "search",
-      });
-    }
-
-    function verifyListFilter() {
-      tableHeaderClick("ID");
-      popover().findByText("Filter by this column").click();
-      popover().within(() => {
-        cy.findByPlaceholderText("Search the list").type("Borer");
-        cy.findByText("Hudson Borer").click();
-        cy.button("Add filter").click();
-      });
-      cy.findByTestId("qb-filters-panel").findByText("ID is 1").click();
-      popover().findByLabelText("Hudson Borer").should("be.checked");
-    }
-
-    function verifySearchFilter() {
-      tableHeaderClick("ID");
-      popover().findByText("Filter by this column").click();
-      popover().findByPlaceholderText("Search by ID").type("Borer");
-      popover().last().findByText("Hudson Borer").click();
-      popover().first().click().button("Add filter").click();
-      cy.findByTestId("qb-filters-panel").findByText("ID is 1").click();
-      popover().findByText("Hudson Borer").should("be.visible");
-    }
-
+  describe("type/PK -> type/Name remapping (metabase#45063)", () => {
     it("should work with questions", () => {
-      cy.signInAsNormalUser();
-      createGuiQuestion();
-
-      cy.log("list values");
-      cy.signInAsAdmin();
-      setListValues();
-      cy.signInAsNormalUser();
-      visitQuestion("@questionId");
-      verifyListFilter();
-
-      cy.log("search values");
-      cy.signInAsAdmin();
-      setSearchValues();
-      cy.signInAsNormalUser();
-      visitQuestion("@questionId");
-      verifySearchFilter();
+      createGuiQuestion({ sourceTableId: PEOPLE_ID });
+      verifyRemappedFilter({
+        visitCard: () => visitQuestion("@questionId"),
+        fieldId: PEOPLE.ID,
+        fieldDisplayName: "ID",
+        fieldValue: 1,
+        fieldValueLabel: "Hudson Borer",
+        expectedRowCount: 1,
+      });
     });
 
     it("should work with models", () => {
-      cy.signInAsNormalUser();
-      createGuiModel();
-
-      cy.log("list values");
-      cy.signInAsAdmin();
-      setListValues();
-      cy.signInAsNormalUser();
-      cy.get("@modelId").then(modelId => visitModel(modelId));
-      verifyListFilter();
-
-      cy.log("search values");
-      cy.signInAsAdmin();
-      setSearchValues();
-      cy.signInAsNormalUser();
-      cy.get("@modelId").then(modelId => visitModel(modelId));
-      verifySearchFilter();
+      createGuiModel({ sourceTableId: PEOPLE_ID });
+      verifyRemappedFilter({
+        visitCard: () => cy.get("@modelId").then(visitModel),
+        fieldId: PEOPLE.ID,
+        fieldDisplayName: "ID",
+        fieldValue: 1,
+        fieldValueLabel: "Hudson Borer",
+        expectedRowCount: 1,
+      });
     });
 
     it("should work with native models", () => {
-      cy.signInAsNormalUser();
-      createNativeModel();
+      createNativeModel({
+        tableName: "PEOPLE",
+        fieldId: PEOPLE.ID,
+        fieldName: "ID",
+        fieldSemanticType: "type/PK",
+      });
+      verifyRemappedFilter({
+        visitCard: () => cy.get("@modelId").then(visitModel),
+        fieldId: PEOPLE.ID,
+        fieldDisplayName: "ID",
+        fieldValue: 1,
+        fieldValueLabel: "Hudson Borer",
+        expectedRowCount: 1,
+      });
+    });
+  });
 
-      cy.log("list values");
-      cy.signInAsAdmin();
-      setListValues();
-      cy.signInAsNormalUser();
-      cy.get("@modelId").then(modelId => visitModel(modelId));
-      verifyListFilter();
+  describe("type/FK -> column remapping (metabase#45063)", () => {
+    beforeEach(() => {
+      setForeignKeyRemapping({
+        sourceFieldId: ORDERS.PRODUCT_ID,
+        targetFieldId: PRODUCTS.TITLE,
+        remappedDisplayName: "Product ID",
+      });
+    });
 
-      cy.log("search values");
-      cy.signInAsAdmin();
-      setSearchValues();
-      cy.signInAsNormalUser();
-      cy.get("@modelId").then(modelId => visitModel(modelId));
-      verifySearchFilter();
+    it("should work with questions", () => {
+      createGuiQuestion({ sourceTableId: ORDERS_ID });
+      verifyRemappedFilter({
+        visitCard: () => visitQuestion("@questionId"),
+        fieldId: ORDERS.PRODUCT_ID,
+        fieldDisplayName: "Product ID",
+        fieldValue: 1,
+        fieldValueLabel: "Rustic Paper Wallet",
+        expectedRowCount: 93,
+      });
+    });
+
+    it("should work with models", () => {
+      createGuiModel({ sourceTableId: ORDERS_ID });
+      verifyRemappedFilter({
+        visitCard: () => cy.get("@modelId").then(visitModel),
+        fieldId: ORDERS.PRODUCT_ID,
+        fieldDisplayName: "Product ID",
+        fieldValue: 1,
+        fieldValueLabel: "Rustic Paper Wallet",
+        expectedRowCount: 93,
+      });
+    });
+
+    it("should work with native models", () => {
+      createNativeModel({
+        tableName: "ORDERS",
+        fieldId: ORDERS.PRODUCT_ID,
+        fieldName: "PRODUCT_ID",
+        fieldSemanticType: "type/FK",
+      });
+      verifyRemappedFilter({
+        visitCard: () => cy.get("@modelId").then(visitModel),
+        fieldId: ORDERS.PRODUCT_ID,
+        fieldDisplayName: "PRODUCT_ID",
+        fieldValue: 1,
+        fieldValueLabel: "Rustic Paper Wallet",
+        expectedRowCount: 93,
+      });
     });
   });
 });
