@@ -105,6 +105,10 @@ e2e_specs: &e2e_specs
   - "e2e/support/**"
   - "e2e/snapshot*/**"
 
+e2e_cross_version: &e2e_cross_version
+  - ".github/workflows/e2e-cross-version.yml"
+  - "e2e/test/scenarios/cross-version/**"
+
 e2e_all:
   - *default
   - *e2e_ci
