@@ -883,6 +883,7 @@
                                                       :alias        "c"
                                                       :condition    [:= $category_id &c.categories.id]}]}
                        :filter       [:> [:field "count" {:base-type :type/Number}] 0]
+                       :order-by     [[:asc $name]]
                        :limit        3})]
         (is (= [[ "20th Century Cafe" "Café" 1]
                 [ "25°" "Burger" 1]
@@ -1278,7 +1279,8 @@
                                       :filter       [:> *sum/Float 100]
                                       :aggregation  [[:sum *sum/Float]]
                                       :breakout     [*products.title]}
-                       :filter       [:> *sum/Float 100]})]
+                       :filter       [:> *sum/Float 100]
+                       :order-by [[:asc *products.title]]})]
           (mt/with-native-query-testing-context query
             (is (= [["Awesome Bronze Plate" 115.23]
                     ["Mediocre Rubber Shoes" 101.04]

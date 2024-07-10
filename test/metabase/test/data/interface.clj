@@ -236,8 +236,7 @@
   ^String [^String database-name, ^String table-name]
   {:pre [(string? database-name)
          (string? table-name)]
-   :post [(qualified-by-db-name? database-name %)
-          (<= (count %) 30)]}
+   :post [(qualified-by-db-name? database-name %)]}
   (str (db-qualified-table-name-prefix database-name)
        (normalize-qualified-name table-name)))
 
