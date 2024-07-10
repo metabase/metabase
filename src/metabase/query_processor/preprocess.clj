@@ -1,5 +1,6 @@
 (ns metabase.query-processor.preprocess
   (:require
+   [clojure.data :as data]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.query :as lib.query]
@@ -135,10 +136,12 @@
               (when-not (= <> query)
                 (let [middleware-fn-name (if-let [fn-name (:name (meta middleware-fn))]
                                            (if-let [fn-ns (:ns (meta middleware-fn))]
-                                             (format "%s/%s" (ns-name fn-ns) fn-name)
+                                             (symbol (format "%s/%s" (ns-name fn-ns) fn-name))
                                              fn-name)
                                            middleware-fn)]
-                  (list middleware-fn-name '=> <>))))
+                  (list middleware-fn-name '=> <>
+                        ^{:portal.viewer/default :portal.viewer/diff}
+                        (data/diff query <>)))))
             ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
             (when-not (map? <>)
               (throw (ex-info (format "Middleware did not return a valid query.")
