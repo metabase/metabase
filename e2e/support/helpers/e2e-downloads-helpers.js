@@ -114,6 +114,10 @@ export function assertSheetRowsCount(expectedCount) {
   };
 }
 
+export function assertNotEmpty(data) {
+  Object.keys(data).length > 0;
+}
+
 function getEndpoint(
   fileType,
   questionId,

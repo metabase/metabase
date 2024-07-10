@@ -4,6 +4,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  assertNotEmpty,
   describeEE,
   downloadAndAssert,
   getDashboardCardMenu,
@@ -89,7 +90,7 @@ describeEE(
             isDashboard: true,
             dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
           },
-          () => true,
+          assertNotEmpty,
         );
       });
     });
