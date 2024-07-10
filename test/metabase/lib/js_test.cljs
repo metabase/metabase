@@ -205,7 +205,7 @@
                     (lib/aggregate (lib.options/update-options (lib/sum (meta/field-metadata :venues :price))
                                                                assoc :display-name "price sum")))
           agg-expr (-> query lib/aggregations first)
-          legacy-agg-expr #js ["sum" #js ["field" (meta/id :venues :price) #js {:base-type "Integer"}]]
+          legacy-agg-expr #js ["sum" #js ["field" (meta/id :venues :price) #js {:base-type "type/Integer"}]]
           legacy-agg-expr' (lib.js/legacy-expression-for-expression-clause query -1 agg-expr)]
       (is (= (js->clj legacy-agg-expr) (js->clj legacy-agg-expr')))))
   (testing "legacy expressions are converted properly (#36120)"
@@ -242,17 +242,13 @@
       (testing "created expression can be added as an expression to a query (#37173)"
         (is (=? {:stages [{:expressions [[:+ {:lib/expression-name "expr"} 1 2]]}]}
                 (lib/expression query -1 "expr" expr))))))
-  (testing "filters from queries can be converted to legacy clauses (#37173)"
+  (testing "filters from queries can be converted to legacy clauses (#37173, #44584)"
     (let [query (lib/filter lib.tu/venues-query (lib/< (meta/field-metadata :venues :price) 3))
           expr (first (lib/filters query))
           legacy-expr (lib.js/legacy-expression-for-expression-clause query 0 expr)
           price-id (meta/id :venues :price)]
       (is (=? [:< {} [:field {:base-type :type/Integer, :effective-type :type/Integer} price-id] 3] expr))
-      (is (= ["<" ["field" price-id {"base-type" "Integer"}] 3] (js->clj legacy-expr)))))
-  (testing "type namespaces are preserved (#44584)"
-    (let [expr [:field {:base-type :type/Text, :source-field 243, :lib/uuid (str (random-uuid))} 244]
-          legacy-expr (lib.js/legacy-expression-for-expression-clause lib.tu/venues-query 0 expr)]
-      (is (= "type/Text" (-> legacy-expr (aget 2) (gobject/get "base-type")))))))
+      (is (= ["<" ["field" price-id {"base-type" "type/Integer"}] 3] (js->clj legacy-expr))))))
 
 (deftest ^:parallel string-filter-clauses-test
   (doseq [tag                          [:contains :starts-with :ends-with :does-not-contain]
