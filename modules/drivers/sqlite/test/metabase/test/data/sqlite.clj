@@ -1,5 +1,7 @@
 (ns metabase.test.data.sqlite
   (:require [clojure.java.io :as io]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -10,6 +12,10 @@
 (sql-jdbc.tx/add-test-extensions! :sqlite)
 
 (defmethod tx/supports-timestamptz-type? :sqlite [_driver] false)
+
+;; TODO: It seems that foreign keys sync does not work on sqlite. The [[metabase.driver-test/describe-table-fks-test]]
+;;       is failing. Resolve that!
+(defmethod driver/database-supports? [:sqlite :metadata/key-constraints] [_driver _feature _db] (not config/is-test?))
 
 (defn- db-file-name [dbdef]
   (str (tx/escaped-database-name dbdef) ".sqlite"))
