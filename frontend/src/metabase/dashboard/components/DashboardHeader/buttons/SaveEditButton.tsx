@@ -38,7 +38,7 @@ export const SaveEditButton = (props: { actionFn: () => void }) => {
   };
 
   return (
-    <Tooltip key="save" label={disabledSaveTooltip} disabled={isSaveDisabled}>
+    <Tooltip key="save" label={disabledSaveTooltip} disabled={!isSaveDisabled}>
       <span>
         <ActionButton
           actionFn={onSave}
