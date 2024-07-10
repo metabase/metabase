@@ -1505,7 +1505,7 @@
               (lib.metadata.calculation/metadata lib.tu/venues-query -1 [:field {:lib/uuid (str (random-uuid))} 12345]))))))
 
 (deftest ^:parallel field-values-search-info-test
-  (testing "type/PK remapped to type/Name within the same table"
+  (testing "type/PK field remapped to a type/Name field within the same table"
     (let [name-field (lib.metadata/field meta/metadata-provider (meta/id :venues :name))
           metadata-provider (lib.tu/merged-mock-metadata-provider
                               meta/metadata-provider
