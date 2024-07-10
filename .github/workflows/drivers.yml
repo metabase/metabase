@@ -534,7 +534,7 @@ jobs:
     - name: Test MySQL driver (latest)
       uses: ./.github/actions/test-driver
       with:
-        test-args: :exclude-directories ${{ env.HALF_TEST_SET }}
+        test-args: :exclude-directories '${{ env.HALF_TEST_SET }}'
         junit-name: 'be-tests-mysql-latest-ee-a'
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
@@ -587,7 +587,7 @@ jobs:
     - name: Test MySQL driver (latest)
       uses: ./.github/actions/test-driver
       with:
-        test-args: :only ${{ env.HALF_TEST_SET }}
+        test-args: :only '${{ env.HALF_TEST_SET }}'
         junit-name: 'be-tests-mysql-latest-ee-b'
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
