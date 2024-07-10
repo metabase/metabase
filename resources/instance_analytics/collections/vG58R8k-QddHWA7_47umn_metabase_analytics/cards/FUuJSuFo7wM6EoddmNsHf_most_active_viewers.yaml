@@ -187,6 +187,5 @@ serdes/meta:
   label: most_active_viewers
   model: Card
 initially_published_at: null
-last_used_at: null
 metabase_version: null
 type: question

@@ -314,6 +314,5 @@ serdes/meta:
   label: last_viewed_questions
   model: Card
 initially_published_at: null
-last_used_at: null
 metabase_version: null
 type: question
