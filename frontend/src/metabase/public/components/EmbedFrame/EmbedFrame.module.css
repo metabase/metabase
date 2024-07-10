@@ -6,22 +6,27 @@ body {
   --mb-color-embed-bg-color-override: transparent;
 }
 
-.ThemeNight.NoBackground {
-  --mb-color-embed-font-color-override: var(--mb-color-text-dark);
-}
-
 .EmbedFrame {
+  --mb-color-text-primary: var(--mb-color-text-dark);
+  --mb-color-text-secondary: var(--mb-color-text-medium);
+  --mb-color-text-tertiary: var(--mb-color-text-light);
   --mb-color-embed-filter-bg-color: var(--mb-color-bg-white);
 
+  color: var(--mb-color-text-primary);
   background-color: var(
     --mb-color-embed-bg-color-override,
     var(--mb-color-bg-dashboard)
   );
 }
+/* A temporary solution until we migrated all colors in visualization to use semantic colors
+   e.g. `text-primary`, `text-secondary`, `text-tertiary`. */
+.EmbedFrame svg text {
+  fill: var(--mb-color-text-primary);
+}
 
 .EmbedFrameHeader,
 .EmbedFrameFooter {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   background-color: var(
     --mb-color-embed-bg-color-override,
     var(--mb-color-bg-dashboard)
@@ -29,7 +34,10 @@ body {
 }
 
 .ThemeNight.EmbedFrame {
+  --mb-color-text-primary: var(--mb-color-text-white-alpha-85);
+  --mb-color-text-secondary: var(--mb-color-text-light);
   --mb-color-embed-filter-bg-color: var(--mb-color-bg-black);
+  --mb-color-border: var(--mb-color-text-medium);
 
   background-color: var(
     --mb-color-embed-bg-color-override,
@@ -40,10 +48,6 @@ body {
 
 .ThemeNight .EmbedFrameHeader,
 .ThemeNight .EmbedFrameFooter {
-  color: var(
-    --mb-color-embed-font-color-override,
-    var(--mb-color-text-white-alpha-85)
-  );
   background-color: var(
     --mb-color-embed-bg-color-override,
     var(--mb-color-bg-black)
@@ -52,23 +56,16 @@ body {
 }
 
 .ThemeNight.EmbedFrame .fullscreenNightText {
-  color: var(--mb-color-text-white-alpha-85);
   transition: color 1s linear;
 }
 
 .ThemeNight.EmbedFrame svg text {
-  fill: var(--mb-color-text-white-alpha-85) !important;
   stroke: none !important;
 }
 
 .ThemeNight.EmbedFrame .DashCard .Card {
   background-color: var(--mb-color-bg-black);
-  border: 1px solid var(--mb-color-bg-dark);
-}
-
-.ThemeNight.EmbedFrame .enableDotsOnHover :global(.dc-tooltip circle.dot:hover),
-.ThemeNight.EmbedFrame .enableDots :global(.dc-tooltip circle.dot) {
-  fill: currentColor;
+  border: 1px solid var(--mb-color-border);
 }
 
 .ThemeTransparent.EmbedFrame {

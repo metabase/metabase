@@ -36,7 +36,7 @@ import { LookAndFeelSettings } from "./LookAndFeelSettings";
 import { OverviewSettings } from "./OverviewSettings";
 import { ParametersSettings } from "./ParametersSettings";
 import { PreviewModeSelector } from "./PreviewModeSelector";
-import { PreviewPane } from "./PreviewPane";
+import { PreviewPane, type PreviewBackgroundType } from "./PreviewPane";
 import { ServerEmbedCodePane } from "./ServerEmbedCodePane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
 import { getDefaultDisplayOptions } from "./config";
@@ -322,7 +322,11 @@ export const StaticEmbedSetupPane = ({
                     hidden={activePane !== "preview"}
                     className={CS.flexFull}
                     previewUrl={iframeUrl}
-                    isTransparent={!displayOptions.background}
+                    backgroundType={
+                      !displayOptions.background
+                        ? "checkerboard-light"
+                        : "no-background"
+                    }
                   />
                   {activePane === "code"
                     ? getServerEmbedCodePane(EMBED_MODAL_TABS.Parameters)
@@ -349,7 +353,7 @@ export const StaticEmbedSetupPane = ({
                     hidden={activePane !== "preview"}
                     className={CS.flexFull}
                     previewUrl={iframeUrl}
-                    isTransparent={!displayOptions.background}
+                    backgroundType={getBackgroundType(displayOptions)}
                   />
                   {activePane === "code"
                     ? getServerEmbedCodePane(EMBED_MODAL_TABS.LookAndFeel)
@@ -463,4 +467,19 @@ function convertResourceParametersToEmbeddingParams(
   }
 
   return embeddingParams;
+}
+
+function getBackgroundType(
+  displayOptions: Pick<EmbeddingDisplayOptions, "background" | "theme">,
+): PreviewBackgroundType {
+  if (displayOptions.background) {
+    return "no-background";
+  }
+
+  if (displayOptions.theme === "night") {
+    return "checkerboard-dark";
+  }
+
+  // `light` and `transparent` (backward compatible) theme
+  return "checkerboard-light";
 }
