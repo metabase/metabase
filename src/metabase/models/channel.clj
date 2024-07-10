@@ -3,6 +3,7 @@
    [metabase.channel.core :as channel]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
+   [metabase.models.serialization :as serdes]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -12,6 +13,10 @@
 (defmethod mi/can-write? :model/Channel
   [& _]
   (perms/current-user-has-application-permissions? :setting))
+
+(defmethod serdes/entity-id "Channel"
+  [_ {:keys [name]}]
+  name)
 
 (doto :model/Channel
   (derive :metabase/model)
