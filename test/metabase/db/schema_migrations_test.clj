@@ -2456,9 +2456,10 @@
                                                                    :created_at    :%now
                                                                    :updated_at    :%now}
                                                                   values)))
-            active+field [[true  (field! {:name "x",  :is_defective_duplicate true, :nfc_path "[\"x\",\"y\""})]
-                          [false (field! {:name "x", :is_defective_duplicate true, :nfc_path nil})]
-                          [false (field! {:name "x", :is_defective_duplicate true, :nfc_path "[\"x\"]"})]]]
+            active+field [[true  (field! {:name "x", :is_defective_duplicate true,  :nfc_path "[\"x\",\"y\"]"})]
+                          [false (field! {:name "x", :is_defective_duplicate false, :nfc_path nil})]
+                          [false (field! {:name "x", :is_defective_duplicate true,  :nfc_path nil})]
+                          [false (field! {:name "x", :is_defective_duplicate true,  :nfc_path "[\"x\"]"})]]]
         (migrate!)
         (testing "After the migration, fields are deactivated correctly"
           (doseq [[active? field] active+field]
