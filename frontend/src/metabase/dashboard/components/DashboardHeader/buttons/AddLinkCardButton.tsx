@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
 import { addLinkDashCardToDashboard } from "metabase/dashboard/actions";
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Icon, Tooltip } from "metabase/ui";
+
+import { DashboardHeaderButton } from "./DashboardHeaderButton";
 
 export const AddLinkCardButton = () => {
   const dispatch = useDispatch();
@@ -23,11 +23,13 @@ export const AddLinkCardButton = () => {
   };
 
   const addLinkLabel = t`Add link card`;
+
   return (
-    <Tooltip label={addLinkLabel}>
-      <DashboardHeaderButton aria-label={addLinkLabel} onClick={onAddLinkCard}>
-        <Icon name="link" size={18} />
-      </DashboardHeaderButton>
-    </Tooltip>
+    <DashboardHeaderButton
+      tooltipLabel={addLinkLabel}
+      icon="link"
+      aria-label={addLinkLabel}
+      onClick={onAddLinkCard}
+    />
   );
 };

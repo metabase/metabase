@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import { setSharing } from "metabase/dashboard/actions";
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { getIsSharing } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import type { Dashboard, DashboardCard } from "metabase-types/api";
+
+import { DashboardHeaderButton } from "./DashboardHeaderButton";
 
 export const DashboardSubscriptionButton = () => {
   const dispatch = useDispatch();
@@ -16,14 +16,13 @@ export const DashboardSubscriptionButton = () => {
     dispatch(setSharing(!isSharing));
   };
   return (
-    <Tooltip tooltip={t`Subscriptions`} key="dashboard-subscriptions">
-      <DashboardHeaderButton
-        icon="subscription"
-        disabled={!isSubscriptionsEnabled}
-        onClick={toggleSharing}
-        aria-label="subscriptions"
-      />
-    </Tooltip>
+    <DashboardHeaderButton
+      tooltipLabel={t`Subscriptions`}
+      icon="subscription"
+      disabled={!isSubscriptionsEnabled}
+      onClick={toggleSharing}
+      aria-label="subscriptions"
+    />
   );
 };
 

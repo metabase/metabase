@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
+
+import { DashboardHeaderButton } from "./DashboardHeaderButton";
 
 export const FullscreenAnalyticsDashboard = ({
   isFullscreen,

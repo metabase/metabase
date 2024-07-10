@@ -6,11 +6,11 @@ import {
   hideAddParameterPopover,
   showAddParameterPopover,
 } from "metabase/dashboard/actions";
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { ParametersPopover } from "metabase/dashboard/components/ParametersPopover";
 import { getIsAddParameterPopoverOpen } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Tooltip } from "metabase/ui";
+
+import { DashboardHeaderButton } from "./DashboardHeaderButton";
 
 export const AddFilterParameterButton = () => {
   const dispatch = useDispatch();
@@ -30,14 +30,13 @@ export const AddFilterParameterButton = () => {
         }
       >
         <div>
-          <Tooltip label={t`Add a filter`}>
-            <DashboardHeaderButton
-              key="parameters"
-              icon="filter"
-              onClick={() => dispatch(showAddParameterPopover())}
-              aria-label={t`Add a filter`}
-            />
-          </Tooltip>
+          <DashboardHeaderButton
+            key="parameters"
+            icon="filter"
+            onClick={() => dispatch(showAddParameterPopover())}
+            aria-label={t`Add a filter`}
+            tooltipLabel={t`Add a filter`}
+          />
         </div>
       </TippyPopover>
     </span>

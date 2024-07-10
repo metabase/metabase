@@ -1,15 +1,14 @@
 import { t } from "ttag";
 
 import { addSectionToDashboard } from "metabase/dashboard/actions";
-import {
-  DashboardHeaderButton,
-  SectionMenuItem,
-} from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
+import { SectionMenuItem } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { SectionLayoutPreview } from "metabase/dashboard/components/DashboardHeader/SectionLayoutPreview";
 import { layoutOptions, type SectionLayout } from "metabase/dashboard/sections";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Flex, Icon, Menu, Tooltip } from "metabase/ui";
+import { Flex, Menu } from "metabase/ui";
+
+import { DashboardHeaderButton } from "./DashboardHeaderButton";
 
 export const AddSectionButton = () => {
   const dispatch = useDispatch();
@@ -32,11 +31,11 @@ export const AddSectionButton = () => {
     <Menu position="bottom-end">
       <Menu.Target>
         <span>
-          <Tooltip label={t`Add section`}>
-            <DashboardHeaderButton aria-label={t`Add section`}>
-              <Icon name="section" size={18} />
-            </DashboardHeaderButton>
-          </Tooltip>
+          <DashboardHeaderButton
+            tooltipLabel={t`Add section`}
+            aria-label={t`Add section`}
+            icon="section"
+          />
         </span>
       </Menu.Target>
       <Menu.Dropdown miw="100px">

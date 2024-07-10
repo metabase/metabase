@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
 import { closeSidebar, setSidebar } from "metabase/dashboard/actions";
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { getIsShowDashboardInfoSidebar } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Tooltip } from "metabase/ui";
+
+import { DashboardHeaderButton } from "./DashboardHeaderButton";
 
 export const DashboardInfoButton = () => {
   const dispatch = useDispatch();
@@ -15,16 +15,16 @@ export const DashboardInfoButton = () => {
   );
 
   return (
-    <Tooltip label={t`More info`}>
-      <DashboardHeaderButton
-        icon="info"
-        isActive={isShowingDashboardInfoSidebar}
-        onClick={() =>
-          isShowingDashboardInfoSidebar
-            ? dispatch(closeSidebar())
-            : dispatch(setSidebar({ name: SIDEBAR_NAME.info }))
-        }
-      />
-    </Tooltip>
+    <DashboardHeaderButton
+      aria-label={t`More info`}
+      tooltipLabel={t`More info`}
+      icon="info"
+      isActive={isShowingDashboardInfoSidebar}
+      onClick={() =>
+        isShowingDashboardInfoSidebar
+          ? dispatch(closeSidebar())
+          : dispatch(setSidebar({ name: SIDEBAR_NAME.info }))
+      }
+    />
   );
 };

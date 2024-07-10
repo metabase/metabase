@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
 import { setEditingDashboard } from "metabase/dashboard/actions";
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { getDashboardComplete } from "metabase/dashboard/selectors";
 import type { DashboardRefreshPeriodControls } from "metabase/dashboard/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Tooltip } from "metabase/ui";
+
+import { DashboardHeaderButton } from "./DashboardHeaderButton";
 
 export const EditDashboardButton = ({
   onRefreshPeriodChange,
@@ -21,14 +21,13 @@ export const EditDashboardButton = ({
   };
 
   return (
-    <Tooltip key="edit-dashboard" label={t`Edit dashboard`}>
-      <DashboardHeaderButton
-        visibleOnSmallScreen={false}
-        key="edit"
-        aria-label={t`Edit dashboard`}
-        icon="pencil"
-        onClick={onBeginEditing}
-      />
-    </Tooltip>
+    <DashboardHeaderButton
+      tooltipLabel={t`Edit dashboard`}
+      visibleOnSmallScreen={false}
+      key="edit"
+      aria-label={t`Edit dashboard`}
+      icon="pencil"
+      onClick={onBeginEditing}
+    />
   );
 };

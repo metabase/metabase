@@ -13,3 +13,5 @@ export * from "./DashboardSubscriptionButton";
 export * from "./EditDashboardButton";
 export * from "./FullscreenAnalyticsDashboard";
 export * from "./SaveEditButton";
+export * from "./NightModeToggleButton";
+export * from "./FullscreenToggle";

@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
 import NightModeIcon from "metabase/components/icons/NightModeIcon";
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
+import { DashboardHeaderButtonStyled } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { RefreshWidget } from "metabase/dashboard/components/RefreshWidget";
 import { color } from "metabase/lib/colors";
 
@@ -10,7 +10,9 @@ interface ShareButtonProps {
   canShareDashboard?: boolean;
 }
 
-export const ShareButton = styled(DashboardHeaderButton)<ShareButtonProps>`
+export const ShareButton = styled(
+  DashboardHeaderButtonStyled,
+)<ShareButtonProps>`
   color: ${props => !props.canShareDashboard && color("text-light")};
 
   &:hover {

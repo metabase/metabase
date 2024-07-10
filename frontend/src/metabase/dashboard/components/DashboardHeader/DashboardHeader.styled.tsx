@@ -14,7 +14,7 @@ export const DashboardHeaderActionDivider = styled.div`
   border-left: 1px solid var(--mb-color-border);
 `;
 
-export const DashboardHeaderButton = styled(Button)<{
+export const DashboardHeaderButtonStyled = styled(Button)<{
   isActive?: boolean;
   visibleOnSmallScreen?: boolean;
   hasBackground?: boolean;
@@ -52,7 +52,7 @@ export const DashboardHeaderButton = styled(Button)<{
   }
 `;
 
-DashboardHeaderButton.defaultProps = {
+DashboardHeaderButtonStyled.defaultProps = {
   onlyIcon: true,
   iconSize: 16,
   visibleOnSmallScreen: true,

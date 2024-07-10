@@ -1,8 +1,6 @@
-import { t } from "ttag";
-
-import Tooltip from "metabase/core/components/Tooltip";
 import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction/DashboardEmbedAction";
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
+import { FullscreenToggle } from "metabase/dashboard/components/DashboardHeader/buttons/FullscreenToggle";
+import { NightModeToggleButton } from "metabase/dashboard/components/DashboardHeader/buttons/NightModeToggleButton";
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
@@ -10,11 +8,7 @@ import type {
 } from "metabase/dashboard/types";
 import type { Dashboard } from "metabase-types/api";
 
-import {
-  FullScreenButtonIcon,
-  NightModeButtonIcon,
-  RefreshWidgetButton,
-} from "./DashboardActions.styled";
+import { RefreshWidgetButton } from "./DashboardActions.styled";
 
 type GetDashboardActionsProps = {
   dashboard: Dashboard | null;
@@ -27,47 +21,6 @@ type GetDashboardActionsProps = {
     EmbedThemeControls,
     "isNightMode" | "hasNightModeToggle" | "onNightModeChange"
   >;
-
-const NightModeToggleButton = ({
-  isNightMode,
-  onNightModeChange,
-}: {
-  isNightMode: boolean | undefined;
-  onNightModeChange: (isNightMode: boolean) => void;
-}) => (
-  <Tooltip
-    key="night"
-    tooltip={isNightMode ? t`Daytime mode` : t`Nighttime mode`}
-  >
-    <span>
-      <DashboardHeaderButton
-        icon={
-          <NightModeButtonIcon
-            isNightMode={isNightMode}
-            onClick={() => onNightModeChange(!isNightMode)}
-          />
-        }
-      />
-    </span>
-  </Tooltip>
-);
-
-const FullscreenToggle = ({
-  isFullscreen,
-  onFullscreenChange,
-}: DashboardFullscreenControls) => (
-  <Tooltip
-    key="fullscreen"
-    tooltip={isFullscreen ? t`Exit fullscreen` : t`Enter fullscreen`}
-  >
-    <span>
-      <DashboardHeaderButton
-        icon={<FullScreenButtonIcon isFullscreen={isFullscreen} />}
-        onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
-      />
-    </span>
-  </Tooltip>
-);
 
 export const getDashboardActions = ({
   dashboard,
