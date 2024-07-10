@@ -1721,6 +1721,8 @@ describe("issue 39771", () => {
       .findByText("Created At: Month: Quarter of year")
       .click();
 
+    cy.wait(5000);
+
     popover().then(([$popover]) => {
       const popoverStyle = window.getComputedStyle($popover);
       const popoverZindex = parseInt(popoverStyle.zIndex, 10);
