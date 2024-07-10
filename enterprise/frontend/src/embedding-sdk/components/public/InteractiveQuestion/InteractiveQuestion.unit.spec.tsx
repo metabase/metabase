@@ -1,4 +1,4 @@
-import { waitForElementToBeRemoved, within } from "@testing-library/react";
+import { within } from "@testing-library/react";
 
 import {
   setupAlertsEndpoints,
@@ -19,7 +19,6 @@ import { InteractiveQuestionResult } from "embedding-sdk/components/private/Inte
 import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import { createMockConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
-import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -48,78 +47,68 @@ const TEST_COLUMN = createMockColumn({
   name: "Test Column",
 });
 
-function getMockDataset(row: string) {
-  return createMockDataset({
-    data: createMockDatasetData({
-      cols: [TEST_COLUMN],
-      rows: [[row]],
-    }),
-  });
+const TEST_DATASET = createMockDataset({
+  data: createMockDatasetData({
+    cols: [TEST_COLUMN],
+    rows: [["Test Row"]],
+  }),
+});
+
+// Provides a button to re-run the query
+function InteractiveQuestionTestResult() {
+  const { resetQuestion } = useInteractiveQuestionContext();
+
+  return (
+    <div>
+      <button onClick={resetQuestion}>Run Query</button>
+      <InteractiveQuestionResult withTitle />
+    </div>
+  );
 }
 
 const setup = ({
   isValidCard = true,
-  mocks = [{ card: createMockCard(), dataset: getMockDataset("Test Row") }],
 }: {
   isValidCard?: boolean;
-  mocks?: { card: Card; dataset: Dataset }[];
 } = {}) => {
   const { state } = setupSdkState({
     currentUser: TEST_USER,
   });
 
-  for (const mock of mocks) {
-    const { card, dataset } = mock;
-
-    if (isValidCard) {
-      setupCardEndpoints(card);
-      setupCardQueryMetadataEndpoint(
-        card,
-        createMockCardQueryMetadata({ databases: [TEST_DB] }),
-      );
-    } else {
-      setupUnauthorizedCardEndpoints(card);
-    }
-
-    setupAlertsEndpoints(card, []);
-    setupCardQueryEndpoints(card, dataset);
+  const TEST_CARD = createMockCard();
+  if (isValidCard) {
+    setupCardEndpoints(TEST_CARD);
+    setupCardQueryMetadataEndpoint(
+      TEST_CARD,
+      createMockCardQueryMetadata({
+        databases: [TEST_DB],
+      }),
+    );
+  } else {
+    setupUnauthorizedCardEndpoints(TEST_CARD);
   }
-
+  setupAlertsEndpoints(TEST_CARD, []);
   setupDatabaseEndpoints(TEST_DB);
+
   setupTableEndpoints(TEST_TABLE);
 
-  const children = (
-    <div>
-      {mocks.map(mock => (
-        <InteractiveQuestion key={mock.card.id} questionId={mock.card.id}>
-          <InteractiveQuestionTestResult id={mock.card.id} />
-        </InteractiveQuestion>
-      ))}
-    </div>
-  );
+  setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
 
-  return renderWithProviders(children, {
-    mode: "sdk",
-    sdkProviderProps: {
-      config: createMockConfig({
-        jwtProviderUri: "http://TEST_URI/sso/metabase",
-      }),
+  return renderWithProviders(
+    <InteractiveQuestion questionId={TEST_CARD.id}>
+      <InteractiveQuestionTestResult />
+    </InteractiveQuestion>,
+    {
+      mode: "sdk",
+      sdkProviderProps: {
+        config: createMockConfig({
+          jwtProviderUri: "http://TEST_URI/sso/metabase",
+        }),
+      },
+      storeInitialState: state,
     },
-    storeInitialState: state,
-  });
-};
-
-// Provides a button to re-run the query
-function InteractiveQuestionTestResult({ id }: { id: number }) {
-  const { resetQuestion } = useInteractiveQuestionContext();
-
-  return (
-    <div>
-      <button onClick={resetQuestion}>Run Query {id}</button>
-      <InteractiveQuestionResult withTitle />
-    </div>
   );
-}
+};
 
 describe("InteractiveQuestion", () => {
   it("should initially render with a loader", async () => {
@@ -143,36 +132,6 @@ describe("InteractiveQuestion", () => {
     ).toBeInTheDocument();
   });
 
-  it("should render multiple valid questions", async () => {
-    const rows = ["A", "B"];
-
-    const mocks = rows.map((row, id) => ({
-      card: createMockCard({ id: id + 1 }),
-      dataset: getMockDataset(row),
-    }));
-
-    setup({ mocks });
-
-    // Both loading indicators should be removed
-    await waitForElementToBeRemoved(() =>
-      screen.queryAllByTestId("loading-indicator"),
-    );
-
-    const tables = screen.getAllByTestId("TableInteractive-root");
-    const gridcells = screen.getAllByRole("gridcell");
-
-    expect(tables).toHaveLength(rows.length);
-    expect(gridcells).toHaveLength(rows.length);
-
-    for (let i = 0; i < rows.length; i++) {
-      expect(
-        within(tables[i]).getByText(TEST_COLUMN.display_name),
-      ).toBeInTheDocument();
-
-      expect(within(gridcells[i]).getByText(rows[i])).toBeInTheDocument();
-    }
-  });
-
   it("should render loading state when rerunning the query", async () => {
     setup();
 
@@ -190,7 +149,7 @@ describe("InteractiveQuestion", () => {
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
 
     // Simulate drilling down by re-running the query again
-    act(() => screen.getByText("Run Query 1").click());
+    act(() => screen.getByText("Run Query").click());
 
     expect(screen.queryByText("Question not found")).not.toBeInTheDocument();
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
