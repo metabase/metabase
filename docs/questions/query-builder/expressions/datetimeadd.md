@@ -32,7 +32,7 @@ title: DatetimeAdd
 
 `amount`:
 
-- A whole number or a decimal number.
+- An integer. That is, whole numbers only; no fractional numbers.
 - May be a negative number: `datetimeAdd("2021-03-25", -1, "month")` will return `2021-04-25`.
 
 ## Calculating an end date
