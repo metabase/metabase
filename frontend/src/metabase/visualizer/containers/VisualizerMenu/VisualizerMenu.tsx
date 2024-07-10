@@ -7,8 +7,6 @@ import { canCombineCardWithOthers } from "metabase/visualizer/utils";
 import type { Card as ICard, RecentItem, Series } from "metabase-types/api";
 
 import { VisualizerCompatibleCardsList } from "./VisualizerCompatibleCardsList";
-import { VisualizerMetricsList } from "./VisualizerMetricsList";
-import { VisualizerModelsList } from "./VisualizerModelsList";
 import { VisualizerRecentsList } from "./VisualizerRecentsList";
 
 interface VisualizerMenuProps {
@@ -55,19 +53,11 @@ export function VisualizerMenu({
         <>
           <Tabs defaultValue="recents">
             <Tabs.List>
-              <Tabs.Tab value="metrics">Metrics</Tabs.Tab>
-              <Tabs.Tab value="models">Models</Tabs.Tab>
               <Tabs.Tab value="recents">Recents</Tabs.Tab>
               {hasCompatibleTab && (
                 <Tabs.Tab value="compatible">Compatible</Tabs.Tab>
               )}
             </Tabs.List>
-            <Tabs.Panel value="metrics">
-              <VisualizerMetricsList />
-            </Tabs.Panel>
-            <Tabs.Panel value="models">
-              <VisualizerModelsList onReplace={onReplace} />
-            </Tabs.Panel>
             <Tabs.Panel value="recents">
               <VisualizerRecentsList onAdd={onAdd} onReplace={onReplace} />
             </Tabs.Panel>
