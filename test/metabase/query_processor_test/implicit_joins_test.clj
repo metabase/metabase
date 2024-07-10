@@ -14,7 +14,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel breakout-on-fk-field-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Test that we can breakout on an FK field (Note how the FK Field is returned in the results)"
       (mt/dataset tupac-sightings
         ;; The top 10 cities by number of Tupac sightings
