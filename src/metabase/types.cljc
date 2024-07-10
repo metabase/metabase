@@ -66,6 +66,21 @@
 (derive :entity/SubscriptionTable :entity/GenericTable)
 (derive :entity/EventTable :entity/GenericTable)
 
+;;; Modifier Types
+
+;; `:type/Large` enables driver developers to signal that the field values can be relatively large and can use a lot of
+;; memory. These types will be excluded from scanning and fingerprinting, and possibly other features in the future.
+(derive :type/Large :type/*)
+
+;; `:type/field-values-unsupported` enables driver developers to opt out of field values calculation for specific
+;; fields. For more details see the `driver-changelog.yml`, section `Metabase 0.50.0`.
+(derive :type/field-values-unsupported :type/*)
+(derive :type/Large :type/field-values-unsupported)
+
+;; `:type/fingerprinting-unsupported` enables driver developers to opt out of fingerprinting for specific
+;; fields.
+(derive :type/fingerprinting-unsupported :type/*)
+(derive :type/Large :type/fingerprinting-unsupported)
 
 ;;; Numeric Types
 
@@ -167,7 +182,9 @@
 (derive :type/Comment :type/Text)
 
 (derive :type/PostgresEnum :type/Text)
+
 (derive :type/OracleCLOB :type/Text)
+(derive :type/OracleCLOB :type/Large)
 
 ;;; DateTime Types
 
@@ -246,14 +263,7 @@
 
 (derive :type/Boolean :type/*)
 (derive :type/DruidHyperUnique :type/*)
-
-;; `:type/field-values-unsupported` enables driver developers to opt out of field values calculation for specific
-;; fields. For more details see the `driver-changelog.yml`, section `Metabase 0.50.0`.
-(derive :type/field-values-unsupported :type/*)
-
 (derive :type/DruidHyperUnique :type/field-values-unsupported)
-(derive :type/DruidJSON :type/field-values-unsupported)
-(derive :type/OracleCLOB :type/field-values-unsupported)
 
 ;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced
 ;;; filter options like starts with / contains
@@ -269,7 +279,9 @@
 ;;; Structured/Collections
 
 (derive :type/Collection :type/*)
+(derive :type/Collection :type/Large)
 (derive :type/Structured :type/*)
+(derive :type/Structured :type/Large)
 
 (derive :type/Dictionary :type/Collection)
 (derive :type/Array :type/Collection)
@@ -278,8 +290,10 @@
 (derive :type/JSON :type/Structured)
 (derive :type/JSON :type/Collection)
 
-;; DruidJSON is specific -- it derives also :type/field-values-unsupported
+;; DruidJSON is specific -- it derives also :type/field-values-unsupported because the query to get unique values
+;; fails
 (derive :type/DruidJSON :type/JSON)
+(derive :type/DruidJSON :type/field-values-unsupported)
 
 ;; `:type/XML` -- an actual native XML data column
 (derive :type/XML :type/Structured)

@@ -160,7 +160,7 @@
     [:not (mdb.query/isa :semantic_type :type/PK)]
     [:= :semantic_type nil]]
    [:not-in :visibility_type ["retired" "sensitive"]]
-   [:not-in :base_type (-> (set (mapcat mdb.query/type-keyword->descendants [:type/Structured :type/Collection]))
+   [:not-in :base_type (-> (set (mapcat mdb.query/type-keyword->descendants [:type/Large]))
                            (conj (u/qualified-name :type/*)))]])
 
 (def ^:dynamic *refingerprint?*

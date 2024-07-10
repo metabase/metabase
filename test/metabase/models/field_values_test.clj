@@ -92,23 +92,15 @@
                                      :visibility_type  :normal}
                                     false}
 
-                                   "type/* fields should be excluded"
-                                   {{:has_field_values :list
-                                     :visibility_type  :normal
-                                     :base_type        :type/*}
-                                    false}
-
-                                   "type/Structured fields should be excluded"
+                                   "fields should be excluded given their base_type"
                                    (into {}
-                                         (for [base-type (conj (descendants :type/Structured) :type/Structured)]
-                                           [{:has_field_values :list
-                                             :visibility_type  :normal
-                                             :base_type        base-type}
-                                            false]))
-
-                                   "type/Collection fields should be excluded"
-                                   (into {}
-                                         (for [base-type (conj (descendants :type/Collection) :type/Collection)]
+                                         (for [base-type (concat (descendants :type/Structured)
+                                                                 (descendants :type/Collection)
+                                                                 [:type/Structured
+                                                                  :type/Collection
+                                                                  :type/*
+                                                                  :type/OracleCLOB
+                                                                  :type/DruidJSON])]
                                            [{:has_field_values :list
                                              :visibility_type  :normal
                                              :base_type        base-type}
