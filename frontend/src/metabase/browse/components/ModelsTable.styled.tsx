@@ -11,8 +11,9 @@ import { breakpoints } from "metabase/ui/theme";
 
 export const ModelTableRow = styled.tr`
   cursor: pointer;
-  :outline {
-    outline: 2px solid ${color("brand")};
+
+  :focus {
+    outline: 2px solid ${color("focus")};
   }
 `;
 
@@ -30,9 +31,11 @@ export const ModelCell = styled.td<ResponsiveProps>`
 
 export const ModelNameColumn = styled(TableColumn)`
   width: 356px;
+
   @container ${props => props.containerName} (max-width: ${breakpoints.md}) {
     width: 280px;
   }
+
   @container ${props => props.containerName} (max-width: ${breakpoints.sm}) {
     width: 200px;
   }

@@ -57,14 +57,6 @@
    :fields (->> (:field dependents)
                 metadata-for-field-dependents)})
 
-(defn- collect-source-tables
-  [query]
-  (let [from-joins (mapcat collect-source-tables (:joins query))]
-    (if-let [source-query (:source-query query)]
-      (concat (collect-source-tables source-query) from-joins)
-      (cond->> from-joins
-        (:source-table query) (cons (:source-table query))))))
-
 (defn- dependents-for-cards [cards]
   (let [cards-by-db (group-by :database_id cards)
         db->mp (into {} (map (juxt identity lib.metadata.jvm/application-database-metadata-provider)
@@ -72,7 +64,7 @@
     (doseq [[database-id cards] cards-by-db]
       (let [{:keys [card-ids table-ids]}
             (->> cards
-                 (mapcat (comp collect-source-tables #(-> % :dataset_query :query)))
+                 (mapcat (comp lib.util/collect-source-tables #(-> % :dataset_query :query)))
                  partition-table-ids)
             real-card-ids (filter pos-int? (concat (map :id cards) card-ids)) ; xray cards don't have real ids
             mp (db->mp database-id)

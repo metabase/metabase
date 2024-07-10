@@ -124,7 +124,7 @@ export const getQueryResults = createSelector(
     const { cols, results_metadata } = result.data;
 
     function applyMetadataDiff(column) {
-      const columnDiff = metadataDiff[column.field_ref];
+      const columnDiff = metadataDiff[column.name];
       return columnDiff ? merge(column, columnDiff) : column;
     }
 

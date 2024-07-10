@@ -6,7 +6,7 @@ title: Migrating from legacy permissions
 
 In Metabase 50, we overhauled our data permissions system to make it more expressive and easier to reason about. This page explains what changed and why.
 
-The TL;DR: we split the old **Data access** setting into two settings: [View data](./data.md#can-view-data-permission) and [Create Queries](./data.md#create-queries-permissions).
+**The TL;DR: we split the old Data access setting into two settings: [View data](./data.md#can-view-data-permission) and [Create Queries](./data.md#create-queries-permissions). Your data permissions may look different, but the access hasn't changed.**
 
 ## How Metabase migrated your permissions
 

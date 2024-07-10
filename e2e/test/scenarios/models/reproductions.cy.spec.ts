@@ -1,5 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  type StructuredQuestionDetails,
   createNativeQuestion,
   createQuestion,
   enterCustomColumnDetails,
@@ -22,7 +23,9 @@ import {
   startNewModel,
   startNewQuestion,
   undoToast,
+  visitModel,
   visualize,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 import type { FieldReference } from "metabase-types/api";
 
@@ -609,4 +612,56 @@ describe("issue 33427", () => {
       .should("contain", "CREATED_BY")
       .and("contain", "UPDATED_BY");
   }
+});
+
+describe("issue 39749", () => {
+  const modelDetails: StructuredQuestionDetails = {
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["count"],
+        ["sum", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }]],
+      ],
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "year" },
+        ],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/*").as("updateModel");
+  });
+
+  it("should not overwrite the description of one column with the description of another column (metabase#39749)", () => {
+    createQuestion(modelDetails).then(({ body: card }) => visitModel(card.id));
+
+    cy.log("edit metadata");
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    tableHeaderClick("Count");
+    cy.findByLabelText("Description").type("A");
+    tableHeaderClick("Sum of Total");
+    cy.findByLabelText("Description").should("have.text", "").type("B");
+    tableHeaderClick("Count");
+    cy.findByLabelText("Description").should("have.text", "A");
+    tableHeaderClick("Sum of Total");
+    cy.findByLabelText("Description").should("have.text", "B");
+    cy.button("Save changes").click();
+    cy.wait("@updateModel");
+
+    cy.log("verify that the description was updated successfully");
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    tableHeaderClick("Count");
+    cy.findByLabelText("Description").should("have.text", "A");
+    tableHeaderClick("Sum of Total");
+    cy.findByLabelText("Description").should("have.text", "B");
+  });
 });

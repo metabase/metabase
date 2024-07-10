@@ -54,7 +54,6 @@ export const SettingsButton = styled(Button)`
   right: -0.75rem;
   padding: 0.375rem;
   border: 1px solid ${color("border")};
-
   border-radius: 50px;
   background-color: ${color("white")};
   opacity: 0;
@@ -72,6 +71,7 @@ export const OptionIconContainer = styled.div<OptionIconContainerProps>`
   border: 1px solid ${color("border")};
   cursor: pointer;
   padding: 0.875rem;
+
   &:hover {
     color: ${color("brand")};
     background-color: ${alpha("brand", 0.15)};

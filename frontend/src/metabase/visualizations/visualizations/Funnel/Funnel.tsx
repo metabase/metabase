@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
+import { formatNullable } from "metabase/lib/formatting/nullable";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
@@ -131,7 +132,7 @@ Object.assign(Funnel, {
         const dimension = settings["funnel.dimension"];
 
         const rowsOrder = settings["funnel.rows"];
-        const rowsKeys = rows.map(row => row[dimensionIndex]);
+        const rowsKeys = rows.map(row => formatNullable(row[dimensionIndex]));
 
         const getDefault = (keys: RowValue[]) =>
           keys.map(key => ({

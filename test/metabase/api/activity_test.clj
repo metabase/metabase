@@ -45,8 +45,8 @@
                                      {:topic :event/card-query :event {:card-id (:id card-1)}}
                                      {:topic :event/table-read :event {:object table-1}}]]
         (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
-      (testing "most_recently_viewed_dashboard endpoint shows the current user's most recently viewed dashboard."
-        (is (= (assoc dash-3 :collection nil :view_count 0) #_dash-2 ;; TODO: this should be dash-2, because dash-3 is archived
+      (testing "most_recently_viewed_dashboard endpoint shows the current user's most recently viewed non-archived dashboard."
+        (is (= (assoc dash-2 :collection nil :view_count 0)
                (mt/user-http-request :crowberto :get 200 "activity/most_recently_viewed_dashboard")))))
     (mt/with-test-user :rasta
       (testing "If nothing has been viewed, return a 204"
