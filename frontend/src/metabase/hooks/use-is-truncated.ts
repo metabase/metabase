@@ -9,9 +9,8 @@ type UseIsTruncatedProps = {
   tolerance?: number;
 };
 
-export const useIsTruncated = <E extends Element>({
+export const useIsTruncated = <E extends HTMLElement>({
   disabled = false,
-  tolerance = 0,
 }: UseIsTruncatedProps = {}) => {
   const ref = useRef<E | null>(null);
   const [isTruncated, setIsTruncated] = useState(false);
@@ -24,7 +23,7 @@ export const useIsTruncated = <E extends Element>({
     }
 
     const handleResize = () => {
-      setIsTruncated(getIsTruncated(element, tolerance));
+      setIsTruncated(getIsTruncated(element));
     };
 
     handleResize();
@@ -33,21 +32,13 @@ export const useIsTruncated = <E extends Element>({
     return () => {
       resizeObserver.unsubscribe(element, handleResize);
     };
-  }, [disabled, tolerance]);
+  }, [disabled]);
 
   return { isTruncated, ref };
 };
 
-const getIsTruncated = (element: Element, tolerance: number): boolean => {
-  return (
-    element.scrollHeight > element.clientHeight + tolerance ||
-    element.scrollWidth > element.clientWidth + tolerance
-  );
-};
-
-export const useAreAnyTruncated = <E extends Element>({
+export const useAreAnyTruncated = <E extends HTMLElement>({
   disabled = false,
-  tolerance = 0,
 }: UseIsTruncatedProps = {}) => {
   const ref = useRef(new Map<string, E>());
   const [truncationStatusByKey, setTruncationStatusByKey] = useState<
@@ -64,7 +55,7 @@ export const useAreAnyTruncated = <E extends Element>({
 
     [...elementsMap.entries()].forEach(([elementKey, element]) => {
       const handleResize = () => {
-        const isTruncated = getIsTruncated(element, tolerance);
+        const isTruncated = getIsTruncated(element);
         setTruncationStatusByKey(statuses => {
           const newStatuses = new Map(statuses);
           newStatuses.set(elementKey, isTruncated);
@@ -81,8 +72,41 @@ export const useAreAnyTruncated = <E extends Element>({
     return () => {
       unsubscribeFns.forEach(fn => fn());
     };
-  }, [disabled, tolerance]);
+  }, [disabled]);
 
   const areAnyTruncated = [...truncationStatusByKey.values()].some(Boolean);
   return { areAnyTruncated, ref };
+};
+
+const getIsTruncated = (element: HTMLElement): boolean => {
+  const rect = element.getBoundingClientRect();
+  const untruncatedRect = getUntruncatedBoundingClientRect(element);
+  const isWidthTruncated = rect.width !== untruncatedRect.width;
+  const isHeightTruncated = rect.height !== untruncatedRect.height;
+  const isTruncated = isWidthTruncated || isHeightTruncated;
+
+  return isTruncated;
+};
+
+const getUntruncatedBoundingClientRect = (element: HTMLElement): DOMRect => {
+  if (!element.parentElement) {
+    throw new Error("Element does not have a parent");
+  }
+
+  const cloned = element.cloneNode(true);
+
+  if (!(cloned instanceof HTMLElement)) {
+    // this should never happen
+    throw new Error("Cloned HTMLElement is not an HTMLElement");
+  }
+
+  cloned.style.textOverflow = "clip"; // disable ellipsis
+  cloned.style.position = "fixed"; // remove element from the flow
+  cloned.style.visibility = "hidden"; // prevent user from seeing this element
+
+  element.parentElement.appendChild(cloned); // temporarily add element to DOM so it can be measured
+  const rect = cloned.getBoundingClientRect(); // measure it
+  element.parentElement.removeChild(cloned); // remove it from the DOM
+
+  return rect;
 };
