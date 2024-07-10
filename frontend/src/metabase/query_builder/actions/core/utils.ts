@@ -1,12 +1,11 @@
 import _ from "underscore";
 
 import { onCloseQuestionInfo } from "metabase/query_builder/actions";
+import { syncVizSettingsWithQuery } from "metabase/querying";
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { syncVizSettingsWithSeries } from "metabase/visualizations/lib/sync-settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";
-import { syncVizSettingsWithQuery } from "metabase/querying";
 
 /**
  * Saves to `visualization_settings` property of a question those visualization settings that
