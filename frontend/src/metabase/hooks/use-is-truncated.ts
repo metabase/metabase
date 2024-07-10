@@ -98,10 +98,13 @@ const getUntruncatedBoundingClientRect = (element: HTMLElement): DOMRect => {
 
   cloned.style.textOverflow = "clip"; // disable ellipsis
   cloned.style.position = "absolute"; // remove element from the flow
-  cloned.style.maxWidth = "none"; // allow overflow
-  cloned.style.width = "auto"; // allow overflow
   cloned.style.display = "inline-block"; // take only as much space as needed
   cloned.style.visibility = "hidden"; // prevent user from seeing this element
+  // allow overflow
+  cloned.style.width = "auto";
+  cloned.style.height = "auto";
+  cloned.style.maxWidth = "none";
+  cloned.style.maxHeight = "none";
 
   const originalPosition = element.style.position;
   element.style.position = "relative";
