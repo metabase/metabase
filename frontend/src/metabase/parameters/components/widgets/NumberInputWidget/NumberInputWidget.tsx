@@ -2,10 +2,6 @@ import { useState, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  useGetParameterValuesQuery,
-  useSearchParameterValuesQuery,
-} from "metabase/api";
 import NumericInput from "metabase/core/components/NumericInput";
 import CS from "metabase/css/core/index.css";
 import { parseNumberValue } from "metabase/lib/number";
@@ -18,8 +14,6 @@ import {
   TokenFieldWrapper,
 } from "metabase/parameters/components/widgets/Widget.styled";
 import { MultiAutocomplete } from "metabase/ui";
-import { getNonVirtualFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
-import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Parameter, ParameterValue } from "metabase-types/api";
 
 export type NumberInputWidgetProps = {
@@ -46,7 +40,6 @@ export function NumberInputWidget({
   parameter,
 }: NumberInputWidgetProps) {
   const arrayValue = normalize(value);
-  const [query, setQuery] = useState<string>("");
   const [unsavedArrayValue, setUnsavedArrayValue] =
     useState<(number | undefined)[]>(arrayValue);
 
@@ -71,15 +64,10 @@ export function NumberInputWidget({
     [unsavedArrayValue],
   );
 
-  const { data } = useLoadParameterValues({
-    parameter,
-    query,
-  });
-
+  const values = parameter?.values_source_config?.values ?? [];
   const options =
-    data?.values
-      .map(getOption)
-      .filter((item): item is SelectItem => item !== null) ?? [];
+    values.map(getOption).filter((item): item is SelectItem => item !== null) ??
+    [];
 
   const valueOptions = unsavedArrayValue
     .map((item): SelectItem | null => {
@@ -134,7 +122,6 @@ export function NumberInputWidget({
       {arity === "n" ? (
         <TokenFieldWrapper>
           <MultiAutocomplete
-            onSearchChange={setQuery}
             onChange={(values: string[]) =>
               setUnsavedArrayValue(
                 values.map(value => parseValue(value) ?? undefined),
@@ -206,47 +193,6 @@ function getOption(entry: string | ParameterValue): SelectItem | null {
   }
 
   return { value, label };
-}
-
-function useLoadParameterValues({
-  parameter,
-  query,
-}: {
-  parameter: Parameter | undefined;
-  query: string;
-}) {
-  const isSearch = parameter?.values_query_type === "search";
-
-  const normalizedParameter = normalizeParameter(parameter);
-  const field_ids = parameter
-    ? getNonVirtualFields(parameter).map(field => Number(field.id))
-    : [];
-
-  const values = useGetParameterValuesQuery(
-    {
-      parameter: normalizedParameter,
-      field_ids,
-    },
-    {
-      skip: !parameter || isSearch,
-    },
-  );
-
-  const searchValues = useSearchParameterValuesQuery(
-    {
-      parameter: normalizedParameter,
-      field_ids,
-      query,
-    },
-    {
-      skip: !parameter || !isSearch || query === "",
-    },
-  );
-
-  if (isSearch) {
-    return searchValues;
-  }
-  return values;
 }
 
 function getLabel(option: string | ParameterValue) {
