@@ -25,7 +25,7 @@
   [_model args]
   {:select [:report_card.id
             [(h2x/literal "Card") :model]
-            [[:lower :report_card.name] :name]
+            [:report_card.name :name]
             [:last_used_at :last_viewed_at]]
    :from :report_card
    :left-join [:moderation_review [:and
@@ -57,7 +57,7 @@
   [_model args]
   {:select [:report_dashboard.id
             [(h2x/literal "Dashboard") :model]
-            [[:lower :report_dashboard.name] :name]
+            [:report_dashboard.name :name]
             :last_viewed_at]
    :from :report_dashboard
    :left-join [:pulse [:and

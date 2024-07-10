@@ -12,7 +12,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- date-months-ago ^LocalDate [n]
+(defn date-months-ago ^LocalDate [n]
   (-> (LocalDate/now)
       (.minusMonths n)))
 
@@ -31,13 +31,16 @@
 (defmacro with-stale-items [inputs & body]
   (let [processed-inputs
         (map (fn [[model binding args]]
-               (let [column (case model
-                              :model/Card :last_used_at
-                              :model/Dashboard :last_viewed_at)]
-                 [model binding `(assoc ~args ~column (datetime-months-ago 7))]))
+               (if-let [column (case model
+                                 :model/Card :last_used_at
+                                 :model/Dashboard :last_viewed_at
+                                 nil)]
+                 [model binding `(assoc ~args ~column (datetime-months-ago 7))]
+                 [model binding `~args]))
              (partition-all 3 inputs))]
     `(mt/with-temp ~(vec (apply concat processed-inputs))
        ~@body)))
+
 
 (deftest can-find-stale-dashboards
   (mt/with-temp [:model/Dashboard {id :id} (stale-dashboard

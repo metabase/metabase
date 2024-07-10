@@ -402,6 +402,7 @@
 (defn- card-query [card-type collection {:keys [archived? pinned-state]}]
   (-> {:select    (cond->
                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                     :last_used_at
                      :c.collection_id
                      :c.archived_directly
                      :c.archived
@@ -548,6 +549,7 @@
 
 (defn- dashboard-query [collection {:keys [archived? pinned-state]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
+                   [:last_viewed_at :last_used_at]
                    :d.collection_id
                    :d.archived_directly
                    [(h2x/literal "dashboard") :model]
@@ -785,7 +787,7 @@
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
-   :collection_type [:archived :boolean]
+   :collection_type [:archived :boolean] [:last_used_at :timestamp]
    ;; for determining whether a model is based on a csv-uploaded table
    [:table_id :integer] [:is_upload :boolean] :query_type])
 
@@ -966,7 +968,7 @@
 (defmulti present-model-items
   "Given a model and a list of items, return the items in the format the API client expects. Note that order does not
   matter! The calling function, `present-items`, is responsible for ensuring the order is maintained."
-  (fn [model items] model))
+  (fn [model _items] model))
 
 (defmethod present-model-items :model/Card [_ cards]
   (->> (t2/hydrate (t2/select [:model/Card
@@ -982,6 +984,7 @@
                                [nil :database_id]
                                [nil :location]
                                :dataset_query
+                               :last_used_at
                                [{:select   [:status]
                                  :from     [:moderation_review]
                                  :where    [:and
@@ -1010,20 +1013,13 @@
                                :entity_id
                                :archived
                                :collection_position
+                               [:last_viewed_at :last_used_at]
                                ["dashboard" :model]
                                [nil :location]
                                [nil :database_id]]
 
                               :id [:in (set (map :id dashboards))])
                    :can_write :can_delete :can_restore)))
-
-(defn- present-items [items]
-  (let [id->order (into {} (map-indexed (fn [i row] [(:id row) i]) items))]
-    (->> items
-         (group-by :model)
-         (mapcat (fn [[model items]]
-                   (present-model-items model items)))
-         (sort-by (comp id->order :id)))))
 
 (api/defendpoint GET "/:id/stale"
   "A flexible endpoint that returns stale entities, in the same shape as collections/items, with the following options:
@@ -1037,6 +1033,7 @@
    is_recursive   [:boolean {:default false}]
    sort_column    [:maybe {:default :name} (into [:enum] (map keyword valid-sort-columns))]
    sort_direction [:maybe {:default :asc} (into [:enum] (map keyword valid-sort-directions))]}
+  (premium-features/assert-has-feature :stale (tru "Stale"))
   (let [before-date (if before_date
                       (try (t/local-date "yyyy-MM-dd" before_date)
                            (catch Exception _
@@ -1063,7 +1060,7 @@
                                 :sort-column sort_column
                                 :sort-direction sort_direction})]
     {:total total
-     :data (present-items rows)
+     :data (api/present-items present-model-items rows)
      :limit mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
 
