@@ -16,7 +16,6 @@
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.pulse :as pulse]
-   [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.streaming.csv :as qp.csv]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.test :as mt])
@@ -54,19 +53,18 @@
   "Simulate sending the pulse email, get the attached text/csv content, and parse into a map of
   attachment name -> column name -> column data"
   [pulse export-format]
-  (let [m    (update
-              (mt/with-test-user nil
-                (pulse.test-util/with-captured-channel-send-messages!
-                  (pulse/send-pulse! pulse)))
-              :channel/email vec)
-        msgs (get-in m [:channel/email 0 :message])]
-    (first (keep
-            (fn [{:keys [type content-type content]}]
-             (when (and
-                    (= :attachment type)
-                    (= (format "text/%s" (name export-format)) content-type))
-               (slurp content)))
-           msgs))))
+  (mt/with-fake-inbox
+    (mt/with-test-user nil
+      (pulse/send-pulse! pulse))
+    (->>
+     (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
+     (keep
+      (fn [{:keys [type content-type content]}]
+              (when (and
+                     (= :attachment type)
+                     (= (format "text/%s" (name export-format)) content-type))
+                (slurp content))))
+     first)))
 
 (defn- alert-attachment!
   [card export-format _format-rows?]
