@@ -15,6 +15,10 @@ import {
   showDashboardCardActions,
 } from "e2e/support/helpers";
 
+/** These tests are about the `downloads` flag for public dashboards and questions.
+ *  Unless the product changes, these should test the same things as `embed-resource-downloads.cy.spec.ts`
+ */
+
 describeEE(
   "Public dashboards/questions downloads (results and export as pdf)",
   () => {
@@ -124,7 +128,7 @@ describeEE(
         cy.findByTestId("download-button").should("not.exist");
       });
 
-      it("should be able to download as png", () => {
+      it("should be able to download the question as png", () => {
         cy.visit(`${publicLink}`);
         waitLoading();
 
@@ -134,7 +138,7 @@ describeEE(
         cy.verifyDownload(".png", { contains: true });
       });
 
-      it("should be able to download a public dashcard as CSV", () => {
+      it("should be able to download a public card as CSV", () => {
         cy.visit(`${publicLink}`);
         waitLoading();
 
