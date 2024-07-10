@@ -86,7 +86,7 @@
    (let [group-id->perms (group-id->permissions-set)]
      {:revision (c-perm-revision/latest-id)
       :groups   (into {}
-                      (pmap
+                      (u/ecs-map
                        (fn [group-id]
                          [group-id
                           (group-permissions-graph collection-namespace (group-id->perms group-id) collection-ids)])
