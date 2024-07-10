@@ -431,41 +431,47 @@
                            (log/tracef "BigQuery channel send complete: %s" (pr-str pushed?)))
                          nil)
                        (catch Throwable t
-                         (a/>!! done-chan [:error t]))))
-        [res chan] (a/alts!! (cond-> [done-chan]
-                               cancel-chan (conj cancel-chan))
-                             :priority true)]
-    (if-let [[tag value] (when (= chan done-chan)
-                           res)]
-      ;; done-chan fired first, with either an :error or :done
-      (case tag
-        :done  value
-        :error (condp instance? value
-                 java.util.concurrent.CancellationException
-                 (throw (ex-info (tru "Query cancelled")
-                                 {:sql sql :parameters parameters ::cancelled? true}))
-                 BigQueryException
-                 (let [bqe ^BigQueryException value]
-                   (if (.isRetryable bqe)
-                     (throw (ex-info (tru "BigQueryException executing query")
-                                     {:retryable? (.isRetryable bqe)
-                                      :sql        sql
-                                      :parameters parameters}
-                                     bqe))
-                     (throw-invalid-query bqe sql parameters)))
-                 Throwable
-                 (throw-invalid-query value sql parameters)))
-      ;; cancel-chan fired first, it either got closed (nil) or received a real cancel message.
-      (if res
-        ;; Real cancel
-        (do (log/trace "BigQuery cancellation channel fired - cancelling the future if it's not already done")
-            (reset! cancel-requested? true)
-            (when-not (or (future-cancelled? res-fut) (future-done? res-fut))
-              (log/trace "BigQuery initial call still running, cancelling the future")
-              (future-cancel res-fut)))
+                         (a/>!! done-chan [:error t]))))]
+    (loop [[res chan] (a/alts!! (cond-> [done-chan]
+                                  cancel-chan (conj cancel-chan))
+                                :priority true)]
+      (if-let [[tag value] (when (= chan done-chan)
+                             res)]
+        ;; done-chan fired first, with either an :error or :done
+        (case tag
+          :done  value
+          :error (condp instance? value
+                   java.util.concurrent.CancellationException
+                   (throw (ex-info (tru "Query cancelled")
+                                   {:sql sql :parameters parameters ::cancelled? true}))
+                   BigQueryException
+                   (let [bqe ^BigQueryException value]
+                     (if (.isRetryable bqe)
+                       (throw (ex-info (tru "BigQueryException executing query")
+                                       {:retryable? (.isRetryable bqe)
+                                        :sql        sql
+                                        :parameters parameters}
+                                       bqe))
+                       (throw-invalid-query bqe sql parameters)))
+                   Throwable
+                   (throw-invalid-query value sql parameters)))
 
-        ;; Just closed, do nothing further.
-        (log/warn "BigQuery cancel-chan was closed before the query was done - unexpected case")))))
+        ;; cancel-chan fired first, it either got closed (nil) or received a real cancel message.
+        (if res
+          ;; Real cancel
+          (do (log/trace "BigQuery cancellation channel fired - cancelling the future if it's not already done")
+              (reset! cancel-requested? true)
+              (when-not (or (future-cancelled? res-fut) (future-done? res-fut))
+                (log/trace "BigQuery initial call still running, cancelling the future")
+                (future-cancel res-fut))
+              ;; And throw about the query being cancelled.
+              (throw (ex-info (tru "Query cancelled")
+                              {:sql sql :parameters parameters ::cancelled? true})))
+
+          ;; Just closed, keep waiting for the `done-chan` to fire.
+          ;; I think this is a race condition for single-row queries?
+          (do (log/trace "BigQuery cancel-chan was closed before query was done - still waiting for query result")
+              (recur (a/alts!! [done-chan]))))))))
 
 (mu/defn ^:private execute-bigquery-on-db :- some?
   ^TableResult
@@ -548,17 +554,18 @@
 ;;; |                                           Other Driver Method Impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(doseq [[feature supported?] {:convert-timezone        true
-                              :datetime-diff           true
-                              :expressions             true
-                              :foreign-keys            true
-                              :now                     true
-                              :percentile-aggregations true
+(doseq [[feature supported?] {:convert-timezone         true
+                              :datetime-diff            true
+                              :expressions              true
+                              :foreign-keys             true
+                              :now                      true
+                              :percentile-aggregations  true
                               ;; BigQuery uses timezone operators and arguments on calls like extract() and
                               ;; timezone_trunc() rather than literally using SET TIMEZONE, but we need to flag it as
                               ;; supporting set-timezone anyway so that reporting timezones are returned and used, and
                               ;; tests expect the converted values.
-                              :set-timezone            true}]
+                              :set-timezone             true
+                              :metadata/key-constraints false}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC
