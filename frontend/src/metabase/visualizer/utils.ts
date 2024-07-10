@@ -6,12 +6,16 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type { Card, Field } from "metabase-types/api";
 
-const areBarLine = ["area", "bar", "line"];
+const areaBarLine = ["area", "bar", "line"];
+
+export function canCombineCardWithOthers(card: Card) {
+  return card.display === "scalar" || areaBarLine.includes(card.display);
+}
 
 export function areCardsCompatible(card1: Card, card2: Card) {
   if (
-    areBarLine.includes(card1.display) &&
-    areBarLine.includes(card2.display)
+    areaBarLine.includes(card1.display) &&
+    areaBarLine.includes(card2.display)
   ) {
     return areAreaBarLineSeriesCompatible(card1, card2);
   }

@@ -3,24 +3,33 @@ import { useState } from "react";
 import { useSearchQuery } from "metabase/api";
 import { Card, Input, Tabs } from "metabase/ui";
 import { VisualizerMenuItem } from "metabase/visualizer/components/VisualizerMenuItem";
-import type { RecentItem } from "metabase-types/api";
+import { canCombineCardWithOthers } from "metabase/visualizer/utils";
+import type { Card as ICard, RecentItem, Series } from "metabase-types/api";
 
+import { VisualizerCompatibleCardsList } from "./VisualizerCompatibleCardsList";
 import { VisualizerMetricsList } from "./VisualizerMetricsList";
 import { VisualizerModelsList } from "./VisualizerModelsList";
 import { VisualizerRecentsList } from "./VisualizerRecentsList";
 
+interface VisualizerMenuProps {
+  series: Series;
+  onAdd: (item: ICard | RecentItem) => void;
+  onReplace: (item: ICard | RecentItem) => void;
+}
+
 export function VisualizerMenu({
+  series,
   onAdd,
   onReplace,
-}: {
-  onAdd: (item: RecentItem) => void;
-  onReplace: (item: RecentItem) => void;
-}) {
+}: VisualizerMenuProps) {
   const [searchQuery, setSearchQuery] = useState<string>();
   const { data: searchResults } = useSearchQuery({
     q: searchQuery,
     models: ["card", "dataset", "metric"],
   });
+
+  const hasCompatibleTab =
+    series.length > 0 && canCombineCardWithOthers(series[0].card);
 
   return (
     <Card h="100%">
@@ -49,6 +58,9 @@ export function VisualizerMenu({
               <Tabs.Tab value="metrics">Metrics</Tabs.Tab>
               <Tabs.Tab value="models">Models</Tabs.Tab>
               <Tabs.Tab value="recents">Recents</Tabs.Tab>
+              {hasCompatibleTab && (
+                <Tabs.Tab value="compatible">Compatible</Tabs.Tab>
+              )}
             </Tabs.List>
             <Tabs.Panel value="metrics">
               <VisualizerMetricsList />
@@ -59,6 +71,15 @@ export function VisualizerMenu({
             <Tabs.Panel value="recents">
               <VisualizerRecentsList onAdd={onAdd} onReplace={onReplace} />
             </Tabs.Panel>
+            {hasCompatibleTab && (
+              <Tabs.Panel value="compatible">
+                <VisualizerCompatibleCardsList
+                  series={series}
+                  onAdd={onAdd}
+                  onReplace={onReplace}
+                />
+              </Tabs.Panel>
+            )}
           </Tabs>
         </>
       )}

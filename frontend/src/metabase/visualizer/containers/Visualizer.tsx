@@ -105,6 +105,7 @@ export function Visualizer({ router, location }: WithRouterProps) {
               <PanelGroup direction="vertical">
                 <Panel defaultSize={70} minSize={20} maxSize={80}>
                   <VisualizerMenu
+                    series={series}
                     onAdd={item => addCardSeries(item.id)}
                     onReplace={item => replaceAllWithCardSeries(item.id)}
                   />
