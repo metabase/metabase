@@ -6542,6 +6542,9 @@ databaseChangeLog:
       comment: Populate metabase_field.is_defective_duplicate
       changes:
         - sql:
+            # idx_uniq_field_table_id_parent_id_name_2col would prevent defective duplicates with Postgres but it
+            # can be removed by upgrading from 49 and downgrading again. We need to populate is_defective_duplicate
+            # in that case.
             sql: >-
               UPDATE metabase_field mf
               SET is_defective_duplicate = TRUE
@@ -6709,6 +6712,18 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: metabase_field
             constraintName: idx_unique_field
+
+  - changeSet:
+      id: v49.2024-06-27T00:00:09
+      author: calherries
+      comment: Set is_defective_duplicate=TRUE fields that shouldn't exist to have active=FALSE
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET active = false
+              WHERE is_defective_duplicate AND (nfc_path = concat('["', name, '"]') OR nfc_path IS NULL);
+      rollback: # No rollback needed since this is backward compatible
 
   - changeSet:
       id: v50.2024-01-04T13:52:51
