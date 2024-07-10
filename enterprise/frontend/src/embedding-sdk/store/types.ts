@@ -5,16 +5,17 @@ import type {
 } from "@reduxjs/toolkit";
 import type { JSX } from "react";
 
-import type { SDKConfig } from "embedding-sdk";
+import type {
+  SDKConfig,
+  FetchRequestTokenFn,
+  EmbeddingSessionToken,
+} from "embedding-sdk";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import type { State } from "metabase-types/store";
 
 export type EmbeddingSessionTokenState = {
-  token: {
-    id: string;
-    exp: number;
-  } | null;
+  token: EmbeddingSessionToken | null;
   loading: boolean;
   error: SerializedError | null;
 };
@@ -53,6 +54,7 @@ export type SdkState = {
   eventHandlers: null | SdkEventHandlersConfig;
   loaderComponent: null | (() => JSX.Element);
   errorComponent: null | (({ message }: { message: string }) => JSX.Element);
+  fetchRefreshTokenFn: null | FetchRequestTokenFn;
 };
 
 export interface SdkStoreState extends State {

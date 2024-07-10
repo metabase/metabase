@@ -1,21 +1,24 @@
 import { createReducer, createAction } from "@reduxjs/toolkit";
+import { t } from "ttag";
 
+import type { EmbeddingSessionToken, FetchRequestTokenFn } from "embedding-sdk";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
+import { defaultGetRefreshTokenFn } from "embedding-sdk/store/refresh-token";
 import type {
-  EmbeddingSessionTokenState,
   LoginStatus,
   SdkState,
   SdkStoreState,
 } from "embedding-sdk/store/types";
 import { createAsyncThunk } from "metabase/lib/redux";
 
-import { getSessionTokenState } from "./selectors";
+import { getFetchRefreshTokenFn, getSessionTokenState } from "./selectors";
 
 const SET_LOGIN_STATUS = "sdk/SET_LOGIN_STATUS";
 const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
 const SET_LOADER_COMPONENT = "sdk/SET_LOADER_COMPONENT";
 const SET_ERROR_COMPONENT = "sdk/SET_ERROR_COMPONENT";
+const SET_FETCH_REQUEST_TOKEN_FN = "sdk/SET_FETCH_REQUEST_TOKEN_FN";
 
 export const setLoginStatus = createAction<LoginStatus>(SET_LOGIN_STATUS);
 export const setMetabaseClientUrl = createAction<string>(
@@ -27,6 +30,9 @@ export const setLoaderComponent = createAction<null | (() => JSX.Element)>(
 export const setErrorComponent = createAction<
   null | (({ message }: { message: string }) => JSX.Element)
 >(SET_ERROR_COMPONENT);
+export const setFetchRefreshTokenFn = createAction<null | FetchRequestTokenFn>(
+  SET_FETCH_REQUEST_TOKEN_FN,
+);
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 const REFRESH_TOKEN = "sdk/token/REFRESH_TOKEN";
@@ -49,12 +55,24 @@ export const getOrRefreshSession = createAsyncThunk(
 
 export const refreshTokenAsync = createAsyncThunk(
   REFRESH_TOKEN,
-  async (url: string): Promise<EmbeddingSessionTokenState["token"]> => {
-    const response = await fetch(url, {
-      method: "GET",
-      credentials: "include",
-    });
-    return await response.json();
+  async (url: string, { getState }): Promise<EmbeddingSessionToken | null> => {
+    // The SDK user can provide a custom function to refresh the token.
+    const getRefreshToken =
+      getFetchRefreshTokenFn(getState() as SdkStoreState) ??
+      defaultGetRefreshTokenFn;
+
+    try {
+      return await getRefreshToken(url);
+    } catch (errorCause) {
+      // As this function can be supplied by the SDK user,
+      // we have to handle possible errors in refreshing the token.
+      const error = new Error(t`failed to refresh the auth token`);
+      error.cause = errorCause;
+
+      setLoginStatus({ status: "error", error });
+
+      return null;
+    }
   },
 );
 
@@ -78,6 +96,7 @@ const initialState: SdkState = {
   eventHandlers: null,
   loaderComponent: null,
   errorComponent: null,
+  fetchRefreshTokenFn: null,
 };
 
 export const sdk = createReducer(initialState, builder => {
@@ -135,5 +154,10 @@ export const sdk = createReducer(initialState, builder => {
   builder.addCase(setMetabaseClientUrl, (state, action) => ({
     ...state,
     metabaseInstanceUrl: action.payload,
+  }));
+
+  builder.addCase(setFetchRefreshTokenFn, (state, action) => ({
+    ...state,
+    fetchRefreshTokenFn: action.payload,
   }));
 });
