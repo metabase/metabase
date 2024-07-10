@@ -917,6 +917,56 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         });
     });
   });
+
+  it.skip("should open only one bucketing popover at a time (metabase#45036)", () => {
+    visitQuestionAdhoc(
+      {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: { "source-table": PRODUCTS_ID, aggregation: [["count"]] },
+          parameters: [],
+        },
+      },
+      { mode: "notebook" },
+    );
+
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+
+    popover()
+      .findByRole("option", { name: "Created At" })
+      .findByText("by month")
+      .click();
+
+    popover()
+      .last()
+      .within(() => {
+        cy.findByText("Year").should("be.visible");
+        cy.findByText("Hour of day").should("not.exist");
+        cy.findByText("More…").click();
+        cy.findByText("Hour of day").should("be.visible");
+      });
+
+    popover()
+      .first()
+      .findByRole("option", { name: "Price" })
+      .findByText("Auto bin")
+      .click();
+
+    popover()
+      .last()
+      .within(() => {
+        cy.findByText("Auto bin").should("be.visible");
+        cy.findByText("50 bins").should("be.visible");
+        cy.findByText("Don't bin").should("be.visible");
+
+        cy.findByText("Year").should("not.exist");
+        cy.findByText("Hour of day").should("not.exist");
+        cy.findByText("More…").should("not.exist");
+      });
+  });
 });
 
 function assertTableRowCount(expectedCount) {
