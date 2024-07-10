@@ -6,10 +6,10 @@ import { defaultGetRefreshTokenFn } from "embedding-sdk/store/refresh-token";
 import type {
   EmbeddingSessionTokenState,
   LoginStatus,
-  FetchRequestTokenFn,
   SdkState,
   SdkStoreState,
 } from "embedding-sdk/store/types";
+import type { FetchRequestTokenFn } from "embedding-sdk/types";
 import { createAsyncThunk } from "metabase/lib/redux";
 
 import { getFetchRefreshTokenFn, getSessionTokenState } from "./selectors";

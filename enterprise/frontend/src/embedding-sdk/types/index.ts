@@ -1,7 +1,7 @@
 import type { JSX } from "react";
 
 import type { SdkErrorProps } from "embedding-sdk/components/private/PublicComponentWrapper/SdkError";
-import type { FetchRequestTokenFn } from "embedding-sdk/store/types";
+import type { EmbeddingSessionTokenState } from "embedding-sdk/store/types";
 
 export type SDKConfig = {
   metabaseInstanceUrl: string;
@@ -15,3 +15,7 @@ export type SDKConfig = {
    */
   fetchRequestToken?: FetchRequestTokenFn;
 };
+
+export type FetchRequestTokenFn = (
+  url: string,
+) => Promise<EmbeddingSessionTokenState["token"]>;

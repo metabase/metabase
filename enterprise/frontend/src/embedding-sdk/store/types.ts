@@ -7,6 +7,7 @@ import type { JSX } from "react";
 
 import type { SDKConfig } from "embedding-sdk";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
+import type { FetchRequestTokenFn } from "embedding-sdk/types";
 import type { State } from "metabase-types/store";
 
 export type EmbeddingSessionTokenState = {
@@ -53,10 +54,6 @@ export type SdkState = {
   errorComponent: null | (({ message }: { message: string }) => JSX.Element);
   fetchRefreshTokenFn: null | FetchRequestTokenFn;
 };
-
-export type FetchRequestTokenFn = (
-  url: string,
-) => Promise<EmbeddingSessionTokenState["token"]>;
 
 export interface SdkStoreState extends State {
   sdk: SdkState;
