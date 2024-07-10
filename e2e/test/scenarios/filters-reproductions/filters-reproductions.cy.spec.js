@@ -1199,3 +1199,40 @@ describe("issue 40622", () => {
     });
   }
 });
+
+describe("issue 44435", () => {
+  const longString =
+    "In aut numquam labore fuga. Et tempora sit et mollitia aut ullam et repellat. Aliquam sint tenetur culpa eius tenetur. Molestias ipsa est ut quisquam hic necessitatibus. Molestias maiores vero nesciunt.";
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("filter pill should not overflow the window width when the filter string is very long (metabase#44435)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": REVIEWS_ID,
+          fields: [
+            ["field", REVIEWS.REVIEWER, { "base-type": "type/Text" }],
+            ["field", REVIEWS.RATING, { "base-type": "type/Integer" }],
+          ],
+          filter: [
+            "=",
+            ["field", REVIEWS.BODY, { "base-type": "type/Text" }],
+            longString,
+          ],
+        },
+        parameters: [],
+      },
+    });
+
+    cy.findByTestId("filter-pill").then($pill => {
+      const pillWidth = $pill[0].getBoundingClientRect().width;
+      cy.window().its("innerWidth").should("be.gt", pillWidth);
+    });
+  });
+});
