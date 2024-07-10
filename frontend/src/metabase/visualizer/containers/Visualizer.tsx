@@ -79,9 +79,6 @@ export function Visualizer({ router, location }: WithRouterProps) {
     activationConstraint: { distance: 10 },
   });
 
-  const hasInitialCardsSelected =
-    "c1" in location.query && "c2" in location.query;
-
   const handleChangeQuery = (question: Question) => {
     if (typeof focusedSeriesIndex === "number") {
       updateSeriesQuery(focusedSeriesIndex, question.datasetQuery());
@@ -108,7 +105,6 @@ export function Visualizer({ router, location }: WithRouterProps) {
               <PanelGroup direction="vertical">
                 <Panel defaultSize={70} minSize={20} maxSize={80}>
                   <VisualizerMenu
-                    defaultTab={hasInitialCardsSelected ? "recents" : "metrics"}
                     onAdd={item => addCardSeries(item.id)}
                     onReplace={item => replaceAllWithCardSeries(item.id)}
                   />

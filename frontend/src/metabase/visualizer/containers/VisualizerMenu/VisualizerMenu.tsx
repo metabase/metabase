@@ -10,13 +10,11 @@ import { VisualizerModelsList } from "./VisualizerModelsList";
 import { VisualizerRecentsList } from "./VisualizerRecentsList";
 
 export function VisualizerMenu({
-  defaultTab = "metrics",
   onAdd,
   onReplace,
 }: {
   onAdd: (item: RecentItem) => void;
   onReplace: (item: RecentItem) => void;
-  defaultTab?: "metrics" | "models" | "recents";
 }) {
   const [searchQuery, setSearchQuery] = useState<string>();
   const { data: searchResults } = useSearchQuery({
@@ -46,7 +44,7 @@ export function VisualizerMenu({
         </div>
       ) : (
         <>
-          <Tabs defaultValue={defaultTab}>
+          <Tabs defaultValue="recents">
             <Tabs.List>
               <Tabs.Tab value="metrics">Metrics</Tabs.Tab>
               <Tabs.Tab value="models">Models</Tabs.Tab>
