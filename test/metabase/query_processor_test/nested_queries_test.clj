@@ -132,7 +132,7 @@
                   :limit 3})))))))
 
 (deftest ^:parallel breakout-fk-column-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "Test including a breakout of a nested query column that follows an FK"
       (is (=? {:rows [[1 174] [2 474] [3 78] [4 39]]
                :cols [(qp.test-util/breakout-col (qp.test-util/fk-col :checkins :venue_id :venues :price))
@@ -147,7 +147,7 @@
                     :breakout     [$venue_id->venues.price]}))))))))
 
 (deftest ^:parallel two-breakout-fk-columns-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "Test two breakout columns from the nested query, both following an FK"
       (is (=? {:rows [[2 33.7701 7]
                       [2 33.8894 8]
@@ -169,7 +169,7 @@
                                    $venue_id->venues.latitude]}))))))))
 
 (deftest ^:parallel two-breakouts-one-fk-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "Test two breakout columns from the nested query, one following an FK the other from the source table"
       (is (=? {:rows [[1 1 6]
                       [1 2 14]
@@ -777,7 +777,7 @@
                   :filter       [:= $category_id 50]})))))))
 
 (deftest ^:parallel nested-query-with-joins-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "make sure that if a nested query includes joins queries based on it still work correctly (#8972)"
       (is (= [[31 "Bludso's BBQ"         5 33.8894 -118.207 2]
               [32 "Boneyard Bistro"      5 34.1477 -118.428 3]
@@ -806,8 +806,8 @@
                   :filter       [:= *date "2014-03-30"]
                   :order-by     [[:asc $id]]})))))))
 
-(deftest ^:parallel aapply-filters-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
+(deftest ^:parallel apply-filters-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "make sure filters in source queries are applied correctly!"
       (is (= [["Fred 62"     1]
               ["Frolic Room" 1]]
@@ -837,7 +837,7 @@
                   :limit  2})))))))
 
 (deftest ^:parallel expressions-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys :expressions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions)
     (testing "can you use nested queries that have expressions in them?"
       (let [query (mt/mbql-query venues
                     {:fields      [[:expression "price-times-ten"]]
@@ -873,7 +873,7 @@
                   :fields       [!year.*date]})))))))
 
 (deftest ^:parallel correctly-alias-duplicate-names-in-breakout-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :left-join)
     (testing "Do we correctly alias name clashes in breakout (#10511)"
       (let [results (mt/run-mbql-query venues
                       {:source-query {:source-table $$venues
@@ -1216,7 +1216,7 @@
                                 :value  "Widget"}]})))))))
 
 (deftest ^:parallel nested-queries-with-expressions-and-joins-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (mt/dataset test-data
       (testing "Do nested queries in combination with joins and expressions still work correctly? (#14969)"
         (is (= (cond-> [["Twitter" "Widget" 0 498.59]
@@ -1264,7 +1264,8 @@
                                     :fk-field-id  %product_id}]}))))))))
 
 (deftest ^:parallel multi-level-aggregations-with-post-aggregation-filtering-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
+  ;; TODO: Make this test work for mongo as part of solution to issue #43901. -- lbrdnk
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join :nested-queries) :mongo)
     (testing "Multi-level aggregations with filter is the last section (#14872)"
       (mt/dataset test-data
         (let [query (mt/mbql-query orders
@@ -1288,7 +1289,7 @@
                      (qp/process-query query))))))))))
 
 (deftest ^:parallel date-range-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "Date ranges should work the same in nested queries as is regular queries (#15352)"
       (mt/dataset test-data
         (let [q1        (mt/mbql-query orders
@@ -1341,12 +1342,14 @@
                                      :aggregation  [[:count]]}))))))))
 
 (deftest ^:parallel nested-query-with-expressions-test
+  ;; TODO: Mongo does not support saved questions reference! -- Is there feature flag for that?
   (testing "Nested queries with expressions should work in top-level native queries (#12236)"
-    (mt/test-drivers (mt/normal-drivers-with-feature
-                      :nested-queries
-                      :basic-aggregations
-                      :expression-aggregations
-                      :foreign-keys)
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature
+                            :nested-queries
+                            :basic-aggregations
+                            :expression-aggregations
+                            :left-join)
+                           :mongo)
       (mt/dataset test-data
         (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                           [(mt/mbql-query orders
@@ -1374,7 +1377,6 @@
     (mt/test-drivers (mt/normal-drivers-with-feature
                       :nested-queries
                       :basic-aggregations
-                      :foreign-keys
                       :left-join)
       (mt/dataset test-data
         (let [query (mt/mbql-query orders
@@ -1403,6 +1405,7 @@
                      (mt/formatted-rows [int int int int str int str str]
                        (qp/process-query query)))))))))))
 
+;; TODO: Make this work with Mongo as part of #43901 work. -- lbrdnk
 (deftest ^:parallel breakout-on-temporally-bucketed-implicitly-joined-column-inside-source-query-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
                          ;; mongodb doesn't support foreign keys required by this test
