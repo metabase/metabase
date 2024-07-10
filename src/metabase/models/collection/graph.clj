@@ -172,7 +172,11 @@
 (mu/defn update-graph!
   "Update the Collections permissions graph for Collections of `collection-namespace` (default `nil`, the 'default'
   namespace). This works just like [[metabase.models.permission/update-data-perms-graph!]], but for Collections;
-  refer to that function's extensive documentation to get a sense for how this works."
+  refer to that function's extensive documentation to get a sense for how this works.
+
+  If there are no changes, returns nil.
+  If there are changes, returns the future that is used to call `fill-revision-details!`.
+  To run this syncronously deref the non-nil return value."
   ([new-graph]
    (update-graph! nil new-graph))
 
