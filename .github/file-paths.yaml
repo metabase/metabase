@@ -88,8 +88,6 @@ sources: &sources
   - *frontend_sources
   - *backend_sources
 
-
-
 e2e_ci: &e2e_ci
   - ".github/actions/build-e2e-matrix/**"
   - ".github/actions/prepare-frontend/**"
