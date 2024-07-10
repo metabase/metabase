@@ -19,6 +19,16 @@
     (t2/select :model/Channel)
     (t2/select :model/Channel :active true)))
 
+(defn- test-channel-connection!
+  "Test if a channel can be connected, throw an exception if it fails."
+  [type details]
+  (try
+    (let [result (channel/can-connect? (models.channel/keywordize-type type) details)]
+      (when-not (true? result)
+        (throw (ex-info "Unable to connect channel" (merge {:status-code 400} result)))))
+    (catch Exception e
+      (throw (ex-info "Unable to connect channel" (merge {:status-code 400} (ex-data e)))))))
+
 (api/defendpoint POST "/"
   "Create a channel"
   [:as {{:keys [name type active details]} :body}]
@@ -27,27 +37,17 @@
    details :map
    active  [:maybe {:default true} :boolean]}
   (validation/check-has-application-permission :setting)
-  (models.channel/create-channel! {:name    name
-                                   :type    type
-                                   :details details
-                                   :active  active}))
+  (test-channel-connection! (models.channel/keywordize-type type) details)
+  (t2/insert-returning-instance! :model/Channel {:name    name
+                                                 :type    type
+                                                 :details details
+                                                 :active  active}))
 
 (api/defendpoint GET "/:id"
   "Get a channel"
   [id]
   {id ms/PositiveInt}
   (api/check-404 (t2/select-one :model/Channel id)))
-
-(defn- test-channel-connection
-  [type details]
-  (try
-    (let [result (channel/can-connect? (models.channel/keywordize-type type) details)]
-      (if (true? result)
-        nil
-        result))
-    (catch Exception e
-      (merge {:message (ex-message e)}
-             (ex-data e)))))
 
 (api/defendpoint PUT "/:id"
   "Update a channel"
@@ -60,18 +60,17 @@
   (validation/check-has-application-permission :setting)
   (let [channel-before-update (api/check-404 (t2/select-one :model/Channel id))
         details-changed? (some-> details (not= (:details channel-before-update)))
-        type-changed?    (some-> type keyword (not= (:type channel-before-update)))
-        conn-error       (when (or details-changed? type-changed?)
-                           (test-channel-connection (or type (:type channel-before-update))
-                                                    (or details (:details channel-before-update))))]
-    (if (some? conn-error)
-      {:status 400
-       :body   conn-error}
-      (t2/update! :model/Channel id body))))
+        type-changed?    (some-> type keyword (not= (:type channel-before-update)))]
+
+    (when (or details-changed? type-changed?)
+      (test-channel-connection! (or type (:type channel-before-update))
+                                (or details (:details channel-before-update))))
+   (t2/update! :model/Channel id body)))
 
 (api/defendpoint POST "/test"
   "Test a channel connection"
   [:as {{:keys [type details]} :body}]
-  (channel/can-connect? (models.channel/keywordize-type type) details))
+  (test-channel-connection! (models.channel/keywordize-type type) details)
+  {:ok true})
 
 (api/define-routes)

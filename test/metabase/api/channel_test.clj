@@ -71,3 +71,46 @@
     (testing "return all if include_inactive is true"
       (is (= (map #(update % :type name) [chn-1 chn-2])
              (mt/user-http-request :crowberto :get 200 "channel" {:include_inactive true}))))))
+
+(deftest create-channel-error-handling-test
+  (testing "returns text error message if the channel return falsy value"
+    (is (= "Unable to connect channel"
+           (mt/user-http-request :crowberto :post 400 "channel"
+                                 (assoc default-test-channel :details {:return-type  "return-value"
+                                                                       :return-value false})))))
+  (testing "returns field-specific error message if the channel returns one"
+    (is (= {:errors {:email "Invalid email"}}
+           (mt/user-http-request :crowberto :post 400 "channel"
+                                 (assoc default-test-channel :details {:return-type  "return-value"
+                                                                       :return-value {:errors {:email "Invalid email"}}})))))
+
+  (testing "returns field-specific error message if the channel throws one"
+    (is (= {:errors {:email "Invalid email"}}
+           (mt/user-http-request :crowberto :post 400 "channel"
+                                 (assoc default-test-channel :details {:return-type  "throw"
+                                                                       :return-value {:errors {:email "Invalid email"}}}))))))
+
+
+(deftest test-channel-connection-test
+  (testing "return 200 if channel connects successfully"
+    (is (= {:ok true}
+           (mt/user-http-request :crowberto :post 200 "channel/test"
+                                 (assoc default-test-channel :details {:return-type  "return-value"
+                                                                       :return-value true})))))
+
+  (testing "returns text error message if the channel return falsy value"
+    (is (= "Unable to connect channel"
+           (mt/user-http-request :crowberto :post 400 "channel/test"
+                                 (assoc default-test-channel :details {:return-type  "return-value"
+                                                                       :return-value false})))))
+  (testing "returns field-specific error message if the channel returns one"
+    (is (= {:errors {:email "Invalid email"}}
+           (mt/user-http-request :crowberto :post 400 "channel/test"
+                                 (assoc default-test-channel :details {:return-type  "return-value"
+                                                                       :return-value {:errors {:email "Invalid email"}}})))))
+
+  (testing "returns field-specific error message if the channel throws one"
+    (is (= {:errors {:email "Invalid email"}}
+           (mt/user-http-request :crowberto :post 400 "channel/test"
+                                 (assoc default-test-channel :details {:return-type  "throw"
+                                                                       :return-value {:errors {:email "Invalid email"}}}))))))

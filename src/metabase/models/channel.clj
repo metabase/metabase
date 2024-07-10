@@ -1,10 +1,8 @@
 (ns ^{:added "0.51.0"} metabase.models.channel
   (:require
-   [metabase.channel.core :as channel]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
-   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -31,21 +29,9 @@
    :details mi/transform-encrypted-json})
 
 (defn keywordize-type
-  "Convert a channel type to a keyword."
+  "Ensure that `channel-type` is a keyword with the namespace `channel`."
   [channel-type]
   (if (and (keyword? channel-type)
            (= "channel" (namespace channel-type)))
     channel-type
     (keyword "channel" (name channel-type))))
-
-(defn create-channel!
-  "Create a channel.
-
-  Throw an error if the channel cannot be connected."
-  [channel]
-  (let [result (channel/can-connect? (keywordize-type (:type channel))
-                                     (:details channel))]
-    (when (map? result)
-     (throw (ex-info (tru "Unable to connect channel") (merge {:type (:type channel)}
-                                                              result)))))
-  (t2/insert-returning-instance! :model/Channel channel))
