@@ -33,7 +33,7 @@ export function getPermissionWarning(
 }
 
 export const canManageSubscriptions = (state: ApplicationPermissionsState) =>
-  state.currentUser.permissions?.can_access_subscription ?? false;
+  state.currentUser?.permissions?.can_access_subscription ?? false;
 
 const getApplicationPermission = (
   permissions: ApplicationPermissions,

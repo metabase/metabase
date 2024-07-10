@@ -12,8 +12,11 @@ import type {
 } from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { DashboardEmptyStateWithoutAddPrompt } from "metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState";
-import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
+import {
+  BUTTON_CONFIG,
+  DashboardHeaderButtonRow,
+} from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import type {
   DashboardFullscreenControls,
@@ -99,20 +102,25 @@ export function PublicOrEmbeddedDashboardView({
   slowCards: Record<number, boolean>;
   cardTitled: boolean;
 }) {
-  const buttons = !isWithinIframe()
-    ? getDashboardActions({
-        dashboard,
-        hasNightModeToggle,
-        isFullscreen,
-        isNightMode,
-        onFullscreenChange,
-        onNightModeChange,
-        onRefreshPeriodChange,
-        refreshPeriod,
-        setRefreshElapsedHook,
-        isPublic: true,
-      })
-    : [];
+  const buttons = !isWithinIframe() ? (
+    <DashboardHeaderButtonRow
+      buttonKeys={[
+        BUTTON_CONFIG.DASHBOARD_EMBED_ACTION,
+        BUTTON_CONFIG.REFRESH_WIDGET,
+        BUTTON_CONFIG.NIGHT_MODE_TOGGLE,
+        BUTTON_CONFIG.FULLSCREEN_TOGGLE,
+      ]}
+      refreshPeriod={refreshPeriod}
+      onRefreshPeriodChange={onRefreshPeriodChange}
+      onFullscreenChange={onFullscreenChange}
+      setRefreshElapsedHook={setRefreshElapsedHook}
+      isFullscreen={isFullscreen}
+      hasNightModeToggle={hasNightModeToggle}
+      onNightModeChange={onNightModeChange}
+      isNightMode={isNightMode}
+      isPublic={true}
+    />
+  ) : null;
 
   const visibleDashcards = (dashboard?.dashcards ?? []).filter(
     dashcard => !isActionDashCard(dashcard),
@@ -143,9 +151,7 @@ export function PublicOrEmbeddedDashboardView({
       setParameterValue={setParameterValue}
       setParameterValueToDefault={setParameterValueToDefault}
       enableParameterRequiredBehavior
-      actionButtons={
-        buttons.length > 0 && <div className={CS.flex}>{buttons}</div>
-      }
+      actionButtons={buttons ? <div className={CS.flex}>{buttons}</div> : null}
       dashboardTabs={
         dashboard?.tabs &&
         dashboard.tabs.length > 1 && <DashboardTabs dashboardId={dashboardId} />
