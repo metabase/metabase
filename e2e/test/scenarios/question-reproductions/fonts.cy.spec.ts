@@ -1,4 +1,4 @@
-import { openOrdersTable, restore } from "e2e/support/helpers";
+import { getNotebookStep, openOrdersTable, restore } from "e2e/support/helpers";
 
 describe("fonts", () => {
   beforeEach(() => {
@@ -14,6 +14,10 @@ describe("fonts", () => {
     openOrdersTable({ mode: "notebook" });
 
     cy.wait(5000);
+
+    getNotebookStep("data")
+      .findByText("Orders")
+      .should("have.css", "font-family", "Lato, sans-serif");
 
     cy.get("@font-regular.all").should("have.length", 1);
     cy.get("@font-regular").should(({ response }) => {
