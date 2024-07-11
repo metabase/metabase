@@ -1,6 +1,5 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { popover } from "e2e/support/helpers";
 import {
   createSegment,
   createMetric,
@@ -94,7 +93,7 @@ it("should configure data model settings", () => {
     .findByText("No semantic type")
     .click();
 
-  popover().should("be.visible");
+  cy.get(".MB-Select").should("be.visible");
 
   cy.get(".MB-Select")
     .scrollTo("top")
