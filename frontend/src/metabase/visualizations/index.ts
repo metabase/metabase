@@ -5,6 +5,7 @@ import type {
   DatasetData,
   Series,
   TransformedSeries,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import type { RemappingHydratedDatasetColumn } from "./types";
@@ -58,10 +59,20 @@ export function registerVisualization(visualization: Visualization) {
   }
 }
 
-type SeriesLike = Array<{ card: { display: string } }>;
+type SeriesLike = Array<{
+  card: { display: string; visualization_settings?: VisualizationSettings };
+}>;
 
 export function getVisualizationRaw(series: SeriesLike) {
-  return visualizations.get(series[0].card.display);
+  const [{ card }] = series;
+  let display = card.display;
+  if (
+    card.display === "scalar" &&
+    card.visualization_settings?.["scalar.multiseries.display"]
+  ) {
+    display = card.visualization_settings?.["scalar.multiseries.display"];
+  }
+  return visualizations.get(display);
 }
 
 export function getVisualizationTransformed(series: TransformedSeries) {

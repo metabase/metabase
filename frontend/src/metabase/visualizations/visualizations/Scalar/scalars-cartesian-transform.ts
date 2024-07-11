@@ -30,7 +30,8 @@ export const scalarToCartesianTransform: TransformSeries = rawSeries => {
 
     const transformedCard = {
       ...card,
-      display: "bar",
+      display:
+        card?.visualization_settings?.["scalar.multiseries.display"] ?? "bar",
       visualization_settings: {
         "graph.tooltip_type": "default",
         "graph.x_axis.labels_enabled": false,
