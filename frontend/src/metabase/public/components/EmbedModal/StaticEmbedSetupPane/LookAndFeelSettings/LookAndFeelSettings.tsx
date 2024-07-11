@@ -25,8 +25,8 @@ import {
   Text,
 } from "metabase/ui";
 
-import { DisplayOptionSection } from "./StaticEmbedSetupPane.styled";
-import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
+import { DisplayOptionSection } from "../StaticEmbedSetupPane.styled";
+import { StaticEmbedSetupPaneSettingsContentSection } from "../StaticEmbedSetupPaneSettingsContentSection";
 
 const THEME_OPTIONS = [
   { label: t`Light`, value: "light" },
@@ -34,10 +34,9 @@ const THEME_OPTIONS = [
 ] as const;
 type ThemeOptions = typeof THEME_OPTIONS[number]["value"];
 
-export interface AppearanceSettingsProps {
+interface AppearanceSettingsProps {
   resourceType: EmbedResourceType;
   displayOptions: EmbeddingDisplayOptions;
-
   onChangeDisplayOptions: (displayOptions: EmbeddingDisplayOptions) => void;
 }
 
