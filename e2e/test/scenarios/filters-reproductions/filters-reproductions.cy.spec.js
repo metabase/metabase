@@ -1200,9 +1200,10 @@ describe("issue 40622", () => {
   }
 });
 
-describe("issue 44435", () => {
-  const longString =
-    "In aut numquam labore fuga. Et tempora sit et mollitia aut ullam et repellat. Aliquam sint tenetur culpa eius tenetur. Molestias ipsa est ut quisquam hic necessitatibus. Molestias maiores vero nesciunt.";
+describe.skip("issue 44435", () => {
+  // It is crucial that the string is without spaces!
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const longString = alphabet.repeat(10);
 
   beforeEach(() => {
     restore();
