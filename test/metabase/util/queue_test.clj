@@ -20,14 +20,14 @@
         realtime-fn      (fn []
                            (let [id (rand-int 1000)]
                              (dotimes [i n-real]
-                            ;; Enqueue realtime events from newest to oldest
+                               ;; Enqueue realtime events from newest to oldest
                                (let [payload (- (dec n-back) i)]
                                  (when-not (queue/maybePut! q {:thread (str "real-" id) :payload payload})
                                    (vswap! dropped inc)))
                                (Thread/sleep 1))))
         background-fn    (fn []
                            (dotimes [i n-back]
-                          ;; Enqueue background events from oldest to newest
+                             ;; Enqueue background events from oldest to newest
                              (queue/blockingPut! q {:thread "back", :payload i})))
         run!             (fn [f]
                            (future (f)))]

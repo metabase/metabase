@@ -16,10 +16,10 @@
 
 ;; Similar to java.util.concurrent.LinkedTransferQueue, but bounded.
 (deftype ^:private ArrayTransferQueue
-         [^ArrayBlockingQueue async-queue
-          ^SynchronousQueue sync-queue
-          ^long block-ms
-          ^long sleep-ms]
+  [^ArrayBlockingQueue async-queue
+   ^SynchronousQueue sync-queue
+   ^long block-ms
+   ^long sleep-ms]
   BoundedTransferQueue
   (maybePut! [_ msg]
     (.offer async-queue msg))
