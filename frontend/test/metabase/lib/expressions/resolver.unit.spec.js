@@ -368,12 +368,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
 
   it("should reject unsupported function (metabase#39773)", () => {
     const database = createMockMetadata({
-      databases: [
-        createSampleDatabase({
-          id: 1,
-          features: ["foreign-keys"],
-        }),
-      ],
+      databases: [createSampleDatabase()],
     }).database(1);
 
     expect(() =>
