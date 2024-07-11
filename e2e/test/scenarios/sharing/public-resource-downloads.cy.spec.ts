@@ -128,7 +128,7 @@ describeEE(
         cy.findByTestId("download-button").should("not.exist");
       });
 
-      it("should be able to download the question as png", () => {
+      it("should be able to download the question as PNG", () => {
         cy.visit(`${publicLink}`);
         waitLoading();
 

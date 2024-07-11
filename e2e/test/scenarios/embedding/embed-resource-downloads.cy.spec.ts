@@ -152,7 +152,7 @@ describeEE(
         cy.findByTestId("download-button").should("not.exist");
       });
 
-      it("should be able to download the question as png", () => {
+      it("should be able to download the question as PNG", () => {
         visitEmbeddedPage(
           {
             resource: { question: ORDERS_BY_YEAR_QUESTION_ID },
