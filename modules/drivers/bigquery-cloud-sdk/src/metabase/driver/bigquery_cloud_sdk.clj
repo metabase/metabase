@@ -64,20 +64,20 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 (def ^:private ^:dynamic *page-callback*
   "Callback to execute when a new page is retrieved, used for testing"
-  nil)
+  (constantly nil))
 
-(defn- values-iterator [^TableResult page]
+(defn- values-iterator ^Iterator [^TableResult page]
   (.iterator (.getValues page)))
 
-(defn- reducible-bigquery
-  [^TableResult page cancel-chan cancel-requsted?]
+(defn- reducible-bigquery-results
+  [^TableResult page cancel-chan]
   (reify
     clojure.lang.IReduceInit
     (reduce [_ rf init]
       ;; TODO: Once we're confident that the memory/thread leaks in BigQuery are resolved, we can remove some of this
       ;; logging, and certainly remove the `n` counter.
       (loop [^TableResult page page
-             ^Iterator it      (values-iterator page)
+             it                (values-iterator page)
              acc               init
              n                 0]
         (cond
@@ -85,16 +85,7 @@
           (reduced? acc)
           (do (log/tracef "BigQuery: Early exit from reducer after %d rows" n)
               (some-> cancel-chan a/close!)
-              @acc)
-
-          ;; Cancel requested - signal cancellation on the channel and stop.
-          ;; Make sure to signal on the cancel channel too to prevent thread leaks in execute-bigquery.
-          ;; TODO: Remove this? I think it's redundant, since the only place `cancel-requested?` is ever set to a
-          ;; truthy value is when the cancel-chan emits a message, which is already handled below.
-          @cancel-requsted?
-          (do (log/tracef "BigQuery: Aborting due to cancel-requested? atom (%d rows)" n)
-              (some-> cancel-chan (a/>!! ::cancel))
-              acc)
+              (unreduced acc))
 
           ;; Cancel signaled, just stop.
           (some-> cancel-chan a/poll!)
@@ -106,7 +97,7 @@
           (let [acc' (try
                        (rf acc (.next it))
                        (catch Throwable e
-                         (log/errorf e "error in reducible-bigquery! %d rows" n)
+                         (log/errorf e "error in reducible-bigquery-results! %d rows" n)
                          (some-> cancel-chan a/close!)
                          (throw e)))]
             (recur page it acc' (inc n)))
@@ -114,8 +105,7 @@
           ;; This page is exhausted - check for another page and keep processing.
           (some? (.getNextPageToken page))
           (let [_        (log/tracef "BigQuery: Fetching new page after %d rows" n)
-                _        (when *page-callback*
-                           (*page-callback*))
+                _        (*page-callback*)
                 new-page (.getNextPage page)]
             (log/trace "BigQuery: New page returned")
             (recur new-page (values-iterator page) acc (inc n)))
@@ -368,7 +358,7 @@
       ;; metadata from the schema, but that probably makes no
       ;; difference and currently the metadata is ignored anyway.
       (rff {:cols fields})
-      (reducible-bigquery page nil (atom false)))))
+      (reducible-bigquery-results page nil))))
 
 (defn- ingestion-time-partitioned-table?
   [table-id]
@@ -406,89 +396,96 @@
            {:type qp.error-type/invalid-query, :sql sql, :parameters parameters}
            e)))
 
+(defn- build-bigquery-request [^String sql parameters]
+  (.build
+    (doto (QueryJobConfiguration/newBuilder sql)
+      ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
+      (.setUseLegacySql (str/includes? (u/lower-case-en sql) "#legacysql"))
+      (bigquery.params/set-parameters! parameters)
+      ;; .setMaxResults is very misleading; it's actually the page size, and it only takes
+      ;; effect for RPC (a.k.a. "fast") calls
+      ;; there is no equivalent of .setMaxRows on a JDBC Statement; we rely on our middleware to stop
+      ;; realizing more rows as per the maximum result size
+      (.setMaxResults *page-size*))))
+
+(defn- execute-bigquery-off-thread
+  [^BigQuery client ^QueryJobConfiguration request result-promise]
+  ;; As long as we don't set certain additional QueryJobConfiguration options, our queries *should* always be
+  ;; following the fast query path (i.e. RPC).
+  ;; Check out com.google.cloud.bigquery.QueryRequestInfo.isFastQuerySupported for full details.
+  (future
+    (log/trace "BigQuery exec thread sending query job")
+    (try
+      ;; TODO: If we create a JobId and send it with the other `.query` arity, then we should be able to cancel the
+      ;; BQ job before getting this first response comes back!
+      (let [result (.query client request (u/varargs BigQuery$JobOption))]
+        (log/trace "BigQuery request finished successfully; delivering the result to the promise")
+        (deliver result-promise [:done result])
+        (log/trace "BigQuery thread exiting"))
+      (catch Throwable t
+        (deliver result-promise [:error t])))
+    nil))
+
+(defn- cancel-on-promise [cancel-chan job-atom result-promise]
+  (a/go
+    ;; TODO: When we early exit from a query, should we be cancelling the BigQuery job also?
+    (when-let [cancelled (a/<! cancel-chan)]
+      (deliver result-promise [:cancel cancelled])
+      (some-> @job-atom future-cancel))))
+
+(defn- handle-bigquery-exception [^Throwable t ^String sql parameters]
+  (condp instance? t
+    java.util.concurrent.CancellationException
+    (throw (ex-info (tru "Query cancelled")
+                    {:sql sql :parameters parameters ::cancelled? true}))
+    BigQueryException
+    (let [bqe ^BigQueryException t]
+      (if (.isRetryable bqe)
+        (throw (ex-info (tru "BigQueryException executing query")
+                        {:retryable? (.isRetryable bqe)
+                         :sql        sql
+                         :parameters parameters}
+                        bqe))
+        (throw-invalid-query bqe sql parameters)))
+    Throwable
+    (throw-invalid-query t sql parameters)))
+
 (defn- execute-bigquery
-  ^TableResult [^BigQuery client ^String sql parameters cancel-chan cancel-requested?]
+  ^TableResult [^BigQuery client ^String sql parameters cancel-chan]
   {:pre [client (not (str/blank? sql))]}
-  (let [request (doto (QueryJobConfiguration/newBuilder sql)
-                  ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
-                  (.setUseLegacySql (str/includes? (u/lower-case-en sql) "#legacysql"))
-                  (bigquery.params/set-parameters! parameters)
-                  ;; .setMaxResults is very misleading; it's actually the page size, and it only takes
-                  ;; effect for RPC (a.k.a. "fast") calls
-                  ;; there is no equivalent of .setMaxRows on a JDBC Statement; we rely on our middleware to stop
-                  ;; realizing more rows as per the maximum result size
-                  (.setMaxResults *page-size*))
-        ;; as long as we don't set certain additional QueryJobConfiguration options, our queries *should* always be
-        ;; following the fast query path (i.e. RPC)
-        ;; check out com.google.cloud.bigquery.QueryRequestInfo.isFastQuerySupported for full details
-        done-chan  (a/promise-chan)
-        res-fut    (future
-                     (log/trace "BigQuery exec thread sending query job")
-                     (try
-                       (let [result (.query client (.build request) (u/varargs BigQuery$JobOption))]
-                         (log/trace "BigQuery request finished successfully; sending the query to the channel")
-                         (let [pushed? (a/>!! done-chan [:done result])]
-                           (log/tracef "BigQuery channel send complete: %s" (pr-str pushed?)))
-                         nil)
-                       (catch Throwable t
-                         (a/>!! done-chan [:error t]))))]
-    (loop [[res chan] (a/alts!! (cond-> [done-chan]
-                                  cancel-chan (conj cancel-chan))
-                                :priority true)]
-      (if-let [[tag value] (when (= chan done-chan)
-                             res)]
-        ;; done-chan fired first, with either an :error or :done
-        (case tag
-          :done  value
-          :error (condp instance? value
-                   java.util.concurrent.CancellationException
-                   (throw (ex-info (tru "Query cancelled")
-                                   {:sql sql :parameters parameters ::cancelled? true}))
-                   BigQueryException
-                   (let [bqe ^BigQueryException value]
-                     (if (.isRetryable bqe)
-                       (throw (ex-info (tru "BigQueryException executing query")
-                                       {:retryable? (.isRetryable bqe)
-                                        :sql        sql
-                                        :parameters parameters}
-                                       bqe))
-                       (throw-invalid-query bqe sql parameters)))
-                   Throwable
-                   (throw-invalid-query value sql parameters)))
-
-        ;; cancel-chan fired first, it either got closed (nil) or received a real cancel message.
-        (if res
-          ;; Real cancel
-          (do (log/trace "BigQuery cancellation channel fired - cancelling the future if it's not already done")
-              (reset! cancel-requested? true)
-              (when-not (or (future-cancelled? res-fut) (future-done? res-fut))
-                (log/trace "BigQuery initial call still running, cancelling the future")
-                (future-cancel res-fut))
-              ;; And throw about the query being cancelled.
-              (throw (ex-info (tru "Query cancelled")
-                              {:sql sql :parameters parameters ::cancelled? true})))
-
-          ;; Just closed, keep waiting for the `done-chan` to fire.
-          ;; I think this is a race condition for single-row queries?
-          (do (log/trace "BigQuery cancel-chan was closed before query was done - still waiting for query result")
-              (recur (a/alts!! [done-chan]))))))))
+  ;; Kicking off two async jobs:
+  ;; - Waiting for the cancel-chan to get either a cancel message or to be closed.
+  ;; - Running the BigQuery execution in another thread, since it's blocking.
+  (let [result-promise (promise)
+        exec-future    (execute-bigquery-off-thread client (build-bigquery-request sql parameters) result-promise)
+        ;; Wrap that future in an Atom, so we can replace it with nil after the initial page is fetched.
+        future-atom    (atom exec-future)]
+    (when cancel-chan
+      (cancel-on-promise cancel-chan future-atom result-promise))
+    ;; Now block the original thread on that promise.
+    ;; It will receive either [:done TableResult], [:error Throwable], or [:cancel truthy].
+    (let [[result payload] @result-promise]
+      (reset! future-atom nil)
+      (case result
+        :done   payload
+        :error  (handle-bigquery-exception payload sql parameters)
+        :cancel nil))))
 
 (mu/defn ^:private execute-bigquery-on-db :- some?
   ^TableResult
-  [database :- [:map [:details :map]] sql parameters cancel-chan cancel-requested?]
+  [database :- [:map [:details :map]] sql parameters cancel-chan]
   (execute-bigquery
    (database-details->client (:details database))
    sql
    parameters
-   cancel-chan
-   cancel-requested?))
+   cancel-chan))
 
 (mu/defn ^:private post-process-native :- some?
   "Parse results of a BigQuery query. `respond` is the same function passed to
   `metabase.driver/execute-reducible-query`, and has the signature
 
     (respond results-metadata rows)"
-  [respond ^TableResult resp cancel-chan cancel-requested?]
+  [respond ^TableResult resp cancel-chan]
   (let [^Schema schema
         (.getSchema resp)
 
@@ -504,7 +501,7 @@
      {:cols columns}
      (eduction (map (fn [^FieldValueList row]
                       (mapv parse-field-value row parsers)))
-               (reducible-bigquery resp cancel-chan cancel-requested?)))))
+               (reducible-bigquery-results resp cancel-chan)))))
 
 (mu/defn ^:private ^:dynamic *process-native*
   [respond  :- fn?
@@ -515,17 +512,14 @@
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute`
-  (let [cancel-requested? (atom false)
-        thunk             (fn []
-                            (post-process-native respond
-                                                 (execute-bigquery-on-db
-                                                  database
-                                                  sql
-                                                  parameters
-                                                  cancel-chan
-                                                  cancel-requested?)
-                                                 cancel-chan
-                                                 cancel-requested?))]
+  (let [thunk (fn []
+                (post-process-native respond
+                                     (execute-bigquery-on-db
+                                       database
+                                       sql
+                                       parameters
+                                       cancel-chan)
+                                     cancel-chan))]
     (try
       (thunk)
       (catch Throwable e

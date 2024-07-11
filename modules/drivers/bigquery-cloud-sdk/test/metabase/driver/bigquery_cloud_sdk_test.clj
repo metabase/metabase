@@ -687,12 +687,12 @@
     (let [fake-execute-called (atom false)
           orig-fn             @#'bigquery/execute-bigquery]
       (testing "Retry functionality works as expected"
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _ _]
+        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _]
                                                   (if-not @fake-execute-called
                                                     (do (reset! fake-execute-called true)
                                                         ;; simulate a transient error being thrown
                                                         (throw (ex-info "Transient error" {:retryable? true})))
-                                                    (orig-fn client sql parameters nil nil)))]
+                                                    (orig-fn client sql parameters nil)))]
           ;; run any other test that requires a successful query execution
           (table-rows-sample-test)
           ;; make sure that the fake exception was thrown, and thus the query execution was retried
@@ -703,13 +703,13 @@
     (let [fake-execute-called (atom false)
           orig-fn        @#'bigquery/execute-bigquery]
       (testing "Should not retry query on cancellation"
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _ _]
+        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _]
                                                   ;; We only want to simulate exception on the query that we're testing and not on possible db setup queries
                                                   (if (and (re-find #"notRetryCancellationExceptionTest" sql) (not @fake-execute-called))
                                                     (do (reset! fake-execute-called true)
                                                         ;; Simulate a cancellation happening
                                                         (throw (ex-info "Query cancelled" {::bigquery/cancelled? true})))
-                                                    (orig-fn client sql parameters nil nil)))]
+                                                    (orig-fn client sql parameters nil)))]
           (try
             (qp/process-query {:native {:query "SELECT CURRENT_TIMESTAMP() AS notRetryCancellationExceptionTest"} :database (mt/id)
                                :type     :native})

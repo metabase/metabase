@@ -129,7 +129,7 @@
     (let [sql (apply format format-string args)]
       (log/infof "[BigQuery] %s\n" sql)
       (flush)
-      (#'bigquery/execute-bigquery-on-db (data/db) sql nil nil nil))))
+      (#'bigquery/execute-bigquery-on-db (data/db) sql nil nil))))
 
 (def ^:private valid-field-types
   #{:BOOLEAN :DATE :DATETIME :FLOAT :INTEGER :NUMERIC :RECORD :STRING :TIME :TIMESTAMP})
@@ -168,8 +168,8 @@
         respond                       (fn [_ rows]
                                         (ffirst (into [] rows)))
         client                        (bigquery)
-        ^TableResult query-response   (#'bigquery/execute-bigquery client sql [] nil nil)]
-    (#'bigquery/post-process-native respond query-response #_cancel-chan nil (atom false))))
+        ^TableResult query-response   (#'bigquery/execute-bigquery client sql [] nil)]
+    (#'bigquery/post-process-native respond query-response #_cancel-chan nil)))
 
 (defprotocol ^:private Insertable
   (^:private ->insertable [this]
