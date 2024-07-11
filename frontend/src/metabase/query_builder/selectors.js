@@ -690,7 +690,7 @@ export const getRawSeries = createSelector(
   (question, results, lastRunDatasetQuery, isShowingRawTable) => {
     return createRawSeries({
       question,
-      queryResults: results?.[0],
+      queryResult: results?.[0],
       datasetQuery: lastRunDatasetQuery,
       showRawTable: isShowingRawTable,
     });
