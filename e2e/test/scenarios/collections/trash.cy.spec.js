@@ -1,6 +1,8 @@
 import {
   READ_ONLY_PERSONAL_COLLECTION_ID,
   FIRST_COLLECTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   popover,
@@ -687,6 +689,28 @@ describe("scenarios > collections > trash", () => {
       openNavigationSidebar();
       assertTrashSelectedInNavigationSidebar();
     });
+  });
+
+  it.skip("should open only one context menu at a time (metabase#44910)", () => {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { archived: true });
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+      archived: true,
+    });
+    cy.visit("/trash");
+
+    toggleEllipsisMenuFor("Orders");
+    cy.findAllByRole("dialog")
+      .should("have.length", 1)
+      .and("contain", "Move")
+      .and("contain", "Restore")
+      .and("contain", "Delete permanently");
+
+    toggleEllipsisMenuFor("Orders, Count");
+    cy.findAllByRole("dialog")
+      .should("have.length", 1)
+      .and("contain", "Move")
+      .and("contain", "Restore")
+      .and("contain", "Delete permanently");
   });
 });
 

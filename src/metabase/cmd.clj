@@ -185,7 +185,7 @@
   (log/warn (u/colorize :red "'load' is deprecated and will be removed in a future release. Please migrate to 'import'."))
   (call-enterprise 'metabase-enterprise.serialization.cmd/v1-load! path (get-parsed-options #'load options)))
 
-(defn ^:command import
+(defn ^:command ^:requires-init import
   {:doc "Load serialized Metabase instance as created by the [[export]] command from directory `path`."}
   [path & options]
   (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load! path (get-parsed-options #'import options)))
@@ -281,6 +281,10 @@
       arg-spec
       (:errors (cli/parse-opts args arg-spec)))))
 
+(defn- requires-init?
+  [command-name]
+  (-> command-name cmd->var meta :requires-init))
+
 (defn- fail!
   [& messages]
   (doseq [msg messages]
@@ -290,7 +294,7 @@
 (defn run-cmd
   "Run `cmd` with `args`. This is a function above. e.g. `clojure -M:run metabase migrate force` becomes
   `(migrate \"force\")`."
-  [command-name args]
+  [command-name init-fn args]
   (if-let [errors (validate command-name args)]
     (do
       (when (cmd->var command-name)
@@ -298,6 +302,8 @@
         (help command-name))
       (apply fail! errors))
     (try
+      (when (requires-init? command-name)
+        (init-fn))
       (apply @(cmd->var command-name) args)
       (catch Throwable e
         (.printStackTrace e)

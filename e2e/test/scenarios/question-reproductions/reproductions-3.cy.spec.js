@@ -1785,3 +1785,38 @@ describe("issue 41464", () => {
     });
   });
 });
+
+describe.skip("issue 45359", () => {
+  beforeEach(() => {
+    restore();
+    cy.intercept("/app/fonts/Lato/lato-v16-latin-regular.woff2").as(
+      "font-regular",
+    );
+    cy.intercept("/app/fonts/Lato/lato-v16-latin-700.woff2").as("font-bold");
+    cy.signInAsAdmin();
+  });
+
+  it("loads app fonts correctly (metabase#45359)", () => {
+    openOrdersTable({ mode: "notebook" });
+
+    getNotebookStep("data")
+      .findByText("Orders")
+      .should("have.css", "font-family", "Lato, sans-serif");
+
+    cy.get("@font-regular.all").should("have.length", 1);
+    cy.get("@font-regular").should(({ response }) => {
+      expect(response).to.include({ statusCode: 200 });
+    });
+
+    cy.get("@font-bold.all").should("have.length", 1);
+    cy.get("@font-bold").should(({ response }) => {
+      expect(response).to.include({ statusCode: 200 });
+    });
+
+    cy.document()
+      .then(document => document.fonts.ready)
+      .then(fonts => {
+        cy.wrap(fonts).invoke("check", "16px Lato").should("be.true");
+      });
+  });
+});
