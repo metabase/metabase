@@ -370,11 +370,11 @@ const TITLE_LOCALES_BN = {
   },
   'admin.dashboard.book.lot.partially.delivered' : {
     'en': 'Partially Delivered',
-    'bn': 'আংশিক বিতরণ সম্পন্ন'
+    'bn': 'আংশিক সরবরাহ সম্পন্ন'
   },
   'admin.dashboard.book.lot.delivered' : {
     'en': 'Delivered',
-    'bn': 'বিতরণ সম্পন্ন'
+    'bn': 'সরবরাহ সম্পন্ন'
   },
   'admin.book.flow': {
 	'en' : 'Current Status of every distributed book',
