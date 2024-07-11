@@ -68,18 +68,17 @@
 
 ;;; Modifier Types
 
-;; `:type/Large` enables driver developers to signal that the field values can be relatively large and can use a lot of
-;; memory. These types will be excluded from scanning and fingerprinting, and possibly other features in the future.
-(derive :type/Large :type/*)
-
 ;; `:type/field-values-unsupported` enables driver developers to opt out of field values calculation for specific
 ;; fields. For more details see the `driver-changelog.yml`, section `Metabase 0.50.0`.
 (derive :type/field-values-unsupported :type/*)
-(derive :type/Large :type/field-values-unsupported)
 
 ;; `:type/fingerprint-unsupported` enables driver developers to opt out of fingerprinting for specific
 ;; fields.
 (derive :type/fingerprint-unsupported :type/*)
+
+;; `:type/Large` enables driver developers to signal that the field values can be relatively large and can use a lot of
+;; memory. These types will be excluded from scanning and fingerprinting, and possibly other features in the future.
+(derive :type/Large :type/field-values-unsupported)
 (derive :type/Large :type/fingerprint-unsupported)
 
 ;;; Numeric Types

@@ -36,6 +36,8 @@
     "type/Collection"
     "type/XML"
     "type/DruidJSON"
+    "type/Large"
+    "type/fingerprint-unsupported"
     "type/OracleCLOB"})
 
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test
