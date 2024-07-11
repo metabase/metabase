@@ -325,8 +325,8 @@ After the SDK is configured, you can embed your dashboard using the `StaticDashb
 - **withCardTitle**: `boolean` – Whether the dashboard cards should display a title.
 - **withDownloads**: `boolean | null` – Whether to hide the download button.
 - **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. [More information here](https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters)
-- **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded.
-- **onLoadWithCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads fully with every card content.
+- **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads with all visible cards and their content.
+- **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded.
 
 
 ```jsx
@@ -371,8 +371,8 @@ After the SDK is configured, you can embed your dashboard using the `Interactive
 - **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
 - **questionHeight**: `number | null` – Height of a question component when drilled from the dashboard to a question level.
 - **questionPlugins** `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add drill-down menu. [See this](#implementing-custom-actions) for more details
-- **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded.
-- **onLoadWithCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads fully with every card content.
+- **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads with all visible cards and their content.
+- **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded.
 
 ```jsx
 import React from "react";
@@ -664,8 +664,8 @@ return (
 
 Currently, we support:
 
-- `onDashboardLoad?: (dashboard: Dashboard | null) => void;` - triggers when dashboard structure loads (dashboard title, list of tabs, cards grid for the active tab)
-- `onDashboardLoadWithCards?: (dashboard: Dashboard | null) => void;` // triggers when active tab loads with all cards content
+- `onDashboardLoad?: (dashboard: Dashboard | null) => void;` - triggers when dashboard loads with all visible cards and their content
+- `onDashboardLoadWithoutCards?: (dashboard: Dashboard | null) => void;` - triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded
 
 ```typescript jsx
 const handleDashboardLoad: SdkDashboardLoadEvent = (dashboard) => {
@@ -674,6 +674,7 @@ const handleDashboardLoad: SdkDashboardLoadEvent = (dashboard) => {
 
 const eventHandlers = {
     onDashboardLoad: handleDashboardLoad,
+    onDashboardLoadWithoutCards: handleDashboardLoad,
 }
 
 return (
