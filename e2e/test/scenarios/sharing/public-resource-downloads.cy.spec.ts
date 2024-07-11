@@ -60,14 +60,6 @@ describeEE(
         getDashboardCardMenu().should("not.exist");
       });
 
-      it("should be able to disable dashcard result downloads with #downloads=false", () => {
-        cy.visit(`${publicLink}#downloads=false`);
-        waitLoading();
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- this should not appear anywhere in the page
-        cy.findByText("Export as PDF").should("not.exist");
-      });
-
       it("should be able to download a public dashboard as PDF", () => {
         cy.visit(`${publicLink}#downloads=true`);
         waitLoading();

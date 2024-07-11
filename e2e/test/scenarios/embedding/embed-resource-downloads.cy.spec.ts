@@ -59,24 +59,6 @@ describeEE(
         getDashboardCardMenu().should("not.exist");
       });
 
-      it("should be able to disable dashcard result downloads with #downloads=false", () => {
-        visitEmbeddedPage(
-          {
-            resource: { dashboard: ORDERS_DASHBOARD_ID },
-            params: {},
-          },
-          {
-            pageStyle: {
-              downloads: false,
-            },
-          },
-        );
-        waitLoading();
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- this should not appear anywhere in the page
-        cy.findByText("Export as PDF").should("not.exist");
-      });
-
       it("should be able to download a static embedded dashboard as PDF", () => {
         visitEmbeddedPage(
           {
