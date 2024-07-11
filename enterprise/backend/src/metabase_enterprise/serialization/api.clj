@@ -133,7 +133,10 @@
         :query-params}]
   {dirname          (mu/with [:maybe string?]
                              {:description "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"})
-   collection       (mu/with [:maybe (ms/QueryVectorOf [:or ms/PositiveInt ms/NonBlankString])]
+   collection       (mu/with [:maybe (ms/QueryVectorOf
+                                      [:or
+                                       ms/PositiveInt
+                                       [:re {:error/message "value must be string with `eid:<...>` prefix"} "^eid:.{21}$"]])]
                              {:description "collections' db ids/entity-ids to serialize"})
    all_collections  (mu/with [:maybe ms/BooleanValue]
                              {:default     true

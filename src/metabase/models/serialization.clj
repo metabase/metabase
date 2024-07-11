@@ -91,8 +91,10 @@
   done if a need arises."
   [model-name eid]
   (let [model (keyword "model" model-name)
-        pk    (first (t2/primary-keys model))]
-    (t2/select-one-fn pk [model pk] :entity_id eid)) )
+        pk    (first (t2/primary-keys model))
+        eid   (cond-> eid
+                (str/starts-with? eid "eid:") (subs 4))]
+    (t2/select-one-fn pk [model pk] :entity_id eid)))
 
 ;;; ## Hashing entities
 ;;; In the worst case, an entity is already present in two instances linked by serdes, and it doesn't have `entity_id`

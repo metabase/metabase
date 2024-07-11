@@ -206,13 +206,13 @@
 
 (defn ^:command export
   {:doc "Serialize Metabase instance into directory at `path`."
-   :arg-spec [["-c" "--collection ID"            "Export only specified ID(s). Use commas to separate multiple IDs."
+   :arg-spec [["-c" "--collection ID"            "Export only specified ID(s). Use commas to separate multiple IDs. You can pass entity ids with `eid:<...>` as a prefix."
                :id        :collection-ids
                :parse-fn  (fn [raw-string] (->> (str/split raw-string #"\s*,\s*")
                                                 (map (fn [v]
-                                                       (if (re-matches #"\d+" v)
-                                                         (parse-long v)
-                                                         v)))))]
+                                                       (if (str/starts-with? v "eid:")
+                                                         v
+                                                         (parse-long v))))))]
               ["-C" "--no-collections"           "Do not export any content in collections."]
               ["-S" "--no-settings"              "Do not export settings.yaml"]
               ["-D" "--no-data-model"            "Do not export any data model entities; useful for subsequent exports."]
