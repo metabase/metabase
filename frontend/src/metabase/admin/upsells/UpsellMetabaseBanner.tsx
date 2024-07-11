@@ -12,7 +12,6 @@ export function UpsellMetabaseBanner() {
       source="static-embed-settings-look-and-feel"
       fullWidth
     >
-      {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins */}
       {t`The “Powered by Metabase” banner appears on all static embeds created with the open source version. You’ll need to upgrade to remove it.`}
     </UpsellCard>
   );
