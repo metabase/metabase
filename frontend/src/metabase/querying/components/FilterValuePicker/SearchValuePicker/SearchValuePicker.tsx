@@ -37,19 +37,23 @@ export function SearchValuePicker({
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
+  const canSearch = searchQuery.length > 0;
+  const canRemap = fieldId !== searchFieldId && selectedValues.length > 0;
 
-  const { data: searchFieldValues = initialFieldValues } =
-    useSearchFieldValuesQuery(
-      {
-        fieldId,
-        searchFieldId,
-        value: searchQuery,
-        limit: SEARCH_LIMIT,
-      },
-      {
-        skip: !searchQuery,
-      },
-    );
+  const {
+    data: searchFieldValues = initialFieldValues,
+    isFetching: isSearching,
+  } = useSearchFieldValuesQuery(
+    {
+      fieldId,
+      searchFieldId,
+      value: searchQuery,
+      limit: SEARCH_LIMIT,
+    },
+    {
+      skip: !canSearch,
+    },
+  );
 
   const { data: remappedFieldValues = [] } = useGetRemappedFieldValuesQuery(
     {
@@ -58,16 +62,17 @@ export function SearchValuePicker({
       values: selectedValues,
     },
     {
-      skip:
-        fieldId === searchFieldId ||
-        selectedValues.length === 0 ||
-        searchValue.length !== 0,
+      skip: !canRemap || searchValue.length > 0,
     },
   );
 
   const options = useMemo(
-    () => getEffectiveOptions([...searchFieldValues, ...remappedFieldValues]),
-    [remappedFieldValues, searchFieldValues],
+    () =>
+      getEffectiveOptions([
+        ...(canRemap ? remappedFieldValues : []),
+        ...(canSearch && !isSearching ? searchFieldValues : []),
+      ]),
+    [searchFieldValues, remappedFieldValues, canSearch, isSearching, canRemap],
   );
 
   const handleSearchChange = (newSearchValue: string) => {
