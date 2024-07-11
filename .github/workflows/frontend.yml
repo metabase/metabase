@@ -84,7 +84,7 @@ jobs:
         with:
           m2-cache-key: "cljs"
       - name: prepare dependencies in release directory
-        run: cd release && yarn --frozen-lockfile && cd ..
+        run: yarn --cwd release --frozen-lockfile
       - name: Run frontend unit tests and collect the code coverage information
         if: github.ref_name == 'master'
         run: yarn run test-unit --coverage --silent
