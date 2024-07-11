@@ -164,7 +164,7 @@ export const DashboardHeaderInner = ({
       />,
       <SaveEditButton
         key="save-edit-button"
-        actionFn={() => {
+        onDoneEditing={() => {
           onRefreshPeriodChange(null);
         }}
       />,
@@ -194,7 +194,10 @@ export const DashboardHeaderInner = ({
       );
 
       if (canEdit && hasModelActionsEnabled) {
-        buttons.push(<AddActionElementButton key="add-action-element" />);
+        buttons.push(
+          <DashboardHeaderActionDivider />,
+          <AddActionElementButton key="add-action-element" />,
+        );
       }
 
       // Extra Buttons Menu
@@ -257,21 +260,22 @@ export const DashboardHeaderInner = ({
         ].filter(Boolean),
       );
 
-      const extraButtons = [];
-      if (!isFullscreen && !isEditing && !isAnalyticsDashboard) {
-        extraButtons.push(
-          ...getExtraButtons({
-            onFullscreenChange,
-            isFullscreen,
-            dashboard,
-            canEdit,
-            pathname,
-          }),
-        );
-      }
-
-      if (extraButtons.length > 0 && !dashboard.archived) {
-        buttons.push(<DashboardActionMenu items={extraButtons} />);
+      if (
+        !isFullscreen &&
+        !isEditing &&
+        !isAnalyticsDashboard &&
+        !dashboard.archived
+      ) {
+        const extraButtons = getExtraButtons({
+          onFullscreenChange,
+          isFullscreen,
+          dashboard,
+          canEdit,
+          pathname,
+        });
+        if (extraButtons.length > 0) {
+          buttons.push(<DashboardActionMenu items={extraButtons} />);
+        }
       }
     }
 

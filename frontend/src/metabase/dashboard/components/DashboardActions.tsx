@@ -1,8 +1,4 @@
-import { t } from "ttag";
-
-import Tooltip from "metabase/core/components/Tooltip";
 import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction/DashboardEmbedAction";
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
@@ -10,11 +6,11 @@ import type {
 } from "metabase/dashboard/types";
 import type { Dashboard } from "metabase-types/api";
 
+import { RefreshWidgetButton } from "./DashboardActions.styled";
 import {
-  FullScreenButtonIcon,
-  NightModeButtonIcon,
-  RefreshWidgetButton,
-} from "./DashboardActions.styled";
+  FullscreenToggle,
+  NightModeToggleButton,
+} from "./DashboardHeader/buttons";
 
 type GetDashboardActionsProps = {
   dashboard: Dashboard | null;
@@ -27,47 +23,6 @@ type GetDashboardActionsProps = {
     EmbedThemeControls,
     "isNightMode" | "hasNightModeToggle" | "onNightModeChange"
   >;
-
-const NightModeToggleButton = ({
-  isNightMode,
-  onNightModeChange,
-}: {
-  isNightMode: boolean | undefined;
-  onNightModeChange: (isNightMode: boolean) => void;
-}) => (
-  <Tooltip
-    key="night"
-    tooltip={isNightMode ? t`Daytime mode` : t`Nighttime mode`}
-  >
-    <span>
-      <DashboardHeaderButton
-        icon={
-          <NightModeButtonIcon
-            isNightMode={isNightMode}
-            onClick={() => onNightModeChange(!isNightMode)}
-          />
-        }
-      />
-    </span>
-  </Tooltip>
-);
-
-const FullscreenToggle = ({
-  isFullscreen,
-  onFullscreenChange,
-}: DashboardFullscreenControls) => (
-  <Tooltip
-    key="fullscreen"
-    tooltip={isFullscreen ? t`Exit fullscreen` : t`Enter fullscreen`}
-  >
-    <span>
-      <DashboardHeaderButton
-        icon={<FullScreenButtonIcon isFullscreen={isFullscreen} />}
-        onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
-      />
-    </span>
-  </Tooltip>
-);
 
 export const getDashboardActions = ({
   dashboard,
@@ -114,6 +69,7 @@ export const getDashboardActions = ({
   ) {
     buttons.push(
       <NightModeToggleButton
+        key="night"
         isNightMode={isNightMode}
         onNightModeChange={onNightModeChange}
       />,
@@ -124,6 +80,7 @@ export const getDashboardActions = ({
     // option click to enter fullscreen without making the browser go fullscreen
     buttons.push(
       <FullscreenToggle
+        key="fullscreen"
         isFullscreen={isFullscreen}
         onFullscreenChange={onFullscreenChange}
       />,
