@@ -6542,6 +6542,9 @@ databaseChangeLog:
       comment: Populate metabase_field.is_defective_duplicate
       changes:
         - sql:
+            # idx_uniq_field_table_id_parent_id_name_2col would prevent defective duplicates with Postgres but it
+            # can be removed by upgrading from 49 and downgrading again. We need to populate is_defective_duplicate
+            # in that case.
             sql: >-
               UPDATE metabase_field mf
               SET is_defective_duplicate = TRUE
@@ -6709,6 +6712,18 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: metabase_field
             constraintName: idx_unique_field
+
+  - changeSet:
+      id: v49.2024-06-27T00:00:09
+      author: calherries
+      comment: Set is_defective_duplicate=TRUE fields that shouldn't exist to have active=FALSE
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET active = false
+              WHERE is_defective_duplicate AND (nfc_path = concat('["', name, '"]') OR nfc_path IS NULL);
+      rollback: # No rollback needed since this is backward compatible
 
   - changeSet:
       id: v50.2024-01-04T13:52:51
@@ -8191,6 +8206,50 @@ databaseChangeLog:
               column:
                 name: dashboard_id
 
+  # last_used_at is used to determine if a report card is stale and should be cleaned up
+  # if the card is imported with serialization, we don't want to automatically clean up
+  # newly imported cards, and we don't want to have to make it nullable.
+  - changeSet:
+      id: v50.2024-07-09T20:04:01
+      author: calherries
+      comment: Populate default value for report_card.last_used_at
+      changes:
+        - sql:
+            sql: >-
+              UPDATE report_card
+              SET last_used_at = current_timestamp
+              WHERE last_used_at IS NULL;
+      rollback: # nothing to do, since this is backwards compatible
+
+  - changeSet:
+      id: v50.2024-07-09T20:04:02
+      author: calherries
+      comment: Add not null constraint for report_card.last_used_at
+      preConditions:
+      changes:
+        - addNotNullConstraint:
+            tableName: report_card
+            columnName: last_used_at
+            columnDataType: ${timestamp_type}
+
+  # addDefaultValue with defaultValueComputed doesn't work for MySQL/MariaDB so we have to do this the hard way.
+  - changeSet:
+      id: v50.2024-07-09T20:04:03
+      author: calherries
+      comment: Set default for report_card.last_used_at
+      preConditions:
+      changes:
+        - sql:
+            dbms: postgresql,h2
+            sql: ALTER TABLE report_card ALTER COLUMN last_used_at SET DEFAULT CURRENT_TIMESTAMP;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE report_card
+              CHANGE last_used_at
+              last_used_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+      rollback: # nothing to do, since this is backwards compatible
+
   - changeSet:
       id: v51.2024-05-13T15:30:57
       author: metamben
@@ -8278,6 +8337,17 @@ databaseChangeLog:
             tableName: login_history
             indexName: idx_user_id_device_id
       preConditions:
+
+  - changeSet:
+      id: v51.2024-07-09T17:15:43
+      author: tsmacdonald
+      comment: Fix default boolean value for query_field.explicit_reference
+      dbms: mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: query_field
+            columnName: explicit_reference
+            defaultValueBoolean: true
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

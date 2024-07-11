@@ -25,8 +25,16 @@ import {
   openNotebook,
 } from "e2e/support/helpers";
 
-const { ORDERS_ID, PRODUCTS, PRODUCTS_ID, ORDERS, REVIEWS, PEOPLE, PEOPLE_ID } =
-  SAMPLE_DATABASE;
+const {
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  ORDERS,
+  REVIEWS,
+  REVIEWS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+} = SAMPLE_DATABASE;
 
 describe("issue 9339", () => {
   beforeEach(() => {
@@ -1106,4 +1114,88 @@ describe("issue 35043", () => {
       "Created At is May 22, 2022 – Apr 15, 2024",
     );
   });
+});
+
+describe("issue 40622", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should display the Filter modal correctly with long column names (metabase#40622)", () => {
+    const LONG_COLUMN_NAME =
+      "Reviews, but with a very very veeeeeery long name!";
+    cy.request("PUT", `/api/table/${REVIEWS_ID}`, {
+      display_name: LONG_COLUMN_NAME,
+    });
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": REVIEWS_ID,
+          joins: [
+            {
+              fields: "all",
+              strategy: "left-join",
+              alias: "Orders - Product",
+              condition: [
+                "=",
+                ["field", REVIEWS.PRODUCT_ID, { "base-type": "type/Integer" }],
+                [
+                  "field",
+                  ORDERS.PRODUCT_ID,
+                  {
+                    "base-type": "type/Integer",
+                    "join-alias": "Orders - Product",
+                  },
+                ],
+              ],
+              "source-table": ORDERS_ID,
+            },
+          ],
+        },
+        parameters: [],
+      },
+    });
+
+    filter();
+    assertTablesAreEquallyLeftRightPositioned();
+
+    cy.log("Resize and make sure the filter sidebar is intact");
+    cy.viewport(800, 300);
+    assertTablesAreEquallyLeftRightPositioned();
+
+    cy.log("Make sure sidebar is scrollable");
+    filterSidebar().within(() => {
+      cy.findByRole("tab", { name: LONG_COLUMN_NAME }).should("be.visible");
+      cy.findByRole("tab", { name: "User" }).should("not.be.visible");
+    });
+
+    filterSidebar().scrollTo("bottom");
+    filterSidebar().within(() => {
+      cy.findByRole("tab", { name: LONG_COLUMN_NAME }).should("not.be.visible");
+      cy.findByRole("tab", { name: "User" }).should("be.visible");
+    });
+  });
+
+  function filterSidebar() {
+    return cy.findByRole("tablist");
+  }
+
+  function assertTablesAreEquallyLeftRightPositioned() {
+    filterSidebar().within(() => {
+      cy.findAllByRole("tab").each((_el, index, $list) => {
+        if (index === $list.length - 1) {
+          return;
+        }
+
+        const currentTab = $list[index].getBoundingClientRect();
+        const nextTab = $list[index + 1].getBoundingClientRect();
+        expect(currentTab.left).to.eq(nextTab.left);
+        expect(currentTab.right).to.eq(nextTab.right);
+      });
+    });
+  }
 });

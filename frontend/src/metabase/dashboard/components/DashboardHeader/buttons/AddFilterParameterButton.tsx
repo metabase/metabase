@@ -31,7 +31,6 @@ export const AddFilterParameterButton = () => {
       >
         <div>
           <DashboardHeaderButton
-            key="parameters"
             icon="filter"
             onClick={() => dispatch(showAddParameterPopover())}
             aria-label={t`Add a filter`}

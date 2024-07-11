@@ -1,6 +1,4 @@
 import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction/DashboardEmbedAction";
-import { FullscreenToggle } from "metabase/dashboard/components/DashboardHeader/buttons/FullscreenToggle";
-import { NightModeToggleButton } from "metabase/dashboard/components/DashboardHeader/buttons/NightModeToggleButton";
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
@@ -9,6 +7,10 @@ import type {
 import type { Dashboard } from "metabase-types/api";
 
 import { RefreshWidgetButton } from "./DashboardActions.styled";
+import {
+  FullscreenToggle,
+  NightModeToggleButton,
+} from "./DashboardHeader/buttons";
 
 type GetDashboardActionsProps = {
   dashboard: Dashboard | null;
@@ -67,6 +69,7 @@ export const getDashboardActions = ({
   ) {
     buttons.push(
       <NightModeToggleButton
+        key="night"
         isNightMode={isNightMode}
         onNightModeChange={onNightModeChange}
       />,
@@ -77,6 +80,7 @@ export const getDashboardActions = ({
     // option click to enter fullscreen without making the browser go fullscreen
     buttons.push(
       <FullscreenToggle
+        key="fullscreen"
         isFullscreen={isFullscreen}
         onFullscreenChange={onFullscreenChange}
       />,

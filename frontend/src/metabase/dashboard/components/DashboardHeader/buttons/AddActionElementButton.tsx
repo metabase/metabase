@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { addActionToDashboard } from "metabase/dashboard/actions";
-import { DashboardHeaderActionDivider } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
@@ -26,14 +25,11 @@ export const AddActionElementButton = () => {
   };
 
   return (
-    <>
-      <DashboardHeaderActionDivider />
-      <DashboardHeaderButton
-        onClick={onAddAction}
-        aria-label={t`Add action`}
-        tooltipLabel={t`Add action button`}
-        icon="click"
-      />
-    </>
+    <DashboardHeaderButton
+      onClick={onAddAction}
+      aria-label={t`Add action`}
+      tooltipLabel={t`Add action button`}
+      icon="click"
+    />
   );
 };
