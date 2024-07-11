@@ -19,7 +19,7 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
-import type { QueryVisualizationProps } from "./";
+import type { StaticQuestionProps } from "./";
 import { StaticQuestion } from "./";
 
 const TEST_QUESTION_ID = 1;
@@ -63,7 +63,7 @@ const VISUALIZATION_TYPES: Record<
 const setup = ({
   showVisualizationSelector = false,
   isValidCard = true,
-}: Partial<QueryVisualizationProps> & {
+}: Partial<StaticQuestionProps> & {
   isValidCard?: boolean;
 } = {}) => {
   const TEST_CARD = createMockCard();

@@ -8,6 +8,7 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
+import { getQuestionParameterByValues } from "embedding-sdk/lib/question-parameter";
 import CS from "metabase/css/core/index.css";
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { getResponseErrorMessage } from "metabase/lib/errors";
@@ -26,10 +27,15 @@ import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMo
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, Dataset } from "metabase-types/api";
 
-export type QueryVisualizationProps = {
+export type StaticQuestionProps = {
   questionId: CardId;
   showVisualizationSelector?: boolean;
   height?: string | number;
+
+  /**
+   *
+   */
+  parameterValues?: Record<string, string | number>;
 };
 
 type State = {
@@ -43,7 +49,7 @@ const _StaticQuestion = ({
   questionId,
   showVisualizationSelector,
   height,
-}: QueryVisualizationProps): JSX.Element | null => {
+}: StaticQuestionProps): JSX.Element | null => {
   const metadata = useSelector(getMetadata);
 
   const [{ loading, card, result, error }, setState] = useState<State>({
@@ -59,10 +65,13 @@ const _StaticQuestion = ({
       loading: true,
     }));
 
+    const parameters = getQuestionParameterByValues();
+
     Promise.all([
       CardApi.get({ cardId: questionId }),
       CardApi.query({
         cardId: questionId,
+        ...(parameters && { parameters }),
       }),
     ])
       .then(([card, result]) => {
