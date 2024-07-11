@@ -756,14 +756,18 @@
 (defn- adjust-order-by-clause
   [[dir [_clause _id-or-name opts :as clause]]]
   [dir
+   ;; For selected fields, ie. those with desried-alias, use that alias to refer those in compiled order by.
+   ;; If field is not selected, or it is from this table having no binning or temporal unit, refer to it by what would
+   ;; be LHS in select, ie. qualified identifier.
+   ;;
+   ;; This solves Bigquery's inability to use expression from group by in order by.
+   ;; ex: `select a + 1, b from T group by a + 1 order by a + 1 asc` would fail.
+   ;; vs: `select a + 1 as asdf, b from T group by a + 1 order by asdf asc` would not fail.
+   ;;
+   ;; Also it handles case as follows: `select b from T join U ... order by a`, where field a is in both T and U
+   ;; tables. Problem is solved by qualifying that order by field.
    (if (and
-        ;; Selected fields (desired-alias) that are from source query or joins (not (pos-int?...)) should
-        ;; use forced alias.
         (::add/desired-alias opts)
-        ;; Following is necessary for cases where there is joined field of same name as field from source _table_,
-        ;; used for ordering. Bigquery would report ambiguous field error otherwise.
-        ;;
-        ;; Translate the following as field that is not from joins or source query and has no binning or bucketing set.
         (not (and (pos-int? (::add/source-table opts))
                   (not (or (:binning opts)
                            (:temporal-unit opts))))))
