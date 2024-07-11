@@ -416,6 +416,11 @@
   []
   (mt/normal-drivers-with-feature :nested-queries :left-join))
 
+(defn- row-level-restrictions-fk-sql-drivers
+  "SQL drivers to test row-level restrictions against foreign keys with."
+  []
+  (into #{} (filter #(isa? driver/hierarchy % :sql)) (row-level-restrictions-fk-drivers)))
+
 (deftest e2e-fks-test
   (mt/test-drivers (row-level-restrictions-fk-drivers)
     (testing (str "1 - Creates a GTAP filtering question, looking for any checkins happening on or after 2014\n"
@@ -486,7 +491,7 @@
                 (mt/user-http-request :rasta :post "dataset" (mt/mbql-query venues {:aggregation [[:count]]})))))))))
 
 (deftest breakouts-test
-  (mt/test-drivers (row-level-restrictions-fk-drivers)
+  (mt/test-drivers (row-level-restrictions-fk-sql-drivers)
     (testing "Make sure that if a GTAP is in effect we can still do stuff like breakouts (#229)"
       (met/with-gtaps! {:gtaps      {:venues (venues-category-native-gtap-def)}
                         :attributes {"cat" 50}}
@@ -498,7 +503,7 @@
                      :breakout    [$price]})))))))))
 
 (deftest sql-with-join-test
-  (mt/test-drivers (row-level-restrictions-fk-drivers)
+  (mt/test-drivers (row-level-restrictions-fk-sql-drivers)
     (testing (str "If we use a parameterized SQL GTAP that joins a Table the user doesn't have access to, does it "
                   "still work? (EE #230) If we pass the query in directly without anything that would require nesting "
                   "it, it should work")
@@ -509,10 +514,11 @@
                 (met/with-gtaps! {:gtaps      {:checkins (parameterized-sql-with-join-gtap-def)}
                                   :attributes {"user" 1}}
                   (mt/run-mbql-query checkins
-                    {:limit 2})))))))))
+                    {:order-by [[:asc $id]]
+                     :limit 2})))))))))
 
 (deftest sql-with-join-test-2
-  (mt/test-drivers (row-level-restrictions-fk-drivers)
+  (mt/test-drivers (row-level-restrictions-fk-sql-drivers)
     (testing (str "If we use a parameterized SQL GTAP that joins a Table the user doesn't have access to, does it "
                   "still work? (EE #230) If we pass the query in directly without anything that would require nesting "
                   "it, it should work")
@@ -523,7 +529,8 @@
                 (met/with-gtaps! {:gtaps      {:checkins (parameterized-sql-with-join-gtap-def)}
                                   :attributes {"user" 1}}
                   (mt/run-mbql-query checkins
-                    {:limit 2})))))))))
+                    {:order-by [[:asc $id]]
+                     :limit 2})))))))))
 
 (deftest correct-metadata-test
   (testing (str "We should return the same metadata as the original Table when running a query against a sandboxed "
