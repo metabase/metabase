@@ -49,7 +49,7 @@
         (when (.add queued-set payload)
           (let [accepted? (.offer ^Queue async-queue msg)]
             (when-not accepted?
-             (.remove queued-set payload))
+              (.remove queued-set payload))
             accepted?)))))
   (blockingPut! [_ msg]
    ;; we cannot hold the lock while we push, so there is some chance of a duplicate
