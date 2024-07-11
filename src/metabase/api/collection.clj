@@ -1266,7 +1266,7 @@
    groups     :map
    revision   ms/PositiveInt}
   (api/check-superuser)
-  (update-graph! namespace
+  (update-graph! (when namespace (keyword namespace))
                  (decode-graph {:revision revision :groups groups})
                  skip_graph))
 
