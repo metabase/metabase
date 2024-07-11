@@ -12,15 +12,14 @@ import type { FieldId, FieldValue } from "metabase-types/api";
 import { getEffectiveOptions } from "../utils";
 
 import { SEARCH_DEBOUNCE, SEARCH_LIMIT } from "./constants";
-import { shouldSearch } from "./utils";
+import { getNothingFoundMessage, getIsSearchStale } from "./utils";
 
 interface SearchValuePickerProps {
   fieldId: FieldId;
   searchFieldId: FieldId;
   fieldValues: FieldValue[];
   selectedValues: string[];
-  placeholder: string;
-  nothingFoundMessage: string;
+  columnName: string;
   shouldCreate?: (query: string, values: string[]) => boolean;
   autoFocus: boolean;
   onChange: (newValues: string[]) => void;
@@ -31,8 +30,7 @@ export function SearchValuePicker({
   searchFieldId,
   fieldValues: initialFieldValues,
   selectedValues,
-  placeholder,
-  nothingFoundMessage,
+  columnName,
   shouldCreate,
   autoFocus,
   onChange,
@@ -47,6 +45,7 @@ export function SearchValuePicker({
 
   const {
     data: searchFieldValues = initialFieldValues,
+    error: searchError,
     isFetching: isSearching,
   } = useSearchFieldValuesQuery(
     {
@@ -81,10 +80,17 @@ export function SearchValuePicker({
     [remappedFieldValues, searchFieldValues, canSearch, canRemap],
   );
 
-  const isSearchStale = shouldSearch(
+  const isFetching = isSearching || isRemapping;
+  const isSearchStale = getIsSearchStale(
     searchValue,
     searchQuery,
     searchFieldValues,
+  );
+  const nothingFoundMessage = getNothingFoundMessage(
+    columnName,
+    searchError,
+    isSearching,
+    isSearchStale,
   );
 
   const handleSearchChange = (newSearchValue: string) => {
@@ -100,8 +106,6 @@ export function SearchValuePicker({
     }
   };
 
-  const isFetching = isSearching || isRemapping;
-  const isSearchComplete = !isSearching && !isSearchStale;
   useDebounce(handleSearchTimeout, SEARCH_DEBOUNCE, [searchValue]);
 
   return (
@@ -109,13 +113,13 @@ export function SearchValuePicker({
       data={options}
       value={selectedValues}
       searchValue={searchValue}
-      placeholder={placeholder}
+      placeholder={t`Search by ${columnName}`}
       searchable
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
       shouldCreate={shouldCreate}
       rightSection={isFetching ? <Loader /> : null}
-      nothingFound={isSearchComplete ? nothingFoundMessage : null}
+      nothingFound={nothingFoundMessage}
       onChange={onChange}
       onSearchChange={handleSearchChange}
     />
