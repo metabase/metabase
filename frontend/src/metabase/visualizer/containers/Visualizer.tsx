@@ -8,7 +8,7 @@ import type { Location } from "history";
 import { useEffect, useMemo, useState } from "react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import type { WithRouterProps } from "react-router";
-import { usePrevious } from "react-use";
+import { useMount, usePrevious } from "react-use";
 import _ from "underscore";
 
 import { utf8_to_b64url, b64hash_to_utf8 } from "metabase/lib/encoding";
@@ -30,9 +30,13 @@ export function Visualizer({ router, location }: WithRouterProps) {
   const [focusedSeriesIndex, setFocusedSeriesIndex] = useState<number | null>(
     null,
   );
+
+  const [vizType, _setVizType] = useState("bar");
   const [isVizSettingsOpen, setVizSettingsOpen] = useState(false);
 
   const metadata = useSelector(getMetadata);
+
+  const previousLocation = usePrevious(location);
 
   const {
     series,
@@ -55,7 +59,19 @@ export function Visualizer({ router, location }: WithRouterProps) {
     },
   });
 
-  const previousLocation = usePrevious(location);
+  useMount(() => {
+    const [card] = getInitialCards(location);
+    if (card) {
+      if (card.display === "scalar") {
+        _setVizType(
+          card.visualization_settings?.["scalar.multiseries.display"] ??
+            "scalar",
+        );
+      } else {
+        _setVizType(card.display);
+      }
+    }
+  });
 
   useEffect(() => {
     if (previousLocation && location.hash !== previousLocation.hash) {
@@ -78,6 +94,24 @@ export function Visualizer({ router, location }: WithRouterProps) {
   const mouseSensor = useSensor(MouseSensor, {
     activationConstraint: { distance: 10 },
   });
+
+  const handleChangeVizType = (display: string) => {
+    _setVizType(display);
+    if (series.length === 0) {
+      return;
+    }
+    const [{ card }] = series;
+    if (card.display === "scalar") {
+      updateSeriesCard(0, {
+        visualization_settings: {
+          ...card.visualization_settings,
+          "scalar.multiseries.display": display,
+        },
+      });
+    } else {
+      updateSeriesCard(0, { display });
+    }
+  };
 
   const handleChangeQuery = (question: Question) => {
     if (typeof focusedSeriesIndex === "number") {
@@ -115,9 +149,9 @@ export function Visualizer({ router, location }: WithRouterProps) {
                   <VisualizerUsed
                     series={series}
                     onFocusSeries={setFocusedSeriesIndex}
-                    onVizTypeChange={(index, display) =>
-                      updateSeriesCard(index, { display })
-                    }
+                    onVizTypeChange={(index, display) => {
+                      updateSeriesCard(index, { display });
+                    }}
                     onRefreshData={refreshSeriesData}
                     onRemoveSeries={removeSeries}
                   />
@@ -130,7 +164,9 @@ export function Visualizer({ router, location }: WithRouterProps) {
             <VisualizerCanvas
               series={series}
               settings={settings}
+              vizType={vizType}
               onToggleVizSettings={() => setVizSettingsOpen(isOpen => !isOpen)}
+              onVizTypeChange={handleChangeVizType}
               onChange={setVizSettings}
               onChangeCardAndRun={handleChangeCardAndRun}
             />

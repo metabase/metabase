@@ -19,8 +19,6 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { CartesianChart } from "metabase/visualizations/visualizations/CartesianChart";
-import { Funnel } from "metabase/visualizations/visualizations/Funnel";
 
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
 import { TITLE_ICON_SIZE } from "./constants";
@@ -159,14 +157,20 @@ export class Scalar extends Component {
     } = this.props;
 
     if (rawSeries.length > 1) {
-      const isFunnel = settings["scalar.multiseries.display"] === "funnel";
+      const isCartesian = [
+        "area",
+        "bar",
+        "combo",
+        "line",
+        "scatter",
+        "waterfall",
+      ].includes(settings["scalar.multiseries.display"]);
       return (
         <TransformedVisualization
           transformSeries={
-            isFunnel ? scalarToFunnelTransform : scalarToCartesianTransform
+            isCartesian ? scalarToCartesianTransform : scalarToFunnelTransform
           }
           originalProps={this.props}
-          VisualizationComponent={isFunnel ? Funnel : CartesianChart}
         />
       );
     }

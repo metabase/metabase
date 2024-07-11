@@ -1,6 +1,7 @@
 import type React from "react";
 import { useMemo, useCallback } from "react";
 
+import { getVisualizationRaw } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type {
   ComputedVisualizationSettings,
@@ -20,13 +21,13 @@ export type TransformSeries = (
 export interface TransformedVisualizationProps {
   transformSeries: TransformSeries;
   originalProps: VisualizationProps;
-  VisualizationComponent: React.FC<VisualizationProps>;
+  VisualizationComponent?: React.FC<VisualizationProps>;
   renderingContext: RenderingContext;
 }
 
 export const TransformedVisualization = ({
   originalProps,
-  VisualizationComponent,
+  VisualizationComponent: _VisualizationComponent,
   transformSeries,
   renderingContext,
 }: TransformedVisualizationProps) => {
@@ -40,6 +41,9 @@ export const TransformedVisualization = ({
   const transformedSettings = useMemo(() => {
     return getComputedSettingsForSeries(transformedSeries);
   }, [transformedSeries]);
+
+  const VisualizationComponent =
+    _VisualizationComponent || getVisualizationRaw(transformedSeries);
 
   const handleChangeCardCandRun: OnChangeCardAndRun = useCallback(
     (options: OnChangeCardAndRunOpts) => {
@@ -72,6 +76,7 @@ export const TransformedVisualization = ({
   return (
     <VisualizationComponent
       {...restProps}
+      series={transformedSeries}
       rawSeries={transformedSeries}
       settings={transformedSettings}
       onChangeCardAndRun={handleChangeCardCandRun}

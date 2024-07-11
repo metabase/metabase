@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import type { TransformSeries } from "metabase/visualizations/components/TransformedVisualization";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import type { SingleSeries } from "metabase-types/api";
+import type { DatasetColumn, SingleSeries } from "metabase-types/api";
 
 import { findScalarMetricColumnIndex } from "./utils";
 
@@ -27,14 +27,14 @@ export const scalarToFunnelTransform: TransformSeries = rawSeries => {
     },
   ];
 
+  const display =
+    firstSeries.card?.visualization_settings?.["scalar.multiseries.display"] ??
+    "table";
+
   const transformedCard = {
     ...firstSeries.card,
-    display: "funnel",
-    visualization_settings: {
-      "funnel.type": "funnel",
-      "funnel.dimensions": [cols[0].name],
-      "funnel.metrics": [cols[1].name],
-    },
+    display,
+    visualization_settings: getTransformedSettings(display, cols),
   };
 
   const transformedSeries: SingleSeries = {
@@ -53,3 +53,14 @@ export const scalarToFunnelTransform: TransformSeries = rawSeries => {
 
   return [transformedSeries];
 };
+
+function getTransformedSettings(display: string, cols: DatasetColumn[]) {
+  if (display === "funnel") {
+    return {
+      "funnel.type": "funnel",
+      "funnel.dimensions": [cols[0].name],
+      "funnel.metrics": [cols[1].name],
+    };
+  }
+  return {};
+}
