@@ -1196,7 +1196,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
 
     visitDashboard("@dashboardId");
 
-    cy.intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}`).as(
+    cy.intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}*`).as(
       "loadTargetDashboard",
     );
     cartesianChartCircle().eq(25).click({ force: true });

@@ -4,7 +4,6 @@ import { Form, FormProvider } from "metabase/forms";
 
 import FormFileInput from "./FormFileInput";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/FormFileInput",
   component: FormFileInput,

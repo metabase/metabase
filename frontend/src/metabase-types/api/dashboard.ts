@@ -272,6 +272,11 @@ export type UpdateDashboardRequest = {
   position?: number | null;
 };
 
+export type GetDashboardQueryMetadataRequest = {
+  id: DashboardId;
+  dashboard_load_id?: string;
+};
+
 export type SaveDashboardRequest = Omit<UpdateDashboardRequest, "id">;
 
 export type CopyDashboardRequest = {

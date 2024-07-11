@@ -125,8 +125,11 @@
    {:where    [:and
                [:= :user_id user-id]
                [:= :model (h2x/literal "dashboard")]
-               [:> :timestamp (t/minus (t/zoned-date-time) (t/days 1))]]
-    :order-by [[:id :desc]]}))
+               [:> :timestamp (t/minus (t/zoned-date-time) (t/days 1))]
+               [:not= :d.archived true]]
+    :order-by [[:recent_views.id :desc]]
+    :left-join [[:report_dashboard :d]
+                [:= :recent_views.model_id :d.id]]}))
 
 (def Item
   "The shape of a recent view item, returned from `GET /recent_views`."

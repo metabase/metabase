@@ -39,6 +39,7 @@ export const CollectionLink = styled(Link)`
     &,
     * {
       color: var(--mb-color-brand);
+
       .collection-path-separator {
         color: var(--mb-color-brand-alpha-88);
       }

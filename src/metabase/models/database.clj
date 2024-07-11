@@ -76,15 +76,11 @@
   ([_model pk]
    (if (should-read-audit-db? pk)
      false
-     (and (= :unrestricted (data-perms/full-db-permission-for-user
-                            api/*current-user-id*
-                            :perms/view-data
-                            pk))
-          (contains? #{:query-builder :query-builder-and-native}
-                    (data-perms/most-permissive-database-permission-for-user
-                     api/*current-user-id*
-                     :perms/create-queries
-                     pk))))))
+     (contains? #{:query-builder :query-builder-and-native}
+                (data-perms/most-permissive-database-permission-for-user
+                 api/*current-user-id*
+                 :perms/create-queries
+                 pk)))))
 
 (defenterprise current-user-can-write-db?
   "OSS implementation. Returns a boolean whether the current user can write the given field."
@@ -212,6 +208,10 @@
   [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
   (delete-orphaned-secrets! database)
+  ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
+  ;; foreign key constraints in generated columns. #44866
+  (when-some [table-ids (not-empty (t2/select-pks-vec :model/Table :db_id id))]
+    (t2/delete! :model/Field :table_id [:in table-ids]))
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e

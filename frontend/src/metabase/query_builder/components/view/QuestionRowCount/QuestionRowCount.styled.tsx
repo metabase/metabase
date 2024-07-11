@@ -6,7 +6,6 @@ export const RowCountButton = styled.button<{ highlighted?: boolean }>`
   color: ${props =>
     props.highlighted ? color("brand") : color("text-medium")};
   font-weight: bold;
-
   cursor: pointer;
 
   &:hover {

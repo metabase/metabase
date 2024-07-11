@@ -27,6 +27,8 @@ import {
   join,
   newButton,
   saveQuestion,
+  modal,
+  filter,
 } from "e2e/support/helpers";
 
 const {
@@ -1261,5 +1263,93 @@ describe("issue 42385", { tags: "@external" }, () => {
       cy.findByLabelText("Left column").should("not.exist");
       cy.findByLabelText("Right column").should("not.exist");
     });
+  });
+
+  it("should remove invalid join clause in incomplete draft state when query database changes (metabase#42385)", () => {
+    openOrdersTable({ mode: "notebook" });
+    join();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
+
+    getNotebookStep("join")
+      .findByLabelText("Right table")
+      .findByText("Products")
+      .click();
+
+    entityPickerModal().findByText("Reviews").click();
+
+    getNotebookStep("data").findByTestId("data-step-cell").click();
+    entityPickerModal().within(() => {
+      cy.findByText("QA Postgres12").click();
+      cy.findByText("Reviews").click();
+    });
+
+    getNotebookStep("join").should("not.exist");
+  });
+});
+
+describe("issue 45300", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("joins using the foreign key only should not break the filter modal (metabase#45300)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": REVIEWS_ID,
+          joins: [
+            {
+              fields: "all",
+              strategy: "left-join",
+              alias: "Orders - Product",
+              condition: [
+                "=",
+                ["field", REVIEWS.PRODUCT_ID, { "base-type": "type/Integer" }],
+                [
+                  "field",
+                  ORDERS.PRODUCT_ID,
+                  {
+                    "base-type": "type/Integer",
+                    "join-alias": "Orders - Product",
+                  },
+                ],
+              ],
+              "source-table": ORDERS_ID,
+            },
+          ],
+        },
+        parameters: [],
+      },
+    });
+
+    filter();
+
+    modal().within(() => {
+      // sidebar
+      cy.findByRole("tablist").within(() => {
+        cy.findAllByRole("tab", { name: "Product" }).eq(0).click();
+      });
+
+      // main panel
+      cy.findAllByTestId("filter-column-Category")
+        .should("have.length", 1)
+        .within(() => {
+          cy.findByText("Doohickey").click();
+        });
+
+      cy.button("Apply filters").click();
+      cy.wait("@dataset");
+    });
+
+    cy.findByTestId("filter-pill").should(
+      "have.text",
+      "Product → Category is Doohickey",
+    );
   });
 });
