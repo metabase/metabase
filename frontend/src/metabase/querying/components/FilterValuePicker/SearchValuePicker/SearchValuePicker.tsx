@@ -72,9 +72,9 @@ export function SearchValuePicker({
     () =>
       getEffectiveOptions([
         ...(canRemap ? remappedFieldValues : []),
-        ...(canSearch && !isSearching ? searchFieldValues : []),
+        ...(canSearch ? searchFieldValues : []),
       ]),
-    [searchFieldValues, remappedFieldValues, canSearch, isSearching, canRemap],
+    [searchFieldValues, remappedFieldValues, canSearch, canRemap],
   );
   const isFetching = isSearching || isRemapping;
   const isSearchStale = getIsSearchStale(
