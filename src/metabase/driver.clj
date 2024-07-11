@@ -672,7 +672,7 @@
     :window-functions/offset
 
     ;; Does this driver support parameterized sql, eg. in prepared statements?
-    :pamaterized-sql})
+    :parameterized-sql})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

@@ -14,7 +14,7 @@
 (defmethod tx/supports-timestamptz-type? :sqlite [_driver] false)
 
 ;; TODO: It seems that foreign keys sync does not work on sqlite. The [[metabase.driver-test/describe-table-fks-test]]
-;;       is failing. Resolve that!
+;;       is failing. Resolve that and re-enable feature!
 (defmethod driver/database-supports? [:sqlite :metadata/key-constraints] [_driver _feature _db] (not config/is-test?))
 
 (defn- db-file-name [dbdef]

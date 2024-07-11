@@ -1450,12 +1450,9 @@
                                                             :fields       :all}]
                                             :breakout     [[:field %products.category {:join-alias table-alias}]]
                                             :aggregation  [[:count]]}
-                             :filter       #_[:> *count/Integer 0] [:= *count/Integer 3976]})]
+                             :filter        [:= *count/Integer 3976]})]
           (mt/with-native-query-testing-context query
-            (is (= [["Doohickey" 3976]
-                    #_["Gadget"    4939]
-                    #_["Gizmo"     4784]
-                    #_["Widget"    5061]]
+            (is (= [["Doohickey" 3976]]
                    (mt/formatted-rows [str int]
                      (qp/process-query query))))))))))
 
