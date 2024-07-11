@@ -28,6 +28,8 @@ import {
 import { DisplayOptionSection } from "../StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "../StaticEmbedSetupPaneSettingsContentSection";
 
+import { UpsellMetabaseBanner } from "./UpsellMetabaseBanner";
+
 const THEME_OPTIONS = [
   { label: t`Light`, value: "light" },
   { label: t`Dark`, value: "night" },
@@ -207,18 +209,9 @@ export const LookAndFeelSettings = ({
       {!canWhitelabel && (
         <>
           <Divider my="2rem" />
-          <StaticEmbedSetupPaneSettingsContentSection
-            // eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins
-            title={t`Removing the “Powered by Metabase” banner`}
-          >
-            {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins */}
-            <Text>{jt`This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to ${(
-              <ExternalLink
-                key="bannerPlan"
-                href={upgradePageUrl}
-              >{t`a paid plan`}</ExternalLink>
-            )} to remove the banner.`}</Text>
-          </StaticEmbedSetupPaneSettingsContentSection>
+          <div aria-label={t`Removing the banner`}>
+            <UpsellMetabaseBanner />
+          </div>
         </>
       )}
     </>
