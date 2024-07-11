@@ -282,10 +282,13 @@ export const ADMIN_SETTINGS_SECTIONS = {
     name: t`Authentication`,
     order: 60,
     key: "authentication",
-    tabs: PLUGIN_ADMIN_SETTINGS_AUTH_TABS.map(tab => ({
-      ...tab,
-      isActive: tab.key === "authentication",
-    })),
+    tabs:
+      PLUGIN_ADMIN_SETTINGS_AUTH_TABS.length === 1
+        ? undefined
+        : PLUGIN_ADMIN_SETTINGS_AUTH_TABS.map(tab => ({
+            ...tab,
+            isActive: tab.key === "authentication",
+          })),
     settings: [], // added by plugins
     adminOnly: true,
   },

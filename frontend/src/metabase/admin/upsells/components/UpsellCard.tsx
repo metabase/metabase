@@ -16,9 +16,10 @@ type UpsellCardProps = {
   source: string;
   illustrationSrc?: string;
   children: React.ReactNode;
+  style?: React.CSSProperties;
 };
 
-export const _UpsellCard = ({
+export const _UpsellCard: React.FC<UpsellCardProps> = ({
   title,
   buttonText,
   buttonLink,
@@ -26,7 +27,8 @@ export const _UpsellCard = ({
   source,
   illustrationSrc,
   children,
-}: UpsellCardProps) => {
+  ...props
+}) => {
   const url = useUpsellLink({
     url: buttonLink,
     campaign,
@@ -38,7 +40,7 @@ export const _UpsellCard = ({
   });
 
   return (
-    <UpsellCardComponent data-testid="upsell-card">
+    <UpsellCardComponent data-testid="upsell-card" {...props}>
       {illustrationSrc && <Image src={illustrationSrc} w="100%" />}
       <Flex gap="sm" justify="center" p="1rem" pb="0.75rem">
         <UpsellGem />

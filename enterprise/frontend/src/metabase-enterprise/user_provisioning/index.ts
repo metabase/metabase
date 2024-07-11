@@ -9,15 +9,27 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { UserProvisioning } from "./components/UserProvisioning";
 
 if (hasPremiumFeature("scim")) {
-  // add as the second tab
-  PLUGIN_ADMIN_SETTINGS_AUTH_TABS.splice(1, 0, {
+  PLUGIN_ADMIN_SETTINGS_AUTH_TABS.push({
     name: t`User Provisioning`,
     key: "user-provisioning",
     to: "/admin/settings/authentication/user-provisioning",
   });
 
+  // when scim is enabled, replace the api keys auth card with a tab in the auth section
+  PLUGIN_ADMIN_SETTINGS_AUTH_TABS.push({
+    name: t`API Keys`,
+    key: "api-keys",
+    to: "/admin/settings/authentication/api-keys",
+  });
+
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     ...sections,
+    authentication: {
+      ...sections.authentication,
+      settings: sections.authentication.settings.filter(
+        setting => setting.key !== "api-keys",
+      ),
+    },
     "authentication/user-provisioning": {
       settings: [
         {

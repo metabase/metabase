@@ -12,12 +12,6 @@ PLUGIN_ADMIN_SETTINGS_AUTH_TABS.push({
   to: "/admin/settings/authentication",
 });
 
-PLUGIN_ADMIN_SETTINGS_AUTH_TABS.push({
-  name: t`API Keys`,
-  key: "api-keys",
-  to: "/admin/settings/authentication/api-keys",
-});
-
 interface AuthTabsProps {
   activeKey: string;
 }

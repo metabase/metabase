@@ -10,6 +10,7 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
+import { UpsellAuthFeatures } from "metabase/admin/upsells";
 import { AdminLayout } from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/components/ErrorPages";
 import SaveStatus from "metabase/components/SaveStatus";
@@ -18,6 +19,7 @@ import CS from "metabase/css/core/index.css";
 import title from "metabase/hoc/Title";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
+import { Box } from "metabase/ui";
 
 import {
   getActiveSection,
@@ -261,11 +263,30 @@ class SettingsEditor extends Component {
     );
   }
 
+  renderUpsell() {
+    const upsell =
+      this.props.activeSectionName === "authentication" ||
+      this.props.activeSectionName.startsWith("authentication/") ? (
+        <UpsellAuthFeatures />
+      ) : null;
+
+    if (!upsell) {
+      return null;
+    }
+
+    return <Box style={{ flexShrink: 0 }}>{upsell}</Box>;
+  }
+
   render() {
     return (
-      <AdminLayout sidebar={this.renderSettingsSections()}>
-        <SaveStatus ref={this.saveStatusRef} />
-        <ErrorBoundary>{this.renderSettingsPane()}</ErrorBoundary>
+      <AdminLayout
+        sidebar={this.renderSettingsSections()}
+        upsell={this.renderUpsell()}
+      >
+        <Box w="100%">
+          <SaveStatus ref={this.saveStatusRef} />
+          <ErrorBoundary>{this.renderSettingsPane()}</ErrorBoundary>
+        </Box>
       </AdminLayout>
     );
   }
