@@ -1,21 +1,18 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { createRef, forwardRef, Component } from "react";
+import { createRef, Component } from "react";
 import { findDOMNode } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { connect } from "react-redux";
 import { Grid, ScrollSync } from "react-virtualized";
-import { t } from "ttag";
 import _ from "underscore";
 
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
-import Button from "metabase/core/components/Button";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { getScrollBarSize } from "metabase/lib/dom";
@@ -29,7 +26,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { Box, Button as UIButton, Icon, DelayGroup } from "metabase/ui";
+import { Box, Icon, DelayGroup } from "metabase/ui";
 import {
   getTableCellClickedObject,
   getTableHeaderClickedObject,
@@ -44,6 +41,8 @@ import { memoizeClass } from "metabase-lib/v1/utils";
 
 import MiniBar from "../MiniBar";
 
+import { ColumnShortcut } from "./ColumnShortcut";
+import { DetailShortcut } from "./DetailShortcut";
 import TableS from "./TableInteractive.module.css";
 import {
   TableDraggable,
@@ -51,19 +50,16 @@ import {
   ResizeHandle,
   TableInteractiveRoot,
 } from "./TableInteractive.styled";
+import {
+  HEADER_DRAG_THRESHOLD,
+  HEADER_HEIGHT,
+  MIN_COLUMN_WIDTH,
+  RESIZE_HANDLE_WIDTH,
+  ROW_HEIGHT,
+  SIDEBAR_WIDTH,
+  TRUNCATE_WIDTH,
+} from "./constants";
 import { getCellDataTheme } from "./table-theme-utils";
-
-// approximately 120 chars
-const TRUNCATE_WIDTH = 780;
-
-const HEADER_HEIGHT = 36;
-const ROW_HEIGHT = 36;
-const SIDEBAR_WIDTH = 38;
-
-const MIN_COLUMN_WIDTH = ROW_HEIGHT;
-const RESIZE_HANDLE_WIDTH = 5;
-// if header is dragged fewer than than this number of pixels we consider it a click instead of a drag
-const HEADER_DRAG_THRESHOLD = 5;
 
 // HACK: used to get react-draggable to reset after a drag
 let DRAG_COUNTER = 0;
@@ -1342,69 +1338,3 @@ export default _.compose(
     "getHeaderClickedObject",
   ),
 )(TableInteractive);
-
-const DetailShortcut = forwardRef((_props, ref) => (
-  <div
-    className={cx(
-      TableS.TableInteractiveCellWrapper,
-      "test-TableInteractive-cellWrapper",
-      CS.cursorPointer,
-    )}
-    ref={ref}
-    style={{
-      position: "absolute",
-      left: 0,
-      top: 0,
-      height: ROW_HEIGHT,
-      width: SIDEBAR_WIDTH,
-      zIndex: 3,
-    }}
-    data-testid="detail-shortcut"
-  >
-    <Tooltip tooltip={t`View Details`}>
-      <Button
-        iconOnly
-        iconSize={10}
-        icon="expand"
-        className={CS.TableInteractiveDetailButton}
-      />
-    </Tooltip>
-  </div>
-));
-
-DetailShortcut.displayName = "DetailShortcut";
-
-const COLUMN_SHORTCUT_PADDING = 4;
-
-function ColumnShortcut({ height, pageWidth, totalWidth, onClick }) {
-  if (!totalWidth) {
-    return null;
-  }
-
-  const isOverflowing = totalWidth > pageWidth;
-  const width = HEADER_HEIGHT + (isOverflowing ? COLUMN_SHORTCUT_PADDING : 0);
-
-  return (
-    <div
-      className={cx(
-        TableS.shortcutsWrapper,
-        isOverflowing && TableS.isOverflowing,
-      )}
-      style={{
-        height,
-        width,
-        left: isOverflowing ? undefined : totalWidth,
-        right: isOverflowing ? 0 : undefined,
-      }}
-    >
-      <UIButton
-        variant="outline"
-        compact
-        leftIcon={<Icon name="add" />}
-        title={t`Add column`}
-        aria-label={t`Add column`}
-        onClick={onClick}
-      />
-    </div>
-  );
-}
