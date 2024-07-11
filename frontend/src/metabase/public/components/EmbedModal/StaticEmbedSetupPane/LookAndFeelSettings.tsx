@@ -1,6 +1,7 @@
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
+import { UpsellMetabaseBanner } from "metabase/admin/upsells/UpsellMetabaseBanner";
 import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
@@ -25,10 +26,8 @@ import {
   Text,
 } from "metabase/ui";
 
-import { DisplayOptionSection } from "../StaticEmbedSetupPane.styled";
-import { StaticEmbedSetupPaneSettingsContentSection } from "../StaticEmbedSetupPaneSettingsContentSection";
-
-import { UpsellMetabaseBanner } from "./UpsellMetabaseBanner";
+import { DisplayOptionSection } from "./StaticEmbedSetupPane.styled";
+import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 
 const THEME_OPTIONS = [
   { label: t`Light`, value: "light" },
