@@ -1,5 +1,4 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   type StructuredQuestionDetails,
   createNativeQuestion,
@@ -811,16 +810,32 @@ describe("issue 34574", () => {
   });
 
   it("should accept markdown for model description and render it properly (metabase#34574)", () => {
-    visitModel(ORDERS_MODEL_ID);
-    questionInfoButton().click();
+    const modelDetails: StructuredQuestionDetails = {
+      name: "34574",
+      type: "model",
+      query: {
+        "source-table": PRODUCTS_ID,
+        limit: 2,
+      },
+    };
+    createQuestion(modelDetails).then(({ body: { id: modelId } }) =>
+      visitModel(modelId),
+    );
+
+    cy.findByTestId("qb-header-action-panel").within(() => {
+      // make sure the model fully loaded
+      cy.findByTestId("run-button").should("exist");
+      questionInfoButton().click();
+    });
+
     cy.findByTestId("sidebar-right").within(() => {
       cy.log("Set the model description to a markdown text");
-      cy.intercept("PUT", `/api/card/${ORDERS_MODEL_ID}`).as("updateModel");
+      cy.intercept("GET", "/api/card/*/query_metadata").as("metadata");
       cy.findByPlaceholderText("Add description").type(
         "# Hello{enter}## World{enter}This is an **important** description!",
       );
       cy.realPress("Tab");
-      cy.wait("@updateModel");
+      cy.wait("@metadata");
 
       cy.log("Make sure we immediately render the proper markdown");
       cy.findByTestId("editable-text").within(assertMarkdownPreview);
@@ -838,7 +853,7 @@ describe("issue 34574", () => {
     cy.findByTestId("app-bar").findByText("Our analytics").click();
     cy.location("pathname").should("eq", "/collection/root");
     cy.findAllByTestId("collection-entry-name")
-      .filter(":contains(Orders Model)")
+      .filter(`:contains(${modelDetails.name})`)
       .icon("info")
       .realHover();
     cy.findByRole("tooltip")
