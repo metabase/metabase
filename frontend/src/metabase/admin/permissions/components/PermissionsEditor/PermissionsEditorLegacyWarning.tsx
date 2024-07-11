@@ -28,7 +28,7 @@ export const PermissionsEditorLegacyNoSelfServiceWarning = () => {
             <Anchor
               fw="bold"
               target="_blank"
-              href="https://www.metabase.com/docs/v0.50/permissions/no-self-service-deprecated"
+              href="https://www.metabase.com/docs/v0.50/permissions/no-self-service-deprecation"
               style={{ color: colors.accent7 }}
             >{t`Need help? See our docs.`}</Anchor>
           </Text>
