@@ -10,53 +10,71 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest deduplicateing-bounded-blocking-queue-test
-  (let [capacity         10
-        q                (queue/bounded-transfer-queue capacity :sleep-ms 10 :block-ms 10 :dedupe? true)
-        realtime-threads 5
-        n-real           300
-        n-back           10000
-        dropped          (volatile! 0)
-        realtime-fn      (fn []
-                           (let [id (rand-int 1000)]
-                             (dotimes [i n-real]
-                               ;; Enqueue realtime events from newest to oldest
-                               (let [payload (- (dec n-back) i)]
-                                 (when-not (queue/maybePut! q {:thread (str "real-" id) :payload payload})
-                                   (vswap! dropped inc)))
-                               (Thread/sleep 1))))
-        background-fn    (fn []
-                           (dotimes [i n-back]
-                             ;; Enqueue background events from oldest to newest
-                             (queue/blockingPut! q {:thread "back", :payload i})))
-        run!             (fn [f]
-                           (future (f)))]
+(defn- simulate-queue! [queue &
+                        {:keys [realtime-threads realtime-events backfill-events]
+                         :or   {realtime-threads 5}}]
+  (let [sent          (atom 0)
+        dropped       (atom 0)
+        skipped       (atom 0)
+        realtime-fn   (fn []
+                        (let [id (rand-int 1000)]
+                          (doseq [e realtime-events]
+                            (case (queue/maybePut! queue {:thread (str "real-" id) :payload e})
+                              true  (swap! sent inc)
+                              false (swap! dropped inc)
+                              nil   (swap! skipped inc)))))
+        background-fn (fn []
+                        (doseq [e backfill-events]
+                          (queue/blockingPut! queue {:thread "back", :payload e})))
+        run!          (fn [f]
+                        (future (f)))]
 
     (run! background-fn)
     (future
-      (dotimes [i realtime-threads]
-        ;; Stagger out when the realtime threads start
-        (Thread/sleep ^long (* 100 i))
-        (run! realtime-fn)))
+     (dotimes [_ realtime-threads]
+       (run! realtime-fn)))
 
     (let [processed (volatile! [])]
       (try
         (while true
           ;; Stop the consumer once we are sure that there are no more events coming.
           (u/with-timeout 100
-            (vswap! processed conj (:payload (queue/blockingTake! q)))))
-        (testing "This is never reached"
-          (is false))
+            (vswap! processed conj (:payload (queue/blockingTake! queue)))
+            (Thread/sleep 1)))
+        (assert false "this is never reached")
         (catch Exception _
-          (testing "We processed at least as many events as guaranteed"
-            (is (>= (count @processed) (+ n-back capacity))))
-          (testing "Some items are dropped"
-            (is (pos? @dropped)))
-          (testing "Some items are deduplicated"
-            (is (< (count @processed) (+ n-back (* realtime-threads n-real)))))
-          (testing "Every item is processed"
-            (is (= (set (range n-back)) (set @processed))))
-          (testing "The realtime events are processed in order"
-            (mt/ordered-subset? (take n-real (range (dec n-back) 0 -1)) @processed))
-          (testing "No phantom items are left in the set"
-            (is (zero? (.size ^Set (.-queued-set ^DeduplicatingArrayTransferQueue q))))))))))
+          {:processed @processed
+           :sent      @sent
+           :dropped   @dropped
+           :skipped   @skipped})))))
+
+(deftest deduplicating-bounded-blocking-queue-test
+  (let [realtime-event-count 500
+        backfill-event-count 1000
+        capacity        (- realtime-event-count 100)
+        ;; Enqueue background events from oldest to newest
+        backfill-events (range backfill-event-count)
+        ;; Enqueue realtime events from newest to oldest
+        realtime-events (take realtime-event-count (reverse backfill-events))
+        queue           (queue/bounded-transfer-queue capacity :sleep-ms 10 :block-ms 10 :dedupe? true)
+
+        {:keys [processed sent dropped skipped] :as _result}
+        (simulate-queue! queue
+                         :backfill-events backfill-events
+                         :realtime-events realtime-events) ]
+
+    (testing "We processed all the events that were enqueued"
+      (is (= (count processed) (+ (count backfill-events) sent))))
+
+    (testing "Some items are deduplicated"
+      (is (pos? skipped)))
+    (testing "Some items are dropped"
+      (is (pos? dropped)))
+
+    (testing "Every item is processed"
+      (is (= (set (concat backfill-events realtime-events)) (set processed))))
+
+    (testing "The realtime events are processed in order"
+      (mt/ordered-subset? realtime-events processed))
+    (testing "No phantom items are left in the set"
+      (is (zero? (.size ^Set (.-queued-set ^DeduplicatingArrayTransferQueue queue)))))))
