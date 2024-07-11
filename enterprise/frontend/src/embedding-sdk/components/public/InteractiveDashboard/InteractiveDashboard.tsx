@@ -112,7 +112,6 @@ const InteractiveDashboardInner = ({
 
       if (url) {
         dispatch({ type: NAVIGATE_TO_NEW_CARD, payload: { dashboardId } });
-
         setAdhocQuestionUrl(url);
       }
     }
