@@ -47,7 +47,7 @@ const InteractiveDashboardInner = ({
   questionHeight,
   plugins,
   onLoad,
-  onLoadWithCards,
+  onLoadWithoutCards,
   className,
 }: InteractiveDashboardProps) => {
   const {
@@ -166,7 +166,7 @@ const InteractiveDashboardInner = ({
               handleNavigateToNewCardFromDashboard
             }
             onLoad={onLoad}
-            onLoadWithCards={onLoadWithCards}
+            onLoadWithoutCards={onLoadWithoutCards}
           />
         </InteractiveDashboardProvider>
       )}
