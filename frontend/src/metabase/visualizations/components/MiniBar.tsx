@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
@@ -11,7 +10,17 @@ const BORDER_RADIUS = 3;
 
 const LABEL_MIN_WIDTH = 30;
 
-const MiniBar = ({ value, extent: [min, max], options }) => {
+interface MiniBarProps {
+  value: number;
+  extent: [number, number];
+  options: {
+    color: string;
+    label: string;
+    labelMinWidth?: number;
+  };
+}
+
+const MiniBar = ({ value, extent: [min, max], options }: MiniBarProps) => {
   const hasNegative = min < 0;
   const isNegative = value < 0;
   const barPercent =
@@ -90,4 +99,5 @@ const MiniBar = ({ value, extent: [min, max], options }) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export
 export default MiniBar;
