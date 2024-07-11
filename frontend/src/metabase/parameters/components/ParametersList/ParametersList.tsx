@@ -20,19 +20,16 @@ const getId = (valuePopulatedParameter: Parameter) =>
 
 export const ParametersList = ({
   className,
-
   parameters,
   question,
   dashboard,
   editingParameter,
-
   isFullscreen,
   isNightMode,
   hideParameters,
   isEditing,
   vertical = false,
   commitImmediately = false,
-
   setParameterValueToDefault,
   setParameterValue,
   setParameterIndex,
@@ -43,10 +40,16 @@ export const ParametersList = ({
     activationConstraint: { distance: 15 },
   });
 
-  const visibleValuePopulatedParameters = useMemo(
-    () => getVisibleParameters(parameters, hideParameters),
-    [parameters, hideParameters],
-  );
+  const visibleValuePopulatedParameters = useMemo(() => {
+    const visibleParams = getVisibleParameters(parameters, hideParameters);
+    return visibleParams.filter(
+      parameter =>
+        isEditing ||
+        !(
+          parameter.name.startsWith("#hide") || parameter.name.endsWith("#hide")
+        ),
+    );
+  }, [parameters, hideParameters, isEditing]);
 
   const handleSortEnd = useCallback(
     ({ id, newIndex }: DragEndEvent) => {
