@@ -21,6 +21,7 @@ export const UpsellHosting = ({ source }: { source: string }) => {
       buttonLink="https://www.metabase.com/cloud"
       illustrationSrc={RocketGlobeIllustrationSrc}
       source={source}
+      maxWidth={202}
     >
       {jt`${(
         <strong>{t`Migrate to Metabase Cloud`}</strong>
@@ -44,6 +45,7 @@ export const UpsellHostingUpdates = ({ source }: { source: string }) => {
       buttonLink="https://www.metabase.com/cloud"
       illustrationSrc={RocketGlobeIllustrationSrc}
       source={source}
+      maxWidth={202}
     >
       {jt`${(
         <strong>{t`Migrate to Metabase Cloud`}</strong>

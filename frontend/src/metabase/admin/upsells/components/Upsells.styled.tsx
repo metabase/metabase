@@ -58,17 +58,22 @@ export const UpsellCTALink = styled(ExternalLink)`
 
 interface Variants {
   fullWidth?: boolean;
+  maxWidth?: number;
 }
 export const UpsellCardComponent = styled.div<Variants>`
-  ${({ fullWidth }) =>
+  ${({ fullWidth, maxWidth }) =>
     fullWidth
       ? css`
           width: 100%;
         `
+      : maxWidth
+      ? css`
+          max-width: ${maxWidth}px;
+        `
       : css`
           max-width: 200px;
         `}
-  box-sizing: content-box;
+  box-sizing: border-box;
   border-radius: 0.5rem;
   overflow: hidden;
   border: 1px solid ${upsellColors.secondary};

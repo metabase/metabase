@@ -18,11 +18,19 @@ type OwnProps = {
   children: React.ReactNode;
 };
 
-interface Variant {
+interface FullWidthVariant {
+  maxWidth?: never;
   fullWidth?: boolean;
 }
 
-type UpsellCardProps = OwnProps & Variant;
+interface FixWidthVariant {
+  maxWidth?: number;
+  fullWidth?: never;
+}
+
+type Variants = FullWidthVariant | FixWidthVariant;
+
+type UpsellCardProps = OwnProps & Variants;
 
 export const _UpsellCard = ({
   title,
@@ -33,6 +41,7 @@ export const _UpsellCard = ({
   illustrationSrc,
   children,
   fullWidth,
+  maxWidth,
 }: UpsellCardProps) => {
   const url = useUpsellLink({
     url: buttonLink,
@@ -45,7 +54,11 @@ export const _UpsellCard = ({
   });
 
   return (
-    <UpsellCardComponent data-testid="upsell-card" fullWidth={fullWidth}>
+    <UpsellCardComponent
+      data-testid="upsell-card"
+      fullWidth={fullWidth}
+      maxWidth={maxWidth}
+    >
       {illustrationSrc && <Image src={illustrationSrc} w="100%" />}
       <Flex gap="sm" p="1rem" pb="0.75rem">
         <UpsellGem />
