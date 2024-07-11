@@ -26,6 +26,15 @@ export const DashboardSubscriptionButton = () => {
   );
 };
 
+type ShouldRenderSubscriptionButtonProps = {
+  dashboard: Dashboard;
+  canManageSubscriptions: boolean;
+  formInput: any;
+  isAdmin: boolean;
+  isEditing: boolean;
+  isFullscreen: boolean;
+};
+
 export function shouldRenderSubscriptionButton({
   dashboard,
   canManageSubscriptions,
@@ -33,14 +42,7 @@ export function shouldRenderSubscriptionButton({
   isAdmin,
   isEditing,
   isFullscreen,
-}: {
-  dashboard: Dashboard;
-  canManageSubscriptions: boolean;
-  formInput: any;
-  isAdmin: boolean;
-  isEditing: boolean;
-  isFullscreen: boolean;
-}) {
+}: ShouldRenderSubscriptionButtonProps) {
   const isLoaded = !!dashboard;
   const hasCards = isLoaded && dashboard.dashcards.length > 0;
 

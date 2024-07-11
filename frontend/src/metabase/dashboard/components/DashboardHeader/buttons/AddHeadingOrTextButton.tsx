@@ -4,10 +4,10 @@ import {
   addHeadingDashCardToDashboard,
   addMarkdownDashCardToDashboard,
 } from "metabase/dashboard/actions";
-import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/TextOptionsButton";
+import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/buttons/DashboardHeaderButton";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Tooltip } from "metabase/ui";
+import { Group, Icon, Menu, Text } from "metabase/ui";
 
 export const AddHeadingOrTextButton = () => {
   const dispatch = useDispatch();
@@ -36,14 +36,43 @@ export const AddHeadingOrTextButton = () => {
     }
   };
 
+  // TODO: from Oisin - I don't think event is used in EntityMenu.
+  const TEXT_OPTIONS = [
+    {
+      title: t`Heading`,
+      action: onAddHeading,
+      // event: "Dashboard; Add Heading",
+    },
+    {
+      title: t`Text`,
+      action: onAddMarkdownBox,
+      // event: "Dashboard; Add Markdown Box",
+    },
+  ];
+
   return (
-    <Tooltip label={t`Add a heading or text`}>
-      <span>
-        <TextOptionsButton
-          onAddMarkdown={onAddMarkdownBox}
-          onAddHeading={onAddHeading}
-        />
-      </span>
-    </Tooltip>
+    <Menu position="bottom-end">
+      <Menu.Target>
+        <DashboardHeaderButton
+          tooltipLabel={t`Add a heading or text box`}
+          w="3rem"
+          aria-label={t`Add a heading or text box`}
+        >
+          <Group spacing="xs">
+            <Icon name="string" size={18} />
+            <Icon name="chevrondown" size={10} />
+          </Group>
+        </DashboardHeaderButton>
+      </Menu.Target>
+      <Menu.Dropdown miw="auto">
+        {TEXT_OPTIONS.map(({ title, action }) => (
+          <Menu.Item key={title} onClick={action}>
+            <Text pr="xl" fw="bold">
+              {title}
+            </Text>
+          </Menu.Item>
+        ))}
+      </Menu.Dropdown>
+    </Menu>
   );
 };

@@ -13,7 +13,9 @@ import { dismissAllUndo } from "metabase/redux/undo";
 import { Tooltip } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
-export const SaveEditButton = (props: { onDoneEditing: () => void }) => {
+type SaveEditButtonProps = { onDoneEditing: () => void };
+
+export const SaveEditButton = ({ onDoneEditing }: SaveEditButtonProps) => {
   const dispatch = useDispatch();
 
   const missingRequiredParameters = useSelector(getMissingRequiredParameters);
@@ -24,7 +26,7 @@ export const SaveEditButton = (props: { onDoneEditing: () => void }) => {
   const isSaveDisabled = missingRequiredParameters.length > 0;
 
   const handleDoneEditing = () => {
-    props.onDoneEditing();
+    onDoneEditing();
     dispatch(setEditingDashboard(null));
   };
 

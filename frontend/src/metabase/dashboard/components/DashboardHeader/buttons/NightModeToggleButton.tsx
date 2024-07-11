@@ -1,19 +1,18 @@
 import { t } from "ttag";
 
+import type { EmbedThemeControls } from "metabase/dashboard/types";
+
 import { DashboardHeaderButton } from "./DashboardHeaderButton";
 
 export const NightModeToggleButton = ({
   isNightMode,
   onNightModeChange,
-}: {
-  isNightMode: boolean | undefined;
-  onNightModeChange: (isNightMode: boolean) => void;
-}) => {
+}: Pick<EmbedThemeControls, "isNightMode" | "onNightModeChange">) => {
   const label = isNightMode ? t`Daytime mode` : t`Nighttime mode`;
   return (
     <DashboardHeaderButton
       icon={isNightMode ? "sun" : "moon"}
-      onClick={() => onNightModeChange(!isNightMode)}
+      onClick={() => onNightModeChange?.(!isNightMode)}
       tooltipLabel={label}
       aria-label={label}
     />
