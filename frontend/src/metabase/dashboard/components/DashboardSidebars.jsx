@@ -2,6 +2,7 @@ import PropTypes from "prop-types";
 import { useCallback } from "react";
 import _ from "underscore";
 
+import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/Dashboard/use-set-dashboard-attribute";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
   getEditingParameter,
@@ -45,7 +46,6 @@ DashboardSidebars.propTypes = {
     props: PropTypes.object,
   }).isRequired,
   closeSidebar: PropTypes.func.isRequired,
-  setDashboardAttribute: PropTypes.func,
   selectedTabId: PropTypes.number,
 };
 
@@ -73,7 +73,6 @@ export function DashboardSidebars({
   params,
   sidebar,
   closeSidebar,
-  setDashboardAttribute,
   selectedTabId,
 }) {
   const parameters = useSelector(getParameters);
@@ -90,6 +89,8 @@ export function DashboardSidebars({
     },
     [addCardToDashboard, dashboard.id, selectedTabId],
   );
+
+  const handleSetDashboardAttribute = useSetDashboardAttributeHandler();
 
   if (isFullscreen) {
     return null;
@@ -169,7 +170,7 @@ export function DashboardSidebars({
       return (
         <DashboardInfoSidebar
           dashboard={dashboard}
-          setDashboardAttribute={setDashboardAttribute}
+          setDashboardAttribute={handleSetDashboardAttribute}
         />
       );
     default:
