@@ -290,7 +290,7 @@
           (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (2, NULL)"    username)
           (sync/sync-database! (mt/db) {:scan :schema})
           (let [table    (t2/select-one :model/Table :schema username, :name "messages", :db_id (mt/id))
-                id-field (t2/select-one :model/Field :table_id (u/the-id table), :name "id", :base_type "type/Integer")]
+                id-field (t2/select-one :model/Field :table_id (u/the-id table), :name "id")]
             (testing "The CLOB is synced as a text field"
               (let [base-type (t2/select-one-fn :base_type :model/Field :table_id (u/the-id table), :name "message")]
                 ;; type/OracleCLOB is important for skipping fingerprinting and field values scanning #44109
