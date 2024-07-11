@@ -605,11 +605,44 @@ const theme = {
 };
 ```
 
-### Implementing custom actions
+### Plugins
 
-`MetabaseProvider` also supports `pluginsConfig`. You can use `pluginsConfig` to customize the behavior of components. Currently we only allow configuring `mapQuestionClickActions` which lets you add custom actions or remove Metabase default actions in `InteractiveQuestion` component.
+The Metabase Embedding SDK supports plugins to customize the behavior of components. These plugins can be used in a
+global context or on a per-component basis. This list of plugins will continue to grow as we add more options to each
+component.
 
-We'll support more plugins in next releases. Please share your uses cases for us!
+To use a plugin globally, add the plugin to the `MetabaseProvider`'s `pluginsConfig` prop:
+
+```jsx
+<MetabaseProvider
+  config={config}
+  theme={theme}
+  pluginsConfig={{
+    mapQuestionClickActions: [...] // Add your custom actions here
+  }}
+>
+  {children}
+</MetabaseProvider>
+```
+
+To use a plugin on a per-component basis, pass the plugin as a prop to the component:
+
+```jsx
+ <InteractiveQuestion
+      plugins={{
+        mapQuestionClickActions: [...],
+      }}
+      {...otherProps}
+/>
+```
+
+#### _Interactive Question_
+
+###### `mapQuestionClickActions`
+
+This plugin allows you to add custom actions to
+the click-through menu of an interactive question. You can add and
+customize the appearance and behavior of the custom actions.
 
 ```jsx
 // You can provide a custom action with your own `onClick` logic.
@@ -665,6 +698,118 @@ return (
     <InteractiveQuestion questionId={questionId} />
   </MetabaseProvider>
 );
+```
+
+#### _Interactive Dashboard_
+
+###### `dashcardMenu`
+
+This plugin allows you to add, remove, and modify the custom actions on the overflow menu of dashboard cards. The plugin
+appears as a dropdown menu on the top right corner of the card.
+
+The plugin's default configuration looks like this:
+
+```jsx
+const plugins = {
+  dashboard: {
+    dashcardMenu: {
+         withDownloads: true,
+         withEditLink: true,
+         customItems: [],
+    }
+  } 
+};
+```
+
+and can be used in the InteractiveDashboard like this:
+
+```jsx
+<InteractiveDashboard 
+    questionId={...}
+    plugins={{
+        dashboard: {
+            dashcardMenu: [your config here]
+        }
+    }}
+>
+```
+
+Take a look below to see how you can customize the plugin:
+
+###### Enabling/disabling default actions
+
+To remove the download button from the dashcard menu, set `withDownloads` to `false`. To remove the edit link from the
+dashcard menu, set `withEditLink` to `false`.
+
+```jsx
+const plugins = {
+  dashboard: {
+    dashcardMenu: {
+         withDownloads: false,
+         withEditLink: false,
+         customItems: [],
+    }
+  } 
+};
+```
+
+###### Adding custom actions to the existing menu:
+
+You can add custom actions to the dashcard menu by adding an object to the `customItems` array. Each element can either
+be an object or a function that takes in the dashcard's question, and outputs a list of custom items in the form of:
+
+```jsx
+{
+  iconName: string;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+}
+```
+
+```jsx
+const plugins: SdkPluginsConfig = {
+    dashboard: {
+      dashcardMenu: {
+        customItems: [
+          {
+            iconName: "chevronright",
+            label: "Custom action",
+            onClick: () => {
+              alert(`Custom action clicked`)
+            },
+          },
+          ({ question }) => {
+            return {
+              iconName: "chevronright",
+              label: "Custom action",
+              onClick: () => {
+                alert(`Custom action clicked ${question.name}`)
+              },
+            }
+          },
+        ],
+      },
+    },
+  }
+```
+
+###### Replacing the existing menu with your own component
+
+If you want to replace the existing menu with your own component, you can do so by providing a function that returns a
+React component. This function also can receive the question as an argument.
+
+```jsx
+const plugins: SdkPluginsConfig = {
+  dashboard: {
+    dashcardMenu: ({question}) => (
+        <button onClick={() => console.log(question.name)}>
+            Click me
+        </button>
+    )
+  } 
+};
+
 ```
 
 ### Adding global event handlers
