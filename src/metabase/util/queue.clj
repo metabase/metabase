@@ -64,7 +64,7 @@
         (do (Thread/sleep ^long sleep-ms)
             (recur)))))
 
-(defn bounded-transaction-queue
+(defn bounded-transfer-queue
   "Create a bounded transfer queue, specialized based on the high-level options."
   [capacity & {:keys [block-ms sleep-ms dedupe?]
                :or   {block-ms 100

@@ -11,7 +11,7 @@
 
 (deftest deduplicateing-bounded-blocking-queue-test
   (let [capacity         10
-        q                (queue/bounded-transaction-queue capacity :sleep-ms 10 :block-ms 10 :dedupe? true)
+        q                (queue/bounded-transfer-queue capacity :sleep-ms 10 :block-ms 10 :dedupe? true)
         realtime-threads 5
         n-real           300
         n-back           10000
