@@ -8217,9 +8217,7 @@ databaseChangeLog:
       comment: Populate default value for report_card.last_used_at
       changes:
         - sql:
-            sql: >-
-              UPDATE report_card
-              SET last_used_at = current_timestamp
+            sql: UPDATE report_card SET last_used_at = current_timestamp
       rollback: # nothing to do, since this is backwards compatible
 
   - changeSet:
