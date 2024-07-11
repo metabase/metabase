@@ -4,7 +4,7 @@ import {
   ORDERS_BY_YEAR_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  assertNotEmpty,
+  assertNotEmptyObject,
   describeEE,
   downloadAndAssert,
   getDashboardCardMenu,
@@ -85,7 +85,7 @@ describeEE(
             isDashboard: true,
             dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
           },
-          assertNotEmpty,
+          assertNotEmptyObject,
         );
       });
     });
@@ -145,7 +145,7 @@ describeEE(
             questionId: ORDERS_BY_YEAR_QUESTION_ID,
             isDashboard: false,
           },
-          assertNotEmpty,
+          assertNotEmptyObject,
         );
       });
     });
