@@ -2222,7 +2222,7 @@
           ;; then rolled back to 49 again. The rollback to 48 will cause the
           ;; idx_uniq_field_table_id_parent_id_name_2col index to be dropped
           (t2/query "DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name_2col;"))
-        (let [db-id (t2/insert-returning-pk! (t2/table-name Database)
+        (let [db-id (t2/insert-returning-pk! :metabase_database
                                              {:details    "{}"
                                               :created_at :%now
                                               :updated_at :%now
@@ -2230,14 +2230,14 @@
                                               :is_sample  false
                                               :name       "populate-is-defective-duplicate-test-db"})
               table! (fn []
-                       (t2/insert-returning-instance! (t2/table-name Table)
+                       (t2/insert-returning-instance! :metabase_table
                                                       {:db_id      db-id
                                                        :name       (mt/random-name)
                                                        :created_at :%now
                                                        :updated_at :%now
                                                        :active     true}))
               field! (fn [table values]
-                       (t2/insert-returning-instance! (t2/table-name Field)
+                       (t2/insert-returning-instance! :metabase_field
                                                       (merge {:table_id      (:id table)
                                                               :parent_id     nil
                                                               :base_type     "type/Text"
@@ -2278,7 +2278,7 @@
                        field-with-parent-2 false}
               assert-defective-cases (fn [field->defective?]
                                        (doseq [[field-before defective?] field->defective?]
-                                         (let [field-after (t2/select-one (t2/table-name Field) :id (:id field-before))]
+                                         (let [field-after (t2/select-one :metabase_field :id (:id field-before))]
                                            (is (= defective? (:is_defective_duplicate field-after))))))]
           (migrate!)
           (testing "1. Active is 1st preference"
@@ -2298,21 +2298,21 @@
 (deftest is-defective-duplicate-constraint-test
   (testing "Migrations for H2 and MySQL to prevent duplicate fields"
     (impl/test-migrations ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"] [migrate!]
-      (let [db-id (t2/insert-returning-pk! (t2/table-name Database)
+      (let [db-id (t2/insert-returning-pk! :metabase_database
                                            {:details    "{}"
                                             :created_at :%now
                                             :updated_at :%now
                                             :engine     "h2"
                                             :is_sample  false
                                             :name       "populate-is-defective-duplicate-test-db"})
-            table (t2/insert-returning-instance! (t2/table-name Table)
+            table (t2/insert-returning-instance! :metabase_table
                                                  {:db_id      db-id
                                                   :name       (mt/random-name)
                                                   :created_at :%now
                                                   :updated_at :%now
                                                   :active     true})
             field! (fn [values]
-                     (t2/insert-returning-instance! (t2/table-name Field)
+                     (t2/insert-returning-instance! :metabase_field
                                                     (merge {:table_id      (:id table)
                                                             :parent_id     nil
                                                             :base_type     "type/Text"
@@ -2329,7 +2329,7 @@
                                    [false #(field! {:name "F1", :active true, :parent_id (:id field-no-parent-2)})]]
             fields-to-clean-up    (atom [])
             clean-up-fields!      (fn []
-                                    (t2/delete! (t2/table-name Field) :id [:in (map :id @fields-to-clean-up)])
+                                    (t2/delete! :metabase_field :id [:in (map :id @fields-to-clean-up)])
                                     (reset! fields-to-clean-up []))]
         (if (= driver/*driver* :postgres)
           (testing "Before the migrations, Postgres does not allow fields to have the same table, name, but different parent_id"
@@ -2379,21 +2379,21 @@
          :h2
          ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"]
          (fn [migrate!]
-           (let [db-id (t2/insert-returning-pk! (t2/table-name Database)
+           (let [db-id (t2/insert-returning-pk! :metabase_database
                                                 {:details    "{}"
                                                  :created_at :%now
                                                  :updated_at :%now
                                                  :engine     "h2"
                                                  :is_sample  false
                                                  :name       ""})
-                 table (t2/insert-returning-instance! (t2/table-name Table)
+                 table (t2/insert-returning-instance! :metabase_table
                                                       {:db_id      db-id
                                                        :name       (mt/random-name)
                                                        :created_at :%now
                                                        :updated_at :%now
                                                        :active     true})
                  field! (fn [values]
-                          (t2/insert-returning-instance! (t2/table-name Field)
+                          (t2/insert-returning-instance! :metabase_field
                                                          (merge {:table_id      (:id table)
                                                                  :active        true
                                                                  :parent_id     nil
@@ -2429,3 +2429,38 @@
                          (is (t2/exists? (t2/table-name :model/Field) :id defective-field-id)))
                        (testing "Migrating up again should still work"
                          (migrate!))))))))))))))
+
+(deftest deactivate-defective-duplicates-test
+  (testing "Migration v49.2024-06-27T00:00:09"
+    (impl/test-migrations ["v49.2024-06-27T00:00:09"] [migrate!]
+      (let [db-id         (t2/insert-returning-pk! :metabase_database
+                                                   {:details    "{}"
+                                                    :created_at :%now
+                                                    :updated_at :%now
+                                                    :engine     "h2"
+                                                    :is_sample  false
+                                                    :name       "some_db"})
+            table         (t2/insert-returning-instance! :metabase_table
+                                                         {:db_id      db-id
+                                                          :name       "some_table"
+                                                          :created_at :%now
+                                                          :updated_at :%now
+                                                          :active     true})
+            field!        (fn [values]
+                            (t2/insert-returning-instance! :metabase_field
+                                                           (merge {:table_id      (:id table)
+                                                                   :active        true
+                                                                   :parent_id     nil
+                                                                   :base_type     "type/Text"
+                                                                   :database_type "TEXT"
+                                                                   :created_at    :%now
+                                                                   :updated_at    :%now}
+                                                                  values)))
+            active+field [[true  (field! {:name "x", :is_defective_duplicate true,  :nfc_path "[\"x\",\"y\"]"})]
+                          [true  (field! {:name "x", :is_defective_duplicate false, :nfc_path nil})]
+                          [false (field! {:name "x", :is_defective_duplicate true,  :nfc_path nil})]
+                          [false (field! {:name "x", :is_defective_duplicate true,  :nfc_path "[\"x\"]"})]]]
+        (migrate!)
+        (testing "After the migration, fields are deactivated correctly"
+          (doseq [[active? field] active+field]
+            (is (= active? (t2/select-one-fn :active :metabase_field (:id field))))))))))
