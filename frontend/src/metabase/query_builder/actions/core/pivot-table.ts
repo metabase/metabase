@@ -22,11 +22,11 @@ export function computeQuestionPivotTable(options: Options) {
   const wasPivot = currentQuestion?.display() === "pivot";
   let shouldRun = null;
 
-  const isquestionNative = Lib.queryDisplayInfo(question.query()).isNative;
+  const isQuestionNative = Lib.queryDisplayInfo(question.query()).isNative;
 
   if (wasPivot || isPivot) {
     const hasBreakouts =
-      !isquestionNative && Lib.breakouts(question.query(), -1).length > 0;
+      !isQuestionNative && Lib.breakouts(question.query(), -1).length > 0;
 
     // compute the pivot setting now so we can query the appropriate data
     if (isPivot && hasBreakouts) {
