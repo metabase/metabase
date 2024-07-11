@@ -54,12 +54,12 @@ export interface DatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
   insights?: Insight[] | null;
-  results_metadata: ResultsMetadata;
-  rows_truncated: number;
+  results_metadata?: ResultsMetadata;
+  rows_truncated?: number;
   requested_timezone?: string;
   results_timezone?: string;
   download_perms?: DownloadPermission;
-  native_form: {
+  native_form?: {
     query: string;
   };
 }
