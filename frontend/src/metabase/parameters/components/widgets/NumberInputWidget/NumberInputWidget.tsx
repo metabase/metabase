@@ -100,14 +100,6 @@ export function NumberInputWidget({
       return null;
     }
 
-    const opt = options.find(option => {
-      const label = option.label || option.value?.toString();
-      return label === value?.toString();
-    });
-
-    if (opt) {
-      return parseNumberValue(opt.value);
-    }
     return parseNumberValue(value);
   }
 

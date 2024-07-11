@@ -239,7 +239,7 @@ describe("NumberInputWidget", () => {
       const button = screen.getByRole("button", { name: "Add filter" });
       await userEvent.click(button);
 
-      expect(setValue).toHaveBeenCalledWith([42, 66, 55]);
+      expect(setValue).toHaveBeenCalledWith([55]);
     });
   });
 });
