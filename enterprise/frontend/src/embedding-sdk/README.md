@@ -27,6 +27,7 @@ Features planned:
 - subscribing to events
 
 # Changelog
+
 [View changelog](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 
 # Prerequisites
@@ -262,7 +263,6 @@ questions, apply filters and aggregations, and access functionality within the n
 that there's no such thing as a one-size-fits-all when it comes to style, usage, and all of the other variables that
 make your application unique. Therefore, we've added the ability to customize the layout of interactive questions.
 
-
 Using the `InteractiveQuestion` with its default layout looks like this:
 
 ```jsx
@@ -273,20 +273,34 @@ To customize the layout, use namespaced components within the `InteractiveQuesti
 
 ```jsx
 <InteractiveQuestion questionId={95}>
-  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-    <div style={{ display: 'grid', placeItems: 'center' }}>
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <div style={{ display: "grid", placeItems: "center" }}>
       <InteractiveQuestion.Title />
       <InteractiveQuestion.ResetButton />
     </div>
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', overflow: "hidden" }}>
-      <div style={{ width: '100%' }}>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ width: "100%" }}>
         <InteractiveQuestion.QuestionVisualization />
       </div>
-      <div style={{ display: 'flex', flex: 1, overflow: "scroll" }}>
+      <div style={{ display: "flex", flex: 1, overflow: "scroll" }}>
         <InteractiveQuestion.Summarize />
       </div>
     </div>
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
+    <div style={{ display: "flex", flexDirection: "column" }}>
       <InteractiveQuestion.Filter />
     </div>
   </div>
@@ -298,7 +312,7 @@ To customize the layout, use namespaced components within the `InteractiveQuesti
 These components are available via the `InteractiveQuestion` namespace (i.e. `<InteractiveQuestion.ComponentName />`)
 
 | Component               | Info                                                                                                                         |
-|-------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `BackButton`            | The back button, which provides `back` functionality for the InteractiveDashboard                                            |
 | `FilterBar`             | The row of badges that contains the current filters that are applied to the question                                         |
 | `Filter`                | The Filter pane containing all possible filters                                                                              |
@@ -311,11 +325,9 @@ These components are available via the `InteractiveQuestion` namespace (i.e. `<I
 | `NotebookButton`        | The button used in the default layout to open the Notebook editor. You can replace this button with your own implementation. |
 | `QuestionVisualization` | The chart visualization for the question                                                                                     |
 
-
 ### Embedding a static dashboard
 
 After the SDK is configured, you can embed your dashboard using the `StaticDashboard` component.
-
 
 #### Parameters
 
@@ -327,7 +339,6 @@ After the SDK is configured, you can embed your dashboard using the `StaticDashb
 - **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. [More information here](https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters)
 - **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads with all visible cards and their content.
 - **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded.
-
 
 ```jsx
 import React from "react";
@@ -359,7 +370,6 @@ export default function App() {
 ### Embedding an interactive dashboard (with drill-down)
 
 After the SDK is configured, you can embed your dashboard using the `InteractiveDashboard` component.
-
 
 #### Parameters
 
@@ -418,7 +428,7 @@ import { CollectionBrowser } from "metabase-types/api";
 
 export default function App() {
   const collectionId = 123; // This is the collection ID you want to browse
-  const handleItemClick = (item) => {
+  const handleItemClick = item => {
     console.log("Clicked item:", item);
   };
 
@@ -435,7 +445,6 @@ export default function App() {
   );
 }
 ```
-
 
 ### Customizing appearance
 
@@ -521,7 +530,7 @@ const theme = {
         // Apply a border color instead of shadow for dashboard cards.
         // Unset by default.
         border: "1px solid #EEECEC",
-      }
+      },
     },
 
     // Question
@@ -583,15 +592,15 @@ const theme = {
     },
 
     collectionBrowser: {
-       breadcrumbs: {
-         expandButton: {
-           textColor: "#8118F4",
-           backgroundColor: "#767D7C",
-           hoverTextColor: "#CE8C8C",
-           hoverBackgroundColor: "#69264B",
-         },
-       },
-     },
+      breadcrumbs: {
+        expandButton: {
+          textColor: "#8118F4",
+          backgroundColor: "#767D7C",
+          hoverTextColor: "#CE8C8C",
+          hoverBackgroundColor: "#69264B",
+        },
+      },
+    },
   },
 };
 ```
@@ -668,22 +677,21 @@ Currently, we support:
 - `onDashboardLoadWithoutCards?: (dashboard: Dashboard | null) => void;` - triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded
 
 ```typescript jsx
-const handleDashboardLoad: SdkDashboardLoadEvent = (dashboard) => {
-    /* do whatever you need to do - e.g. send analytics events, show notifications */
-}
+const handleDashboardLoad: SdkDashboardLoadEvent = dashboard => {
+  /* do whatever you need to do - e.g. send analytics events, show notifications */
+};
 
 const eventHandlers = {
-    onDashboardLoad: handleDashboardLoad,
-    onDashboardLoadWithoutCards: handleDashboardLoad,
-}
+  onDashboardLoad: handleDashboardLoad,
+  onDashboardLoadWithoutCards: handleDashboardLoad,
+};
 
 return (
   <MetabaseProvider config={config} eventHandlers={eventHandlers}>
-      {children}
+    {children}
   </MetabaseProvider>
 );
 ```
-
 
 ### Reloading Metabase components
 
@@ -696,13 +704,13 @@ const [data, setData] = useState({});
 const [counter, setCounter] = useState(0);
 
 // This ensures we only change the `data` reference when it's actually changed
-const handleDataChange = (newData) => {
+const handleDataChange = newData => {
   setData(prevData => {
     if (isEqual(prevData, newData)) {
       return prevData;
     }
 
-    return newData
+    return newData;
   });
 };
 
@@ -714,9 +722,9 @@ useEffect(() => {
   if (data) {
     setCounter(counter => counter + 1);
   }
-}, [data])
+}, [data]);
 
-return <InteractiveQuestion key={counter} questionId={yourQuestionId} />
+return <InteractiveQuestion key={counter} questionId={yourQuestionId} />;
 ```
 
 ### Customizing JWT authentication
@@ -742,7 +750,7 @@ async function fetchRefreshToken(url) {
 }
 
 // Pass this configuration to MetabaseProvider.
-const config = { fetchRefreshToken }
+const config = { fetchRefreshToken };
 ```
 
 # Known limitations
