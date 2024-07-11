@@ -1,5 +1,6 @@
 (ns metabase.api.embed.common
   (:require
+   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
@@ -127,7 +128,11 @@
   [query-params]
   (-> query-params
       (update-keys keyword)
-      (update-vals (fn [v] (if (= v "") nil v)))))
+      (update-vals (fn [v] (if (= v "")
+                             nil
+                             (if (string? v)
+                               (json/parse-string v)
+                               v))))))
 
 (mu/defn validate-and-merge-params :- [:map-of :keyword :any]
   "Validate that the `token-params` passed in the JWT and the `user-params` (passed as part of the URL) are allowed, and
