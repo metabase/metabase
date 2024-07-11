@@ -40,6 +40,11 @@ export const useDashboardUrlParams = ({
     theme,
   } = useEmbedTheme();
 
+  const normalizedTheme = normalizeTheme({
+    theme,
+    background,
+  });
+
   const { isFullscreen, onFullscreenChange } = useDashboardFullscreen();
   const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =
     useDashboardRefreshPeriod({ onRefresh });
@@ -87,9 +92,27 @@ export const useDashboardUrlParams = ({
     titled,
     font,
     setFont,
-    theme,
+    theme: normalizedTheme,
     setTheme,
     hideParameters: hide_parameters,
     hideDownloadButton: hide_download_button,
   };
 };
+
+/**
+ * When both `background: false` and `theme: "transparent"` options are supplied,
+ * the new behavior takes precedence (metabase#43838)
+ */
+function normalizeTheme({
+  theme,
+  background,
+}: {
+  theme: DisplayTheme;
+  background: boolean;
+}) {
+  if (!background && theme === "transparent") {
+    return "light";
+  }
+
+  return theme;
+}
