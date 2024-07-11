@@ -816,11 +816,10 @@ describe("issue 34574", () => {
     cy.findByTestId("sidebar-right").within(() => {
       cy.log("Set the model description to a markdown text");
       cy.intercept("PUT", `/api/card/${ORDERS_MODEL_ID}`).as("updateModel");
-      cy.findByPlaceholderText("Add description")
-        .type(
-          "# Hello{enter}## World{enter}This is an **important** description!",
-        )
-        .blur();
+      cy.findByPlaceholderText("Add description").type(
+        "# Hello{enter}## World{enter}This is an **important** description!",
+      );
+      cy.realPress("Tab");
       cy.wait("@updateModel");
 
       cy.log("Make sure we immediately render the proper markdown");
