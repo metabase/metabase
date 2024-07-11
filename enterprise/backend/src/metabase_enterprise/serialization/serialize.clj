@@ -101,7 +101,7 @@
   "Removes unneeded fields that can either be reconstructed from context or are meaningless
    (eg. :created_at)."
   [entity]
-  (cond-> (dissoc entity :id :creator_id :created_at :updated_at :db_id :location
+  (cond-> (dissoc entity :id :creator_id :created_at :updated_at :db_id :location :last_used_at
                   :dashboard_id :fields_hash :personal_owner_id :made_public_by_id :collection_id
                   :pulse_id :result_metadata :action_id)
     (not *include-entity-id*)   (dissoc :entity_id)
