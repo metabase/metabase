@@ -1,5 +1,6 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { popover } from "e2e/support/helpers";
 import {
   createSegment,
   createMetric,
@@ -10,6 +11,9 @@ const { ORDERS, ORDERS_ID, REVIEWS, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
 const sampleDBDataModelPage = `/admin/datamodel/database/${SAMPLE_DB_ID}`;
 
 it("should configure data model settings", () => {
+  cy.intercept("GET", "/api/segment").as("getSegments");
+  cy.intercept("GET", "/api/metric").as("getMetrics");
+
   cy.signInAsAdmin();
 
   cy.visit("/admin/datamodel");
@@ -87,8 +91,10 @@ it("should configure data model settings", () => {
   cy.findByDisplayValue("Price")
     .parent()
     .parent()
-    .contains("No semantic type")
+    .findByText("No semantic type")
     .click();
+
+  popover().should("be.visible");
 
   cy.get(".MB-Select")
     .scrollTo("top")
@@ -142,10 +148,10 @@ it("should configure data model settings", () => {
   createSegment(segment);
 
   cy.visit("/admin/datamodel/segments");
-  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-  cy.findByText(segment.name);
+  cy.wait("@getSegments");
+  cy.get("main").findByText(segment.name);
 
   cy.visit("/admin/datamodel/metrics");
-  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-  cy.findByText(metric.name);
+  cy.wait("@getMetrics");
+  cy.get("main").findByText(metric.name);
 });
