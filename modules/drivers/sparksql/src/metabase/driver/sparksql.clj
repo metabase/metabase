@@ -239,6 +239,7 @@
                               :expressions                     true
                               :native-parameters               true
                               :nested-queries                  true
+                              :parameterized-sql               false
                               :standard-deviation-aggregations true
                               :metadata/key-constraints        false
                               :test/jvm-timezone-setting       false

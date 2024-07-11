@@ -503,7 +503,9 @@
                      :breakout    [$price]})))))))))
 
 (deftest sql-with-join-test
-  (mt/test-drivers (row-level-restrictions-fk-sql-drivers)
+  (mt/test-drivers (into #{}
+                         (filter #(driver.u/supports? % :parameterized-sql nil))
+                         (row-level-restrictions-fk-sql-drivers))
     (testing (str "If we use a parameterized SQL GTAP that joins a Table the user doesn't have access to, does it "
                   "still work? (EE #230) If we pass the query in directly without anything that would require nesting "
                   "it, it should work")
@@ -518,7 +520,9 @@
                      :limit 2})))))))))
 
 (deftest sql-with-join-test-2
-  (mt/test-drivers (row-level-restrictions-fk-sql-drivers)
+  (mt/test-drivers (into #{}
+                         (filter #(driver.u/supports? % :parameterized-sql nil))
+                         (row-level-restrictions-fk-sql-drivers))
     (testing (str "If we use a parameterized SQL GTAP that joins a Table the user doesn't have access to, does it "
                   "still work? (EE #230) If we pass the query in directly without anything that would require nesting "
                   "it, it should work")

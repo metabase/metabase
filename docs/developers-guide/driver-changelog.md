@@ -62,6 +62,9 @@ title: Driver interface changelog
   were dependent on `:foreign-keys`. If your driver does support `:left-join` also remapping and implicit joins tests
   will run on it.
 
+- `:parameterized-sql` feature was added to distinguish drivers that are not capable of that in tests. Currently that
+  is `:sparksql`.
+
 ## Metabase 0.50.0
 
 - The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to

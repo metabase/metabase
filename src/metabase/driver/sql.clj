@@ -24,6 +24,7 @@
                  :inner-join
                  :left-join
                  :native-parameters
+                 :parameterized-sql
                  :nested-queries
                  :percentile-aggregations
                  :regex

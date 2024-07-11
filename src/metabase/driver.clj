@@ -669,7 +669,10 @@
 
     ;; Does this driver support the new `:offset` MBQL clause added in 50? (i.e. SQL `lag` and `lead` or equivalent
     ;; functions)
-    :window-functions/offset})
+    :window-functions/offset
+
+    ;; Does this driver support parameterized sql, eg. in prepared statements?
+    :pamaterized-sql})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -704,6 +707,7 @@
                               :basic-aggregations                     true
                               :case-sensitivity-string-filter-options true
                               :date-arithmetics                       true
+                              :parameterized-sql                      false
                               :temporal-extract                       true
                               :schemas                                true
                               :test/jvm-timezone-setting              true
