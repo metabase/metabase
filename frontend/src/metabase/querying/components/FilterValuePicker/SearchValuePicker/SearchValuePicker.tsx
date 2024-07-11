@@ -6,7 +6,7 @@ import {
   useGetRemappedFieldValuesQuery,
   useSearchFieldValuesQuery,
 } from "metabase/api";
-import { MultiAutocomplete } from "metabase/ui";
+import { Loader, MultiAutocomplete } from "metabase/ui";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
 import { getEffectiveOptions } from "../utils";
@@ -19,9 +19,10 @@ interface SearchValuePickerProps {
   searchFieldId: FieldId;
   fieldValues: FieldValue[];
   selectedValues: string[];
-  placeholder?: string;
+  placeholder: string;
+  nothingFoundMessage: string;
   shouldCreate?: (query: string, values: string[]) => boolean;
-  autoFocus?: boolean;
+  autoFocus: boolean;
   onChange: (newValues: string[]) => void;
 }
 
@@ -31,43 +32,59 @@ export function SearchValuePicker({
   fieldValues: initialFieldValues,
   selectedValues,
   placeholder,
+  nothingFoundMessage,
   shouldCreate,
   autoFocus,
   onChange,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
+  const canSearch = searchQuery.length > 0;
+  const canRemap =
+    fieldId !== searchFieldId &&
+    selectedValues.length > 0 &&
+    searchValue.length === 0;
 
-  const { data: searchFieldValues = initialFieldValues } =
-    useSearchFieldValuesQuery(
-      {
-        fieldId,
-        searchFieldId,
-        value: searchQuery,
-        limit: SEARCH_LIMIT,
-      },
-      {
-        skip: !searchQuery,
-      },
-    );
-
-  const { data: remappedFieldValues = [] } = useGetRemappedFieldValuesQuery(
+  const {
+    data: searchFieldValues = initialFieldValues,
+    isFetching: isSearching,
+  } = useSearchFieldValuesQuery(
     {
       fieldId,
-      remappedFieldId: searchFieldId,
-      values: selectedValues,
+      searchFieldId,
+      value: searchQuery,
+      limit: SEARCH_LIMIT,
     },
     {
-      skip:
-        fieldId === searchFieldId ||
-        selectedValues.length === 0 ||
-        searchValue.length !== 0,
+      skip: !canSearch,
     },
   );
 
+  const { data: remappedFieldValues = [], isFetching: isRemapping } =
+    useGetRemappedFieldValuesQuery(
+      {
+        fieldId,
+        remappedFieldId: searchFieldId,
+        values: selectedValues,
+      },
+      {
+        skip: !canRemap,
+      },
+    );
+
   const options = useMemo(
-    () => getEffectiveOptions([...searchFieldValues, ...remappedFieldValues]),
-    [remappedFieldValues, searchFieldValues],
+    () =>
+      getEffectiveOptions([
+        ...(canRemap ? remappedFieldValues : []),
+        ...(canSearch ? searchFieldValues : []),
+      ]),
+    [remappedFieldValues, searchFieldValues, canSearch, canRemap],
+  );
+
+  const isSearchStale = shouldSearch(
+    searchValue,
+    searchQuery,
+    searchFieldValues,
   );
 
   const handleSearchChange = (newSearchValue: string) => {
@@ -78,11 +95,13 @@ export function SearchValuePicker({
   };
 
   const handleSearchTimeout = () => {
-    if (shouldSearch(searchValue, searchQuery, searchFieldValues)) {
+    if (isSearchStale) {
       setSearchQuery(searchValue);
     }
   };
 
+  const isFetching = isSearching || isRemapping;
+  const isSearchComplete = !isSearching && !isSearchStale;
   useDebounce(handleSearchTimeout, SEARCH_DEBOUNCE, [searchValue]);
 
   return (
@@ -95,6 +114,8 @@ export function SearchValuePicker({
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
       shouldCreate={shouldCreate}
+      rightSection={isFetching ? <Loader /> : null}
+      nothingFound={isSearchComplete ? nothingFoundMessage : null}
       onChange={onChange}
       onSearchChange={handleSearchChange}
     />

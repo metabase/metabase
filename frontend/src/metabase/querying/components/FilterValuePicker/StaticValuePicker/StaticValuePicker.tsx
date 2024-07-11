@@ -5,9 +5,9 @@ import { MultiAutocomplete } from "metabase/ui";
 
 interface StaticValuePickerProps {
   selectedValues: string[];
-  placeholder?: string;
+  placeholder: string;
   shouldCreate?: (query: string, values: string[]) => boolean;
-  autoFocus?: boolean;
+  autoFocus: boolean;
   onChange: (newValues: string[]) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
   onBlur?: (event: FocusEvent<HTMLInputElement>) => void;

@@ -90,6 +90,7 @@ function FilterValuePicker({
         fieldValues={fieldData?.values ?? []}
         selectedValues={selectedValues}
         placeholder={t`Search by ${columnInfo.displayName}`}
+        nothingFoundMessage={t`No matching ${columnInfo.displayName} found.`}
         shouldCreate={shouldCreate}
         autoFocus={autoFocus}
         onChange={onChange}

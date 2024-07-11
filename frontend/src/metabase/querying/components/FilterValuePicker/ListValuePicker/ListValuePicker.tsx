@@ -21,10 +21,10 @@ import { searchOptions } from "./utils";
 interface ListValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
-  placeholder?: string;
+  placeholder: string;
   shouldCreate?: (query: string, values: string[]) => boolean;
-  autoFocus?: boolean;
-  compact?: boolean;
+  autoFocus: boolean;
+  compact: boolean;
   onChange: (newValues: string[]) => void;
 }
 
