@@ -1,5 +1,8 @@
 (ns metabase.util.concurrent-test
   (:require [clojure.test :refer [deftest is testing]]
+            [clojure.test.check.clojure-test :as ct :refer [defspec]]
+            [clojure.test.check.properties :as prop :refer [for-all]]
+            [malli.generator :as mg]
             [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -39,3 +42,24 @@
           duration (- end-time start-time)]
       (is (= (range 1 11) result))
       (is (< duration 1000) "Should take less than 1000ms if executed in parallel"))))
+
+(defspec concurrent-map-values-returns-same-number-of-items 1000
+  (for-all [coll (mg/generator [:sequential :any])]
+           (let [result (u/ecs-map identity coll)]
+             (= (count coll) (count result)))))
+
+(defspec concurrent-map-values-return-in-order 1000
+  (for-all [coll (mg/generator [:sequential :any])]
+           (let [result (u/ecs-map identity coll)]
+             (= coll result))))
+
+(defspec concurrent-map-values-are-processed-in-parallel 100
+  (for-all [coll (mg/generator [:sequential {:min 10 :max 15} :any])
+            sleep-time (mg/generator [:int {:min 5 :max 10}])]
+           (let [sync-time (* sleep-time (count coll))
+                 start-time (System/currentTimeMillis)
+                 _run_it-> (u/ecs-map #(do (Thread/sleep ^Long sleep-time) %) coll)
+                 end-time (System/currentTimeMillis)
+                 duration (- end-time start-time)]
+             ;; it's ~10x faster, depending on how many processors are on the machine, so this is good enough:
+             (<= duration (dec sync-time)))))
