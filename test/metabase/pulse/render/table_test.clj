@@ -1,6 +1,7 @@
 (ns metabase.pulse.render.table-test
   (:require
    [clojure.test :refer :all]
+   [hickory.select :as hik.s]
    [metabase.formatter :as formatter]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.color :as color]
@@ -87,7 +88,7 @@
 
 (deftest header-truncation-test []
   (let [[normal-heading long-heading :as row] ["Count" (apply str (repeat 120 "A"))]
-        [normal-rendered long-rendered]       (->> (#'table/render-table-head {:row row})
+        [normal-rendered long-rendered]       (->> (#'table/render-table-head row {:row row})
                                                (tree-seq vector? rest)
                                                (filter #(= :th (first %)))
                                                (map last))]
@@ -96,150 +97,81 @@
       (is (= "A..." (subs long-rendered (- (count long-rendered) 4) (count long-rendered))))
       (is (not= long-heading long-rendered)))))
 
-(deftest table-columns-test
-  (let [rows [["As" "Bs" "Cs"]
-              ["a" "b" "c"]]]
-    (testing "Column reordering is applied correctly to the table"
-      (let [{:keys [viz-tree]} (render.tu/make-viz-data
-                                rows :table {:reordered-columns {:order [1 0 2]}})]
-        (is (= ["Bs" "As" "Cs" "b" "a" "c"]
-               (-> viz-tree
-                   render.tu/remove-attrs
-                   ((juxt #(render.tu/nodes-with-tag % :th)
-                          #(render.tu/nodes-with-tag % :td)))
-                   (->> (apply concat))
-                   (->> (map second)))))))
-    (testing "A table with hidden columns does not render hidden columns"
-      (let [{:keys [viz-tree]} (render.tu/make-viz-data
-                                rows :table {:hidden-columns {:hide [1]}})]
-        (is (= ["As" "Cs" "a" "c"]
-               (-> viz-tree
-                   render.tu/remove-attrs
-                   ((juxt #(render.tu/nodes-with-tag % :th)
-                          #(render.tu/nodes-with-tag % :td)))
-                   (->> (apply concat))
-                   (->> (map second)))))))))
-
 (deftest table-column-formatting-test
-  (let [rows [["A" "B" "C" "D" "E"]
-              [0.1 9000 "2022-10-12T00:00:00Z" 0.123 0.6666667]]]
-    (testing "Custom column titles are respected in render."
-      (is (= ["Eh" "Bee" "Sea" "D" "E"]
-             (-> rows
-                 (render.tu/make-card-and-data :table)
-                 (render.tu/make-column-settings [{:column-title "Eh"}
-                                                  {:column-title "Bee"}
-                                                  {:column-title "Sea"}])
-                 render.tu/render-as-hiccup
-                 render.tu/remove-attrs
-                 (render.tu/nodes-with-tag :th)
-                 (->> (map second))))))
-    (testing "Column format settings are respected in render."
-      (is (= ["10%" "9E3" "12/10/2022" "---0.12___" "0.667"]
-             (-> rows
-                 (render.tu/make-card-and-data :table)
-                 (render.tu/make-column-settings [{:number-style "percent"}
-                                                  {:number-style "scientific"}
-                                                  {:date-style "D/M/YYYY"}
-                                                  {:prefix "---" :suffix "___"}
-                                                  {:decimals 3}])
-                 render.tu/render-as-hiccup
-                 render.tu/remove-attrs
-                 (render.tu/nodes-with-tag :td)
-                 (->> (map second))))))
-    (testing "Site Localization Settings are respected in columns."
-      (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style      "D/M/YYYY"
-                                                                            :date_separator  "-"
-                                                                            :date_abbreviate false}
-                                                            :type/Number   {:number_separators ",."}}]
-        (is (= ["0,1" "9.000" "12-10-2022" "0,12" "0,67"]
-             (-> rows
-                 (render.tu/make-card-and-data :table)
-                 render.tu/render-as-hiccup
-                 render.tu/remove-attrs
-                 (render.tu/nodes-with-tag :td)
-                 (->> (map second)))))))))
+  (mt/dataset test-data
+    (let [q                 (str "SELECT "
+                                 " 0.1 AS A, "
+                                 "9000 AS B, "
+                                 "'2022-10-12'::date AS C, "
+                                 "0.123 AS D, "
+                                 "0.6666667 AS E;")
+          formatting-viz    {:column_settings
+                             {"[\"name\",\"A\"]" {:column_title "Eh"
+                                                  :number_style "percent"}
+                              "[\"name\",\"B\"]" {:column_title "Bee"
+                                                  :number_style "scientific"}
+                              "[\"name\",\"C\"]" {:column_title "Sea"
+                                                  :date_style   "D/M/YYYY"}
+                              "[\"name\",\"D\"]" {:column_title "D"
+                                                  :prefix       "---"
+                                                  :suffix       "___"}
+                              "[\"name\",\"E\"]" {:column_title "E"
+                                                  :decimals     3}}}
+          disabled-cols-viz {:table.columns
+                             [{:name "B" :enabled true}
+                              {:name "A" :enabled true}
+                              {:name "C" :enabled false}
+                              {:name "D" :enabled false}
+                              {:name "E" :enabled false}]}]
+      (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query          {:database (mt/id)
+                                                                                  :type     :native
+                                                                                  :native   {:query q}}
+                                                         :visualization_settings formatting-viz}]
+        (testing "Custom column titles and column format settings are respected in render."
+          (let [doc     (render.tu/render-card-as-hickory card-id)
+                row-els (hik.s/select (hik.s/tag :tr) doc)]
+            (is (= [["Eh" "Bee" "Sea" "D" "E"]
+                    ["10%" "9E3" "12/10/2022" "---0.12___" "0.667"]]
+                   (mapv (fn [row-el] (mapcat :content (:content row-el))) row-els)))))
+        (testing "Site Localization Settings are respected in columns."
+          (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style      "D/M/YYYY"
+                                                                                :date_separator  "-"
+                                                                                :date_abbreviate false}
+                                                                :type/Number   {:number_separators ",."}}]
+            (let [doc     (render.tu/render-card-as-hickory card-id)
+                  row-els (hik.s/select (hik.s/tag :tr) doc)]
+              (is (= [["Eh" "Bee" "Sea" "D" "E"]
+                      ["10%" "9E3" "12-10-2022" "---0,12___" "0,667"]]
+                     (mapv (fn [row-el] (mapcat :content (:content row-el))) row-els))))))
+        (testing "Visibility type on Fields is respected."
+          (let [data-map      {:data {:cols [{:name            "A"
+                                              :display_name    "A"
+                                              :base_type       :type/Number
+                                              :visibility_type :normal
+                                              :semantic_type   nil}
+                                             {:name            "B"
+                                              :display_name    "B"
+                                              :base_type       :type/Number
+                                              :visibility_type :sensitive
+                                              :semantic_type   nil}]
+                                      :rows [[1 2]]}}
+                hiccup-render (:content (render/render-pulse-card :attachment "UTC" card nil data-map))
+                header-els    (render.tu/nodes-with-tag hiccup-render :th)]
+            (is (= ["A"]
+                   (map last header-els))))))
+      (testing "Disabled columns are not rendered, and column re-ordering is respected."
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query          {:database (mt/id)
+                                                                           :type     :native
+                                                                           :native   {:query q}}
+                                                  :visualization_settings disabled-cols-viz}]
+          (let [doc     (render.tu/render-card-as-hickory card-id)
+                row-els (hik.s/select (hik.s/tag :tr) doc)]
+            (is (= [["B" "A"]
+                    ["9,000" "0.1"]]
+                   (mapv (fn [row-el] (mapcat :content (:content row-el))) row-els)))))))))
 
 (defn- render-table [dashcard results]
   (render/render-pulse-card :attachment "America/Los_Angeles" render.tu/test-card dashcard results))
-
-(deftest render-table-columns-test
-  (testing "Disabling a column has the same effect as not having the column at all."
-    (is (=
-         (render-table
-          {:visualization_settings {:table.columns
-                                    [{:name "b" :enabled true}]}}
-          {:data {:cols [{:name         "b",
-                          :display_name "b",
-                          :base_type    :type/BigInteger
-                          :semantic_type nil}]
-                  :rows [[2] [4]]}})
-         (render-table
-          {:visualization_settings {:table.columns
-                                    [{:name "a" :enabled false}
-                                     {:name "b" :enabled true}]}}
-          {:data {:cols [{:name         "a",
-                          :display_name "a",
-                          :base_type    :type/BigInteger
-                          :semantic_type nil}
-                         {:name         "b",
-                          :display_name "b",
-                          :base_type    :type/BigInteger
-                          :semantic_type nil}]
-                  :rows [[1 2] [3 4]]}}))))
-  (testing "Column order in table.columns is respected."
-    (is (=
-         (render-table
-          {:visualization_settings {:table.columns
-                                    [{:name "b" :enabled true}
-                                     {:name "a" :enabled true}]}}
-          {:data {:cols [{:name         "a",
-                          :display_name "a",
-                          :base_type    :type/BigInteger
-                          :semantic_type nil}
-                         {:name         "b",
-                          :display_name "b",
-                          :base_type    :type/BigInteger
-                          :semantic_type nil}]
-                  :rows [[1 2] [3 4]]}})
-         (render-table
-          {:visualization_settings {:table.columns
-                                    [{:name "b" :enabled true}
-                                     {:name "a" :enabled true}]}}
-          {:data {:cols [{:name         "b",
-                          :display_name "b",
-                          :base_type    :type/BigInteger
-                          :semantic_type nil}
-                         {:name         "a",
-                          :display_name "a",
-                          :base_type    :type/BigInteger
-                          :semantic_type nil}]
-                  :rows [[2 1] [4 3]]}}))))
-  (testing "visibility_type is respected in render."
-    (is (=
-         (render-table
-          {:visualization_settings {:table.columns
-                                    [{:name "a" :enabled true}
-                                     {:name "b" :enabled true}]}}
-          {:data {:cols [{:name            "a",
-                          :display_name    "a",
-                          :base_type       :type/BigInteger
-                          :visibility_type :normal
-                          :semantic_type   nil}
-                         {:name            "b",
-                          :display_name    "b",
-                          :base_type       :type/BigInteger
-                          :visibility_type :details-only
-                          :semantic_type   nil}]
-                  :rows [[1 2] [3 4]]}})
-         (render-table
-          {:visualization_settings {:table.columns
-                                    [{:name "a" :enabled true}]}}
-          {:data {:cols [{:name         "a",
-                          :display_name "a",
-                          :base_type    :type/BigInteger
-                          :semantic_type nil}]
-                  :rows [[1 2] [3 4]]}})))))
 
 (deftest attachment-rows-limit-test
   (doseq [[test-explanation env-var-value expected]
