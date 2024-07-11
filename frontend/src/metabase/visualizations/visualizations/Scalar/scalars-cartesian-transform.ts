@@ -4,14 +4,11 @@ import type { TransformSeries } from "metabase/visualizations/components/Transfo
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { RawSeries } from "metabase-types/api";
 
-export const scalarToBarTransform: TransformSeries = rawSeries => {
-  return rawSeries.map(({ card, data }) => {
-    let metricColumnIndex = data.cols.findIndex(
-      col => col.name === card.visualization_settings["scalar.field"],
-    );
+import { findScalarMetricColumnIndex } from "./utils";
 
-    // If not found, set default
-    metricColumnIndex = metricColumnIndex === -1 ? 0 : metricColumnIndex;
+export const scalarToCartesianTransform: TransformSeries = rawSeries => {
+  return rawSeries.map(({ card, data }) => {
+    const metricColumnIndex = findScalarMetricColumnIndex({ card, data });
 
     const transformedDataset = {
       ...data,

@@ -1,3 +1,5 @@
+import type { SingleSeries } from "metabase-types/api";
+
 import {
   PADDING,
   SCALAR_TITLE_LINE_HEIGHT,
@@ -50,4 +52,11 @@ const getTitleHeight = ({
   }
 
   return titleLinesCount * SCALAR_TITLE_LINE_HEIGHT;
+};
+
+export const findScalarMetricColumnIndex = ({ card, data }: SingleSeries) => {
+  const metricColumnIndex = data.cols.findIndex(
+    col => col.name === card.visualization_settings["scalar.field"],
+  );
+  return metricColumnIndex === -1 ? 0 : metricColumnIndex;
 };

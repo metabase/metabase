@@ -19,11 +19,13 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import { CartesianChart } from "metabase/visualizations/visualizations/CartesianChart";
+import { Funnel } from "metabase/visualizations/visualizations/Funnel";
 
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
 import { TITLE_ICON_SIZE } from "./constants";
-import { scalarToBarTransform } from "./scalars-bar-transform";
+import { scalarToCartesianTransform } from "./scalars-cartesian-transform";
+import { scalarToFunnelTransform } from "./scalars-funnel-transform";
 import { getTitleLinesCount, getValueHeight, getValueWidth } from "./utils";
 
 // convert legacy `scalar.*` visualization settings to format options
@@ -89,6 +91,10 @@ export class Scalar extends Component {
       ],
       readDependencies: ["scalar.field"],
     }),
+    "scalar.multiseries.display": {
+      default: "bar",
+      hidden: true,
+    },
     // LEGACY scalar settings, now handled by column level settings
     "scalar.locale": {
       // title: t`Separator style`,
@@ -153,11 +159,14 @@ export class Scalar extends Component {
     } = this.props;
 
     if (rawSeries.length > 1) {
+      const isFunnel = settings["scalar.multiseries.display"] === "funnel";
       return (
         <TransformedVisualization
-          transformSeries={scalarToBarTransform}
+          transformSeries={
+            isFunnel ? scalarToFunnelTransform : scalarToCartesianTransform
+          }
           originalProps={this.props}
-          VisualizationComponent={BarChart}
+          VisualizationComponent={isFunnel ? Funnel : CartesianChart}
         />
       );
     }
