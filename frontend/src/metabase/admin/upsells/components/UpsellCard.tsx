@@ -8,7 +8,7 @@ import { UpsellCTALink, UpsellCardComponent } from "./Upsells.styled";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 
-type UpsellCardProps = {
+type OwnProps = {
   title: string;
   buttonText: string;
   buttonLink: string;
@@ -18,6 +18,12 @@ type UpsellCardProps = {
   children: React.ReactNode;
 };
 
+interface Variant {
+  fullWidth?: boolean;
+}
+
+type UpsellCardProps = OwnProps & Variant;
+
 export const _UpsellCard = ({
   title,
   buttonText,
@@ -26,6 +32,7 @@ export const _UpsellCard = ({
   source,
   illustrationSrc,
   children,
+  fullWidth,
 }: UpsellCardProps) => {
   const url = useUpsellLink({
     url: buttonLink,
@@ -38,9 +45,9 @@ export const _UpsellCard = ({
   });
 
   return (
-    <UpsellCardComponent data-testid="upsell-card">
+    <UpsellCardComponent data-testid="upsell-card" fullWidth={fullWidth}>
       {illustrationSrc && <Image src={illustrationSrc} w="100%" />}
-      <Flex gap="sm" justify="center" p="1rem" pb="0.75rem">
+      <Flex gap="sm" p="1rem" pb="0.75rem">
         <UpsellGem />
         <Text fw="bold" size="0.875rem">
           {title}
