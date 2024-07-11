@@ -148,9 +148,11 @@ it("should configure data model settings", () => {
 
   cy.visit("/admin/datamodel/segments");
   cy.wait("@getSegments");
-  cy.get("main").findByText(segment.name);
+  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+  cy.findByText(segment.name);
 
   cy.visit("/admin/datamodel/metrics");
   cy.wait("@getMetrics");
-  cy.get("main").findByText(metric.name);
+  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+  cy.findByText(metric.name);
 });
