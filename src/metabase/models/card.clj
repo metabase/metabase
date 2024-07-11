@@ -891,26 +891,26 @@
           ;; this column is not used anymore
           :cache_ttl]
    :transform
-   {:database_id            {:ser #(serdes/*export-fk-keyed* % 'Database :name)
-                             :des #(serdes/*import-fk-keyed* % 'Database :name)}
-    :table_id               {:ser serdes/*export-table-fk*
-                             :des serdes/*import-table-fk*}
-    :collection_id          {:ser #(serdes/*export-fk* % 'Collection)
-                             :des #(serdes/*import-fk* % 'Collection)}
-    :creator_id             {:ser serdes/*export-user*
-                             :des serdes/*import-user*}
-    :made_public_by_id      {:ser serdes/*export-user*
-                             :des serdes/*import-user*}
-    :dataset_query          {:ser serdes/export-mbql
-                             :des serdes/import-mbql}
-    :parameters             {:ser serdes/export-parameters
-                             :des serdes/import-parameters}
-    :parameter_mappings     {:ser serdes/export-parameter-mappings
-                             :des serdes/import-parameter-mappings}
-    :visualization_settings {:ser serdes/export-visualization-settings
-                             :des serdes/import-visualization-settings}
-    :result_metadata        {:ser export-result-metadata
-                             :des import-result-metadata}}})
+   {:database_id            [#(serdes/*export-fk-keyed* % 'Database :name)
+                             #(serdes/*import-fk-keyed* % 'Database :name)]
+    :table_id               [serdes/*export-table-fk*
+                             serdes/*import-table-fk*]
+    :collection_id          [#(serdes/*export-fk* % 'Collection)
+                             #(serdes/*import-fk* % 'Collection)]
+    :creator_id             [serdes/*export-user*
+                             serdes/*import-user*]
+    :made_public_by_id      [serdes/*export-user*
+                             serdes/*import-user*]
+    :dataset_query          [serdes/export-mbql
+                             serdes/import-mbql]
+    :parameters             [serdes/export-parameters
+                             serdes/import-parameters]
+    :parameter_mappings     [serdes/export-parameter-mappings
+                             serdes/import-parameter-mappings]
+    :visualization_settings [serdes/export-visualization-settings
+                             serdes/import-visualization-settings]
+    :result_metadata        [export-result-metadata
+                             import-result-metadata]}})
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings

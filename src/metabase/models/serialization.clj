@@ -305,8 +305,8 @@
 (defn- extract-by-spec [model-name _opts instance]
   (when-let [spec (make-spec model-name)]
     (into (select-keys instance (:copy spec))
-          (for [[k v] (:transform spec)]
-            [k ((:ser v) (get instance k))]))))
+          (for [[k [ser _des]] (:transform spec)]
+            [k (ser (get instance k))]))))
 
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
@@ -667,8 +667,8 @@
         spec       (make-spec model-name)]
     (when spec
       (into (select-keys ingested (:copy spec))
-            (for [[k v] (:transform spec)]
-              [k ((:des v) (get ingested k))])))))
+            (for [[k [_ser des]] (:transform spec)]
+              [k (des (get ingested k))])))))
 
 (defn default-load-one!
   "Default implementation of `load-one!`"
