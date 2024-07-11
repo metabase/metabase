@@ -32,7 +32,6 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
-   [metabase.test.data.env :as tx.env]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -413,13 +412,9 @@
 ;; several things wrapped up which are detailed below
 
 (defn- row-level-restrictions-fk-drivers
-  "Drivers to test row-level restrictions against foreign keys with. Includes BigQuery, which for whatever reason does
-  not normally have FK tests ran for it. Excludes Presto JDBC, because that driver does NOT support fetching foreign
-  keys from the JDBC metadata, even though we enable the feature in the UI."
+  "Drivers to test row-level restrictions against foreign keys with."
   []
-  (cond-> (mt/normal-drivers-with-feature :nested-queries :metadata/key-constraints)
-    (@tx.env/test-drivers :bigquery-cloud-sdk) (conj :bigquery-cloud-sdk)
-    true                                       (disj :presto-jdbc)))
+  (mt/normal-drivers-with-feature :nested-queries :left-join))
 
 (deftest e2e-fks-test
   (mt/test-drivers (row-level-restrictions-fk-drivers)
@@ -1005,11 +1000,7 @@
                          (mt/rows (mt/run-mbql-query orders {:limit 1})))))))))))))
 
 (deftest pivot-query-test
-  (mt/test-drivers (disj
-                    (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)
-                    ;; this test relies on a FK relation between $product_id->products.category, so skip for Presto
-                    ;; JDBC, because that driver doesn't support resolving FKs from the JDBC metadata
-                    :presto-jdbc)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :nested-queries)
     (testing "Pivot table queries should work with sandboxed users (#14969)"
       (mt/dataset test-data
         (met/with-gtaps! {:gtaps      (mt/$ids
