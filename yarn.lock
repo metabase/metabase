@@ -4626,13 +4626,6 @@
   dependencies:
     "@types/color-convert" "*"
 
-"@types/concurrently@^7.0.0":
-  version "7.0.0"
-  resolved "https://registry.yarnpkg.com/@types/concurrently/-/concurrently-7.0.0.tgz#745fea75f46dd1f28174b8f921afadde3d5bcddf"
-  integrity sha512-pUOv0XBVexkfVOLWwzh8CMK7b+dnXGvq+/sJKfcws6b0vuMqNw8UeZUiaO9mWxfyS0eYGQyxg+J9EpVRxUCunA==
-  dependencies:
-    concurrently "*"
-
 "@types/connect-history-api-fallback@^1.3.5":
   version "1.3.5"
   resolved "https://registry.yarnpkg.com/@types/connect-history-api-fallback/-/connect-history-api-fallback-1.3.5.tgz#d1f7a8a09d0ed5a57aee5ae9c18ab9b803205dae"
@@ -8833,7 +8826,7 @@ concat-stream@^1.5.0, concat-stream@^1.6.2:
     readable-stream "^2.2.2"
     typedarray "^0.0.6"
 
-concurrently@*, concurrently@^8.2.2:
+concurrently@^8.2.2:
   version "8.2.2"
   resolved "https://registry.yarnpkg.com/concurrently/-/concurrently-8.2.2.tgz#353141985c198cfa5e4a3ef90082c336b5851784"
   integrity sha512-1dP4gpXFhei8IOtlXRE/T/4H88ElHgTiUzh71YUmtjTEHMSRS2Z/fgOxHSxxusGHogsRfxNq1vyAwxSC+EVyDg==

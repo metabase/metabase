@@ -152,7 +152,6 @@
     "@types/babel__core": "^7.20.4",
     "@types/babel__preset-env": "^7.9.5",
     "@types/color": "^3.0.2",
-    "@types/concurrently": "^7.0.0",
     "@types/crossfilter": "^0.0.34",
     "@types/d3": "^7.4.3",
     "@types/d3-array": "^3.2.1",
