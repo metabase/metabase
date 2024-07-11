@@ -139,7 +139,10 @@
                 settings        true
                 data_model      true}}
         :query-params}]
-  {collection       [:maybe (ms/QueryVectorOf ms/PositiveInt)]
+  {collection       [:maybe (ms/QueryVectorOf
+                                      [:or
+                                       ms/PositiveInt
+                                       [:re {:error/message "value must be string with `eid:<...>` prefix"} "^eid:.{21}$"]])]
    all_collections  [:maybe ms/BooleanValue]
    settings         [:maybe ms/BooleanValue]
    data_model       [:maybe ms/BooleanValue]
