@@ -12,7 +12,6 @@ export const NightModeToggleButton = ({
   onNightModeChange?: (isNightMode: boolean) => void;
 }) => (
   <Tooltip
-    key="night"
     tooltip={isNightMode ? t`Daytime mode` : t`Nighttime mode`}
   >
     <span>

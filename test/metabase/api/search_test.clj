@@ -27,17 +27,6 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(defn- ordered-subset?
-  "Test if all the elements in `xs` appear in the same order in `ys`. Search results in this test suite can be polluted
-  by local data, so this is a way to ignore extraneous results."
-  [[x & rest-x :as xs] [y & rest-y :as ys]]
-  (or (zero? (count xs))
-      (if (> (count xs) (count ys))
-        false
-        (if (= x y)
-          (recur rest-x rest-y)
-          (recur xs rest-y)))))
-
 (def ^:private default-collection {:id false :name nil :authority_level nil :type nil})
 
 (def ^:private default-search-row
@@ -458,12 +447,12 @@
           (mt/with-temp [PermissionsGroup           group {}
                          PermissionsGroupMembership _ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
             (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
-            (is (ordered-subset? (->> (default-search-results)
-                                      (remove (comp #{"collection"} :model))
-                                      (map #(cond-> %
-                                              (contains? #{"dashboard" "card" "dataset" "metric"} (:model %))
-                                              (assoc :can_write false))))
-                                 (search-request-data :rasta :q "test")))))))))
+            (is (mt/ordered-subset? (->> (default-search-results)
+                                         (remove (comp #{"collection"} :model))
+                                         (map #(cond-> %
+                                                 (contains? #{"dashboard" "card" "dataset" "metric"} (:model %))
+                                                 (assoc :can_write false))))
+                                    (search-request-data :rasta :q "test")))))))))
 
 (deftest permissions-test-3
   (testing "Users without root collection permissions should still see other collections they have access to"
@@ -497,16 +486,16 @@
             (mt/with-full-data-perms-for-all-users!
               (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
               (perms/grant-collection-read-permissions! group collection)
-              (is (ordered-subset? (->> (default-results-with-collection)
-                                        (concat (->> (default-search-results)
-                                                     (remove #(= "collection" (:model %)))
-                                                     (map #(update % :name str/replace "test" "test2"))))
-                                        (map #(cond-> %
-                                                (contains? #{"collection" "dashboard" "card" "dataset" "metric"} (:model %))
-                                                (assoc :can_write false)))
-                                        reverse
-                                        sorted-results)
-                                   (search-request-data :rasta :q "test"))))))))))
+              (is (mt/ordered-subset? (->> (default-results-with-collection)
+                                           (concat (->> (default-search-results)
+                                                        (remove #(= "collection" (:model %)))
+                                                        (map #(update % :name str/replace "test" "test2"))))
+                                           (map #(cond-> %
+                                                   (contains? #{"collection" "dashboard" "card" "dataset" "metric"} (:model %))
+                                                   (assoc :can_write false)))
+                                           reverse
+                                           sorted-results)
+                                      (search-request-data :rasta :q "test"))))))))))
 
 (deftest permissions-test-5
   (testing "Users with access to multiple collections should see results from all collections they have access to"
@@ -517,13 +506,13 @@
           (mt/with-full-data-perms-for-all-users!
             (perms/grant-collection-read-permissions! group (u/the-id coll-1))
             (perms/grant-collection-read-permissions! group (u/the-id coll-2))
-            (is (ordered-subset? (sorted-results
-                                  (reverse
-                                   (into
-                                    (default-results-with-collection)
-                                    (map (fn [row] (update row :name #(str/replace % "test" "test2")))
-                                         (default-results-with-collection)))))
-                                 (search-request-data :rasta :q "test")))))))))
+            (is (mt/ordered-subset? (sorted-results
+                                     (reverse
+                                      (into
+                                       (default-results-with-collection)
+                                       (map (fn [row] (update row :name #(str/replace % "test" "test2")))
+                                            (default-results-with-collection)))))
+                                    (search-request-data :rasta :q "test")))))))))
 
 (deftest permissions-test-6
   (testing "User should only see results in the collection they have access to"
@@ -804,7 +793,7 @@
                      Collection  _ (archived-collection {:name "collection test collection"})
                      Card        _ (archived {:name "metric test metric" :type :metric})
                      Segment     _ (archived {:name "segment test segment"})]
-        (is (ordered-subset? (default-archived-results)
+        (is (mt/ordered-subset? (default-archived-results)
                              (search-request-data :crowberto :archived "true")))))))
 
 (deftest alerts-test

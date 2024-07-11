@@ -123,7 +123,7 @@ export const DashboardHeaderInner = ({
       />,
       <SaveEditButton
         key="save-edit-button"
-        actionFn={() => {
+        onDoneEditing={() => {
           onRefreshPeriodChange(null);
         }}
       />,
