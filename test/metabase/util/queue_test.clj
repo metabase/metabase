@@ -1,11 +1,12 @@
 (ns metabase.util.queue-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.queue :as queue])
   (:import
    (java.util Set)
-   (metabase.util.queue DeduplicatingArrayTransactionQueue)))
+   (metabase.util.queue DeduplicatingArrayTransferQueue)))
 
 (set! *warn-on-reflection* true)
 
@@ -55,5 +56,7 @@
             (is (< (count @processed) (+ n-back (* realtime-threads n-real)))))
           (testing "Every item is processed"
             (is (= (set (range n-back)) (set @processed))))
+          (testing "The realtime events are processed in order"
+            (mt/ordered-subset? (take n-real (range (dec n-back) 0 -1)) @processed))
           (testing "No phantom items are left in the set"
-            (is (zero? (.size ^Set (.-queued-set ^DeduplicatingArrayTransactionQueue q))))))))))
+            (is (zero? (.size ^Set (.-queued-set ^DeduplicatingArrayTransferQueue q))))))))))
