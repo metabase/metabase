@@ -15,3 +15,5 @@ export * from "./FullscreenAnalyticsDashboard";
 export * from "./SaveEditButton";
 export * from "./FullscreenToggle";
 export * from "./NightModeToggleButton";
+export { OverflowMenu } from "metabase/dashboard/components/DashboardHeader/buttons/OverflowMenu";
+export { OverflowMenuItem } from "metabase/dashboard/components/DashboardHeader/buttons/OverflowMenu";

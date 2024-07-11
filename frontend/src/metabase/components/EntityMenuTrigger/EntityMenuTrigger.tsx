@@ -7,7 +7,7 @@ import { EntityMenuIconButton } from "./EntityMenuTrigger.styled";
 
 type EntityMenuTriggerProps = {
   icon: string;
-  onClick: () => void;
+  onClick?: () => void;
   open?: boolean;
   tooltip?: string;
   tooltipPlacement?: "top" | "bottom";

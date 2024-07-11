@@ -3,6 +3,7 @@ import { createAction } from "redux-actions";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
+import type { QueryModalType } from "metabase/query_builder/constants";
 import { updateUserSetting } from "metabase/redux/settings";
 import { UserApi } from "metabase/services";
 import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
@@ -15,6 +16,16 @@ export const setUIControls = createAction(SET_UI_CONTROLS);
 
 export const RESET_UI_CONTROLS = "metabase/qb/RESET_UI_CONTROLS";
 export const resetUIControls = createAction(RESET_UI_CONTROLS);
+
+export const setOpenQBModal =
+  (modal: QueryModalType, modalContext?: unknown) =>
+  async (dispatch: Dispatch) => {
+    await dispatch(setUIControls({ modal, modalContext }));
+  };
+
+export const setCloseQBModal = () => async (dispatch: Dispatch) => {
+  await dispatch(setUIControls({ modal: null, modalContext: null }));
+};
 
 export const setQueryBuilderMode =
   (

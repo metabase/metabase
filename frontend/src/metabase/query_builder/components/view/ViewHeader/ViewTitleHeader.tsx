@@ -59,13 +59,11 @@ interface ViewTitleHeaderProps {
       datasetEditorTab?: DatasetEditorTab;
     },
   ) => void;
-  turnModelIntoQuestion: () => void;
   areFiltersExpanded: boolean;
   onExpandFilters: () => void;
   onCollapseFilters: () => void;
   isShowingQuestionInfoSidebar: boolean;
   onCloseQuestionInfo: () => void;
-  onModelPersistenceChange: () => void;
 
   updateQuestion: (question: Question, opts: { run: boolean }) => void;
 
@@ -99,10 +97,8 @@ export function ViewTitleHeader({
   onEditSummary,
   onCloseSummary,
   setQueryBuilderMode,
-  turnModelIntoQuestion,
   isShowingQuestionInfoSidebar,
   onCloseQuestionInfo,
-  onModelPersistenceChange,
   className,
   style,
 }: ViewTitleHeaderProps): React.JSX.Element {
@@ -192,12 +188,10 @@ export function ViewTitleHeader({
           onEditSummary={onEditSummary}
           onCloseSummary={onCloseSummary}
           setQueryBuilderMode={setQueryBuilderMode}
-          turnModelIntoQuestion={turnModelIntoQuestion}
           toggleBookmark={toggleBookmark}
           onOpenQuestionInfo={onOpenQuestionInfo}
           onCloseQuestionInfo={onCloseQuestionInfo}
           isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
-          onModelPersistenceChange={onModelPersistenceChange}
           isObjectDetail={isObjectDetail}
           isSaved={isSaved}
           isModelOrMetric={isModelOrMetric}

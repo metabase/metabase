@@ -59,7 +59,6 @@ interface ViewTitleHeaderRightSideProps {
       datasetEditorTab?: DatasetEditorTab;
     },
   ) => void;
-  turnModelIntoQuestion: () => void;
   areFiltersExpanded: boolean;
   onExpandFilters: () => void;
   onCollapseFilters: () => void;
@@ -67,7 +66,6 @@ interface ViewTitleHeaderRightSideProps {
   onOpenQuestionInfo: () => void;
   onCloseQuestionInfo: () => void;
   isShowingQuestionInfoSidebar: boolean;
-  onModelPersistenceChange: () => void;
   isObjectDetail: boolean;
 }
 
@@ -91,7 +89,6 @@ export function ViewTitleHeaderRightSide({
   onEditSummary,
   onCloseSummary,
   setQueryBuilderMode,
-  turnModelIntoQuestion,
   areFiltersExpanded,
   onExpandFilters,
   onCollapseFilters,
@@ -99,7 +96,6 @@ export function ViewTitleHeaderRightSide({
   onOpenQuestionInfo,
   onCloseQuestionInfo,
   isShowingQuestionInfoSidebar,
-  onModelPersistenceChange,
   isObjectDetail,
 }: ViewTitleHeaderRightSideProps): React.JSX.Element {
   const isShowingNotebook = queryBuilderMode === "notebook";
@@ -213,12 +209,8 @@ export function ViewTitleHeaderRightSide({
           question={question}
           isBookmarked={isBookmarked}
           isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
-          onOpenModal={onOpenModal}
           onToggleBookmark={toggleBookmark}
-          onSetQueryBuilderMode={setQueryBuilderMode}
-          onTurnModelIntoQuestion={turnModelIntoQuestion}
           onInfoClick={handleInfoClick}
-          onModelPersistenceChange={onModelPersistenceChange}
         />
       )}
       {hasSaveButton && (
