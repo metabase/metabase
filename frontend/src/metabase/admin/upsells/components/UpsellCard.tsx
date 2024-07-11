@@ -23,12 +23,12 @@ interface FullWidthVariant {
   fullWidth?: boolean;
 }
 
-interface FixWidthVariant {
+interface FixedWidthVariant {
   maxWidth?: number;
   fullWidth?: never;
 }
 
-type Variants = FullWidthVariant | FixWidthVariant;
+type Variants = FullWidthVariant | FixedWidthVariant;
 
 type UpsellCardProps = OwnProps & Variants;
 
