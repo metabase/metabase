@@ -19,9 +19,13 @@ export function shouldSearch(
 
 export function getFilteredOptions(
   options: SelectOption[],
+  searchValue: string,
   selectedValues: string[],
 ) {
-  return options.filter(option => !selectedValues.includes(option.value));
+  return options.filter(
+    option =>
+      option.value === searchValue || !selectedValues.includes(option.value),
+  );
 }
 
 export function getNothingFoundMessage(

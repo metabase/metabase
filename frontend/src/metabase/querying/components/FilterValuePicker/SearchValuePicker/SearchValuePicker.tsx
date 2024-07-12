@@ -55,8 +55,11 @@ export function SearchValuePicker({
   );
 
   const searchOptions = canSearch ? getFieldOptions(fieldValues) : [];
-  const visibleOptions = getFilteredOptions(searchOptions, selectedValues);
-
+  const visibleOptions = getFilteredOptions(
+    searchOptions,
+    searchValue,
+    selectedValues,
+  );
   const notFoundMessage = getNothingFoundMessage(
     columnDisplayName,
     searchError,
