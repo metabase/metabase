@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { SelectOption } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
 
 import { SEARCH_LIMIT } from "./constants";
@@ -14,6 +15,13 @@ export function shouldSearch(
   const hasMoreValues = fieldValues.length === SEARCH_LIMIT;
 
   return !isExtensionOfLastSearch || hasMoreValues;
+}
+
+export function filterSelectedItems(
+  options: SelectOption[],
+  selectedValues: string[],
+) {
+  return options.filter(option => !selectedValues.includes(option.value));
 }
 
 export function getNothingFoundMessage(

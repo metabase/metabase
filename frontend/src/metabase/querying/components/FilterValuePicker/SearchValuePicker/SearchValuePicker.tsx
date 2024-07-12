@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
@@ -9,7 +9,11 @@ import type { FieldId, FieldValue } from "metabase-types/api";
 import { getFieldOptions } from "../utils";
 
 import { SEARCH_DEBOUNCE, SEARCH_LIMIT } from "./constants";
-import { getNothingFoundMessage, shouldSearch } from "./utils";
+import {
+  filterSelectedItems,
+  getNothingFoundMessage,
+  shouldSearch,
+} from "./utils";
 
 interface SearchValuePickerProps {
   fieldId: FieldId;
@@ -52,10 +56,8 @@ export function SearchValuePicker({
     },
   );
 
-  const options = useMemo(
-    () => (canSearch ? getFieldOptions(fieldValues) : []),
-    [fieldValues, canSearch],
-  );
+  const searchOptions = canSearch ? getFieldOptions(fieldValues) : [];
+  const visibleOptions = filterSelectedItems(searchOptions, selectedValues);
 
   const notFoundMessage = getNothingFoundMessage(
     columnDisplayName,
@@ -81,7 +83,7 @@ export function SearchValuePicker({
 
   return (
     <MultiAutocomplete
-      data={options}
+      data={visibleOptions}
       value={selectedValues}
       searchValue={searchValue}
       placeholder={t`Search by ${columnDisplayName}`}
