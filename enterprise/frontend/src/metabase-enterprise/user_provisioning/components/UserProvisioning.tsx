@@ -6,6 +6,7 @@ import _ from "underscore";
 import { AuthTabs } from "metabase/admin/settings/components/AuthTabs";
 import SettingToggle from "metabase/admin/settings/components/widgets/SettingToggle";
 import type { SettingElement } from "metabase/admin/settings/types";
+import { useSetting } from "metabase/common/hooks";
 import {
   Box,
   Button,
@@ -84,8 +85,10 @@ export const UserProvisioning = ({
       maskedTokenRequest.error.status === 404
     ) && !!maskedTokenRequest.data;
 
-  const showSamlWarning =
-    settingValues["saml-user-provisioning-enabled?"] && !isScimInitialized;
+  const samlUserProvisioningEnabled = useSetting(
+    "saml-user-provisioning-enabled?",
+  );
+  const showSamlWarning = samlUserProvisioningEnabled && !isScimInitialized;
 
   const scimTokenInputText = match(maskedTokenRequest)
     .with({ isUninitialized: true }, () => t`Loading...`)

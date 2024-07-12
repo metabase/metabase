@@ -1,17 +1,92 @@
 import {
   describeEE,
+  main,
   modal,
+  onlyOnOSS,
   restore,
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-describe("scenarios > admin > settings > scim", () => {
+import { setupSaml } from "./sso/shared/helpers.js";
+
+describe("scenarios > admin > settings > authentication", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
-  describeEE("settings management", () => {
+  describe("page layout", () => {
+    describe("oss", { tags: "@OSS" }, () => {
+      it("should implement a tab layout for oss customers", () => {
+        onlyOnOSS();
+
+        cy.visit("/admin/settings/authentication");
+
+        cy.log("should not have tabs");
+        cy.findByRole("tab").should("not.exist");
+
+        cy.log(
+          "should have the api keys as a auth card (and should be able to access the page)",
+        );
+        cy.findByTestId("api-keys-setting").should("exist");
+
+        cy.log("should show an upsell");
+        cy.findByTestId("upsell-card").should("exist");
+      });
+    });
+
+    describeEE("ee", () => {
+      it("should implement a tab layout for enterprise customers", () => {
+        setTokenFeatures("all");
+
+        cy.visit("/admin/settings/authentication");
+
+        authTab("Authentication")
+          .should("exist")
+          .should("have.attr", "data-active", "true");
+        authTab("User Provisioning").should("exist");
+        authTab("API Keys").should("exist");
+
+        cy.log("should not upsell enterprise customer");
+        cy.findByTestId("upsell-card").should("not.exist");
+
+        cy.log("should not show api keys under authentication tab");
+        cy.findByTestId("api-keys-setting").should("not.exist");
+
+        cy.log("should be able to go to the user provisioning page via a tab");
+        authTab("User Provisioning").click();
+        authTab("User Provisioning").should("have.attr", "data-active", "true");
+        cy.url().should(
+          "include",
+          "/admin/settings/authentication/user-provisioning",
+        );
+
+        cy.log("should be able to go to the api keys page via a tab");
+        authTab("API Keys").click();
+        authTab("API Keys").should("have.attr", "data-active", "true");
+        cy.url().should("include", "/admin/settings/authentication/api-keys");
+      });
+    });
+  });
+});
+
+describe("scenarios > admin > settings > user provisioning", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  describe("oss", { tags: "@OSS" }, () => {
+    it("user provisioning page should not be availble for OSS customers", () => {
+      onlyOnOSS();
+      cy.visit("/admin/settings/authentication/user-provisioning");
+      main().within(() => {
+        cy.findByText("We're a little lost...");
+      });
+    });
+  });
+
+  describeEE("scim settings management", () => {
     beforeEach(() => {
       setTokenFeatures("all");
     });
@@ -30,8 +105,6 @@ describe("scenarios > admin > settings > scim", () => {
       cy.log("can enable scim");
       scimToggle().should("exist");
       scimToggle().click();
-
-      cy.wait(1000);
 
       let initialUnmaskedToken = "";
       cy.log("should show unmasked info in modal");
@@ -112,6 +185,39 @@ describe("scenarios > admin > settings > scim", () => {
       cy.log("should be able to re-enable");
       scimToggle().click();
       scimToggle().should("be.checked");
+    });
+
+    it("should warn users that saml user provisioning will be disabled before enabling scim", () => {
+      setupSaml();
+      cy.visit("/admin/settings/authentication/user-provisioning");
+
+      const samlWarningMessage =
+        "When enabled, SAML user provisioning will be turned off in favor of SCIM.";
+
+      main().within(() => {
+        cy.log("message should exist while scim has never been enabled");
+        cy.findByText(samlWarningMessage).should("exist");
+
+        cy.log("message should not exist once scim has been enabled");
+        scimToggle().should("not.be.checked");
+        scimToggle().click();
+        scimToggle().should("be.checked");
+      });
+
+      modal().within(() => {
+        cy.findByRole("button", { name: /Done/ }).click();
+      });
+
+      main().within(() => {
+        cy.findByText(samlWarningMessage).should("not.exist");
+
+        cy.log(
+          "message should still not exist even after scim has been disabled",
+        );
+        scimToggle().click();
+        scimToggle().should("not.be.checked");
+        cy.findByText(samlWarningMessage).should("not.exist");
+      });
     });
   });
 });
