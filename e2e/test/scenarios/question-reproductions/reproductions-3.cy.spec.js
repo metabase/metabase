@@ -1675,6 +1675,73 @@ describe("issue 38989", () => {
   });
 });
 
+// This test is slightly different in master than here (i.e. release-x.50.x) due to https://github.com/metabase/metabase/issues/45358.
+// It's unclear why it behaves differently in master (in CI only).
+describe("issue 39771", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show tooltip for ellipsified text (metabase#39771)", () => {
+    createQuestion(
+      {
+        query: {
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              "CREATED_AT",
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "minute-of-hour", // this is different than in master
+              },
+            ],
+          ],
+          "source-query": {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month",
+                },
+              ],
+            ],
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    openNotebook();
+    getNotebookStep("summarize", { stage: 1 })
+      .findByTestId("breakout-step")
+      .findByText("Created At: Month: Minute of hour")
+      .click();
+
+    popover().findByText("by minute of hour").realHover();
+
+    popover().then(([$popover]) => {
+      const popoverStyle = window.getComputedStyle($popover);
+      const popoverZindex = parseInt(popoverStyle.zIndex, 10);
+
+      cy.findByTestId("ellipsified-tooltip").within(([$tooltip]) => {
+        cy.findByText("by minute of hour").should("be.visible");
+
+        const tooltipStyle = window.getComputedStyle($tooltip);
+        const tooltipZindex = parseInt(tooltipStyle.zIndex, 10);
+
+        // resort to asserting zIndex because should("be.visible") passes unexpectedly
+        expect(tooltipZindex).to.be.gte(popoverZindex);
+      });
+    });
+  });
+});
+
 describe("issue 41464", () => {
   beforeEach(() => {
     restore();
