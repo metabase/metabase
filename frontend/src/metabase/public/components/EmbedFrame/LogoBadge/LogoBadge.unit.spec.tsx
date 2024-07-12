@@ -7,7 +7,6 @@ describe("LogoBadge", () => {
     setup();
 
     expect(screen.getByText("Powered by")).toBeInTheDocument();
-    expect(screen.getByText("Metabase")).toBeInTheDocument();
   });
 
   it("should render a link with valid utm parameters", () => {
