@@ -18,9 +18,9 @@
 
 (mr/def ::field-type-info
   [:map
-   [:base-type      {:optional true} ::lib.schema.common/base-type]
-   [:effective-type {:optional true} ::lib.schema.common/base-type]
-   [:semantic-type  {:optional true} ::lib.schema.common/semantic-or-relation-type]])
+   [:base-type      [:maybe ::lib.schema.common/base-type]]
+   [:effective-type [:maybe ::lib.schema.common/base-type]]
+   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
 
 (mr/def ::field-id-or-name->type-info
   [:map-of
@@ -154,7 +154,11 @@
    field-id->type-info :- [:maybe ::field-id-or-name->type-info]]
   (letfn [(datetime-but-not-time? [field-id]
             (some-> field-id field-id->type-info date-or-datetime-clause?))
-          (expression-ref->type-info [opts] (select-keys opts [:base-type :effective-type]))
+          ;; Following function copies type extraction logic from [[unbucketed-fields->field-id->type-info]],
+          ;; to conform original schema.
+          (expression-opts->type-info [{:keys [base-type effective-type]}] :- ::field-id-or-name->type-info
+            {:base-type base-type
+             :effective-type (or effective-type base-type)})
           (wrap-clauses [x]
             (lib.util.match/replace x
               ;; don't replace anything that's already bucketed or otherwise is not subject to autobucketing
@@ -166,7 +170,7 @@
               [:field opts (id-or-name :guard datetime-but-not-time?)]
               [:field (assoc opts :temporal-unit :day) id-or-name]
 
-              [:expression (opts :guard (comp date-or-datetime-clause? expression-ref->type-info)) name']
+              [:expression (opts :guard (comp date-or-datetime-clause? expression-opts->type-info)) name']
               [:expression (assoc opts :temporal-unit :day) name']))
           (rewrite-clause [stage clause-to-rewrite]
             (m/update-existing stage clause-to-rewrite wrap-clauses))]
