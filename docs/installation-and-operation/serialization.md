@@ -659,7 +659,7 @@ The `-o -` option will output logs in the terminal.
 
 Serialization is intended for version control, staging-to-production workflows, and duplicating assets to other Metabase instances. While it's possible to use serialization for other use cases (like duplicating assets _within_ a single instance), we don't officially support these use cases.
 
-We're providing some directions on how to approach these alternative use cases, but you should use them at your own risk. We strongly recommend that you test any process involving serialization on a non-production instance first, and reach out to [help@metabase.com](mailto:help@metabase.com) if you have any questions.
+We're providing some directions on how to approach these unsupported use cases, but you should use them at your own risk. We strongly recommend that you test any process involving serialization on a non-production instance first, and reach out to [help@metabase.com](mailto:help@metabase.com) if you have any questions.
 
 ### Using serialization for duplicating content within the same Metabase
 
