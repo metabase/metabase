@@ -115,10 +115,16 @@ function SnippetCollectionForm({
 
   const shouldDisableItem = useCallback(
     (item: CollectionPickerItem) => {
-      return passedCollection.id
-        ? item.effective_location?.includes(String(passedCollection.id)) ||
-            passedCollection.id === item.id
-        : false;
+      if (passedCollection.id === undefined) {
+        return false;
+      } else {
+        return (
+          item.effective_location
+            ?.split("/")
+            .includes(String(passedCollection.id)) ||
+          passedCollection.id === item.id
+        );
+      }
     },
     [passedCollection.id],
   );

@@ -105,7 +105,7 @@ function FormCollectionPicker({
       hasConfirmButtons: true,
       namespace: type === "snippet-collections" ? "snippets" : undefined,
       allowCreateNew: showCreateNewCollectionOption,
-      hasRecents: type === "snippet-collections" ? false : true,
+      hasRecents: type !== "snippet-collections",
     }),
     [filterPersonalCollections, type, showCreateNewCollectionOption],
   );
