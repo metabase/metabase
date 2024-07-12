@@ -178,7 +178,7 @@ yarn add @metabase/embedding-sdk-react
 
 Once installed, you need to import `MetabaseProvider` and provide it with a `config` object.
 
-```jsx
+```typescript jsx
 import React from "react";
 import { MetabaseProvider } from "@metabase/embedding-sdk-react";
 
@@ -218,7 +218,7 @@ After the SDK is configured, you can use embed your question using the `StaticQu
 The component has a default height, which can be customized by using the `height` prop.
 To inherit the height from the parent container, you can pass `100%` to the height prop.
 
-```jsx
+```typescript jsx
 import React from "react";
 import { MetabaseProvider, StaticQuestion } from "@metabase/embedding-sdk-react";
 
@@ -237,7 +237,7 @@ export default function App() {
 
 ### Embedding an interactive question (with drill-down)
 
-```jsx
+```typescript jsx
 import React from "react";
 import { MetabaseProvider, InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
@@ -265,13 +265,13 @@ make your application unique. Therefore, we've added the ability to customize th
 
 Using the `InteractiveQuestion` with its default layout looks like this:
 
-```jsx
+```typescript jsx
 <InteractiveQuestion questionId={95} />
 ```
 
 To customize the layout, use namespaced components within the `InteractiveQuestion`. For example:
 
-```jsx
+```typescript jsx
 <InteractiveQuestion questionId={95}>
   <div
     style={{
@@ -340,7 +340,7 @@ After the SDK is configured, you can embed your dashboard using the `StaticDashb
 - **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads with all visible cards and their content.
 - **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded.
 
-```jsx
+```typescript jsx
 import React from "react";
 import { MetabaseProvider, StaticDashboard } from "@metabase/embedding-sdk-react";
 
@@ -384,7 +384,7 @@ After the SDK is configured, you can embed your dashboard using the `Interactive
 - **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads with all visible cards and their content.
 - **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded.
 
-```jsx
+```typescript jsx
 import React from "react";
 import { MetabaseProvider, InteractiveDashboard } from "@metabase/embedding-sdk-react";
 
@@ -613,7 +613,7 @@ component.
 
 To use a plugin globally, add the plugin to the `MetabaseProvider`'s `pluginsConfig` prop:
 
-```jsx
+```typescript jsx
 <MetabaseProvider
   config={config}
   theme={theme}
@@ -627,12 +627,12 @@ To use a plugin globally, add the plugin to the `MetabaseProvider`'s `pluginsCon
 
 To use a plugin on a per-component basis, pass the plugin as a prop to the component:
 
-```jsx
- <InteractiveQuestion
-      plugins={{
-        mapQuestionClickActions: [...],
-      }}
-      {...otherProps}
+```typescript jsx
+<InteractiveQuestion
+  questionId={1}
+  plugins={{
+    mapQuestionClickActions: [...],
+  }}
 />
 ```
 
@@ -644,7 +644,7 @@ This plugin allows you to add custom actions to
 the click-through menu of an interactive question. You can add and
 customize the appearance and behavior of the custom actions.
 
-```jsx
+```typescript jsx
 // You can provide a custom action with your own `onClick` logic.
 const createCustomAction = clicked => ({
   buttonType: "horizontal",
@@ -709,29 +709,29 @@ appears as a dropdown menu on the top right corner of the card.
 
 The plugin's default configuration looks like this:
 
-```jsx
+```typescript jsx
 const plugins = {
   dashboard: {
     dashcardMenu: {
-         withDownloads: true,
-         withEditLink: true,
-         customItems: [],
-    }
-  } 
-};
+      withDownloads: true,
+      withEditLink: true,
+      customItems: [],
+    },
+  },
+}
 ```
 
 and can be used in the InteractiveDashboard like this:
 
-```jsx
-<InteractiveDashboard 
-    questionId={...}
-    plugins={{
-        dashboard: {
-            dashcardMenu: [your config here]
-        }
-    }}
->
+```typescript jsx
+<InteractiveDashboard
+  questionId={1}
+  plugins={{
+    dashboard: {
+      dashcardMenu: null,
+    },
+  }}
+/>
 ```
 
 Take a look below to see how you can customize the plugin:
@@ -741,15 +741,15 @@ Take a look below to see how you can customize the plugin:
 To remove the download button from the dashcard menu, set `withDownloads` to `false`. To remove the edit link from the
 dashcard menu, set `withEditLink` to `false`.
 
-```jsx
+```typescript jsx
 const plugins = {
   dashboard: {
     dashcardMenu: {
-         withDownloads: false,
-         withEditLink: false,
-         customItems: [],
+       withDownloads: false,
+       withEditLink: false,
+       customItems: [],
     }
-  } 
+  }
 };
 ```
 
@@ -758,7 +758,7 @@ const plugins = {
 You can add custom actions to the dashcard menu by adding an object to the `customItems` array. Each element can either
 be an object or a function that takes in the dashcard's question, and outputs a list of custom items in the form of:
 
-```jsx
+```typescript jsx
 {
   iconName: string;
   label: string;
@@ -767,31 +767,31 @@ be an object or a function that takes in the dashcard's question, and outputs a 
 }
 ```
 
-```jsx
+```typescript jsx
 const plugins: SdkPluginsConfig = {
-    dashboard: {
-      dashcardMenu: {
-        customItems: [
-          {
+  dashboard: {
+    dashcardMenu: {
+      customItems: [
+        {
+          iconName: "chevronright",
+          label: "Custom action",
+          onClick: () => {
+            alert(`Custom action clicked`);
+          },
+        },
+        ({ question }) => {
+          return {
             iconName: "chevronright",
             label: "Custom action",
             onClick: () => {
-              alert(`Custom action clicked`)
+              alert(`Custom action clicked ${question.name}`);
             },
-          },
-          ({ question }) => {
-            return {
-              iconName: "chevronright",
-              label: "Custom action",
-              onClick: () => {
-                alert(`Custom action clicked ${question.name}`)
-              },
-            }
-          },
-        ],
-      },
+          };
+        },
+      ],
     },
-  }
+  },
+};
 ```
 
 ###### Replacing the existing menu with your own component
@@ -799,17 +799,14 @@ const plugins: SdkPluginsConfig = {
 If you want to replace the existing menu with your own component, you can do so by providing a function that returns a
 React component. This function also can receive the question as an argument.
 
-```jsx
+```typescript jsx
 const plugins: SdkPluginsConfig = {
   dashboard: {
-    dashcardMenu: ({question}) => (
-        <button onClick={() => console.log(question.name)}>
-            Click me
-        </button>
-    )
-  } 
+    dashcardMenu: ({ question }) => (
+      <button onClick={() => console.log(question.name)}>Click me</button>
+    ),
+  },
 };
-
 ```
 
 ### Adding global event handlers
@@ -842,7 +839,7 @@ return (
 
 In case you need to reload a Metabase component, for example, your users modify your application data and that data is used to render a question in Metabase. If you embed this question and want to force Metabase to reload the question to show the latest data, you can do so by using the `key` prop to force a component to reload.
 
-```jsx
+```typescript jsx
 // Inside your application component
 const [data, setData] = useState({});
 // This is used to force reloading Metabase components
@@ -876,7 +873,7 @@ return <InteractiveQuestion key={counter} questionId={yourQuestionId} />;
 
 You can customize how the SDK fetches the refresh token by specifying the `fetchRefreshToken` function in the `config` prop:
 
-```jsx
+```typescript jsx
 /**
   * This is the default implementation used in the SDK.
   * You can customize this function to fit your needs, such as adding headers or excluding cookies.
