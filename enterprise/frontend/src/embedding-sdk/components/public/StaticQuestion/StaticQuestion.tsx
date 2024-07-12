@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -8,7 +8,10 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
-import { getQuestionParameterByValues } from "embedding-sdk/lib/question-parameter";
+import {
+  getQuestionParameterByValues,
+  type SdkParameterValues,
+} from "embedding-sdk/lib/question-parameter";
 import CS from "metabase/css/core/index.css";
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { getResponseErrorMessage } from "metabase/lib/errors";
@@ -31,11 +34,7 @@ export type StaticQuestionProps = {
   questionId: CardId;
   showVisualizationSelector?: boolean;
   height?: string | number;
-
-  /**
-   *
-   */
-  parameterValues?: Record<string, string | number>;
+  parameterValues?: SdkParameterValues;
 };
 
 type State = {
@@ -49,6 +48,7 @@ const _StaticQuestion = ({
   questionId,
   showVisualizationSelector,
   height,
+  parameterValues,
 }: StaticQuestionProps): JSX.Element | null => {
   const metadata = useSelector(getMetadata);
 
@@ -59,44 +59,48 @@ const _StaticQuestion = ({
     error: null,
   });
 
-  const loadCardData = async ({ questionId }: { questionId: number }) => {
-    setState(prevState => ({
-      ...prevState,
-      loading: true,
-    }));
+  const loadCardData = useCallback(
+    async ({ questionId }: { questionId: number }) => {
+      setState(prevState => ({
+        ...prevState,
+        loading: true,
+      }));
 
-    const parameters = getQuestionParameterByValues();
+      const parameters =
+        parameterValues && getQuestionParameterByValues(parameterValues);
 
-    Promise.all([
-      CardApi.get({ cardId: questionId }),
-      CardApi.query({
-        cardId: questionId,
-        ...(parameters && { parameters }),
-      }),
-    ])
-      .then(([card, result]) => {
-        setState(prevState => ({
-          ...prevState,
-          card,
-          result,
-          loading: false,
-          error: null,
-        }));
-      })
-      .catch(error => {
-        setState(prevState => ({
-          ...prevState,
-          result: null,
-          card: null,
-          loading: false,
-          error,
-        }));
-      });
-  };
+      Promise.all([
+        CardApi.get({ cardId: questionId }),
+        CardApi.query({
+          cardId: questionId,
+          ...(parameters && { parameters }),
+        }),
+      ])
+        .then(([card, result]) => {
+          setState(prevState => ({
+            ...prevState,
+            card,
+            result,
+            loading: false,
+            error: null,
+          }));
+        })
+        .catch(error => {
+          setState(prevState => ({
+            ...prevState,
+            result: null,
+            card: null,
+            loading: false,
+            error,
+          }));
+        });
+    },
+    [parameterValues],
+  );
 
   useEffect(() => {
-    loadCardData({ questionId });
-  }, [questionId]);
+    loadCardData({ questionId }).then();
+  }, [questionId, loadCardData]);
 
   const changeVisualization = (newQuestion: Question) => {
     setState({

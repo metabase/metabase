@@ -5,9 +5,10 @@ import type { ParameterType, WritebackParameter } from "metabase-types/api";
 type SdkParameterType = ParameterType | "category";
 type Parameter = Pick<WritebackParameter, "id" | "type" | "target" | "value">;
 type SdkParameterValue = string | number | Date;
+export type SdkParameterValues = Record<string, SdkParameterValue>;
 
 export function getQuestionParameterByValues(
-  parameterValues: Record<string, SdkParameterValue>,
+  parameterValues: SdkParameterValues,
 ): Parameter[] {
   const parameters: Parameter[] = [];
 
@@ -19,7 +20,7 @@ export function getQuestionParameterByValues(
       continue;
     }
 
-    // TODO: get the id from somewhere.
+    // TODO: get the id from somewhere...
     const id = "";
 
     parameters.push({
