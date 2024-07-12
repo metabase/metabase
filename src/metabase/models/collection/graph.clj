@@ -3,12 +3,11 @@
   details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
+   [com.climate.claypoole :as cp]
    [metabase.audit :as audit]
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection :refer [Collection]]
-   [metabase.models.collection-permission-graph-revision
-    :as c-perm-revision
-    :refer [CollectionPermissionGraphRevision]]
+   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.permissions-group
@@ -79,18 +78,22 @@
                                                  [:not [:like :location (h2x/literal (format "/%d/%%" collection-id))]]))}]
     (set (map :id (mdb.query/query honeysql-form)))))
 
+(defn- calculate-perm-groups [collection-namespace group-id->perms collection-ids]
+  (into {}
+        (cp/with-shutdown! [pool (+ 2 (cp/ncpus))]
+          (doall (cp/upmap pool
+                           (fn [group-id]
+                             [group-id
+                              (group-permissions-graph collection-namespace (group-id->perms group-id) collection-ids)])
+                           (t2/select-pks-set PermissionsGroup))))))
+
 (defn- collection-permission-graph
   "Return the permission graph for the collections with id in `collection-ids` and the root collection."
   ([collection-ids] (collection-permission-graph collection-ids nil))
   ([collection-ids collection-namespace]
    (let [group-id->perms (group-id->permissions-set)]
      {:revision (c-perm-revision/latest-id)
-      :groups   (into {}
-                      (u/ecs-map
-                       (fn [group-id]
-                         [group-id
-                          (group-permissions-graph collection-namespace (group-id->perms group-id) collection-ids)])
-                       (t2/select-pks-set PermissionsGroup)))})))
+      :groups   (calculate-perm-groups collection-namespace group-id->perms collection-ids)})))
 
 (defn- modify-instance-analytics-for-admins
   "In the graph, override the instance analytics collection within the admin group to read."
@@ -179,7 +182,7 @@
          (doseq [[group-id changes] changes]
            (update-audit-collection-permissions! group-id changes)
            (update-group-permissions! collection-namespace group-id changes))
-         (data-perms.graph/save-perms-revision! CollectionPermissionGraphRevision
+         (data-perms.graph/save-perms-revision! :model/CollectionPermissionGraphRevision
                                                 (:revision old-graph)
                                                 (assoc old-graph :namespace collection-namespace)
                                                 changes))))))

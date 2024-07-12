@@ -3,7 +3,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn ecs-map
+#_(defn ecs-map
   "Applies function f to each item in collection coll using an ExecutorCompletionService for parallel execution.
   Returns a sequence of results in the same order as the input collection.
 
