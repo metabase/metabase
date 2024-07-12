@@ -234,6 +234,14 @@ export default function App() {
 }
 ```
 
+You can pass parameter values to questions defined with SQL via `parameterValues` prop,
+in the format of `{parameter_name: parameter_value}`. Refer to the [SQL parameters](https://www.metabase.com/docs/v0.50/questions/native-editor/sql-parameters.html)
+documentation for more information.
+
+```jsx
+<StaticQuestion questionId={questionId} parameterValues={{product_id: 50}} />
+```
+
 ### Embedding an interactive question (with drill-down)
 
 ```jsx
