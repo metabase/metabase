@@ -4,7 +4,6 @@
    #?@(:clj  ([clojure.math.numeric-tower :as math]
               [me.flowthing.pp :as pp]
               [metabase.config :as config]
-              [metabase.util.concurrent :as concurrent]
               #_{:clj-kondo/ignore [:discouraged-namespace]}
               [metabase.util.jvm :as u.jvm]
               [metabase.util.string :as u.str]
@@ -20,7 +19,6 @@
    [medley.core :as m]
    [metabase.shared.util.i18n :refer [tru] :as i18n]
    [metabase.shared.util.namespaces :as u.ns]
-
    [metabase.util.format :as u.format]
    [metabase.util.log :as log]
    [metabase.util.memoize :as memoize]
@@ -35,8 +33,6 @@
                             [metabase.util])))
 
 #?(:clj (set! *warn-on-reflection* true))
-
-#?(:clj (comment concurrent/keep-me))
 
 (u.ns/import-fns
   [u.format colorize format-bytes format-color format-milliseconds format-nanoseconds format-seconds])
@@ -61,9 +57,7 @@
                         with-timeout
                         with-us-locale]
                        [u.str
-                        build-sentence]
-                       [concurrent
-                        ecs-map]))
+                        build-sentence]))
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."
