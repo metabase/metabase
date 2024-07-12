@@ -10,7 +10,7 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
-import { UpsellAuthFeatures } from "metabase/admin/upsells";
+import { UpsellSSO } from "metabase/admin/upsells";
 import { AdminLayout } from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/components/ErrorPages";
 import SaveStatus from "metabase/components/SaveStatus";
@@ -265,9 +265,8 @@ class SettingsEditor extends Component {
 
   renderUpsell() {
     const upsell =
-      this.props.activeSectionName === "authentication" ||
-      this.props.activeSectionName.startsWith("authentication/") ? (
-        <UpsellAuthFeatures />
+      this.props.activeSectionName === "authentication" ? (
+        <UpsellSSO source="authentication-sidebar" />
       ) : null;
 
     if (!upsell) {

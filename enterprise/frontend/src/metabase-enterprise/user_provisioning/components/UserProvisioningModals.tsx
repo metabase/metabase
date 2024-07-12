@@ -79,7 +79,6 @@ export const UserProvisioningRegenerateTokenModal = ({
     await regenerateToken();
   };
 
-  // TODO: consolidate this logic between the main comopnent
   const scimTokenInputText = match(regenerateTokenReq)
     .with({ isUninitialized: true }, () => t`Loading...`)
     .with({ isLoading: true }, () => t`Loading...`)

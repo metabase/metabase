@@ -283,7 +283,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
     order: 60,
     key: "authentication",
     tabs:
-      PLUGIN_ADMIN_SETTINGS_AUTH_TABS.length === 1
+      PLUGIN_ADMIN_SETTINGS_AUTH_TABS.length <= 1
         ? undefined
         : PLUGIN_ADMIN_SETTINGS_AUTH_TABS.map(tab => ({
             ...tab,

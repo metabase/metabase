@@ -207,6 +207,8 @@ export const createMockSettings = (
   "report-timezone-long": "Europe/London",
   "saml-configured": false,
   "saml-enabled": false,
+  "scim-enabled": false,
+  "scim-base-url": "http://localhost:3000/api/ee/scim/v2/",
   "snowplow-url": "",
   "search-typeahead-enabled": true,
   "setup-token": null,

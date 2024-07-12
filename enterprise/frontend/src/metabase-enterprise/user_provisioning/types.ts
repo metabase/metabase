@@ -12,6 +12,6 @@ export interface MaskedScimApiKey {
   updated_by_id: number;
 }
 
-export interface UnmakedScimApiKey extends MaskedScimApiKey {
+export interface UnmaskedScimApiKey extends MaskedScimApiKey {
   unmasked_key: string;
 }

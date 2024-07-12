@@ -98,18 +98,6 @@ describe("SettingsEditor", () => {
       expect(screen.queryByText("Session timeout")).not.toBeInTheDocument();
     });
 
-    it("should not show the admin sso notification setting", async () => {
-      await setupEnterprise({
-        initialRoute: "/admin/settings/authentication",
-      });
-
-      expect(screen.getByText("Sign in with Google")).toBeInTheDocument();
-
-      expect(
-        screen.queryByText("Notify admins of new SSO users"),
-      ).not.toBeInTheDocument();
-    });
-
     it("should not show the advanced LDAP settings", async () => {
       setupGroupsEndpoint([createMockGroup()]);
       await setupEnterprise({

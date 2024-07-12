@@ -84,10 +84,8 @@ export const UserProvisioning = ({
       maskedTokenRequest.error.status === 404
     ) && !!maskedTokenRequest.data;
 
-  const samlUserProvisioningEnabled =
-    settingValues["saml-user-provisioning-enabled?"];
   const showSamlWarning =
-    samlUserProvisioningEnabled && (!isScimInitialized || !isScimEnabled);
+    settingValues["saml-user-provisioning-enabled?"] && !isScimInitialized;
 
   const scimTokenInputText = match(maskedTokenRequest)
     .with({ isUninitialized: true }, () => t`Loading...`)

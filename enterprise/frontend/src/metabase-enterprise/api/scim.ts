@@ -1,6 +1,6 @@
 import type {
   MaskedScimApiKey,
-  UnmakedScimApiKey,
+  UnmaskedScimApiKey,
 } from "metabase-enterprise/user_provisioning/types";
 
 import { EnterpriseApi } from "./api";
@@ -14,7 +14,7 @@ export const scimApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: ["scim"],
     }),
-    regenerateScimToken: builder.mutation<UnmakedScimApiKey, void>({
+    regenerateScimToken: builder.mutation<UnmaskedScimApiKey, void>({
       query: () => ({
         method: "POST",
         url: "/api/ee/scim/api_key",
