@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
@@ -50,11 +50,7 @@ export function SearchValuePicker({
     searchOptions,
   });
 
-  const availableOptions = useMemo(
-    () => [...selectedOptions, ...searchOptions],
-    [selectedOptions, searchOptions],
-  );
-
+  const availableOptions = [...selectedOptions, ...searchOptions];
   const nothingFoundMessage = getNothingFoundMessage(
     columnName,
     searchError,
@@ -105,11 +101,7 @@ function useSearchQuery({ fieldId, searchFieldId }: SearchOptionsProps) {
     },
   );
 
-  const searchOptions = useMemo(
-    () => getFieldOptions(searchFieldValues),
-    [searchFieldValues],
-  );
-
+  const searchOptions = getFieldOptions(searchFieldValues);
   const isSearchStale = getIsSearchStale(
     searchValue,
     searchQuery,
@@ -181,19 +173,13 @@ function useRemappingQuery({
       },
     );
 
-  const remappedOptions = useMemo(
-    () => getFieldOptions(remappedFieldValues),
-    [remappedFieldValues],
-  );
-
-  useLayoutEffect(() => {
-    const fetchedOptions = [...searchOptions, ...remappedOptions];
-    if (!fetchedOptions.every(option => cachedOptions[option.value])) {
-      const newOptions = { ...cachedOptions };
-      fetchedOptions.forEach(option => (newOptions[option.value] = option));
-      setCachedOptions(newOptions);
-    }
-  }, [searchOptions, remappedOptions, cachedOptions]);
+  const remappedOptions = getFieldOptions(remappedFieldValues);
+  const fetchedOptions = [...searchOptions, ...remappedOptions];
+  if (!fetchedOptions.every(option => cachedOptions[option.value])) {
+    const newOptions = { ...cachedOptions };
+    fetchedOptions.forEach(option => (newOptions[option.value] = option));
+    setCachedOptions(newOptions);
+  }
 
   return {
     selectedOptions,
