@@ -37,10 +37,9 @@ jobs:
         with:
           sparse-checkout: "release"
       - name: prepare dependencies in release directory
-        run: | # sh
-          cd release && yarn --frozen-lockfile
+        run: yarn --cwd release --frozen-lockfile
       - name: Run frontend type-check
-        run: yarn type-check
+        run: yarn --cwd release type-check
 
   release-tests-unit:
     needs: files-changed
@@ -52,10 +51,9 @@ jobs:
         with:
           sparse-checkout: "release"
       - name: prepare dependencies in release directory
-        run: | # sh
-          cd release && yarn --frozen-lockfile
+        run: yarn --cwd release --frozen-lockfile
       - name: Run release unit tests
-        run: yarn test:unit
+        run: yarn --cwd release test:unit
 
   release-test-build:
     needs: files-changed
@@ -67,9 +65,8 @@ jobs:
         with:
           sparse-checkout: "release"
       - name: prepare dependencies in release directory
-        run: | # sh
-          cd release && yarn --frozen-lockfile
+        run: yarn --cwd release --frozen-lockfile
       - name: Build release bundle
-        run: yarn build
+        run: yarn --cwd release build
       - name: Smoke test release bundle
-        run: node dist/index.cjs
+        run: node release/dist/index.cjs
