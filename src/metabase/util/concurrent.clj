@@ -1,5 +1,5 @@
 (ns metabase.util.concurrent
-  (:import [java.util.concurrent Executors ExecutorCompletionService Future]))
+  (:import [java.util.concurrent Executors ExecutorCompletionService Future TimeUnit]))
 
 (set! *warn-on-reflection* true)
 
@@ -41,19 +41,27 @@
 
   This will concurrently fetch data from those resource URLs, using a pool of 10 threads,
   and timeout after 5 seconds if all operations haven't completed."
-  [f coll & {:keys [timeout pool-size]}]
-  (let [pool (Executors/newFixedThreadPool (or pool-size
-                                               (+ 2 (.availableProcessors (Runtime/getRuntime)))))
+  [f coll & {:keys [timeout pool-size]
+             :or {pool-size (+ 2 (.availableProcessors (Runtime/getRuntime)))}}]
+  (let [pool (Executors/newFixedThreadPool pool-size)
         ecs (ExecutorCompletionService. pool)
         futures (for [item coll] (.submit ecs ^Callable #(f item)))
-        start-time (System/currentTimeMillis)]
+        start-time (System/currentTimeMillis)
+        deadline (when timeout (+ start-time timeout))]
     (try
       (doall (map
               (fn [^Future fut]
-                (if (and timeout (> (- (System/currentTimeMillis) start-time) timeout))
-                  (throw (ex-info "Timeout" {:kind ::timeout
-                                             :timeout timeout
-                                             :pool-size pool-size}))
+                (if deadline
+                  ;; If a timeout is specified, calculate remaining time and wait for it:
+                  (.get fut (- deadline (System/currentTimeMillis)) TimeUnit/MILLISECONDS)
                   (.get fut)))
               futures))
+      (catch java.util.concurrent.TimeoutException
+          e
+          (throw (ex-info "Timeout exceeded while waiting for tasks to complete"
+                        {:kind ::timeout
+                         :timeout timeout
+                         :pool-size pool-size
+                         :message (.getMessage e)
+                         :cause e})))
       (finally (.shutdownNow pool)))))
