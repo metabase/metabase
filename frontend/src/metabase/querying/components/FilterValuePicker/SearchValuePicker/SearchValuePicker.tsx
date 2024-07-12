@@ -10,7 +10,7 @@ import { getFieldOptions } from "../utils";
 
 import { SEARCH_DEBOUNCE, SEARCH_LIMIT } from "./constants";
 import {
-  filterSelectedItems,
+  getFilteredOptions,
   getNothingFoundMessage,
   shouldSearch,
 } from "./utils";
@@ -57,7 +57,7 @@ export function SearchValuePicker({
   );
 
   const searchOptions = canSearch ? getFieldOptions(fieldValues) : [];
-  const visibleOptions = filterSelectedItems(searchOptions, selectedValues);
+  const visibleOptions = getFilteredOptions(searchOptions, selectedValues);
 
   const notFoundMessage = getNothingFoundMessage(
     columnDisplayName,

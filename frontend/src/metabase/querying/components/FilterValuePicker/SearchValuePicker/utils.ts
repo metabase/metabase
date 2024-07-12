@@ -17,7 +17,7 @@ export function shouldSearch(
   return !isExtensionOfLastSearch || hasMoreValues;
 }
 
-export function filterSelectedItems(
+export function getFilteredOptions(
   options: SelectOption[],
   selectedValues: string[],
 ) {
