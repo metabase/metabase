@@ -916,7 +916,7 @@ describe("issue 35840", () => {
     });
   }
 
-  it("should not confuse model fields with expressions in dashboard parameter sources (metabase#35840)", () => {
+  it("should not confuse a model field with an expression that has the same name in dashboard parameter sources (metabase#35840)", () => {
     cy.log("Setup dashboard");
     createQuestion(modelDetails).then(({ body: model }) =>
       createQuestion(getQuestionDetails(model.id)),
