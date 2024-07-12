@@ -24,6 +24,9 @@ import {
   queryBuilderHeader,
   modal,
   withDatabase,
+  summarize,
+  visualize,
+  tableInteractive,
 } from "e2e/support/helpers";
 import { createMetric as apiCreateMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
@@ -949,5 +952,33 @@ describe.skip("issue 25415", () => {
 
     // there is a table with data
     cy.findByTestId("TableInteractive-root").should("exist");
+  });
+});
+
+describe("issue 45481", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not crash when the table viz gets automatically pivoted (metabase#45481)", () => {
+    openOrdersTable();
+    openNotebook();
+    summarize({ mode: "notebook" });
+    popover().findByText("Count of rows").click();
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    popover().findByText("User ID").click();
+    getNotebookStep("summarize")
+      .findByTestId("breakout-step")
+      .icon("add")
+      .click();
+    popover().within(() => {
+      cy.findByText("Product").click();
+      cy.findByText("Category").click();
+    });
+    visualize();
+    tableInteractive().should("be.visible");
   });
 });
