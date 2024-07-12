@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { t } from "ttag";
 
+import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import {
   SummarizeAggregationItemList,
   SummarizeBreakoutColumnList,
@@ -10,14 +11,12 @@ import { Button, Divider, Group, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import { useInteractiveQuestionData } from "../hooks";
-
 type SummarizeProps = {
   onClose: () => void;
 };
 
 export const Summarize = ({ onClose = () => {} }: Partial<SummarizeProps>) => {
-  const { question } = useInteractiveQuestionData();
+  const { question } = useInteractiveQuestionContext();
 
   return question && <SummarizeInner question={question} onClose={onClose} />;
 };
@@ -28,7 +27,10 @@ const SummarizeInner = ({
 }: {
   question: Question;
 } & SummarizeProps) => {
-  const { onQueryChange } = useInteractiveQuestionData();
+  const { onQuestionChange } = useInteractiveQuestionContext();
+
+  const onQueryChange = (query: Lib.Query) =>
+    onQuestionChange(question.setQuery(query));
 
   // save initial question in case we close without making changes
   const initialQuestion = useRef(question.query());

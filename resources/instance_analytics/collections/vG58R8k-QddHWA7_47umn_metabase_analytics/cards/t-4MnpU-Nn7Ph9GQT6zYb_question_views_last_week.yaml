@@ -87,6 +87,5 @@ serdes/meta:
   label: question_views_last_week
   model: Card
 initially_published_at: null
-last_used_at: null
 metabase_version: null
 type: question

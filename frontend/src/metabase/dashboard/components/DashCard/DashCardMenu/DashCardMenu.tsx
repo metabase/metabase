@@ -1,13 +1,16 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useMemo, useState } from "react";
-import { t } from "ttag";
+import { isValidElement, useState } from "react";
 
+import type { SdkPluginsConfig } from "embedding-sdk";
+import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
 import CS from "metabase/css/core/index.css";
-import { editQuestion } from "metabase/dashboard/actions";
+import {
+  canDownloadResults,
+  canEditQuestion,
+} from "metabase/dashboard/components/DashCard/DashCardMenu/utils";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
-import { useDispatch, useStore } from "metabase/lib/redux";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { useStore } from "metabase/lib/redux";
 import { QueryDownloadPopover } from "metabase/query_builder/components/QueryDownloadPopover";
 import { useDownloadData } from "metabase/query_builder/components/QueryDownloadPopover/use-download-data";
 import {
@@ -27,6 +30,8 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import { DashCardMenuItems } from "./DashCardMenuItems";
+
 interface DashCardMenuProps {
   question: Question;
   result: Dataset;
@@ -44,6 +49,20 @@ export type DashCardMenuItem = {
   disabled?: boolean;
 } & MenuItemProps;
 
+function isDashCardMenuEmpty(plugins?: SdkPluginsConfig) {
+  const dashcardMenu = plugins?.dashboard?.dashcardMenu;
+
+  if (!plugins || !dashcardMenu || typeof dashcardMenu !== "object") {
+    return false;
+  }
+
+  return (
+    dashcardMenu?.withDownloads === false &&
+    dashcardMenu?.withEditLink === false &&
+    !dashcardMenu?.customItems?.length
+  );
+}
+
 export const DashCardMenu = ({
   question,
   result,
@@ -53,9 +72,9 @@ export const DashCardMenu = ({
   token,
 }: DashCardMenuProps) => {
   const store = useStore();
-  const dispatch = useDispatch();
+  const { plugins } = useInteractiveDashboardContext();
 
-  const [{ loading }, handleDownload] = useDownloadData({
+  const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
     question,
     result,
     dashboardId,
@@ -72,30 +91,19 @@ export const DashCardMenu = ({
     },
   });
 
-  const menuItems = useMemo(() => {
-    const items: DashCardMenuItem[] = [];
-    if (canEditQuestion(question)) {
-      items.push({
-        iconName: "pencil",
-        label: t`Edit question`,
-        onClick: () => dispatch(editQuestion(question)),
-      });
+  if (isDashCardMenuEmpty(plugins)) {
+    return null;
+  }
+
+  const getMenuContent = () => {
+    if (typeof plugins?.dashboard?.dashcardMenu === "function") {
+      return plugins.dashboard.dashcardMenu({ question: question.card() });
     }
 
-    if (canDownloadResults(result)) {
-      items.push({
-        iconName: "download",
-        label: loading ? t`Downloading…` : t`Download results`,
-        onClick: () => setMenuView("download"),
-        disabled: loading,
-        closeMenuOnClick: false,
-      });
+    if (isValidElement(plugins?.dashboard?.dashcardMenu)) {
+      return plugins.dashboard.dashcardMenu;
     }
 
-    return items;
-  }, [question, result, dispatch, loading]);
-
-  const getDropdownContent = () => {
     if (menuView === "download") {
       return (
         <QueryDownloadPopover
@@ -108,19 +116,14 @@ export const DashCardMenu = ({
         />
       );
     }
+
     return (
-      <>
-        {menuItems.map(item => (
-          <Menu.Item
-            key={item.label}
-            fw="bold"
-            icon={<Icon name={item.iconName} />}
-            {...item}
-          >
-            {item.label}
-          </Menu.Item>
-        ))}
-      </>
+      <DashCardMenuItems
+        question={question}
+        result={result}
+        isDownloadingData={isDownloadingData}
+        onDownload={() => setMenuView("download")}
+      />
     );
   };
 
@@ -140,7 +143,7 @@ export const DashCardMenu = ({
         </ActionIcon>
       </Menu.Target>
 
-      <Menu.Dropdown>{getDropdownContent()}</Menu.Dropdown>
+      <Menu.Dropdown>{getMenuContent()}</Menu.Dropdown>
     </Menu>
   );
 };
@@ -154,18 +157,6 @@ interface QueryDownloadWidgetOpts {
   isPublicOrEmbedded?: boolean;
   isEditing: boolean;
 }
-
-const canEditQuestion = (question: Question) => {
-  return question.canWrite() && question.canRunAdhocQuery();
-};
-
-const canDownloadResults = (result?: Dataset) => {
-  return (
-    result != null &&
-    !result.error &&
-    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canDownloadResults(result)
-  );
-};
 
 DashCardMenu.shouldRender = ({
   question,

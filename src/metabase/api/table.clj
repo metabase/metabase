@@ -334,7 +334,7 @@
     (api/read-check table))
   (let [db (t2/select-one Database :id (:db_id table))]
     (-> table
-        (t2/hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
+        (t2/hydrate :db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :metrics)
         (m/dissoc-in [:db :details])
         (assoc-dimension-options db)
         format-fields-for-response
@@ -353,7 +353,7 @@
                       (filter mi/can-read?))
           tables (t2/hydrate tables
                              :db
-                             [:fields [:target :has_field_values] :dimensions :has_field_values]
+                             [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
                              :segments
                              :metrics)
           dbs    (when (seq tables)
@@ -409,12 +409,12 @@
         underlying (m/index-by :id (or metadata-fields
                                        (when-let [ids (seq (keep :id metadata))]
                                          (-> (t2/select Field :id [:in ids])
-                                             (t2/hydrate [:target :has_field_values] :has_field_values)))))
+                                             (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)))))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
                      (update :base_type keyword)
                      (merge (select-keys (underlying col-id)
-                                         [:semantic_type :fk_target_field_id :has_field_values :target]))
+                                         [:semantic_type :fk_target_field_id :has_field_values :target :dimensions :name_field]))
                      (assoc
                       :table_id     (str "card__" card-id)
                       :id           (or col-id
@@ -530,7 +530,7 @@
                                    cards)
           metadata-fields (if (seq metadata-field-ids)
                             (-> (t2/select Field :id [:in metadata-field-ids])
-                                (t2/hydrate [:target :has_field_values] :has_field_values)
+                                (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
                                 (->> (m/index-by :id)))
                             {})
           card-id->metadata-fields (into {}
