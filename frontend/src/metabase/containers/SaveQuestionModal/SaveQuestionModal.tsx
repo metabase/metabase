@@ -78,7 +78,7 @@ interface SaveQuestionModalProps {
   onSave: (question: Question) => Promise<void>;
   onClose: () => void;
   multiStep?: boolean;
-  initialCollectionId?: CollectionId;
+  initialCollectionId?: CollectionId | null;
 }
 
 interface FormValues {
