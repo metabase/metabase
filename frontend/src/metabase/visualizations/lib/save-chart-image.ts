@@ -32,6 +32,9 @@ export const saveChartImage = async (selector: string, fileName: string) => {
     onclone: (doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.classList.add(EmbedFrameS.WithThemeBackground);
+
+      node.style.borderRadius = "0px";
+      node.style.border = "none";
     },
   });
 
