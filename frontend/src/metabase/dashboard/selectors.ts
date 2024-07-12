@@ -108,11 +108,11 @@ export const getIsSlowDashboard = createSelector(
   },
 );
 
-export const getIsLoading = (state: State) =>
+export const getIsLoadingWithoutCards = (state: State) =>
   state.dashboard.loadingControls.isLoading;
 
-export const getIsLoadingWithCards = (state: State) =>
-  getIsLoading(state) || !getIsDashCardsLoadingComplete(state);
+export const getIsLoading = (state: State) =>
+  getIsLoadingWithoutCards(state) || !getIsDashCardsLoadingComplete(state);
 
 export const getIsAddParameterPopoverOpen = (state: State) =>
   state.dashboard.isAddParameterPopoverOpen;
