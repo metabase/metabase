@@ -30,14 +30,14 @@
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse]
    [metabase.models.query :as query]
-   [metabase.models.query-field :as query-field]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
-   [metabase.native-query-analyzer :as query-analyzer]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.query-analysis :as query-analysis]
+   [metabase.query-analysis.native-query-analyzer :as nqa]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
@@ -534,7 +534,7 @@
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
-    (query-field/update-query-fields-for-card! card)))
+    (query-analysis/update-query-analysis-for-card! card)))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
@@ -562,7 +562,7 @@
   [card]
   (u/prog1 card
     (when (contains? (t2/changes card) :dataset_query)
-      (query-field/update-query-fields-for-card! card))))
+      (query-analysis/update-query-analysis-for-card! card))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
@@ -827,8 +827,8 @@
         ;; this will break if previously unambiguous identifiers become ambiguous due to the replacements
         column-replacements (ids->replacements fields id->field :column)
         table-replacements  (ids->replacements tables id->table :table)]
-    (query-analyzer/replace-names query {:columns column-replacements
-                                         :tables  table-replacements})))
+    (nqa/replace-names query {:columns column-replacements
+                              :tables  table-replacements})))
 
 
 (defn replace-fields-and-tables!
