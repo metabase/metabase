@@ -868,3 +868,23 @@ describe("issue 34574", () => {
     cy.get("strong").should("be.visible").and("have.text", "important");
   }
 });
+
+describe("issue 34517", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not change the url when reloading the page while editing a model (metabase#34517)", () => {
+    startNewModel();
+    cy.location("pathname").should("eq", "/model/query");
+
+    // wait for the model editor to be fully loaded
+    entityPickerModal().should("exist");
+    cy.reload();
+
+    // wait for the model editor to be fully loaded
+    entityPickerModal().should("exist");
+    cy.location("pathname").should("eq", "/model/query");
+  });
+});
