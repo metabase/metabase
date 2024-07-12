@@ -20,7 +20,7 @@ import {
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
-  EmbedThemeControls,
+  EmbedNightModeControls,
 } from "metabase/dashboard/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { fetchPulseFormInput } from "metabase/pulse/actions";
@@ -30,7 +30,7 @@ import type { Dashboard } from "metabase-types/api";
 
 import { SIDEBAR_NAME } from "../../constants";
 
-import { DashboardHeaderComponent } from "./DashboardHeaderView";
+import { DashboardHeaderView } from "./DashboardHeaderView";
 import { CancelEditButton, SaveEditButton } from "./buttons";
 
 export type DashboardHeaderProps = {
@@ -40,10 +40,7 @@ export type DashboardHeaderProps = {
   isAdditionalInfoVisible: boolean;
 } & DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
-  Pick<
-    EmbedThemeControls,
-    "isNightMode" | "onNightModeChange" | "hasNightModeToggle"
-  >;
+  EmbedNightModeControls;
 
 export const DashboardHeaderInner = ({
   dashboard,
@@ -144,7 +141,7 @@ export const DashboardHeaderInner = ({
 
   return (
     <>
-      <DashboardHeaderComponent
+      <DashboardHeaderView
         dashboard={dashboard}
         collection={collection}
         isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}

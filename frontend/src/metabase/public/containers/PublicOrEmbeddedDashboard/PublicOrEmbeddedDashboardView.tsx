@@ -13,18 +13,15 @@ import type {
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { DashboardEmptyStateWithoutAddPrompt } from "metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
-import {
-  BUTTON_CONFIG,
-  DashboardHeaderButtonRow,
-} from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow";
+import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
+import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
   EmbedHideDownloadButton,
   EmbedHideParameters,
-  EmbedThemeControls,
-  RefreshPeriod,
+  EmbedNightModeControls,
 } from "metabase/dashboard/types";
 import { isActionDashCard } from "metabase/dashboard/utils";
 import { isWithinIframe } from "metabase/lib/dom";
@@ -72,14 +69,6 @@ export function PublicOrEmbeddedDashboardView({
   cardTitled,
 }: {
   dashboard: Dashboard | null;
-  hasNightModeToggle?: boolean;
-  isFullscreen: boolean;
-  isNightMode: boolean;
-  onFullscreenChange: DashboardFullscreenControls["onFullscreenChange"];
-  onNightModeChange: EmbedThemeControls["onNightModeChange"];
-  onRefreshPeriodChange: DashboardRefreshPeriodControls["onRefreshPeriodChange"];
-  refreshPeriod: RefreshPeriod;
-  setRefreshElapsedHook: DashboardRefreshPeriodControls["setRefreshElapsedHook"];
   selectedTabId: SelectedTabId;
   parameters: UiParameter[];
   parameterValues: Record<string, ParameterValueOrArray>;
@@ -101,15 +90,12 @@ export function PublicOrEmbeddedDashboardView({
   ) => void;
   slowCards: Record<number, boolean>;
   cardTitled: boolean;
-}) {
+} & DashboardRefreshPeriodControls &
+  EmbedNightModeControls &
+  DashboardFullscreenControls) {
   const buttons = !isWithinIframe() ? (
     <DashboardHeaderButtonRow
-      buttonKeys={[
-        BUTTON_CONFIG.DASHBOARD_EMBED_ACTION,
-        BUTTON_CONFIG.REFRESH_WIDGET,
-        BUTTON_CONFIG.NIGHT_MODE_TOGGLE,
-        BUTTON_CONFIG.FULLSCREEN_TOGGLE,
-      ]}
+      dashboardActionKeys={DASHBOARD_DISPLAY_ACTIONS}
       refreshPeriod={refreshPeriod}
       onRefreshPeriodChange={onRefreshPeriodChange}
       onFullscreenChange={onFullscreenChange}

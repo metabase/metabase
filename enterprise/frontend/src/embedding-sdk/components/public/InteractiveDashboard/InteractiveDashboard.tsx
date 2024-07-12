@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePrevious, useUnmount } from "react-use";
+import _ from "underscore";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
@@ -168,6 +169,9 @@ const InteractiveDashboardInner = ({
             }
             onLoad={onLoad}
             onLoadWithCards={onLoadWithCards}
+            isNightMode={false}
+            onNightModeChange={_.noop}
+            hasNightModeToggle={false}
           />
         </InteractiveDashboardProvider>
       )}

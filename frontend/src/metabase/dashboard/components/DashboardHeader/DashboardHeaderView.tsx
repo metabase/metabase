@@ -3,11 +3,12 @@ import type { JSX } from "react";
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { t } from "ttag";
 
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import EditBar from "metabase/components/EditBar";
 import CS from "metabase/css/core/index.css";
 import { updateDashboard } from "metabase/dashboard/actions";
 import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/Dashboard/use-set-dashboard-attribute";
-import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow";
+import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import {
   getIsEditing,
@@ -17,7 +18,7 @@ import {
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
-  EmbedThemeControls,
+  type EmbedNightModeControls,
 } from "metabase/dashboard/types";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -51,12 +52,9 @@ type DashboardHeaderViewProps = {
   onLastEditInfoClick: () => void;
 } & DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
-  Pick<
-    EmbedThemeControls,
-    "isNightMode" | "onNightModeChange" | "hasNightModeToggle"
-  >;
+  EmbedNightModeControls;
 
-export function DashboardHeaderComponent({
+export function DashboardHeaderView({
   editingTitle = "",
   editingSubtitle = "",
   editingButtons = [],
@@ -84,6 +82,7 @@ export function DashboardHeaderComponent({
 
   const isSidebarOpen = useSelector(getIsSidebarOpen);
   const isDashboardHeaderVisible = useSelector(getIsHeaderVisible);
+  const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
 
   const _headerButtons = useMemo(
     () => (
@@ -100,11 +99,13 @@ export function DashboardHeaderComponent({
           isNightMode={isNightMode}
           onNightModeChange={onNightModeChange}
           hasNightModeToggle={hasNightModeToggle}
+          isAnalyticsDashboard={isAnalyticsDashboard}
         />
       </HeaderButtonSection>
     ),
     [
       hasNightModeToggle,
+      isAnalyticsDashboard,
       isFullscreen,
       isNavBarOpen,
       isNightMode,
