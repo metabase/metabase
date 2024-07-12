@@ -1675,6 +1675,8 @@ describe("issue 38989", () => {
   });
 });
 
+// This test is slightly different in master than here (i.e. release-x.50.x) due to https://github.com/metabase/metabase/issues/45358.
+// It's unclear why it behaves differently in master (in CI only).
 describe("issue 39771", () => {
   beforeEach(() => {
     restore();
@@ -1692,7 +1694,7 @@ describe("issue 39771", () => {
               "CREATED_AT",
               {
                 "base-type": "type/DateTime",
-                "temporal-unit": "quarter-of-year",
+                "temporal-unit": "minute-of-hour", // this is different than in master
               },
             ],
           ],
@@ -1718,17 +1720,17 @@ describe("issue 39771", () => {
     openNotebook();
     getNotebookStep("summarize", { stage: 1 })
       .findByTestId("breakout-step")
-      .findByText("Created At: Month: Quarter of year")
+      .findByText("Created At: Month: Minute of hour")
       .click();
 
-    popover().findByText("by quarter of year").realHover();
+    popover().findByText("by minute of hour").realHover();
 
     popover().then(([$popover]) => {
       const popoverStyle = window.getComputedStyle($popover);
       const popoverZindex = parseInt(popoverStyle.zIndex, 10);
 
       cy.findByTestId("ellipsified-tooltip").within(([$tooltip]) => {
-        cy.findByText("by quarter of year").should("be.visible");
+        cy.findByText("by minute of hour").should("be.visible");
 
         const tooltipStyle = window.getComputedStyle($tooltip);
         const tooltipZindex = parseInt(tooltipStyle.zIndex, 10);
