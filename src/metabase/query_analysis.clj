@@ -7,6 +7,7 @@
    [metabase.models.query-field :as query-field]
    [metabase.public-settings :as public-settings]
    [metabase.query-analysis.native-query-analyzer :as nqa]
+   [metabase.query-analysis.native-query-analyzer.replacement :as nqa.replacement]
    [metabase.util.log :as log]))
 
 (def ^:dynamic *parse-queries-in-test?*
@@ -29,8 +30,10 @@
   "Is analysis of the given query type enabled?"
   [query-type]
   (case query-type
-    :native (native-analysis-active?)
-    true))
+    :native     (native-analysis-active?)
+    :query      true
+    :mbql/query true
+    false))
 
 (defn- query-field-ids
   "Find out ids of all fields used in a query. Conforms to the same protocol as [[query-analyzer/field-ids-for-sql]],
@@ -41,13 +44,12 @@
   (let [query-type (lib/normalized-query-type query)]
     (when (enabled? query-type)
       (case query-type
-        :native (try
-                  (nqa/field-ids-for-native query)
-                  (catch Exception e
-                    (log/error e "Error parsing SQL" query)))
+        :native     (try
+                      (nqa/field-ids-for-native query)
+                      (catch Exception e
+                        (log/error e "Error parsing SQL" query)))
         :query      {:explicit (mbql.u/referenced-field-ids query)}
-        :mbql/query {:explicit (lib.util/referenced-field-ids query)}
-        nil))))
+        :mbql/query {:explicit (lib.util/referenced-field-ids query)}))))
 
 (defn update-query-analysis-for-card!
   "Clears QueryFields associated with this card and creates fresh, up-to-date-ones.
@@ -70,3 +72,10 @@
         (query-field/update-query-fields-for-card! card-id query-field-rows)))
     (catch Exception e
       (log/error e "Error updating query fields"))))
+
+(defn replace-names
+  "Transform the given card's query to reflect the given table and column renames."
+  [{card-type :type q :dataset_query} replacements]
+  (case card-type
+    :native (nqa.replacement/replace-names q replacements)
+    (throw (ex-info "Replacement is not supported for queries of this type" {:type card-type}))))

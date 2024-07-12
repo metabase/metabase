@@ -9,7 +9,7 @@
    [metabase.query-analysis :as query-analysis]
    [metabase.test :as mt]))
 
-(deftest active-test
+(deftest native-query-enabled-test
   (mt/discard-setting-changes [sql-parsing-enabled]
     (testing "sql parsing enabled"
       (public-settings/sql-parsing-enabled! true)
@@ -19,6 +19,13 @@
       (public-settings/sql-parsing-enabled! false)
       (binding [query-analysis/*parse-queries-in-test?* true]
         (is (false? (query-analysis/enabled? :native)))))))
+
+(deftest non-native-query-enabled-test
+  (testing "mbql parsing is always enabled"
+    (is (query-analysis/enabled? :query))
+    (is (query-analysis/enabled? :mbql/query)))
+  (testing "other types are disabled"
+    (is (false? (query-analysis/enabled? :unexpected)))))
 
 (deftest parse-mbql-test
   (testing "Parsing MBQL query returns correct used fields"

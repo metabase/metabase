@@ -37,7 +37,6 @@
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-analysis :as query-analysis]
-   [metabase.query-analysis.native-query-analyzer :as nqa]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
@@ -827,8 +826,9 @@
         ;; this will break if previously unambiguous identifiers become ambiguous due to the replacements
         column-replacements (ids->replacements fields id->field :column)
         table-replacements  (ids->replacements tables id->table :table)]
-    (nqa/replace-names query {:columns column-replacements
-                              :tables  table-replacements})))
+    (query-analysis/replace-names {:type :native query, :dataset_query}
+                                  {:columns column-replacements
+                                   :tables  table-replacements})))
 
 
 (defn replace-fields-and-tables!
