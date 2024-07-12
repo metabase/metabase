@@ -2,6 +2,8 @@ import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  commandPalette,
+  commandPaletteSearch,
   createQuestion,
   restore,
   visualize,
@@ -862,15 +864,13 @@ describe("issues 11914, 18978, 18977, 23857", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    createQuestion(
-      {
-        query: {
-          "source-table": `card__${ORDERS_QUESTION_ID}`,
-          limit: 2,
-        },
+    createQuestion({
+      name: "Repro",
+      query: {
+        "source-table": `card__${ORDERS_QUESTION_ID}`,
+        limit: 2,
       },
-      { wrapId: true, idAlias: "questionId" },
-    );
+    });
     cy.signIn("nodata");
   });
 
@@ -885,7 +885,8 @@ describe("issues 11914, 18978, 18977, 23857", () => {
     cy.log(
       "Make sure we don't offer to duplicate question based on a question with a query for which the user has no permission to run (metabase#23857)",
     );
-    visitQuestion("@questionId");
+    commandPaletteSearch("Repro", false);
+    commandPalette().findByText("Repro").click();
     cy.findByLabelText("Move, trash, and more...").click();
     popover().findByText("Duplicate").should("not.exist");
 
