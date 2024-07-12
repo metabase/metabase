@@ -492,27 +492,23 @@ describe("Static Embed Setup phase", () => {
           activeTab: "Look and Feel",
         });
 
-        expect(
-          screen.getByText("Removing the “Powered by Metabase” banner"),
-        ).toBeVisible();
+        expect(screen.getByText("Removing the banner")).toBeVisible();
 
         expect(
           screen.getByText(
-            getBrokenUpTextMatcher(
-              "This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to a paid plan to remove the banner.",
-            ),
+            "The “Powered by Metabase” banner appears on all static embeds created with the open source version. You’ll need to upgrade to remove it.",
           ),
         ).toBeVisible();
 
         const link = within(
-          screen.getByLabelText("Removing the “Powered by Metabase” banner"),
+          screen.getByLabelText("Removing the banner"),
         ).getByRole("link", {
-          name: "a paid plan",
+          name: "Upgrade to a paid plan",
         });
         expect(link).toBeVisible();
         expect(link).toHaveAttribute(
           "href",
-          "https://www.metabase.com/upgrade?utm_media=static-embed-settings-appearance&utm_source=oss",
+          "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=remove-mb-branding&utm_content=static-embed-settings-look-and-feel&source_plan=oss",
         );
       });
     });

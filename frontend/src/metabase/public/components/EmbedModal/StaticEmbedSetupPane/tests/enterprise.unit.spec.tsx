@@ -37,15 +37,11 @@ describe("Static Embed Setup phase - EE, no token", () => {
           hasEnterprisePlugins: true,
         });
 
-        expect(
-          screen.getByText("Removing the “Powered by Metabase” banner"),
-        ).toBeVisible();
+        expect(screen.getByText("Removing the banner")).toBeVisible();
 
         expect(
           screen.getByText(
-            getBrokenUpTextMatcher(
-              "This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to a paid plan to remove the banner.",
-            ),
+            "The “Powered by Metabase” banner appears on all static embeds created with the open source version. You’ll need to upgrade to remove it.",
           ),
         ).toBeVisible();
       });

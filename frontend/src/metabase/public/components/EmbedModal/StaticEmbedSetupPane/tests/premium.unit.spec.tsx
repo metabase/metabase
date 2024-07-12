@@ -78,7 +78,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
         });
 
         expect(
-          screen.queryByText("Removing the “Powered by Metabase” banner"),
+          screen.queryByText("Removing the banner"),
         ).not.toBeInTheDocument();
       });
 

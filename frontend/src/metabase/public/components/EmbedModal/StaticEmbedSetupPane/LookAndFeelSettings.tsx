@@ -1,6 +1,7 @@
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
+import { UpsellMetabaseBanner } from "metabase/admin/upsells/UpsellMetabaseBanner";
 import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
@@ -34,10 +35,9 @@ const THEME_OPTIONS = [
 ] as const;
 type ThemeOptions = typeof THEME_OPTIONS[number]["value"];
 
-export interface AppearanceSettingsProps {
+interface AppearanceSettingsProps {
   resourceType: EmbedResourceType;
   displayOptions: EmbeddingDisplayOptions;
-
   onChangeDisplayOptions: (displayOptions: EmbeddingDisplayOptions) => void;
 }
 
@@ -208,18 +208,9 @@ export const LookAndFeelSettings = ({
       {!canWhitelabel && (
         <>
           <Divider my="2rem" />
-          <StaticEmbedSetupPaneSettingsContentSection
-            // eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins
-            title={t`Removing the “Powered by Metabase” banner`}
-          >
-            {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins */}
-            <Text>{jt`This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to ${(
-              <ExternalLink
-                key="bannerPlan"
-                href={upgradePageUrl}
-              >{t`a paid plan`}</ExternalLink>
-            )} to remove the banner.`}</Text>
-          </StaticEmbedSetupPaneSettingsContentSection>
+          <div aria-label={t`Removing the banner`}>
+            <UpsellMetabaseBanner />
+          </div>
         </>
       )}
     </>
