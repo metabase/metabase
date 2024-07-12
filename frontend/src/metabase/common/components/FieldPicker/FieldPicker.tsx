@@ -43,7 +43,7 @@ export const FieldPicker = ({
   onSelectAll,
   onSelectNone,
   isColumnSelected,
-  isColumnDisabled = () => false,
+  isColumnDisabled,
   ...props
 }: FieldPickerProps) => {
   const items = useMemo(() => {
@@ -54,7 +54,7 @@ export const FieldPicker = ({
     return items.map(item => ({
       ...item,
       isSelected: isColumnSelected(item, items),
-      isDisabled: isColumnDisabled(item, items),
+      isDisabled: isColumnDisabled?.(item, items),
     }));
   }, [query, stageIndex, columns, isColumnSelected, isColumnDisabled]);
 
