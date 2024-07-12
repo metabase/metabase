@@ -636,6 +636,27 @@ describe("Notebook Editor > Join Step", () => {
       expect(price).toBeUndefined();
     });
 
+    it("should allow deselecting the last join column", async () => {
+      setup();
+
+      const modal = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(await within(modal).findByText("Reviews"));
+      await userEvent.click(await screen.findByLabelText("Pick columns"));
+      const joinColumnsPicker = await screen.findByTestId(
+        "join-columns-picker",
+      );
+      await userEvent.click(within(joinColumnsPicker).getByText("Select none"));
+      expect(within(joinColumnsPicker).getByLabelText("ID")).not.toBeChecked();
+      expect(within(joinColumnsPicker).getByLabelText("ID")).toBeEnabled();
+      await userEvent.click(within(joinColumnsPicker).getByLabelText("ID"));
+      expect(within(joinColumnsPicker).getByLabelText("ID")).toBeChecked();
+      expect(within(joinColumnsPicker).getByLabelText("ID")).toBeEnabled();
+
+      await userEvent.click(within(joinColumnsPicker).getByLabelText("ID"));
+      expect(within(joinColumnsPicker).getByLabelText("ID")).not.toBeChecked();
+      expect(within(joinColumnsPicker).getByLabelText("ID")).toBeEnabled();
+    });
+
     it("should be able to select no columns when adding a new join", async () => {
       const { getRecentJoin } = setup();
 

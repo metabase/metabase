@@ -1,7 +1,10 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { FieldPicker } from "metabase/common/components/FieldPicker";
+import {
+  FieldPicker,
+  type FieldPickerItem,
+} from "metabase/common/components/FieldPicker";
 import { NotebookDataPicker } from "metabase/query_builder/components/notebook/NotebookDataPicker";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -126,11 +129,6 @@ function DataFieldPicker({
     updateQuery(nextQuery);
   };
 
-  const isColumnSelected = (column: Lib.ColumnMetadata) => {
-    const columnInfo = Lib.displayInfo(query, stageIndex, column);
-    return Boolean(columnInfo.selected);
-  };
-
   const handleSelectAll = () => {
     const nextQuery = Lib.withFields(query, stageIndex, []);
     updateQuery(nextQuery);
@@ -147,9 +145,20 @@ function DataFieldPicker({
       stageIndex={stageIndex}
       columns={columns}
       isColumnSelected={isColumnSelected}
+      isColumnDisabled={isColumnDisabled}
       onToggle={handleToggle}
       onSelectAll={handleSelectAll}
       onSelectNone={handleSelectNone}
     />
   );
+}
+
+function isColumnSelected({ columnInfo }: FieldPickerItem) {
+  return Boolean(columnInfo.selected);
+}
+
+function isColumnDisabled(item: FieldPickerItem, items: FieldPickerItem[]) {
+  const isSelected = isColumnSelected(item);
+  const isOnlySelected = items.filter(isColumnSelected).length === 1;
+  return isSelected && isOnlySelected;
 }
