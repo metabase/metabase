@@ -7,7 +7,7 @@
  */
 :root {
   --mb-color-text-white: #fff;
-  --mb-color-brand: #509ee3;
+  --mb-color-brand: var(--mb-color-blue);
   --mb-color-brand-light: #f9fbfc;
   --mb-color-brand-lighter: #eef6fc;
   --mb-color-success: #84bb4c;
@@ -21,7 +21,7 @@
   --mb-color-bg-dark: #93a1ab;
   --mb-color-bg-medium: #edf2f5;
   --mb-color-bg-light: #f9fbfc;
-  --mb-color-bg-white: #fff;
+  --mb-color-bg-white: var(--mb-color-white);
   --mb-color-bg-error: #ed6e6e55;
   --mb-color-bg-night: #42484e;
   --mb-color-shadow: rgba(0, 0, 0, 0.13);
@@ -32,6 +32,9 @@
   --mb-color-text-primary: var(--mb-color-text-dark);
   --mb-color-text-secondary: var(--mb-color-text-medium);
   --mb-color-text-tertiary: var(--mb-color-text-light);
+  /* main colors */
+  --mb-color-white: #fff;
+  --mb-color-blue: #509ee3;
 }
 
 .textDefault {

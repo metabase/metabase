@@ -1,6 +1,6 @@
 import { screen, render } from "__support__/ui";
 
-import { LogoBadge } from "./LogoBadge";
+import { LogoBadge } from ".";
 
 describe("LogoBadge", () => {
   it("should render Powered by Metabase footer", () => {

@@ -163,13 +163,16 @@ export const Footer = styled.footer<{ variant: FooterVariant }>`
   flex-shrink: 0;
   align-items: center;
   ${props => footerVariantStyles[props.variant]}
-  padding: 0.5rem;
+  height: calc(50/16*1rem);
+  padding: 0 0.5rem;
 
   ${breakpointMinMedium} {
-    padding: 1rem;
+    height: calc(65 / 16 * 1rem);
+    padding: 0 1rem;
   }
 
   ${breakpointMinLarge} {
-    padding: 1.5rem;
+    height: calc(80 / 16 * 1rem);
+    padding: 0 1.5rem;
   }
 `;
