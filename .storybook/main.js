@@ -7,8 +7,9 @@ module.exports = {
     builder: "webpack5",
   },
   stories: [
-    "../frontend/**/*.stories.mdx",
-    "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
+    // "../frontend/**/*.stories.mdx",
+    // "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
+    "../enterprise/frontend/src/embedding-sdk/**/*.stories.tsx",
   ],
   staticDirs: ["../resources/frontend_client"],
   addons: [
