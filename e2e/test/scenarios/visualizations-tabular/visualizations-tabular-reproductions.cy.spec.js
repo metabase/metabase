@@ -27,6 +27,7 @@ import {
   summarize,
   visualize,
   tableInteractive,
+  createNativeQuestion,
 } from "e2e/support/helpers";
 import { createMetric as apiCreateMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
@@ -952,6 +953,66 @@ describe.skip("issue 25415", () => {
 
     // there is a table with data
     cy.findByTestId("TableInteractive-root").should("exist");
+  });
+});
+
+describe("issue 7884", () => {
+  const oldSourceQuestionDetails = {
+    native: {
+      query: "SELECT 1 AS C1, 2 AS C2, 3 AS C3",
+    },
+  };
+
+  const newSourceQuestionDetails = {
+    native: {
+      query: "SELECT 1 AS C1, 3 AS C3",
+    },
+  };
+
+  const getNestedQuestionDetails = sourceQuestionId => ({
+    query: {
+      "source-table": `card__${sourceQuestionId}`,
+    },
+    display: "table",
+    visualization_settings: {
+      "table.columns": [
+        { name: "C3", enabled: true },
+        { name: "C1", enabled: true },
+        { name: "C2", enabled: true },
+      ],
+    },
+  });
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not reset the column order after one of the columns is removed from data source (metabase#7884)", () => {
+    createNativeQuestion(oldSourceQuestionDetails).then(
+      ({ body: sourceQuestion }) =>
+        createQuestion(getNestedQuestionDetails(sourceQuestion.id)).then(
+          ({ body: nestedQuestion }) => {
+            cy.request("PUT", `/api/card/${sourceQuestion.id}`, {
+              ...sourceQuestion,
+              dataset_query: {
+                ...sourceQuestion.dataset_query,
+                native: newSourceQuestionDetails.native,
+              },
+            });
+            visitQuestion(nestedQuestion.id);
+          },
+        ),
+    );
+
+    cy.log("verify column order in the table");
+    cy.findAllByTestId("header-cell").eq(0).should("contain.text", "C3");
+    cy.findAllByTestId("header-cell").eq(1).should("contain.text", "C1");
+
+    cy.log("verify column order in viz settings");
+    cy.findByTestId("viz-settings-button").click();
+    getDraggableElements().eq(0).should("contain.text", "C3");
+    getDraggableElements().eq(1).should("contain.text", "C1");
   });
 });
 
