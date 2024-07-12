@@ -133,7 +133,7 @@ function useSearchQuery({ fieldId, searchFieldId }: SearchOptionsProps) {
 
   return {
     searchValue,
-    searchOptions,
+    searchOptions: canSearch ? searchOptions : [],
     isSearching,
     isSearchStale,
     searchError,
