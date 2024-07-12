@@ -27,6 +27,7 @@ Features planned:
 - subscribing to events
 
 # Changelog
+
 [View changelog](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 
 # Prerequisites
@@ -162,7 +163,7 @@ app.listen(PORT, () => {
 You can install Metabase Embedding SDK for React via npm:
 
 ```bash
-npm install @metabase/embedding-sdk-react --force
+npm install @metabase/embedding-sdk-react
 ```
 
 or using yarn:
@@ -262,7 +263,6 @@ questions, apply filters and aggregations, and access functionality within the n
 that there's no such thing as a one-size-fits-all when it comes to style, usage, and all of the other variables that
 make your application unique. Therefore, we've added the ability to customize the layout of interactive questions.
 
-
 Using the `InteractiveQuestion` with its default layout looks like this:
 
 ```jsx
@@ -273,20 +273,34 @@ To customize the layout, use namespaced components within the `InteractiveQuesti
 
 ```jsx
 <InteractiveQuestion questionId={95}>
-  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-    <div style={{ display: 'grid', placeItems: 'center' }}>
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <div style={{ display: "grid", placeItems: "center" }}>
       <InteractiveQuestion.Title />
       <InteractiveQuestion.ResetButton />
     </div>
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', overflow: "hidden" }}>
-      <div style={{ width: '100%' }}>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ width: "100%" }}>
         <InteractiveQuestion.QuestionVisualization />
       </div>
-      <div style={{ display: 'flex', flex: 1, overflow: "scroll" }}>
+      <div style={{ display: "flex", flex: 1, overflow: "scroll" }}>
         <InteractiveQuestion.Summarize />
       </div>
     </div>
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
+    <div style={{ display: "flex", flexDirection: "column" }}>
       <InteractiveQuestion.Filter />
     </div>
   </div>
@@ -298,7 +312,7 @@ To customize the layout, use namespaced components within the `InteractiveQuesti
 These components are available via the `InteractiveQuestion` namespace (i.e. `<InteractiveQuestion.ComponentName />`)
 
 | Component               | Info                                                                                                                         |
-|-------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `BackButton`            | The back button, which provides `back` functionality for the InteractiveDashboard                                            |
 | `FilterBar`             | The row of badges that contains the current filters that are applied to the question                                         |
 | `Filter`                | The Filter pane containing all possible filters                                                                              |
@@ -311,11 +325,9 @@ These components are available via the `InteractiveQuestion` namespace (i.e. `<I
 | `NotebookButton`        | The button used in the default layout to open the Notebook editor. You can replace this button with your own implementation. |
 | `QuestionVisualization` | The chart visualization for the question                                                                                     |
 
-
 ### Embedding a static dashboard
 
 After the SDK is configured, you can embed your dashboard using the `StaticDashboard` component.
-
 
 #### Parameters
 
@@ -325,7 +337,8 @@ After the SDK is configured, you can embed your dashboard using the `StaticDashb
 - **withCardTitle**: `boolean` – Whether the dashboard cards should display a title.
 - **withDownloads**: `boolean | null` – Whether to hide the download button.
 - **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. [More information here](https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters)
-
+- **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads with all visible cards and their content.
+- **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded.
 
 ```jsx
 import React from "react";
@@ -358,7 +371,6 @@ export default function App() {
 
 After the SDK is configured, you can embed your dashboard using the `InteractiveDashboard` component.
 
-
 #### Parameters
 
 - **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
@@ -369,6 +381,8 @@ After the SDK is configured, you can embed your dashboard using the `Interactive
 - **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
 - **questionHeight**: `number | null` – Height of a question component when drilled from the dashboard to a question level.
 - **questionPlugins** `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add drill-down menu. [See this](#implementing-custom-actions) for more details
+- **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads with all visible cards and their content.
+- **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded.
 
 ```jsx
 import React from "react";
@@ -414,7 +428,7 @@ import { CollectionBrowser } from "metabase-types/api";
 
 export default function App() {
   const collectionId = 123; // This is the collection ID you want to browse
-  const handleItemClick = (item) => {
+  const handleItemClick = item => {
     console.log("Clicked item:", item);
   };
 
@@ -431,7 +445,6 @@ export default function App() {
   );
 }
 ```
-
 
 ### Customizing appearance
 
@@ -517,7 +530,7 @@ const theme = {
         // Apply a border color instead of shadow for dashboard cards.
         // Unset by default.
         border: "1px solid #EEECEC",
-      }
+      },
     },
 
     // Question
@@ -579,15 +592,15 @@ const theme = {
     },
 
     collectionBrowser: {
-       breadcrumbs: {
-         expandButton: {
-           textColor: "#8118F4",
-           backgroundColor: "#767D7C",
-           hoverTextColor: "#CE8C8C",
-           hoverBackgroundColor: "#69264B",
-         },
-       },
-     },
+      breadcrumbs: {
+        expandButton: {
+          textColor: "#8118F4",
+          backgroundColor: "#767D7C",
+          hoverTextColor: "#CE8C8C",
+          hoverBackgroundColor: "#69264B",
+        },
+      },
+    },
   },
 };
 ```
@@ -654,6 +667,32 @@ return (
 );
 ```
 
+### Adding global event handlers
+
+`MetabaseProvider` also supports `eventHandlers` configuration. This way you can add global handlers to react on events that happen in the SDK context.
+
+Currently, we support:
+
+- `onDashboardLoad?: (dashboard: Dashboard | null) => void;` - triggers when dashboard loads with all visible cards and their content
+- `onDashboardLoadWithoutCards?: (dashboard: Dashboard | null) => void;` - triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded
+
+```typescript jsx
+const handleDashboardLoad: SdkDashboardLoadEvent = dashboard => {
+  /* do whatever you need to do - e.g. send analytics events, show notifications */
+};
+
+const eventHandlers = {
+  onDashboardLoad: handleDashboardLoad,
+  onDashboardLoadWithoutCards: handleDashboardLoad,
+};
+
+return (
+  <MetabaseProvider config={config} eventHandlers={eventHandlers}>
+    {children}
+  </MetabaseProvider>
+);
+```
+
 ### Reloading Metabase components
 
 In case you need to reload a Metabase component, for example, your users modify your application data and that data is used to render a question in Metabase. If you embed this question and want to force Metabase to reload the question to show the latest data, you can do so by using the `key` prop to force a component to reload.
@@ -665,13 +704,13 @@ const [data, setData] = useState({});
 const [counter, setCounter] = useState(0);
 
 // This ensures we only change the `data` reference when it's actually changed
-const handleDataChange = (newData) => {
+const handleDataChange = newData => {
   setData(prevData => {
     if (isEqual(prevData, newData)) {
       return prevData;
     }
 
-    return newData
+    return newData;
   });
 };
 
@@ -683,9 +722,35 @@ useEffect(() => {
   if (data) {
     setCounter(counter => counter + 1);
   }
-}, [data])
+}, [data]);
 
-return <InteractiveQuestion key={counter} questionId={yourQuestionId} />
+return <InteractiveQuestion key={counter} questionId={yourQuestionId} />;
+```
+
+### Customizing JWT authentication
+
+You can customize how the SDK fetches the refresh token by specifying the `fetchRefreshToken` function in the `config` prop:
+
+```jsx
+/**
+  * This is the default implementation used in the SDK.
+  * You can customize this function to fit your needs, such as adding headers or excluding cookies.
+
+  * The function must return a JWT token object, or return "null" if the user is not authenticated.
+
+  * @returns {Promise<{id: string, exp: number} | null>}
+ */
+async function fetchRefreshToken(url) {
+  const response = await fetch(url, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  return await response.json();
+}
+
+// Pass this configuration to MetabaseProvider.
+const config = { fetchRefreshToken };
 ```
 
 # Known limitations
@@ -693,6 +758,8 @@ return <InteractiveQuestion key={counter} questionId={yourQuestionId} />
 - The Metabase Embedding SDK does not support server-side rendering (SSR) at the moment.
   - If you are using a framework with SSR support such as Next.js or Remix, you have to ensure that the SDK components are rendered on the client side.
   - For example, you can apply the `"use client"` directive on Next.js or use the `remix-utils/ClientOnly` component on Remix.
+- Embedding multiple instances of interactive dashboards on the same page are not supported.
+  - Please use static dashboards if you need to embed multiple dashboards on the same page.
 
 # Feedback
 

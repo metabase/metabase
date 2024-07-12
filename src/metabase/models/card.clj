@@ -876,55 +876,55 @@
                                     [(when (:table_id m) #{(serdes/table->path (:table_id m))})
                                      (when (:id m)       #{(serdes/field->path (:id m))})])))))
 
-(defmethod serdes/extract-one "Card"
-  [_model-name _opts card]
-  ;; Cards have :table_id, :database_id, :collection_id, :creator_id that need conversion.
-  ;; :table_id and :database_id are extracted as just :table_id [database_name schema table_name].
-  ;; :collection_id is extracted as its entity_id or identity-hash.
-  ;; :creator_id as the user's email.
-  (-> (serdes/extract-one-basics "Card" card)
-      (update :database_id            serdes/*export-fk-keyed* 'Database :name)
-      (update :table_id               serdes/*export-table-fk*)
-      (update :collection_id          serdes/*export-fk* 'Collection)
-      (update :creator_id             serdes/*export-user*)
-      (update :made_public_by_id      serdes/*export-user*)
-      (update :dataset_query          serdes/export-mbql)
-      (update :parameters             serdes/export-parameters)
-      (update :parameter_mappings     serdes/export-parameter-mappings)
-      (update :visualization_settings serdes/export-visualization-settings)
-      (update :result_metadata        export-result-metadata)
-      (dissoc :cache_invalidated_at :view_count :last_used_at :initially_published_at
-              :dataset_query_metrics_v2_migration_backup)))
-
-(defmethod serdes/load-xform "Card"
-  [card]
-  (-> card
-      serdes/load-xform-basics
-      (update :database_id            serdes/*import-fk-keyed* 'Database :name)
-      (update :table_id               serdes/*import-table-fk*)
-      (update :creator_id             serdes/*import-user*)
-      (update :made_public_by_id      serdes/*import-user*)
-      (update :collection_id          serdes/*import-fk* 'Collection)
-      (update :dataset_query          serdes/import-mbql)
-      (update :parameters             serdes/import-parameters)
-      (update :parameter_mappings     serdes/import-parameter-mappings)
-      (update :visualization_settings serdes/import-visualization-settings)
-      (update :result_metadata        import-result-metadata)))
+(defmethod serdes/make-spec "Card"
+  [_model-name]
+  {:copy [:archived :archived_directly :collection_position :collection_preview :created_at :description :display
+          :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name]
+   :skip [ ;; always instance-specific
+          :id :updated_at
+          ;; cache invalidation is instance-specific
+          :cache_invalidated_at
+          ;; those are instance-specific analytic columns
+          :view_count :last_used_at :initially_published_at
+          ;; this is data migration column
+          :dataset_query_metrics_v2_migration_backup
+          ;; this column is not used anymore
+          :cache_ttl]
+   :transform
+   {:database_id            [#(serdes/*export-fk-keyed* % 'Database :name)
+                             #(serdes/*import-fk-keyed* % 'Database :name)]
+    :table_id               [serdes/*export-table-fk*
+                             serdes/*import-table-fk*]
+    :collection_id          [#(serdes/*export-fk* % 'Collection)
+                             #(serdes/*import-fk* % 'Collection)]
+    :creator_id             [serdes/*export-user*
+                             serdes/*import-user*]
+    :made_public_by_id      [serdes/*export-user*
+                             serdes/*import-user*]
+    :dataset_query          [serdes/export-mbql
+                             serdes/import-mbql]
+    :parameters             [serdes/export-parameters
+                             serdes/import-parameters]
+    :parameter_mappings     [serdes/export-parameter-mappings
+                             serdes/import-parameter-mappings]
+    :visualization_settings [serdes/export-visualization-settings
+                             serdes/import-visualization-settings]
+    :result_metadata        [export-result-metadata
+                             import-result-metadata]}})
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
            result_metadata table_id visualization_settings]}]
-  (->> (map serdes/mbql-deps parameter_mappings)
-       (reduce set/union #{})
-       (set/union (serdes/parameters-deps parameters))
-       (set/union #{[{:model "Database" :id database_id}]})
-       ; table_id and collection_id are nullable.
-       (set/union (when table_id #{(serdes/table->path table_id)}))
-       (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
-       (set/union (result-metadata-deps result_metadata))
-       (set/union (serdes/mbql-deps dataset_query))
-       (set/union (serdes/visualization-settings-deps visualization_settings))
-       vec))
+  (set
+   (concat
+    (mapcat serdes/mbql-deps parameter_mappings)
+    (serdes/parameters-deps parameters)
+    [[{:model "Database" :id database_id}]]
+    (when table_id #{(serdes/table->path table_id)})
+    (when collection_id #{[{:model "Collection" :id collection_id}]})
+    (result-metadata-deps result_metadata)
+    (serdes/mbql-deps dataset_query)
+    (serdes/visualization-settings-deps visualization_settings))))
 
 (defmethod serdes/descendants "Card" [_model-name id]
   (let [card               (t2/select-one Card :id id)
@@ -932,19 +932,17 @@
         template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
         snippets           (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
-    (set/union
+    (set
+     (concat
       (when (and (string? source-table)
                  (str/starts-with? source-table "card__"))
-        #{["Card" (Integer/parseInt (.substring ^String source-table 6))]})
-      (when (seq template-tags)
-        (set (for [card-id template-tags]
-               ["Card" card-id])))
-      (when (seq parameters-card-id)
-        (set (for [card-id parameters-card-id]
-               ["Card" card-id])))
-      (when (seq snippets)
-        (set (for [snippet-id snippets]
-               ["NativeQuerySnippet" snippet-id]))))))
+        [["Card" (parse-long (subs source-table 6))]])
+      (for [card-id template-tags]
+        ["Card" card-id])
+      (for [card-id parameters-card-id]
+        ["Card" card-id])
+      (for [snippet-id snippets]
+        ["NativeQuerySnippet" snippet-id])))))
 
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------

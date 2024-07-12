@@ -82,6 +82,21 @@ const editingDashboard = handleActions(
 
 const loadingControls = handleActions(
   {
+    [INITIALIZE]: { next: () => INITIAL_DASHBOARD_STATE.loadingControls },
+
+    [fetchDashboard.pending]: (state, { payload }) => ({
+      ...state,
+      isLoading: true,
+    }),
+    [fetchDashboard.fulfilled]: (state, { payload }) => ({
+      ...state,
+      isLoading: false,
+    }),
+    [fetchDashboard.rejected]: (state, { payload }) => ({
+      ...state,
+      isLoading: false,
+    }),
+
     [SET_DOCUMENT_TITLE]: (state, { payload }) => ({
       ...state,
       documentTitle: payload,
@@ -90,7 +105,7 @@ const loadingControls = handleActions(
       ...state,
       showLoadCompleteFavicon: payload,
     }),
-    [RESET]: { next: state => ({}) },
+    [RESET]: { next: () => INITIAL_DASHBOARD_STATE.loadingControls },
   },
   INITIAL_DASHBOARD_STATE.loadingControls,
 );
