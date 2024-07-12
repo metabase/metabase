@@ -130,7 +130,7 @@ jobs:
         with:
           script: | # js
             const FAILED_RUN_URL = "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}";
-            const REF_NAME = "${{ github.ref_name }}".replace('refs/heads/', '');
+            const REF_NAME = "${{ github.ref_name }}";
 
             // notify slack of failure
             const { WebClient } = require('@slack/web-api');
