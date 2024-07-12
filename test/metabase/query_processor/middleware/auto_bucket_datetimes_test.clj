@@ -62,6 +62,32 @@
               {:source-table 1
                :filter       [:= [:field (meta/id :checkins :date) nil] "2018-11-19"]}))))))
 
+(deftest ^:parallel auto-bucket-expressions-test
+  (qp.store/with-metadata-provider meta/metadata-provider
+    (testing "Expression in filter gets temporal unit added"
+      (is (= [:= [:expression "cc" {:base-type :type/DateTime, :temporal-unit :day}] "2019-02-11"]
+             (:filter (auto-bucket-mbql
+                       {:source-table 1
+                        :expressions {"cc" [:convert-timezone
+                                            [:field (meta/id :orders :created-at) {:base-type :type/DateTime}]
+                                            "America/Argentina/Buenos_Aires"
+                                            "UTC"]}
+                        :filter      [:= [:expression "cc" {:base-type :type/DateTime}] "2019-02-11"]})))))
+    (testing "Expressions not appropriate for bucketing are left untouched"
+      (is (= [:= [:expression "cc" {:base-type :type/DateTime}] 1]
+             (:filter (auto-bucket-mbql
+                       {:source-table 1
+                        :expressions {"cc" [:+ (meta/id :orders :id) 1]}
+                        :filter      [:= [:expression "cc" {:base-type :type/DateTime}] 1]}))))
+      (is (= [:= [:expression "cc" {:base-type :type/Time}] "10:00:00"]
+             (:filter (auto-bucket-mbql
+                       {:source-table 1
+                        :expressions {"cc" [:convert-timezone
+                                            [:field (meta/id :orders :created-at) {:base-type :type/Time}]
+                                            "America/Argentina/Buenos_Aires"
+                                            "UTC"]}
+                        :filter      [:= [:expression "cc" {:base-type :type/Time}] "10:00:00"]})))))))
+
 (deftest ^:parallel auto-bucket-in-compound-filter-clause-test
   (testing "Fields should still get auto-bucketed when present in compound filter clauses (#9127)"
     (is (= {:source-table 1
