@@ -27,7 +27,7 @@ There are two ways to run these `export` and `import` commands:
 
 - **Staging environments**. Enable a staging-to-production workflow for important dashboards by exporting from a staging instance of Metabase and then importing them into your production instance(s).
 - **Version control**. Check the exported files into version control and audit changes to them, as the YAML files contained within the export are pretty readable.
-- **Duplicating assets between Metabase instances**. Export the "template" data from a source Metabase instance and import them to one or more target instances to duplicate.
+- **Duplicating assets to other Metabase instances**. Export the "template" data from a source Metabase and import them to one or more target instances.
 
 Check out our guides for:
 
