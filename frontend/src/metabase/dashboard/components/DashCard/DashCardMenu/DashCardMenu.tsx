@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { isValidElement, useState } from "react";
 
+import type { SdkPluginsConfig } from "embedding-sdk";
 import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
 import CS from "metabase/css/core/index.css";
 import {
@@ -48,6 +49,20 @@ export type DashCardMenuItem = {
   disabled?: boolean;
 } & MenuItemProps;
 
+function isDashCardMenuEmpty(plugins?: SdkPluginsConfig) {
+  const dashcardMenu = plugins?.dashboard?.dashcardMenu;
+
+  if (!plugins || !dashcardMenu || typeof dashcardMenu !== "object") {
+    return false;
+  }
+
+  return (
+    dashcardMenu?.withDownloads === false &&
+    dashcardMenu?.withEditLink === false &&
+    !dashcardMenu?.customItems?.length
+  );
+}
+
 export const DashCardMenu = ({
   question,
   result,
@@ -76,7 +91,15 @@ export const DashCardMenu = ({
     },
   });
 
+  if (isDashCardMenuEmpty(plugins)) {
+    return null;
+  }
+
   const getMenuContent = () => {
+    if (typeof plugins?.dashboard?.dashcardMenu === "function") {
+      return plugins.dashboard.dashcardMenu({ question: question.card() });
+    }
+
     if (isValidElement(plugins?.dashboard?.dashcardMenu)) {
       return plugins.dashboard.dashcardMenu;
     }

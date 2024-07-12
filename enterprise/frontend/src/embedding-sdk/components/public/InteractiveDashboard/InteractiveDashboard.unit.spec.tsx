@@ -202,39 +202,40 @@ describe("InteractiveDashboard", () => {
     ).toHaveLength(1);
   });
 
-  it("should support onLoad, onLoadWithCards handlers", async () => {
+  it("should support onLoad, onLoadWithoutCards handlers", async () => {
     const onLoad = jest.fn();
-    const onLoadWithCards = jest.fn();
-    const { dashboard } = await setup({ props: { onLoad, onLoadWithCards } });
+    const onLoadWithoutCards = jest.fn();
+    const { dashboard } = await setup({
+      props: { onLoad, onLoadWithoutCards },
+    });
 
-    expect(onLoad).toHaveBeenCalledTimes(1);
-    expect(onLoad).toHaveBeenLastCalledWith(dashboard);
+    expect(onLoadWithoutCards).toHaveBeenCalledTimes(1);
+    expect(onLoadWithoutCards).toHaveBeenLastCalledWith(dashboard);
 
     await waitFor(() => {
       return fetchMock.called(
         `path:/api/card/${dashboard.dashcards[0].card_id}/query`,
       );
     });
-
-    expect(onLoadWithCards).toHaveBeenCalledTimes(1);
-    expect(onLoadWithCards).toHaveBeenLastCalledWith(dashboard);
+    expect(onLoad).toHaveBeenCalledTimes(1);
+    expect(onLoad).toHaveBeenLastCalledWith(dashboard);
   });
 
   it("should support global dashboard load event handlers", async () => {
     const onLoad = jest.fn();
-    const onLoadWithCards = jest.fn();
+    const onLoadWithoutCards = jest.fn();
 
     const { dashboard } = await setup({
       providerProps: {
         eventHandlers: {
           onDashboardLoad: onLoad,
-          onDashboardLoadWithCards: onLoadWithCards,
+          onDashboardLoadWithoutCards: onLoadWithoutCards,
         },
       },
     });
 
-    expect(onLoad).toHaveBeenCalledTimes(1);
-    expect(onLoad).toHaveBeenLastCalledWith(dashboard);
+    expect(onLoadWithoutCards).toHaveBeenCalledTimes(1);
+    expect(onLoadWithoutCards).toHaveBeenLastCalledWith(dashboard);
 
     await waitFor(() => {
       return fetchMock.called(
@@ -242,7 +243,7 @@ describe("InteractiveDashboard", () => {
       );
     });
 
-    expect(onLoadWithCards).toHaveBeenCalledTimes(1);
-    expect(onLoadWithCards).toHaveBeenLastCalledWith(dashboard);
+    expect(onLoad).toHaveBeenCalledTimes(1);
+    expect(onLoad).toHaveBeenLastCalledWith(dashboard);
   });
 });

@@ -1,22 +1,25 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
 import { useSearchFieldValuesQuery } from "metabase/api";
-import { MultiAutocomplete } from "metabase/ui";
-import type { FieldId, FieldValue } from "metabase-types/api";
+import { Loader, MultiAutocomplete } from "metabase/ui";
+import type { FieldId } from "metabase-types/api";
 
 import { getFieldOptions } from "../utils";
 
 import { SEARCH_DEBOUNCE, SEARCH_LIMIT } from "./constants";
-import { shouldSearch } from "./utils";
+import {
+  getFilteredOptions,
+  getNothingFoundMessage,
+  shouldSearch,
+} from "./utils";
 
 interface SearchValuePickerProps {
   fieldId: FieldId;
   searchFieldId: FieldId;
-  fieldValues: FieldValue[];
   selectedValues: string[];
-  placeholder?: string;
+  columnDisplayName: string;
   shouldCreate?: (query: string, values: string[]) => boolean;
   autoFocus?: boolean;
   onChange: (newValues: string[]) => void;
@@ -25,17 +28,21 @@ interface SearchValuePickerProps {
 export function SearchValuePicker({
   fieldId,
   searchFieldId,
-  fieldValues: initialFieldValues,
   selectedValues,
-  placeholder,
+  columnDisplayName,
   shouldCreate,
   autoFocus,
   onChange,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
+  const canSearch = searchQuery.length > 0;
 
-  const { data: fieldValues = initialFieldValues } = useSearchFieldValuesQuery(
+  const {
+    data: fieldValues = [],
+    error: searchError,
+    isFetching: isSearching,
+  } = useSearchFieldValuesQuery(
     {
       fieldId,
       searchFieldId,
@@ -43,11 +50,22 @@ export function SearchValuePicker({
       limit: SEARCH_LIMIT,
     },
     {
-      skip: !searchQuery,
+      skip: !canSearch,
     },
   );
 
-  const options = useMemo(() => getFieldOptions(fieldValues), [fieldValues]);
+  const searchOptions = canSearch ? getFieldOptions(fieldValues) : [];
+  const visibleOptions = getFilteredOptions(
+    searchOptions,
+    searchValue,
+    selectedValues,
+  );
+  const notFoundMessage = getNothingFoundMessage(
+    columnDisplayName,
+    searchError,
+    canSearch,
+    isSearching,
+  );
 
   const handleSearchChange = (newSearchValue: string) => {
     setSearchValue(newSearchValue);
@@ -66,14 +84,16 @@ export function SearchValuePicker({
 
   return (
     <MultiAutocomplete
-      data={options}
+      data={visibleOptions}
       value={selectedValues}
       searchValue={searchValue}
-      placeholder={placeholder}
+      placeholder={t`Search by ${columnDisplayName}`}
       searchable
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
       shouldCreate={shouldCreate}
+      rightSection={isSearching ? <Loader /> : undefined}
+      nothingFound={notFoundMessage}
       onChange={onChange}
       onSearchChange={handleSearchChange}
     />
