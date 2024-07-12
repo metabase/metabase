@@ -1725,19 +1725,17 @@ describe("issue 39771", () => {
       const popoverStyle = window.getComputedStyle($popover);
       const popoverZindex = parseInt(popoverStyle.zIndex, 10);
 
-      popover().findByText("by quarter of year").realHover();
+      cy.wrap($popover).findByText("by quarter of year").realHover();
 
-      cy.findAllByRole("tooltip", { hidden: true })
-        .filter(":visible")
-        .within(([$tooltip]) => {
-          cy.findByText("by quarter of year").should("be.visible");
+      cy.findByTestId("ellipsified-tooltip").within(([$tooltip]) => {
+        cy.findByText("by quarter of year").should("be.visible");
 
-          const tooltipStyle = window.getComputedStyle($tooltip);
-          const tooltipZindex = parseInt(tooltipStyle.zIndex, 10);
+        const tooltipStyle = window.getComputedStyle($tooltip);
+        const tooltipZindex = parseInt(tooltipStyle.zIndex, 10);
 
-          // resort to asserting zIndex because should("be.visible") passes unexpectedly
-          expect(tooltipZindex).to.be.gte(popoverZindex);
-        });
+        // resort to asserting zIndex because should("be.visible") passes unexpectedly
+        expect(tooltipZindex).to.be.gte(popoverZindex);
+      });
     });
   });
 });
