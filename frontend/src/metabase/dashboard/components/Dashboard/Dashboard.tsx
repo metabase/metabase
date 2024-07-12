@@ -8,11 +8,11 @@ import _ from "underscore";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import {
-  type NewDashCardOpts,
-  type SetDashboardAttributesOpts,
-  type navigateToNewCardFromDashboard,
-  setArchivedDashboard,
   moveDashboardToCollection,
+  type navigateToNewCardFromDashboard,
+  type NewDashCardOpts,
+  setArchivedDashboard,
+  type SetDashboardAttributesOpts,
 } from "metabase/dashboard/actions";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import type {
@@ -25,14 +25,13 @@ import Dashboards from "metabase/entities/dashboards";
 import { getMainElement } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
 import type {
+  CardId,
   Dashboard as IDashboard,
   DashboardCard,
   DashboardId,
-  CardId,
   DashboardTabId,
   DashCardId,
   ParameterId,
-  ParameterMappingOptions,
   ParameterValueOrArray,
   RowValue,
   ValuesQueryType,
@@ -67,7 +66,9 @@ import {
 
 export type DashboardProps = {
   route: Route;
-  params: { slug: string };
+  params: {
+    slug: string;
+  };
   children?: ReactNode;
   canManageSubscriptions: boolean;
   isAdmin: boolean;
@@ -115,7 +116,6 @@ export type DashboardProps = {
   setErrorPage: (error: unknown) => void;
   onChangeLocation: (location: Location) => void;
 
-  addParameter: (option: ParameterMappingOptions) => void;
   setParameterName: (id: ParameterId, name: string) => void;
   setParameterType: (id: ParameterId, type: string) => void;
   navigateToNewCardFromDashboard: typeof navigateToNewCardFromDashboard;
@@ -174,7 +174,6 @@ function Dashboard(props: DashboardProps) {
   const {
     addCardOnLoad,
     addCardToDashboard,
-    addParameter,
     cancelFetchDashboardCardData,
     closeNavbar,
     dashboard,
@@ -191,7 +190,6 @@ function Dashboard(props: DashboardProps) {
     onRefreshPeriodChange,
     parameterValues,
     selectedTabId,
-    setDashboardAttributes,
     setEditingDashboard,
     setErrorPage,
     setSharing,
@@ -231,18 +229,6 @@ function Dashboard(props: DashboardProps) {
 
   const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
-  const handleSetDashboardAttribute = useCallback(
-    <Key extends keyof IDashboard>(attribute: Key, value: IDashboard[Key]) => {
-      if (dashboard) {
-        setDashboardAttributes({
-          id: dashboard.id,
-          attributes: { [attribute]: value },
-        });
-      }
-    },
-    [dashboard, setDashboardAttributes],
-  );
-
   const handleSetEditing = useCallback(
     (dashboard: IDashboard | null) => {
       onRefreshPeriodChange(null);
@@ -252,13 +238,10 @@ function Dashboard(props: DashboardProps) {
   );
 
   const handleAddQuestion = useCallback(() => {
-    handleSetEditing(dashboard);
+    onRefreshPeriodChange(null);
+    setEditingDashboard(dashboard);
     toggleSidebar(SIDEBAR_NAME.addQuestion);
-  }, [dashboard, toggleSidebar, handleSetEditing]);
-
-  const handleToggleSharing = useCallback(() => {
-    setSharing(!isSharing);
-  }, [isSharing, setSharing]);
+  }, [onRefreshPeriodChange, setEditingDashboard, dashboard, toggleSidebar]);
 
   const handleLoadDashboard = useCallback(
     async (dashboardId: DashboardId) => {
@@ -281,7 +264,8 @@ function Dashboard(props: DashboardProps) {
       try {
         const dashboard = result.payload.dashboard;
         if (editingOnLoad) {
-          handleSetEditing(dashboard);
+          onRefreshPeriodChange(null);
+          setEditingDashboard(dashboard);
         }
         if (addCardOnLoad != null) {
           addCardToDashboard({
@@ -304,10 +288,11 @@ function Dashboard(props: DashboardProps) {
       addCardToDashboard,
       editingOnLoad,
       fetchDashboard,
-      handleSetEditing,
       initialize,
       isNavigatingBackToDashboard,
+      onRefreshPeriodChange,
       parameterQueryParams,
+      setEditingDashboard,
       setErrorPage,
     ],
   );
@@ -461,39 +446,14 @@ function Dashboard(props: DashboardProps) {
                * in Redux state which kicks off a fetch for the dashboard cards.
                */}
               <DashboardHeader
-                dashboardId={dashboardId}
-                isEditing={isEditing}
                 location={location}
                 dashboard={dashboard}
                 isNightMode={shouldRenderAsNightMode}
                 isFullscreen={isFullscreen}
-                fetchDashboard={fetchDashboard}
-                onEditingChange={handleSetEditing}
-                setDashboardAttribute={handleSetDashboardAttribute}
-                addParameter={addParameter}
-                onSharingClick={handleToggleSharing}
-                addCardToDashboard={addCardToDashboard}
                 onRefreshPeriodChange={onRefreshPeriodChange}
-                addMarkdownDashCardToDashboard={
-                  props.addMarkdownDashCardToDashboard
-                }
-                addHeadingDashCardToDashboard={
-                  props.addHeadingDashCardToDashboard
-                }
-                addLinkDashCardToDashboard={props.addLinkDashCardToDashboard}
-                updateDashboardAndCards={props.updateDashboardAndCards}
                 dashboardBeforeEditing={props.dashboardBeforeEditing}
-                isDirty={props.isDirty}
                 onFullscreenChange={props.onFullscreenChange}
-                sidebar={props.sidebar}
-                setSidebar={props.setSidebar}
-                closeSidebar={props.closeSidebar}
-                isAddParameterPopoverOpen={props.isAddParameterPopoverOpen}
-                showAddParameterPopover={props.showAddParameterPopover}
-                hideAddParameterPopover={props.hideAddParameterPopover}
                 isAdditionalInfoVisible={props.isAdditionalInfoVisible}
-                isAdmin={props.isAdmin}
-                canManageSubscriptions={props.canManageSubscriptions}
                 hasNightModeToggle={props.hasNightModeToggle}
                 onNightModeChange={props.onNightModeChange}
                 refreshPeriod={props.refreshPeriod}
@@ -553,7 +513,6 @@ function Dashboard(props: DashboardProps) {
                 sidebar={props.sidebar}
                 closeSidebar={props.closeSidebar}
                 selectedTabId={props.selectedTabId}
-                setDashboardAttribute={handleSetDashboardAttribute}
                 onCancel={() => setSharing(false)}
               />
             </DashboardBody>

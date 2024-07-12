@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
-  setupFieldSearchValuesEndpoints,
+  setupFieldSearchValuesEndpoint,
   setupFieldValuesEndpoints,
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen } from "__support__/ui";
@@ -40,7 +40,12 @@ function setup({
     setupFieldValuesEndpoints(fieldValues);
   }
   Object.entries(searchValues).forEach(([value, result]) => {
-    setupFieldSearchValuesEndpoints(result.field_id, value, result.values);
+    setupFieldSearchValuesEndpoint(
+      result.field_id,
+      result.field_id,
+      value,
+      result.values,
+    );
   });
 
   renderWithProviders(

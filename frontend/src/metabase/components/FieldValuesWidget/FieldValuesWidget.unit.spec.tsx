@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
-  setupFieldSearchValuesEndpoints,
+  setupFieldSearchValuesEndpoint,
   setupParameterValuesEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -60,7 +60,8 @@ async function setup({
 
   if (searchValue) {
     fields.forEach(field => {
-      setupFieldSearchValuesEndpoints(field?.id as number, searchValue);
+      const fieldId = field?.id as number;
+      setupFieldSearchValuesEndpoint(fieldId, fieldId, searchValue);
     });
   }
 

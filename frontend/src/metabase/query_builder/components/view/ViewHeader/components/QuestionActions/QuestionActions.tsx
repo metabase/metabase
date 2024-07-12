@@ -186,7 +186,7 @@ export const QuestionActions = ({
     });
   }
 
-  if (isQuestion) {
+  if (isQuestion || isMetric) {
     extraButtons.push({
       title: t`Add to dashboard`,
       icon: "add_to_dash",

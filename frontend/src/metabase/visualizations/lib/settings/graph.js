@@ -41,7 +41,7 @@ import {
   getAreDimensionsAndMetricsValid,
   getDefaultDimensions,
   getDefaultShowStackValues,
-  STACKABLE_DISPLAY_TYPES,
+  STACKABLE_SERIES_DISPLAY_TYPES,
   getDefaultMetrics,
   isShowStackValuesValid,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
@@ -71,14 +71,6 @@ export const GRAPH_DATA_SETTINGS = {
     ]) => cols,
     hidden: true,
   }),
-  "graph._dimension_filter": {
-    getDefault: ([{ card }]) => getDefaultDimensionFilter(card.display),
-    useRawSeries: true,
-  },
-  "graph._metric_filter": {
-    getDefault: ([{ card }]) => getDefaultMetricFilter(card.display),
-    useRawSeries: true,
-  },
   "graph.dimensions": {
     section: t`Data`,
     title: t`X-axis`,
@@ -97,7 +89,7 @@ export const GRAPH_DATA_SETTINGS = {
       const addedDimensions = vizSettings["graph.dimensions"];
       const maxDimensionsSupported = getMaxDimensionsSupported(card.display);
       const options = data.cols
-        .filter(vizSettings["graph._dimension_filter"])
+        .filter(getDefaultDimensionFilter(card.display))
         .map(getOptionFromColumn);
       return {
         options,
@@ -116,7 +108,6 @@ export const GRAPH_DATA_SETTINGS = {
         showColumnSettingForIndicies: [0],
       };
     },
-    readDependencies: ["graph._dimension_filter", "graph._metric_filter"],
     writeDependencies: ["graph.metrics"],
     eraseDependencies: ["graph.series_order_dimension", "graph.series_order"],
     dashboard: false,
@@ -156,7 +147,7 @@ export const GRAPH_DATA_SETTINGS = {
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings, _onChange, extra) => {
       const options = data.cols
-        .filter(vizSettings["graph._metric_filter"])
+        .filter(getDefaultMetricFilter(card.display))
         .map(getOptionFromColumn);
 
       const addedMetrics = vizSettings["graph.metrics"];
@@ -181,11 +172,7 @@ export const GRAPH_DATA_SETTINGS = {
         series: extra.transformedSeries,
       };
     },
-    readDependencies: [
-      "graph._dimension_filter",
-      "graph._metric_filter",
-      "series_settings.colors",
-    ],
+    readDependencies: ["series_settings.colors"],
     writeDependencies: ["graph.dimensions"],
     dashboard: false,
     useRawSeries: true,
@@ -248,11 +235,7 @@ export const STACKABLE_SETTINGS = {
     isValid: (series, settings) => {
       const seriesDisplays = getSeriesDisplays(series, settings);
 
-      return isStackingValueValid(
-        series[0].card.display,
-        settings,
-        seriesDisplays,
-      );
+      return isStackingValueValid(settings, seriesDisplays);
     },
     getDefault: ([{ card, data }], settings) => {
       return getDefaultStackingValue(settings, card);
@@ -260,7 +243,7 @@ export const STACKABLE_SETTINGS = {
     getHidden: (series, settings) => {
       const displays = series.map(single => settings.series(single).display);
       const stackableDisplays = displays.filter(display =>
-        STACKABLE_DISPLAY_TYPES.has(display),
+        STACKABLE_SERIES_DISPLAY_TYPES.has(display),
       );
 
       return stackableDisplays.length <= 1;
