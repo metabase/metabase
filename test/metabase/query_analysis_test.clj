@@ -7,7 +7,8 @@
    [metabase.models :refer [Card]]
    [metabase.public-settings :as public-settings]
    [metabase.query-analysis :as query-analysis]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest native-query-enabled-test
   (mt/discard-setting-changes [sql-parsing-enabled]
@@ -55,3 +56,11 @@
                                 (lib/aggregate (lib/distinct venues-name)))]
       (is (= {:explicit #{(mt/id :venues :name)}}
              (#'query-analysis/query-field-ids mlv2-query))))))
+
+(deftest replace-fields-and-tables!-test
+  (testing "fields and tables in a native card can be replaced"
+    (t2.with-temp/with-temp [:model/Card card {:dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}]
+      (let [replacements {:fields {(mt/id :orders :total) (mt/id :people :name)}
+                          :tables {(mt/id :orders) (mt/id :people)}}]
+        (is (= "SELECT NAME FROM PEOPLE"
+               (query-analysis/replace-fields-and-tables card replacements)))))))
