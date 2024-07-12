@@ -8,10 +8,7 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
-import {
-  getQuestionParameterByValues,
-  type SdkParameterValues,
-} from "embedding-sdk/lib/question-parameter";
+import { loadStaticQuestion } from "embedding-sdk/lib/load-static-question";
 import CS from "metabase/css/core/index.css";
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { getResponseErrorMessage } from "metabase/lib/errors";
@@ -24,7 +21,6 @@ import {
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import ChartTypeSidebar from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
 import { getMetadata } from "metabase/selectors/metadata";
-import { CardApi } from "metabase/services";
 import { Box, Group } from "metabase/ui";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Question from "metabase-lib/v1/Question";
@@ -34,7 +30,7 @@ export type StaticQuestionProps = {
   questionId: CardId;
   showVisualizationSelector?: boolean;
   height?: string | number;
-  parameterValues?: SdkParameterValues;
+  parameterValues?: Record<string, string | number>;
 };
 
 type State = {
@@ -59,48 +55,41 @@ const _StaticQuestion = ({
     error: null,
   });
 
-  const loadCardData = useCallback(
-    async ({ questionId }: { questionId: number }) => {
+  const loadCardData = useCallback(async () => {
+    setState(prevState => ({
+      ...prevState,
+      loading: true,
+    }));
+
+    const { card, result } = await loadStaticQuestion({
+      questionId,
+      parameterValues,
+    });
+
+    try {
       setState(prevState => ({
         ...prevState,
-        loading: true,
+        card,
+        result,
+        loading: false,
+        error: null,
       }));
-
-      const parameters =
-        parameterValues && getQuestionParameterByValues(parameterValues);
-
-      Promise.all([
-        CardApi.get({ cardId: questionId }),
-        CardApi.query({
-          cardId: questionId,
-          ...(parameters && { parameters }),
-        }),
-      ])
-        .then(([card, result]) => {
-          setState(prevState => ({
-            ...prevState,
-            card,
-            result,
-            loading: false,
-            error: null,
-          }));
-        })
-        .catch(error => {
-          setState(prevState => ({
-            ...prevState,
-            result: null,
-            card: null,
-            loading: false,
-            error,
-          }));
-        });
-    },
-    [parameterValues],
-  );
+    } catch (error) {
+      if (error instanceof Error) {
+        setState(prevState => ({
+          ...prevState,
+          result: null,
+          card: null,
+          loading: false,
+          error,
+        }));
+      }
+    }
+  }, [questionId, parameterValues]);
 
   useEffect(() => {
-    loadCardData({ questionId }).then();
-  }, [questionId, loadCardData]);
+    loadCardData();
+  }, [loadCardData]);
 
   const changeVisualization = (newQuestion: Question) => {
     setState({
