@@ -1,7 +1,7 @@
 (ns metabase.util.queue-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.test :as mt]
+   [metabase.api.search-test :as search-test]
    [metabase.util :as u]
    [metabase.util.queue :as queue])
   (:import
@@ -81,7 +81,7 @@
         (is (= (set (concat backfill-events realtime-events)) (set processed))))
 
       (testing "The realtime events are processed in order"
-        (mt/ordered-subset? realtime-events processed))
+        (search-test/ordered-subset? realtime-events processed))
 
       (when dedupe?
         (testing "No phantom items are left in the set"
