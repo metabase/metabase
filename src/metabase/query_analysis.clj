@@ -114,7 +114,6 @@
     (nqa.replacement/replace-names query {:columns column-replacements
                                           :tables  table-replacements})))
 
-
 (defn replace-fields-and-tables
   "Given a card and a map of the form
 
