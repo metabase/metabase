@@ -656,7 +656,7 @@
                   :entity_id           (:entity_id card)
                   :moderated_status    "verified"
                   :model               "card"
-                  :last_used_at        nil
+                  :last_used_at        (:last_used_at card)
                   :fully_parameterized  true}])
                (mt/obj->json->obj
                 (:data (mt/user-http-request :crowberto :get 200
