@@ -27,13 +27,14 @@ There are two ways to run these `export` and `import` commands:
 
 - **Staging environments**. Enable a staging-to-production workflow for important dashboards by exporting from a staging instance of Metabase and then importing them into your production instance(s).
 - **Version control**. Check the exported files into version control and audit changes to them, as the YAML files contained within the export are pretty readable.
+- **Duplicating assets between Metabase instances**. Export the "template" data from a source Metabase instance and import them to one or more target instances to duplicate.
 
 Check out our guides for:
 
 - [Running multiple environments](https://www.metabase.com/learn/administration/multi-env)
 - [Setting up git-based workflow](https://www.metabase.com/learn/administration/git-based-workflow)
 
-> Serialization isn't intended for use cases like duplicating assets or swapping data sources within the same Metabase instance. If you're using serialization for duplicating entities, check out [How export works](#how-export-works), [How import works](#how-import-works), and the directions for your use case in [Other uses of serialization](#other-uses-of-serialization)
+> Serialization isn't intended for use cases like duplicating assets or swapping data sources _within the same Metabase instance_. If you're using serialization for duplicating assets within the same instance, check out [How export works](#how-export-works), [How import works](#how-import-works), and the directions for your use case in [Other uses of serialization](#other-uses-of-serialization)
 
 ## How export works
 
@@ -656,9 +657,9 @@ The `-o -` option will output logs in the terminal.
 
 ## Other uses of serialization
 
-Serialization is intended for version control and staging-to-production workflows. While it is possible to use serialization for other use cases like duplicating assets within a single instance, these use cases are not currently officially supported.
+Serialization is intended for version control, staging-to-production workflows, and duplicating assets between Metabase instances. While it is possible to use serialization for other use cases like duplicating assets within a single instance, these use cases are not currently officially supported.
 
-We're providing some directions on how to approach alternative use cases, but you should use them at your own risk. We strongly recommend that you test any process involving serialization on a non-production instance first, and reach out to [help@metabase.com](mailto:help@metabase.com) if you have any questions.
+We're providing some directions on how to approach these alternative use cases, but you should use them at your own risk. We strongly recommend that you test any process involving serialization on a non-production instance first, and reach out to [help@metabase.com](mailto:help@metabase.com) if you have any questions.
 
 ### Using serialization for duplicating content within the same Metabase
 
