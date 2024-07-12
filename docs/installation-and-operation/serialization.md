@@ -34,7 +34,7 @@ Check out our guides for:
 - [Running multiple environments](https://www.metabase.com/learn/administration/multi-env)
 - [Setting up git-based workflow](https://www.metabase.com/learn/administration/git-based-workflow)
 
-> Serialization isn't intended for use cases like duplicating assets or swapping data sources _within the same Metabase instance_. If you're using serialization for duplicating assets within the same instance, check out [How export works](#how-export-works), [How import works](#how-import-works), and the directions for your use case in [Other uses of serialization](#other-uses-of-serialization)
+> Serialization isn't intended for use cases like duplicating assets or swapping data sources _within_ the same Metabase instance. If you're using serialization for duplicating assets within the same instance, check out [How export works](#how-export-works), [How import works](#how-import-works), and the directions for your use case in [Other uses of serialization](#other-uses-of-serialization)
 
 ## How export works
 
