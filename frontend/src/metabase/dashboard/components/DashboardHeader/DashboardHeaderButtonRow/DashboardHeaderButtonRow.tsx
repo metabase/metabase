@@ -15,13 +15,13 @@ import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,
 } from "metabase/selectors/user";
+import { Box } from "metabase/ui";
 
 import { DASHBOARD_VIEW_ACTIONS, DASHBOARD_EDITING_ACTIONS } from "./constants";
 
 export const DashboardHeaderButtonRow = ({
   dashboardActionKeys = null,
   isPublic = false,
-  isEmpty = false,
   isAnalyticsDashboard = false,
   ...props
 }: {
@@ -61,13 +61,21 @@ export const DashboardHeaderButtonRow = ({
             formInput,
             isAdmin,
             isPublic,
-            isEmpty,
             ...props,
           };
 
           if (config.enabled(buttonComponentProps)) {
             const Component = config.component;
-            return <Component key={key} {...buttonComponentProps} />;
+            return (
+              <Box
+                key={key}
+                display="contents"
+                data-testid="dashboard-header-row-button"
+                data-element-id={key}
+              >
+                <Component {...buttonComponentProps} />
+              </Box>
+            );
           }
         }
         return null;

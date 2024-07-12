@@ -122,8 +122,8 @@ export const dashboardActionButtons: Record<
   },
   [DASHBOARD_ACTION.DASHBOARD_EMBED_ACTION]: {
     component: DashboardEmbedAction,
-    enabled: ({ dashboard, isPublic, isEmpty }) =>
-      !isEmpty && !isPublic && dashboard && !dashboard.archived,
+    enabled: ({ dashboard, isPublic }) =>
+      !isPublic && dashboard && !dashboard.archived,
   },
   [DASHBOARD_ACTION.REFRESH_WIDGET]: {
     component: ({
@@ -137,8 +137,7 @@ export const dashboardActionButtons: Record<
         onChangePeriod={onRefreshPeriodChange}
       />
     ),
-    enabled: ({ dashboard, isEditing, isEmpty }) =>
-      !isEditing && !isEmpty && !dashboard?.archived,
+    enabled: ({ dashboard, isEditing }) => !isEditing && !dashboard?.archived,
   },
   [DASHBOARD_ACTION.NIGHT_MODE_TOGGLE]: {
     component: ({ isNightMode, onNightModeChange }) => (
@@ -169,8 +168,7 @@ export const dashboardActionButtons: Record<
         onFullscreenChange={onFullscreenChange}
       />
     ),
-    enabled: ({ isFullscreen, isEmpty, isPublic }) =>
-      !isEmpty && (isPublic || isFullscreen),
+    enabled: ({ isFullscreen, isPublic }) => isPublic || isFullscreen,
   },
   [DASHBOARD_ACTION.DASHBOARD_BOOKMARK]: {
     component: DashboardBookmark,

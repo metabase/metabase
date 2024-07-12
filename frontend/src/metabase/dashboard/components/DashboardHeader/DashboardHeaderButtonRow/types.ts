@@ -12,7 +12,6 @@ export type DashboardActionKey = keyof typeof DASHBOARD_ACTION;
 
 export type DashboardHeaderButtonRowProps = {
   collection?: Collection;
-  isEmpty?: boolean;
   isPublic?: boolean;
   isAnalyticsDashboard?: boolean;
 } & DashboardRefreshPeriodControls &
