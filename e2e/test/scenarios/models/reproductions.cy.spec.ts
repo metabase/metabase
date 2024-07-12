@@ -26,6 +26,7 @@ import {
   undoToast,
   visitModel,
   visualize,
+  questionInfoButton,
 } from "e2e/support/helpers";
 import type { FieldReference } from "metabase-types/api";
 
@@ -800,4 +801,70 @@ describe("issue 39993", () => {
     cy.findAllByTestId("header-cell").eq(0).should("have.text", "Exp");
     cy.findAllByTestId("header-cell").eq(1).should("have.text", "ID");
   });
+});
+
+describe("issue 34574", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should accept markdown for model description and render it properly (metabase#34574)", () => {
+    const modelDetails: StructuredQuestionDetails = {
+      name: "34574",
+      type: "model",
+      query: {
+        "source-table": PRODUCTS_ID,
+        limit: 2,
+      },
+    };
+    createQuestion(modelDetails).then(({ body: { id: modelId } }) =>
+      visitModel(modelId),
+    );
+
+    cy.findByTestId("qb-header-action-panel").within(() => {
+      // make sure the model fully loaded
+      cy.findByTestId("run-button").should("exist");
+      questionInfoButton().click();
+    });
+
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.log("Set the model description to a markdown text");
+      cy.intercept("GET", "/api/card/*/query_metadata").as("metadata");
+      cy.findByPlaceholderText("Add description").type(
+        "# Hello{enter}## World{enter}This is an **important** description!",
+      );
+      cy.realPress("Tab");
+      cy.wait("@metadata");
+
+      cy.log("Make sure we immediately render the proper markdown");
+      cy.findByTestId("editable-text").within(assertMarkdownPreview);
+    });
+
+    cy.log(
+      "Make sure the markdown is properly preserved in the model details page",
+    );
+    cy.findByRole("link", { name: "Model details" }).click();
+    cy.findByLabelText("Description").within(assertMarkdownPreview);
+
+    cy.log(
+      "Make sure the description is present in the collection entry tooltip",
+    );
+    cy.findByTestId("app-bar").findByText("Our analytics").click();
+    cy.location("pathname").should("eq", "/collection/root");
+    cy.findAllByTestId("collection-entry-name")
+      .filter(`:contains(${modelDetails.name})`)
+      .icon("info")
+      .realHover();
+    cy.findByRole("tooltip")
+      .should("contain", "Hello")
+      .and("contain", "World")
+      .and("contain", "This is an important description!");
+  });
+
+  function assertMarkdownPreview() {
+    cy.findByRole("heading", { level: 1, name: "Hello" }).should("be.visible");
+    cy.findByRole("heading", { level: 2, name: "World" }).should("be.visible");
+    cy.get("strong").should("be.visible").and("have.text", "important");
+  }
 });
