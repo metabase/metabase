@@ -26,7 +26,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]
-   [toucan2.jdbc.options :as t2.jdbc.options]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
@@ -419,7 +418,8 @@
       {:select [nil]}
 
       (= (count models) 1)
-      (search-query-for-model (first models) search-ctx)
+      (merge (search-query-for-model (first models) search-ctx)
+             {:limit search.config/*db-max-results*})
 
       :else
       {:select   [:*]
@@ -427,7 +427,8 @@
                                           :let  [query (search-query-for-model model search-ctx)]
                                           :when (seq query)]
                                       query))} :alias_is_required_by_sql_but_not_needed_here]]
-       :order-by order-clause})))
+       :order-by order-clause
+       :limit search.config/*db-max-results*})))
 
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by from result."
@@ -514,11 +515,9 @@
         to-toucan-instance (fn [row]
                              (let [model (-> row :model search.config/model-to-db-model :db-model)]
                                (t2.instance/instance model row)))
-        reducible-results  (reify clojure.lang.IReduceInit
-                             (reduce [_this rf init]
-                               (binding [t2.jdbc.options/*options* (assoc t2.jdbc.options/*options* :max-rows search.config/*db-max-results*)]
-                                 (reduce rf init (t2/reducible-query search-query)))))
+        reducible-results  (t2/reducible-query search-query)
         xf                 (comp
+                            (take search.config/*db-max-results*)
                             (map t2.realize/realize)
                             (map to-toucan-instance)
                             (map #(cond-> %
