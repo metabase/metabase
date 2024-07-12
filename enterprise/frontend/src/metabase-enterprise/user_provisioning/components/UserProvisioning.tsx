@@ -132,6 +132,7 @@ export const UserProvisioning = ({
                     hideLabel={false}
                     tooltip={``}
                     id="scim-enabled"
+                    data-testid="scim-enabled"
                     setting={fields["scim-enabled"]}
                     onChange={async (enabled: boolean) => {
                       await updateSetting(fields["scim-enabled"], enabled);
