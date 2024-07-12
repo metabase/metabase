@@ -1707,3 +1707,15 @@
       (let [ser (extract/extract {:no-settings   true
                                   :no-data-model true})]
         (is (= #{@trash-eid} (by-model "Collection" ser)))))))
+
+(deftest entity-id-in-targets-test
+  (mt/with-temp [Collection c {:name "Top-Level Collection"}]
+    (testing "Conversion from eid to id works"
+      (is (= (:id c)
+             (serdes/eid->id "Collection" (:entity_id c)))))
+    (testing "Extracting by entity id works"
+      (let [ser (extract/extract {:targets       [["Collection" (:entity_id c)]]
+                                  :no-settings   true
+                                  :no-data-model true})]
+        (is (= #{(:entity_id c)}
+               (by-model "Collection" ser)))))))

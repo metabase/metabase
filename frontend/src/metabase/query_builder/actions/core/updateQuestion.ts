@@ -1,10 +1,8 @@
-import { assocIn } from "icepick";
 import _ from "underscore";
 
 import { getTrashUndoMessage } from "metabase/archive/utils";
 import Questions from "metabase/entities/questions";
 import { createThunkAction } from "metabase/lib/redux";
-import { syncVizSettingsWithQuery } from "metabase/querying";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { addUndo } from "metabase/redux/undo";
 import * as Lib from "metabase-lib";
@@ -29,37 +27,8 @@ import { updateUrl } from "../navigation";
 import { runQuestionQuery } from "../querying";
 import { onCloseQuestionInfo, setQueryBuilderMode, setUIControls } from "../ui";
 
-import { getQuestionWithDefaultVisualizationSettings } from "./utils";
-
-function checkShouldRerunPivotTableQuestion({
-  isPivot,
-  wasPivot,
-  hasBreakouts,
-  currentQuestion,
-  newQuestion,
-}: {
-  isPivot: boolean;
-  wasPivot: boolean;
-  hasBreakouts: boolean;
-  currentQuestion?: Question;
-  newQuestion: Question;
-}) {
-  const isValidPivotTable = isPivot && hasBreakouts;
-  const displayChange =
-    (!wasPivot && isValidPivotTable) || (wasPivot && !isPivot);
-
-  if (displayChange) {
-    return true;
-  }
-
-  const currentPivotSettings = currentQuestion?.setting(
-    "pivot_table.column_split",
-  );
-  const newPivotSettings = newQuestion.setting("pivot_table.column_split");
-  return (
-    isValidPivotTable && !_.isEqual(currentPivotSettings, newPivotSettings)
-  );
-}
+import { computeQuestionPivotTable } from "./pivot-table";
+import { getAdHocQuestionWithVizSettings } from "./utils";
 
 function shouldTemplateTagEditorBeVisible({
   currentQuestion,
@@ -117,76 +86,36 @@ export const updateQuestion = (
   return async (dispatch: Dispatch, getState: GetState) => {
     const currentQuestion = getQuestion(getState());
     const queryBuilderMode = getQueryBuilderMode(getState());
-    const { isEditable } = Lib.queryDisplayInfo(newQuestion.query());
 
-    const shouldTurnIntoAdHoc =
-      shouldStartAdHocQuestion &&
-      newQuestion.isSaved() &&
-      isEditable &&
-      queryBuilderMode !== "dataset";
-
-    if (shouldTurnIntoAdHoc) {
-      newQuestion = newQuestion.withoutNameAndId();
-
-      // When the dataset query changes, we should change the question type,
-      // to start building a new ad-hoc question based on a dataset
-      if (newQuestion.type() === "model" || newQuestion.type() === "metric") {
-        newQuestion = newQuestion.setType("question");
-        dispatch(onCloseQuestionInfo());
-      }
-    }
-
-    if (currentQuestion) {
-      newQuestion = newQuestion.setSettings(
-        syncVizSettingsWithQuery(
-          newQuestion.settings(),
-          newQuestion.query(),
-          currentQuestion.query(),
-        ),
-      );
-    }
+    newQuestion = getAdHocQuestionWithVizSettings({
+      question: newQuestion,
+      currentQuestion,
+      onCloseQuestionInfo: () => dispatch(onCloseQuestionInfo()),
+      shouldStartAdHocQuestion:
+        shouldStartAdHocQuestion && queryBuilderMode !== "dataset",
+    });
 
     if (!newQuestion.canAutoRun()) {
       run = false;
     }
 
-    const isPivot = newQuestion.display() === "pivot";
-    const wasPivot = currentQuestion?.display() === "pivot";
+    const rawSeries = getRawSeries(getState()) as Series;
 
-    const isCurrentQuestionNative =
-      currentQuestion && Lib.queryDisplayInfo(currentQuestion.query()).isNative;
+    const computedPivotQuestion = computeQuestionPivotTable({
+      question: newQuestion,
+      currentQuestion,
+      rawSeries,
+    });
+
+    newQuestion = computedPivotQuestion.question;
+
+    if (computedPivotQuestion.shouldRun !== null) {
+      run = computedPivotQuestion.shouldRun;
+    }
+
     const isNewQuestionNative = Lib.queryDisplayInfo(
       newQuestion.query(),
     ).isNative;
-
-    if (wasPivot || isPivot) {
-      const hasBreakouts =
-        !isNewQuestionNative &&
-        Lib.breakouts(newQuestion.query(), -1).length > 0;
-
-      // compute the pivot setting now so we can query the appropriate data
-      if (isPivot && hasBreakouts) {
-        const key = "pivot_table.column_split";
-        const rawSeries = getRawSeries(getState()) as Series;
-
-        if (rawSeries) {
-          const series = assocIn(rawSeries, [0, "card"], newQuestion.card());
-          const setting = getQuestionWithDefaultVisualizationSettings(
-            newQuestion,
-            series,
-          ).setting(key);
-          newQuestion = newQuestion.updateSettings({ [key]: setting });
-        }
-      }
-
-      run = checkShouldRerunPivotTableQuestion({
-        isPivot,
-        wasPivot,
-        hasBreakouts,
-        currentQuestion,
-        newQuestion,
-      });
-    }
 
     // Native query should never be in notebook mode (metabase#12651)
     if (queryBuilderMode === "notebook" && isNewQuestionNative) {
@@ -211,6 +140,9 @@ export const updateQuestion = (
     if (shouldUpdateUrl) {
       dispatch(updateUrl(null, { dirty: true }));
     }
+
+    const isCurrentQuestionNative =
+      currentQuestion && Lib.queryDisplayInfo(currentQuestion.query()).isNative;
 
     if (isCurrentQuestionNative || isNewQuestionNative) {
       const isVisible = getIsShowingTemplateTagsEditor(getState());

@@ -19,7 +19,7 @@ import {
   getDashboardComplete,
   getDraftParameterValues,
   getIsLoading,
-  getIsLoadingWithCards,
+  getIsLoadingWithoutCards,
   getIsNavigatingBackToDashboard,
   getParameters,
   getParameterValues,
@@ -52,7 +52,7 @@ const mapStateToProps = (state: State) => {
     isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
     isErrorPage: getErrorPage(state),
     isLoading: getIsLoading(state),
-    isLoadingWithCards: getIsLoadingWithCards(state),
+    isLoadingWithoutCards: getIsLoadingWithoutCards(state),
   };
 };
 
@@ -161,9 +161,9 @@ const PublicOrEmbeddedDashboardInner = ({
   parameterQueryParams,
   isErrorPage,
   onLoad,
-  onLoadWithCards,
+  onLoadWithoutCards,
   isLoading,
-  isLoadingWithCards,
+  isLoadingWithoutCards,
   cancelFetchDashboardCardData,
   setParameterValueToDefault,
   setParameterValue,
@@ -175,8 +175,9 @@ const PublicOrEmbeddedDashboardInner = ({
   const previousDashboardId = usePrevious(dashboardId);
   const previousSelectedTabId = usePrevious(selectedTabId);
   const previousParameterValues = usePrevious(parameterValues);
+
   const previousIsLoading = usePrevious(isLoading);
-  const previousIsLoadingWithCards = usePrevious(isLoadingWithCards);
+  const previousIsLoadingWithoutCards = usePrevious(isLoadingWithoutCards);
 
   const sdkEventHandlers = useSelector(getEventHandlers);
 
@@ -232,6 +233,24 @@ const PublicOrEmbeddedDashboardInner = ({
   ]);
 
   useEffect(() => {
+    if (
+      !isLoadingWithoutCards &&
+      previousIsLoadingWithoutCards &&
+      !isErrorPage
+    ) {
+      sdkEventHandlers?.onDashboardLoadWithoutCards?.(dashboard);
+      onLoadWithoutCards?.(dashboard);
+    }
+  }, [
+    isLoadingWithoutCards,
+    isErrorPage,
+    previousIsLoadingWithoutCards,
+    dashboard,
+    sdkEventHandlers,
+    onLoadWithoutCards,
+  ]);
+
+  useEffect(() => {
     if (!isLoading && previousIsLoading && !isErrorPage) {
       sdkEventHandlers?.onDashboardLoad?.(dashboard);
       onLoad?.(dashboard);
@@ -239,24 +258,10 @@ const PublicOrEmbeddedDashboardInner = ({
   }, [
     isLoading,
     isErrorPage,
-    onLoad,
     previousIsLoading,
-    dashboard,
-    sdkEventHandlers,
-  ]);
-
-  useEffect(() => {
-    if (!isLoadingWithCards && previousIsLoadingWithCards && !isErrorPage) {
-      sdkEventHandlers?.onDashboardLoadWithCards?.(dashboard);
-      onLoadWithCards?.(dashboard);
-    }
-  }, [
-    isLoadingWithCards,
-    isErrorPage,
-    onLoadWithCards,
-    previousIsLoadingWithCards,
     sdkEventHandlers,
     dashboard,
+    onLoad,
   ]);
 
   return (

@@ -148,7 +148,7 @@
 (defn- extract-subtrees
   "Extracts the targeted entities and all their descendants into a reducible stream of extracted maps.
 
-  The targeted entities are specified as a list of `[\"SomeModel\" database-id]` pairs.
+  The targeted entities are specified as a list of `[\"SomeModel\" pk-or-entity-id]` pairs.
 
   [[serdes/descendants]] is recursively called on these entities and all their descendants, until the
   complete transitive closure of all descendants is found. This produces a set of `[\"ModelName\" id]` pairs, which
@@ -158,27 +158,33 @@ Eg. if Dashboard B includes a Card A that is derived from a
   serialized output."
   [{:keys [targets] :as opts}]
   (log/tracef "Extracting subtrees with options: %s" (pr-str opts))
-  (if-let [analysis (escape-analysis targets)]
-    ;; If that is non-nil, emit the report.
-    (escape-report analysis)
-    ;; If it's nil, there are no errors, and we can proceed to do the dump.
-    ;; TODO This is not handled at all, but we should be able to exclude illegal data - and it should be
-    ;; contagious. Eg. a Dashboard with an illegal Card gets excluded too.
-    (let [nodes       (set/union
-                       (u/traverse targets #(serdes/ascendants (first %) (second %)))
-                       (u/traverse targets #(serdes/descendants (first %) (second %))))
-          models      (model-set opts)
-          ;; filter the selected models based on user options
-          by-model    (-> (group-by first nodes)
-                          (select-keys models)
-                          (update-vals #(set (map second %))))
-          extract-ids (fn [[model ids]]
-                        (eduction (map #(serdes/extract-one model opts %))
-                                  (t2/reducible-select (symbol model) :id [:in ids])))]
-      (eduction cat
-                [(eduction (map extract-ids) cat by-model)
-                 ;; extract all non-content entities like data model and settings if necessary
-                 (eduction (map #(serdes/extract-all % opts)) cat (remove (set serdes.models/content) models))]))))
+  (let [targets  (->> targets
+                      (mapv (fn [[model-name id :as target]]
+                              (if (number? id)
+                                target
+                                [model-name (serdes/eid->id model-name id)]))))
+        analysis (escape-analysis targets)]
+    (if analysis
+      ;; If that is non-nil, emit the report.
+      (escape-report analysis)
+      ;; If it's nil, there are no errors, and we can proceed to do the dump.
+      ;; TODO This is not handled at all, but we should be able to exclude illegal data - and it should be
+      ;; contagious. Eg. a Dashboard with an illegal Card gets excluded too.
+      (let [nodes       (set/union
+                         (u/traverse targets #(serdes/ascendants (first %) (second %)))
+                         (u/traverse targets #(serdes/descendants (first %) (second %))))
+            models      (model-set opts)
+            ;; filter the selected models based on user options
+            by-model    (-> (group-by first nodes)
+                            (select-keys models)
+                            (update-vals #(set (map second %))))
+            extract-ids (fn [[model ids]]
+                          (eduction (map #(serdes/extract-one model opts %))
+                                    (t2/reducible-select (symbol model) :id [:in ids])))]
+        (eduction cat
+                  [(eduction (map extract-ids) cat by-model)
+                   ;; extract all non-content entities like data model and settings if necessary
+                   (eduction (map #(serdes/extract-all % opts)) cat (remove (set serdes.models/content) models))])))))
 
 (defn extract
   "Returns a reducible stream of entities to serialize"
