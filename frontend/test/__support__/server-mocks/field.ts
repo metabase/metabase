@@ -58,5 +58,6 @@ export function setupFieldSearchValuesEndpoint(
     {
       body: result,
     },
+    { overwriteRoutes: false },
   );
 }

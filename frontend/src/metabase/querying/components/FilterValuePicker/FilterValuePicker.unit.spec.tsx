@@ -552,6 +552,34 @@ describe("StringFilterValuePicker", () => {
       expect(onChange).toHaveBeenLastCalledWith(["a@metabase.test"]);
     });
 
+    it("should show an empty state message", async () => {
+      await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+        fieldId,
+        searchValues: {
+          a: createMockFieldValues({
+            field_id: fieldId,
+            values: [["a@metabase.test"]],
+          }),
+          ac: createMockFieldValues({
+            field_id: fieldId,
+            values: [],
+          }),
+        },
+      });
+
+      await userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
+      expect(await screen.findByText("a@metabase.test")).toBeInTheDocument();
+
+      await userEvent.type(screen.getByPlaceholderText("Search by Email"), "c");
+      expect(
+        await screen.findByText("No matching Email found."),
+      ).toBeInTheDocument();
+    });
+
     it("should allow to update selected values", async () => {
       const { onChange } = await setupStringPicker({
         query,
