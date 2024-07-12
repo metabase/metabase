@@ -39,7 +39,7 @@ export async function loadStaticQuestion(options: Options) {
 
     result = await CardApi.query({
       cardId: questionId,
-      ...(parameters && { parameters }),
+      parameters,
     });
   }
 

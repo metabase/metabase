@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupCardEndpoints,
@@ -12,11 +13,13 @@ import {
   within,
 } from "__support__/ui";
 import { createMockConfig } from "embedding-sdk/test/mocks/config";
+import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
+  createMockParameter,
 } from "metabase-types/api/mocks";
 
 import type { StaticQuestionProps } from "./";
@@ -63,21 +66,25 @@ const VISUALIZATION_TYPES: Record<
 const setup = ({
   showVisualizationSelector = false,
   isValidCard = true,
+  card = createMockCard(),
+  parameterValues,
 }: Partial<StaticQuestionProps> & {
+  card?: Card;
   isValidCard?: boolean;
 } = {}) => {
-  const TEST_CARD = createMockCard();
   if (isValidCard) {
-    setupCardEndpoints(TEST_CARD);
+    setupCardEndpoints(card);
   } else {
-    setupUnauthorizedCardEndpoints(TEST_CARD);
+    setupUnauthorizedCardEndpoints(card);
   }
-  setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
+
+  setupCardQueryEndpoints(card, TEST_DATASET);
 
   renderWithProviders(
     <StaticQuestion
       questionId={TEST_QUESTION_ID}
       showVisualizationSelector={showVisualizationSelector}
+      parameterValues={parameterValues}
     />,
     {
       mode: "sdk",
@@ -144,5 +151,28 @@ describe("StaticQuestion", () => {
         screen.getByTestId(VISUALIZATION_TYPES[visType].container),
       ).toHaveAttribute("aria-selected", "true");
     }
+  });
+
+  it("should query with the parameters in a parameterized question", async () => {
+    const param = createMockParameter({
+      type: "number/=",
+      slug: "product_id",
+      target: ["variable", ["template-tag", "product_id"]],
+    });
+
+    const card = createMockCard({ parameters: [param] });
+    setup({ card, parameterValues: { product_id: 1024 } });
+
+    await waitForLoaderToBeRemoved();
+
+    const lastQuery = fetchMock.lastCall(`path:/api/card/${card.id}/query`);
+    const queryRequest = await lastQuery?.request?.json();
+
+    expect(queryRequest.parameters?.[0]).toMatchObject({
+      id: param.id,
+      type: param.type,
+      target: param.target,
+      value: 1024,
+    });
   });
 });
