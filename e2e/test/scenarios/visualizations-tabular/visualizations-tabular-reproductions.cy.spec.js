@@ -27,6 +27,7 @@ import {
   summarize,
   visualize,
   tableInteractive,
+  createNativeQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
@@ -951,6 +952,51 @@ describe.skip("issue 25415", () => {
 
     // there is a table with data
     cy.findByTestId("TableInteractive-root").should("exist");
+  });
+});
+
+describe("issue 7884", () => {
+  const sourceQuestionDetails = {
+    native: {
+      // previously was "SELECT 1 AS C1, 2 AS C2, 3 AS C3"
+      query: "SELECT 1 AS C1, 3 AS C3",
+    },
+  };
+
+  const getNestedQuestionDetails = cardId => ({
+    query: {
+      "source-table": `card__${cardId}`,
+    },
+    display: "table",
+    visualization_settings: {
+      "table.columns": [
+        { name: "C3", enabled: true },
+        { name: "C1", enabled: true },
+        { name: "C2", enabled: true },
+      ],
+    },
+  });
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not reset the column order after one of the columns is removed from data source (metabase#7884)", () => {
+    createNativeQuestion(sourceQuestionDetails).then(({ body: card }) =>
+      createQuestion(getNestedQuestionDetails(card.id), {
+        visitQuestion: true,
+      }),
+    );
+
+    cy.log("verify column order in the table");
+    cy.findAllByTestId("header-cell").eq(0).should("contain.text", "C3");
+    cy.findAllByTestId("header-cell").eq(1).should("contain.text", "C1");
+
+    cy.log("verify column order in viz settings");
+    cy.findByTestId("viz-settings-button").click();
+    getDraggableElements().eq(0).should("contain.text", "C3");
+    getDraggableElements().eq(1).should("contain.text", "C1");
   });
 });
 
