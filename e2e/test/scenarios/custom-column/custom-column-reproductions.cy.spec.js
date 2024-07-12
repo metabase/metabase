@@ -944,7 +944,7 @@ describe("issue 42949", () => {
     cy.signInAsAdmin();
   });
 
-  it("should correctly show available shortcuts (metabase#42949)", () => {
+  it("should correctly show available shortcuts for date and number columns (metabase#42949)", () => {
     createNativeQuestion(
       {
         native: {
@@ -960,7 +960,19 @@ describe("issue 42949", () => {
     );
     cy.findByTestId("qb-header").findByText("Explore results").click();
 
-    cy.log("Verify extract column");
+    cy.log("Verify header drills - CREATED_AT");
+    tableHeaderClick("CREATED_AT");
+    popover().findByText("Extract day, month…").should("be.visible");
+    popover().findByText("Combine columns").should("not.exist");
+    cy.realPress("Escape");
+
+    cy.log("Verify header drills - V");
+    tableHeaderClick("V");
+    popover().findByText("Extract part of column").should("not.exist");
+    popover().findByText("Combine columns").should("not.exist");
+    cy.realPress("Escape");
+
+    cy.log("Verify plus button - extract column");
     cy.button("Add column").click();
     popover().findByText("Extract part of column").click();
     popover().findByText("CREATED_AT").click();
@@ -973,7 +985,7 @@ describe("issue 42949", () => {
     });
     cy.findAllByTestId("header-cell").eq(2).should("have.text", "Year");
 
-    cy.log("Verify combine columns");
+    cy.log("Verify plus button - combine columns");
     cy.button("Add column").click();
     popover().findByText("Combine columns").click();
     popover().findAllByTestId("column-input").eq(0).click();
@@ -996,5 +1008,59 @@ describe("issue 42949", () => {
     cy.findAllByTestId("cell-data").eq(11).should("have.text", "2024 1");
     cy.findAllByTestId("cell-data").eq(13).should("have.text", "2,024");
     cy.findAllByTestId("cell-data").eq(14).should("have.text", "2024 ");
+  });
+
+  it("should correctly show available shortcuts for a number column (metabase#42949)", () => {
+    createNativeQuestion(
+      {
+        native: {
+          query: "select 1 as n",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("qb-header").findByText("Explore results").click();
+    cy.findByLabelText("Switch to data").click();
+
+    cy.log("Verify header drills");
+    tableHeaderClick("N");
+    popover().findByText("Extract part of column").should("not.exist");
+    popover().findByText("Combine columns").should("not.exist");
+    cy.realPress("Escape");
+
+    cy.log("Verify plus button");
+    cy.button("Add column").click();
+    popover().findByText("Extract part of column").should("not.exist");
+    popover().findByText("Combine columns").click();
+    popover().findAllByTestId("column-input").eq(0).click();
+    popover().last().findByText("N").should("be.visible");
+  });
+
+  it("should correctly show available shortcuts for a string column (metabase#42949)", () => {
+    createNativeQuestion(
+      {
+        native: {
+          query: "select 'abc'",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("qb-header").findByText("Explore results").click();
+    cy.findByLabelText("Switch to data").click();
+
+    cy.log("Verify header drills");
+    tableHeaderClick("'abc'");
+    popover().findByText("Extract part of column").should("not.exist");
+    popover().findByText("Combine columns").should("be.visible");
+    cy.realPress("Escape");
+
+    cy.log("Verify plus button");
+    cy.button("Add column").click();
+    popover().findByText("Extract part of column").should("not.exist");
+    popover().findByText("Combine columns").click();
+    popover().findAllByTestId("column-input").eq(0).click();
+    popover().last().findByText("'abc'").should("be.visible");
   });
 });
