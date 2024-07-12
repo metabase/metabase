@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { useSearchFieldValuesQuery } from "metabase/api";
 import { Loader, MultiAutocomplete } from "metabase/ui";
-import type { FieldId, FieldValue } from "metabase-types/api";
+import type { FieldId } from "metabase-types/api";
 
 import { getFieldOptions } from "../utils";
 
@@ -18,7 +18,6 @@ import {
 interface SearchValuePickerProps {
   fieldId: FieldId;
   searchFieldId: FieldId;
-  fieldValues: FieldValue[];
   selectedValues: string[];
   columnDisplayName: string;
   shouldCreate?: (query: string, values: string[]) => boolean;
@@ -29,7 +28,6 @@ interface SearchValuePickerProps {
 export function SearchValuePicker({
   fieldId,
   searchFieldId,
-  fieldValues: initialFieldValues,
   selectedValues,
   columnDisplayName,
   shouldCreate,
@@ -41,7 +39,7 @@ export function SearchValuePicker({
   const canSearch = searchQuery.length > 0;
 
   const {
-    data: fieldValues = initialFieldValues,
+    data: fieldValues = [],
     error: searchError,
     isFetching: isSearching,
   } = useSearchFieldValuesQuery(
