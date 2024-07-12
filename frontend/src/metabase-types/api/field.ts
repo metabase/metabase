@@ -151,12 +151,6 @@ export interface GetFieldValuesResponse {
   has_more_values: boolean;
 }
 
-export interface GetRemappedFieldValuesRequest {
-  fieldId: FieldId;
-  remappedFieldId: FieldId;
-  values: string[];
-}
-
 export interface SearchFieldValuesRequest {
   fieldId: FieldId;
   searchFieldId: FieldId;
