@@ -537,9 +537,9 @@ export const buildTableColumnSettings = ({
       const settingIndexes = findColumnSettingIndexesForColumns(cols, settings);
 
       return [
-        // remove enabled settings that have no matching columns
-        ...settings.filter((setting, settingIndex) =>
-          setting.enabled ? columnIndexes[settingIndex] >= 0 : true,
+        // remove settings that have no matching columns
+        ...settings.filter(
+          (_, settingIndex) => columnIndexes[settingIndex] >= 0,
         ),
         // add columns that do not have matching settings to the end
         ...cols
