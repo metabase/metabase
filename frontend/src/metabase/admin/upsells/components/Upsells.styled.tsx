@@ -73,7 +73,6 @@ export const UpsellCardComponent = styled.div<Variants>`
       : css`
           max-width: 200px;
         `}
-  box-sizing: border-box;
   border-radius: 0.5rem;
   overflow: hidden;
   border: 1px solid ${upsellColors.secondary};
