@@ -1259,15 +1259,18 @@
   "Do a batch update of Collections Permissions by passing in a modified graph.
   Will overwrite parts of the graph that are present in the request, and leave the rest unchanged.
 
-  If `skip_graph` is true, it will only return the current revision"
-  [:as {{:keys [namespace skip_graph revision groups]} :body}]
-  {skip_graph [:maybe ms/BooleanValue]
-   namespace  [:maybe :keyword]
-   groups     :map
-   revision   ms/PositiveInt}
+  If the `skip_graph` query parameter is true, it will only return the current revision"
+  [:as {{:keys [namespace revision groups]} :body
+        {:strs [skip_graph]} :query-params}]
+  {namespace [:maybe ms/NonBlankString]
+   revision  ms/PositiveInt
+   groups :map
+   skip_graph [:maybe ms/BooleanValue]}
   (api/check-superuser)
-  (update-graph! namespace
-                 (decode-graph {:revision revision :groups groups})
-                 skip_graph))
+  (update-graph!
+   namespace
+   (decode-graph {:revision revision :groups groups})
+   skip_graph))
+
 
 (api/define-routes)
