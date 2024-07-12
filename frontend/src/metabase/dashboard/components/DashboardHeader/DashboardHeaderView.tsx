@@ -18,7 +18,7 @@ import {
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
-  type EmbedNightModeControls,
+  EmbedNightModeControls,
 } from "metabase/dashboard/types";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";

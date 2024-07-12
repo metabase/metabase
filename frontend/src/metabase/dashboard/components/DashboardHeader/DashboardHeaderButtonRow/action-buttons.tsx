@@ -1,14 +1,10 @@
 import { withRouter } from "react-router";
 
-import { RefreshWidgetButton } from "metabase/dashboard/components/DashboardActions.styled";
-import { DashboardBookmark } from "metabase/dashboard/components/DashboardBookmark";
-import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction";
-import { DashboardHeaderActionDivider } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
-import type {
-  DashboardActionButton,
-  DashboardActionKey,
-  HeaderButtonProps,
-} from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
+import { RefreshWidgetButton } from "../../DashboardActions.styled";
+import { DashboardBookmark } from "../../DashboardBookmark";
+import { DashboardEmbedAction } from "../../DashboardEmbedAction";
+import { ExtraEditButtonsMenu } from "../../ExtraEditButtonsMenu";
+import { DashboardHeaderActionDivider } from "../DashboardHeader.styled";
 import {
   AddActionElementButton,
   AddFilterParameterButton,
@@ -27,8 +23,13 @@ import {
   getExtraButtons,
   NightModeToggleButton,
   shouldRenderSubscriptionButton,
-} from "metabase/dashboard/components/DashboardHeader/buttons";
-import { ExtraEditButtonsMenu } from "metabase/dashboard/components/ExtraEditButtonsMenu/ExtraEditButtonsMenu";
+} from "../buttons";
+
+import type {
+  DashboardActionButton,
+  DashboardActionKey,
+  HeaderButtonProps,
+} from "./types";
 
 export const DASHBOARD_ACTION = {
   ADD_QUESTION: "ADD_QUESTION",
@@ -57,6 +58,7 @@ export const dashboardActionButtons: Record<
   DashboardActionKey,
   DashboardActionButton
 > = {
+  // ACTIONS WHEN EDITING DASHBOARD
   [DASHBOARD_ACTION.ADD_QUESTION]: {
     component: AddQuestionButton,
     enabled: ({ isEditing }) => isEditing,
@@ -90,12 +92,8 @@ export const dashboardActionButtons: Record<
     component: ExtraEditButtonsMenu,
     enabled: ({ isEditing }) => isEditing,
   },
-  [DASHBOARD_ACTION.COPY_ANALYTICS_DASHBOARD]: {
-    component: () => <CopyAnalyticsDashboardButton />,
-    enabled: ({ isAnalyticsDashboard = false }) => {
-      return isAnalyticsDashboard;
-    },
-  },
+
+  // VIEW ACTIONS
   [DASHBOARD_ACTION.EDIT_DASHBOARD]: {
     component: ({ onRefreshPeriodChange }) => (
       <EditDashboardButton onRefreshPeriodChange={onRefreshPeriodChange} />
@@ -174,10 +172,6 @@ export const dashboardActionButtons: Record<
     enabled: ({ isFullscreen, isEmpty, isPublic }) =>
       !isEmpty && (isPublic || isFullscreen),
   },
-  [DASHBOARD_ACTION.DASHBOARD_HEADER_ACTION_DIVIDER]: {
-    component: () => <DashboardHeaderActionDivider />,
-    enabled: ({ isEditing }) => !isEditing,
-  },
   [DASHBOARD_ACTION.DASHBOARD_BOOKMARK]: {
     component: DashboardBookmark,
     enabled: ({ isEditing, dashboard }) => !isEditing && !dashboard.archived,
@@ -206,6 +200,14 @@ export const dashboardActionButtons: Record<
       !isAnalyticsDashboard &&
       !dashboard.archived,
   },
+
+  // ACTIONS WHEN DASHBOARD IS ANALYTICS DASHBOARD
+  [DASHBOARD_ACTION.COPY_ANALYTICS_DASHBOARD]: {
+    component: () => <CopyAnalyticsDashboardButton />,
+    enabled: ({ isAnalyticsDashboard = false }) => {
+      return isAnalyticsDashboard;
+    },
+  },
   [DASHBOARD_ACTION.FULLSCREEN_ANALYTICS_DASHBOARD]: {
     component: ({ isFullscreen, onFullscreenChange }) => (
       <FullscreenAnalyticsDashboard
@@ -213,6 +215,12 @@ export const dashboardActionButtons: Record<
         onFullscreenChange={onFullscreenChange}
       />
     ),
-    enabled: ({ isAnalyticsDashboard }) => isAnalyticsDashboard,
+    enabled: ({ isAnalyticsDashboard = false }) => isAnalyticsDashboard,
+  },
+
+  //   UTILITY
+  [DASHBOARD_ACTION.DASHBOARD_HEADER_ACTION_DIVIDER]: {
+    component: () => <DashboardHeaderActionDivider />,
+    enabled: () => true,
   },
 };

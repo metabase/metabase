@@ -16,16 +16,16 @@ import {
   getUserIsAdmin,
 } from "metabase/selectors/user";
 
+import { DASHBOARD_VIEW_ACTIONS, DASHBOARD_EDITING_ACTIONS } from "./constants";
+
 export const DashboardHeaderButtonRow = ({
-  dashboardActionKeys = Object.keys(
-    dashboardActionButtons,
-  ) as DashboardActionKey[],
+  dashboardActionKeys = null,
   isPublic = false,
   isEmpty = false,
   isAnalyticsDashboard = false,
   ...props
 }: {
-  dashboardActionKeys?: DashboardActionKey[];
+  dashboardActionKeys?: DashboardActionKey[] | null;
 } & DashboardHeaderButtonRowProps) => {
   const formInput = useSelector(getPulseFormInput);
   const isAdmin = useSelector(getUserIsAdmin);
@@ -38,9 +38,17 @@ export const DashboardHeaderButtonRow = ({
 
   const isEditing = useSelector(getIsEditing);
 
+  const buttonOptions = isEditing
+    ? DASHBOARD_EDITING_ACTIONS
+    : DASHBOARD_VIEW_ACTIONS;
+
+  const visibleKeys = dashboardActionKeys
+    ? buttonOptions.filter(key => dashboardActionKeys.includes(key))
+    : buttonOptions;
+
   return (
     <>
-      {dashboardActionKeys.map(key => {
+      {visibleKeys.map(key => {
         const config = dashboardActionButtons[key];
         if (dashboard) {
           const buttonComponentProps: HeaderButtonProps = {
