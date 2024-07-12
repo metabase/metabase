@@ -656,6 +656,8 @@ describe("Notebook Editor > Join Step", () => {
         "join-columns-picker",
       );
       await userEvent.click(within(joinColumnsPicker).getByText("Select none"));
+      expect(within(joinColumnsPicker).getByLabelText("ID")).not.toBeChecked();
+      expect(within(joinColumnsPicker).getByLabelText("ID")).toBeEnabled();
       await userEvent.click(within(joinColumnsPicker).getByLabelText("ID"));
       expect(within(joinColumnsPicker).getByLabelText("ID")).toBeChecked();
       expect(within(joinColumnsPicker).getByLabelText("ID")).toBeEnabled();
