@@ -46,7 +46,7 @@ function getSelectedOptions(selectedValues: string[]): SelectOption[] {
 
 export function getEffectiveOptions(
   fieldValues: FieldValue[],
-  selectedValues: string[] = [],
+  selectedValues: string[],
   elevatedValues: string[] = [],
 ): SelectOption[] {
   const options = [
