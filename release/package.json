@@ -14,7 +14,8 @@
     "generate-changelog": "tsx generate-changelog.ts",
     "copy-required-checks": "tsx ./src/required-checks.ts",
     "test:unit": "jest --testPathPattern unit",
-    "test:integration": "jest --testPathPattern integration"
+    "test:integration": "jest --testPathPattern integration",
+    "type-check": "tsc --noEmit"
   },
   "author": "Metabase",
   "license": "AGPL-3.0-or-later",
