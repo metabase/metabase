@@ -4,6 +4,7 @@ import {
   adhocQuestionHash,
   runNativeQuery,
   openNativeEditor,
+  createNativeQuestion,
 } from "e2e/support/helpers";
 
 describe("issue 11727", { tags: "@external" }, () => {
@@ -68,5 +69,43 @@ describe("issue 16584", () => {
     cy.findByTestId("query-visualization-root")
       .findByText("NL")
       .should("exist");
+  });
+});
+
+describe("issue 38083", () => {
+  const QUESTION = {
+    name: "SQL query with a date parameter",
+    native: {
+      query: "select * from people where state = {{ state }} limit 1",
+      "template-tags": {
+        state: {
+          id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
+          type: "text" as const,
+          name: "state",
+          "display-name": "State",
+          "widget-type": "string/=",
+          default: "CA",
+          required: true,
+        },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show the revert to default icon when the default value is selected (metabase#38083)", () => {
+    createNativeQuestion(QUESTION, {
+      visitQuestion: true,
+    });
+
+    cy.get("legend")
+      .contains(QUESTION.native["template-tags"].state["display-name"])
+      .parent("fieldset")
+      .within(() => {
+        cy.icon("time_history").should("not.exist");
+      });
   });
 });
