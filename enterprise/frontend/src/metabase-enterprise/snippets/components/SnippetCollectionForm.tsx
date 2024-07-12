@@ -5,6 +5,7 @@ import _ from "underscore";
 import * as Yup from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import type { CollectionPickerItem } from "metabase/common/components/CollectionPicker";
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormFooter from "metabase/core/components/FormFooter";
@@ -112,6 +113,16 @@ function SnippetCollectionForm({
     [collection.id, isEditing, handleCreate, handleUpdate, onSave],
   );
 
+  const shouldDisableItem = useCallback(
+    (item: CollectionPickerItem) => {
+      return passedCollection.id
+        ? item.effective_location?.includes(String(passedCollection.id)) ||
+            passedCollection.id === item.id
+        : false;
+    },
+    [passedCollection.id],
+  );
+
   return (
     <FormProvider
       initialValues={initialValues}
@@ -137,6 +148,9 @@ function SnippetCollectionForm({
             name="parent_id"
             title={t`Folder this should be in`}
             type="snippet-collections"
+            collectionPickerModalProps={{
+              shouldDisableItem: shouldDisableItem,
+            }}
           />
           <FormFooter>
             <FormErrorMessage inline />
