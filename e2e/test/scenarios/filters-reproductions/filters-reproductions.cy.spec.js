@@ -1198,3 +1198,41 @@ describe("issue 40622", () => {
     });
   }
 });
+
+describe.skip("issue 44435", () => {
+  // It is crucial that the string is without spaces!
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const longString = alphabet.repeat(10);
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("filter pill should not overflow the window width when the filter string is very long (metabase#44435)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": REVIEWS_ID,
+          fields: [
+            ["field", REVIEWS.REVIEWER, { "base-type": "type/Text" }],
+            ["field", REVIEWS.RATING, { "base-type": "type/Integer" }],
+          ],
+          filter: [
+            "=",
+            ["field", REVIEWS.BODY, { "base-type": "type/Text" }],
+            longString,
+          ],
+        },
+        parameters: [],
+      },
+    });
+
+    cy.findByTestId("filter-pill").then($pill => {
+      const pillWidth = $pill[0].getBoundingClientRect().width;
+      cy.window().its("innerWidth").should("be.gt", pillWidth);
+    });
+  });
+});
