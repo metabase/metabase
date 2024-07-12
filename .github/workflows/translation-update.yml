@@ -133,4 +133,3 @@ jobs:
 
         git commit -m "Update translations"
         git push -u origin $BRANCH_NAME
-
