@@ -11,18 +11,25 @@ on:
         required: true
       version:
         type: string
-        description: The version number to update translations
+        description: "The version number for which to update translations (e.g. 43, 58.7)"
         required: true
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
-  manage-translations:
-    name: Manage Translations
-    permissions: write-all
+  upload-translations:
+    name: Upload Translations
+    if: ${{ inputs.step }} == 'upload'
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       POEDITOR_API_TOKEN: ${{ secrets.POEDITOR_API_TOKEN }}
+      VERSION: ${{ inputs.version }}
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
@@ -30,41 +37,93 @@ jobs:
       with:
         m2-cache-key: manage-translations
 
-    # - name: Check for untranslated strings TODO
+    # TODO: check for untranslated strings
 
     - name: Upload strings to be translated
-      if: ${{ inputs.step }} == 'upload'
       run: | # sh
         ./bin/i18n/update-translation-template
         ./bin/i18n/export-pot-to-poeditor
-        echo "Strings uploaded to POEditor. Don't forget to notify contributors"
+        echo "Strings uploaded to POEditor. Don't forget to notify contributors and copy source strings to English language."
 
-    - name: Download translated strings
-      if: ${{ inputs.step }} == 'download'
-      run: | # sh
-        ./bin/i18n/import-po-from-poeditor
-        ./bin/i18n/build-translation-resources
     - name: Commit changes
-      if: ${{ inputs.step }} == 'download'
       run: | # sh
         git config user.name github-actions
         git config user.email github-actions@github.com
 
-        CURRENT_BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
-        VERSION="${{inputs.version}}"
-        BRANCH_NAME="update-translations-v${VERSION}"
+        BRANCH_NAME="update-translations-v$VERSION"
 
-        git checkout -b ${BRANCH_NAME}
+        git checkout -b $BRANCH_NAME
+        git add locales/
+
+        git commit -m "Add new strings for v$VERSION"
+        git push -u origin $BRANCH_NAME
+
+        gh pr create \
+        --reviewer "${GITHUB_ACTOR}" \
+        --assignee "${GITHUB_ACTOR}" \
+        --title "Update Translations for v$VERSION" \
+        --body "Update translations from POEditor for v$VERSION
+
+        See [translation update documentation](https://www.notion.so/metabase/Process-for-updating-translations-421db70048fe400da1153ad0b61102f4)
+
+        ## To Do
+
+        - [x] Upload new strings to POEditor
+        - [ ] Message contributors on POEditor (manual)
+        - [ ] Copy source strings to english language (manual)
+        - [ ] Download translations from POEditor (github action)
+        - [ ] Merge this PR and backport to the release branch (manual)
+        "
+        --label "backport" \
+        --label "Customization/i18n"
+
+    # TODO: notify contributors
+    # TODO: copy source strings to english language
+
+  download-translations:
+    name: Upload Translations
+    if: ${{ inputs.step }} == 'download'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      POEDITOR_API_TOKEN: ${{ secrets.POEDITOR_API_TOKEN }}
+      VERSION: ${{ inputs.version }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: manage-translations
+
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn && yarn build
+    - name: Automatically translate untranslated strings
+      uses: actions/github-script@v7
+      with:
+        script: | # js
+          const { autoTranslateSupportedLanguages } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+          await autoTranslateSupportedLanguages();
+
+    - name: Download translated strings
+      run: | # sh
+        cd ${{ github.workspace }}
+        ./bin/i18n/import-po-from-poeditor
+        ./bin/i18n/build-translation-resources
+    - name: Commit changes
+      run: | # sh
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+
+        BRANCH_NAME="update-translations-v$VERSION"
+
+        # assumes there's already a branch with that name from the upload step
+        git checkout $BRANCH_NAME
         git add locales/
 
         git commit -m "Update translations"
-        git push -u origin ${BRANCH_NAME}
-
-        gh pr create \
-          --base "${CURRENT_BRANCH_NAME}" \
-          --head "${BACKPORT_BRANCH}" \
-          --reviewer "${GITHUB_ACTOR}" \
-          --title "Import Translations for v${VERSION}" \
-          --body "Imported translations from POEditor for v${VERSION}"
-
+        git push -u origin $BRANCH_NAME
 

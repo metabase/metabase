@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import 'zx/globals';
-$.verbose = false;
 
 const baseUrl = 'https://api.poeditor.com/v2'
 const POEDITOR_API_TOKEN = process.env.POEDITOR_API_TOKEN;
@@ -85,10 +84,12 @@ function getExistingLanguages() {
     .map(f => f.replace(/\.po$/, ""));
 }
 
-const supportedLanguages = getExistingLanguages();
+export async function autoTranslateSupportedLanguages() {
+  const supportedLanguages = getExistingLanguages();
 
-for (const language of supportedLanguages) {
-  // do this in a for/await loop to avoid rate limiting
-  console.log(chalk.blue(`\nTranslating ${language}`))
-  await autoTranslate(language);
+  for (const language of supportedLanguages) {
+    // do this in a for/await loop to avoid rate limiting
+    console.log(chalk.blue(`\nTranslating ${language}`))
+    await autoTranslate(language);
+  }
 }
