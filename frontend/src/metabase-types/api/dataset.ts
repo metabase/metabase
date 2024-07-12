@@ -120,8 +120,6 @@ export type SingleSeries = {
 } & Pick<Dataset, "data" | "error">;
 
 export type RawSeries = SingleSeries[];
-export type TransformedSeries = RawSeries & { _raw: Series };
-export type Series = RawSeries | TransformedSeries;
 
 export type TemplateTagId = string;
 export type TemplateTagName = string;

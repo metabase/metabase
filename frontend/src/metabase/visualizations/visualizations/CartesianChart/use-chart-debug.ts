@@ -18,9 +18,9 @@ export function useChartDebug({
   chartModel: BaseCartesianChartModel;
 }) {
   useEffect(() => {
-    if (!isQueryBuilder || !isChartsDebugLoggingEnabled) {
-      return;
-    }
+    // if (!isQueryBuilder || !isChartsDebugLoggingEnabled) {
+    //   return;
+    // }
     console.log("-------------- ECHARTS DEBUG INFO START --------------");
     console.log("rawSeries", rawSeries);
     console.log("option", option);

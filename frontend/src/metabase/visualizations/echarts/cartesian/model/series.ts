@@ -121,7 +121,7 @@ export const getCardsSeriesModels = (
   rawSeries: RawSeries,
   cardsColumns: CartesianChartColumns[],
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
+  renderingContext: Pick<RenderingContext, "formatValue">,
 ) => {
   const hasMultipleCards = rawSeries.length > 1;
   return rawSeries.flatMap((cardDataset, index) => {
@@ -155,7 +155,7 @@ export const getCardSeriesModels = (
   hasMultipleCards: boolean,
   isFirstCard: boolean,
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
+  renderingContext: Pick<RenderingContext, "formatValue">,
 ): SeriesModel[] => {
   const cardId = card.id ?? null;
   const hasBreakout = "breakout" in columns;
@@ -535,9 +535,7 @@ export function getDisplaySeriesSettingsByDataKey(
   settings: ComputedVisualizationSettings,
 ) {
   const seriesSettingsByKey = seriesModels.reduce((acc, seriesModel) => {
-    acc[seriesModel.dataKey] = settings.series(
-      seriesModel.legacySeriesSettingsObjectKey,
-    );
+    acc[seriesModel.dataKey] = settings.series(seriesModel);
     return acc;
   }, {} as Record<DataKey, SeriesSettings>);
 
@@ -700,8 +698,7 @@ const getSeriesLabelsFormatters = (
   }
 
   const seriesModelsWithLabels = seriesModels.filter(seriesModel => {
-    const seriesSettings =
-      settings.series(seriesModel.legacySeriesSettingsObjectKey) ?? {};
+    const seriesSettings = settings.series(seriesModel) ?? {};
 
     return !!seriesSettings["show_series_values"];
   });

@@ -50,6 +50,7 @@ function getWidgets({
         onChangeSetting(changedSettings);
       }
     },
+    null,
     { series, ...extraData },
   );
 

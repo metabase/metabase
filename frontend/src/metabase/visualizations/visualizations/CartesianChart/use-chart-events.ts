@@ -229,8 +229,7 @@ export const useChartEvents = (
       // all the data labels show
       const isBarSeries =
         seriesModel != null
-          ? settings.series(seriesModel.legacySeriesSettingsObjectKey)
-              .display === "bar"
+          ? settings.series(seriesModel).display === "bar"
           : false;
       const shouldHighlightEntireSeries =
         isBarSeries && chartModel.seriesModels.length > 1;

@@ -67,7 +67,7 @@ const chartSettingNestedSettings =
       };
 
       render() {
-        const { series, objects, extra } = this.props;
+        const { series, objects, extra, settingsModel } = this.props;
         const editingObjectKey = this.getEditingObjectKey();
         if (editingObjectKey !== undefined) {
           const editingObject = _.find(
@@ -82,6 +82,7 @@ const chartSettingNestedSettings =
               editingObject,
               objectSettings,
               this.handleChangeSettingsForEditingObject,
+              settingsModel,
               extra,
             );
             return (

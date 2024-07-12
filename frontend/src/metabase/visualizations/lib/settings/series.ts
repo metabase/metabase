@@ -1,8 +1,10 @@
 import { getIn } from "icepick";
+import type React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
+import type { SeriesModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   SERIES_COLORS_SETTING_KEY,
   getSeriesDefaultLinearInterpolate,
@@ -15,35 +17,61 @@ import {
   getSeriesDefaultLineStyle,
   getSeriesDefaultLineSize,
 } from "metabase/visualizations/shared/settings/series";
-
-import { getNameForCard } from "../series";
+import type { RawSeries, SeriesSettings } from "metabase-types/api";
 
 import { nestedSettings } from "./nested";
 
-export function keyForSingleSeries(single) {
-  // _seriesKey is sometimes set by transformSeries
-  return single.card._seriesKey || String(single.card.name);
-}
-
 const LINE_DISPLAY_TYPES = new Set(["line", "area"]);
+
+type ComputedSeriesSettings = NonNullableProps<
+  SeriesSettings,
+  "title" | "display"
+>;
+
+type NestedSettingsDefinition<
+  TObject,
+  TObjectSettings,
+  TValue,
+  TSettingsModel,
+  TWidgetProps,
+  TExtra,
+> = {
+  widget?: string | React.ReactNode;
+  title?: string;
+  props?: TWidgetProps;
+  getDefault?: (
+    object: TObject,
+    settings: TObjectSettings,
+    settingsModel: TSettingsModel,
+    extra: TExtra,
+  ) => TValue;
+  getHidden?: (
+    object: TObject,
+    settings: TObjectSettings,
+    settingsModel: TSettingsModel,
+    extra: TExtra,
+  ) => TValue;
+  readDependencies?: string[];
+};
+
+type NestedSettingsDefinitions = Record<
+  string,
+  NestedSettingsDefinition<SeriesModel, SeriesSettings, unknown, unknown>
+>;
 
 export function seriesSetting({
   readDependencies = [],
   noPadding,
   ...def
-} = {}) {
-  const COMMON_SETTINGS = {
+} = {}): Record<
+  string,
+  NestedSettingsDefinition<SeriesModel, SeriesSettings, unknown, unknown>
+> {
+  const COMMON_SETTINGS: NestedSettingsDefinitions = {
     // title, and color don't need widgets because they're handled directly in ChartNestedSettingSeries
     title: {
-      getDefault: (single, settings, { series, settings: vizSettings }) => {
-        const legacyTitles = vizSettings["graph.series_labels"];
-        if (legacyTitles) {
-          const index = series.indexOf(single); // TODO: pass in series index so we don't have to search for it
-          if (index >= 0 && index < legacyTitles.length) {
-            return legacyTitles[index];
-          }
-        }
-        return single.card.name;
+      getDefault: (single, settings, settingsModel) => {
+        return single.name;
       },
     },
     display: {
@@ -56,32 +84,25 @@ export function seriesSetting({
           { value: "bar", icon: "bar" },
         ],
       },
-      getHidden: (single, settings, { series }) => {
+      getHidden: (single, settings, settingsModel) => {
         return (
-          !["line", "area", "bar", "combo"].includes(single.card.display) ||
+          !["line", "area", "bar", "combo"].includes(settingsModel.display) ||
           settings["stackable.stack_type"] != null
         );
       },
 
-      getDefault: (single, settings, { series }) => {
-        // FIXME: will move to Cartesian series model further, but now this code is used by other legacy charts
-        const transformedSeriesIndex = series.findIndex(
-          s => keyForSingleSeries(s) === keyForSingleSeries(single),
+      getDefault: (single, settings, settingsModel) => {
+        const index = settingsModel.seriesModels.find(
+          sm => sm.vizSettingsKey === single.vizSettingsKey,
         );
 
-        return getSeriesDefaultDisplay(
-          series[transformedSeriesIndex].card.display,
-          transformedSeriesIndex,
-        );
+        return getSeriesDefaultDisplay(settingsModel.display, index);
       },
     },
     color: {
       getDefault: (single, settings, { settings: vizSettings }) =>
         // get the color for series key, computed in the setting
-        getIn(vizSettings, [
-          SERIES_COLORS_SETTING_KEY,
-          keyForSingleSeries(single),
-        ]),
+        getIn(vizSettings, [SERIES_COLORS_SETTING_KEY, single.vizSettingsKey]),
     },
     "line.interpolate": {
       title: t`Line shape`,
@@ -95,7 +116,12 @@ export function seriesSetting({
       },
       getHidden: (single, settings) =>
         !LINE_DISPLAY_TYPES.has(settings["display"]),
-      getDefault: (single, settings, { settings: vizSettings }) =>
+      getDefault: (
+        single,
+        settings,
+        _settingsModel,
+        { settings: vizSettings },
+      ) =>
         // use legacy global line.interpolate setting if present
         getSeriesDefaultLinearInterpolate(vizSettings),
       readDependencies: ["display"],
@@ -110,9 +136,10 @@ export function seriesSetting({
           { icon: "line_style_dotted", value: "dotted" },
         ],
       },
-      getDefault: (series, settings) => getSeriesDefaultLineStyle(settings),
-      getHidden: (single, settings) =>
-        !LINE_DISPLAY_TYPES.has(settings["display"]),
+      getDefault: (series: SeriesModel, settings: SeriesSettings) =>
+        getSeriesDefaultLineStyle(settings),
+      getHidden: (seriesModel: SeriesModel, settings: SeriesSettings) =>
+        !LINE_DISPLAY_TYPES.has(settings.display),
       readDependencies: ["display"],
     },
     "line.size": {
@@ -157,9 +184,14 @@ export function seriesSetting({
           { name: t`Linear Interpolated`, value: "interpolate" },
         ],
       },
-      getHidden: (single, settings) =>
+      getHidden: (seriesModel: SeriesModel, settings: SeriesSettings) =>
         !LINE_DISPLAY_TYPES.has(settings["display"]),
-      getDefault: (single, settings, { settings: vizSettings }) =>
+      getDefault: (
+        single,
+        settings,
+        settingsModel,
+        { settings: vizSettings },
+      ) =>
         // use legacy global line.missing setting if present
         getSeriesDefaultLineMissing(vizSettings),
       readDependencies: ["display"],
@@ -168,7 +200,8 @@ export function seriesSetting({
       title: t`Y-axis position`,
       widget: "segmentedControl",
       default: null,
-      getHidden: (single, settings) => single.card.display === "row",
+      getHidden: (single, settings, settingsModel) =>
+        settingsModel.display === "row",
       props: {
         options: [
           { name: t`Auto`, value: null },
@@ -182,17 +215,22 @@ export function seriesSetting({
       title: t`Show values for this series`,
       widget: "toggle",
       inline: true,
-      getHidden: (single, seriesSettings, { settings, series }) =>
+      getHidden: (
+        single,
+        seriesSettings,
+        settingsModel,
+        { settings, series },
+      ) =>
         series.length <= 1 || // no need to show series-level control if there's only one series
         !settings["graph.show_values"] || // don't show it unless this chart has a global setting
         settings["stackable.stack_type"], // hide series controls if the chart is stacked
-      getDefault: (single, seriesSettings, { settings }) =>
+      getDefault: (single, seriesSettings, settingsModel, { settings }) =>
         getSeriesDefaultShowSeriesValues(settings),
       readDependencies: ["graph.show_values", "stackable.stack_type"],
     },
   };
 
-  function getSettingDefinitionsForSingleSeries(series, object, settings) {
+  function getSettingDefinitionsForSingleSeries() {
     return COMMON_SETTINGS;
   }
 
@@ -203,26 +241,21 @@ export function seriesSetting({
       getSection: (series, settings, { isDashboard }) =>
         isDashboard ? t`Display` : t`Style`,
       objectName: "series",
-      getObjects: (series, settings) => series,
-      getObjectKey: keyForSingleSeries,
+      getObjects: (series, settings, settingsModel) => {
+        return settingsModel.seriesModels;
+      },
+      getObjectKey: seriesModel => seriesModel.vizSettingsKey,
       getSettingDefinitionsForObject: getSettingDefinitionsForSingleSeries,
       component: ChartNestedSettingSeries,
       readDependencies: [SERIES_COLORS_SETTING_KEY, ...readDependencies],
       noPadding: true,
-      getExtraProps: series => ({
-        seriesCardNames: series.reduce((memo, singleSeries) => {
-          memo[keyForSingleSeries(singleSeries)] = getNameForCard(
-            singleSeries.card,
-          );
-          return memo;
-        }, {}),
-      }),
       ...def,
     }),
     // colors must be computed as a whole rather than individually
     [SERIES_COLORS_SETTING_KEY]: {
-      getValue(series, settings) {
-        const keys = series.map(single => keyForSingleSeries(single));
+      getValue(series, settings, settingsModel) {
+        // const keys = series.map(single => keyForSingleSeries(single));
+        const keys = settingsModel.seriesModels.map(s => s.vizSettingsKey);
         return getSeriesColors(keys, settings);
       },
     },

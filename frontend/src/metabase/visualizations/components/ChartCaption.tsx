@@ -3,16 +3,12 @@ import { useCallback } from "react";
 
 import type { IconProps } from "metabase/ui";
 import type { OnChangeCardAndRun } from "metabase/visualizations/types";
-import type {
-  Series,
-  TransformedSeries,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { RawSeries, VisualizationSettings } from "metabase-types/api";
 
 import { ChartCaptionRoot } from "./ChartCaption.styled";
 
 interface ChartCaptionProps {
-  series: Series;
+  series: RawSeries;
   settings: VisualizationSettings;
   icon?: IconProps;
   actionButtons?: ReactNode;
@@ -32,9 +28,8 @@ const ChartCaption = ({
 }: ChartCaptionProps) => {
   const title = settings["card.title"] ?? series[0].card.name;
   const description = settings["card.description"];
-  const data = (series as TransformedSeries)._raw || series;
-  const card = data[0].card;
-  const cardIds = new Set(data.map(s => s.card.id));
+  const card = series[0].card;
+  const cardIds = new Set(series.map(s => s.card.id));
   const canSelectTitle = cardIds.size === 1 && onChangeCardAndRun;
 
   const handleSelectTitle = useCallback(() => {

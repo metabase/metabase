@@ -2,7 +2,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 
 import {
@@ -43,9 +42,10 @@ const ChartSettingFieldPicker = ({
       const metricColumn = single.data.cols[1];
       return getColumnKey(metricColumn) === columnKey;
     });
-    if (seriesForColumn) {
-      seriesKey = keyForSingleSeries(seriesForColumn);
-    }
+    // TODO: fix and uncomment
+    // if (seriesForColumn) {
+    //   seriesKey = keyForSingleSeries(seriesForColumn);
+    // }
   }
   return (
     <ChartSettingFieldPickerRoot

@@ -185,8 +185,7 @@ export const computeStaticComboChartSettings = (
   );
 
   const seriesDisplays = seriesModels.map(
-    seriesModel =>
-      settings.series(seriesModel.legacySeriesSettingsObjectKey).display,
+    seriesModel => settings.series(seriesModel).display,
   );
 
   fillWithDefaultValue(

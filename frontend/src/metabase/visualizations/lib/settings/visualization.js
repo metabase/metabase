@@ -45,6 +45,14 @@ const COMMON_SETTINGS = {
   click_behavior: {},
 };
 
+export function getSettingsModelForSeries(series, settings) {
+  if (!series) {
+    return null;
+  }
+  const visualization = getVisualizationRaw(series);
+  return visualization.getSettingsModel?.(series, settings);
+}
+
 function getSettingDefintionsForSeries(series) {
   if (!series) {
     return {};
@@ -94,7 +102,14 @@ export function getComputedSettingsForSeries(series) {
   }
   const settingsDefs = getSettingDefintionsForSeries(series);
   const storedSettings = getStoredSettingsForSeries(series);
-  return getComputedSettings(settingsDefs, series, storedSettings);
+  const settingsModel = getSettingsModelForSeries(series, storedSettings);
+  return getComputedSettings(
+    settingsDefs,
+    series,
+    storedSettings,
+    settingsModel,
+    {},
+  );
 }
 
 export function getPersistableDefaultSettingsForSeries(series) {
@@ -109,6 +124,7 @@ export function getSettingsWidgetsForSeries(
   series,
   onChangeSettings,
   isDashboard = false,
+  settingsModel,
   extra = {},
 ) {
   const settingsDefs = getSettingDefintionsForSeries(series);
@@ -121,6 +137,7 @@ export function getSettingsWidgetsForSeries(
     computedSettings,
     series,
     onChangeSettings,
+    settingsModel,
     { isDashboard, ...extra },
   ).filter(
     widget =>

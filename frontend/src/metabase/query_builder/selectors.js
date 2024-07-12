@@ -12,7 +12,7 @@ import * as Lib from "metabase-lib";
 import { MetabaseApi } from "metabase/services";
 import {
   extractRemappings,
-  getVisualizationTransformed,
+  getVisualizationDefinition,
 } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
@@ -717,7 +717,7 @@ export const getRawSeries = createSelector(
 const _getVisualizationTransformed = createSelector(
   [getRawSeries],
   rawSeries =>
-    rawSeries && getVisualizationTransformed(extractRemappings(rawSeries)),
+    rawSeries && getVisualizationDefinition(extractRemappings(rawSeries)),
 );
 
 /**

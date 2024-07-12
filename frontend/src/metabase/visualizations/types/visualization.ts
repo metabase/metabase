@@ -11,10 +11,8 @@ import type {
   DatasetColumn,
   DatasetData,
   RawSeries,
-  Series,
   TimelineEvent,
   TimelineEventId,
-  TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -71,7 +69,7 @@ export interface StaticVisualizationProps {
 }
 
 export interface VisualizationProps {
-  series: Series;
+  series: RawSeries;
   card: Card;
   href: string | undefined;
   data: DatasetData;
@@ -141,41 +139,85 @@ export type ColumnSettingDefinition<TValue, TProps = unknown> = {
     col: DatasetColumn,
     settings: OptionsType,
     onChange: (value: TValue) => void,
-    extra: { series: Series },
+    extra: { series: RawSeries },
   ) => TProps;
 };
 
-export type VisualizationSettingDefinition<TValue, TProps = void> = {
+export type VisualizationSettingDefinition<
+  TObject,
+  TObjectSettings,
+  TValue,
+  TSettingsModel,
+  TWidgetProps,
+  TExtra,
+> = {
   section?: string;
   title?: string;
   group?: string;
-  widget?: string | React.ComponentType<TProps>;
-  isValid?: (series: Series, settings: VisualizationSettings) => boolean;
-  getHidden?: (series: Series, settings: VisualizationSettings) => boolean;
-  getDefault?: (series: Series, settings: VisualizationSettings) => TValue;
-  getValue?: (series: Series, settings: VisualizationSettings) => TValue;
+  widget?: string | React.ComponentType<TWidgetProps>;
+  isValid?: (
+    series: TObject,
+    settings: TObjectSettings,
+    settingsModel: TSettingsModel,
+    extra: TExtra,
+  ) => boolean;
+  getHidden?: (
+    series: TObject,
+    settings: TObjectSettings,
+    settingsModel: TSettingsModel,
+    extra: TExtra,
+  ) => boolean;
+  getDefault?: (
+    series: TObject,
+    settings: TObjectSettings,
+    settingsModel: TSettingsModel,
+    extra: TExtra,
+  ) => TValue;
+  getValue?: (
+    series: TObject,
+    settings: TObjectSettings,
+    settingsModel: TSettingsModel,
+    extra: TExtra,
+  ) => TValue;
   default?: TValue;
   marginBottom?: string;
-  getMarginBottom?: (series: Series, settings: VisualizationSettings) => string;
+  getMarginBottom?: (
+    series: TObject,
+    settings: TObjectSettings,
+    settingsModel: TSettingsModel,
+    extra: TExtra,
+  ) => string;
   persistDefault?: boolean;
   inline?: boolean;
-  props?: TProps;
+  props?: TWidgetProps;
   getProps?: (
-    series: Series,
-    vizSettings: VisualizationSettings,
+    series: TObject,
+    vizSettings: TObjectSettings,
     onChange: (value: TValue) => void,
     extra: unknown,
-  ) => TProps;
+  ) => TWidgetProps;
   readDependencies?: string[];
   writeDependencies?: string[];
   eraseDependencies?: string[];
-  // is the setting visible in the dashboard card viz settings
-  dashboard?: boolean;
-  useRawSeries?: boolean;
+  dashboard?: boolean; // is the setting visible in the dashboard card viz settings
 };
 
-export type VisualizationSettingsDefinitions = {
-  [key: string]: VisualizationSettingDefinition<unknown, unknown>;
+export type VisualizationSettingsDefinitions<
+  TObject,
+  TObjectSettings,
+  TValue,
+  TSettingsModel,
+  TWidgetProps,
+  TExtra,
+> = {
+  [key: string]: VisualizationSettingDefinition<
+    TObject,
+    TObjectSettings,
+    TValue,
+    TSettingsModel,
+    TWidgetProps,
+    TExtra
+  >;
 };
 
 export type VisualizationGridSize = {
@@ -186,42 +228,56 @@ export type VisualizationGridSize = {
 };
 
 // TODO: add component property for the react component instead of the intersection
-export type Visualization = React.ComponentType<VisualizationProps> & {
-  name: string;
-  noun: string;
-  uiName: string;
-  identifier: string;
-  aliases?: string[];
-  iconName: IconName;
+export type Visualization<TSettingsModel = unknown> =
+  React.ComponentType<VisualizationProps> & {
+    name: string;
+    noun: string;
+    uiName: string;
+    identifier: string;
+    aliases?: string[];
+    iconName: IconName;
 
-  maxMetricsSupported: number;
-  maxDimensionsSupported: number;
+    maxMetricsSupported: number;
+    maxDimensionsSupported: number;
 
-  disableClickBehavior?: boolean;
-  canSavePng?: boolean;
-  noHeader: boolean;
-  hidden?: boolean;
-  disableSettingsConfig?: boolean;
-  supportPreviewing?: boolean;
-  supportsSeries?: boolean;
+    disableClickBehavior?: boolean;
+    canSavePng?: boolean;
+    noHeader: boolean;
+    hidden?: boolean;
+    disableSettingsConfig?: boolean;
+    supportPreviewing?: boolean;
+    supportsSeries?: boolean;
 
-  minSize: VisualizationGridSize;
-  defaultSize: VisualizationGridSize;
+    minSize: VisualizationGridSize;
+    defaultSize: VisualizationGridSize;
 
-  settings: VisualizationSettingsDefinitions;
+    settings: VisualizationSettingsDefinitions<
+      RawSeries,
+      VisualizationSettings,
+      unknown,
+      TSettingsModel,
+      unknown,
+      unknown
+    >;
 
-  placeHolderSeries: Series;
+    placeHolderSeries: RawSeries;
 
-  transformSeries: (series: Series) => TransformedSeries;
-  // TODO: remove dependency on metabase-lib
-  isSensible: (data: DatasetData, query?: Query) => boolean;
-  // checkRenderable throws an error if a visualization is not renderable
-  checkRenderable: (
-    series: Series,
-    settings: VisualizationSettings,
-    query: Query,
-  ) => void | never;
-  isLiveResizable: (series: Series) => boolean;
-  onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
-  placeholderSeries: RawSeries;
-};
+    getSettingsModel?: (
+      rawSeries: RawSeries,
+      settings: VisualizationSettings,
+    ) => TSettingsModel;
+
+    // TODO: remove dependency on metabase-lib
+    isSensible: (data: DatasetData, query?: Query) => boolean;
+    // checkRenderable throws an error if a visualization is not renderable
+    checkRenderable: (
+      series: RawSeries,
+      settings: VisualizationSettings,
+      query: Query,
+    ) => void | never;
+    isLiveResizable: (series: RawSeries) => boolean;
+    onDisplayUpdate?: (
+      settings: VisualizationSettings,
+    ) => VisualizationSettings;
+    placeholderSeries: RawSeries;
+  };

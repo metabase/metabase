@@ -30,11 +30,17 @@ const WIDGETS = {
   colors: ChartSettingColorsPicker,
 };
 
-export function getComputedSettings(
-  settingsDefs,
-  object,
-  storedSettings,
-  extra = {},
+export function getComputedSettings<
+  TObject,
+  TObjectSettings,
+  TSettingsModel,
+  TExtra,
+>(
+  settingsDefs: $TODO,
+  object: TObject,
+  storedSettings: TObjectSettings,
+  settingsModel: TSettingsModel,
+  extra: TExtra = {},
 ) {
   const computedSettings = {};
   for (const settingId in settingsDefs) {
@@ -44,6 +50,7 @@ export function getComputedSettings(
       settingId,
       object,
       storedSettings,
+      settingsModel,
       extra,
     );
   }
@@ -56,6 +63,7 @@ function getComputedSetting(
   settingId,
   object,
   storedSettings,
+  settingsModel,
   extra = {},
 ) {
   if (settingId in computedSettings) {
@@ -71,44 +79,55 @@ function getComputedSetting(
       dependentId,
       object,
       storedSettings,
+      settingsModel,
       extra,
     );
-  }
-
-  if (settingDef.useRawSeries && object._raw) {
-    object = object._raw;
   }
 
   const settings = { ...storedSettings, ...computedSettings };
 
   try {
     if (settingDef.getValue) {
-      return (computedSettings[settingId] = settingDef.getValue(
+      computedSettings[settingId] = settingDef.getValue(
         object,
         settings,
+        settingsModel,
         extra,
-      ));
+      );
+      return;
     }
 
     if (storedSettings[settingId] !== undefined) {
-      if (!settingDef.isValid || settingDef.isValid(object, settings, extra)) {
-        return (computedSettings[settingId] = storedSettings[settingId]);
+      if (
+        !settingDef.isValid ||
+        settingDef.isValid(object, settings, settingsModel, extra)
+      ) {
+        computedSettings[settingId] = storedSettings[settingId];
+        return;
       }
     }
 
     if (settingDef.getDefault) {
-      const defaultValue = settingDef.getDefault(object, settings, extra);
+      const defaultValue = settingDef.getDefault(
+        object,
+        settings,
+        settingsModel,
+        extra,
+      );
 
-      return (computedSettings[settingId] = defaultValue);
+      computedSettings[settingId] = defaultValue;
+      return;
     }
 
     if ("default" in settingDef) {
-      return (computedSettings[settingId] = settingDef.default);
+      computedSettings[settingId] = settingDef.default;
+      return;
     }
   } catch (e) {
     console.warn("Error getting setting", settingId, e);
   }
-  return (computedSettings[settingId] = undefined);
+
+  computedSettings[settingId] = undefined;
 }
 
 function getSettingWidget(
@@ -118,6 +137,7 @@ function getSettingWidget(
   computedSettings,
   object,
   onChangeSettings,
+  settingsModel,
   extra = {},
 ) {
   const settingDef = settingDefs[settingId];
@@ -133,33 +153,42 @@ function getSettingWidget(
     onChangeSettings(newSettings, question);
     settingDef.onUpdate?.(value, extra);
   };
-  if (settingDef.useRawSeries && object._raw) {
-    extra.transformedSeries = object;
-    object = object._raw;
-  }
+
   return {
     ...settingDef,
     id: settingId,
     value: value,
     section: settingDef.getSection
-      ? settingDef.getSection(object, computedSettings, extra)
+      ? settingDef.getSection(object, computedSettings, settingsModel, extra)
       : settingDef.section,
     title: settingDef.getTitle
-      ? settingDef.getTitle(object, computedSettings, extra)
+      ? settingDef.getTitle(object, computedSettings, settingsModel, extra)
       : settingDef.title,
     hidden: settingDef.getHidden
-      ? settingDef.getHidden(object, computedSettings, extra)
+      ? settingDef.getHidden(object, computedSettings, settingsModel, extra)
       : settingDef.hidden || false,
     marginBottom: settingDef.getMarginBottom
-      ? settingDef.getMarginBottom(object, computedSettings, extra)
+      ? settingDef.getMarginBottom(
+          object,
+          computedSettings,
+          settingsModel,
+          extra,
+        )
       : settingDef.marginBottom,
     disabled: settingDef.getDisabled
-      ? settingDef.getDisabled(object, computedSettings, extra)
+      ? settingDef.getDisabled(object, computedSettings, settingsModel, extra)
       : settingDef.disabled || false,
     props: {
+      settingsModel,
       ...(settingDef.props ? settingDef.props : {}),
       ...(settingDef.getProps
-        ? settingDef.getProps(object, computedSettings, onChange, extra)
+        ? settingDef.getProps(
+            object,
+            computedSettings,
+            onChange,
+            settingsModel,
+            extra,
+          )
         : {}),
     },
     set: settingId in storedSettings,
@@ -172,13 +201,19 @@ function getSettingWidget(
   };
 }
 
-export function getSettingsWidgets(
-  settingDefs,
-  storedSettings,
-  computedSettings,
-  object,
-  onChangeSettings,
-  extra = {},
+export function getSettingsWidgets<
+  TObject,
+  TObjectSettings,
+  TSettingsModel,
+  TExtra,
+>(
+  settingDefs: $TODO,
+  storedSettings: TObjectSettings,
+  computedSettings: $TODO,
+  object: TObject,
+  onChangeSettings: $TODO,
+  settingsModel: TSettingsModel,
+  extra: TExtra = {},
 ) {
   return Object.keys(settingDefs)
     .map(settingId =>
@@ -189,6 +224,7 @@ export function getSettingsWidgets(
         computedSettings,
         object,
         onChangeSettings,
+        settingsModel,
         extra,
       ),
     )

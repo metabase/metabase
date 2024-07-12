@@ -1,11 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import type {
-  DatasetData,
-  Series,
-  TransformedSeries,
-} from "metabase-types/api";
+import type { DatasetData, RawSeries } from "metabase-types/api";
 
 import type { RemappingHydratedDatasetColumn } from "./types";
 import type { Visualization } from "./types/visualization";
@@ -64,35 +60,8 @@ export function getVisualizationRaw(series: SeriesLike) {
   return visualizations.get(series[0].card.display);
 }
 
-export function getVisualizationTransformed(series: TransformedSeries) {
-  // don't transform if we don't have the data
-  if (
-    _.any(series, s => s.data == null) ||
-    _.any(series, s => s.error != null)
-  ) {
-    return {
-      series,
-      visualization: getVisualizationRaw(series),
-    };
-  }
-
-  // if a visualization has a transformSeries function, do the transformation until it returns the same visualization / series
-  let visualization, lastSeries;
-  do {
-    visualization = visualizations.get(series[0].card.display);
-    if (!visualization) {
-      throw new Error(t`No visualization for ${series[0].card.display}`);
-    }
-    lastSeries = series;
-    if (typeof visualization.transformSeries === "function") {
-      series = visualization.transformSeries(series);
-    }
-    if (series !== lastSeries) {
-      series = Object.assign([...series], { _raw: lastSeries });
-    }
-  } while (series !== lastSeries);
-
-  return { series, visualization };
+export function getVisualizationDefinition(series: RawSeries) {
+  return { series, visualization: visualizations.get(series[0].card.display) };
 }
 
 export function getIconForVisualizationType(display: string) {
@@ -100,7 +69,7 @@ export function getIconForVisualizationType(display: string) {
   return viz?.iconName ?? "unknown";
 }
 
-export const extractRemappings = (series: Series) => {
+export const extractRemappings = (series: RawSeries) => {
   const se = series.map(s => ({
     ...s,
     data: s.data && extractRemappedColumns(s.data),

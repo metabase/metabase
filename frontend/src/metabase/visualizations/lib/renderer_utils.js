@@ -54,12 +54,11 @@ function canDisplayNull(settings) {
 
 export function getXValues({ settings, series }) {
   // if _raw isn't set then we already have the raw series
-  const { _raw: rawSeries = series } = series;
   const warn = () => {}; // no op since warning in handled by getDatas
   const uniqueValues = new Set();
   let isAscending = true;
   let isDescending = true;
-  for (const { data } of rawSeries) {
+  for (const { data } of series) {
     // In the raw series, the dimension isn't necessarily in the first element
     // of each row. This finds the correct column index.
     const columnIndex = getColumnIndex({ settings, data });

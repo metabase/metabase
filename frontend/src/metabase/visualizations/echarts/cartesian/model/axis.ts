@@ -284,9 +284,7 @@ const getYAxisSplit = (
   }
 
   const axisBySeriesKey = seriesModels.reduce((acc, seriesModel) => {
-    const seriesSettings: SeriesSettings = settings.series(
-      seriesModel.legacySeriesSettingsObjectKey,
-    );
+    const seriesSettings: SeriesSettings = settings.series(seriesModel);
 
     const seriesStack = stackModels.find(stackModel =>
       stackModel.seriesKeys.includes(seriesModel.dataKey),

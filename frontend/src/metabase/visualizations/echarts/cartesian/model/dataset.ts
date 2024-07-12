@@ -281,10 +281,7 @@ export const getNullReplacerTransform = (
 ): TransformFn => {
   const replaceNullsWithZeroDataKeys = seriesModels
     .filter(
-      seriesModel =>
-        settings.series(seriesModel.legacySeriesSettingsObjectKey)[
-          "line.missing"
-        ] === "zero",
+      seriesModel => settings.series(seriesModel)["line.missing"] === "zero",
     )
     .map(seriesModel => seriesModel.dataKey);
 
@@ -302,9 +299,7 @@ const hasInterpolatedAreaSeries = (
   settings: ComputedVisualizationSettings,
 ) => {
   return seriesModels.some(seriesModel => {
-    const seriesSettings = settings.series(
-      seriesModel.legacySeriesSettingsObjectKey,
-    );
+    const seriesSettings = settings.series(seriesModel);
     return (
       seriesSettings["line.missing"] !== "none" &&
       seriesSettings.display === "area"
@@ -700,9 +695,7 @@ export const applyVisualizationSettingsDataTransformations = (
   showWarning?: ShowWarning,
 ) => {
   const barSeriesModels = seriesModels.filter(seriesModel => {
-    const seriesSettings = settings.series(
-      seriesModel.legacySeriesSettingsObjectKey,
-    );
+    const seriesSettings = settings.series(seriesModel);
     return seriesSettings.display === "bar";
   });
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);

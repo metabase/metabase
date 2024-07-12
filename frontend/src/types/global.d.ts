@@ -19,3 +19,8 @@ declare module "*.css" {
 }
 
 type Nullable<T> = T | null;
+
+type NonNullableProps<T, K extends keyof T> = Omit<T, K> &
+  Required<{ [P in K]: NonNullable<T[P]> }>;
+
+type $TODO = any;

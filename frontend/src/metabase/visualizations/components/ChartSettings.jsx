@@ -9,10 +9,7 @@ import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
 import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import {
-  getVisualizationTransformed,
-  extractRemappings,
-} from "metabase/visualizations";
+import { extractRemappings } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { updateSeriesColor } from "metabase/visualizations/lib/series";
 import {
@@ -22,8 +19,10 @@ import {
   getSettingsWidgets,
 } from "metabase/visualizations/lib/settings";
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
-import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import {
+  getSettingsWidgetsForSeries,
+  getSettingsModelForSeries,
+} from "metabase/visualizations/lib/settings/visualization";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 
 import {
@@ -162,11 +161,13 @@ class ChartSettings extends Component {
     } else {
       const { isDashboard, dashboard } = this.props;
       const transformedSeries = this._getTransformedSeries();
+      const settingsModel = this._getSettingsModel();
 
       return getSettingsWidgetsForSeries(
         transformedSeries,
         this.handleChangeSettings,
         isDashboard,
+        settingsModel,
         { dashboardId: dashboard?.id },
       );
     }
@@ -185,16 +186,20 @@ class ChartSettings extends Component {
   }
   _getTransformedSeries() {
     const rawSeries = this._getRawSeries();
-    const { series: transformedSeries } = getVisualizationTransformed(
-      extractRemappings(rawSeries),
-    );
-    return transformedSeries;
+    return extractRemappings(rawSeries);
+  }
+
+  _getSettingsModel() {
+    const { series } = this.props;
+    const settings = this._getSettings() || {};
+    return getSettingsModelForSeries(series, settings);
   }
 
   columnHasSettings(col) {
     const { series } = this.props;
     const settings = this._getSettings() || {};
     const settingsDefs = getSettingDefinitionsForColumn(series, col);
+    const settingsModel = this._getSettingsModel();
     const computedSettings = getComputedSettings(settingsDefs, col, settings);
 
     return getSettingsWidgets(
@@ -203,6 +208,7 @@ class ChartSettings extends Component {
       computedSettings,
       col,
       _.noop,
+      settingsModel,
       {
         series,
       },
@@ -243,15 +249,16 @@ class ChartSettings extends Component {
         }
       });
 
-      if (singleSeriesForColumn) {
-        return {
-          ...seriesSettingsWidget,
-          props: {
-            ...seriesSettingsWidget.props,
-            initialKey: keyForSingleSeries(singleSeriesForColumn),
-          },
-        };
-      }
+      // TODO: fix and uncomment
+      // if (singleSeriesForColumn) {
+      //   return {
+      //     ...seriesSettingsWidget,
+      //     props: {
+      //       ...seriesSettingsWidget.props,
+      //       initialKey: keyForSingleSeries(singleSeriesForColumn),
+      //     },
+      //   };
+      // }
     }
 
     return null;

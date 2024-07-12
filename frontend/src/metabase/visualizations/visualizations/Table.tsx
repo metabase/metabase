@@ -256,6 +256,7 @@ class Table extends Component<TableProps, TableState> {
         column,
         settings,
         onChange,
+        seriesModel,
         {
           series: [
             {
@@ -282,6 +283,7 @@ class Table extends Component<TableProps, TableState> {
         column,
         settings,
         onChange,
+        seriesModel,
         {
           series: [
             {

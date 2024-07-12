@@ -1,6 +1,17 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { formatValue } from "metabase/lib/formatting";
+import { getCardsColumns } from "metabase/visualizations/echarts/cartesian/model";
+import {
+  getCardsSeriesModels,
+  getDimensionModel,
+} from "metabase/visualizations/echarts/cartesian/model/series";
+import type {
+  DimensionModel,
+  SeriesModel,
+} from "metabase/visualizations/echarts/cartesian/model/types";
+import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
 import {
   GRAPH_AXIS_SETTINGS,
@@ -24,13 +35,23 @@ import type {
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { RawSeries, SeriesSettings } from "metabase-types/api";
+import type {
+  RawSeries,
+  SeriesSettings,
+  VisualizationSettings,
+} from "metabase-types/api";
 
-import { transformSeries } from "./chart-definition-legacy";
+export type CartesianChartSettingsModel = {
+  cardsColumns: CartesianChartColumns[];
+  dimensionModel: DimensionModel;
+  seriesModels: SeriesModel[];
+  rawSeries: RawSeries;
+  display: string;
+};
 
 export const getCartesianChartDefinition = (
-  props: Partial<Visualization>,
-): Partial<Visualization> => {
+  props: Partial<Visualization<CartesianChartSettingsModel>>,
+): Partial<Visualization<CartesianChartSettingsModel>> => {
   return {
     noHeader: true,
     supportsSeries: true,
@@ -82,7 +103,29 @@ export const getCartesianChartDefinition = (
       },
     ] as RawSeries,
 
-    transformSeries,
+    getSettingsModel: (
+      rawSeries: RawSeries,
+      settings: VisualizationSettings,
+    ): CartesianChartSettingsModel => {
+      const cardsColumns = getCardsColumns(rawSeries, settings);
+      const dimensionModel = getDimensionModel(rawSeries, cardsColumns);
+      const seriesModels = getCardsSeriesModels(
+        rawSeries,
+        cardsColumns,
+        settings,
+        {
+          formatValue: (value, options) => String(formatValue(value, options)),
+        },
+      );
+
+      return {
+        cardsColumns,
+        dimensionModel,
+        seriesModels,
+        rawSeries,
+        display: rawSeries[0].card.display,
+      };
+    },
 
     onDisplayUpdate: settings => {
       if (settings[SERIES_SETTING_KEY] == null) {

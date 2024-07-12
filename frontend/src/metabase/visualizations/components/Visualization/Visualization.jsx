@@ -19,7 +19,7 @@ import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getFont } from "metabase/styled-components/selectors";
 import {
   extractRemappings,
-  getVisualizationTransformed,
+  getVisualizationDefinition,
 } from "metabase/visualizations";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getMode } from "metabase/visualizations/click-actions/lib/modes";
@@ -145,10 +145,10 @@ class Visualization extends PureComponent {
 
   transform(newProps) {
     const transformed = newProps.rawSeries
-      ? getVisualizationTransformed(extractRemappings(newProps.rawSeries))
+      ? getVisualizationDefinition(extractRemappings(newProps.rawSeries))
       : null;
-    const series = transformed && transformed.series;
-    const visualization = transformed && transformed.visualization;
+    const series = transformed?.series;
+    const visualization = transformed?.visualization;
     const computedSettings = !this.isLoading(series)
       ? getComputedSettingsForSeries(series)
       : {};
