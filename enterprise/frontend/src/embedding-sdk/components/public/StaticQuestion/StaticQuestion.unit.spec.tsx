@@ -36,6 +36,11 @@ const TEST_DATASET = createMockDataset({
     rows: [["Test Row"]],
   }),
 });
+const TEST_PARAM = createMockParameter({
+  type: "number/=",
+  slug: "product_id",
+  target: ["variable", ["template-tag", "product_id"]],
+});
 
 const VISUALIZATION_TYPES: Record<
   string,
@@ -154,13 +159,7 @@ describe("StaticQuestion", () => {
   });
 
   it("should query with the parameters in a parameterized question", async () => {
-    const param = createMockParameter({
-      type: "number/=",
-      slug: "product_id",
-      target: ["variable", ["template-tag", "product_id"]],
-    });
-
-    const card = createMockCard({ parameters: [param] });
+    const card = createMockCard({ parameters: [TEST_PARAM] });
     setup({ card, parameterValues: { product_id: 1024 } });
 
     await waitForLoaderToBeRemoved();
@@ -169,9 +168,9 @@ describe("StaticQuestion", () => {
     const queryRequest = await lastQuery?.request?.json();
 
     expect(queryRequest.parameters?.[0]).toMatchObject({
-      id: param.id,
-      type: param.type,
-      target: param.target,
+      id: TEST_PARAM.id,
+      type: TEST_PARAM.type,
+      target: TEST_PARAM.target,
       value: 1024,
     });
   });
