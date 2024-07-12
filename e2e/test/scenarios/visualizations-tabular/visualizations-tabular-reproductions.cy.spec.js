@@ -956,16 +956,21 @@ describe.skip("issue 25415", () => {
 });
 
 describe("issue 7884", () => {
-  const sourceQuestionDetails = {
+  const oldSourceQuestionDetails = {
     native: {
-      // previously was "SELECT 1 AS C1, 2 AS C2, 3 AS C3"
+      query: "SELECT 1 AS C1, 2 AS C2, 3 AS C3",
+    },
+  };
+
+  const newSourceQuestionDetails = {
+    native: {
       query: "SELECT 1 AS C1, 3 AS C3",
     },
   };
 
-  const getNestedQuestionDetails = cardId => ({
+  const getNestedQuestionDetails = sourceQuestionId => ({
     query: {
-      "source-table": `card__${cardId}`,
+      "source-table": `card__${sourceQuestionId}`,
     },
     display: "table",
     visualization_settings: {
@@ -983,10 +988,20 @@ describe("issue 7884", () => {
   });
 
   it("should not reset the column order after one of the columns is removed from data source (metabase#7884)", () => {
-    createNativeQuestion(sourceQuestionDetails).then(({ body: card }) =>
-      createQuestion(getNestedQuestionDetails(card.id), {
-        visitQuestion: true,
-      }),
+    createNativeQuestion(oldSourceQuestionDetails).then(
+      ({ body: sourceQuestion }) =>
+        createQuestion(getNestedQuestionDetails(sourceQuestion.id)).then(
+          ({ body: nestedQuestion }) => {
+            cy.request("PUT", `/api/card/${sourceQuestion.id}`, {
+              ...sourceQuestion,
+              dataset_query: {
+                ...sourceQuestion.dataset_query,
+                native: newSourceQuestionDetails.native,
+              },
+            });
+            visitQuestion(nestedQuestion.id);
+          },
+        ),
     );
 
     cy.log("verify column order in the table");
