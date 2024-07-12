@@ -22,20 +22,14 @@ export async function loadStaticQuestion(options: Options) {
   ]);
 
   if (parameterValues && card?.parameters) {
-    const parameters: ParameterQueryInput[] = [];
-
-    for (const parameter of card.parameters) {
-      if (!parameter.target) {
-        continue;
-      }
-
-      parameters.push({
+    const parameters: ParameterQueryInput[] = card.parameters
+      .filter(parameter => parameter.target)
+      .map(parameter => ({
         id: parameter.id,
         type: parameter.type,
-        target: parameter.target,
+        target: parameter.target!,
         value: parameterValues[parameter.slug],
-      });
-    }
+      }));
 
     result = await CardApi.query({
       cardId: questionId,

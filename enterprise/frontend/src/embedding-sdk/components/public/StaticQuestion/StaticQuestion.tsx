@@ -61,12 +61,12 @@ const _StaticQuestion = ({
       loading: true,
     }));
 
-    const { card, result } = await loadStaticQuestion({
-      questionId,
-      parameterValues,
-    });
-
     try {
+      const { card, result } = await loadStaticQuestion({
+        questionId,
+        parameterValues,
+      });
+
       setState(prevState => ({
         ...prevState,
         card,
@@ -75,7 +75,7 @@ const _StaticQuestion = ({
         error: null,
       }));
     } catch (error) {
-      if (error instanceof Error) {
+      if (typeof error === "object") {
         setState(prevState => ({
           ...prevState,
           result: null,
