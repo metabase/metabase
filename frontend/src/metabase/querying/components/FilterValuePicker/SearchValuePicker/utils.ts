@@ -4,7 +4,7 @@ import type { FieldValue } from "metabase-types/api";
 
 import { SEARCH_LIMIT } from "./constants";
 
-export function getIsSearchStale(
+export function shouldSearch(
   searchValue: string,
   searchQuery: string,
   fieldValues: FieldValue[],
@@ -17,16 +17,16 @@ export function getIsSearchStale(
 }
 
 export function getNothingFoundMessage(
-  columnName: string,
+  columnDisplayName: string,
   searchError: unknown,
+  canSearch: boolean,
   isSearching: boolean,
-  isSearchStale: boolean,
 ) {
-  if (isSearching || isSearchStale) {
+  if (!canSearch || isSearching) {
     return null;
   } else if (searchError) {
     return t`An error occurred.`;
   } else {
-    return t`No matching ${columnName} found.`;
+    return t`No matching ${columnDisplayName} found.`;
   }
 }

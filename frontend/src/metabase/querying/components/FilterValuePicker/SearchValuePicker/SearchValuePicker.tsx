@@ -1,24 +1,22 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
-import {
-  useGetRemappedFieldValuesQuery,
-  useSearchFieldValuesQuery,
-} from "metabase/api";
-import { Loader, MultiAutocomplete, type SelectOption } from "metabase/ui";
-import type { FieldId } from "metabase-types/api";
+import { useSearchFieldValuesQuery } from "metabase/api";
+import { Loader, MultiAutocomplete } from "metabase/ui";
+import type { FieldId, FieldValue } from "metabase-types/api";
 
 import { getFieldOptions } from "../utils";
 
 import { SEARCH_DEBOUNCE, SEARCH_LIMIT } from "./constants";
-import { getIsSearchStale, getNothingFoundMessage } from "./utils";
+import { getNothingFoundMessage, shouldSearch } from "./utils";
 
 interface SearchValuePickerProps {
   fieldId: FieldId;
   searchFieldId: FieldId;
+  fieldValues: FieldValue[];
   selectedValues: string[];
-  columnName: string;
+  columnDisplayName: string;
   shouldCreate?: (query: string, values: string[]) => boolean;
   autoFocus?: boolean;
   onChange: (newValues: string[]) => void;
@@ -27,68 +25,21 @@ interface SearchValuePickerProps {
 export function SearchValuePicker({
   fieldId,
   searchFieldId,
+  fieldValues: initialFieldValues,
   selectedValues,
-  columnName,
+  columnDisplayName,
   shouldCreate,
   autoFocus,
   onChange,
 }: SearchValuePickerProps) {
-  const {
-    searchValue,
-    searchOptions,
-    isSearching,
-    isSearchStale,
-    searchError,
-    handleSearchChange,
-  } = useSearchQuery({ fieldId, searchFieldId });
-
-  const { selectedOptions, isRemapping } = useRemappingQuery({
-    fieldId,
-    searchFieldId,
-    selectedValues,
-    searchValue,
-    searchOptions,
-  });
-
-  const availableOptions = [...selectedOptions, ...searchOptions];
-  const nothingFoundMessage = getNothingFoundMessage(
-    columnName,
-    searchError,
-    isSearching,
-    isSearchStale,
-  );
-
-  return (
-    <MultiAutocomplete
-      data={availableOptions}
-      value={selectedValues}
-      placeholder={t`Search by ${columnName}`}
-      searchable
-      autoFocus={autoFocus}
-      aria-label={t`Filter value`}
-      shouldCreate={shouldCreate}
-      rightSection={isSearching || isRemapping ? <Loader /> : null}
-      nothingFound={nothingFoundMessage}
-      onChange={onChange}
-      onSearchChange={handleSearchChange}
-    />
-  );
-}
-
-interface SearchOptionsProps {
-  fieldId: FieldId;
-  searchFieldId: FieldId;
-}
-
-function useSearchQuery({ fieldId, searchFieldId }: SearchOptionsProps) {
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
   const canSearch = searchQuery.length > 0;
 
   const {
-    data: searchFieldValues = [],
-    isFetching: isSearching,
+    data: fieldValues = initialFieldValues,
     error: searchError,
+    isFetching: isSearching,
   } = useSearchFieldValuesQuery(
     {
       fieldId,
@@ -101,11 +52,16 @@ function useSearchQuery({ fieldId, searchFieldId }: SearchOptionsProps) {
     },
   );
 
-  const searchOptions = getFieldOptions(searchFieldValues);
-  const isSearchStale = getIsSearchStale(
-    searchValue,
-    searchQuery,
-    searchFieldValues,
+  const options = useMemo(
+    () => (canSearch ? getFieldOptions(fieldValues) : []),
+    [fieldValues, canSearch],
+  );
+
+  const notFoundMessage = getNothingFoundMessage(
+    columnDisplayName,
+    searchError,
+    canSearch,
+    isSearching,
   );
 
   const handleSearchChange = (newSearchValue: string) => {
@@ -116,73 +72,27 @@ function useSearchQuery({ fieldId, searchFieldId }: SearchOptionsProps) {
   };
 
   const handleSearchTimeout = () => {
-    if (isSearchStale) {
+    if (shouldSearch(searchValue, searchQuery, fieldValues)) {
       setSearchQuery(searchValue);
     }
   };
 
   useDebounce(handleSearchTimeout, SEARCH_DEBOUNCE, [searchValue]);
 
-  return {
-    searchValue,
-    searchOptions: canSearch ? searchOptions : [],
-    isSearching,
-    isSearchStale,
-    searchError,
-    handleSearchChange,
-  };
-}
-
-interface UseRemappingQueryProps {
-  fieldId: FieldId;
-  searchFieldId: FieldId;
-  selectedValues: string[];
-  searchValue: string;
-  searchOptions: SelectOption[];
-}
-
-function useRemappingQuery({
-  fieldId,
-  searchFieldId,
-  selectedValues,
-  searchValue,
-  searchOptions,
-}: UseRemappingQueryProps) {
-  const [cachedOptions, setCachedOptions] = useState<
-    Record<string, SelectOption>
-  >({});
-  const selectedOptions = selectedValues
-    .map(value => cachedOptions[value])
-    .filter(option => option != null);
-  const uncachedSelectedValues = selectedValues.filter(
-    option => !cachedOptions[option],
+  return (
+    <MultiAutocomplete
+      data={options}
+      value={selectedValues}
+      searchValue={searchValue}
+      placeholder={t`Search by ${columnDisplayName}`}
+      searchable
+      autoFocus={autoFocus}
+      aria-label={t`Filter value`}
+      shouldCreate={shouldCreate}
+      rightSection={isSearching ? <Loader /> : undefined}
+      nothingFound={notFoundMessage}
+      onChange={onChange}
+      onSearchChange={handleSearchChange}
+    />
   );
-  const isRemapped = fieldId !== searchFieldId;
-  const isFullyCached = uncachedSelectedValues.length === 0;
-  const isTypingUnfinished = searchValue.length > 0;
-
-  const { data: remappedFieldValues = [], isFetching: isRemapping } =
-    useGetRemappedFieldValuesQuery(
-      {
-        fieldId,
-        remappedFieldId: searchFieldId,
-        values: uncachedSelectedValues,
-      },
-      {
-        skip: !isRemapped || isFullyCached || isTypingUnfinished,
-      },
-    );
-
-  const remappedOptions = getFieldOptions(remappedFieldValues);
-  const fetchedOptions = [...searchOptions, ...remappedOptions];
-  if (!fetchedOptions.every(option => cachedOptions[option.value])) {
-    const newOptions = { ...cachedOptions };
-    fetchedOptions.forEach(option => (newOptions[option.value] = option));
-    setCachedOptions(newOptions);
-  }
-
-  return {
-    selectedOptions,
-    isRemapping,
-  };
 }

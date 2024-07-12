@@ -1295,13 +1295,13 @@
 ;; It should parse the value string (it comes back from the API as a string since it is a query param)
 
 (deftest should-parse-string
-  (is (= [[10 "Fred 62"]]
-         (#'api.public/field-remapped-values (mt/id :venues :id) (mt/id :venues :name) ["10"]))))
+  (is (= [10 "Fred 62"]
+         (#'api.public/field-remapped-values (mt/id :venues :id) (mt/id :venues :name) "10"))))
 
 (deftest if-the-field-isn-t-allowed
   (is (thrown?
        Exception
-       (#'api.public/field-remapped-values (mt/id :venues :id) (mt/id :venues :price) ["10"]))))
+       (#'api.public/field-remapped-values (mt/id :venues :id) (mt/id :venues :price) "10"))))
 
 ;;; ----------------------- GET /api/public/card/:uuid/field/:field/remapping/:remapped-id nil ------------------------
 
@@ -1317,57 +1317,57 @@
 
 (deftest we-should-be-able-to-use-the-api-endpoint-and-get-the-same-results-we-get-by-calling-the-function-above-directly
   (with-sharing-enabled-and-temp-card-referencing :venues :id [card]
-    (is (= [[10 "Fred 62"]]
+    (is (= [10 "Fred 62"]
            (client/client :get 200 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
-                          :values ["10"])))))
+                          :value "10")))))
 
 (deftest shouldn-t-work-if-card-doesn-t-reference-the-field-in-question
   (with-sharing-enabled-and-temp-card-referencing :venues :price [card]
     (is (= "Not found."
            (client/client :get 404 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
-                          :values ["10"])))))
+                          :value "10")))))
 
 
 (deftest ---or-if-the-remapping-field-isn-t-allowed-to-be-used-with-the-other-field
   (with-sharing-enabled-and-temp-card-referencing :venues :id [card]
     (is (= "An error occurred."
            (client/client :get 400 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :price))
-                          :values ["10"])))))
+                          :value "10")))))
 
 (deftest ---or-if-public-sharing-is-disabled
   (with-sharing-enabled-and-temp-card-referencing :venues :id [card]
     (mt/with-temporary-setting-values [enable-public-sharing false]
       (is (= "An error occurred."
              (client/client :get 400 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
-                            :values ["10"]))))))
+                            :value "10"))))))
 
 ;;; --------------------- GET /api/public/dashboard/:uuid/field/:field/remapping/:remapped-id nil ---------------------
 
 
 (deftest api-endpoint-should-return-same-results-as-function
   (with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
-    (is (= [[10 "Fred 62"]]
+    (is (= [10 "Fred 62"]
            (client/client :get 200 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
-                          :values ["10"])))))
+                          :value "10")))))
 
 (deftest field-remapping-shouldn-t-work-if-card-doesn-t-reference-the-field-in-question
   (with-sharing-enabled-and-temp-dashcard-referencing :venues :price [dashboard]
     (is (= "Not found."
            (client/client :get 404 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
-                          :values ["10"])))))
+                          :value "10")))))
 
 (deftest remapping-or-if-the-remapping-field-isn-t-allowed-to-be-used-with-the-other-field
   (with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
     (is (= "An error occurred."
            (client/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :price))
-                          :values ["10"])))))
+                          :value "10")))))
 
 (deftest remapping-or-if-public-sharing-is-disabled
   (with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
     (mt/with-temporary-setting-values [enable-public-sharing false]
       (is (= "An error occurred."
              (client/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
-                            :values ["10"]))))))
+                            :value "10"))))))
 
 ;;; --------------------------------------------- Param values endpoints ---------------------------------------------
 

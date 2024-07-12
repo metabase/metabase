@@ -1517,10 +1517,7 @@
           venues-id       (lib.metadata/field metadata-provider (meta/id :venues :id))]
       (testing `lib.field/remapped-field
                (let [remapped-field (#'lib.field/remapped-field metadata-provider venues-id)]
-                 (is (=? {:id   (meta/id :venues :name)
-                          :name "NAME"}
-                         (#'lib.field/remapped-field metadata-provider venues-id)))
-                 (is (lib.types.isa/searchable? remapped-field))))
+                 (is (nil? (#'lib.field/remapped-field metadata-provider venues-id)))))
       (testing `lib.field/search-field
                (is (=? {:id   (meta/id :venues :name)
                         :name "NAME"}

@@ -1177,25 +1177,25 @@
   (letfn [(tests [model object]
             (testing (str "we should be able to use the API endpoint and get the same results we get by calling the "
                           "function above directly")
-              (is (= [[10 "Fred 62"]]
+              (is (= [10 "Fred 62"]
                      (client/client :get 200 (field-remapping-url object (mt/id :venues :id) (mt/id :venues :name))
-                                    :values ["10"]))))
+                                    :value "10"))))
             (testing " ...or if the remapping Field isn't allowed to be used with the other Field"
               (is (= "Invalid Request."
                      (client/client :get 400 (field-remapping-url object (mt/id :venues :id) (mt/id :venues :price))
-                                    :values ["10"]))))
+                                    :value "10"))))
 
             (testing " ...or if embedding is disabled"
               (mt/with-temporary-setting-values [enable-embedding false]
                 (is (= "Embedding is not enabled."
                        (client/client :get 400 (field-remapping-url object (mt/id :venues :id) (mt/id :venues :name))
-                                      :values ["10"])))))
+                                      :value "10")))))
 
             (testing " ...or if embedding is disabled for the Card/Dashboard"
               (t2/update! model (u/the-id object) {:enable_embedding false})
               (is (= "Embedding is not enabled for this object."
                      (client/client :get 400 (field-remapping-url object (mt/id :venues :id) (mt/id :venues :name))
-                                    :values ["10"])))))]
+                                    :value "10")))))]
 
     (testing "GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil"
       (testing "Get remapped Field values for a Card"
@@ -1205,7 +1205,7 @@
         (with-embedding-enabled-and-temp-card-referencing :venues :price [card]
           (is (= "Not found."
                  (client/client :get 400 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
-                                :values ["10"]))))))
+                                :value "10"))))))
 
     (testing "GET /api/embed/dashboard/:token/field/:field/remapping/:remapped-id nil"
       (testing "Get remapped Field values for a Dashboard"
@@ -1215,7 +1215,7 @@
         (with-embedding-enabled-and-temp-dashcard-referencing :venues :price [dashboard]
           (is (= "Not found."
                  (client/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
-                                :values ["10"]))))))))
+                                :value "10"))))))))
 
 ;;; ------------------------------------------------ Chain filtering -------------------------------------------------
 

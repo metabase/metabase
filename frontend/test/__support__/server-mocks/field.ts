@@ -60,22 +60,3 @@ export function setupFieldSearchValuesEndpoint(
     },
   );
 }
-
-export function setupFieldRemappingValuesEndpoint(
-  fieldId: FieldId,
-  remappedFieldId: FieldId,
-  values: string[],
-  result: FieldValue[] = [],
-) {
-  fetchMock.get(
-    {
-      url: `path:/api/field/${fieldId}/remapping/${remappedFieldId}`,
-      query: {
-        values,
-      },
-    },
-    {
-      body: result,
-    },
-  );
-}

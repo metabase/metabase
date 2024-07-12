@@ -504,50 +504,49 @@
 
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
-(defn- field-remapped-values [field-id remapped-field-id values]
+(defn- field-remapped-values [field-id remapped-field-id, ^String value-str]
   (let [field          (api/check-404 (t2/select-one Field :id field-id))
         remapped-field (api/check-404 (t2/select-one Field :id remapped-field-id))]
     (check-search-field-is-allowed field-id remapped-field-id)
-    (api.field/remapped-values field remapped-field
-                               (api.field/parse-query-param-values-for-field field values))))
+    (api.field/remapped-value field remapped-field (api.field/parse-query-param-value-for-field field value-str))))
 
 (defn card-field-remapped-values
   "Return the reampped Field values for a Field referenced by a *Card*. This explanation is almost useless, so see the
   one in `metabase.api.field/remapped-value` if you would actually like to understand what is going on here."
-  [card-id field-id remapped-field-id values]
+  [card-id field-id remapped-field-id, ^String value-str]
   (check-field-is-referenced-by-card field-id card-id)
-  (field-remapped-values field-id remapped-field-id values))
+  (field-remapped-values field-id remapped-field-id value-str))
 
 (defn dashboard-field-remapped-values
   "Return the reampped Field values for a Field referenced by a *Dashboard*. This explanation is almost useless, so see
   the one in `metabase.api.field/remapped-value` if you would actually like to understand what is going on here."
-  [dashboard-id field-id remapped-field-id values]
+  [dashboard-id field-id remapped-field-id, ^String value-str]
   (check-field-is-referenced-by-dashboard field-id dashboard-id)
-  (field-remapped-values field-id remapped-field-id values))
+  (field-remapped-values field-id remapped-field-id value-str))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
   Cards."
-  [uuid field-id remapped-id values]
+  [uuid field-id remapped-id value]
   {uuid        ms/UUIDString
    field-id    ms/PositiveInt
    remapped-id ms/PositiveInt
-   values      (ms/QueryVectorOf ms/NonBlankString)}
+   value       ms/NonBlankString}
   (validation/check-public-sharing-enabled)
   (let [card-id (api/check-404 (t2/select-one-pk Card :public_uuid uuid, :archived false))]
-    (card-field-remapped-values card-id field-id remapped-id values)))
+    (card-field-remapped-values card-id field-id remapped-id value)))
 
 (api/defendpoint GET "/dashboard/:uuid/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
   Dashboards."
-  [uuid field-id remapped-id values]
+  [uuid field-id remapped-id value]
   {uuid        ms/UUIDString
    field-id    ms/PositiveInt
    remapped-id ms/PositiveInt
-   values      (ms/QueryVectorOf ms/NonBlankString)}
+   value       ms/NonBlankString}
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (t2/select-one-pk Dashboard :public_uuid uuid, :archived false)]
-    (dashboard-field-remapped-values dashboard-id field-id remapped-id values)))
+    (dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
 ;;; ------------------------------------------------ Param Values -------------------------------------------------
 
