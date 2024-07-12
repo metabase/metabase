@@ -1,4 +1,4 @@
-import type { MultiSelectProps, SelectItem } from "@mantine/core";
+import type { MultiSelectProps, SelectOption } from "@mantine/core";
 import { MultiSelect } from "@mantine/core";
 import { useUncontrolled } from "@mantine/hooks";
 import type { ClipboardEvent, FocusEvent } from "react";
@@ -105,7 +105,7 @@ export function MultiAutocomplete({
   );
 }
 
-function getSelectItem(item: string | SelectItem): SelectItem {
+function getSelectItem(item: string | SelectOption): SelectOption {
   if (typeof item === "string") {
     return { value: item };
   } else {
@@ -114,7 +114,7 @@ function getSelectItem(item: string | SelectItem): SelectItem {
 }
 
 function getAvailableSelectItems(
-  data: ReadonlyArray<string | SelectItem>,
+  data: ReadonlyArray<string | SelectOption>,
   selectedValues: string[],
 ) {
   const items = [
