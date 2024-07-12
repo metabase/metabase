@@ -23,7 +23,7 @@ const config = {
   ],
   testPathIgnorePatterns: [
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
-    "<rootDir>/release/**",
+    "<rootDir>/release/.*",
   ],
   testMatch: [
     "<rootDir>/**/*.unit.spec.js",
