@@ -1,4 +1,5 @@
 name: Update Translations
+run-name: Update Translations for v${{ inputs.version }} - ${{ inputs.step }}
 on:
   workflow_dispatch:
     inputs:
@@ -21,11 +22,12 @@ permissions:
 jobs:
   upload-translations:
     name: Upload Translations
-    if: ${{ inputs.step }} == 'upload'
+    if: ${{ inputs.step  == 'upload' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
       POEDITOR_API_TOKEN: ${{ secrets.POEDITOR_API_TOKEN }}
+      POEDITOR_PROJECT_ID: 200535
       VERSION: ${{ inputs.version }}
     steps:
     - name: Checkout code
@@ -36,6 +38,8 @@ jobs:
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: manage-translations
+    - name: install gettext
+      run: sudo apt-get install gettext
 
     # TODO: check for untranslated strings
 
@@ -43,9 +47,11 @@ jobs:
       run: | # sh
         ./bin/i18n/update-translation-template
         ./bin/i18n/export-pot-to-poeditor
-        echo "Strings uploaded to POEditor. Don't forget to notify contributors and copy source strings to English language."
+        echo "Strings uploaded to POEditor"
 
     - name: Commit changes
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: | # sh
         git config user.name github-actions
         git config user.email github-actions@github.com
@@ -73,7 +79,7 @@ jobs:
         - [ ] Copy source strings to english language (manual)
         - [ ] Download translations from POEditor (github action)
         - [ ] Merge this PR and backport to the release branch (manual)
-        "
+        " \
         --label "backport" \
         --label "Customization/i18n"
 
@@ -81,18 +87,19 @@ jobs:
     # TODO: copy source strings to english language
 
   download-translations:
-    name: Upload Translations
-    if: ${{ inputs.step }} == 'download'
+    name: Download Translations
+    if: ${{ inputs.step == 'download' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
       POEDITOR_API_TOKEN: ${{ secrets.POEDITOR_API_TOKEN }}
+      POEDITOR_PROJECT_ID: 200535
       VERSION: ${{ inputs.version }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
+      with:
+        fetch-depth: 0 # get all branches
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
       with:
