@@ -81,7 +81,7 @@
         (is (= (set (concat backfill-events realtime-events)) (set processed))))
 
       (testing "The realtime events are processed in order"
-        (search-test/ordered-subset? realtime-events processed))
+        (#'search-test/ordered-subset? realtime-events processed))
 
       (when dedupe?
         (testing "No phantom items are left in the set"
