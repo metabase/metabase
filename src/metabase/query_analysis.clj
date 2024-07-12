@@ -12,7 +12,14 @@
    [metabase.query-analysis.native-query-analyzer.replacement :as nqa.replacement]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(def ^:private realtime-queue-capacity 1000)
+
+(defonce ^:private queue (queue/bounded-transfer-queue realtime-queue-capacity {:dedupe? true}))
 
 (def ^:dynamic *parse-queries-in-test?*
   "Normally, a native card's query is parsed on every create/update. For most tests, this is an unnecessary
@@ -62,18 +69,23 @@
 
   Returns `nil` (and logs the error) if there was a parse error."
   [{card-id :id, query :dataset_query}]
+  (let [{:keys [explicit implicit] :as res} (query-field-ids query)
+        id->row          (fn [explicit? field-id]
+                           {:card_id            card-id
+                            :field_id           field-id
+                            :explicit_reference explicit?})
+        query-field-rows (concat
+                          (map (partial id->row true) explicit)
+                          (map (partial id->row false) implicit))]
+    ;; when the response is `nil`, it's a disabled parser, not unknown columns
+    (when (some? res)
+      (query-field/update-query-fields-for-card! card-id query-field-rows))))
+
+(defn safe-update-query-analysis-for-card!
+  "A version of [[update-query-analysis-for-card!]] that swallows any exceptions."
+  [card]
   (try
-    (let [{:keys [explicit implicit] :as res} (query-field-ids query)
-          id->row                             (fn [explicit? field-id]
-                                                {:card_id            card-id
-                                                 :field_id           field-id
-                                                 :explicit_reference explicit?})
-          query-field-rows                    (concat
-                                               (map (partial id->row true) explicit)
-                                               (map (partial id->row false) implicit))]
-      ;; when the response is `nil`, it's a disabled parser, not unknown columns
-      (when (some? res)
-        (query-field/update-query-fields-for-card! card-id query-field-rows)))
+    (update-query-analysis-for-card! card)
     (catch Exception e
       (log/error e "Error updating query fields"))))
 
@@ -126,3 +138,29 @@
     :native (replaced-inner-query-for-native-card q replacements)
     (throw (ex-info "We don't (yet) support replacing field and table refs in cards with MBQL queries"
                     {:card card :replacements replacements}))))
+
+(defn analyze-card!
+  "Update the analysis for the given card, if it is active."
+  [card-id]
+  (let [card (t2/select-one [:model/Card :id :archived :dataset_query] card-id)]
+    (cond
+      (not card)       (log/warnf "Card not found: %" card-id)
+      (:archived card) (log/warnf "Skipping archived card: %" card-id)
+      :else            (log/infof "Performing query analysis for card %s" card-id))
+    (when (and card (not (:archived card)))
+      (update-query-analysis-for-card! card))))
+
+(defn next-card-id!
+  "Get the id of the next card id to be analyzed. May block indefinitely, relies on producer."
+  []
+  (queue/blocking-take! queue))
+
+(defn analyze-async!
+  "Put the given card at the back of the high priority analysis queue, or drop it if the queue is full."
+  [card-id]
+  (queue/maybe-put! queue card-id))
+
+(defn analyze-sync!
+  "Synchronously hand-off the given card for analysis, at a low priority. May block indefinitely, relies on consumer."
+  [card-id]
+  (queue/blocking-put! queue card-id))
