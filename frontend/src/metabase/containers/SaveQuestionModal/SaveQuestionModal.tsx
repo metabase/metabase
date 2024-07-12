@@ -82,7 +82,7 @@ interface SaveQuestionModalProps {
 }
 
 interface FormValues {
-  saveType: string;
+  saveType: "overwrite" | "create";
   collection_id: CollectionId | null | undefined;
   name: string;
   description: string;
@@ -217,7 +217,12 @@ export const SaveQuestionModal = ({
     [originalQuestion, handleOverwrite, handleCreate],
   );
 
-  const isSavedQuestionChanged = useSelector(getIsSavedQuestionChanged);
+  // we care only about the very first result as question can be changed before
+  // the modal is closed
+  const isSavedQuestionChanged = useSelector(
+    getIsSavedQuestionChanged,
+    () => true,
+  );
   const showSaveType =
     isSavedQuestionChanged &&
     originalQuestion != null &&
