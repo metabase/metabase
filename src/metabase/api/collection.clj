@@ -1263,7 +1263,7 @@
   [:as {{:keys [namespace revision groups]} :body
         {:strs [skip_graph]} :query-params}]
   {namespace [:maybe ms/NonBlankString]
-   revision  ms/PositiveInt
+   revision  ms/Int
    groups :map
    skip_graph [:maybe ms/BooleanValue]}
   (api/check-superuser)
