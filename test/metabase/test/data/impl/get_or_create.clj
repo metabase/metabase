@@ -182,8 +182,7 @@
     (let [tables (t2/select :model/Table :db_id (:id db))
           fields (t2/select :model/Field {:where [:in :table_id (map :id tables)]})
           table-id->table (m/index-by :id tables)
-          table-name->field-name->field (-> (group-by :table_id fields)
-                                            (update-keys (comp :name table-id->table))
+          table-name->field-name->field (-> (group-by (comp :name table-id->table :table_id) fields)
                                             (update-vals (partial m/index-by :name)))
           table-name->pk-field (into {}
                                      (keep (fn [{:keys [name semantic_type table_id] :as field}]
