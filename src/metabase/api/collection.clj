@@ -1262,11 +1262,11 @@
   If `skip_graph` is true, it will only return the current revision"
   [:as {{:keys [namespace skip_graph revision groups]} :body}]
   {skip_graph [:maybe ms/BooleanValue]
-   namespace  [:maybe ms/NonBlankString]
+   namespace  [:maybe :keyword]
    groups     :map
    revision   ms/PositiveInt}
   (api/check-superuser)
-  (update-graph! (when namespace (keyword namespace))
+  (update-graph! namespace
                  (decode-graph {:revision revision :groups groups})
                  skip_graph))
 
