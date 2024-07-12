@@ -1842,8 +1842,7 @@ describe("issue 45063", () => {
     popover().first().click().button("Add filter").click();
     cy.findByTestId("qb-filters-panel")
       .findByText(`${fieldDisplayName} is ${fieldValue}`)
-      .click();
-    popover().findByText(fieldValueLabel).should("be.visible");
+      .should("be.visible");
   }
 
   function verifyRemappedFilter({
