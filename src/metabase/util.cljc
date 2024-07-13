@@ -1019,3 +1019,9 @@
      (let [buf (js/Uint8Array. max-length-bytes)
            result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}
        (subs s 0 (.-read result)))))
+
+(def ^:dynamic *ab-value*
+  "Dynamic variable used for A/B testing. See [[dev.perf.ab_measurement]] for details.
+
+  Normally unused, but it has a central location so it's easy to reference from code we want to measure."
+  nil)
