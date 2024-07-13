@@ -834,6 +834,13 @@ StackedChartCustomYAxisRange.args = {
   renderingContext,
 };
 
+export const SeriesOrderSettingsDoNotMatchSeriesCount = Template.bind({});
+SeriesOrderSettingsDoNotMatchSeriesCount.args = {
+  rawSeries: data.seriesOrderSettingsDoNotMatchSeriesCount as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
