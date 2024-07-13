@@ -1,0 +1,18 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto11
+    commands:
+      - echo Installing dependencies...
+  build:
+    commands:
+      - echo Build started on `date`
+      - chmod +x ./bin/build.sh
+      - ./bin/build.sh
+      - echo Build completed on `date`
+
+artifacts:
+  files:
+    - target/uberjar/metabase.jar
