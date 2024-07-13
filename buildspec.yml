@@ -6,6 +6,14 @@ phases:
       java: corretto11
     commands:
       - echo Installing dependencies...
+      # Install Node.js and Yarn
+      - curl -sL https://deb.nodesource.com/setup_14.x | bash -
+      - apt-get install -y nodejs
+      - npm install -g yarn
+      # Install Clojure
+      - curl -O https://download.clojure.org/install/linux-install-1.10.3.1040.sh
+      - chmod +x linux-install-1.10.3.1040.sh
+      - ./linux-install-1.10.3.1040.sh
   build:
     commands:
       - echo Build started on `date`
