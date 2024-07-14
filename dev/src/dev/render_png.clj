@@ -50,6 +50,15 @@
       :unix (sh/sh "xdg-open" (str f)))
     nil))
 
+(defn open-png-bytes
+  "Given a byte array, writes it to a temporary file, then opens that file in the default application for png files."
+  [bytes]
+  (let [tmp-file (File/createTempFile "card-png" ".png")]
+    (with-open [w (java.io.FileOutputStream. tmp-file)]
+      (.write w ^bytes bytes))
+    (.deleteOnExit tmp-file)
+    (open tmp-file)))
+
 (defn render-card-to-png
   "Given a card ID, renders the card to a png and opens it. Be aware that the png rendered on a dev machine may not
   match what's rendered on another system, like a docker container."
@@ -62,12 +71,8 @@
         png-bytes     (render/render-pulse-card-to-png (pulse/defaulted-timezone card)
                                                        card
                                                        query-results
-                                                       1000)
-        tmp-file      (File/createTempFile "card-png" ".png")]
-    (with-open [w (java.io.FileOutputStream. tmp-file)]
-      (.write w ^bytes png-bytes))
-    (.deleteOnExit tmp-file)
-    (open tmp-file)))
+                                                       1000)]
+    (open-png-bytes png-bytes)))
 
 (defn render-pulse-card
   "Render a pulse card as a data structure"
