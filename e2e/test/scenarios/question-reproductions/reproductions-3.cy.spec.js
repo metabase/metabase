@@ -44,6 +44,10 @@ import {
   testTooltipPairs,
   join,
   visitQuestion,
+  tableHeaderClick,
+  withDatabase,
+  visitModel,
+  setModelMetadata,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -1333,6 +1337,63 @@ describe("issue 40399", () => {
   });
 });
 
+describe("issue 43057", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should differentiate between date and datetime filters with 00:00 time (metabase#43057)", () => {
+    openOrdersTable();
+
+    cy.log("set the date and verify the filter and results");
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    tableHeaderClick("Created At");
+    popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByText("Specific dates…").click();
+      cy.findByText("On").click();
+      cy.findByLabelText("Date").clear().type("November 18, 2024");
+      cy.button("Add filter").click();
+    });
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(16);
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is on Nov 18, 2024")
+      .should("be.visible");
+
+    cy.log("set time to 00:00 and verify the filter and results");
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is on Nov 18, 2024")
+      .click();
+    popover().within(() => {
+      cy.button("Add time").click();
+      cy.findByLabelText("Time").should("have.value", "00:00");
+      cy.button("Update filter").click();
+    });
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(1);
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is Nov 18, 2024, 12:00 AM")
+      .should("be.visible");
+
+    cy.log("remove time and verify the filter and results");
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is Nov 18, 2024, 12:00 AM")
+      .click();
+    popover().within(() => {
+      cy.findByLabelText("Time").should("have.value", "00:00");
+      cy.button("Remove time").click();
+      cy.button("Update filter").click();
+    });
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(16);
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is on Nov 18, 2024")
+      .should("be.visible");
+  });
+});
+
 describe("issue 19894", () => {
   beforeEach(() => {
     restore();
@@ -1522,5 +1583,473 @@ describe("issue 44668", () => {
       cy.findByText("Add another series").should("not.exist");
       cy.findByText("Add series breakout").should("not.exist");
     });
+  });
+});
+
+// TODO: unskip when metabase#44974 is fixed
+describe.skip("issue 44974", () => {
+  const PG_DB_ID = 2;
+
+  beforeEach(() => {
+    restore("postgres-12");
+    cy.signInAsAdmin();
+  });
+
+  it("entity picker should not offer to join with a table or a question from a different database (metabase#44974)", () => {
+    withDatabase(PG_DB_ID, ({ PEOPLE_ID }) => {
+      const questionDetails = {
+        name: "Question 44794 in Postgres DB",
+        query: {
+          database: PG_DB_ID,
+          "source-table": PEOPLE_ID,
+          limit: 1,
+        },
+      };
+
+      createQuestion(questionDetails, {
+        // Visit question to put it in recents
+        visitQuestion: true,
+      });
+
+      openOrdersTable({ mode: "notebook" });
+      join();
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Recents").should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+        cy.findByText(questionDetails.name).should("not.exist");
+      });
+    });
+  });
+});
+
+describe("issue 38989", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should be impossible to join with a table or question which is not in the same database (metabase#38989)", () => {
+    createQuestion(
+      {
+        query: {
+          "source-table": PEOPLE_ID,
+          fields: [
+            ["field", PEOPLE.ID, { "base-type": "type/Number" }],
+            ["field", PEOPLE.EMAIL, { "base-type": "type/Text" }],
+          ],
+          joins: [
+            {
+              fields: "all",
+              alias: "Orders",
+              // This is not a valid table ID in the Sample Database
+              "source-table": 123,
+              strategy: "left-join",
+              condition: [
+                "=",
+                ["field", PEOPLE.ID, null],
+                ["field", ORDERS.USER_ID, { "join-alias": "Orders" }],
+              ],
+            },
+          ],
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+
+    cy.findByTestId("query-builder-main")
+      .findByText("Show error details")
+      .click();
+
+    cy.findByTestId("query-builder-main")
+      .findByText(
+        /either it does not exist, or it belongs to a different Database/,
+      )
+      .should("exist");
+  });
+});
+
+describe("issue 39771", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show tooltip for ellipsified text (metabase#39771)", () => {
+    createQuestion(
+      {
+        query: {
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              "CREATED_AT",
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "quarter-of-year",
+              },
+            ],
+          ],
+          "source-query": {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month",
+                },
+              ],
+            ],
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    openNotebook();
+    getNotebookStep("summarize", { stage: 1 })
+      .findByTestId("breakout-step")
+      .findByText("Created At: Month: Quarter of year")
+      .click();
+
+    popover().findByText("by quarter of year").realHover();
+
+    popover().then(([$popover]) => {
+      const popoverStyle = window.getComputedStyle($popover);
+      const popoverZindex = parseInt(popoverStyle.zIndex, 10);
+
+      cy.findByTestId("ellipsified-tooltip").within(([$tooltip]) => {
+        cy.findByText("by quarter of year").should("be.visible");
+
+        const tooltipStyle = window.getComputedStyle($tooltip);
+        const tooltipZindex = parseInt(tooltipStyle.zIndex, 10);
+
+        // resort to asserting zIndex because should("be.visible") passes unexpectedly
+        expect(tooltipZindex).to.be.gte(popoverZindex);
+      });
+    });
+  });
+});
+
+describe("issue 45063", () => {
+  function createGuiQuestion({ sourceTableId }) {
+    const questionDetails = {
+      name: "Question",
+      query: {
+        "source-table": sourceTableId,
+      },
+    };
+    createQuestion(questionDetails, { wrapId: true });
+  }
+
+  function createGuiModel({ sourceTableId }) {
+    const mbqlModelDetails = {
+      name: "Model",
+      type: "model",
+      query: {
+        "source-table": sourceTableId,
+      },
+    };
+    createQuestion(mbqlModelDetails, { wrapId: true, idAlias: "modelId" });
+  }
+
+  function createNativeModel({
+    tableName,
+    fieldId,
+    fieldName,
+    fieldSemanticType,
+  }) {
+    const nativeModelDetails = {
+      name: "Native Model",
+      type: "model",
+      native: {
+        query: `SELECT * FROM ${tableName}`,
+      },
+    };
+    createNativeQuestion(nativeModelDetails, {
+      wrapId: true,
+      idAlias: "modelId",
+    }).then(({ body: model }) => {
+      cy.log("populate result_metadata");
+      cy.request("POST", `/api/card/${model.id}/query`);
+      cy.log("map columns to database fields");
+      setModelMetadata(model.id, field => {
+        if (field.name === fieldName) {
+          return { ...field, id: fieldId, semantic_type: fieldSemanticType };
+        }
+        return field;
+      });
+    });
+  }
+
+  function setListValues({ fieldId }) {
+    cy.request("PUT", `/api/field/${fieldId}`, {
+      has_field_values: "list",
+    });
+  }
+
+  function setSearchValues({ fieldId }) {
+    cy.request("PUT", `/api/field/${fieldId}`, {
+      has_field_values: "search",
+    });
+  }
+
+  function setForeignKeyRemapping({
+    sourceFieldId,
+    targetFieldId,
+    remappedDisplayName,
+  }) {
+    cy.request("POST", `/api/field/${sourceFieldId}/dimension`, {
+      type: "external",
+      name: remappedDisplayName,
+      human_readable_field_id: targetFieldId,
+    });
+  }
+
+  function verifyListFilter({ fieldDisplayName, fieldValue, fieldValueLabel }) {
+    tableHeaderClick(fieldDisplayName);
+    popover().findByText("Filter by this column").click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Search the list").type(fieldValueLabel);
+      cy.findByText(fieldValueLabel).click();
+      cy.button("Add filter").click();
+    });
+    cy.findByTestId("qb-filters-panel")
+      .findByText(`${fieldDisplayName} is ${fieldValue}`)
+      .click();
+    popover().findByLabelText(fieldValueLabel).should("be.checked");
+  }
+
+  function verifySearchFilter({
+    fieldDisplayName,
+    fieldValue,
+    fieldValueLabel,
+  }) {
+    tableHeaderClick(fieldDisplayName);
+    popover().findByText("Filter by this column").click();
+    popover()
+      .findByPlaceholderText(`Search by ${fieldDisplayName}`)
+      .type(fieldValueLabel);
+    popover().last().findByText(fieldValueLabel).click();
+    popover().first().click().button("Add filter").click();
+    cy.findByTestId("qb-filters-panel")
+      .findByText(`${fieldDisplayName} is ${fieldValue}`)
+      .should("be.visible");
+  }
+
+  function verifyRemappedFilter({
+    visitCard,
+    fieldId,
+    fieldDisplayName,
+    fieldValue,
+    fieldValueLabel,
+    expectedRowCount,
+  }) {
+    cy.log("list values");
+    cy.signInAsAdmin();
+    setListValues({ fieldId });
+    cy.signInAsNormalUser();
+    visitCard();
+    verifyListFilter({ fieldDisplayName, fieldValue, fieldValueLabel });
+    assertQueryBuilderRowCount(expectedRowCount);
+
+    cy.log("search values");
+    cy.signInAsAdmin();
+    setSearchValues({ fieldId });
+    cy.signInAsNormalUser();
+    visitCard();
+    verifySearchFilter({ fieldDisplayName, fieldValue, fieldValueLabel });
+    assertQueryBuilderRowCount(expectedRowCount);
+  }
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  describe("type/PK -> type/Name remapping (metabase#45063)", () => {
+    it("should work with questions", () => {
+      createGuiQuestion({ sourceTableId: PEOPLE_ID });
+      verifyRemappedFilter({
+        visitCard: () => visitQuestion("@questionId"),
+        fieldId: PEOPLE.ID,
+        fieldDisplayName: "ID",
+        fieldValue: 1,
+        fieldValueLabel: "Hudson Borer",
+        expectedRowCount: 1,
+      });
+    });
+
+    it("should work with models", () => {
+      createGuiModel({ sourceTableId: PEOPLE_ID });
+      verifyRemappedFilter({
+        visitCard: () => cy.get("@modelId").then(visitModel),
+        fieldId: PEOPLE.ID,
+        fieldDisplayName: "ID",
+        fieldValue: 1,
+        fieldValueLabel: "Hudson Borer",
+        expectedRowCount: 1,
+      });
+    });
+
+    it("should work with native models", () => {
+      createNativeModel({
+        tableName: "PEOPLE",
+        fieldId: PEOPLE.ID,
+        fieldName: "ID",
+        fieldSemanticType: "type/PK",
+      });
+      verifyRemappedFilter({
+        visitCard: () => cy.get("@modelId").then(visitModel),
+        fieldId: PEOPLE.ID,
+        fieldDisplayName: "ID",
+        fieldValue: 1,
+        fieldValueLabel: "Hudson Borer",
+        expectedRowCount: 1,
+      });
+    });
+  });
+
+  describe("type/FK -> column remapping (metabase#45063)", () => {
+    beforeEach(() => {
+      setForeignKeyRemapping({
+        sourceFieldId: ORDERS.PRODUCT_ID,
+        targetFieldId: PRODUCTS.TITLE,
+        remappedDisplayName: "Product ID",
+      });
+    });
+
+    it("should work with questions", () => {
+      createGuiQuestion({ sourceTableId: ORDERS_ID });
+      verifyRemappedFilter({
+        visitCard: () => visitQuestion("@questionId"),
+        fieldId: ORDERS.PRODUCT_ID,
+        fieldDisplayName: "Product ID",
+        fieldValue: 1,
+        fieldValueLabel: "Rustic Paper Wallet",
+        expectedRowCount: 93,
+      });
+    });
+
+    it("should work with models", () => {
+      createGuiModel({ sourceTableId: ORDERS_ID });
+      verifyRemappedFilter({
+        visitCard: () => cy.get("@modelId").then(visitModel),
+        fieldId: ORDERS.PRODUCT_ID,
+        fieldDisplayName: "Product ID",
+        fieldValue: 1,
+        fieldValueLabel: "Rustic Paper Wallet",
+        expectedRowCount: 93,
+      });
+    });
+
+    it("should work with native models", () => {
+      createNativeModel({
+        tableName: "ORDERS",
+        fieldId: ORDERS.PRODUCT_ID,
+        fieldName: "PRODUCT_ID",
+        fieldSemanticType: "type/FK",
+      });
+      verifyRemappedFilter({
+        visitCard: () => cy.get("@modelId").then(visitModel),
+        fieldId: ORDERS.PRODUCT_ID,
+        fieldDisplayName: "PRODUCT_ID",
+        fieldValue: 1,
+        fieldValueLabel: "Rustic Paper Wallet",
+        expectedRowCount: 93,
+      });
+    });
+  });
+});
+
+describe("issue 41464", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not overlap 'no results' and the loading state (metabase#41464)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          filter: [
+            ">",
+            ["field", ORDERS.TOTAL, { "base-type": "type/Float" }],
+            1000,
+          ],
+        },
+        parameters: [],
+      },
+    });
+
+    cy.intercept(
+      {
+        method: "POST",
+        url: "/api/dataset",
+        middleware: true,
+      },
+      req => {
+        req.on("response", res => {
+          // Throttle the response to 50kbps
+          res.setThrottle(50);
+        });
+      },
+    );
+
+    cy.findByTestId("filter-pill")
+      .should("have.text", "Total is greater than 1000")
+      .icon("close")
+      .click();
+
+    cy.findByTestId("query-builder-main").within(() => {
+      cy.findByTestId("loading-indicator").should("be.visible");
+      cy.findByText("No results!", { timeout: 500 }).should("not.exist");
+    });
+  });
+});
+
+describe.skip("issue 45359", () => {
+  beforeEach(() => {
+    restore();
+    cy.intercept("/app/fonts/Lato/lato-v16-latin-regular.woff2").as(
+      "font-regular",
+    );
+    cy.intercept("/app/fonts/Lato/lato-v16-latin-700.woff2").as("font-bold");
+    cy.signInAsAdmin();
+  });
+
+  it("loads app fonts correctly (metabase#45359)", () => {
+    openOrdersTable({ mode: "notebook" });
+
+    getNotebookStep("data")
+      .findByText("Orders")
+      .should("have.css", "font-family", "Lato, sans-serif");
+
+    cy.get("@font-regular.all").should("have.length", 1);
+    cy.get("@font-regular").should(({ response }) => {
+      expect(response).to.include({ statusCode: 200 });
+    });
+
+    cy.get("@font-bold.all").should("have.length", 1);
+    cy.get("@font-bold").should(({ response }) => {
+      expect(response).to.include({ statusCode: 200 });
+    });
+
+    cy.document()
+      .then(document => document.fonts.ready)
+      .then(fonts => {
+        cy.wrap(fonts).invoke("check", "16px Lato").should("be.true");
+      });
   });
 });

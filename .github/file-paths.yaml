@@ -38,10 +38,14 @@ frontend_specs: &frontend_specs
   - "jest.config.json"
   - "jest.tz.unit.conf.json"
 
+release_source: &release_sources
+  - "release/**"
+
 frontend_all: &frontend_all
   - *frontend_ci
   - *frontend_sources
   - *frontend_specs
+  - *release_sources
 
 frontend_loki_ci: &frontend_loki_ci
   - ".github/workflows/loki.yml"
@@ -104,6 +108,10 @@ e2e_specs: &e2e_specs
   - "e2e/runner/**"
   - "e2e/support/**"
   - "e2e/snapshot*/**"
+
+e2e_cross_version: &e2e_cross_version
+  - ".github/workflows/e2e-cross-version.yml"
+  - "e2e/test/scenarios/cross-version/**"
 
 e2e_all:
   - *default

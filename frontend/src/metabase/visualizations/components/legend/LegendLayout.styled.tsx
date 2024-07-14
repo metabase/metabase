@@ -19,7 +19,6 @@ export const LegendContainer = styled.div<{
   isQueryBuilder: boolean;
 }>`
   display: ${({ isVertical }) => (isVertical ? "block" : "flex")};
-  max-width: ${({ isVertical }) => (isVertical ? "25%" : "")};
   max-width: ${({ isVertical }) => (isVertical ? "min(25%, 20rem)" : "")};
   margin-right: ${({ isVertical, isQueryBuilder }) =>
     isVertical ? (isQueryBuilder ? "2.5rem" : "0.5rem") : ""};

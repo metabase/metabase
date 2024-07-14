@@ -1,6 +1,8 @@
 import {
   READ_ONLY_PERSONAL_COLLECTION_ID,
   FIRST_COLLECTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   popover,
@@ -655,7 +657,7 @@ describe("scenarios > collections > trash", () => {
 
     cy.log("Make sure trash is selected for root trash collection");
     cy.visit("/trash");
-    assertTrashSelectinInNavigationSidebar();
+    assertTrashSelectedInNavigationSidebar();
 
     cy.log("Make sure trash is selected for a trashed collection");
     cy.get("@collection").then(collection => {
@@ -664,16 +666,16 @@ describe("scenarios > collections > trash", () => {
       );
       visitCollection(collection.id);
       cy.wait("@getCollection");
-      assertTrashSelectinInNavigationSidebar();
+      assertTrashSelectedInNavigationSidebar();
     });
 
     cy.log("Make sure trash is selected for a trashed dashboard");
     cy.get("@dashboard").then(dashboard => {
-      cy.intercept("GET", `/api/dashboard/${dashboard.id}`).as("getDashboard");
+      cy.intercept("GET", `/api/dashboard/${dashboard.id}*`).as("getDashboard");
       visitDashboard(dashboard.id);
       cy.wait("@getDashboard");
       openNavigationSidebar();
-      assertTrashSelectinInNavigationSidebar();
+      assertTrashSelectedInNavigationSidebar();
     });
 
     cy.log("Make sure trash is selected for a trashed question");
@@ -685,8 +687,30 @@ describe("scenarios > collections > trash", () => {
       visitQuestion(question.id);
       cy.wait("@getQuestionResult");
       openNavigationSidebar();
-      assertTrashSelectinInNavigationSidebar();
+      assertTrashSelectedInNavigationSidebar();
     });
+  });
+
+  it.skip("should open only one context menu at a time (metabase#44910)", () => {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { archived: true });
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+      archived: true,
+    });
+    cy.visit("/trash");
+
+    toggleEllipsisMenuFor("Orders");
+    cy.findAllByRole("dialog")
+      .should("have.length", 1)
+      .and("contain", "Move")
+      .and("contain", "Restore")
+      .and("contain", "Delete permanently");
+
+    toggleEllipsisMenuFor("Orders, Count");
+    cy.findAllByRole("dialog")
+      .should("have.length", 1)
+      .and("contain", "Move")
+      .and("contain", "Restore")
+      .and("contain", "Delete permanently");
   });
 });
 
@@ -769,7 +793,7 @@ function selectItem(name) {
     .within(() => cy.findByRole("checkbox").click());
 }
 
-function assertTrashSelectinInNavigationSidebar() {
+function assertTrashSelectedInNavigationSidebar() {
   navigationSidebar().within(() => {
     cy.findByText("Trash")
       .parents("li")

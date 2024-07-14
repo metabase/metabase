@@ -263,3 +263,42 @@
       (is (= {:perms/view-data :unrestricted
               :perms/create-queries :query-builder-and-native}
              (query-perms/required-perms query))))))
+
+(deftest ^:parallel native-query-referenced-card-permissions-test
+  (testing "Check permissions for native query card reference parameters (the `:metabase.models.query.permissions/referenced-card-ids` key(s))"
+    (mt/with-temp [:model/Collection {collection-1-id :id} {}
+                   :model/Collection {collection-2-id :id} {}
+                   :model/Card       {card-1-id :id}       {:collection_id collection-1-id}
+                   :model/Card       {card-2-id :id}       {:collection_id collection-2-id}]
+      (testing "native query"
+        (is (= {:perms/create-queries :query-builder-and-native
+                :perms/view-data      :unrestricted
+                :paths                #{(format "/collection/%d/read/" collection-1-id)
+                                        (format "/collection/%d/read/" collection-2-id)}}
+               (query-perms/required-perms
+                {:database                         (mt/id)
+                 :type                             :native
+                 :native                           "SELECT * FROM (SELECT * FROM whatever);"
+                 ::query-perms/referenced-card-ids #{card-1-id card-2-id}}))))
+      (testing "MBQL query with native source queries"
+        (let [native-query {:database (mt/id)
+                            :type     :query
+                            :query    {:source-query {:native                           "SELECT * FROM (SELECT * FROM whatever);"
+                                                      ::query-perms/referenced-card-ids #{card-1-id}}
+                                       :joins        [{:alias        "J"
+                                                       :source-query {:native                           "SELECT * FROM (SELECT * FROM whatever);"
+                                                                      ::query-perms/referenced-card-ids #{card-2-id}}
+                                                       :condition    [:= true false]}]}}]
+          (is (= {:perms/create-queries :query-builder-and-native
+                  :perms/view-data      :unrestricted
+                  :paths                #{(format "/collection/%d/read/" collection-1-id)
+                                          (format "/collection/%d/read/" collection-2-id)}}
+                 (query-perms/required-perms native-query)))
+          (testing "pMBQL query"
+            (is (= {:perms/create-queries :query-builder-and-native
+                    :perms/view-data      :unrestricted
+                    :paths                #{(format "/collection/%d/read/" collection-1-id)
+                                            (format "/collection/%d/read/" collection-2-id)}}
+                   (query-perms/required-perms
+                    (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                               (lib/->pMBQL native-query)))))))))))

@@ -33,7 +33,7 @@ import {
   VirtualDashCardOverlayRoot,
   VirtualDashCardOverlayText,
 } from "./DashCard.styled";
-import { DashCardMenuConnected } from "./DashCardMenu/DashCardMenu";
+import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import type {
   CardSlownessStatus,
@@ -46,7 +46,7 @@ interface DashCardVisualizationProps {
   dashcard: DashboardCard;
   series: Series;
   mode?: QueryClickActionsMode | Mode;
-  href: string | undefined;
+  getHref?: () => string | undefined;
 
   gridSize: {
     width: number;
@@ -94,7 +94,7 @@ export function DashCardVisualization({
   dashboard,
   series,
   mode,
-  href,
+  getHref,
   gridSize,
   gridItemWidth,
   totalNumGridCols,
@@ -195,7 +195,7 @@ export function DashCardVisualization({
     }
 
     const mainSeries = series[0] as unknown as Dataset;
-    const shouldShowDashCardMenu = DashCardMenuConnected.shouldRender({
+    const shouldShowDashCardMenu = DashCardMenu.shouldRender({
       question,
       result: mainSeries,
       isXray,
@@ -209,7 +209,7 @@ export function DashCardVisualization({
     }
 
     return (
-      <DashCardMenuConnected
+      <DashCardMenu
         question={question}
         result={mainSeries}
         dashcardId={dashcard.id}
@@ -246,7 +246,7 @@ export function DashCardVisualization({
       rawSeries={series}
       metadata={metadata}
       mode={mode}
-      href={href}
+      getHref={getHref}
       gridSize={gridSize}
       totalNumGridCols={totalNumGridCols}
       headerIcon={headerIcon}

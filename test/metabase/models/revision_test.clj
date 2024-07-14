@@ -355,8 +355,8 @@
   (mt/with-model-cleanup [:model/Revision]
     (testing "Check that reverting to a previous revision adds an appropriate revision"
       (t2.with-temp/with-temp [Card {card-id :id}]
-        (push-fake-revision! card-id, :name "Tips Created by Day")
-        (push-fake-revision! card-id, :name "Spots Created by Day")
+        (push-fake-revision! card-id :name "Tips Created by Day")
+        (push-fake-revision! card-id :name "Spots Created by Day")
         (let [[_ {old-revision-id :id}] (revision/revisions ::FakedCard card-id)]
           (revision/revert! {:entity ::FakedCard, :id card-id, :user-id (mt/user->id :rasta), :revision-id old-revision-id})
           (is (partial=

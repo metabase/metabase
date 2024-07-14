@@ -413,11 +413,15 @@
           (throw e))))))
 
 (defn dashboard-param-values
-  "Common implementation for fetching parameter values for embedding and preview-embedding."
-  [token searched-param-id prefix id-query-params]
+  "Common implementation for fetching parameter values for embedding and preview-embedding.
+  Optionally pass a map with `:preview` containing `true` (or some non-falsy value) to disable checking
+  if the dashboard is 'published'. This is intended to power the `preview_embed` api endpoints.
+  The `:preview` key will default to `false`."
+  [token searched-param-id prefix id-query-params
+   & {:keys [preview] :or {preview false}}]
   (let [unsigned-token                       (embed/unsign token)
         dashboard-id                         (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        _                                    (check-embedding-enabled-for-dashboard dashboard-id)
+        _                                    (when-not preview (check-embedding-enabled-for-dashboard dashboard-id))
         slug-token-params                    (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         {parameters       :parameters
          embedding-params :embedding_params} (t2/select-one :model/Dashboard :id dashboard-id)
@@ -436,7 +440,7 @@
       (let [merged-id-params (param-values-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
         (try
           (binding [api/*current-user-permissions-set* (atom #{"/"})
-                    api/*is-superuser?*                 true]
+                    api/*is-superuser?*                true]
             (api.dashboard/param-values (t2/select-one :model/Dashboard :id dashboard-id) searched-param-id merged-id-params prefix))
           (catch Throwable e
             (throw (ex-info (.getMessage e)

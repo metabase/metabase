@@ -1,20 +1,36 @@
 import cx from "classnames";
+import { t } from "ttag";
 
+import {
+  SdkError,
+  SdkLoader,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
-import { navigateToNewCardInsideQB } from "metabase/query_builder/actions";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 
 import { useInteractiveQuestionContext } from "../context";
-import { useInteractiveQuestionData } from "../hooks";
 
 export const QuestionVisualization = () => {
-  const dispatch = useDispatch();
+  const {
+    question,
+    queryResults,
+    mode,
+    isQuestionLoading,
+    isQueryRunning,
+    onNavigateBack,
+    onNavigateToNewCard,
+  } = useInteractiveQuestionContext();
 
-  const { card, isQueryRunning, question, result } =
-    useInteractiveQuestionData();
+  if (isQuestionLoading) {
+    return <SdkLoader />;
+  }
 
-  const { mode, onNavigateBack } = useInteractiveQuestionContext();
+  if (!question || !queryResults) {
+    return <SdkError message={t`Question not found`} />;
+  }
+
+  const [result] = queryResults;
+  const card = question.card();
 
   return (
     <QueryVisualization
@@ -28,9 +44,7 @@ export const QuestionVisualization = () => {
       result={result}
       noHeader
       mode={mode}
-      navigateToNewCardInsideQB={(props: any) => {
-        dispatch(navigateToNewCardInsideQB(props));
-      }}
+      navigateToNewCardInsideQB={onNavigateToNewCard}
       onNavigateBack={onNavigateBack}
     />
   );

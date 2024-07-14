@@ -4,8 +4,11 @@ import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
 
 import type { DatePickerOperator, SpecificDatePickerValue } from "../types";
 
-import { DateRangePicker } from "./DateRangePicker";
-import { SingleDatePicker } from "./SingleDatePicker";
+import { DateRangePicker, type DateRangePickerValue } from "./DateRangePicker";
+import {
+  SingleDatePicker,
+  type SingleDatePickerValue,
+} from "./SingleDatePicker";
 import { TabList } from "./SpecificDatePicker.styled";
 import {
   coerceValue,
@@ -13,8 +16,8 @@ import {
   getDefaultValue,
   getTabs,
   isDateRange,
-  setDate,
-  setDateRange,
+  setDateTime,
+  setDateTimeRange,
   setOperator,
 } from "./utils";
 
@@ -46,12 +49,15 @@ export function SpecificDatePicker({
     }
   };
 
-  const handleDateChange = (date: Date) => {
-    setValue(setDate(value, date));
+  const handleDateChange = ({ date, hasTime }: SingleDatePickerValue) => {
+    setValue(setDateTime(value, date, hasTime));
   };
 
-  const handleDateRangeChange = (dates: [Date, Date]) => {
-    setValue(setDateRange(value, dates));
+  const handleDateRangeChange = ({
+    dateRange,
+    hasTime,
+  }: DateRangePickerValue) => {
+    setValue(setDateTimeRange(value, dateRange, hasTime));
   };
 
   const handleSubmit = () => {
@@ -75,14 +81,14 @@ export function SpecificDatePicker({
         <Tabs.Panel key={tab.operator} value={tab.operator}>
           {isDateRange(value.values) ? (
             <DateRangePicker
-              value={value.values}
+              value={{ dateRange: value.values, hasTime: value.hasTime }}
               isNew={isNew}
               onChange={handleDateRangeChange}
               onSubmit={handleSubmit}
             />
           ) : (
             <SingleDatePicker
-              value={getDate(value)}
+              value={{ date: getDate(value), hasTime: value.hasTime }}
               isNew={isNew}
               onChange={handleDateChange}
               onSubmit={handleSubmit}

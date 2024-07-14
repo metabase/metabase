@@ -45,7 +45,6 @@ import {
   SET_UI_CONTROLS,
   RESET_UI_CONTROLS,
   CANCEL_DATASET_CHANGES,
-  SET_RESULTS_METADATA,
   SET_METADATA_DIFF,
   ZOOM_IN_ROW,
   RESET_ROW_ZOOM,
@@ -373,12 +372,10 @@ export const card = handleActions(
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
     [QUERY_COMPLETED]: {
-      next: (state, { payload: { card, modelMetadata } }) => ({
+      next: (state, { payload: { card } }) => ({
         ...state,
         display: card.display,
-        result_metadata: modelMetadata
-          ? modelMetadata.columns
-          : card.result_metadata,
+        result_metadata: card.result_metadata,
         visualization_settings: card.visualization_settings,
       }),
     },
@@ -453,39 +450,15 @@ export const lastRunCard = handleActions(
   null,
 );
 
-function mergeMetadatWithQueryResults(queryResults, metadata) {
-  const [result] = queryResults;
-  const { columns } = metadata;
-  return [
-    {
-      ...result,
-      data: {
-        ...result.data,
-        cols: columns,
-        results_metadata: metadata,
-      },
-    },
-  ];
-}
-
 // The results of a query execution.  optionally an error if the query fails to complete successfully.
 export const queryResults = handleActions(
   {
     [RESET_QB]: { next: (state, { payload }) => null },
     [QUERY_COMPLETED]: {
-      next: (state, { payload: { queryResults, modelMetadata } }) => {
-        return modelMetadata
-          ? mergeMetadatWithQueryResults(queryResults, modelMetadata)
-          : queryResults;
-      },
+      next: (state, { payload: { queryResults } }) => queryResults,
     },
     [QUERY_ERRORED]: {
       next: (state, { payload }) => (payload ? [payload] : state),
-    },
-    [SET_RESULTS_METADATA]: {
-      next: (state, { payload: results_metadata }) => {
-        return mergeMetadatWithQueryResults(state, results_metadata);
-      },
     },
     [CLEAR_QUERY_RESULT]: { next: (state, { payload }) => null },
   },
@@ -498,12 +471,10 @@ export const metadataDiff = handleActions(
     [API_UPDATE_QUESTION]: { next: () => ({}) },
     [SET_METADATA_DIFF]: {
       next: (state, { payload }) => {
-        const { field_ref, changes } = payload;
+        const { name, changes } = payload;
         return {
           ...state,
-          [field_ref]: state[field_ref]
-            ? merge(state[field_ref], changes)
-            : changes,
+          [name]: state[name] ? merge(state[name], changes) : changes,
         };
       },
     },

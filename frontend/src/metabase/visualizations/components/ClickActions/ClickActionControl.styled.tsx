@@ -60,9 +60,7 @@ export const SortControl = styled(Button)`
   color: var(--mb-color-brand);
   border: 1px solid ${({ theme }) => alpha(theme.fn.themeColor("brand"), 0.35)};
   line-height: 1;
-
   font-size: 0.75rem;
-
   padding: 0.1875rem 0.875rem 0.0625rem;
   border-radius: 100px;
 
@@ -77,7 +75,6 @@ export const FormattingControl = styled(Button)`
   color: ${({ theme }) => alpha(theme.fn.themeColor("text-light"), 0.65)};
   margin-left: auto;
   line-height: 1;
-
   border: none;
   padding: 0.125rem 0.25rem;
 

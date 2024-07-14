@@ -1,7 +1,13 @@
 import type { SpecificDatePickerValue } from "../../types";
-import { SimpleDateRangePicker } from "../DateRangePicker";
-import { SimpleSingleDatePicker } from "../SingleDatePicker";
-import { getDate, isDateRange, setDate, setDateRange } from "../utils";
+import {
+  type DateRangePickerValue,
+  SimpleDateRangePicker,
+} from "../DateRangePicker";
+import {
+  SimpleSingleDatePicker,
+  type SingleDatePickerValue,
+} from "../SingleDatePicker";
+import { getDate, isDateRange, setDateTime, setDateTimeRange } from "../utils";
 
 interface SimpleSpecificDatePickerProps {
   value: SpecificDatePickerValue;
@@ -12,22 +18,25 @@ export function SimpleSpecificDatePicker({
   value,
   onChange,
 }: SimpleSpecificDatePickerProps) {
-  const handleDateChange = (date: Date) => {
-    onChange(setDate(value, date));
+  const handleDateChange = ({ date, hasTime }: SingleDatePickerValue) => {
+    onChange(setDateTime(value, date, hasTime));
   };
 
-  const handleDateRangeChange = (dates: [Date, Date]) => {
-    onChange(setDateRange(value, dates));
+  const handleDateRangeChange = ({
+    dateRange,
+    hasTime,
+  }: DateRangePickerValue) => {
+    onChange(setDateTimeRange(value, dateRange, hasTime));
   };
 
   return isDateRange(value.values) ? (
     <SimpleDateRangePicker
-      value={value.values}
+      value={{ dateRange: value.values, hasTime: value.hasTime }}
       onChange={handleDateRangeChange}
     />
   ) : (
     <SimpleSingleDatePicker
-      value={getDate(value)}
+      value={{ date: getDate(value), hasTime: value.hasTime }}
       onChange={handleDateChange}
     />
   );
