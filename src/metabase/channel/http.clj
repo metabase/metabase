@@ -1,7 +1,9 @@
+
 (ns metabase.channel.http
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
+   [java-time :as t]
    [metabase.channel.core :as channel]
    [metabase.channel.shared :as channel.shared]
    [metabase.pulse.render :as render]
@@ -25,7 +27,7 @@
    [:method       {:optional true} [:enum "get" "post" "put"]]
    [:query-params {:optional true} [:maybe [:map-of string-or-keyword :any]]]
    [:headers      {:optional true} [:maybe [:map-of string-or-keyword :any]]]
-   [:body         {:optional true} :string]])
+   [:body         {:optional true} :any]])
 
 (mu/defmethod channel/send! :channel/http
   [{:keys [url method auth-method auth-info]} :- HTTPDetails
@@ -54,7 +56,7 @@
         ;; throw an appriopriate error if it's a connection error
         (if (= ::http/unexceptional-status (:type data))
           (throw (ex-info (tru "Failed to connect to channel") {:request-status (:status data)
-                                                                :request-body  (:body data)}))
+                                                                :request-body   (:body data)}))
           (throw e))))))
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -68,15 +70,22 @@
      :rows (:rows data)}))
 
 (mu/defmethod channel/render-notification [:channel/http :notification/alert] :- [:sequential HTTPDetails]
-  [_channel-type {:keys [card pulse payload]} _recipients]
-  (let [request-body {:question_id        (:id card)
-                      :question_name      (:name card)
-                      :question_url       (urls/card-url (:id card))
-                      :alert_creator_id   (get-in pulse [:creator :id])
-                      :alert_creator_name (get-in pulse [:creator :common_name])
-                      :visualization      (let [{:keys [card dashcard result]} payload]
-                                            (render/render-pulse-card-to-base64 (channel.shared/defaulted-timezone card) card dashcard result image-width))
-                      :raw_data           (qp-result->raw-data (:result payload))}]
+  [_channel {:keys [card pulse payload]} _recipients]
+  (let [request-body      {:type               "alert"
+                           :alert_creator_id   (get-in pulse [:creator :id])
+                           :alert_creator_name (get-in pulse [:creator :common_name])
+                           :data               {:type "question"
+                                                :question_id (:id card)
+                                                :question_name (:name card)
+                                                :question_url (urls/card-url (:id card))
+                                                :visualization (let [{:keys [card dashcard result]} payload]
+                                                                 (render/render-pulse-card-to-base64
+                                                                  (channel.shared/defaulted-timezone card) card dashcard result image-width))
+                                                :raw_data      (qp-result->raw-data (:result payload))}
+                           :sent_at            (t/offset-date-time)}]
+
+
+    [{:url}]
     #_[(merge (case (channel-http-auth-method)
                 :none         {}
                 :header       {:headers (channel-http-authentication-details)}
