@@ -438,6 +438,7 @@ describe("scenarios > visualizations > table column settings", () => {
         column: "Ean",
         columnName: "Products → Ean",
         table: "products",
+        scrollTimes: 3,
       };
 
       _hideColumn(firstColumn);
