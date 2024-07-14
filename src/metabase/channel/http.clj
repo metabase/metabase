@@ -71,6 +71,7 @@
 (mu/defmethod channel/render-notification [:channel/http :notification/alert] :- [:sequential HTTPDetails]
   [{details :details} {:keys [card pulse payload]} _recipients]
   (let [request-body      {:type               "alert"
+                           :alert_id           (:id pulse)
                            :alert_creator_id   (get-in pulse [:creator :id])
                            :alert_creator_name (get-in pulse [:creator :common_name])
                            :data               {:type          "question"
