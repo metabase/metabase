@@ -6,7 +6,7 @@
    [metabase.test :as mt]))
 
 (comment
- ;; to reigster the :metabase-test channel implementation
+ ;; to register the :metabase-test channel implementation
  api.channel-test/keepme)
 
 (deftest channel-api-test
