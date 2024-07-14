@@ -1158,7 +1158,7 @@ describe("issue 31628", () => {
         scalarContainer.then($element => assertIsEllipsified($element[0]));
         scalarContainer.realHover();
 
-        popover().findByText("18,760").should("exist");
+        cy.findByRole("tooltip").findByText("18,760").should("exist");
 
         /**
          * should show ellipsis icon with question name in tooltip
@@ -1209,14 +1209,18 @@ describe("issue 31628", () => {
         scalarTitle.then($element => assertIsEllipsified($element[0]));
         scalarTitle.realHover();
 
-        popover().findByText(SCALAR_QUESTION.name).should("exist");
+        cy.findByRole("tooltip")
+          .findByText(SCALAR_QUESTION.name)
+          .should("exist");
 
         /**
          * should show description tooltip on hover
          */
         cy.findByTestId("scalar-description").realHover();
 
-        popover().findByText(SCALAR_QUESTION.description).should("exist");
+        cy.findByRole("tooltip")
+          .findByText(SCALAR_QUESTION.description)
+          .should("exist");
       });
     });
 
@@ -1328,14 +1332,16 @@ describe("issue 31628", () => {
         scalarTitle.then($element => assertIsEllipsified($element[0]));
         scalarTitle.realHover();
 
-        popover().findByText(SMART_SCALAR_QUESTION.name).should("exist");
+        cy.findByRole("tooltip")
+          .findByText(SMART_SCALAR_QUESTION.name)
+          .should("exist");
 
         /**
          * it should show previous value tooltip on hover
          */
         cy.findByTestId("scalar-previous-value").realHover();
 
-        popover().within(() => {
+        cy.findByRole("tooltip").within(() => {
           cy.contains("34.72%").should("exist");
           cy.contains("• vs. previous month: 527").should("exist");
         });
@@ -1422,14 +1428,18 @@ describe("issue 31628", () => {
         scalarContainer.then($element => assertIsEllipsified($element[0]));
         scalarContainer.realHover();
 
-        popover().findByText(SMART_SCALAR_QUESTION.name).should("exist");
+        cy.findByRole("tooltip")
+          .findByText(SMART_SCALAR_QUESTION.name)
+          .should("exist");
 
         /**
          * should show description tooltip on hover
          */
         cy.findByTestId("legend-caption").icon("info").realHover();
 
-        popover().findByText(SMART_SCALAR_QUESTION.description).should("exist");
+        cy.findByRole("tooltip")
+          .findByText(SMART_SCALAR_QUESTION.description)
+          .should("exist");
 
         /**
          * should show previous value in full
@@ -1484,14 +1494,18 @@ describe("issue 31628", () => {
         scalarContainer.then($element => assertIsEllipsified($element[0]));
         scalarContainer.realHover();
 
-        popover().findByText(SMART_SCALAR_QUESTION.name).should("exist");
+        cy.findByRole("tooltip")
+          .findByText(SMART_SCALAR_QUESTION.name)
+          .should("exist");
 
         /**
          * should show description tooltip on hover
          */
         cy.findByTestId("legend-caption").icon("info").realHover();
 
-        popover().findByText(SMART_SCALAR_QUESTION.description).should("exist");
+        cy.findByRole("tooltip")
+          .findByText(SMART_SCALAR_QUESTION.description)
+          .should("exist");
 
         /**
          * should show previous value in full

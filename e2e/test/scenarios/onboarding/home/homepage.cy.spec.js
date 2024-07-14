@@ -2,6 +2,7 @@ import { USERS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   describeEE,
@@ -23,6 +24,7 @@ import {
   entityPickerModal,
   dashboardGrid,
   entityPickerModalTab,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -32,9 +34,7 @@ describe("scenarios > home > homepage", () => {
     cy.intercept("GET", "/api/dashboard/**").as("getDashboard");
     cy.intercept("GET", "/api/automagic-*/table/**").as("getXrayDashboard");
     cy.intercept("GET", "/api/automagic-*/database/**").as("getXrayCandidates");
-    cy.intercept("GET", "/api/activity/recents?context=views").as(
-      "getRecentItems",
-    );
+    cy.intercept("GET", "/api/activity/recents?*").as("getRecentItems");
     cy.intercept("GET", "/api/activity/popular_items").as("getPopularItems");
     cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
     cy.intercept("POST", "/api/card/*/query").as("getQuestionQuery");
@@ -127,6 +127,33 @@ describe("scenarios > home > homepage", () => {
       cy.wait("@getDashboard");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders");
+    });
+
+    it("should be able to dismiss qbnewq modal using keyboard (metabase#44754)", () => {
+      const randomUser = {
+        email: "random@metabase.test",
+        password: "12341234",
+      };
+
+      // We've already dismissed qbnewq modal for all existing users.
+      cy.log("Create a new admin user and log in as that user");
+      cy.request("POST", "/api/user", randomUser).then(({ body: { id } }) => {
+        cy.request("PUT", `/api/user/${id}`, { is_superuser: true });
+        cy.request("POST", "/api/session", {
+          username: randomUser.email,
+          password: randomUser.password,
+        });
+      });
+
+      cy.intercept("PUT", "/api/user/*/modal/qbnewb").as("modalDismiss");
+      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      modal()
+        .should("be.visible")
+        .and("contain", "It's okay to play around with saved questions");
+
+      cy.realPress("Escape");
+      cy.wait("@modalDismiss");
+      modal().should("not.exist");
     });
 
     // TODO: popular items endpoint is currently broken in OSS. Re-enable test once endpoint has been fixed.
@@ -441,7 +468,7 @@ describe("scenarios > home > custom homepage", () => {
     it("should not redirect when already on the dashboard homepage (metabase#43800)", () => {
       cy.intercept(
         "GET",
-        `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata`,
+        `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata*`,
       ).as("getDashboardMetadata");
       cy.intercept(
         "POST",

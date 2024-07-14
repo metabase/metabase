@@ -17,8 +17,11 @@ export const automagicDashboardsApi = Api.injectEndpoints({
       DashboardQueryMetadata,
       GetXrayDashboardQueryMetadataRequest
     >({
-      query: ({ entity, entityId }) =>
-        `/api/automagic-dashboards/${entity}/${entityId}/query_metadata`,
+      query: ({ entity, entityId, ...params }) => ({
+        method: "GET",
+        url: `/api/automagic-dashboards/${entity}/${entityId}/query_metadata`,
+        params,
+      }),
       providesTags: metadata =>
         metadata ? provideDashboardQueryMetadataTags(metadata) : [],
     }),

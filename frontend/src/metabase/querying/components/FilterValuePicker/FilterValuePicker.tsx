@@ -87,9 +87,8 @@ function FilterValuePicker({
       <SearchValuePicker
         fieldId={checkNotNull(fieldInfo.fieldId)}
         searchFieldId={checkNotNull(fieldInfo.searchFieldId)}
-        fieldValues={fieldData?.values ?? []}
         selectedValues={selectedValues}
-        placeholder={t`Search by ${columnInfo.displayName}`}
+        columnDisplayName={columnInfo.displayName}
         shouldCreate={shouldCreate}
         autoFocus={autoFocus}
         onChange={onChange}

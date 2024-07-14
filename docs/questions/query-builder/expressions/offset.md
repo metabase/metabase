@@ -4,6 +4,8 @@ title: Offset
 
 # Offset
 
+> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB.
+
 The `Offset` function returns the value of an expression in a different row. `Offset` can only be used in the query builder's Summarize step (you cannot use `Offset` to create a custom column).
 
 Syntax: `Offset(expression, rowOffset)`

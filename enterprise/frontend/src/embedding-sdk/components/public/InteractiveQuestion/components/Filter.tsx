@@ -1,16 +1,19 @@
+import cx from "classnames";
+
+import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import CS from "metabase/css/core/index.css";
 import { FilterContent } from "metabase/querying/components/FilterContent";
 import { useFilterContent } from "metabase/querying/components/FilterModal";
-import { Group, Stack } from "metabase/ui";
+import { Box, Group, Stack } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-
-import { useInteractiveQuestionData } from "../hooks";
 
 type FilterProps = {
   onClose: () => void;
 };
 
 export const Filter = ({ onClose = () => {} }: Partial<FilterProps>) => {
-  const { question } = useInteractiveQuestionData();
+  const { question } = useInteractiveQuestionContext();
 
   return question && <FilterInner question={question} onClose={onClose} />;
 };
@@ -21,7 +24,10 @@ const FilterInner = ({
 }: {
   question: Question;
 } & FilterProps) => {
-  const { onQueryChange } = useInteractiveQuestionData();
+  const { onQuestionChange } = useInteractiveQuestionContext();
+
+  const onQueryChange = (query: Lib.Query) =>
+    onQuestionChange(question.setQuery(query));
 
   const {
     query,
@@ -51,18 +57,22 @@ const FilterInner = ({
   };
 
   return (
-    <Stack>
-      <FilterContent.Header value={searchText} onChange={handleSearch} />
-      <FilterContent.Body
-        groupItems={visibleItems}
-        query={query}
-        tab={tab}
-        version={version}
-        searching={isSearching}
-        onChange={handleChange}
-        onInput={handleInput}
-        onTabChange={setTab}
-      />
+    <Stack w="100%" h="100%">
+      <Group position="right">
+        <FilterContent.Header value={searchText} onChange={handleSearch} />
+      </Group>
+      <Box h="100%" className={cx(CS.flex1, CS.overflowHidden)}>
+        <FilterContent.Body
+          groupItems={visibleItems}
+          query={query}
+          tab={tab}
+          version={version}
+          searching={isSearching}
+          onChange={handleChange}
+          onInput={handleInput}
+          onTabChange={setTab}
+        />
+      </Box>
       <Group>
         <FilterContent.Footer
           canRemoveFilters={canRemoveFilters}

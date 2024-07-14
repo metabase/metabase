@@ -81,9 +81,11 @@ const setup = ({
     />,
     {
       mode: "sdk",
-      sdkConfig: createMockConfig({
-        jwtProviderUri: "http://TEST_URI/sso/metabase",
-      }),
+      sdkProviderProps: {
+        config: createMockConfig({
+          jwtProviderUri: "http://TEST_URI/sso/metabase",
+        }),
+      },
     },
   );
 };

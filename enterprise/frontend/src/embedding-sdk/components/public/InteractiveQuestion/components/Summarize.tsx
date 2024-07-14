@@ -1,22 +1,22 @@
 import { useRef, useState } from "react";
 import { t } from "ttag";
 
+import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import {
-  SummarizeContent,
+  SummarizeAggregationItemList,
+  SummarizeBreakoutColumnList,
   useSummarizeQuery,
 } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/SummarizeContent";
-import { Button, Stack } from "metabase/ui";
+import { Button, Divider, Group, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-
-import { useInteractiveQuestionData } from "../hooks";
 
 type SummarizeProps = {
   onClose: () => void;
 };
 
 export const Summarize = ({ onClose = () => {} }: Partial<SummarizeProps>) => {
-  const { question } = useInteractiveQuestionData();
+  const { question } = useInteractiveQuestionContext();
 
   return question && <SummarizeInner question={question} onClose={onClose} />;
 };
@@ -27,7 +27,10 @@ const SummarizeInner = ({
 }: {
   question: Question;
 } & SummarizeProps) => {
-  const { onQueryChange } = useInteractiveQuestionData();
+  const { onQuestionChange } = useInteractiveQuestionContext();
+
+  const onQueryChange = (query: Lib.Query) =>
+    onQuestionChange(question.setQuery(query));
 
   // save initial question in case we close without making changes
   const initialQuestion = useRef(question.query());
@@ -62,21 +65,33 @@ const SummarizeInner = ({
   } = useSummarizeQuery(currentQuery, setCurrentQuery);
 
   return (
-    <Stack>
-      <Button onClick={onCloseFilter}>{t`Close`}</Button>
-      <SummarizeContent
+    <Stack w="100%" h="100%">
+      <SummarizeAggregationItemList
         query={query}
         aggregations={aggregations}
-        hasAggregations={hasAggregations}
         onAddAggregations={handleAddAggregations}
         onUpdateAggregation={handleUpdateAggregation}
         onRemoveAggregation={handleRemoveAggregation}
-        onAddBreakout={handleAddBreakout}
-        onUpdateBreakout={handleUpdateBreakout}
-        onRemoveBreakout={handleRemoveBreakout}
-        onReplaceBreakouts={handleReplaceBreakouts}
       />
-      <Button onClick={onApplyFilter}>{t`Apply`}</Button>
+      <Divider my="lg" />
+      {hasAggregations && (
+        <SummarizeBreakoutColumnList
+          query={query}
+          onAddBreakout={handleAddBreakout}
+          onUpdateBreakout={handleUpdateBreakout}
+          onRemoveBreakout={handleRemoveBreakout}
+          onReplaceBreakouts={handleReplaceBreakouts}
+        />
+      )}
+
+      <Group>
+        <Button variant="filled" onClick={onApplyFilter}>
+          {t`Apply`}
+        </Button>
+        <Button variant="subtle" color="text-medium" onClick={onCloseFilter}>
+          {t`Close`}
+        </Button>
+      </Group>
     </Stack>
   );
 };

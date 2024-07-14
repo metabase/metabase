@@ -19,12 +19,11 @@ import {
   Notebook,
   NotebookButton,
   QuestionVisualization,
-} from "embedding-sdk/components/public/InteractiveQuestion";
+} from "embedding-sdk/components/public/InteractiveQuestion/components";
 import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import CS from "metabase/css/core/index.css";
-import { Box, Button, Flex, Group, Stack } from "metabase/ui";
-
-import { useInteractiveQuestionData } from "../public/InteractiveQuestion/hooks";
+import { Box, Flex, Group, Stack } from "metabase/ui";
 
 interface InteractiveQuestionResultProps {
   height?: string | number;
@@ -47,12 +46,7 @@ const ResultView = ({
   };
 
   if (questionView === "filter") {
-    return (
-      <Stack>
-        <Button onClick={returnToVisualization}>{t`Close`}</Button>
-        <Filter onClose={returnToVisualization} />
-      </Stack>
-    );
+    return <Filter onClose={returnToVisualization} />;
   }
 
   if (questionView === "summarize") {
@@ -75,31 +69,32 @@ export const InteractiveQuestionResult = ({
   const [questionView, setQuestionView] =
     useState<QuestionView>("visualization");
 
-  const { isQuestionLoading } = useInteractiveQuestionContext();
+  const { question, queryResults, isQuestionLoading } =
+    useInteractiveQuestionContext();
 
-  const { defaultHeight, isQueryRunning, queryResults, question } =
-    useInteractiveQuestionData();
+  const card = question?.card();
+  const defaultHeight = card ? getDefaultVizHeight(card.display) : undefined;
 
-  if (isQuestionLoading || isQueryRunning) {
-    return <SdkLoader />;
-  }
+  let content;
 
-  if (!question || !queryResults) {
-    return <SdkError message={t`Question not found`} />;
-  }
-
-  return (
-    <Box
-      className={cx(CS.flexFull, CS.fullWidth)}
-      h={height ?? defaultHeight}
-      bg="var(--mb-color-bg-question)"
-    >
+  if (isQuestionLoading) {
+    content = <SdkLoader />;
+  } else if (!question || !queryResults) {
+    content = <SdkError message={t`Question not found`} />;
+  } else {
+    content = (
       <Stack h="100%">
         <Flex direction="row" gap="md" px="md" align="center">
           <BackButton />
           {withTitle && (customTitle ?? <Title />)}
           {withResetButton && <QuestionResetButton />}
-          <FilterButton onClick={() => setQuestionView("filter")} />
+          <FilterButton
+            onClick={() =>
+              setQuestionView(
+                questionView === "filter" ? "visualization" : "filter",
+              )
+            }
+          />
           <SummarizeButton
             isOpen={questionView === "summarize"}
             onOpen={() => setQuestionView("summarize")}
@@ -124,6 +119,16 @@ export const InteractiveQuestionResult = ({
           />
         </Group>
       </Stack>
+    );
+  }
+
+  return (
+    <Box
+      className={cx(CS.flexFull, CS.fullWidth)}
+      h={height ?? defaultHeight}
+      bg="var(--mb-color-bg-question)"
+    >
+      {content}
     </Box>
   );
 };

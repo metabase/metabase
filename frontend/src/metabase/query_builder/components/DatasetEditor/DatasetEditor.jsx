@@ -7,7 +7,7 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useModelIndexesListQuery } from "metabase/common/hooks";
+import { useListModelIndexesQuery } from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
@@ -28,7 +28,9 @@ import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
   getDatasetEditorTab,
   getIsResultDirty,
+  getMetadataDiff,
   getResultsMetadata,
+  getVisualizationSettings,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -38,7 +40,6 @@ import {
   checkCanBeModel,
   getSortedModelFields,
 } from "metabase-lib/v1/metadata/utils/models";
-import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 
 import {
   DatasetEditBar,
@@ -58,8 +59,10 @@ import { EDITOR_TAB_INDEXES } from "./constants";
 
 const propTypes = {
   question: PropTypes.object.isRequired,
+  visualizationSettings: PropTypes.object,
   datasetEditorTab: PropTypes.oneOf(["query", "metadata"]).isRequired,
   metadata: PropTypes.object,
+  metadataDiff: PropTypes.object.isRequired,
   resultsMetadata: PropTypes.shape({ columns: PropTypes.array }),
   isMetadataDirty: PropTypes.bool.isRequired,
   result: PropTypes.object,
@@ -69,7 +72,7 @@ const propTypes = {
   isRunning: PropTypes.bool.isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
   setDatasetEditorTab: PropTypes.func.isRequired,
-  setFieldMetadata: PropTypes.func.isRequired,
+  setMetadataDiff: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
   onCancelCreateNewModel: PropTypes.func.isRequired,
   onCancelDatasetChanges: PropTypes.func.isRequired,
@@ -93,6 +96,8 @@ const TABLE_HEADER_HEIGHT = 45;
 function mapStateToProps(state) {
   return {
     metadata: getMetadata(state),
+    metadataDiff: getMetadataDiff(state),
+    visualizationSettings: getVisualizationSettings(state),
     datasetEditorTab: getDatasetEditorTab(state),
     isMetadataDirty: isResultsMetadataDirty(state),
     resultsMetadata: getResultsMetadata(state),
@@ -195,10 +200,12 @@ const FIELDS = [
 function DatasetEditor(props) {
   const {
     question,
+    visualizationSettings,
     datasetEditorTab,
     result,
     resultsMetadata,
     metadata,
+    metadataDiff,
     isMetadataDirty,
     height,
     isDirty: isModelQueryDirty,
@@ -206,7 +213,7 @@ function DatasetEditor(props) {
     setQueryBuilderMode,
     runQuestionQuery,
     setDatasetEditorTab,
-    setFieldMetadata,
+    setMetadataDiff,
     onCancelDatasetChanges,
     onCancelCreateNewModel,
     onSave,
@@ -220,14 +227,22 @@ function DatasetEditor(props) {
   const isDirty = isModelQueryDirty || isMetadataDirty;
   const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
   const fields = useMemo(
-    () => getSortedModelFields(question, resultsMetadata?.columns),
-    [question, resultsMetadata],
+    () =>
+      getSortedModelFields(
+        resultsMetadata?.columns ?? [],
+        visualizationSettings ?? {},
+      ),
+    [resultsMetadata, visualizationSettings],
   );
 
-  const { data: modelIndexes } = useModelIndexesListQuery({
-    query: { model_id: question.id() },
-    enabled: question.isSaved() && question.type() === "model",
-  });
+  const { data: modelIndexes } = useListModelIndexesQuery(
+    {
+      model_id: question.id(),
+    },
+    {
+      skip: !question.isSaved() || question.type() !== "model",
+    },
+  );
 
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";
@@ -248,34 +263,23 @@ function DatasetEditor(props) {
     isEditingQuery ? initialEditorHeight : 0,
   );
 
-  const [focusedFieldRef, setFocusedFieldRef] = useState();
+  const [focusedFieldName, setFocusedFieldName] = useState();
 
   const focusedFieldIndex = useMemo(() => {
-    if (!focusedFieldRef) {
+    if (!focusedFieldName) {
       return -1;
     }
-    return fields.findIndex(field =>
-      isSameField(focusedFieldRef, field.field_ref),
-    );
-  }, [focusedFieldRef, fields]);
+    return fields.findIndex(field => field.name === focusedFieldName);
+  }, [focusedFieldName, fields]);
 
   const previousFocusedFieldIndex = usePrevious(focusedFieldIndex);
 
-  const focusedField = useMemo(() => {
-    const field = fields[focusedFieldIndex];
-    if (field) {
-      const fieldMetadata = metadata?.field?.(field.id, field.table_id);
-      return {
-        ...fieldMetadata,
-        ...field,
-      };
-    }
-  }, [focusedFieldIndex, fields, metadata]);
+  const focusedField = fields[focusedFieldIndex];
 
   const focusFirstField = useCallback(() => {
     const [firstField] = fields;
-    setFocusedFieldRef(firstField?.field_ref);
-  }, [fields, setFocusedFieldRef]);
+    setFocusedFieldName(firstField?.name);
+  }, [fields, setFocusedFieldName]);
 
   useEffect(() => {
     // Focused field has to be set once the query is completed and the result is rendered
@@ -284,7 +288,7 @@ function DatasetEditor(props) {
     if (!focusedField && hasQueryResults && !result.error) {
       focusFirstField();
     }
-  }, [result, focusedFieldRef, fields, focusFirstField, focusedField]);
+  }, [result, focusedFieldName, fields, focusFirstField, focusedField]);
 
   const inheritMappedFieldProperties = useCallback(
     changes => {
@@ -297,17 +301,17 @@ function DatasetEditor(props) {
 
   const onFieldMetadataChange = useCallback(
     values => {
-      setFieldMetadata({ field_ref: focusedFieldRef, changes: values });
+      setMetadataDiff({ name: focusedFieldName, changes: values });
     },
-    [focusedFieldRef, setFieldMetadata],
+    [focusedFieldName, setMetadataDiff],
   );
 
   const onMappedDatabaseColumnChange = useCallback(
     value => {
       const changes = inheritMappedFieldProperties({ id: value });
-      setFieldMetadata({ field_ref: focusedFieldRef, changes });
+      setMetadataDiff({ name: focusedFieldName, changes });
     },
-    [focusedFieldRef, setFieldMetadata, inheritMappedFieldProperties],
+    [focusedFieldName, setMetadataDiff, inheritMappedFieldProperties],
   );
 
   const [isTabHintVisible, { turnOn: showTabHint, turnOff: hideTabHint }] =
@@ -355,9 +359,10 @@ function DatasetEditor(props) {
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
+    const questionWithMetadata = question.setResultMetadataDiff(metadataDiff);
     const questionWithDisplay = isMetric
-      ? question.setDefaultDisplay()
-      : question;
+      ? questionWithMetadata.setDefaultDisplay()
+      : questionWithMetadata;
 
     if (canBeDataset && isBrandNewDataset) {
       await updateQuestion(questionWithDisplay, { rerunQuery: false });
@@ -372,6 +377,7 @@ function DatasetEditor(props) {
     }
   }, [
     question,
+    metadataDiff,
     isMetric,
     updateQuestion,
     onSave,
@@ -382,9 +388,9 @@ function DatasetEditor(props) {
 
   const handleColumnSelect = useCallback(
     column => {
-      setFocusedFieldRef(column.field_ref);
+      setFocusedFieldName(column.name);
     },
-    [setFocusedFieldRef],
+    [setFocusedFieldName],
   );
 
   const handleTableElementClick = useCallback(
@@ -393,10 +399,10 @@ function DatasetEditor(props) {
         clickedObject?.column && Object.keys(clickedObject)?.length === 1;
 
       if (isColumnClick) {
-        setFocusedFieldRef(clickedObject.column.field_ref);
+        setFocusedFieldName(clickedObject.column.name);
       }
     },
-    [setFocusedFieldRef],
+    [setFocusedFieldName],
   );
 
   // This value together with focusedFieldIndex is used to

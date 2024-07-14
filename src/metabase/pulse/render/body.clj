@@ -12,6 +12,7 @@
    [metabase.pulse.render.style :as style]
    [metabase.pulse.render.table :as table]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.query-processor.streaming.common :as common]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.types :as types]
    [metabase.util :as u]
@@ -225,7 +226,7 @@
    timezone-id :- [:maybe :string]
    card
    _dashcard
-   {:keys [rows viz-settings] :as data}]
+   {:keys [rows viz-settings format-rows?] :as data}]
   (let [[ordered-cols ordered-rows] (order-data data viz-settings)
         data                        (-> data
                                         (assoc :rows ordered-rows)
@@ -233,7 +234,7 @@
         table-body                  [:div
                                      (table/render-table
                                       (color/make-color-selector data viz-settings)
-                                      (mapv :name ordered-cols)
+                                      (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
                                       (prep-for-html-rendering timezone-id card data))
                                      (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
     {:attachments

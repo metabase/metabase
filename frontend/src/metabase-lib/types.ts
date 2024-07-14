@@ -375,6 +375,7 @@ export type SpecificDateFilterParts = {
   operator: SpecificDateFilterOperatorName;
   column: ColumnMetadata;
   values: Date[];
+  hasTime: boolean;
 };
 
 export type RelativeDateFilterParts = {

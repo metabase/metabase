@@ -33,6 +33,7 @@ export interface OptionsType extends TimeOnlyOptions {
   removeYear?: boolean;
   rich?: boolean;
   scale?: number;
+  stringifyNull?: boolean;
   show_mini_bar?: boolean;
   suffix?: string;
   type?: string;

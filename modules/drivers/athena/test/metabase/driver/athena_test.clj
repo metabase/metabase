@@ -3,12 +3,12 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.athena :as athena]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.public-settings.premium-features :as premium-features]
@@ -85,8 +85,9 @@
       ;; we have code in place to work around that.
       (let [timestamp-tz [:raw "timestamp '2022-11-16 04:21:00 US/Pacific'"]
             time         [:raw "time '5:03:00'"]
-            [sql & args] (sql/format {:select [[timestamp-tz :timestamp-tz]
-                                               [time :time]]})
+            [sql & args] (sql.qp/format-honeysql :athena {:select [[timestamp-tz :timestamp-tz]
+                                                                   [time :time]]})
+            _            (assert (empty? args))
             query        (-> (mt/native-query {:query sql, :params args})
                              (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
@@ -102,8 +103,9 @@
     (testing "We should be able to handle TIME and TIMESTAMP WITH TIME ZONE parameters correctly"
       (let [timestamp-tz #t "2022-11-16T04:21:00.000-08:00[America/Los_Angeles]"
             time         #t "05:03"
-            [sql & args] (sql/format {:select [[timestamp-tz :timestamp-tz]
-                                               [time :time]]})
+            [sql & args] (sql.qp/format-honeysql :athena {:select [[timestamp-tz :timestamp-tz]
+                                                                   [time :time]]})
+            _            (assert (empty? args))
             query        (-> (mt/native-query {:query sql, :params args})
                              (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
@@ -253,3 +255,33 @@
                                    (jdbc/metadata-result rs))))))))
               (testing "`describe-table` returns the fields anyway"
                 (is (not-empty (:fields (driver/describe-table :athena db table)))))))))))
+
+(deftest column-name-with-question-mark-test
+  (testing "Column name with a question mark in it should be compiled correctly (#44915)"
+    (mt/test-driver :athena
+      (let [metadata-provider (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:fields [{:id   (meta/id :venues :name)
+                                                                                                      :name "name?"}]})
+            query             (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                                  (lib/with-fields [(meta/field-metadata :venues :name)])
+                                  (lib/filter (lib/= (meta/field-metadata :venues :name) "BBQ"))
+                                  (lib/limit 1))
+            executed-query    (atom nil)]
+        (with-redefs [sql-jdbc.execute/execute-reducible-query (let [orig sql-jdbc.execute/execute-reducible-query]
+                                                                 (fn [driver query context respond]
+                                                                   (reset! executed-query query)
+                                                                   (orig driver query context respond)))]
+          (try
+            (qp/process-query query)
+            (catch Throwable _))
+          (is (= {:query ["SELECT"
+                          "  \"PUBLIC\".\"VENUES\".\"name?\" AS \"name?\""
+                          "FROM"
+                          "  \"PUBLIC\".\"VENUES\""
+                          "WHERE"
+                          "  \"PUBLIC\".\"VENUES\".\"name?\" = 'BBQ'"
+                          "LIMIT"
+                          "  1"]
+                  :params nil}
+                 (-> @executed-query
+                     :native
+                     (update :query #(str/split-lines (driver/prettify-native-form :athena %)))))))))))

@@ -122,6 +122,5 @@ serdes/meta:
   label: questions_without_recent_views
   model: Card
 initially_published_at: null
-last_used_at: null
 metabase_version: vUNKNOWN (901f705)
 type: question

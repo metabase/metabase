@@ -295,9 +295,8 @@ export function isBooleanFilter(
 export function specificDateFilterClause(
   query: Query,
   stageIndex: number,
-  { operator, column, values }: SpecificDateFilterParts,
+  { operator, column, values, hasTime }: SpecificDateFilterParts,
 ): ExpressionClause {
-  const hasTime = values.some(hasTimeParts);
   const serializedValues = hasTime
     ? values.map(value => serializeDateTime(value))
     : values.map(value => serializeDate(value));
@@ -335,16 +334,27 @@ export function specificDateFilterParts(
     return null;
   }
 
-  const values = serializedValues.map(value => deserializeDateTime(value));
-  if (!isDefinedArray(values)) {
-    return null;
+  const dateValues = serializedValues.map(deserializeDate);
+  if (isDefinedArray(dateValues)) {
+    return {
+      operator,
+      column,
+      values: dateValues,
+      hasTime: false,
+    };
   }
 
-  return {
-    operator,
-    column,
-    values,
-  };
+  const dateTimeValues = serializedValues.map(deserializeDateTime);
+  if (isDefinedArray(dateTimeValues)) {
+    return {
+      operator,
+      column,
+      values: dateTimeValues,
+      hasTime: true,
+    };
+  }
+
+  return null;
 }
 
 export function isSpecificDateFilter(
@@ -690,21 +700,21 @@ const TIME_FORMATS = ["HH:mm:ss.SSS[Z]", "HH:mm:ss.SSS", "HH:mm:ss", "HH:mm"];
 const TIME_FORMAT_MS = "HH:mm:ss.SSS";
 const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
 
-function hasTimeParts(date: Date): boolean {
-  return (
-    date.getHours() !== 0 ||
-    date.getMinutes() !== 0 ||
-    date.getSeconds() !== 0 ||
-    date.getMilliseconds() !== 0
-  );
-}
-
 function serializeDate(date: Date): string {
   return moment(date).format(DATE_FORMAT);
 }
 
 function serializeDateTime(date: Date): string {
   return moment(date).format(DATE_TIME_FORMAT);
+}
+
+function deserializeDate(value: string): Date | null {
+  const date = moment(value, DATE_FORMAT, true);
+  if (!date.isValid()) {
+    return null;
+  }
+
+  return date.toDate();
 }
 
 function deserializeDateTime(value: string): Date | null {

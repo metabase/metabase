@@ -199,7 +199,7 @@
            (mt/user-http-request :crowberto :post 400 "dashboard" {:name       "Test"
                                                                    :parameters "abc"})))))
 
-(def ^:private dashboard-defaults
+(def dashboard-defaults
   {:archived                false
    :caveats                 nil
    :collection_id           nil
@@ -426,33 +426,46 @@
     (mt/with-column-remappings [orders.user_id people.name]
       (binding [api/*current-user-permissions-set* (atom #{"/"})]
         (t2.with-temp/with-temp
-          [Dashboard {dashboard-id :id} {:name             "Test Dashboard"
-                                         :creator_id       (mt/user->id :crowberto)
-                                         :embedding_params {:id "enabled"}
-                                         :parameters       [{:name "Id", :slug "id", :id "a", :type :id}]}
+          [Dashboard {dashboard-a-id :id} {:name             "Test Dashboard"
+                                           :creator_id       (mt/user->id :crowberto)
+                                           :embedding_params {:id "enabled"}
+                                           :parameters       [{:name "Name", :slug "name", :id "a" :type :string/contains}]}
+           Dashboard {dashboard-b-id :id} {:name             "Test Dashboard"
+                                           :creator_id       (mt/user->id :crowberto)
+                                           :embedding_params {:id "enabled"}
+                                           :parameters       [{:name "Name", :slug "name", :id "a" :type :string/contains}]}
            Card {card-id :id} {:database_id   (mt/id)
                                :query_type    :native
                                :name          "test question"
                                :creator_id    (mt/user->id :crowberto)
                                :dataset_query {:type     :native
-                                               :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}}"
+                                               :native   {:query "SELECT COUNT(*) FROM people WHERE {{name}}"
                                                           :template-tags
-                                                          {"id"      {:name         "id"
-                                                                      :display-name "Id"
-                                                                      :type         :dimension
-                                                                      :dimension    [:field (mt/id :people :id) nil]
-                                                                      :widget-type  :id
-                                                                      :default      nil}}}
+                                                          {"name" {:name         "Name"
+                                                                   :display-name "name"
+                                                                   :type         :dimension
+                                                                   :dimension    [:field (mt/id :people :name) nil]
+                                                                   :widget-type  :string/contains
+                                                                   :default      nil}}}
                                                :database (mt/id)}}
-           DashboardCard {dashcard-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
-                                            :card_id            card-id
-                                            :dashboard_id       dashboard-id}]
-          (testing "User's set parameter is saved and sent back in the dashboard response."
+           DashboardCard {dashcard-a-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
+                                              :card_id            card-id
+                                              :dashboard_id       dashboard-a-id}
+           DashboardCard {dashcard-b-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
+                                              :card_id            card-id
+                                              :dashboard_id       dashboard-b-id}]
+          (testing "User's set parameter is saved and sent back in the dashboard response, unique per dashboard."
             ;; api request mimicking a user setting a parameter value
-            (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-id dashcard-id card-id)
+            (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
+                                             {:parameters [{:id "a" :value ["initial value"]}]})))
+            (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-b-id dashcard-b-id card-id)
+                                             {:parameters [{:id "a" :value ["initial value"]}]})))
+            (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
                                              {:parameters [{:id "a" :value ["new value"]}]})))
-            (is (= {:a ["new value"]}
-                   (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))))
+            (is (= {:dashboard-a {:a ["new value"]}
+                    :dashboard-b {:a ["initial value"]}}
+                   {:dashboard-a (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-a-id)))
+                    :dashboard-b (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-b-id)))}))))))))
 
 (deftest fetch-dashboard-test
   (testing "GET /api/dashboard/:id"
@@ -4680,3 +4693,87 @@
             (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id dash)))))
     (is (=? {:values #(set/subset? #{["African"] ["BBQ"]} (set %1))}
             (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values" (:id dash) "_CATEGORY_NAME_"))))))
+
+(deftest ^:synchronized dashboard-query-metadata-cached-test
+  (let [original-admp   @#'lib.metadata.jvm/application-database-metadata-provider-factory
+        uncached-calls  (atom -1)
+        expected        [{:name "Some dashboard"}
+                         {:tables     [{} {}]
+                          :databases  [{}]
+                          :fields     []
+                          :cards      []
+                          :dashboards []}]]
+    (mt/with-temp [:model/Dashboard     dash      {:name "Some dashboard"}
+                   :model/Card          card      {:name "Card attached to dashcard"
+                                                   :dataset_query {:database (mt/id)
+                                                                   :type     :query
+                                                                   :query    {:source-table (mt/id :categories)}}
+                                                   :type :model}
+                   :model/DashboardCard _         {:dashboard_id       (:id dash)
+                                                   :card_id            (:id card)}]
+      (testing "uncached request - get the baseline call count"
+        (t2/with-call-count [call-count-fn]
+          (is (=? expected
+                  [(mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id dash)))
+                   (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id dash)))]))
+          (reset! uncached-calls (call-count-fn))))
+      (testing "cached requests"
+        (let [provider-counts (atom {})]
+          (with-redefs [lib.metadata.jvm/application-database-metadata-provider-factory
+                        (fn [database-id]
+                          (swap! provider-counts update database-id (fnil inc 0))
+                          (original-admp database-id))]
+            (t2/with-call-count [call-count-fn]
+              (let [load-id (str (random-uuid))]
+                (is (=? expected
+                        [(mt/user-http-request :crowberto :get 200 (format "dashboard/%d?dashboard_load_id=%s"
+                                                                           (:id dash) load-id))
+                         (mt/user-http-request :crowberto :get 200
+                                               (format "dashboard/%d/query_metadata?dashboard_load_id=%s"
+                                                       (:id dash) load-id))])))
+              (testing "make fewer AppDB calls than uncached"
+                (is (< (call-count-fn) @uncached-calls)))))
+          (testing "only construct the MetadataProvider once"
+            (is (= {(mt/id) 1}
+                   @provider-counts))))))))
+
+(deftest ^:synchronized dashboard-table-prefetch-test
+  (t2.with-temp/with-temp
+    [:model/Dashboard     d  {:name "D"}
+     :model/Card          c1 {:name "C1"
+                              :dataset_query {:database (mt/id)
+                                              :type     :query
+                                              :query    {:source-table (mt/id :products)}}}
+     :model/Card          c2 {:name "C2"
+                              :dataset_query {:database (mt/id)
+                                              :type     :query
+                                              :query    {:source-table (mt/id :orders)}}}
+     :model/DashboardCard _  {:dashboard_id       (:id d)
+                              :card_id            (:id c1)}
+     :model/DashboardCard _  {:dashboard_id       (:id d)
+                              :card_id            (:id c2)}]
+    (let [original-select-fn   @#'t2/select
+          uncached-calls-count (atom 0)
+          cached-calls-count   (atom 0)]
+      ;; Get _uncached_ call count of t2/select count for :metadata/table
+      (with-redefs [t2/select (fn [& args]
+                                (when (= :metadata/table (first args))
+                                  (swap! uncached-calls-count inc))
+                                (apply original-select-fn args))]
+        (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id d)))
+        (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id d))))
+      ;; Get _cached_ call count of t2/select count for :metadata/table
+      (let [load-id (str (random-uuid))]
+        (with-redefs [t2/select (fn [& args]
+                                  (when (= :metadata/table (first args))
+                                    (swap! cached-calls-count inc))
+                                  (apply original-select-fn args))]
+          (mt/user-http-request :crowberto :get 200
+                                (format "dashboard/%d?dashboard_load_id=%s" (:id d) load-id))
+          (mt/user-http-request :crowberto :get 200
+                                (format "dashboard/%d/query_metadata?dashboard_load_id=%s" (:id d) load-id))))
+      (testing "Call count for :metadata/table is smaller with caching in place"
+        (is (< @cached-calls-count @uncached-calls-count)))
+      ;; If we need more for _some reason_, this test should be updated accordingly.
+      (testing "At most 1 db call should be executed for :metadata/tables"
+        (is (= @cached-calls-count 1))))))

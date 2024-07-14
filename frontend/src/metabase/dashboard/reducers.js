@@ -7,6 +7,7 @@ import _ from "underscore";
 import Actions from "metabase/entities/actions";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
+import Revisions from "metabase/entities/revisions";
 import { handleActions, combineReducers } from "metabase/lib/redux";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
 
@@ -81,6 +82,21 @@ const editingDashboard = handleActions(
 
 const loadingControls = handleActions(
   {
+    [INITIALIZE]: { next: () => INITIAL_DASHBOARD_STATE.loadingControls },
+
+    [fetchDashboard.pending]: (state, { payload }) => ({
+      ...state,
+      isLoading: true,
+    }),
+    [fetchDashboard.fulfilled]: (state, { payload }) => ({
+      ...state,
+      isLoading: false,
+    }),
+    [fetchDashboard.rejected]: (state, { payload }) => ({
+      ...state,
+      isLoading: false,
+    }),
+
     [SET_DOCUMENT_TITLE]: (state, { payload }) => ({
       ...state,
       documentTitle: payload,
@@ -89,7 +105,7 @@ const loadingControls = handleActions(
       ...state,
       showLoadCompleteFavicon: payload,
     }),
-    [RESET]: { next: state => ({}) },
+    [RESET]: { next: () => INITIAL_DASHBOARD_STATE.loadingControls },
   },
   INITIAL_DASHBOARD_STATE.loadingControls,
 );
@@ -328,6 +344,10 @@ const dashcardData = handleActions(
     },
     [Questions.actionTypes.UPDATE]: (state, { payload: { object: card } }) =>
       _.mapObject(state, dashboardData => dissoc(dashboardData, card.id)),
+    [Revisions.actionTypes.REVERT]: (state, { payload: revision }) =>
+      _.mapObject(state, dashboardData =>
+        dissoc(dashboardData, revision.model_id),
+      ),
   },
   INITIAL_DASHBOARD_STATE.dashcardData,
 );
