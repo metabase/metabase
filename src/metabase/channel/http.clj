@@ -1,9 +1,8 @@
-
 (ns metabase.channel.http
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.channel.core :as channel]
    [metabase.channel.shared :as channel.shared]
    [metabase.pulse.render :as render]
@@ -70,26 +69,17 @@
      :rows (:rows data)}))
 
 (mu/defmethod channel/render-notification [:channel/http :notification/alert] :- [:sequential HTTPDetails]
-  [_channel {:keys [card pulse payload]} _recipients]
+  [{details :details} {:keys [card pulse payload]} _recipients]
   (let [request-body      {:type               "alert"
                            :alert_creator_id   (get-in pulse [:creator :id])
                            :alert_creator_name (get-in pulse [:creator :common_name])
-                           :data               {:type "question"
-                                                :question_id (:id card)
+                           :data               {:type          "question"
+                                                :question_id   (:id card)
                                                 :question_name (:name card)
-                                                :question_url (urls/card-url (:id card))
+                                                :question_url  (urls/card-url (:id card))
                                                 :visualization (let [{:keys [card dashcard result]} payload]
                                                                  (render/render-pulse-card-to-base64
                                                                   (channel.shared/defaulted-timezone card) card dashcard result image-width))
                                                 :raw_data      (qp-result->raw-data (:result payload))}
                            :sent_at            (t/offset-date-time)}]
-
-
-    [{:url}]
-    #_[(merge (case (channel-http-auth-method)
-                :none         {}
-                :header       {:headers (channel-http-authentication-details)}
-                :query-params {:query-params (channel-http-authentication-details)})
-              {:url    (channel-http-url)
-               :method (channel-http-request-method)
-               :body   (json/generate-string request-body)})]))
+    [(assoc details :body request-body)]))

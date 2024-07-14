@@ -51,22 +51,31 @@
   [{:keys [pulse pulse-card channel card]
     :or   {channel :email}}
    f]
-  (mt/with-temp [Pulse        {pulse-id :id, :as pulse} (->> pulse
-                                                             (merge {:name            "Pulse Name"
-                                                                     :alert_condition "rows"}))
-                 PulseCard    _ (merge {:pulse_id        pulse-id
-                                        :card_id         (u/the-id card)
-                                        :position        0}
+  (mt/with-temp [:model/Pulse        {pulse-id :id, :as pulse} (->> pulse
+                                                                (merge {:name            "Pulse Name"
+                                                                        :alert_condition "rows"}))
+                 :model/PulseCard    _ (merge {:pulse_id        pulse-id
+                                               :card_id         (u/the-id card)
+                                               :position        0}
+                                           pulse-card)
+                 ;; channel is currently only used for http
+                 :model/Channel      {chn-id :id} {:type    :channel/http
+                                                   :details {:url         "https://metabase.com/testhttp"
+                                                             :auth-method "none"}}
+                 :model/PulseChannel {pc-id :id} (case channel
+                                                  :email
+                                                  {:pulse_id pulse-id
+                                                   :channel_type "email"}
 
-                                       pulse-card)
-                 PulseChannel {pc-id :id} (case channel
-                                            :email
-                                            {:pulse_id pulse-id}
+                                                  :slack
+                                                  {:pulse_id     pulse-id
+                                                   :channel_type "slack"
+                                                   :details      {:channel "#general"}}
 
-                                            :slack
-                                            {:pulse_id     pulse-id
-                                             :channel_type "slack"
-                                             :details      {:channel "#general"}})]
+                                                  :http
+                                                  {:pulse_id     pulse-id
+                                                   :channel_type "http"
+                                                   :channel_id   chn-id})]
     (if (= channel :email)
       (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                                         :pulse_channel_id pc-id}]
@@ -97,8 +106,8 @@
                         (is (= {:sent pulse-id}
                                response)))}})"
   [{:keys [card pulse pulse-card display fixture], assertions :assert}]
-  {:pre [(map? assertions) ((some-fn :email :slack) assertions)]}
-  (doseq [channel-type [:email :slack]
+  {:pre [(map? assertions) ((some-fn :email :slack :http) assertions)]}
+  (doseq [channel-type [:email :slack :http]
           :let         [f (get assertions channel-type)]
           :when        f]
     (assert (fn? f))
@@ -113,9 +122,7 @@
                                :channel    channel-type}]
           (letfn [(thunk* []
                     (f {:card-id card-id, :pulse-id pulse-id}
-                       ((if (= :email channel-type)
-                          :channel/email
-                          :channel/slack)
+                       ((keyword "channel" (name channel-type))
                         (pulse.test-util/with-captured-channel-send-messages!
                           (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
                             (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
@@ -124,7 +131,7 @@
                       (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
                       (thunk*)))]
             (case channel-type
-              :email (thunk)
+              (:http :email) (thunk)
               :slack (pulse.test-util/slack-test-setup! (thunk)))))))))
 
 (defn- tests!
@@ -188,7 +195,25 @@
                 :attachment-name "image.png"
                 :channel-id      "FOO"
                 :fallback        pulse.test-util/card-name}]}
-             (pulse.test-util/thunk->boolean pulse-results))))}}))
+             (pulse.test-util/thunk->boolean pulse-results))))
+
+     :http (fn [_ [request]]
+             (is (=? {:auth-method "none"
+                      :url         "https://metabase.com/testhttp"
+                      :body        {:type               "alert"
+                                    :alert_creator_id   (mt/malli=? int?)
+                                    :alert_creator_name (mt/malli=? string?)
+                                    :data               {:type          "question"
+                                                         :question_id   int?
+                                                         :question_name string?
+                                                         :question_url  string?
+                                                         :visualization string?
+                                                         :raw_data      (mt/malli=?
+                                                                         [:map
+                                                                          [:cols [:sequential :string]]
+                                                                          [:rows [:sequential :any]]])}
+                                    :sent_at            (mt/malli=? :any)}}
+                     request)))}}))
 
 (deftest basic-table-test
   (tests! {:display :table}
@@ -859,3 +884,5 @@
                      (t2/select-one-fn
                       (comp #(select-keys % [:display_name :description]) first :result_metadata)
                       :model/Card :id card-id)))))))))
+
+#_(deftest partial-channel-failure-will-deliver-all-that-success-test)
