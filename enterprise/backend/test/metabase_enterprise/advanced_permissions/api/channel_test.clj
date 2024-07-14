@@ -6,7 +6,7 @@
    [metabase.test :as mt]))
 
 (comment
- ;; to reigster the :metabase-test channel implementation
+ ;; to register the :metabase-test channel implementation
  api.channel-test/keepme)
 
 (deftest channel-api-test
@@ -17,14 +17,14 @@
          user  [group]]
         (letfn [(update-channel [user status]
                   (testing (format "set slack setting with %s user" (mt/user-descriptor user))
-                    (mt/with-temp [:model/Channel {id :id} {:type "metabase-test"
+                    (mt/with-temp [:model/Channel {id :id} {:type "channel/metabase-test"
                                                             :details {:return-type  "return-value"
                                                                       :return-value true}}]
                       (mt/user-http-request user :put status (format "channel/%d" id) {:name (mt/random-name)}))))
                 (create-channel [user status]
                   (testing (format "create slack setting with %s user" (mt/user-descriptor user))
                     (mt/user-http-request user :post status "channel" {:name (mt/random-name)
-                                                                       :type "metabase-test"
+                                                                       :type "channel/metabase-test"
                                                                        :details {:return-type  "return-value"
                                                                                  :return-value true}})))]
 
