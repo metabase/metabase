@@ -1,8 +1,8 @@
 import { assocIn } from "icepick";
 import _ from "underscore";
 
-import { loadMetadataForCard } from "metabase/questions/actions";
 import { syncVizSettingsWithQuery } from "metabase/querying";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
