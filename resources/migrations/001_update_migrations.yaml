@@ -8342,6 +8342,11 @@ databaseChangeLog:
       id: v51.2024-07-08T10:00:00
       author: qnkhuat
       comment: Create channel table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: channel
       changes:
         - createTable:
             tableName: channel
