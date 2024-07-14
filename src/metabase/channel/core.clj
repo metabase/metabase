@@ -18,7 +18,7 @@
   "Check whether we can connect to a `channel-type` with `detail`.
 
   Returns `true` if can connect to the channel, otherwise return falsy or throw an appropriate exception.
-  o provide a field-specific error message on UI, return or throw an :errors map where key is the
+  In case of failure, to provide a field-specific error message on UI, return or throw an :errors map where key is the
   field name and value is the error message.
 
   E.g:

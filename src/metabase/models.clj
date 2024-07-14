@@ -5,7 +5,7 @@
    [metabase.models.bookmark :as bookmark]
    [metabase.models.cache-config :as cache-config]
    [metabase.models.card :as card]
-   [metabase.models.channel :as channel]
+   [metabase.models.channel :as models.channel]
    [metabase.models.collection :as collection]
    [metabase.models.collection-permission-graph-revision
     :as c-perm-revision]
@@ -64,7 +64,6 @@
          c-perm-revision/keep-me
          cache-config/keep-me
          card/keep-me
-         channel/keep-me
          collection/keep-me
          dashboard-card-series/keep-me
          dashboard-card/keep-me
@@ -79,6 +78,7 @@
          legacy-metric-important-field/keep-me
          login-history/keep-me
          moderation-review/keep-me
+         models.channel/keep-me
          native-query-snippet/keep-me
          parameter-card/keep-me
          perms-group-membership/keep-me
