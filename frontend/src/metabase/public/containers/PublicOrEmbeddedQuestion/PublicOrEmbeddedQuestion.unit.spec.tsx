@@ -67,10 +67,8 @@ jest.mock(
 
 async function setup({
   hash,
-  queryString,
 }: {
   hash?: string;
-  queryString?: string;
 } = {}) {
   setupPublicQuestionEndpoints(
     FAKE_UUID,
@@ -88,9 +86,7 @@ async function setup({
     {
       storeInitialState: createMockState(),
       withRouter: true,
-      initialRoute: `public/question/${FAKE_UUID}${
-        queryString ? `?` + queryString : ""
-      }${hash ? "#" + hash : ""}`,
+      initialRoute: `public/question/${FAKE_UUID}${hash ? "#" + hash : ""}`,
     },
   );
   expect(await screen.findByText(QUESTION_NAME)).toBeInTheDocument();
