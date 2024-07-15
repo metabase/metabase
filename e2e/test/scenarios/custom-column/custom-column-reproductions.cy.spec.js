@@ -993,6 +993,14 @@ describe("issue 42949", () => {
         cy.findByText("V").should("be.visible");
         cy.findByText("Year").should("be.visible").click();
       });
+    popover().findAllByTestId("column-input").eq(1).click();
+    popover()
+      .last()
+      .within(() => {
+        cy.findByText("CREATED_AT").should("be.visible");
+        cy.findByText("Year").should("be.visible");
+        cy.findByText("V").should("be.visible").click();
+      });
     popover().button("Done").click();
 
     cy.findAllByTestId("header-cell")
