@@ -8,6 +8,6 @@ export function getDefaultDisplayOptions(
     theme: "light",
     bordered: true,
     titled: true,
-    downloads: shouldShownDownloadData,
+    downloads: shouldShownDownloadData ? true : null,
   };
 }

@@ -32,7 +32,7 @@ export type EmbeddingDisplayOptions = {
   titled: boolean;
   /** this is deprecated in favor of `downloads`, but it's still supported */
   hide_download_button?: boolean | null;
-  downloads: boolean;
+  downloads: boolean | null;
 };
 
 export type CodeSampleParameters = {
