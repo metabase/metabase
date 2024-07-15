@@ -21,13 +21,11 @@ describe("scenarios > models > revision history", () => {
 
     openRevisionHistory();
     revertTo("You created this");
-    cy.wait("@modelQuery" + ORDERS_BY_YEAR_QUESTION_ID);
 
     cy.location("pathname").should("match", /^\/question\/\d+/);
     echartsContainer();
 
     revertTo("You edited this");
-    cy.wait("@modelQuery" + ORDERS_BY_YEAR_QUESTION_ID);
 
     cy.location("pathname").should("match", /^\/model\/\d+/);
     cy.get("[data-testid=cell-data]");

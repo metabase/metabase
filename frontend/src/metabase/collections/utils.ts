@@ -27,7 +27,7 @@ export function isPersonalCollection(
 }
 
 export function isRootTrashCollection(
-  collection: Pick<Collection, "type">,
+  collection?: Pick<Collection, "type">,
 ): boolean {
   return collection?.type === "trash";
 }

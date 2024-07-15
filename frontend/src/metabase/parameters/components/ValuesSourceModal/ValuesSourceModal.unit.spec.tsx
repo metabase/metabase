@@ -1,12 +1,11 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
-  setupDatabaseEndpoints,
   setupErrorParameterValuesEndpoints,
   setupParameterValuesEndpoints,
   setupSearchEndpoints,
@@ -14,7 +13,10 @@ import {
   setupUnauthorizedCollectionsEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupTableQueryMetadataEndpoint,
+  setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
@@ -32,7 +34,10 @@ import {
   createMockField,
   createMockParameterValues,
   createMockTable,
+  createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import ValuesSourceModal from "./ValuesSourceModal";
 
@@ -281,25 +286,6 @@ describe("ValuesSourceModal", () => {
     });
 
     it("should allow searching for a card without access to the root collection (metabase#30355)", async () => {
-      fetchMock.get(
-        { url: "path:/api/collection", overwriteRoutes: false },
-        [],
-      );
-      fetchMock.get(
-        {
-          url: "path:/api/collection/tree",
-          query: { tree: true, "exclude-archived": true },
-          overwriteRoutes: false,
-        },
-        [],
-      );
-      setupDatabaseEndpoints(
-        createMockDatabase({
-          id: -1337,
-          tables: [createMockTable({ schema: "Everything%20else" })],
-        }),
-      );
-
       await setup({
         hasCollectionAccess: false,
       });
@@ -389,7 +375,7 @@ describe("ValuesSourceModal", () => {
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
 
       expect(onSubmit).toHaveBeenCalledWith("static-list", {
-        values: ["Gadget", "Widget"],
+        values: [["Gadget"], ["Widget"]],
       });
     });
 
@@ -399,7 +385,7 @@ describe("ValuesSourceModal", () => {
           fields: [field1],
           values_source_type: "static-list",
           values_source_config: {
-            values: ["Gadget", "Widget"],
+            values: [["Gadget"], ["Widget"]],
           },
         }),
       });
@@ -411,6 +397,50 @@ describe("ValuesSourceModal", () => {
 
       expect(screen.getByRole("textbox")).toHaveValue("Gadget\nWidget");
     });
+
+    it("should render a hint about using models when labels are used", async () => {
+      await setup({
+        showMetabaseLinks: true,
+        parameter: createMockUiParameter({
+          fields: [field1],
+          values_source_type: "static-list",
+          values_source_config: {
+            values: [["Gadget", "Label"], ["Widget"]],
+          },
+        }),
+      });
+
+      await userEvent.click(
+        screen.getByRole("radio", { name: "From connected fields" }),
+      );
+      await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+
+      expect(screen.getByRole("textbox")).toHaveValue("Gadget, Label\nWidget");
+      expect(screen.getByText("do it once in a model")).toBeInTheDocument();
+      expect(screen.getByText("do it once in a model").tagName).toBe("A");
+    });
+
+    it("should render a hint about using models when labels are used, but without link when `show-metabase-links: false`", async () => {
+      await setup({
+        showMetabaseLinks: false,
+        parameter: createMockUiParameter({
+          fields: [field1],
+          values_source_type: "static-list",
+          values_source_config: {
+            values: [["Gadget", "Label"], ["Widget"]],
+          },
+        }),
+      });
+
+      await userEvent.click(
+        screen.getByRole("radio", { name: "From connected fields" }),
+      );
+      await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+
+      expect(screen.getByRole("textbox")).toHaveValue("Gadget, Label\nWidget");
+      expect(screen.getByText("do it once in a model")).toBeInTheDocument();
+      expect(screen.getByText("do it once in a model").tagName).not.toBe("A");
+    });
   });
 });
 
@@ -420,6 +450,7 @@ interface SetupOpts {
   cards?: Card[];
   hasCollectionAccess?: boolean;
   hasParameterValuesError?: boolean;
+  showMetabaseLinks?: boolean;
 }
 
 const setup = async ({
@@ -428,18 +459,30 @@ const setup = async ({
   cards = [],
   hasCollectionAccess = true,
   hasParameterValuesError = false,
+  showMetabaseLinks = true,
 }: SetupOpts = {}) => {
+  const currentUser = createMockUser();
   const databases = [createMockDatabase()];
-  const collections = [createMockCollection(ROOT_COLLECTION)];
+  const rootCollection = createMockCollection(ROOT_COLLECTION);
+  const personalCollection = createMockCollection({
+    id: currentUser.personal_collection_id,
+  });
   const onSubmit = jest.fn();
   const onClose = jest.fn();
 
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints([]);
   setupRecentViewsAndSelectionsEndpoints([]);
+  setupCollectionByIdEndpoint({
+    collections: [personalCollection],
+  });
+  setupCollectionItemsEndpoint({
+    collection: personalCollection,
+    collectionItems: [],
+  });
 
   if (hasCollectionAccess) {
-    setupCollectionsEndpoints({ collections });
+    setupCollectionsEndpoints({ collections: [rootCollection] });
     setupCardsEndpoints(cards);
     cards.forEach(card =>
       setupTableQueryMetadataEndpoint(
@@ -450,7 +493,7 @@ const setup = async ({
       ),
     );
   } else {
-    setupUnauthorizedCollectionsEndpoints(collections);
+    setupUnauthorizedCollectionsEndpoints([rootCollection]);
     setupUnauthorizedCardsEndpoints(cards);
   }
 
@@ -460,12 +503,25 @@ const setup = async ({
     setupErrorParameterValuesEndpoints();
   }
 
+  if (!showMetabaseLinks) {
+    setupEnterprisePlugins();
+  }
+
   renderWithProviders(
     <ValuesSourceModal
       parameter={parameter}
       onSubmit={onSubmit}
       onClose={onClose}
     />,
+    {
+      storeInitialState: createMockState({
+        currentUser,
+        settings: mockSettings({
+          "show-metabase-links": showMetabaseLinks,
+          "token-features": createMockTokenFeatures({ whitelabel: true }),
+        }),
+      }),
+    },
   );
 
   await waitForLoaderToBeRemoved();

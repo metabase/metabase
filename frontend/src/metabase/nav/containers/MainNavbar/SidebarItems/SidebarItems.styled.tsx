@@ -40,10 +40,8 @@ export const NodeRoot = styled(TreeNode.Root)<{
   hasDefaultIconStyle?: boolean;
 }>`
   color: ${props => getTextColor(props.isSelected)};
-
   background-color: ${props =>
     props.isSelected ? alpha("brand", 0.2) : "unset"};
-
   padding-left: ${props => props.depth}rem;
   border-radius: 4px;
 
@@ -96,12 +94,13 @@ const itemContentStyle = css`
 `;
 
 export const FullWidthButton = styled.button<{ isSelected: boolean }>`
+  color: inherit;
   cursor: pointer;
 
   ${itemContentStyle}
   ${TreeNode.NameContainer} {
     font-weight: 700;
-    color: ${props => getTextColor(props.isSelected)};
+    color: ${props => (props.isSelected ? color("brand") : "inherit")};
     text-align: start;
 
     &:hover {

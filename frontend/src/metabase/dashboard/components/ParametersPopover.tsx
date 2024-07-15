@@ -13,6 +13,7 @@ import {
   getDashboardParameterSections,
   getDefaultOptionForParameterSectionMap,
 } from "metabase/parameters/utils/dashboard-options";
+import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { Icon } from "metabase/ui";
 import type { ParameterMappingOptions } from "metabase-types/api";
 
@@ -69,7 +70,11 @@ const ParameterOptionsSection = ({
       className={cx(CS.textBold, CS.flex, CS.alignCenter)}
       style={{ marginBottom: 4 }}
     >
-      <Icon size="16" name="label" className={CS.mr1} />
+      <Icon
+        size="16"
+        name={getParameterIconName(section.id)}
+        className={CS.mr1}
+      />
       {section.name}
     </OptionItemTitle>
     <OptionItemDescription>{section.description}</OptionItemDescription>

@@ -884,7 +884,7 @@ describe("scenarios > dashboard", () => {
 
           cy.intercept(
             "GET",
-            `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata`,
+            `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata*`,
           ).as("queryMetadata");
         });
       },
@@ -1015,9 +1015,7 @@ describe("scenarios > dashboard", () => {
 
 describeWithSnowplow("scenarios > dashboard", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/activity/recents?context=views").as(
-      "recentViews",
-    );
+    cy.intercept("GET", "/api/activity/recents?*").as("recentViews");
     resetSnowplow();
     restore();
     cy.signInAsAdmin();
@@ -1249,7 +1247,6 @@ describeEE("scenarios > dashboard > caching", () => {
     restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
-    cy.request("PUT", "/api/setting/enable-query-caching", { value: true });
   });
 
   /**

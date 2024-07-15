@@ -135,18 +135,22 @@
 (defn- add-admin-perms-to-permissions-graph
   "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it.
   For every db in the incoming graph, adds on admin permissions."
-  [api-graph {:keys [db-id group-id audit?]}]
+  [api-graph {:keys [db-id group-ids group-id audit?]}]
   (let [admin-group-id (u/the-id (perms-group/admin))
         db-ids         (if db-id [db-id] (t2/select-pks-vec :model/Database
                                                             {:where [:and
                                                                      (when-not audit? [:not= :id audit/audit-db-id])]}))]
-    (if (and group-id (not= group-id admin-group-id))
-      ;; Don't add admin perms when we're fetching the perms for a specific non-admin group
-      api-graph
+    ;; Don't add admin perms when we're fetching the perms for a specific non-admin group or set of groups
+    (if (or (= group-id admin-group-id)
+            (contains? (set group-ids) admin-group-id)
+            ;; If we're not filtering on specific group IDs, always include the admin group
+            (and (nil? group-id)
+                 (nil? (seq group-ids))))
       (reduce (fn [api-graph db-id]
                 (assoc-in api-graph [admin-group-id db-id] admin-perms))
               api-graph
-              db-ids))))
+              db-ids)
+      api-graph)))
 
 (defn remove-empty-vals
   "Recursively walks a nested map from bottom-up, removing keys with nil or empty map values."
@@ -171,6 +175,7 @@
   ([& {:as opts}
     :- [:map
         [:group-id {:optional true} [:maybe pos-int?]]
+        [:group-ids {:optional true} [:maybe [:sequential pos-int?]]]
         [:db-id {:optional true} [:maybe pos-int?]]
         [:audit? {:optional true} [:maybe :boolean]]
         [:perm-type {:optional true} [:maybe data-perms/PermissionType]]]]
@@ -425,7 +430,8 @@
   "Takes an API-style perms graph and sets the permissions in the database accordingly. Additionally validates the revision number,
    logs the changes, and ensures impersonations and sandboxes are consistent."
   ([new-graph :- api.permission-graph/StrictData]
-   (let [old-graph (api-graph)
+   (let [group-ids (-> new-graph :groups keys)
+         old-graph (api-graph {:group-ids group-ids})
          [old new] (data/diff (:groups old-graph) (:groups new-graph))
          old       (or old {})
          new       (or new {})]

@@ -257,9 +257,10 @@
                            (database-permission-for-group group-id perm-type database-id)
                            perm-value))
 
-(mu/defn table-permission-for-group :- PermissionValue
-  "Returns the effective permission value for a given *group*, permission type, and database ID, and table ID."
-  [group-id perm-type database-id table-id]
+(mu/defn table-permission-for-groups :- PermissionValue
+  "Returns the effective permission value provided by a set of *group-ids*, for a provided permission type, database
+  ID, and table ID."
+  [group-ids perm-type database-id table-id]
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
                     {perm-type (Permissions perm-type)})))
@@ -268,7 +269,7 @@
                                       {:select [[:p.perm_value :value]]
                                        :from [[:data_permissions :p]]
                                        :where [:and
-                                               [:= :p.group_id group-id]
+                                               [:in :p.group_id group-ids]
                                                [:= :p.perm_type (u/qualified-name perm-type)]
                                                [:= :p.db_id database-id]
                                                [:or
@@ -278,14 +279,13 @@
                                                                                 perm-type)))
         (least-permissive-value perm-type))))
 
-(mu/defn group-has-permission-for-table? :- :boolean
-  "Returns a Boolean indicating whether the group has the specified permission value for the given table ID, or a more
-  permissive value."
-  [group-id perm-type perm-value database-id table-id]
+(mu/defn groups-have-permission-for-table? :- :boolean
+  "Returns a Boolean indicating whether the provided groups grant the specified permission level or higher for the given
+  table ID, or a more permissive value. (i.e. if a user is in all of these groups, would they have this permission?)"
+  [group-ids perm-type perm-value database-id table-id]
   (at-least-as-permissive? perm-type
-                           (table-permission-for-group group-id perm-type database-id table-id)
+                           (table-permission-for-groups group-ids perm-type database-id table-id)
                            perm-value))
-
 
 (mu/defn table-permission-for-user :- PermissionValue
   "Returns the effective permission value for a given user, permission type, and database ID, and table ID. If the user
@@ -351,7 +351,7 @@
 (mu/defn full-db-permission-for-user :- PermissionValue
   "Returns the effective *db-level* permission value for a given user, permission type, and database ID. If the user
   has multiple permissions for the given type in different groups, they are coalesced into a single value. The
-  db-level permission is the *most* restrictive table-level permission within that schema."
+  db-level permission is the *most* restrictive table-level permission within that database."
   [user-id perm-type database-id]
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
@@ -541,7 +541,7 @@
   "Returns a tree representation of all data permissions. Can be optionally filtered by group ID, database ID,
   and/or permission type. This is intended to power the permissions editor in the admin panel, and should not be used
   for permission enforcement, as it will read much more data than necessary."
-  [& {:keys [group-id db-id perm-type audit?]}]
+  [& {:keys [group-id group-ids db-id perm-type audit?]}]
   (let [data-perms (t2/select [:model/DataPermissions
                                [:perm_type :type]
                                [:group_id :group-id]
@@ -553,6 +553,7 @@
                                        (when perm-type [:= :perm_type (u/qualified-name perm-type)])
                                        (when db-id [:= :db_id db-id])
                                        (when group-id [:= :group_id group-id])
+                                       (when group-ids [:in :group_id group-ids])
                                        (when-not audit? [:not= :db_id audit/audit-db-id])]})]
     (reduce
      (fn [graph {group-id  :group-id
@@ -699,6 +700,16 @@
   (doseq [[perm-type perm-value] (new-database-permissions group-or-id)]
     (set-database-permission! group-or-id db-or-id perm-type perm-value)))
 
+(def ^:private permission-batch-size 1000)
+
+(defn- batch-insert-permissions!
+  "In certain cases, when updating the permissions for many tables at once, we need to batch the insertions to avoid
+  hitting database limits for the number of parameters in a prepared statement. This is only really applicable when a DB
+  has more than ~10k tables and we're transitioning from database-level permissions to table-level permissions."
+  [new-perms]
+  (doseq [batched-new-perms (partition-all permission-batch-size new-perms)]
+    (t2/insert! :model/DataPermissions batched-new-perms)))
+
 (mu/defn set-table-permissions!
   "Sets table permissions to specified values for a given group. If a permission value already exists for a specified
   group and table, it will be updated to the new value.
@@ -776,7 +787,7 @@
                                             :schema_name (:schema table)})
                                          other-tables)]
                 (t2/delete! :model/DataPermissions :id (:id existing-db-perm))
-                (t2/insert! :model/DataPermissions (concat other-new-perms new-perms))))
+                (batch-insert-permissions! (concat other-new-perms new-perms))))
             (let [existing-table-perms (t2/select :model/DataPermissions
                                                   :perm_type (u/qualified-name perm-type)
                                                   :group_id  group-id
@@ -793,7 +804,7 @@
                 ;; Otherwise, just replace the rows for the individual table perm
                 (do
                   (t2/delete! :model/DataPermissions :perm_type perm-type :group_id group-id {:where [:in :table_id table-ids]})
-                  (t2/insert! :model/DataPermissions new-perms))))))))))
+                  (batch-insert-permissions! new-perms))))))))))
 
 (mu/defn set-table-permission!
   "Sets permissions for a single table to the specified value for a given group."

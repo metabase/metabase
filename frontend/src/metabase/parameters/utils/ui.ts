@@ -5,7 +5,7 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
 
-export function getParameterIconName(parameter: UiParameter) {
+export function getParameterIconName(parameter: UiParameter | string) {
   const type = getParameterType(parameter);
   switch (type) {
     case "date":

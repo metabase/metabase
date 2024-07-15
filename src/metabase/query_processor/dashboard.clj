@@ -146,7 +146,7 @@
                                                request-param-id->param))]
     (when-let [user-id api/*current-user-id*]
       (doseq [{:keys [id value]} request-params]
-        (user-parameter-value/upsert! user-id id value)))
+        (user-parameter-value/upsert! user-id dashboard-id id value)))
     (log/tracef "Dashboard parameters:\n%s\nRequest parameters:\n%s\nMerged:\n%s"
                 (u/pprint-to-str (update-vals dashboard-param-id->param
                                               (fn [param]
@@ -163,7 +163,7 @@
 (defn process-query-for-dashcard
   "Like [[metabase.query-processor.card/process-query-for-card]], but runs the query for a `DashboardCard` with
   `parameters` and `constraints`. By default, returns a `metabase.async.streaming_response.StreamingResponse` (see
-  [[metabase.async.streaming-response]]), but this may vary if you pass in a different `:run` function. Will throw an
+  [[metabase.async.streaming-response]]), but this may vary if you pass in a different `:make-run` function. Will throw an
   Exception if preconditions such as proper permissions are not met *before* returning the `StreamingResponse`.
 
   See [[metabase.query-processor.card/process-query-for-card]] for more information about the various parameters."

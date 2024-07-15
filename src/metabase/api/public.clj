@@ -27,6 +27,7 @@
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -73,10 +74,13 @@
 (defn- remove-card-non-public-columns
   "Remove everyting from public `card` that shouldn't be visible to the general public."
   [card]
-  (mi/instance
-   Card
-   (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters
-                               [:dataset_query :type [:native :template-tags]]])))
+  ;; We need to check this to resolve params - we set `mw.session/as-admin` there
+  (if qp.perms/*param-values-query*
+    card
+    (mi/instance
+      Card
+      (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters
+                                  [:dataset_query :type [:native :template-tags]]]))))
 
 (defn public-card
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
@@ -127,7 +131,7 @@
      {:error (tru "An error occurred while running the query.")})))
 
 (defn- process-query-for-card-with-id-run-fn
-  "Create the `:run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."
+  "Create the `:make-run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."
   [qp export-format]
   (fn run [query info]
     (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
@@ -153,7 +157,8 @@
     (m/mapply qp.card/process-query-for-card card-id export-format
               :parameters parameters
               :context    :public-question
-              :run        (process-query-for-card-with-id-run-fn qp export-format)
+              :qp         qp
+              :make-run   process-query-for-card-with-id-run-fn
               options)))
 
 (defn ^:private process-query-for-card-with-public-uuid
@@ -267,7 +272,7 @@
                                    (string? parameters) (json/parse-string keyword))
                   :export-format export-format
                   :qp            qp
-                  :run           (process-query-for-card-with-id-run-fn qp export-format)})]
+                  :make-run      process-query-for-card-with-id-run-fn})]
     ;; Run this query with full superuser perms. We don't want the various perms checks failing because there are no
     ;; current user perms; if this Dashcard is public you're by definition allowed to run it without a perms check
     ;; anyway
@@ -573,7 +578,8 @@
    param-key ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
     (mw.session/as-admin
-     (api.dashboard/param-values dashboard param-key constraint-param-key->value))))
+      (binding [qp.perms/*param-values-query* true]
+        (api.dashboard/param-values dashboard param-key constraint-param-key->value)))))
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
@@ -583,7 +589,8 @@
    query     ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
     (mw.session/as-admin
-     (api.dashboard/param-values dashboard param-key constraint-param-key->value query))))
+      (binding [qp.perms/*param-values-query* true]
+        (api.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 

@@ -26,6 +26,8 @@ import {
   openEmbedModalFromMenu,
   getEmbedModalSharingPane,
   setFilter,
+  multiAutocompleteInput,
+  removeMultiAutocompleteValue,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -556,14 +558,20 @@ describe("scenarios > dashboard > subscriptions", () => {
           .findByText("Text")
           .click();
         cy.get("@subscriptionBar").findByText("Corbin Mertz").click();
+
+        popover().within(() => {
+          removeMultiAutocompleteValue(0);
+          multiAutocompleteInput().type("Sallie");
+        });
+        popover().last().findByText("Sallie Flatley").click();
         popover()
-          .findByText("Corbin Mertz")
-          .closest("li")
-          .icon("close")
-          .click();
-        popover().find("input").type("Sallie");
-        popover().findByText("Sallie Flatley").click();
-        popover().contains("Update filter").click();
+          .first()
+          .within(() => {
+            // to close the suggestion menu
+            multiAutocompleteInput().blur();
+            cy.button("Update filter").click();
+          });
+
         cy.button("Save").click();
 
         // verify existing subscription shows new default in UI
@@ -652,14 +660,15 @@ describe("scenarios > dashboard > subscriptions", () => {
           .next("aside")
           .findByText("Corbin Mertz")
           .click();
+        removeMultiAutocompleteValue(0, ":eq(1)");
+        popover().within(() => multiAutocompleteInput().type("Sallie"));
+        popover().last().findByText("Sallie Flatley").click();
         popover()
-          .findByText("Corbin Mertz")
-          .closest("li")
-          .icon("close")
-          .click();
-        popover().find("input").type("Sallie");
-        popover().findByText("Sallie Flatley").click();
-        popover().contains("Update filter").click();
+          .first()
+          .within(() => {
+            multiAutocompleteInput().blur();
+            cy.button("Update filter").click();
+          });
         cy.button("Save").click();
 
         // verify existing subscription shows new default in UI
@@ -684,8 +693,8 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByText("Emailed hourly").click();
 
         cy.findAllByText("Corbin Mertz").last().click();
-        popover().find("input").type("Bob");
-        popover().findByText("Bobby Kessler").click();
+        popover().within(() => multiAutocompleteInput().type("Bob"));
+        popover().last().findByText("Bobby Kessler").click();
         popover().contains("Update filter").click();
 
         cy.findAllByText("Text 1").last().click();
@@ -788,9 +797,13 @@ function addParametersToDashboard() {
 
   // add default value to the above filter
   cy.findByText("No default").click();
-  popover().find("input").type("Corbin");
-  popover().findByText("Corbin Mertz").click();
-  popover().contains("Add filter").click();
+  popover().within(() => {
+    multiAutocompleteInput().type("Corbin");
+  });
+
+  popover().last().findByText("Corbin Mertz").click();
+
+  popover().first().contains("Add filter").click({ force: true });
 
   setFilter("Text or Category", "Is");
 

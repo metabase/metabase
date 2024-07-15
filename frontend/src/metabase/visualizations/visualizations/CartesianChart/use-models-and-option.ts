@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { isCypressActive } from "metabase/env";
+import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { extractRemappings } from "metabase/visualizations";
 import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
@@ -115,7 +115,7 @@ export function useModelsAndOption({
       return {};
     }
 
-    const shouldAnimate = !isPlaceholder && !isCypressActive;
+    const shouldAnimate = !isPlaceholder && !isReducedMotionPreferred();
 
     switch (card.display) {
       case "waterfall":

@@ -15,7 +15,9 @@
 (defn increment-view-counts!
   "Increments the view_count column for a model given a list of ids.
    Assumes the model has one primary key `id`, and the column for the view count is named `view_count`"
-  [model & ids]
+  [_model & _ids]
+  ;; Disable view_count updates to handle perf issues  (for now) (#44359)
+  #_
   (when (seq ids)
     (t2/query {:update (t2/table-name model)
                :set    {:view_count [:+ :view_count [:inline 1]]}

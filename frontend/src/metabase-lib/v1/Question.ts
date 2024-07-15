@@ -28,9 +28,9 @@ import type {
   DashboardId,
   DashCardId,
   DatabaseId,
-  Dataset,
   DatasetData,
   DatasetQuery,
+  Field,
   Parameter as ParameterObject,
   ParameterId,
   ParameterValues,
@@ -482,26 +482,6 @@ class Question {
     return Question.create({ metadata: this.metadata() }).setQuery(query);
   }
 
-  syncColumnsAndSettings(
-    queryResults?: Dataset,
-    prevQueryResults?: Dataset,
-    options?: Lib.SettingsSyncOptions,
-  ) {
-    const settings = this.settings();
-    const newSettings = Lib.syncColumnSettings(
-      settings,
-      queryResults,
-      prevQueryResults,
-      options,
-    );
-
-    if (newSettings !== settings) {
-      return this.setSettings(newSettings);
-    } else {
-      return this;
-    }
-  }
-
   /**
    * A user-defined name for the question
    */
@@ -610,6 +590,10 @@ class Question {
     return this._card && this._card.archived;
   }
 
+  getResultMetadata() {
+    return this.card().result_metadata ?? [];
+  }
+
   setResultsMetadata(resultsMetadata) {
     const metadataColumns = resultsMetadata && resultsMetadata.columns;
     return this.setCard({
@@ -618,8 +602,13 @@ class Question {
     });
   }
 
-  getResultMetadata() {
-    return this.card().result_metadata ?? [];
+  setResultMetadataDiff(metadataDiff: Record<string, Partial<Field>>) {
+    const metadata = this.getResultMetadata();
+    const newMetadata = metadata.map(column => {
+      const columnDiff = metadataDiff[column.name];
+      return columnDiff ? { ...column, ...columnDiff } : column;
+    });
+    return this.setResultsMetadata({ columns: newMetadata });
   }
 
   /**
@@ -715,6 +704,13 @@ class Question {
       );
     });
     return a.isDirtyComparedTo(b);
+  }
+
+  isQueryDirtyComparedTo(originalQuestion: Question) {
+    return !Lib.areLegacyQueriesEqual(
+      this.datasetQuery(),
+      originalQuestion.datasetQuery(),
+    );
   }
 
   // Internal methods

@@ -51,6 +51,7 @@ import {
   focusNativeEditor,
   tableHeaderClick,
   onlyOnOSS,
+  visitModel,
 } from "e2e/support/helpers";
 import {
   createMockActionParameter,
@@ -692,17 +693,15 @@ describe("issue 23024", () => {
     addModelToDashboardAndVisit();
   });
 
-  it("should be possible to apply the dashboard filter to the native model (metabase#23024)", () => {
+  it("should not be possible to apply the dashboard filter to the native model (metabase#23024)", () => {
     editDashboard();
 
     setFilter("Text or Category", "Is");
 
     getDashboardCard().within(() => {
-      cy.findByText("Column to filter on");
-      cy.findByText("Select…").click();
+      cy.findByText(/Models are data sources/).should("be.visible");
+      cy.findByText("Select…").should("not.exist");
     });
-
-    popover().contains("Category");
   });
 });
 
@@ -763,7 +762,7 @@ describe("issue 23421", () => {
     cy.get(".ace_content").should("contain", query);
     cy.findByRole("columnheader", { name: "id" }).should("be.visible");
     cy.findByRole("columnheader", { name: "created_at" }).should("be.visible");
-    cy.button("Save changes").should("be.disabled");
+    cy.button("Save changes").should("be.visible");
   });
 
   it("`visualization_settings` with hidden columns should not break UI (metabase#23421)", () => {
@@ -1190,7 +1189,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
 
     visitDashboard("@dashboardId");
 
-    cy.intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}`).as(
+    cy.intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}*`).as(
       "loadTargetDashboard",
     );
     cartesianChartCircle().eq(25).click({ force: true });
@@ -1806,5 +1805,108 @@ describe("issue 40252", () => {
     cy.wait("@dataset");
 
     cy.findAllByTestId("header-cell").contains("Model B - A1 → B1Upd");
+  });
+});
+
+describe("issue 42355", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow overriding database fields for models with manually ordered columns (metabase#42355)", () => {
+    createNativeQuestion({
+      type: "model",
+      native: { query: "SELECT ID, PRODUCT_ID FROM ORDERS" },
+      visualization_settings: {
+        "table.columns": [
+          {
+            name: "PRODUCT_ID",
+            key: '["name","PRODUCT_ID"]',
+            enabled: true,
+            fieldRef: ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
+          },
+          {
+            name: "ID",
+            key: '["name","ID"]',
+            enabled: true,
+            fieldRef: ["field", "ID", { "base-type": "type/BigInteger" }],
+          },
+        ],
+        "table.cell_column": "ID",
+      },
+    }).then(({ body: card }) => visitModel(card.id));
+
+    cy.log("update metadata");
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    rightSidebar()
+      .findByText("Database column this maps to")
+      .next()
+      .findByText("None")
+      .click();
+    popover().within(() => {
+      cy.findByText("Orders").click();
+      cy.findByText("ID").click();
+    });
+    cy.button("Save changes").click();
+
+    cy.log("check metadata changes are visible");
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    rightSidebar()
+      .findByText("Database column this maps to")
+      .next()
+      .findByText("Orders → ID")
+      .should("be.visible");
+  });
+});
+
+describe("cumulative count - issue 33330", () => {
+  const questionDetails = {
+    name: "33330",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["cum-count"]],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createQuestion(questionDetails, { visitQuestion: true });
+    cy.findAllByTestId("header-cell")
+      .should("contain", "Created At: Month")
+      .and("contain", "Cumulative count");
+    cy.findAllByTestId("cell-data").should("contain", "June 2022");
+  });
+
+  it("should still work after turning a question into model (metabase#33330-1)", () => {
+    turnIntoModel();
+    cy.findAllByTestId("header-cell")
+      .should("contain", "Created At: Month")
+      .and("contain", "Cumulative count");
+    cy.findAllByTestId("cell-data").should("contain", "June 2022");
+  });
+
+  it("should still work after applying a post-aggregation filter (metabase#33330-2)", () => {
+    filter();
+    cy.findByRole("dialog").within(() => {
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.findByTestId("filter-column-Created At").findByText("Today").click();
+      cy.button("Apply filters").click();
+      cy.wait("@dataset");
+    });
+
+    cy.findByTestId("filter-pill").should("have.text", "Created At is today");
+    cy.findAllByTestId("header-cell")
+      .should("contain", "Created At: Month")
+      .and("contain", "Cumulative count");
+    cy.findAllByTestId("cell-data")
+      .should("have.length", "4")
+      .and("not.be.empty");
+    cy.findByTestId("question-row-count").should("have.text", "Showing 1 row");
   });
 });

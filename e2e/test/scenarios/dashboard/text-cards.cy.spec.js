@@ -18,6 +18,7 @@ import {
   filterWidget,
   addTextBoxWhileEditing,
   addHeadingWhileEditing,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -280,7 +281,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     saveDashboard();
 
     filterWidget().click();
-    cy.findByPlaceholderText("Enter a number").type("1{enter}");
+    popover().within(() => multiAutocompleteInput().type("1"));
     cy.button("Add filter").click();
     getDashboardCard(0).findByText("Variable: 1").should("exist");
     getDashboardCard(1).findByText("Variable: 1").should("exist");
@@ -289,7 +290,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
       .findByText("1")
       .click();
     popover().within(() => {
-      cy.findByRole("textbox").click().type("2{enter}");
+      multiAutocompleteInput().type("2");
       cy.button("Update filter").click();
     });
     getDashboardCard(0).findByText("Variable: 1 and 2").should("exist");

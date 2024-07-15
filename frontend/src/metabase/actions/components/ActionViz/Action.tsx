@@ -192,7 +192,7 @@ function getErrorTooltip({
     return t`Actions are not enabled for this database`;
   }
 
-  return t`Something's gone wrong`;
+  return t`Something’s gone wrong`;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

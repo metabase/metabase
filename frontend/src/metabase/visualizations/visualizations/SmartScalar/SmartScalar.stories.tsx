@@ -36,7 +36,7 @@ export const Default: Story = () => (
 );
 
 // Example of how themes can be applied in the SDK.
-export const EmbeddingTemplate: Story = () => {
+export const EmbeddingTheme: Story = () => {
   const theme: MetabaseTheme = {
     colors: {
       positive: "#4834d4",

@@ -79,12 +79,12 @@
 
 (defn is-trash?
   "Is this the trash collection?"
-  [collection]
+  [collection-or-id]
   ;; in some circumstances we don't have a `:type` on the collection (e.g. search or collection items lists, where we
   ;; select a subset of columns). Use the type if it's there, but fall back to the ID to be sure.
   ;; We can't *only* use the id because getting that requires selecting a collection :sweat-smile:
-  (or (= (:type collection) trash-collection-type)
-      (= (:id collection) (trash-collection-id))))
+  (or (= (:type collection-or-id) trash-collection-type)
+      (some-> collection-or-id u/id (= (trash-collection-id)))))
 
 (defn is-trash-or-descendant?
   "Is this the trash collection, or a descendant of it?"
@@ -1180,7 +1180,7 @@
           :read  (perms/collection-read-path collection-or-id)
           :write (perms/collection-readwrite-path collection-or-id))})))
 
-(def ^:private instance-analytics-collection-type
+(def instance-analytics-collection-type
   "The value of the `:type` field for the `instance-analytics` Collection created in [[metabase-enterprise.audit-app.audit]]"
   "instance-analytics")
 
@@ -1277,6 +1277,9 @@
   "Check that we have write permissions for Collection with `collection-id`, or throw a 403 Exception. If
   `collection-id` is `nil`, this check is done for the Root Collection."
   [collection-or-id-or-nil]
+  (when (is-trash? collection-or-id-or-nil)
+    (throw (ex-info (tru "You cannot modify the Trash Collection.")
+                    {:status-code 400})))
   (let [actual-perms   @*current-user-permissions-set*
         required-perms (perms/collection-readwrite-path (if collection-or-id-or-nil
                                                           collection-or-id-or-nil
@@ -1588,36 +1591,36 @@
             :let [parent-id (coll-id->parent-id (:id coll))
                   archived-directly? (:archived_directly coll)
                   parent-archived? (get parent-id->archived? parent-id false)]]
-        (cond-> coll
-          (:archived coll) (assoc :can_restore (and archived-directly?
-                                                    (not parent-archived?)
-                                                    (perms/set-has-full-permissions-for-set?
+        (assoc coll :can_restore (boolean (and (:archived coll)
+                                               archived-directly?
+                                               (not parent-archived?)
+                                               (perms/set-has-full-permissions-for-set?
                                                      @api/*current-user-permissions-set*
                                                      (perms-for-archiving coll)))))))))
 
 (defmethod hydrate-can-restore :default [_model items]
-  (for [{collection :collection
-         :as item*} (t2/hydrate items :collection)
-        :let [item (dissoc item* :collection)]]
-    (cond-> item
-      (:archived item)
-      (assoc :can_restore (and
-                           ;; the item is directly in the trash (it was archived independently, not as
-                           ;; part of a collection)
-                           (:archived_directly item)
+  (for [[{collection :collection} item] (map vector (t2/hydrate items :collection) items)]
+    (assoc item :can_restore (boolean
+                              (and
+                               ;; the item is archived
+                               (:archived item)
 
-                           ;; EITHER:
-                           (or
-                            ;; the item was archived from the root collection
-                            (nil? (:collection_id item))
-                            ;; or the collection we'll restore to actually exists.
-                            (some? collection))
+                               ;; the item is directly in the trash (it was archived independently, not as
+                               ;; part of a collection)
+                               (:archived_directly item)
 
-                           ;; the collection we'll restore to is not archived
-                           (not (:archived collection))
+                               ;; EITHER:
+                               (or
+                                ;; the item was archived from the root collection
+                                (nil? (:collection_id item))
+                                ;; or the collection we'll restore to actually exists.
+                                (some? collection))
 
-                           ;; we have perms on the collection
-                           (mi/can-write? (or collection root-collection)))))))
+                               ;; the collection we'll restore to is not archived
+                               (not (:archived collection))
+
+                               ;; we have perms on the collection
+                               (mi/can-write? (or collection root-collection)))))))
 
 (mi/define-batched-hydration-method can-restore
   :can_restore
@@ -1635,7 +1638,8 @@
   [items]
   (when (seq items)
     (for [item items]
-      (assoc item :can_delete (if (or (= :model/Collection (t2/model item))
-                                      (collection.root/is-root-collection? item))
-                                false
-                                (mi/can-write? item))))))
+      (assoc item :can_delete (boolean (and
+                                        (not (or (= :model/Collection (t2/model item))
+                                                 (collection.root/is-root-collection? item)))
+                                        (:archived item)
+                                        (mi/can-write? item)))))))

@@ -7,7 +7,6 @@ import {
   useGetCollectionQuery,
 } from "metabase/api";
 import { isValidCollectionId } from "metabase/collections/utils";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
@@ -49,30 +48,36 @@ const useGetInitialCollection = (
 ) => {
   const isQuestion =
     initialValue && ["card", "dataset", "metric"].includes(initialValue.model);
-
+  const isCollection = initialValue?.model === "collection";
   const cardId = isQuestion ? Number(initialValue.id) : undefined;
+  const collectionId = isCollection
+    ? isValidCollectionId(initialValue.id)
+      ? initialValue.id
+      : "root"
+    : undefined;
 
-  const { data: currentQuestion, error: questionError } = useGetCardQuery(
-    cardId ? { id: cardId } : skipToken,
+  const { data: currentCollection, isLoading: isCollectionLoading } =
+    useGetCollectionQuery(collectionId ? { id: collectionId } : skipToken);
+
+  const { data: currentQuestion, isLoading: isQuestionLoading } =
+    useGetCardQuery(cardId ? { id: cardId } : skipToken);
+
+  const {
+    data: currentQuestionCollection,
+    isLoading: isCurrentQuestionCollectionLoading,
+  } = useGetCollectionQuery(
+    currentQuestion
+      ? { id: currentQuestion.collection_id ?? "root" }
+      : skipToken,
   );
-
-  const collectionId =
-    isQuestion && currentQuestion
-      ? currentQuestion?.collection_id
-      : initialValue?.id;
-
-  const { data: currentCollection, error: collectionError } =
-    useGetCollectionQuery(
-      !isQuestion || !!currentQuestion
-        ? (isValidCollectionId(collectionId) && collectionId) || "root"
-        : skipToken,
-    );
 
   return {
     currentQuestion: currentQuestion,
-    currentCollection,
-    isLoading: !currentCollection,
-    error: questionError ?? collectionError,
+    currentCollection: currentQuestionCollection ?? currentCollection,
+    isLoading:
+      isCollectionLoading ||
+      isQuestionLoading ||
+      isCurrentQuestionCollectionLoading,
   };
 };
 
@@ -92,12 +97,8 @@ export const QuestionPicker = ({
     }),
   );
 
-  const {
-    currentCollection,
-    currentQuestion,
-    error,
-    isLoading: loadingCurrentCollection,
-  } = useGetInitialCollection(initialValue);
+  const { currentCollection, currentQuestion, isLoading } =
+    useGetInitialCollection(initialValue);
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
 
@@ -160,11 +161,7 @@ export const QuestionPicker = ({
     [currentCollection, userPersonalCollectionId],
   );
 
-  if (error) {
-    return <LoadingAndErrorWrapper error={error} />;
-  }
-
-  if (loadingCurrentCollection) {
+  if (isLoading) {
     return <DelayedLoadingSpinner />;
   }
 

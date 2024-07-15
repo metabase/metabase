@@ -13,7 +13,6 @@ interface DashboardCardProps {
 export const DashboardCardContainer = styled.div<DashboardCardProps>`
   position: relative;
   z-index: 1;
-
   container-name: DashboardCard;
   container-type: inline-size;
 
@@ -94,6 +93,6 @@ function getDashboardCardShadowOrBorder(theme: MantineTheme) {
   }
 
   return css`
-    box-shadow: 0px 1px 3px var(--mb-color-shadow);
+    box-shadow: 0 1px 3px var(--mb-color-shadow);
   `;
 }

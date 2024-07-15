@@ -34,6 +34,8 @@ You can set the following types of permissions on a database, schema, or table:
 - [Manage table metadata](#manage-table-metadata-permissions)
 - [Manage database](#manage-database-permissions)
 
+> If you're upgrading from a version below Metabase 50, your permission levels may look different, but the data access hasn't changed. See [what's changed with data permissions and why](./no-self-service-deprecation.md).
+
 ## View data permissions
 
 The **View data** permission determines what data people can see. Permission levels include:
@@ -146,6 +148,10 @@ Note that only admins can delete database connections in your Metabase, so peopl
 ## Revoke access even though "All Users" has greater access
 
 If you see this modal pop-up, Metabase is telling you that the people in the All Users group (that is, everyone in your Metabase), have a higher level of access to the database, schema, or table that you're setting permissions on. To limit your current group to your preferred permission level, the All Users group must have a less permissive level of access to the data source in question.
+
+## Upload permissions
+
+See [Upload permissions](../databases/uploads.md#add-people-to-a-group-with-data-access-to-the-upload-schema).
 
 ## Further reading
 

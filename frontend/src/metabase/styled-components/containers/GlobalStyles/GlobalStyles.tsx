@@ -6,6 +6,8 @@ import { alpha, color, lighten } from "metabase/lib/colors";
 import { getSitePath } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
+import { getThemeSpecificCssVariables } from "metabase/styled-components/theme/css-variables";
+import { useMantineTheme } from "metabase/ui";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
 import { getFont, getFontFiles } from "../../selectors";
@@ -15,6 +17,7 @@ export const GlobalStyles = (): JSX.Element => {
   const fontFiles = useSelector(getFontFiles);
 
   const sitePath = getSitePath();
+  const theme = useMantineTheme();
 
   const styles = css`
     :root {
@@ -42,13 +45,28 @@ export const GlobalStyles = (): JSX.Element => {
       --mb-color-text-medium: ${color("text-medium")};
       --mb-color-text-white: ${color("text-white")};
       --mb-color-warning: ${color("warning")};
+      --mb-color-border-alpha-30: color-mix(
+        in srgb,
+        var(--mb-color-border) 30%,
+        transparent
+      );
+      --mb-color-text-white-alpha-85: color-mix(
+        in srgb,
+        var(--mb-color-text-white) 85%,
+        transparent
+      );
+      --mb-color-bg-black-alpha-60: color-mix(
+        in srgb,
+        var(--mb-color-bg-black) 60%,
+        transparent
+      );
+      --mb-color-bg-white-alpha-15: color-mix(
+        in srgb,
+        var(--mb-color-bg-white) 15%,
+        transparent
+      );
 
-      /*
-        Theming-specific CSS variables.
-        These CSS variables are not part of the core design system colors.
-      **/
-      --mb-color-bg-dashboard: var(--mb-color-bg-white);
-      --mb-color-bg-dashboard-card: var(--mb-color-bg-white);
+      ${getThemeSpecificCssVariables(theme)}
     }
 
     ${defaultFontFiles({ baseUrl: sitePath })}

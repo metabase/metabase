@@ -31,9 +31,14 @@
 
   javax.sql.DataSource
   (getConnection [_]
-   (if properties
-     (DriverManager/getConnection url properties)
-     (DriverManager/getConnection url)))
+    (doto (if properties
+            (DriverManager/getConnection url properties)
+            (DriverManager/getConnection url))
+      ;; MySQL/MariaDB default to REPEATABLE_READ which ends up making everything SLOW because it locks all the time.
+      ;; Postgres defaults to READ_COMMITTED. Explicitly set transaction isolation for new connections so we can make
+      ;; sure we're using READ_COMMITTED. See https://metaboat.slack.com/archives/C04DN5VRQM6/p1718912820432359 for more
+      ;; info.
+      (.setTransactionIsolation java.sql.Connection/TRANSACTION_READ_COMMITTED)))
 
   ;; we don't use (.getConnection this url user password) so we don't need to implement it.
   (getConnection [_ _user _password]

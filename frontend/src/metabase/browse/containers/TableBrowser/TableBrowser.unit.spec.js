@@ -28,7 +28,7 @@ describe("TableBrowser", () => {
     const calls = await fetchMock.calls(/\/api\/database\/1\/schema\/public/);
     expect(calls.length).toBe(1);
     // check the loading spinner is present
-    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     // change the table to have initial_sync_status='complete'
     fetchMock.get(
       "path:/api/database/1/schema/public",

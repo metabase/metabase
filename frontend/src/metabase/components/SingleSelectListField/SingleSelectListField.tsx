@@ -8,6 +8,7 @@ import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import type { RowValue } from "metabase-types/api";
 
 import {
   OptionContainer,
@@ -20,11 +21,13 @@ import type { SingleSelectListFieldProps, Option } from "./types";
 import { isValidOptionItem } from "./utils";
 
 function createOptionsFromValuesWithoutOptions(
-  values: string[],
+  values: RowValue[],
   options: Option[],
 ): Option {
   const optionsMap = _.indexBy(options, "0");
-  return values.filter(value => !optionsMap[value]).map(value => [value]);
+  return values
+    .filter(value => typeof value !== "string" || !optionsMap[value])
+    .map(value => [value]);
 }
 
 const SingleSelectListField = ({

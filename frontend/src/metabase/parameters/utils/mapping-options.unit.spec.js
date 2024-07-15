@@ -1,6 +1,12 @@
 import { createMockMetadata } from "__support__/metadata";
 import Question from "metabase-lib/v1/Question";
 import {
+  createMockCard,
+  createMockNativeDatasetQuery,
+  createMockParameter,
+  createMockTable,
+} from "metabase-types/api/mocks";
+import {
   createSampleDatabase,
   createAdHocCard,
   createAdHocNativeCard,
@@ -12,6 +18,7 @@ import {
   PRODUCTS,
   PRODUCTS_ID,
   PEOPLE,
+  createOrdersTable,
 } from "metabase-types/api/mocks/presets";
 
 import { getParameterMappingOptions } from "./mapping-options";
@@ -44,7 +51,7 @@ function native(native) {
 
 describe("parameters/utils/mapping-options", () => {
   describe("getParameterMappingOptions", () => {
-    describe("Model question", () => {
+    describe("structured model", () => {
       let dataset;
       let virtualCardTable;
       beforeEach(() => {
@@ -97,7 +104,39 @@ describe("parameters/utils/mapping-options", () => {
       });
     });
 
-    describe("Structured Query", () => {
+    describe("native model", () => {
+      it("should not return mapping options for native models", () => {
+        const card = createMockCard({
+          type: "model",
+          dataset_query: createMockNativeDatasetQuery({
+            native: {
+              query: "SELECT * FROM ORDERS",
+            },
+          }),
+        });
+        const table = createOrdersTable();
+        const metadata = createMockMetadata({
+          databases: [createSampleDatabase()],
+          tables: [
+            createMockTable({
+              id: `card__${card.id}`,
+              fields: (table.fields ?? []).map(field => ({
+                ...field,
+                table_id: `card__${card.id}`,
+              })),
+            }),
+          ],
+          questions: [card],
+        });
+        const question = new Question(card, metadata);
+        const parameter = createMockParameter({ type: "number/=" });
+
+        const options = getParameterMappingOptions(question, parameter, card);
+        expect(options).toHaveLength(0);
+      });
+    });
+
+    describe("structured query", () => {
       it("should return field-id and fk-> dimensions", () => {
         const card = structured({
           "source-table": REVIEWS_ID,
@@ -250,7 +289,7 @@ describe("parameters/utils/mapping-options", () => {
       });
     });
 
-    describe("NativeQuery", () => {
+    describe("native query", () => {
       it("should return variables for non-dimension template-tags", () => {
         const card = native({
           query: "select * from ORDERS where CREATED_AT = {{created}}",
@@ -276,6 +315,7 @@ describe("parameters/utils/mapping-options", () => {
         ]);
       });
     });
+
     it("should return dimensions for dimension template-tags", () => {
       const card = native({
         query: "select * from ORDERS where CREATED_AT = {{created}}",

@@ -990,9 +990,7 @@ describe("should not redirect users to other pages when linking an entity (metab
     restore();
     cy.signInAsAdmin();
     cy.intercept("GET", "/api/search?q=*").as("search");
-    cy.intercept("GET", "/api/activity/recents?context=views").as(
-      "recentViews",
-    );
+    cy.intercept("GET", "/api/activity/recents?*").as("recentViews");
   });
 
   it("should not redirect users to recent item", () => {
@@ -1238,7 +1236,9 @@ describe("issue 39863", () => {
   }
 
   function assertNoLoadingSpinners() {
-    dashboardGrid().findAllByTestId("loading-spinner").should("have.length", 0);
+    dashboardGrid()
+      .findAllByTestId("loading-indicator")
+      .should("have.length", 0);
   }
 
   beforeEach(() => {

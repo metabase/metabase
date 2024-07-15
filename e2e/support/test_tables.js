@@ -5,7 +5,7 @@
 // json-serializable data to cypress tasks (which run in node)
 // https://docs.cypress.io/api/commands/task#Arguments
 
-import { many_data_types_rows } from "./test_tables_data";
+import { ip_addresses_rows, many_data_types_rows } from "./test_tables_data";
 
 export const colors27745 = async dbClient => {
   const tableName = "colors27745";
@@ -186,6 +186,54 @@ export const multi_schema = async dbClient => {
       ],
     ],
   };
+
+  Object.entries(schemas).forEach(async ([schemaName, details]) => {
+    const [table, rows] = details;
+    await dbClient.schema.createSchemaIfNotExists(schemaName);
+    await dbClient.schema.withSchema(schemaName).dropTableIfExists(table);
+
+    await dbClient.schema.withSchema(schemaName).createTable(table, t => {
+      t.string("name");
+      t.integer("score");
+    });
+
+    await dbClient(`${schemaName}.${table}`).insert(rows);
+  });
+
+  return schemas;
+};
+
+export const ip_addresses = async dbClient => {
+  const tableName = "ip_addresses";
+
+  await dbClient.schema.dropTableIfExists(tableName);
+
+  await dbClient.schema.createTable(tableName, table => {
+    table.text("count");
+  });
+
+  await dbClient.schema.raw(`ALTER TABLE ${tableName} ADD inet inet`);
+  await dbClient(tableName).insert(ip_addresses_rows);
+
+  return null;
+};
+
+export const many_schemas = async dbClient => {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const schemas = Object.fromEntries(
+    alphabet.map(letter => {
+      const key = `Schema ${letter}`;
+      const value = [
+        "Animals",
+        [
+          { name: "Duck", score: 10 },
+          { name: "Horse", score: 20 },
+          { name: "Cow", score: 30 },
+        ],
+      ];
+      return [key, value];
+    }),
+  );
 
   Object.entries(schemas).forEach(async ([schemaName, details]) => {
     const [table, rows] = details;

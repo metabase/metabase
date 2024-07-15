@@ -2,132 +2,36 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  commandPalette,
+  commandPaletteButton,
   restore,
   visualize,
   openOrdersTable,
   popover,
   modal,
-  summarize,
   openNativeEditor,
   startNewQuestion,
   entityPickerModal,
   entityPickerModalTab,
   visitQuestion,
-  openProductsTable,
   visitQuestionAdhoc,
-  sidebar,
   openNotebook,
   selectFilterOperator,
   chartPathWithFillColor,
   openQuestionActions,
   queryBuilderHeader,
   saveQuestion,
+  saveSavedQuestion,
   tableHeaderClick,
   onlyOnOSS,
   entityPickerModalItem,
   newButton,
+  createNativeQuestion,
+  createQuestion,
+  getNotebookStep,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
-
-describe("time-series filter widget", () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-
-    openProductsTable();
-  });
-
-  it("should properly display All time as the initial filtering (metabase#22247)", () => {
-    summarize();
-
-    sidebar().contains("Created At").click();
-    cy.wait("@dataset");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("All time").click();
-
-    popover().within(() => {
-      // Implicit assertion: there is only one select button
-      cy.findByDisplayValue("All time").should("be.visible");
-
-      cy.button("Apply").should("not.be.disabled");
-    });
-  });
-
-  it("should allow switching from All time filter", () => {
-    cy.findAllByText("Summarize").first().click();
-    cy.findAllByText("Created At").last().click();
-    cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Done").click();
-
-    // switch to previous 30 quarters
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("All time").click();
-    popover().within(() => {
-      cy.findByDisplayValue("All time").click();
-    });
-    cy.findByTextEnsureVisible("Previous").click();
-    cy.findByDisplayValue("days").click();
-    cy.findByTextEnsureVisible("quarters").click();
-    cy.button("Apply").click();
-    cy.wait("@dataset");
-
-    cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is in the previous 30 quarters")
-      .should("be.visible");
-  });
-
-  it("should stay in-sync with the actual filter", () => {
-    cy.findAllByText("Filter").first().click();
-    cy.findByTestId("filter-column-Created At").within(() => {
-      cy.findByLabelText("More options").click();
-    });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Last 3 months").click();
-    cy.button("Apply filters").click();
-    cy.wait("@dataset");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At is in the previous 3 months").click();
-    cy.findByDisplayValue("months").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("years").click();
-    cy.button("Update filter").click();
-    cy.wait("@dataset");
-
-    cy.findAllByText("Summarize").first().click();
-    cy.findAllByText("Created At").last().click();
-    cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Done").click();
-
-    cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is in the previous 3 years")
-      .should("be.visible");
-
-    cy.findByTestId("timeseries-filter-button").click();
-    popover().within(() => {
-      cy.findByDisplayValue("Previous").should("be.visible");
-      cy.findByDisplayValue("All time").should("not.exist");
-      cy.findByDisplayValue("Next").should("not.exist");
-    });
-
-    // switch to All time filter
-    popover().within(() => {
-      cy.findByDisplayValue("Previous").click();
-    });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("All time").click();
-    cy.button("Apply").click();
-    cy.wait("@dataset");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At is in the previous 3 years").should("not.exist");
-    cy.findByTextEnsureVisible("All time");
-  });
-});
 
 describe("issue 23023", () => {
   const questionDetails = {
@@ -653,6 +557,133 @@ describe("issue 30610", () => {
     updateQuestion();
     createAdHocQuestion("Orders");
     visualizeAndAssertColumns();
+  });
+});
+
+describe("issue 36669", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to change question data source to raw data after selecting saved question (metabase#36669)", () => {
+    const questionDetails = {
+      name: "Orders 36669",
+      query: {
+        "source-table": ORDERS_ID,
+        limit: 5,
+      },
+    };
+
+    createQuestion(questionDetails).then(() => {
+      startNewQuestion();
+    });
+
+    entityPickerModal().within(() => {
+      cy.findByPlaceholderText("Search…").type("Orders 36669");
+
+      cy.findByRole("tabpanel").findByText("Orders 36669").click();
+    });
+
+    getNotebookStep("data").findByText("Orders 36669").click();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+
+      cy.log("verify Tables are listed");
+      cy.findByRole("tabpanel").should("contain", "Orders");
+    });
+  });
+});
+
+describe("issue 35290", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should render column settings when source query is a table joined on itself (metabase#35290)", () => {
+    const questionDetails = {
+      name: "Orders + Orders",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            "source-table": ORDERS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.ID, null],
+              ["field", ORDERS.ID, null],
+            ],
+            alias: "Orders",
+          },
+        ],
+        limit: 5,
+      },
+    };
+
+    createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
+      const questionDetails = {
+        name: "35290",
+        query: {
+          "source-table": `card__${questionId}`,
+        },
+      };
+
+      createQuestion(questionDetails, { visitQuestion: true });
+    });
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.findByTestId("chartsettings-sidebar")
+      // verify panel is shown
+      .should("contain", "Add or remove columns")
+      // verify column name is shown
+      .should("contain", "Created At");
+
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.icon("warning").should("not.exist");
+    });
+  });
+});
+
+describe("issue 43216", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+
+    createNativeQuestion({
+      name: "Source question",
+      native: { query: "select 1 as A, 2 as B, 3 as C" },
+    });
+  });
+
+  it("should update source question metadata when it changes (metabase#43216)", () => {
+    cy.visit("/");
+
+    cy.log("Create target question");
+    newButton("Question").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText("Source question").click();
+    });
+    saveQuestion("Target question");
+
+    cy.log("Update source question");
+    commandPaletteButton().click();
+    commandPalette().findByText("Source question").click();
+    cy.findByTestId("native-query-editor-container")
+      .findByText("Open Editor")
+      .click();
+    cy.get(".ace_editor").should("be.visible").type(" , 4 as D");
+    saveSavedQuestion();
+
+    cy.log("Assert updated metadata in target question");
+    commandPaletteButton().click();
+    commandPalette().findByText("Target question").click();
+    cy.findAllByTestId("header-cell").eq(3).should("have.text", "D");
+    openNotebook();
+    getNotebookStep("data").button("Pick columns").click();
+    popover().findByText("D").should("be.visible");
   });
 });
 

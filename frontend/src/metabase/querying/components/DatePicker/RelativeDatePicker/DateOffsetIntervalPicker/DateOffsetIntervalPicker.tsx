@@ -116,6 +116,7 @@ export function DateOffsetIntervalPicker({
           onChange={handleOffsetUnitChange}
         />
         <Button
+          c="text-medium"
           variant="subtle"
           leftIcon={<Icon name="close" />}
           aria-label={t`Remove offset`}

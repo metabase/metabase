@@ -85,11 +85,10 @@ export function PivotTableTestWrapper(props?: any) {
   );
 
   return (
-    <Box h="400px">
+    <Box h="400px" w="600px">
       <PivotTable
         settings={vizSettings}
         data={{ rows, cols }}
-        width={600}
         onVisualizationClick={() => {}}
         onUpdateVisualizationSettings={newSettings =>
           setVizSettings({ ...vizSettings, ...newSettings })

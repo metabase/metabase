@@ -153,7 +153,7 @@ class ParameterValueWidget extends Component {
     if (
       required &&
       defaultValue &&
-      !areParameterValuesIdentical(value, defaultValue)
+      !areParameterValuesIdentical(wrapArray(value), wrapArray(defaultValue))
     ) {
       return (
         <WidgetStatusIcon
@@ -323,7 +323,14 @@ function Widget({
   }
 
   if (isTemporalUnitParameter(parameter)) {
-    return <TemporalUnitWidget setValue={setValue} onClose={onPopoverClose} />;
+    return (
+      <TemporalUnitWidget
+        parameter={parameter}
+        value={value}
+        setValue={setValue}
+        onClose={onPopoverClose}
+      />
+    );
   }
 
   if (isTextWidget(parameter)) {
@@ -412,4 +419,11 @@ function isFieldWidget(parameter) {
   return parameter.hasVariableTemplateTagTarget
     ? canQuery
     : canQuery || hasFields(parameter);
+}
+
+function wrapArray(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  return [value];
 }

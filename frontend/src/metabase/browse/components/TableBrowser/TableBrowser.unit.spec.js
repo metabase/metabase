@@ -18,7 +18,7 @@ describe("TableBrowser", () => {
 
     expect(screen.getByText("Orders")).toBeInTheDocument();
     expect(screen.getByLabelText("bolt_filled icon")).toBeInTheDocument();
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
   });
 
   it.each(["incomplete", "complete"])(
@@ -43,7 +43,7 @@ describe("TableBrowser", () => {
       expect(
         screen.queryByLabelText("bolt_filled icon"),
       ).not.toBeInTheDocument();
-      expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     },
   );
 
@@ -67,7 +67,7 @@ describe("TableBrowser", () => {
 
     expect(screen.getByText("Orders")).toBeInTheDocument();
     expect(screen.getByLabelText("bolt_filled icon")).toBeInTheDocument();
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
   });
 });
 

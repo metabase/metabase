@@ -16,10 +16,9 @@ function getColumnItems(
   query: Lib.Query,
   stageIndex: number,
   group: Lib.ColumnGroup,
-) {
+): ColumnItem[] {
   return Lib.getColumnsFromColumnGroup(group).map(column => {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
-
     return {
       column,
       displayName: columnInfo.displayName,
@@ -36,9 +35,9 @@ function getGroupsWithColumns(
   query: Lib.Query,
   stageIndex: number,
   columns: Lib.ColumnMetadata[],
-) {
+): ColumnGroupItem[] {
   const groups = Lib.groupColumns(columns);
-  return groups.map(group => {
+  return groups.map((group, groupIndex) => {
     const groupInfo = Lib.displayInfo(query, stageIndex, group);
     const columnItems = getColumnItems(query, stageIndex, group);
 
@@ -47,19 +46,24 @@ function getGroupsWithColumns(
       displayName:
         groupInfo.fkReferenceName || groupInfo.displayName || t`Question`,
       isSelected: columnItems.every(({ isSelected }) => isSelected),
-      isDisabled: columnItems.some(({ isDisabled }) => isDisabled),
+      isDisabled: columnItems.every(({ isDisabled }) => isDisabled),
+      isSourceGroup: groupIndex === 0,
     };
   });
 }
 
-function disableLastSelectedQueryColumn(groupItems: ColumnGroupItem[]) {
-  return groupItems.map((groupItem, groupIndex) => {
-    if (groupIndex !== 0) {
+function disableOnlySelectedQueryColumn(
+  groupItems: ColumnGroupItem[],
+): ColumnGroupItem[] {
+  return groupItems.map(groupItem => {
+    if (!groupItem.isSourceGroup) {
       return groupItem;
     }
 
     const isOnlySelectedColumn =
-      groupItem.columnItems.filter(({ isSelected }) => isSelected).length === 1;
+      groupItem.columnItems.filter(
+        ({ isSelected, isDisabled }) => isSelected && !isDisabled,
+      ).length === 1;
 
     return {
       ...groupItem,
@@ -69,12 +73,15 @@ function disableLastSelectedQueryColumn(groupItems: ColumnGroupItem[]) {
           columnItem.isDisabled ||
           (columnItem.isSelected && isOnlySelectedColumn),
       })),
-      isDisabled: groupItem.isDisabled || groupItem.isSelected,
+      isDisabled:
+        groupItem.isDisabled || (groupItem.isSelected && isOnlySelectedColumn),
     };
   });
 }
 
-function deduplicateGroupNames(groupItems: ColumnGroupItem[]) {
+function deduplicateGroupNames(
+  groupItems: ColumnGroupItem[],
+): ColumnGroupItem[] {
   const groupNames = new Map<string, number>();
 
   return groupItems.map(groupItem => {
@@ -97,7 +104,7 @@ export function getColumnGroupItems(
 ): ColumnGroupItem[] {
   const columns = getColumns(query, stageIndex);
   const groupItems = getGroupsWithColumns(query, stageIndex, columns);
-  return deduplicateGroupNames(disableLastSelectedQueryColumn(groupItems));
+  return deduplicateGroupNames(disableOnlySelectedQueryColumn(groupItems));
 }
 
 export function searchColumnGroupItems(
@@ -134,15 +141,21 @@ export function toggleColumnGroupInQuery(
   stageIndex: number,
   groupItem: ColumnGroupItem,
 ) {
-  return groupItem.columnItems.reduce((query, columnItem) => {
-    if (groupItem.isSelected) {
-      return columnItem.isSelected
-        ? Lib.removeField(query, stageIndex, columnItem.column)
-        : query;
-    } else {
-      return columnItem.isSelected
-        ? query
-        : Lib.addField(query, stageIndex, columnItem.column);
-    }
-  }, query);
+  if (groupItem.isSelected) {
+    // always leave 1 column in the first group selected to prevent creating queries without columns
+    return groupItem.columnItems
+      .filter(columnItem => columnItem.isSelected && !columnItem.isDisabled)
+      .filter((_, columnIndex) => !groupItem.isSourceGroup || columnIndex !== 0)
+      .reduce(
+        (query, { column }) => Lib.removeField(query, stageIndex, column),
+        query,
+      );
+  } else {
+    return groupItem.columnItems
+      .filter(columnItem => !columnItem.isSelected && !columnItem.isDisabled)
+      .reduce(
+        (query, { column }) => Lib.addField(query, stageIndex, column),
+        query,
+      );
+  }
 }

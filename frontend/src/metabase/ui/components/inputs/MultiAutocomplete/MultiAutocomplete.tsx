@@ -22,6 +22,7 @@ export function MultiAutocomplete({
   placeholder,
   autoFocus,
   shouldCreate = defaultShouldCreate,
+  rightSection,
   onChange,
   onSearchChange,
   onFocus,
@@ -116,7 +117,7 @@ export function MultiAutocomplete({
     if (newSearchValue !== "") {
       const values = parseValues(newSearchValue);
       if (values.length >= 1) {
-        const value = values[0] ?? newSearchValue;
+        const value = values[0];
         if (isValid(value)) {
           setSelectedValues(unique([...lastSelectedValues, value]));
         }
@@ -150,7 +151,7 @@ export function MultiAutocomplete({
     }
   };
 
-  const info = isFocused ? (
+  const infoIcon = isFocused ? (
     <Tooltip
       label={
         <>
@@ -162,9 +163,7 @@ export function MultiAutocomplete({
     >
       <Icon name="info_filled" fill={color("text-light")} />
     </Tooltip>
-  ) : (
-    <span />
-  );
+  ) : null;
 
   return (
     <MultiSelect
@@ -180,7 +179,7 @@ export function MultiAutocomplete({
       onBlur={handleBlur}
       onSearchChange={handleSearchChange}
       onPaste={handlePaste}
-      rightSection={info}
+      rightSection={rightSection ?? infoIcon}
     />
   );
 }
@@ -191,7 +190,7 @@ function getSelectItem(item: string | SelectItem): SelectItem {
   }
 
   if (!item.label) {
-    return { value: item.value, label: item.value };
+    return { value: item.value, label: item.value?.toString() ?? "" };
   }
 
   return item;

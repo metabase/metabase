@@ -102,7 +102,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
         waitDashboardCardQuery();
         filterWidget()
           .eq(index)
-          .contains(single ? value : /\d selections/);
+          .contains(single ? value.replace(/"/g, "") : /\d selections/);
 
         cy.log(`Make sure ${operator} filter returns correct result`);
         cy.findByTestId("dashcard")

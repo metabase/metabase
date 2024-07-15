@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 import { t } from "ttag";
 
+import { PublicComponentStylesWrapper } from "embedding-sdk/components/private/PublicComponentStylesWrapper";
 import { SdkError } from "embedding-sdk/components/private/PublicComponentWrapper/SdkError";
 import { SdkLoader } from "embedding-sdk/components/private/PublicComponentWrapper/SdkLoader";
 import { useSdkSelector } from "embedding-sdk/store";
@@ -13,21 +14,23 @@ export const PublicComponentWrapper = ({
 }) => {
   const loginStatus = useSdkSelector(getLoginStatus);
 
+  let content = children;
+
   if (loginStatus.status === "uninitialized") {
-    return <div>{t`Initializing…`}</div>;
+    content = <div>{t`Initializing…`}</div>;
   }
 
   if (loginStatus.status === "validated") {
-    return <div>{t`JWT is valid.`}</div>;
+    content = <div>{t`JWT is valid.`}</div>;
   }
 
   if (loginStatus.status === "loading") {
-    return <SdkLoader />;
+    content = <SdkLoader />;
   }
 
   if (loginStatus.status === "error") {
-    return <SdkError message={loginStatus.error.message} />;
+    content = <SdkError message={loginStatus.error.message} />;
   }
 
-  return children;
+  return <PublicComponentStylesWrapper>{content}</PublicComponentStylesWrapper>;
 };

@@ -185,13 +185,11 @@ config:
       details: ...
 ```
 
-But you can set any of the Admin settings with the config file (for a list of settings, check out the [config file template](./config-template.md)).
-
-Check out the list of [environment variable](./environment-variables.md) to see what you can configure (though note that not all environment variables can be set via the config file.)
+But you can set any of the Admin settings with the config file (for a list of settings, check out the [config file template](./config-template.md)). You can also browse the list of [environment variable](./environment-variables.md) to see what you can configure (though note that not all environment variables can be set via the config file.)
 
 ## Loading a new Metabase from a config file
 
-Since loading from a config file is a paid feature: for new installations, you'll need to supply Metabase with a token using the `MB_PREMIUM_EMBEDDING_TOKEN` environment variable.
+Since loading from a config file is a Pro/Enterprise feature: for new installations, you'll need to supply Metabase with a token using the `MB_PREMIUM_EMBEDDING_TOKEN` environment variable.
 
 ```
 MB_PREMIUM_EMBEDDING_TOKEN="[your token]" java -jar metabase.jar

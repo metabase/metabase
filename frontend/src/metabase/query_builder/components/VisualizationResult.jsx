@@ -59,11 +59,12 @@ export default class VisualizationResult extends Component {
       selectedTimelineEventIds,
       onNavigateBack,
       className,
+      isRunning,
     } = this.props;
     const { showCreateAlertModal } = this.state;
 
     const noResults = datasetContainsNoResults(result.data);
-    if (noResults) {
+    if (noResults && !isRunning) {
       const supportsRowsPresentAlert = question.alertType() === ALERT_TYPE_ROWS;
 
       // successful query but there were 0 rows returned with the result

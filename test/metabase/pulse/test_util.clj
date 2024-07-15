@@ -2,9 +2,8 @@
   (:require
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.channel.core :as channel]
    [metabase.integrations.slack :as slack]
-   [metabase.models.pulse :refer [Pulse]]
-   [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.pulse :as pulse]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -17,13 +16,18 @@
 (defn send-pulse-created-by-user!
   "Create a Pulse with `:creator_id` of `user-kw`, and simulate sending it, executing it and returning the results."
   [user-kw card]
-  (t2.with-temp/with-temp [Pulse     pulse {:creator_id (test.users/user->id user-kw)}
-                           PulseCard _     {:pulse_id (:id pulse), :card_id (u/the-id card)}]
-    (with-redefs [pulse/send-notifications!    identity
-                  pulse/parts->notifications (fn [_ results]
-                                               (vec results))]
-      (let [[{:keys [result]}] (pulse/send-pulse! pulse)]
-        (qp.test-util/rows result)))))
+  (t2.with-temp/with-temp [:model/Pulse     pulse {:creator_id (test.users/user->id user-kw)
+                                                   :alert_condition "rows"}
+                           :model/PulseCard _     {:pulse_id (:id pulse), :card_id (u/the-id card)}]
+    (let [pulse-result       (atom nil)
+          orig-execute-pulse @#'pulse/execute-pulse]
+     (with-redefs [channel/send!               (fn [& _args]
+                                                 :noop)
+                   pulse/execute-pulse          (fn [& args]
+                                                  (u/prog1 (apply orig-execute-pulse args)
+                                                    (reset! pulse-result <>)))]
+      (pulse/send-pulse! pulse)
+      (qp.test-util/rows (:result (first @pulse-result)))))))
 
 (def card-name "Test card")
 
@@ -68,12 +72,31 @@
   `(mt/with-fake-inbox
      (do-with-site-url (fn [] ~@body))))
 
-(defmacro slack-test-setup
+(defmacro slack-test-setup!
   "Macro that ensures test-data is present and disables sending of all notifications"
   [& body]
-  `(with-redefs [pulse/send-notifications! realize-lazy-seqs
-                 slack/files-channel       (constantly "FOO")]
+  `(with-redefs [channel/send!       (fn [& _args#]
+                                       :noop)
+                 slack/files-channel (constantly "FOO")]
      (do-with-site-url (fn [] ~@body))))
+
+(def ^:dynamic *channel-messages* nil)
+
+(defn do-with-captured-channel-send-messages!
+  [thunk]
+  (let [channel-messages (atom nil)]
+    (with-redefs [channel/send! (fn [channel-type message]
+                                  (swap! channel-messages update channel-type conj message))]
+      (thunk)
+      @channel-messages)))
+
+(defmacro with-captured-channel-send-messages!
+  "Macro that captures all messages sent to channels in the body of the macro.
+  Returns a map of channel-type -> messages sent to that channel."
+  [& body]
+  `(do-with-captured-channel-send-messages!
+      (fn []
+        ~@body)))
 
 (def png-attachment
   {:type         :inline
