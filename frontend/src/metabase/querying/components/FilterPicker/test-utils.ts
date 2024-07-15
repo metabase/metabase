@@ -80,6 +80,16 @@ const TIME_FIELD = createMockField({
   semantic_type: null,
 });
 
+const ARRAY_FIELD = createMockField({
+  id: 103,
+  table_id: ORDERS_ID,
+  name: "ARRAY",
+  display_name: "Array",
+  base_type: "type/*",
+  effective_type: "type/*",
+  semantic_type: null,
+});
+
 const _ordersFields = createOrdersTable().fields?.filter(checkNotNull) ?? [];
 const _peopleFields = createPeopleTable().fields?.filter(checkNotNull) ?? [];
 const _productsFields =
@@ -88,7 +98,7 @@ const _productsFields =
 const database = createSampleDatabase({
   tables: [
     createOrdersTable({
-      fields: [..._ordersFields, TIME_FIELD],
+      fields: [..._ordersFields, TIME_FIELD, ARRAY_FIELD],
       segments: [SEGMENT_1, SEGMENT_2],
     }),
     createPeopleTable({ fields: [..._peopleFields, BOOLEAN_FIELD] }),
@@ -314,4 +324,8 @@ export function createQueryWithTimeFilter({
 }: TimeFilterOpts = {}) {
   const clause = Lib.timeFilterClause({ operator, column, values });
   return createFilteredQuery(query, clause);
+}
+
+export function findArrayColumn(query: Lib.Query) {
+  return findFilteredColumn(query, "ORDERS", ARRAY_FIELD.name);
 }
