@@ -6,34 +6,36 @@ import {
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  join,
-  type StructuredQuestionDetails,
   createQuestion,
   entityPickerModal,
   entityPickerModalItem,
   entityPickerModalLevel,
   entityPickerModalTab,
+  join,
+  navigationSidebar,
+  newButton,
+  onlyOnOSS,
   openNotebook,
+  openOrdersTable,
   openQuestionActions,
   openReviewsTable,
   popover,
+  queryBuilderMain,
   resetTestTable,
   restore,
   resyncDatabase,
   saveQuestion,
-  onlyOnOSS,
-  startNewQuestion,
   shouldDisplayTabs,
+  startNewQuestion,
   tabsShouldBe,
   visitModel,
   visitQuestion,
   visualize,
-  openOrdersTable,
-  queryBuilderMain,
+  type StructuredQuestionDetails,
 } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 
-const { REVIEWS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > notebook > data source", () => {
   describe("empty app db", () => {
@@ -467,6 +469,49 @@ describe("issue 28106", () => {
       });
     },
   );
+});
+
+describe("issue 32252", () => {
+  beforeEach(() => {
+    restore("setup");
+    cy.signInAsAdmin();
+
+    cy.createCollection({ name: "My collection" }).then(
+      ({ body: collection }) => {
+        createQuestion({
+          name: "My question",
+          collection_id: collection.id,
+          query: {
+            "source-table": ORDERS_ID,
+          },
+        });
+      },
+    );
+  });
+
+  it("refreshes data picker sources after archiving a question (metabase#32252)", () => {
+    cy.visit("/");
+
+    newButton("Question").click();
+    entityPickerModal().within(() => {
+      cy.findByText("Recents").should("not.exist");
+      cy.findByText("Saved questions").should("not.exist");
+      cy.button("Close").click();
+    });
+
+    cy.findByTestId("sidebar-toggle").click();
+    navigationSidebar().findByText("Our analytics").click();
+
+    cy.button("Actions").click();
+    popover().findByText("Move to trash").click();
+
+    newButton("Question").click();
+    entityPickerModal().within(() => {
+      cy.findByText("Recents").should("not.exist");
+      cy.findByText("Saved questions").should("not.exist");
+      cy.findByText("Orders").should("be.visible");
+    });
+  });
 });
 
 function moveToCollection(collection: string) {
