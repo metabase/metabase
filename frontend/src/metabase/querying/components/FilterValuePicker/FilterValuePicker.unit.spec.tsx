@@ -1,21 +1,31 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadata } from "__support__/metadata";
 import {
-  setupFieldSearchValuesEndpoints,
+  setupFieldSearchValuesEndpoint,
   setupFieldValuesEndpoints,
 } from "__support__/server-mocks";
 import {
-  act,
   createMockClipboardData,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
-import type { GetFieldValuesResponse } from "metabase-types/api";
-import { createMockFieldValues } from "metabase-types/api/mocks";
 import {
+  columnFinder,
+  createQuery,
+  SAMPLE_METADATA,
+} from "metabase-lib/test-helpers";
+import type { FieldId, GetFieldValuesResponse } from "metabase-types/api";
+import {
+  createMockFieldDimension,
+  createMockFieldValues,
+} from "metabase-types/api/mocks";
+import {
+  createOrdersProductIdField,
+  createPeopleIdField,
+  createSampleDatabase,
   ORDERS,
   PEOPLE,
   PEOPLE_STATE_VALUES,
@@ -34,6 +44,8 @@ interface SetupOpts<T> {
   column: Lib.ColumnMetadata;
   values: T[];
   compact?: boolean;
+  fieldId?: FieldId;
+  searchFieldId?: FieldId;
   fieldValues?: GetFieldValuesResponse;
   searchValues?: Record<string, GetFieldValuesResponse>;
 }
@@ -44,6 +56,8 @@ async function setupStringPicker({
   column,
   values,
   compact,
+  fieldId,
+  searchFieldId = fieldId,
   fieldValues,
   searchValues = {},
 }: SetupOpts<string>) {
@@ -54,9 +68,16 @@ async function setupStringPicker({
   if (fieldValues) {
     setupFieldValuesEndpoints(fieldValues);
   }
-  Object.entries(searchValues).forEach(([value, result]) => {
-    setupFieldSearchValuesEndpoints(result.field_id, value, result.values);
-  });
+  if (fieldId != null && searchFieldId != null) {
+    Object.entries(searchValues).forEach(([value, response]) => {
+      setupFieldSearchValuesEndpoint(
+        fieldId,
+        searchFieldId,
+        value,
+        response.values,
+      );
+    });
+  }
 
   const { rerender } = renderWithProviders(
     <StringFilterValuePicker
@@ -111,21 +132,11 @@ async function setupNumberPicker({
 }
 
 describe("StringFilterValuePicker", () => {
-  const query = createQuery();
-  const stageIndex = 0;
-  const availableColumns = Lib.filterableColumns(query, stageIndex);
-  const findColumn = columnFinder(query, availableColumns);
-
-  beforeAll(() => {
-    jest.useFakeTimers({ advanceTimers: true });
-  });
-
-  afterAll(() => {
-    jest.useRealTimers();
-  });
+  const { query, stageIndex, findColumn } = createQueryWithMetadata();
 
   describe("list values", () => {
     const column = findColumn("PRODUCTS", "CATEGORY");
+    const fieldId = PRODUCTS.CATEGORY;
 
     it("should allow to pick a list value", async () => {
       const { onChange } = await setupStringPicker({
@@ -133,6 +144,7 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: [],
+        fieldId,
         fieldValues: PRODUCT_CATEGORY_VALUES,
       });
 
@@ -147,6 +159,7 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: [],
+        fieldId,
         fieldValues: PRODUCT_CATEGORY_VALUES,
       });
 
@@ -165,6 +178,7 @@ describe("StringFilterValuePicker", () => {
         column: findColumn("PEOPLE", "STATE"),
         values: [],
         compact: true,
+        fieldId: PEOPLE.STATE,
         fieldValues: PEOPLE_STATE_VALUES,
       });
 
@@ -185,6 +199,7 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: ["Gadget"],
+        fieldId,
         fieldValues: PRODUCT_CATEGORY_VALUES,
       });
       expect(screen.getByRole("checkbox", { name: "Gadget" })).toBeChecked();
@@ -202,6 +217,7 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: ["Test"],
+        fieldId,
         fieldValues: PRODUCT_CATEGORY_VALUES,
       });
       expect(screen.getByRole("checkbox", { name: "Test" })).toBeChecked();
@@ -218,14 +234,100 @@ describe("StringFilterValuePicker", () => {
       expect(onChange).toHaveBeenCalledWith(["Test", "Gadget"]);
     });
 
-    it("should handle field values remapping", async () => {
+    it("should handle type/PK -> type/Name field values remapping", async () => {
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        fields: [
+          createPeopleIdField({
+            base_type: "type/Text",
+            effective_type: "type/Text",
+            has_field_values: "list",
+          }),
+        ],
+      });
+      const { query, stageIndex, findColumn } =
+        createQueryWithMetadata(metadata);
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column: findColumn("PEOPLE", "ID"),
+        values: ["1"],
+        fieldId: PEOPLE.ID,
+        searchFieldId: PEOPLE.NAME,
+        fieldValues: createMockFieldValues({
+          field_id: PEOPLE.ID,
+          values: [
+            ["1", "A"],
+            ["2", "B"],
+            ["3", "C"],
+          ],
+        }),
+      });
+      expect(screen.getByRole("checkbox", { name: "A" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "B" })).not.toBeChecked();
+
+      await userEvent.type(screen.getByPlaceholderText("Search the list"), "B");
+      expect(screen.getByText("B")).toBeInTheDocument();
+      expect(screen.queryByText("C")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("B"));
+      expect(onChange).toHaveBeenCalledWith(["1", "2"]);
+    });
+
+    it("should handle type/FK -> column field values remapping", async () => {
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        fields: [
+          createOrdersProductIdField({
+            base_type: "type/Text",
+            effective_type: "type/Text",
+            dimensions: [
+              createMockFieldDimension({
+                human_readable_field_id: PRODUCTS.TITLE,
+              }),
+            ],
+            has_field_values: "list",
+          }),
+        ],
+      });
+      const { query, stageIndex, findColumn } =
+        createQueryWithMetadata(metadata);
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column: findColumn("ORDERS", "PRODUCT_ID"),
+        values: ["1"],
+        fieldId: ORDERS.PRODUCT_ID,
+        searchFieldId: PRODUCTS.TITLE,
+        fieldValues: createMockFieldValues({
+          field_id: ORDERS.PRODUCT_ID,
+          values: [
+            ["1", "A"],
+            ["2", "B"],
+            ["3", "C"],
+          ],
+        }),
+      });
+      expect(screen.getByRole("checkbox", { name: "A" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "B" })).not.toBeChecked();
+
+      await userEvent.type(screen.getByPlaceholderText("Search the list"), "B");
+      expect(screen.getByText("B")).toBeInTheDocument();
+      expect(screen.queryByText("C")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("B"));
+      expect(onChange).toHaveBeenCalledWith(["1", "2"]);
+    });
+
+    it("should handle custom field values", async () => {
       const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
         values: ["t"],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: PRODUCTS.CATEGORY,
+          field_id: fieldId,
           values: [
             ["t", "To-do"],
             ["p", "In-progress"],
@@ -255,8 +357,9 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: ["p"],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: PRODUCTS.CATEGORY,
+          field_id: fieldId,
           values: [
             ["t", "To-do"],
             ["p", "In-progress"],
@@ -280,8 +383,9 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: ["p"],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: PRODUCTS.CATEGORY,
+          field_id: fieldId,
           values: [
             ["t", "To-do"],
             ["p", "In-progress"],
@@ -314,8 +418,9 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: ["p", "c"],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: PRODUCTS.CATEGORY,
+          field_id: fieldId,
           values: [
             ["t", "To-do"],
             ["p", "In-progress"],
@@ -348,8 +453,9 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: [],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: PRODUCTS.CATEGORY,
+          field_id: fieldId,
           values: [],
         }),
       });
@@ -373,8 +479,9 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: [],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: PRODUCTS.CATEGORY,
+          field_id: fieldId,
           values: [[null], ["Widget"]],
         }),
       });
@@ -393,14 +500,15 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: [],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: PRODUCTS.CATEGORY,
+          field_id: fieldId,
           values: [["Gadget"], ["Widget"]],
           has_more_values: true,
         }),
         searchValues: {
           g: createMockFieldValues({
-            field_id: PRODUCTS.CATEGORY,
+            field_id: fieldId,
             values: [["Gadget"], ["Gizmo"]],
             has_more_values: false,
           }),
@@ -414,7 +522,6 @@ describe("StringFilterValuePicker", () => {
       ).not.toBeInTheDocument();
 
       await userEvent.type(input, "g");
-      act(() => jest.advanceTimersByTime(1000));
       await userEvent.click(await screen.findByText("Gizmo"));
       expect(onChange).toHaveBeenLastCalledWith(["Gizmo"]);
     });
@@ -422,6 +529,7 @@ describe("StringFilterValuePicker", () => {
 
   describe("search values", () => {
     const column = findColumn("PEOPLE", "EMAIL");
+    const fieldId = PEOPLE.EMAIL;
 
     it("should allow to search for a value", async () => {
       const { onChange } = await setupStringPicker({
@@ -429,19 +537,47 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: [],
+        fieldId,
         searchValues: {
           a: createMockFieldValues({
-            field_id: PEOPLE.EMAIL,
+            field_id: fieldId,
             values: [["a@metabase.test"]],
           }),
         },
       });
 
       await userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
-      act(() => jest.advanceTimersByTime(1000));
       await userEvent.click(await screen.findByText("a@metabase.test"));
 
       expect(onChange).toHaveBeenLastCalledWith(["a@metabase.test"]);
+    });
+
+    it("should show an empty state message", async () => {
+      await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+        fieldId,
+        searchValues: {
+          a: createMockFieldValues({
+            field_id: fieldId,
+            values: [["a@metabase.test"]],
+          }),
+          ac: createMockFieldValues({
+            field_id: fieldId,
+            values: [],
+          }),
+        },
+      });
+
+      await userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
+      expect(await screen.findByText("a@metabase.test")).toBeInTheDocument();
+
+      await userEvent.type(screen.getByPlaceholderText("Search by Email"), "c");
+      expect(
+        await screen.findByText("No matching Email found."),
+      ).toBeInTheDocument();
     });
 
     it("should allow to update selected values", async () => {
@@ -450,9 +586,10 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: ["b@metabase.test"],
+        fieldId,
         searchValues: {
           a: createMockFieldValues({
-            field_id: PEOPLE.EMAIL,
+            field_id: fieldId,
             values: [["a@metabase.test"]],
           }),
         },
@@ -460,7 +597,6 @@ describe("StringFilterValuePicker", () => {
       expect(screen.getByText("b@metabase.test")).toBeInTheDocument();
 
       await userEvent.type(screen.getByLabelText("Filter value"), "a");
-      act(() => jest.advanceTimersByTime(1000));
       await userEvent.click(await screen.findByText("a@metabase.test"));
 
       expect(onChange).toHaveBeenLastCalledWith([
@@ -469,22 +605,94 @@ describe("StringFilterValuePicker", () => {
       ]);
     });
 
-    it("should handle field values remapping", async () => {
+    it("should handle type/PK -> type/Name field values remapping", async () => {
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        fields: [
+          createPeopleIdField({
+            base_type: "type/Text",
+            effective_type: "type/Text",
+            has_field_values: "search",
+          }),
+        ],
+      });
+      const { query, stageIndex, findColumn } =
+        createQueryWithMetadata(metadata);
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column: findColumn("PEOPLE", "ID"),
+        values: ["b"],
+        fieldId: PEOPLE.ID,
+        searchFieldId: PEOPLE.NAME,
+        searchValues: {
+          a: createMockFieldValues({
+            field_id: PEOPLE.ID,
+            values: [["a", "a@metabase.test"]],
+          }),
+        },
+      });
+
+      await userEvent.type(screen.getByLabelText("Filter value"), "a");
+      await userEvent.click(await screen.findByText("a@metabase.test"));
+      expect(onChange).toHaveBeenLastCalledWith(["b", "a"]);
+    });
+
+    it("should handle type/FK -> column field values remapping", async () => {
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        fields: [
+          createOrdersProductIdField({
+            base_type: "type/Text",
+            effective_type: "type/Text",
+            has_field_values: "search",
+            dimensions: [
+              createMockFieldDimension({
+                type: "external",
+                human_readable_field_id: PRODUCTS.TITLE,
+              }),
+            ],
+          }),
+        ],
+      });
+      const { query, stageIndex, findColumn } =
+        createQueryWithMetadata(metadata);
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column: findColumn("ORDERS", "PRODUCT_ID"),
+        values: ["b"],
+        fieldId: ORDERS.PRODUCT_ID,
+        searchFieldId: PRODUCTS.TITLE,
+        searchValues: {
+          a: createMockFieldValues({
+            field_id: ORDERS.PRODUCT_ID,
+            values: [["a", "a@metabase.test"]],
+          }),
+        },
+      });
+
+      await userEvent.type(screen.getByLabelText("Filter value"), "a");
+      await userEvent.click(await screen.findByText("a@metabase.test"));
+      expect(onChange).toHaveBeenLastCalledWith(["b", "a"]);
+    });
+
+    it("should handle custom field values", async () => {
       const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
         values: [],
+        fieldId,
         searchValues: {
           a: createMockFieldValues({
-            field_id: PEOPLE.EMAIL,
+            field_id: fieldId,
             values: [["a-test", "a@metabase.test"]],
           }),
         },
       });
 
       await userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
-      act(() => jest.advanceTimersByTime(1000));
       await userEvent.click(await screen.findByText("a@metabase.test"));
 
       expect(onChange).toHaveBeenLastCalledWith(["a-test"]);
@@ -496,9 +704,10 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: [],
+        fieldId,
         searchValues: {
           "a@b.com": createMockFieldValues({
-            field_id: PEOPLE.EMAIL,
+            field_id: fieldId,
             values: [["testa@b.com"]],
           }),
         },
@@ -517,9 +726,10 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: ["a@b.com"],
+        fieldId,
         searchValues: {
           "a@b.com": createMockFieldValues({
-            field_id: PEOPLE.EMAIL,
+            field_id: fieldId,
             values: [["testa@b.com"]],
           }),
         },
@@ -537,18 +747,16 @@ describe("StringFilterValuePicker", () => {
         stageIndex,
         column,
         values: ["a@b.com"],
+        fieldId,
         searchValues: {
           "a@b": createMockFieldValues({
-            field_id: PEOPLE.EMAIL,
+            field_id: fieldId,
             values: [["a@b.com"]],
           }),
         },
       });
 
       await userEvent.type(screen.getByLabelText("Filter value"), "a@b");
-      act(() => jest.advanceTimersByTime(1000));
-      expect(screen.getByText("a@b.com")).toBeInTheDocument();
-      expect(screen.queryByText("a@b")).not.toBeInTheDocument();
       expect(onChange).toHaveBeenLastCalledWith(["a@b.com", "a@b"]);
     });
 
@@ -677,21 +885,11 @@ describe("StringFilterValuePicker", () => {
 });
 
 describe("NumberFilterValuePicker", () => {
-  const query = createQuery();
-  const stageIndex = 0;
-  const availableColumns = Lib.filterableColumns(query, stageIndex);
-  const findColumn = columnFinder(query, availableColumns);
-
-  beforeAll(() => {
-    jest.useFakeTimers({ advanceTimers: true });
-  });
-
-  afterAll(() => {
-    jest.useRealTimers();
-  });
+  const { query, stageIndex, findColumn } = createQueryWithMetadata();
 
   describe("list values", () => {
     const column = findColumn("ORDERS", "QUANTITY");
+    const fieldId = ORDERS.QUANTITY;
 
     it("should allow to pick a list value", async () => {
       const { onChange } = await setupNumberPicker({
@@ -699,8 +897,9 @@ describe("NumberFilterValuePicker", () => {
         stageIndex,
         column,
         values: [],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: ORDERS.QUANTITY,
+          field_id: fieldId,
           values: [[10], [20], [30]],
         }),
       });
@@ -710,35 +909,81 @@ describe("NumberFilterValuePicker", () => {
       expect(onChange).toHaveBeenCalledWith([20]);
     });
 
-    it("should handle field values remapping", async () => {
+    it("should handle type/PK -> type/Name field values remapping", async () => {
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        fields: [createPeopleIdField({ has_field_values: "list" })],
+      });
+      const { query, stageIndex, findColumn } =
+        createQueryWithMetadata(metadata);
       const { onChange } = await setupNumberPicker({
         query,
         stageIndex,
-        column,
-        values: [10],
+        column: findColumn("PEOPLE", "ID"),
+        values: [1],
+        fieldId: PEOPLE.ID,
+        searchFieldId: PEOPLE.NAME,
         fieldValues: createMockFieldValues({
-          field_id: ORDERS.QUANTITY,
+          field_id: PEOPLE.ID,
           values: [
-            [10, "To-do"],
-            [20, "In-progress"],
-            [30, "Completed"],
+            [1, "A"],
+            [2, "B"],
+            [3, "C"],
           ],
         }),
       });
-      expect(screen.getByRole("checkbox", { name: "To-do" })).toBeChecked();
-      expect(
-        screen.getByRole("checkbox", { name: "In-progress" }),
-      ).not.toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "A" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "B" })).not.toBeChecked();
 
-      await userEvent.type(
-        screen.getByPlaceholderText("Search the list"),
-        "in",
-      );
-      expect(screen.getByText("In-progress")).toBeInTheDocument();
-      expect(screen.queryByText("Completed")).not.toBeInTheDocument();
+      await userEvent.type(screen.getByPlaceholderText("Search the list"), "B");
+      expect(screen.getByText("B")).toBeInTheDocument();
+      expect(screen.queryByText("C")).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByText("In-progress"));
-      expect(onChange).toHaveBeenCalledWith([10, 20]);
+      await userEvent.click(screen.getByText("B"));
+      expect(onChange).toHaveBeenCalledWith([1, 2]);
+    });
+
+    it("should handle type/FK -> column field values remapping", async () => {
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        fields: [
+          createOrdersProductIdField({
+            dimensions: [
+              createMockFieldDimension({
+                human_readable_field_id: PRODUCTS.TITLE,
+              }),
+            ],
+            has_field_values: "list",
+          }),
+        ],
+      });
+      const { query, stageIndex, findColumn } =
+        createQueryWithMetadata(metadata);
+      const { onChange } = await setupNumberPicker({
+        query,
+        stageIndex,
+        column: findColumn("ORDERS", "PRODUCT_ID"),
+        values: [1],
+        fieldId: ORDERS.PRODUCT_ID,
+        searchFieldId: PRODUCTS.TITLE,
+        fieldValues: createMockFieldValues({
+          field_id: ORDERS.PRODUCT_ID,
+          values: [
+            [1, "A"],
+            [2, "B"],
+            [3, "C"],
+          ],
+        }),
+      });
+      expect(screen.getByRole("checkbox", { name: "A" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "B" })).not.toBeChecked();
+
+      await userEvent.type(screen.getByPlaceholderText("Search the list"), "B");
+      expect(screen.getByText("B")).toBeInTheDocument();
+      expect(screen.queryByText("C")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("B"));
+      expect(onChange).toHaveBeenCalledWith([1, 2]);
     });
 
     it("should elevate selected field values on initial render", async () => {
@@ -747,8 +992,9 @@ describe("NumberFilterValuePicker", () => {
         stageIndex,
         column,
         values: [20],
+        fieldId,
         fieldValues: createMockFieldValues({
-          field_id: ORDERS.QUANTITY,
+          field_id: fieldId,
           values: [
             [10, "To-do"],
             [20, "In-progress"],
@@ -840,3 +1086,11 @@ describe("NumberFilterValuePicker", () => {
     });
   });
 });
+
+function createQueryWithMetadata(metadata = SAMPLE_METADATA) {
+  const query = createQuery({ metadata });
+  const stageIndex = 0;
+  const availableColumns = Lib.filterableColumns(query, stageIndex);
+  const findColumn = columnFinder(query, availableColumns);
+  return { query, stageIndex, findColumn };
+}

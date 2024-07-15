@@ -770,10 +770,6 @@
           dash-updates                       (api/updates-with-archived-directly current-dash dash-updates)]
       (collection/check-allowed-to-change-collection current-dash dash-updates)
       (check-allowed-to-change-embedding current-dash dash-updates)
-      ;; Can't move things to the Trash.
-      (when (some-> dash-updates :collection_id (= (collection/trash-collection-id)))
-        (throw (ex-info (tru "Cannot move a card to the trash collection.")
-                        {:status-code 400})))
       (api/check-500
         (do
           (t2/with-transaction [_conn]
@@ -1017,14 +1013,7 @@
                            :expression   dimension
                            :template-tag (:dimension ttag)
                            (log/error "cannot handle this dimension" {:dimension dimension}))
-               field-id  (or
-                          ;; Get the field id from the field-clause if it contains it. This is the common case
-                          ;; for mbql queries.
-                          (lib.util.match/match-one dimension [:field (id :guard integer?) _] id)
-                          ;; Attempt to get the field clause from the model metadata corresponding to the field.
-                          ;; This is the common case for native queries in which mappings from original columns
-                          ;; have been performed using model metadata.
-                          (:id (qp.util/field->field-info dimension (:result_metadata card))))]
+               field-id  (params/param-target->field-id dimension card)]
         :when field-id]
     {:field-id field-id
      :op       (param-type->op (:type param))

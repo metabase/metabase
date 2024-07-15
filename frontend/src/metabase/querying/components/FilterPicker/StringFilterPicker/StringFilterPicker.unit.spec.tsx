@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupFieldsValuesEndpoints,
-  setupFieldSearchValuesEndpoints,
+  setupFieldSearchValuesEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -156,7 +156,7 @@ describe("StringFilterPicker", () => {
     });
 
     it("should handle fields with searchable values", async () => {
-      setupFieldSearchValuesEndpoints(PEOPLE.EMAIL, "t", [
+      setupFieldSearchValuesEndpoint(PEOPLE.EMAIL, PEOPLE.EMAIL, "t", [
         ["test@metabase.test"],
       ]);
       const query = createQuery();

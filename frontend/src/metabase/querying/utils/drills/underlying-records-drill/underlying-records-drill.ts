@@ -33,7 +33,10 @@ export const underlyingRecordsDrill: Drill<
       section: "records",
       icon: "table_spaced",
       buttonType: "horizontal",
-      question: () => applyDrill(drill).setDisplay("table"),
+      question: () =>
+        applyDrill(drill)
+          .setDisplay("table")
+          .updateSettings({ "table.pivot": false }),
     },
   ];
 };

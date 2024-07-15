@@ -476,6 +476,8 @@ Related: [isempty](#isempty), [isnull](#isnull), [notnull](#notnull)
 
 ### [regexextract](./expressions/regexextract.md)
 
+> ⚠️ `regexextract` is unavailable for MongoDB, SQLite, and SQL Server. For Druid, `regexextract` is only available for the Druid-JDBC driver.
+
 Extracts matching substrings according to a regular expression.
 
 Syntax: `regexextract(text, regular_expression)`.
@@ -569,6 +571,8 @@ Syntax: `datetimeAdd(column, amount, unit)`.
 
 Example: `datetimeAdd("2021-03-25", 1, "month")` would return the value `2021-04-25`, displayed as `April 25, 2021`.
 
+`amount` must be an integer, not a fractional number. For example, you cannot add "half a year" (0.5).
+
 Related: [between](#between), [datetimeSubtract](#datetimesubtract).
 
 ### [datetimeDiff](./expressions/datetimediff.md)
@@ -586,6 +590,8 @@ Subtracts some unit of time from a date or timestamp value.
 Syntax: `datetimeSubtract(column, amount, unit)`.
 
 Example: `datetimeSubtract("2021-03-25", 1, "month")` would return the value `2021-02-25`, displayed as `February 25, 2021`.
+
+`amount` must be an integer, not a fractional number. For example, you cannot subtract "half a year" (0.5).
 
 Related: [between](#between), [datetimeAdd](#datetimeadd).
 
@@ -612,6 +618,8 @@ Checks a date column's values to see if they're within the relative range.
 Syntax: `interval(column, number, text)`.
 
 Example: `interval([Created At], -1, "month")`.
+
+The `number` must be an integer. You cannot use a fractional value.
 
 Related: [between](#between).
 
@@ -651,7 +659,7 @@ Gets a timestamp relative to the current time.
 
 Syntax: `relativeDateTime(number, text)`
 
-`number`: Period of interval, where negative values are back in time.
+`number`: Period of interval, where negative values are back in time. The `number` must be an integer. You cannot use a fractional value.
 
 `text`: Type of interval like `"day"`, `"month"`, `"year"`
 
@@ -675,7 +683,7 @@ Gets a time interval of specified length.
 
 Syntax: `timeSpan(number, text)`.
 
-`number`: Period of interval, where negative values are back in time.
+`number`: Period of interval, where negative values are back in time. The `number` must be an integer. You cannot use a fractional value.
 
 `text`: Type of interval like `"day"`, `"month"`, `"year"`
 
@@ -728,6 +736,8 @@ Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer,
 
 ### Offset
 
+> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB.
+
 Returns the value of an expression in a different row. `Offset` can only be used in the query builder's Summarize step (you cannot use `Offset` to create a custom column).
 
 Syntax: `Offset(expression, rowOffset)`
@@ -757,15 +767,19 @@ Limitations are noted for each aggregation and function above, and here there ar
 
 **H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone` and `regexextract`
 
+**Druid**: `regexextract` is only available for the Druid-JDBC driver.
+
+**MongoDB**: `regexextract`
+
 **MySQL/MariaDB**: `Median`, `Percentile`.
+
+**Presto**: Only provides _approximate_ results for `Median` and `Percentile`.
 
 **SQL Server**: `Median`, `Percentile` and `regexextract`
 
 **SQLite**: `log`, `Median`, `Percentile`, `power`, `regexextract`, `StandardDeviation`, `sqrt` and `Variance`
 
 **Vertica**: `Median` and `Percentile`
-
-Additionally, **Presto** only provides _approximate_ results for `Median` and `Percentile`.
 
 If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
 

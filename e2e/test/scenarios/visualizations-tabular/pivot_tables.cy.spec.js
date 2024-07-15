@@ -18,6 +18,8 @@ import {
   createQuestion,
   dashboardCards,
   queryBuilderMain,
+  openNotebook,
+  getNotebookStep,
 } from "e2e/support/helpers";
 import { PIVOT_TABLE_BODY_LABEL } from "metabase/visualizations/visualizations/PivotTable/constants";
 
@@ -1326,6 +1328,150 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         .and("contain", "User → Longitude");
     });
   });
+
+  it("should be possible to switch between notebook and simple views when pivot table is the visualization (metabase#39504)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "sum",
+              [
+                "field",
+                ORDERS.SUBTOTAL,
+                {
+                  "base-type": "type/Float",
+                },
+              ],
+            ],
+            [
+              "sum",
+              [
+                "field",
+                ORDERS.TOTAL,
+                {
+                  "base-type": "type/Float",
+                },
+              ],
+            ],
+          ],
+          breakout: [
+            [
+              "field",
+              PEOPLE.SOURCE,
+              {
+                "base-type": "type/Text",
+                "source-field": ORDERS.USER_ID,
+              },
+            ],
+          ],
+        },
+        type: "query",
+      },
+    });
+
+    cy.log("Set the visualization to pivot table using the UI");
+    cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
+    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("Pivot Table-button").click();
+    cy.wait("@pivotDataset");
+    cy.findByTestId("pivot-table")
+      .should("contain", "User → Source")
+      .and("contain", "Sum of Subtotal")
+      .and("contain", "Sum of Total")
+      .and("contain", "Grand totals");
+
+    openNotebook();
+    getNotebookStep("summarize")
+      .should("be.visible")
+      .and("contain", "Sum of Subtotal")
+      .and("contain", "Sum of Total");
+
+    // Close the notebook editor
+    cy.findByTestId("qb-header-action-panel").icon("notebook").click();
+    cy.findByTestId("pivot-table")
+      .should("contain", "User → Source")
+      .and("contain", "Sum of Subtotal")
+      .and("contain", "Sum of Total")
+      .and("contain", "Grand totals");
+  });
+
+  it("displays total values for collapsed rows (metabase#26919)", () => {
+    const categoryField = [
+      "field",
+      PRODUCTS.CATEGORY,
+      { "base-type": "type/Text" },
+    ];
+
+    createQuestion(
+      {
+        display: "pivot",
+        query: {
+          "source-table": PRODUCTS_ID,
+          expressions: {
+            test: [
+              "case",
+              [[["is-null", categoryField], categoryField]],
+              { default: categoryField },
+            ],
+          },
+          aggregation: [["count"]],
+          breakout: [
+            ["expression", "test", { "base-type": "type/Text" }],
+            [
+              "field",
+              PRODUCTS.RATING,
+              {
+                "base-type": "type/Float",
+                binning: {
+                  strategy: "default",
+                },
+              },
+            ],
+          ],
+        },
+        visualization_settings: {
+          "pivot_table.column_split": {
+            rows: [
+              ["expression", "test"],
+              ["field", PRODUCTS.RATING],
+            ],
+            columns: [],
+            values: [["aggregation", 0]],
+          },
+          "pivot_table.collapsed_rows": {
+            value: ['["Doohickey"]', '["Gadget"]', '["Gizmo"]', '["Widget"]'],
+            rows: [
+              ["expression", "test"],
+              [
+                "field",
+                PRODUCTS.RATING,
+                {
+                  "base-type": "type/Float",
+                  binning: {
+                    strategy: "num-bins",
+                    "min-value": 0,
+                    "max-value": 5.25,
+                    "num-bins": 8,
+                    "bin-width": 0.75,
+                  },
+                },
+              ],
+            ],
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    getPivotTableBodyCell(0).should("have.text", "42");
+    getPivotTableBodyCell(1).should("have.text", "53");
+    getPivotTableBodyCell(2).should("have.text", "51");
+    getPivotTableBodyCell(3).should("have.text", "54");
+    getPivotTableBodyCell(4).should("have.text", "200");
+  });
 });
 
 const testQuery = {
@@ -1424,4 +1570,11 @@ function sortColumnResults(column, direction) {
     const decodedQuery = atob(base64EncodedQuery);
     expect(decodedQuery).to.include(direction);
   });
+}
+
+function getPivotTableBodyCell(index) {
+  return cy
+    .findByLabelText("pivot-table-body-grid")
+    .findAllByTestId("pivot-table-cell")
+    .eq(index);
 }

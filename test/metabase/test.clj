@@ -230,6 +230,7 @@
 
  [tu
   boolean-ids-and-timestamps
+  call-with-map-params
   call-with-paused-query
   discard-setting-changes
   doall-recursive
@@ -238,6 +239,7 @@
   latest-audit-log-entry
   let-url
   obj->json->obj
+  ordered-subset?
   postwalk-pred
   round-all-decimals
   scheduler-current-tasks
@@ -256,6 +258,7 @@
   with-non-admin-groups-no-root-collection-perms
   with-non-admin-groups-no-collection-perms
   with-all-users-data-perms-graph!
+  with-anaphora
   with-temp-env-var-value!
   with-temp-dir
   with-temp-file
@@ -310,6 +313,7 @@
   get-dataset-definition
   has-test-extensions?
   metabase-instance
+  native-query-with-card-template-tag
   sorts-nil-first?
   supports-time-type?
   supports-timestamptz-type?]
