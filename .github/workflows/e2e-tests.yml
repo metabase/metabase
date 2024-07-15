@@ -20,6 +20,10 @@ jobs:
     outputs:
       e2e_all: ${{ steps.changes.outputs.e2e_all }}
     steps:
+      - run: |
+          echo ${{ github.event }}
+          echo ${{ github.event.pull_request.labels.*.name }}
+          echo contains PR-Env: ${{ contains(github.event.pull_request.labels.*.name, 'PR-Env') }}
       - uses: actions/checkout@v4
       - name: Test which files changed
         uses: dorny/paths-filter@v3.0.0

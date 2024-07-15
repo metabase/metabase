@@ -119,10 +119,7 @@ jobs:
               context:
                 cluster: default
                 namespace: default
-                user: oidc-token
-      - name: echo kubeconfig
-        run: cat ${KUBECONFIG} | base64
-      - run: sleep 500                
+                user: oidc-token             
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
