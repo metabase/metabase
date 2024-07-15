@@ -1541,8 +1541,8 @@
         (is (=? [{:model    "root"
                   :model_id 0
                   :strategy "ttl"
-                  :config   {:multiplier      100
-                             :min_duration_ms 123}}
+                  :config   {:multiplier      101
+                             :min_duration_ms 124}}
                  {:model    "database"
                   :model_id db
                   :strategy "duration"
@@ -1596,7 +1596,7 @@
                    :model_id 0
                    :strategy "ttl"
                    :config {:multiplier      100
-                            :min_duration_ms 123}}
+                            :min_duration_ms 124}}
                   (-> (t2/select-one :cache_config)
                       (update :config json/decode true)))))))))
 
