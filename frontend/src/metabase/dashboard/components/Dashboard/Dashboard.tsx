@@ -397,7 +397,7 @@ function Dashboard(props: DashboardProps) {
         onEditingChange={handleSetEditing}
         // downloads are always enabled on internal dashboards
         // you will still need to have permissions to download the data
-        downloadsEnabled={true}
+        downloadsEnabled
       />
     );
   };
