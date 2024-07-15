@@ -1,9 +1,8 @@
 import { QuestionTitle } from "embedding-sdk/components/private/QuestionTitle";
-
-import { useInteractiveQuestionData } from "../hooks";
+import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 
 export const Title = () => {
-  const { question } = useInteractiveQuestionData();
+  const { question } = useInteractiveQuestionContext();
 
   return question && <QuestionTitle question={question} />;
 };

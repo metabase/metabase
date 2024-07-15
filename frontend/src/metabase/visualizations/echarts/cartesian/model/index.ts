@@ -22,6 +22,7 @@ import type {
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getSingleSeriesDimensionsAndMetrics } from "metabase/visualizations/lib/utils";
+import { getAreDimensionsAndMetricsValid } from "metabase/visualizations/shared/settings/cartesian-chart";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -40,18 +41,15 @@ const getSettingsWithDefaultMetricsAndDimensions = (series: SingleSeries) => {
   const {
     card: { visualization_settings: settings },
   } = series;
-  if (
-    settings["graph.dimensions"] != null &&
-    settings["graph.metrics"] != null
-  ) {
+  if (getAreDimensionsAndMetricsValid([series])) {
     return settings;
   }
 
   const { dimensions, metrics } = getSingleSeriesDimensionsAndMetrics(series);
   const settingsWithDefaults = { ...settings };
 
-  settingsWithDefaults["graph.dimensions"] ??= dimensions;
-  settingsWithDefaults["graph.metrics"] ??= metrics;
+  settingsWithDefaults["graph.dimensions"] = dimensions;
+  settingsWithDefaults["graph.metrics"] = metrics;
 
   return settingsWithDefaults;
 };

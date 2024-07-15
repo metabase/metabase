@@ -141,14 +141,14 @@ describe("command palette", () => {
     openCommandPalette();
 
     commandPalette().within(() => {
-      commandPaletteInput().type("Nested");
-      cy.findByRole("option", { name: "Enable Nested Queries" }).click();
+      commandPaletteInput().type("Custom Homepage");
+      cy.findByRole("option", { name: "Custom Homepage" }).click();
     });
 
-    cy.findByTestId("enable-nested-queries-setting").should("be.visible");
+    cy.findByTestId("custom-homepage-setting").should("be.visible");
 
     cy.location("pathname").should("contain", "settings/general");
-    cy.location("hash").should("contain", "#enable-nested-queries");
+    cy.location("hash").should("contain", "#custom-homepage");
 
     openCommandPalette();
 

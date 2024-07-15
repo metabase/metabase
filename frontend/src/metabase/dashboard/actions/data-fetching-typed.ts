@@ -14,6 +14,7 @@ import Dashboards from "metabase/entities/dashboards";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { uuid } from "metabase/lib/uuid";
 import { addFields, addParamValues } from "metabase/redux/metadata";
 import { AutoApi, DashboardApi, EmbedApi, PublicApi } from "metabase/services";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
@@ -49,6 +50,7 @@ export const fetchDashboard = createAsyncThunk(
     try {
       let entities;
       let result;
+      const dashboardLoadId = uuid();
 
       const dashboardType = getDashboardType(dashId);
       const loadedDashboard = getDashboardById(getState(), dashId);
@@ -66,7 +68,7 @@ export const fetchDashboard = createAsyncThunk(
         result = denormalize(dashId, dashboard, entities);
       } else if (dashboardType === "public") {
         result = await PublicApi.dashboard(
-          { uuid: dashId },
+          { uuid: dashId, dashboard_load_id: dashboardLoadId },
           { cancelled: fetchDashboardCancellation.promise },
         );
         result = {
@@ -79,7 +81,7 @@ export const fetchDashboard = createAsyncThunk(
         };
       } else if (dashboardType === "embed") {
         result = await EmbedApi.dashboard(
-          { token: dashId },
+          { token: dashId, dashboard_load_id: dashboardLoadId },
           { cancelled: fetchDashboardCancellation.promise },
         );
         result = {
@@ -95,10 +97,16 @@ export const fetchDashboard = createAsyncThunk(
         const [entity, entityId] = subPath.split(/[/?]/);
         const [response] = await Promise.all([
           AutoApi.dashboard(
-            { subPath },
+            { subPath, dashboard_load_id: dashboardLoadId },
             { cancelled: fetchDashboardCancellation.promise },
           ),
-          dispatch(Dashboards.actions.fetchXrayMetadata({ entity, entityId })),
+          dispatch(
+            Dashboards.actions.fetchXrayMetadata({
+              entity,
+              entityId,
+              dashboard_load_id: dashboardLoadId,
+            }),
+          ),
         ]);
         result = {
           ...response,
@@ -120,10 +128,15 @@ export const fetchDashboard = createAsyncThunk(
       } else {
         const [response] = await Promise.all([
           DashboardApi.get(
-            { dashId: dashId },
+            { dashId: dashId, dashboard_load_id: dashboardLoadId },
             { cancelled: fetchDashboardCancellation.promise },
           ),
-          dispatch(Dashboards.actions.fetchMetadata({ id: dashId })),
+          dispatch(
+            Dashboards.actions.fetchMetadata({
+              id: dashId,
+              dashboard_load_id: dashboardLoadId,
+            }),
+          ),
         ]);
         result = response;
       }

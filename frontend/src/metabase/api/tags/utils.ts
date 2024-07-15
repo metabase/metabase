@@ -35,6 +35,7 @@ import type {
   DashboardQueryMetadata,
   CardQueryMetadata,
   CardId,
+  ModelIndex,
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
@@ -188,6 +189,21 @@ export function provideCollectionTags(
   collection: Collection,
 ): TagDescription<TagType>[] {
   return [idTag("collection", collection.id)];
+}
+
+export function provideModelIndexTags(
+  modelIndex: ModelIndex,
+): TagDescription<TagType>[] {
+  return [idTag("model-index", modelIndex.id)];
+}
+
+export function provideModelIndexListTags(
+  modelIndexes: ModelIndex[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("model-index"),
+    ...modelIndexes.flatMap(modelIndex => provideModelIndexTags(modelIndex)),
+  ];
 }
 
 export function provideDatabaseCandidateListTags(

@@ -32,12 +32,12 @@ import { INITIAL_DASHBOARD_STATE } from "./constants";
 export const dashboardId = createReducer(
   INITIAL_DASHBOARD_STATE.dashboardId,
   builder => {
-    builder.addCase(INITIALIZE, _state => null);
+    builder.addCase(INITIALIZE, () => null);
     builder.addCase(
       fetchDashboard.fulfilled,
       (_state, { payload }) => payload.dashboardId,
     );
-    builder.addCase(RESET, _state => null);
+    builder.addCase(RESET, () => null);
   },
 );
 
@@ -127,6 +127,20 @@ export const loadingControls = createReducer(
     });
 
     builder.addCase(RESET, () => INITIAL_DASHBOARD_STATE.loadingControls);
+
+    builder.addCase(INITIALIZE, () => INITIAL_DASHBOARD_STATE.loadingControls);
+
+    builder.addCase(fetchDashboard.pending, state => {
+      state.isLoading = true;
+    });
+
+    builder.addCase(fetchDashboard.fulfilled, state => {
+      state.isLoading = false;
+    });
+
+    builder.addCase(fetchDashboard.rejected, state => {
+      state.isLoading = false;
+    });
   },
 );
 

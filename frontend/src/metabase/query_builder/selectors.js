@@ -17,7 +17,7 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import Databases from "metabase/entities/databases";
-import { ModelIndexes } from "metabase/entities/model-indexes";
+import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
 import Timelines from "metabase/entities/timelines";
 
 import { getAlerts } from "metabase/alert/selectors";
@@ -48,6 +48,7 @@ import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { isNotNull } from "metabase/lib/types";
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
+import { createRawSeries } from "./utils";
 
 export const getUiControls = state => state.qb.uiControls;
 export const getQueryStatus = state => state.qb.queryStatus;
@@ -687,30 +688,12 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
 export const getRawSeries = createSelector(
   [getQuestion, getQueryResults, getLastRunDatasetQuery, getIsShowingRawTable],
   (question, results, lastRunDatasetQuery, isShowingRawTable) => {
-    let display = question && question.display();
-    let settings = question && question.settings();
-
-    if (isShowingRawTable) {
-      display = "table";
-      settings = { "table.pivot": false };
-    }
-
-    // we want to provide the visualization with a card containing the latest
-    // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
-    // BUT the last executed "dataset_query" (to ensure data matches the query)
-    return (
-      results && [
-        {
-          card: {
-            ...question.card(),
-            display: display,
-            visualization_settings: settings,
-            dataset_query: lastRunDatasetQuery,
-          },
-          data: results[0] && results[0].data,
-        },
-      ]
-    );
+    return createRawSeries({
+      question,
+      queryResult: results?.[0],
+      datasetQuery: lastRunDatasetQuery,
+      showRawTable: isShowingRawTable,
+    });
   },
 );
 
@@ -1098,9 +1081,7 @@ export const getSubmittableQuestion = (state, question) => {
   const isResultDirty = getIsResultDirty(state);
 
   if (question.type() === "model" && resultsMetadata) {
-    resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
-      resultsMetadata.columns,
-    );
+    resultsMetadata.columns = cleanIndexFlags(resultsMetadata.columns);
   }
 
   let submittableQuestion = question;

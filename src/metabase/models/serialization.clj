@@ -82,6 +82,20 @@
 (defmethod entity-id :default [_ {:keys [entity_id]}]
   (str/trim entity_id))
 
+(defn eid->id
+  "Given model name and its entity id, returns it database-local id.
+
+  Is kind of reverse transformation to `entity-id` function defined here.
+
+  NOTE: Not implemented for `Database`, `Table` and `Field`, since those rely more on `path` than a single id. To be
+  done if a need arises."
+  [model-name eid]
+  (let [model (keyword "model" model-name)
+        pk    (first (t2/primary-keys model))
+        eid   (cond-> eid
+                (str/starts-with? eid "eid:") (subs 4))]
+    (t2/select-one-fn pk [model pk] :entity_id eid)))
+
 ;;; ## Hashing entities
 ;;; In the worst case, an entity is already present in two instances linked by serdes, and it doesn't have `entity_id`
 ;;; set because it existed before we added the column. If we write a migration to just generate random `entity_id`s on
@@ -288,6 +302,26 @@
 ;;;
 ;;; *Note:* "descendants" and "dependencies" are quite different things!
 
+(defmulti make-spec
+  "Return specification for serialization. This should be a map of three keys: `:copy`, `:skip`, `:transform`.
+
+  `:copy` and `:skip` are vectors of field names. `:skip` is only used in tests to check that all fields were
+  mentioned.
+
+  `:transform` is a map from field name to a `{:ser (fn [v] ...) :des (fn [v] ...)}` map with functions to
+  serialize/deserialize data.
+
+  For behavior, see `extract-by-spec` and `load-by-spec`."
+  (fn [model-name] model-name))
+
+(defmethod make-spec :default [_] nil)
+
+(defn- extract-by-spec [model-name _opts instance]
+  (when-let [spec (make-spec model-name)]
+    (into (select-keys instance (:copy spec))
+          (for [[k [ser _des]] (:transform spec)]
+            [k (ser (get instance k))]))))
+
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
   `(extract-all \"ModelName\" {opts...})`
@@ -387,8 +421,11 @@
         (assoc :serdes/meta (generate-path model-name entity))
         (dissoc pk :updated_at))))
 
-(defmethod extract-one :default [model-name _opts entity]
-  (extract-one-basics model-name entity))
+(defmethod extract-one :default [model-name opts entity]
+  ;; `extract-by-spec` is called here since most of tests use `extract-one` right now
+  (or (some-> (extract-by-spec model-name opts entity)
+              (assoc :serdes/meta (generate-path model-name entity)))
+      (extract-one-basics model-name entity)))
 
 (defmulti descendants
   "Returns set of `[model-name database-id]` pairs for all entities contained or used by this entity. e.g. the Dashboard
@@ -540,7 +577,7 @@
 (defn- ->table-name
   "Returns the table name that a particular ingested entity should finally be inserted into."
   [ingested]
-  (->> ingested ingested-model (keyword "model") t2/table-name name))
+  (->> ingested ingested-model (keyword "model") t2/table-name))
 
 (defmulti ingested-model-columns
   "Called by `drop-excess-keys` (which is in turn called by `load-xform-basics`) to determine the full set of keys that
@@ -639,11 +676,20 @@
   (fn [ingested _]
     (ingested-model ingested)))
 
+(defn- load-by-spec [ingested]
+  (let [model-name (ingested-model ingested)
+        spec       (make-spec model-name)]
+    (when spec
+      (into (select-keys ingested (:copy spec))
+            (for [[k [_ser des]] (:transform spec)]
+              [k (des (get ingested k))])))))
+
 (defn default-load-one!
   "Default implementation of `load-one!`"
   [ingested maybe-local]
   (let [model    (ingested-model ingested)
-        adjusted (load-xform ingested)]
+        adjusted (or (load-by-spec ingested)
+                     (load-xform ingested))]
     (binding [mi/*deserializing?* true]
       (if (nil? maybe-local)
         (load-insert! model adjusted)
@@ -752,7 +798,8 @@
     (let [model-name (name model)
           model      (t2.model/resolve-model (symbol model-name))
           entity     (t2/select-one model (first (t2/primary-keys model)) id)
-          path       (when entity (mapv :id (generate-path model-name entity)))]
+          path       (when entity
+                       (mapv :id (generate-path model-name entity)))]
       (cond
         (nil? entity)      (throw (ex-info "FK target not found" {:model model
                                                                   :id    id

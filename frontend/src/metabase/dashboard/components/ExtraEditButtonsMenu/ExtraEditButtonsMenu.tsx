@@ -3,20 +3,16 @@ import { t } from "ttag";
 import { setDashboardAttributes } from "metabase/dashboard/actions";
 import { trackDashboardWidthChange } from "metabase/dashboard/analytics";
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
-import { getDashboardId } from "metabase/dashboard/selectors";
+import { getDashboard, getDashboardId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Icon, Popover, Stack, Switch, Tooltip } from "metabase/ui";
-import type { Dashboard } from "metabase-types/api";
 
 const EXTRA_BUTTONS_DESCRIPTION = t`Toggle width`;
 
-interface ExtraEditButtonsMenuProps {
-  dashboard: Dashboard;
-}
-
-export function ExtraEditButtonsMenu({ dashboard }: ExtraEditButtonsMenuProps) {
+export function ExtraEditButtonsMenu() {
   const dispatch = useDispatch();
   const id = useSelector(getDashboardId);
+  const dashboard = useSelector(getDashboard);
 
   const handleToggleWidth = (event: React.ChangeEvent<HTMLInputElement>) => {
     const nextWidth = event.currentTarget.checked ? "full" : "fixed";
@@ -45,7 +41,7 @@ export function ExtraEditButtonsMenu({ dashboard }: ExtraEditButtonsMenuProps) {
           <Box px="md" py="sm">
             <Switch
               size="sm"
-              checked={dashboard.width === "full"}
+              checked={dashboard?.width === "full"}
               onChange={handleToggleWidth}
               label={t`Full width`}
             />

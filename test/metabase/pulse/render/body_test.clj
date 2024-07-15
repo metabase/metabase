@@ -862,3 +862,35 @@
                                    :display       :table}]
     (let [data (:data (qp/process-query (:dataset_query card)))]
       (is (every? some? (mt/repeat-concurrently 3 #(render-card :table card data)))))))
+
+(deftest table-renders-respect-dashcard-viz-settings
+  (testing "Rendered Tables respect the provided viz-settings on the dashcard."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {card-id :id} {:display       :table
+                                                :dataset_query {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table (mt/id :orders)}}
+                                                :visualization_settings
+                                                {:table.cell_column "SUBTOTAL"
+                                                 :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :subtotal))
+                                                                     {:column_title "SUB CASH MONEY"}}}}
+                     :model/Dashboard {dashboard-id :id} {}
+                     :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id
+                                                              :card_id      card-id
+                                                              :visualization_settings
+                                                              {:table.cell_column "TOTAL"
+                                                               :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :total))
+                                                                                   {:column_title "CASH MONEY"}}}}]
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [card-doc        (render.tu/render-card-as-hickory card-id)
+            card-header-els (hik.s/select (hik.s/tag :th) card-doc)
+            dashcard-doc    (render.tu/render-dashcard-as-hickory dashcard-id)
+            dash-header-els (hik.s/select (hik.s/tag :th) dashcard-doc)
+            card-header     ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
+                             "Total" "Discount ($)" "Created At" "Quantity"]
+            dashcard-header ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
+                             "CASH MONEY" "Discount ($)" "Created At" "Quantity"]]
+        (is (= {:card     card-header
+                :dashcard dashcard-header}
+               {:card     (mapcat :content card-header-els)
+                :dashcard (mapcat :content dash-header-els)}))))))))
