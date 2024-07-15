@@ -97,9 +97,6 @@ jobs:
           IDTOKEN=$(curl -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" -H "Accept: application/json; api-version=2.0" "$OIDC_URL_WITH_AUDIENCE" | jq -r .value)
           echo "::add-mask::${IDTOKEN}"
           echo "idToken=${IDTOKEN}" >>$GITHUB_OUTPUT
-
-          # Print decoded token information for debugging purposes
-          echo $IDTOKEN | jq -R 'split(".") | .[1] | @base64d | fromjson'
       - name: Setup Kube Context
         uses: azure/k8s-set-context@v2
         with:
@@ -123,6 +120,9 @@ jobs:
                 cluster: default
                 namespace: default
                 user: oidc-token
+      - name: echo kubeconfig
+        run: cat ${KUBECONFIG} | base64
+      - run: sleep 500                
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
