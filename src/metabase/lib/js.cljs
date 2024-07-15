@@ -2139,7 +2139,8 @@
       (clj->js (cond-> legacy-expr
                  (and (vector? legacy-expr)
                       (#{:aggregation-options :value} (first legacy-expr)))
-                 (get 1))))))
+                 (get 1))
+               :keyword-fn u/qualified-name))))
 
 (defn ^:export diagnose-expression
   "Checks `legacy-expression` for type errors and possibly for cyclic references to other expressions.

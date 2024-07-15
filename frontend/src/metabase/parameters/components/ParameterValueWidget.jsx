@@ -153,7 +153,7 @@ class ParameterValueWidget extends Component {
     if (
       required &&
       defaultValue &&
-      !areParameterValuesIdentical(value, defaultValue)
+      !areParameterValuesIdentical(wrapArray(value), wrapArray(defaultValue))
     ) {
       return (
         <WidgetStatusIcon
@@ -419,4 +419,11 @@ function isFieldWidget(parameter) {
   return parameter.hasVariableTemplateTagTarget
     ? canQuery
     : canQuery || hasFields(parameter);
+}
+
+function wrapArray(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  return [value];
 }

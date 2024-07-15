@@ -47,7 +47,7 @@ const InteractiveDashboardInner = ({
   questionHeight,
   plugins,
   onLoad,
-  onLoadWithCards,
+  onLoadWithoutCards,
   className,
 }: InteractiveDashboardProps) => {
   const {
@@ -112,7 +112,6 @@ const InteractiveDashboardInner = ({
 
       if (url) {
         dispatch({ type: NAVIGATE_TO_NEW_CARD, payload: { dashboardId } });
-
         setAdhocQuestionUrl(url);
       }
     }
@@ -167,7 +166,7 @@ const InteractiveDashboardInner = ({
               handleNavigateToNewCardFromDashboard
             }
             onLoad={onLoad}
-            onLoadWithCards={onLoadWithCards}
+            onLoadWithoutCards={onLoadWithoutCards}
           />
         </InteractiveDashboardProvider>
       )}
