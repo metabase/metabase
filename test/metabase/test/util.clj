@@ -1423,3 +1423,32 @@
                                   (.await latch)
                                   (f))))
     (mapv deref @futures)))
+
+(defn ordered-subset?
+  "Test if all the elements in `xs` appear in the same order in `ys` (but `ys` could have additional entries as
+  well). Search results in this test suite can be polluted by local data, so this is a way to ignore extraneous
+  results.
+
+  Uses the equality function if provided (otherwise just `=`)"
+  ([xs ys]
+   (ordered-subset? xs ys =))
+  ([[x & rest-x :as xs] [y & rest-y :as ys] eq?]
+   (or (empty? xs)
+       (and (boolean (seq ys))
+            (if (eq? x y)
+              (recur rest-x rest-y eq?)
+              (recur xs rest-y eq?))))))
+
+(defmacro call-with-map-params
+  "Execute `f` with each `binding` available by name in a params map. This is useful in conjunction with
+  `with-anaphora` (below)."
+  [f bindings]
+  (let [binding-map (into {} (for [b bindings] [(keyword b) b]))]
+    (list f binding-map)))
+
+(defmacro with-anaphora
+  "Execute the body with the given bindings plucked out of a params map (which was probably created by
+  `call-with-map-params` above."
+  [bindings & body]
+  `(fn [{:keys ~(mapv (comp symbol name) bindings)}]
+     ~@body))

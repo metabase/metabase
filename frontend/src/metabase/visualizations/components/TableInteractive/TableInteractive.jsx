@@ -903,7 +903,7 @@ class TableInteractive extends Component {
           }
         >
           <QueryColumnInfoPopover
-            placement="bottom-start"
+            position="bottom-start"
             query={query}
             stageIndex={-1}
             column={query && Lib.fromLegacyColumn(query, stageIndex, column)}

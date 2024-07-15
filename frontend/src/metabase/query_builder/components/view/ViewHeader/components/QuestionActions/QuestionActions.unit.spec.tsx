@@ -1,3 +1,4 @@
+import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { createMockEntitiesState } from "__support__/store";
@@ -103,13 +104,17 @@ describe("QuestionActions", () => {
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
       await userEvent.click(screen.getByText("Edit query definition"));
-      expect(onSetQueryBuilderMode).toHaveBeenCalledWith("dataset", {
-        datasetEditorTab: "query",
+      await waitFor(() => {
+        expect(onSetQueryBuilderMode).toHaveBeenCalledWith("dataset", {
+          datasetEditorTab: "query",
+        });
       });
 
       await userEvent.click(screen.getByText("Edit metadata"));
-      expect(onSetQueryBuilderMode).toHaveBeenCalledWith("dataset", {
-        datasetEditorTab: "metadata",
+      await waitFor(() => {
+        expect(onSetQueryBuilderMode).toHaveBeenCalledWith("dataset", {
+          datasetEditorTab: "metadata",
+        });
       });
     });
 

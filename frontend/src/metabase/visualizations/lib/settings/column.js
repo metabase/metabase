@@ -532,39 +532,23 @@ export const buildTableColumnSettings = ({
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
     getValue: ([{ data }], vizSettings) => {
       const { cols } = data;
+      const settings = vizSettings["table.columns"] ?? [];
+      const columnIndexes = findColumnIndexesForColumnSettings(cols, settings);
+      const settingIndexes = findColumnSettingIndexesForColumns(cols, settings);
 
-      function isValid(columnSettings) {
-        const columnIndexes = findColumnIndexesForColumnSettings(
-          cols,
-          columnSettings.filter(({ enabled }) => enabled),
-        );
-        return columnIndexes.every(columnIndex => columnIndex >= 0);
-      }
-
-      function getValue(columnSettings) {
-        const settingIndexes = findColumnSettingIndexesForColumns(
-          cols,
-          columnSettings,
-        );
-
-        return [
-          ...columnSettings,
-          ...cols
-            .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
-            .map(column => ({
-              name: column.name,
-              enabled: getIsColumnVisible(column),
-              fieldRef: column.field_ref,
-            })),
-        ];
-      }
-
-      const columnSettings = vizSettings["table.columns"];
-      if (!columnSettings || !isValid(columnSettings)) {
-        return getValue([]);
-      } else {
-        return getValue(columnSettings);
-      }
+      return [
+        // retain settings with matching columns only
+        ...settings.filter(
+          (_, settingIndex) => columnIndexes[settingIndex] >= 0,
+        ),
+        // add columns that do not have matching settings to the end
+        ...cols
+          .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
+          .map(column => ({
+            name: column.name,
+            enabled: getIsColumnVisible(column),
+          })),
+      ];
     },
     getProps: (series, settings) => {
       const [
