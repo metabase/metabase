@@ -17,8 +17,7 @@ type Appearance = {
   theme: DisplayTheme;
   font: "instance" | "custom";
   hide_download_button: boolean | null;
-  // TODO:
-  // downloads: boolean | null;
+  // TODO: implement `downloads` parameter in the analytics event
 };
 
 export const trackStaticEmbedDiscarded = ({
