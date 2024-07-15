@@ -10,9 +10,7 @@ export const Root = styled.div`
   align-items: center;
   justify-content: center;
   text-align: center;
-
   padding: 0.5rem;
-
   color: ${color("brand")};
 `;
 

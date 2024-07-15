@@ -16,8 +16,7 @@ interface PaletteResultItemProps {
 export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
   const icon = item.icon ? getCommandPaletteIcon(item, active) : null;
 
-  const parentName =
-    item.extra?.parentCollection || item.extra?.database || null;
+  const subtext = item.extra?.subtext;
 
   const handleLinkClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -33,7 +32,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       gap="0.5rem"
       fw={700}
       style={{
-        cursor: "pointer",
+        cursor: item.disabled ? "default" : "cursor",
         borderRadius: "0.5rem",
         flexGrow: 1,
         flexBasis: 0,
@@ -41,6 +40,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       bg={active ? color("brand") : "none"}
       c={active ? color("white") : color("text-dark")}
       aria-label={item.name}
+      aria-disabled={item.disabled ? true : false}
     >
       {/** Icon Container */}
       {icon && (
@@ -81,7 +81,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
               }}
             />
           )}
-          {parentName && (
+          {subtext && (
             <Text
               component="span"
               ml="0.25rem"
@@ -89,7 +89,9 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
               fz="0.75rem"
               lh="1rem"
               fw="normal"
-            >{`— ${parentName}`}</Text>
+            >
+              — {subtext}
+            </Text>
           )}
         </Box>
         <Text

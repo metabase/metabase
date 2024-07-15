@@ -3,10 +3,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
+import { formatNullable } from "metabase/lib/formatting/nullable";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
+import { groupRawSeriesMetrics } from "metabase/visualizations/lib/dataset";
 import {
   MinRowsError,
   ChartSettingsError,
@@ -29,6 +31,12 @@ import { funnelToBarTransform } from "metabase/visualizations/visualizations/Fun
 import type { DatasetData, RawSeries, RowValue } from "metabase-types/api";
 
 import FunnelNormal from "../../components/FunnelNormal";
+
+import type { FunnelRow } from "./types";
+
+const getUniqueFunnelRows = (rows: FunnelRow[]) => {
+  return [...new Map(rows.map(row => [row.key, row])).values()];
+};
 
 Object.assign(Funnel, {
   uiName: t`Funnel`,
@@ -131,7 +139,7 @@ Object.assign(Funnel, {
         const dimension = settings["funnel.dimension"];
 
         const rowsOrder = settings["funnel.rows"];
-        const rowsKeys = rows.map(row => row[dimensionIndex]);
+        const rowsKeys = rows.map(row => formatNullable(row[dimensionIndex]));
 
         const getDefault = (keys: RowValue[]) =>
           keys.map(key => ({
@@ -145,7 +153,7 @@ Object.assign(Funnel, {
           !rowsOrder.every(setting => setting.key !== undefined) ||
           orderDimension !== dimension
         ) {
-          return getDefault(rowsKeys);
+          return getUniqueFunnelRows(getDefault(rowsKeys));
         }
 
         const removeMissingOrder = (keys: RowValue[], order: any) =>
@@ -153,10 +161,12 @@ Object.assign(Funnel, {
         const newKeys = (keys: RowValue[], order: any) =>
           keys.filter(key => !order.find((o: any) => o.key === key));
 
-        return [
+        const funnelRows = [
           ...removeMissingOrder(rowsKeys, rowsOrder),
           ...getDefault(newKeys(rowsKeys, rowsOrder)),
         ];
+
+        return getUniqueFunnelRows(funnelRows);
       },
       props: {
         hasEditSettings: false,
@@ -205,11 +215,15 @@ export function Funnel(props: VisualizationProps) {
   const hasTitle = showTitle && settings["card.title"];
 
   const renderingContext = useBrowserRenderingContext(fontFamily);
+  const groupedRawSeries = groupRawSeriesMetrics(
+    rawSeries,
+    settings["funnel.dimension"],
+  );
 
   if (settings["funnel.type"] === "bar") {
     return (
       <TransformedVisualization
-        originalProps={props}
+        originalProps={{ ...props, rawSeries: groupedRawSeries }}
         VisualizationComponent={BarChart}
         transformSeries={funnelToBarTransform}
         renderingContext={renderingContext}
@@ -221,14 +235,18 @@ export function Funnel(props: VisualizationProps) {
     <div className={cx(className, CS.flex, CS.flexColumn, CS.p1)}>
       {hasTitle && (
         <ChartCaption
-          series={rawSeries}
+          series={groupedRawSeries}
           settings={settings}
           icon={headerIcon}
           actionButtons={actionButtons}
           onChangeCardAndRun={onChangeCardAndRun}
         />
       )}
-      <FunnelNormal {...props} className={CS.flexFull} />
+      <FunnelNormal
+        {...props}
+        rawSeries={groupedRawSeries}
+        className={CS.flexFull}
+      />
     </div>
   );
 }

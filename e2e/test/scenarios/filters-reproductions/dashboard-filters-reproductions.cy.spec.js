@@ -145,7 +145,7 @@ describe("issue 8030 + 32444", () => {
   };
 
   const interceptRequests = ({ dashboard_id, card1_id, card2_id }) => {
-    cy.intercept("GET", `/api/dashboard/${dashboard_id}`).as("getDashboard");
+    cy.intercept("GET", `/api/dashboard/${dashboard_id}*`).as("getDashboard");
     cy.intercept(
       "POST",
       `/api/dashboard/${dashboard_id}/dashcard/*/card/${card1_id}/query`,
@@ -2587,7 +2587,7 @@ describe("issue 42829", () => {
   });
 
   // param_fields is null for public dashboards, should be fixed on the BE
-  it.skip("should be able to get field values coming from a sql model-based question in a public dashboard (metabase#42829)", () => {
+  it("should be able to get field values coming from a sql model-based question in a public dashboard (metabase#42829)", () => {
     cy.get("@dashboardId").then(dashboardId =>
       visitPublicDashboard(dashboardId),
     );
@@ -2595,7 +2595,7 @@ describe("issue 42829", () => {
   });
 
   // param_fields is null for embedded dashboards, should be fixed on the BE
-  it.skip("should be able to get field values coming from a sql model-based question in a embedded dashboard (metabase#42829)", () => {
+  it("should be able to get field values coming from a sql model-based question in a embedded dashboard (metabase#42829)", () => {
     cy.get("@dashboardId").then(dashboardId =>
       visitEmbeddedPage({
         resource: { dashboard: dashboardId },

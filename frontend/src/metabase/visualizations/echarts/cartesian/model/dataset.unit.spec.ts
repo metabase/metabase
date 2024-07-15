@@ -25,7 +25,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
-  sumMetric,
   getDatasetKey,
   getJoinedCardsDataset,
   replaceValues,
@@ -63,24 +62,6 @@ describe("dataset transform functions", () => {
     valuesCount: 3,
     formatter: value => String(value),
   };
-
-  describe("sumMetric", () => {
-    it("should return the sum when both arguments are numbers", () => {
-      expect(sumMetric(3, 7)).toBe(10);
-    });
-
-    it("should return the left number when right is not a number", () => {
-      expect(sumMetric(5, null)).toBe(5);
-    });
-
-    it("should return the right number when left is not a number", () => {
-      expect(sumMetric(null, 5)).toBe(5);
-    });
-
-    it("should return null when neither left nor right is a number", () => {
-      expect(sumMetric(null, null)).toBeNull();
-    });
-  });
 
   describe("getDatasetKey", () => {
     const column = createMockColumn({ name: "count" });

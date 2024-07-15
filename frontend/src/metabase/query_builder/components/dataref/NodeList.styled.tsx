@@ -31,7 +31,6 @@ interface NodeListItemLinkProps {
 
 export const NodeListItemLink = styled.a<NodeListItemLinkProps>`
   border-radius: 8px;
-  display: flex;
   align-items: center;
   color: ${color("brand")};
   font-weight: 700;
@@ -42,6 +41,7 @@ export const NodeListItemLink = styled.a<NodeListItemLinkProps>`
   display: flex;
   padding: ${space(1)};
   text-decoration: none;
+
   :hover {
     background-color: ${color("bg-medium")};
   }

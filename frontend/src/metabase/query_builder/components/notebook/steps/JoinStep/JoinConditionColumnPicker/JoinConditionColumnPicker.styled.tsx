@@ -21,7 +21,6 @@ const hasColumnStyle = (isOpen = false) => css`
   min-height: 39px;
   padding: 6px 16px 6px 10px;
   border-radius: 6px;
-
   background-color: ${isOpen ? lighten("brand", 0.1) : color("brand")};
 
   &:hover,
@@ -39,12 +38,10 @@ export const JoinCellItem = styled.button<{
   flex-direction: column;
   justify-content: center;
   gap: 2px;
-
   ${props =>
     props.isColumnSelected
       ? hasColumnStyle(props.isOpen)
       : noColumnStyle(props.isOpen)};
-
   cursor: ${props => (props.isReadOnly ? "default" : "pointer")};
   transition: background 300ms linear, border 300ms linear, color 300ms linear;
 `;

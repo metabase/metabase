@@ -18,9 +18,9 @@ export const RootModal = styled(Modal)`
       width: ${({ wide }) => (wide ? "64rem" : "48rem")};
       max-width: 95vw;
     }
+
     max-height: 95vh;
     width: 95vw;
-
     border: 1px solid ${color("border")};
     border-radius: 0.5rem;
   }
@@ -30,7 +30,8 @@ export const RootModal = styled(Modal)`
       display: flex;
       height: calc(80vh - 4rem);
     }
-    height: calc(100vh - 8rem);
+
+    max-height: calc(100vh - 8rem);
   }
 
   ${ObjectDetailsTable} {

@@ -15,12 +15,10 @@ export const TabRoot = styled.button<TabProps>`
   width: 100%;
   flex: 1;
   text-align: left;
-
   color: ${props => (props.isSelected ? color("brand") : color("text-dark"))};
   background-color: ${props =>
     props.isSelected ? alpha("brand", 0.1) : "transparent"};
   cursor: pointer;
-
   margin-bottom: 0.75rem;
   padding: 0.75rem 1rem;
   margin-right: ${space(1)};
