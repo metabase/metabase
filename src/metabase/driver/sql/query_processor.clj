@@ -31,7 +31,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
-   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (java.util UUID)))
 
 (set! *warn-on-reflection* true)
 
@@ -578,8 +579,15 @@
   (inline-num n))
 
 (defmethod ->honeysql [:sql :value]
-  [driver [_ value]]
-  (->honeysql driver value))
+  [driver [_ value {base-type :base_type}]]
+  (when (some? value)
+    (condp #(isa? %2 %1) base-type
+      :type/UUID (when (not= "" value) ; support is-empty/non-empty checks
+                   (try
+                     (UUID/fromString value)
+                     (catch IllegalArgumentException _
+                       (h2x/with-type-info value {:database-type "text"}))))
+      (->honeysql driver value))))
 
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name {::add/keys [source-table source-alias]} :as _clause]]
@@ -1295,17 +1303,39 @@
         expr
         [:lower expr]))))
 
+(mu/defn ^:private maybe-cast-uuid-for-equality
+  "Comparing UUID fields against text values requires casting."
+  [driver field arg]
+  (if (and (isa? (:base-type (get field 2)) :type/UUID)
+           (= (:database-type (h2x/type-info (->honeysql driver arg))) "text"))
+    [::cast field "text"]
+    field))
+
+(mu/defn ^:private maybe-cast-uuid-for-text-compare
+  "Comparing UUID fields against text values requires casting."
+  [field]
+  (if (isa? (:base-type (get field 2)) :type/UUID)
+    [::cast field "text"]
+    field))
+
+(defmethod ->honeysql [:sql ::cast]
+  [driver [_ expr database-type]]
+  (h2x/maybe-cast database-type (->honeysql driver expr)))
+
 (defmethod ->honeysql [:sql :starts-with]
   [driver [_ field arg options]]
-  (like-clause (->honeysql driver field) (generate-pattern driver nil arg "%" options) options))
+  (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare field))
+               (generate-pattern driver nil arg "%" options) options))
 
 (defmethod ->honeysql [:sql :contains]
   [driver [_ field arg options]]
-  (like-clause (->honeysql driver field) (generate-pattern driver "%" arg "%" options) options))
+  (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare field))
+               (generate-pattern driver "%" arg "%" options) options))
 
 (defmethod ->honeysql [:sql :ends-with]
   [driver [_ field arg options]]
-  (like-clause (->honeysql driver field) (generate-pattern driver "%" arg nil options) options))
+  (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare field))
+               (generate-pattern driver "%" arg nil options) options))
 
 (defmethod ->honeysql [:sql :between]
   [driver [_ field min-val max-val]]
@@ -1330,7 +1360,7 @@
 (defmethod ->honeysql [:sql :=]
   [driver [_ field value]]
   (assert field)
-  [:= (->honeysql driver field) (->honeysql driver value)])
+  [:= (->honeysql driver (maybe-cast-uuid-for-equality driver field value)) (->honeysql driver value)])
 
 (defn- correct-null-behaviour
   [driver [op & args :as clause]]
@@ -1347,8 +1377,8 @@
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]
   (if (nil? (qp.wrap-value-literals/unwrap-value-literal value))
-    [:not= (->honeysql driver field) (->honeysql driver value)]
-    (correct-null-behaviour driver [:not= field value])))
+    [:not= (->honeysql driver (maybe-cast-uuid-for-equality driver field value)) (->honeysql driver value)]
+    (correct-null-behaviour driver [:not= (maybe-cast-uuid-for-equality driver field value) value])))
 
 (defmethod ->honeysql [:sql :and]
   [driver [_tag & subclauses]]

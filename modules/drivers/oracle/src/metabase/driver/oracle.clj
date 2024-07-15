@@ -39,7 +39,6 @@
 
 (doseq [[feature supported?] {:datetime-diff    true
                               :now              true
-                              :uuid-type        true
                               :convert-timezone true}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
@@ -71,7 +70,6 @@
     [#"^ORD"        :type/*]
     [#"NUMBER"      :type/Decimal]
     [#"REAL"        :type/Float]
-    [#"UUID"        :type/UUID]
     [#"REF"         :type/*]
     [#"ROWID"       :type/*]
     ;; Spatial types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107588

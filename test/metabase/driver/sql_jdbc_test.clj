@@ -209,7 +209,6 @@
           result-metadata (get-in results [:data :results_metadata :columns])
           col-metadata (first result-metadata)]
       (is (= :type/UUID (:base_type col-metadata)))
-      #_
       (mt/with-temp [:model/Card card {:type :model
                                        :result_metadata result-metadata
                                        :dataset_query uuid-query}]
@@ -219,6 +218,7 @@
           (are [expected filt]
             (= expected
                  (mt/rows (qp/process-query (assoc-in model-query [:query :filter] filt))))
+            [[uuid]] [:= (:field_ref col-metadata) [:value (str uuid) {:base_type :type/UUID}]]
             [[uuid]] [:= (:field_ref col-metadata) (str uuid)]
             [[uuid]] [:!= (:field_ref col-metadata) (str (random-uuid))]
             [[uuid]] [:starts-with (:field_ref col-metadata) (str uuid)]
@@ -235,4 +235,8 @@
             [] [:= (:field_ref col-metadata) "q"]
             [] [:starts-with (:field_ref col-metadata) "q"]
             [] [:ends-with (:field_ref col-metadata) "q"]
-            [] [:contains (:field_ref col-metadata) "q"]))))))
+            [] [:contains (:field_ref col-metadata) "q"]
+
+            ;; nil handling
+            [[uuid]] [:!= (:field_ref col-metadata) nil]
+            [] [:= (:field_ref col-metadata) nil]))))))
