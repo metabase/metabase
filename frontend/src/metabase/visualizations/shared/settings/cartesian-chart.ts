@@ -110,6 +110,10 @@ export const getDefaultStackingValue = (
   return shouldStack ? "stacked" : null;
 };
 
+export const getSeriesOrderDimensionSetting = (
+  settings: ComputedVisualizationSettings,
+) => settings["graph.dimensions"]?.[1];
+
 export const getSeriesOrderVisibilitySettings = (
   settings: ComputedVisualizationSettings,
   seriesKeys: string[],

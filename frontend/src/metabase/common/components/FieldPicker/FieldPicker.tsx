@@ -12,14 +12,23 @@ import {
   ItemIcon,
 } from "./FieldPicker.styled";
 
+export interface FieldPickerItem {
+  column: Lib.ColumnMetadata;
+  columnInfo: Lib.ColumnDisplayInfo;
+}
+
 interface FieldPickerProps {
   query: Lib.Query;
   stageIndex: number;
   columns: Lib.ColumnMetadata[];
   "data-testid"?: string;
   isColumnSelected: (
-    column: Lib.ColumnMetadata,
-    columnInfo: Lib.ColumnDisplayInfo,
+    item: FieldPickerItem,
+    items: FieldPickerItem[],
+  ) => boolean;
+  isColumnDisabled?: (
+    item: FieldPickerItem,
+    items: FieldPickerItem[],
   ) => boolean;
   onToggle: (column: Lib.ColumnMetadata, isSelected: boolean) => void;
   onSelectAll: () => void;
@@ -34,25 +43,23 @@ export const FieldPicker = ({
   onSelectAll,
   onSelectNone,
   isColumnSelected,
+  isColumnDisabled,
   ...props
 }: FieldPickerProps) => {
-  const items = useMemo(
-    () =>
-      columns.map(column => {
-        const columnInfo = Lib.displayInfo(query, stageIndex, column);
-        return {
-          column,
-          columnInfo,
-          isSelected: isColumnSelected(column, columnInfo),
-        };
-      }),
-    [query, stageIndex, columns, isColumnSelected],
-  );
+  const items = useMemo(() => {
+    const items = columns.map(column => ({
+      column,
+      columnInfo: Lib.displayInfo(query, stageIndex, column),
+    }));
+    return items.map(item => ({
+      ...item,
+      isSelected: isColumnSelected(item, items),
+      isDisabled: isColumnDisabled?.(item, items),
+    }));
+  }, [query, stageIndex, columns, isColumnSelected, isColumnDisabled]);
 
   const isAll = items.every(item => item.isSelected);
   const isNone = items.every(item => !item.isSelected);
-  const isDisabledDeselection =
-    items.filter(item => item.isSelected).length <= 1;
 
   const handleLabelToggle = () => {
     if (isAll) {
@@ -80,11 +87,8 @@ export const FieldPicker = ({
           <li key={item.columnInfo.longDisplayName}>
             <Label as="label">
               <Checkbox
-                checked={isColumnSelected(item.column, item.columnInfo)}
-                disabled={
-                  isColumnSelected(item.column, item.columnInfo) &&
-                  isDisabledDeselection
-                }
+                checked={item.isSelected}
+                disabled={item.isDisabled}
                 onChange={event => onToggle(item.column, event.target.checked)}
               />
               <ItemIcon

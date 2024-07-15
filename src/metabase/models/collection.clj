@@ -79,12 +79,12 @@
 
 (defn is-trash?
   "Is this the trash collection?"
-  [collection]
+  [collection-or-id]
   ;; in some circumstances we don't have a `:type` on the collection (e.g. search or collection items lists, where we
   ;; select a subset of columns). Use the type if it's there, but fall back to the ID to be sure.
   ;; We can't *only* use the id because getting that requires selecting a collection :sweat-smile:
-  (or (= (:type collection) trash-collection-type)
-      (= (:id collection) (trash-collection-id))))
+  (or (= (:type collection-or-id) trash-collection-type)
+      (some-> collection-or-id u/id (= (trash-collection-id)))))
 
 (defn is-trash-or-descendant?
   "Is this the trash collection, or a descendant of it?"
@@ -1277,6 +1277,9 @@
   "Check that we have write permissions for Collection with `collection-id`, or throw a 403 Exception. If
   `collection-id` is `nil`, this check is done for the Root Collection."
   [collection-or-id-or-nil]
+  (when (is-trash? collection-or-id-or-nil)
+    (throw (ex-info (tru "You cannot modify the Trash Collection.")
+                    {:status-code 400})))
   (let [actual-perms   @*current-user-permissions-set*
         required-perms (perms/collection-readwrite-path (if collection-or-id-or-nil
                                                           collection-or-id-or-nil
