@@ -11,7 +11,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(deftest backfill-query-field-test
+(deftest analyzer-loop-test
   (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         venues            (lib.metadata/table metadata-provider (mt/id :venues))
         venues-name       (lib.metadata/field metadata-provider (mt/id :venues :name))
