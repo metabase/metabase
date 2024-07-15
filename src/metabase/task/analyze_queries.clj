@@ -3,6 +3,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.public-settings :as public-settings]
    [metabase.query-analysis :as query-analysis]
    [metabase.task :as task]
    [metabase.util :as u]
@@ -33,7 +34,7 @@
   (max fail-wait-ms (wait-proportional time-taken-ms)))
 
 (defn- analyzer-loop! []
-  (while true
+  (while (public-settings/query-analysis-enabled)
     (let [card-id (query-analysis/next-card-id!)
           timer   (u/start-timer)]
       (try
@@ -45,8 +46,8 @@
 
 (jobs/defjob ^{DisallowConcurrentExecution true
                :doc                        "Analyze "}
-             QueryAnalyzer [_ctx]
-             (analyzer-loop!))
+  QueryAnalyzer [_ctx]
+  (analyzer-loop!))
 
 (defmethod task/init! ::BackfillQueryField [_]
   (let [job     (jobs/build
