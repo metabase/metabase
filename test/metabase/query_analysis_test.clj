@@ -43,7 +43,8 @@
 
 (deftest no-query-analysis-enabled-test
   (mt/discard-setting-changes [query-analysis-enabled
-                               query-analysis-mbql-enabled
+                               query-analysis-mbql-disabled
+                               query-analysis-native-disabled
                                sql-parsing-enabled]
     (public-settings/query-analysis-enabled! false)
     (testing "All query analysis is disabled"
