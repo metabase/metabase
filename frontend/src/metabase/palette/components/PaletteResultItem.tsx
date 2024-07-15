@@ -32,7 +32,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       gap="0.5rem"
       fw={700}
       style={{
-        cursor: "pointer",
+        cursor: item.disabled ? "default" : "cursor",
         borderRadius: "0.5rem",
         flexGrow: 1,
         flexBasis: 0,
@@ -40,6 +40,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       bg={active ? color("brand") : "none"}
       c={active ? color("white") : color("text-dark")}
       aria-label={item.name}
+      aria-disabled={item.disabled ? true : false}
     >
       {/** Icon Container */}
       {icon && (
