@@ -12,14 +12,18 @@
 
 (deftest legacy-sql-parsing-enabled-test
   (mt/discard-setting-changes [query-analysis-native-disabled sql-parsing-enabled]
-    (testing "sql parsing enabled"
+    (testing "legacy setting enabled"
       (public-settings/sql-parsing-enabled! true)
       ;; I'm not sure why this is nil, but it is fine for our purposes.
-      (is (nil? (public-settings/query-analysis-native-disabled)))))
+      (is (nil? (public-settings/query-analysis-native-disabled)))
+      (public-settings/query-analysis-native-disabled! true)
+      (is (true? (public-settings/query-analysis-native-disabled)))))
   (mt/discard-setting-changes [query-analysis-native-disabled sql-parsing-enabled]
-    (testing "sql parsing disabled"
+    (testing "legacy setting disabled"
       (public-settings/sql-parsing-enabled! false)
-      (is (true? (public-settings/query-analysis-native-disabled))))))
+      (is (true? (public-settings/query-analysis-native-disabled)))
+      (public-settings/query-analysis-native-disabled! false)
+      (is (false? (public-settings/query-analysis-native-disabled))))))
 
 (deftest native-query-enabled-test
   (mt/discard-setting-changes [query-analysis-enabled
