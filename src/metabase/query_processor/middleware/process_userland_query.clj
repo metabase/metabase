@@ -174,10 +174,11 @@
                         ;; we only need the preprocessed query to find field usages, so make sure we don't return it
                         result             (rff (dissoc metadata :preprocessed_query))
                         ;; skip internal queries as it use honeysql, not mbql
-                        field-usages       (when-not (qp.util/internal-query? query)
-                                             (field-usage/pmbql->field-usages
-                                              (lib/query (qp.store/metadata-provider) preprocessed-query)))]
-                    (add-and-save-execution-metadata-xform! execution-info field-usages result)))]
+                        ;; temporarily disabled because it impacts query performance
+                        #_field-usages       #_(when-not (qp.util/internal-query? query)
+                                                (field-usage/pmbql->field-usages
+                                                 (lib/query (qp.store/metadata-provider) preprocessed-query)))]
+                    (add-and-save-execution-metadata-xform! execution-info #_field-usages nil result)))]
           (try
             (qp query rff*)
             (catch Throwable e
