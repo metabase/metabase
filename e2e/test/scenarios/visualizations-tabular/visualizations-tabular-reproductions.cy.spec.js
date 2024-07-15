@@ -1023,8 +1023,7 @@ describe("issue 45481", () => {
   });
 
   it("should not crash when the table viz gets automatically pivoted (metabase#45481)", () => {
-    openOrdersTable();
-    openNotebook();
+    openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
     popover().findByText("Count of rows").click();
     getNotebookStep("summarize")
@@ -1041,5 +1040,53 @@ describe("issue 45481", () => {
     });
     visualize();
     tableInteractive().should("be.visible");
+  });
+});
+
+describe("issue 12368", () => {
+  const questionDetails = {
+    type: "question",
+    query: {
+      "source-table": PRODUCTS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        ["field", PRODUCTS.VENDOR, { "base-type": "type/Text" }],
+        ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+      ],
+    },
+    visualization_settings: {
+      "table.pivot": true,
+      "table.pivot_column": "CATEGORY",
+      "table.cell_column": "count",
+      column_settings: {
+        [`["ref",["field",${PRODUCTS.VENDOR},null]]`]: {
+          column_title: "Vendor2",
+        },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should clear pivot settings when doing underlying records drill from a pivot table (metabase#12368)", () => {
+    cy.log("drill thru from a pivot table");
+    createQuestion(questionDetails, { visitQuestion: true });
+    cy.findAllByTestId("cell-data").contains("1").first().click();
+    popover().findByText("See this Product").click();
+
+    cy.log("pivot flag should be cleared but other viz settings are preserved");
+    tableInteractive().within(() => {
+      cy.findByText("Ean").should("be.visible");
+      cy.findByText("Vendor2").should("be.visible");
+    });
+    cy.findByTestId("viz-settings-button").click();
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.button("Add or remove columns").should("be.visible");
+      cy.findByText("Pivot column").should("not.exist");
+      cy.findByText("Cell column").should("not.exist");
+    });
   });
 });
