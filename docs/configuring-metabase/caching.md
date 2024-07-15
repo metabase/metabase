@@ -46,7 +46,7 @@ Invalidate and clear the cache after X number of hours. When someone runs a quer
 
 Pick when to regularly invalidate the cache. Metabase will only store results when people run a query, and it will clear the cached results according to the cadence you set here.
 
-You can schedule caching to invalidate:
+You can schedule the cache to invalidate:
 
 - Hourly
 - Daily
