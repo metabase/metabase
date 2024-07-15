@@ -1,12 +1,14 @@
 import {
   ORDERS_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   setupSMTP,
   mockSlackConfigured,
   visitQuestion,
+  visitModel,
 } from "e2e/support/helpers";
 
 const channels = { slack: mockSlackConfigured, email: setupSMTP };
@@ -85,6 +87,17 @@ describe("scenarios > alert", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("The wide world of alerts").should("not.exist");
       });
+    });
+  });
+
+  it("should not be offered for models (metabase#37893)", () => {
+    visitModel(ORDERS_MODEL_ID);
+    cy.findByTestId("view-footer").within(() => {
+      cy.findByTestId("question-row-count")
+        .should("have.text", "Showing first 2,000 rows")
+        .and("be.visible");
+      cy.icon("download").should("exist");
+      cy.icon("bell").should("not.exist");
     });
   });
 });
