@@ -165,6 +165,12 @@ export type MetabaseComponentTheme = {
     };
   };
 
+  /** Popover */
+  popover: {
+    /** z-index of the popover. Useful for embedding components in a modal. */
+    zIndex: number;
+  };
+
   collectionBrowser: {
     breadcrumbs: {
       expandButton: {

@@ -3,6 +3,7 @@ import { merge } from "icepick";
 import type { MetabaseComponentTheme } from "embedding-sdk";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import type { DeepPartial } from "embedding-sdk/types/utils";
+import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
 import type { MantineThemeOverride } from "metabase/ui";
 
 export const DEFAULT_SDK_FONT_SIZE = 14;
@@ -84,6 +85,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     goalLine: {
       label: { fontSize: FONT_SIZES.goalLabel.px },
     },
+  },
+  popover: {
+    zIndex: DEFAULT_Z_INDEX,
   },
 };
 
