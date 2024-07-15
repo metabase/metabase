@@ -99,7 +99,8 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0 # get all branches
+        # assumes there's already a branch with that name from the upload step
+        ref: update-translations-v${{inputs.VERSION}}
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
       with:
@@ -127,8 +128,6 @@ jobs:
 
         BRANCH_NAME="update-translations-v$VERSION"
 
-        # assumes there's already a branch with that name from the upload step
-        git checkout $BRANCH_NAME
         git add locales/
 
         git commit -m "Update translations"
