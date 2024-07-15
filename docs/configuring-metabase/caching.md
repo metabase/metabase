@@ -68,7 +68,7 @@ On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.meta
 
 ### Don’t cache results
 
-Always re-run the query to refresh results.
+Never cache results.
 
 ## Set caching policies for dashboards, questions, and databases
 
