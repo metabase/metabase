@@ -368,14 +368,7 @@ describeEE("scenarios > question > snippets (EE)", () => {
     });
 
     it("shouldn't update root permissions when changing permissions on a created folder (metabase#17268)", () => {
-      cy.intercept("PUT", "/api/collection/graph", req => {
-        // make sure that we get the response graph back to make sure the edit persisted as expected
-        // in the api response check at the end of this test
-        if (req.body && typeof req.body === "object") {
-          req.body.skip_graph = false;
-        }
-        req.continue();
-      }).as("updatePermissions");
+      cy.intercept("PUT", "/api/collection/graph").as("updatePermissions");
 
       openNativeEditor();
       cy.icon("snippet").click();
@@ -415,12 +408,12 @@ describeEE("scenarios > question > snippets (EE)", () => {
       });
 
       // API check
-      cy.get("@updatePermissions").then(intercept => {
-        const { groups } = intercept.response.body;
-        const allUsers = groups[ALL_USERS_GROUP];
-
-        expect(allUsers.root).to.equal("write");
-      });
+      cy.request("GET", "/api/collection/graph?namespace=snippets").then(
+        ({ body }) => {
+          const allUsers = body.groups[ALL_USERS_GROUP];
+          expect(allUsers.root).to.equal("write");
+        },
+      );
     });
   });
 });
