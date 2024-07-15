@@ -1,4 +1,6 @@
+import { act } from "@testing-library/react";
 import fetchMock from "fetch-mock";
+import { useCallback, useReducer } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -10,6 +12,7 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { useInitData } from "embedding-sdk/hooks";
 import { sdkReducers, useSdkSelector } from "embedding-sdk/store";
+import { refreshTokenAsync } from "embedding-sdk/store/reducer";
 import { getIsLoggedIn, getLoginStatus } from "embedding-sdk/store/selectors";
 import type { LoginStatusError } from "embedding-sdk/store/types";
 import { createMockConfig } from "embedding-sdk/test/mocks/config";
@@ -18,6 +21,7 @@ import {
   createMockSdkState,
 } from "embedding-sdk/test/mocks/state";
 import type { SDKConfig } from "embedding-sdk/types";
+import { useDispatch } from "metabase/lib/redux";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -27,16 +31,36 @@ import { createMockState } from "metabase-types/store/mocks";
 
 const TEST_USER = createMockUser();
 
-const TestComponent = ({ config }: { config: SDKConfig }) => {
+const TestComponent = ({
+  config,
+  onFetchRequestToken,
+}: {
+  config: SDKConfig;
+  onFetchRequestToken?: (token: string) => void;
+}) => {
+  const dispatch = useDispatch();
+
   const loginStatus = useSdkSelector(getLoginStatus);
   const isLoggedIn = useSdkSelector(getIsLoggedIn);
+
+  const [tokenId, incrementTokenId] = useReducer(id => id + 1, 1);
+
+  const fetchRequestToken = useCallback(async () => {
+    onFetchRequestToken?.(tokenId);
+
+    return { id: `${tokenId}`, exp: 1 };
+  }, [tokenId, onFetchRequestToken]);
 
   useInitData({
     config: {
       ...config,
+      ...(onFetchRequestToken && { fetchRequestToken }),
       metabaseInstanceUrl: "http://localhost",
     } as SDKConfig,
   });
+
+  const refreshToken = () =>
+    dispatch(refreshTokenAsync("http://TEST_URI/sso/metabase"));
 
   return (
     <div
@@ -46,6 +70,8 @@ const TestComponent = ({ config }: { config: SDKConfig }) => {
       data-error-message={(loginStatus as LoginStatusError).error?.message}
     >
       Test Component
+      <button onClick={incrementTokenId}>Update Token Fetcher</button>
+      <button onClick={refreshToken}>Refresh Token</button>
     </div>
   );
 };
@@ -59,6 +85,7 @@ const setup = ({
 }: {
   isValidConfig?: boolean;
   isValidUser?: boolean;
+  onFetchRequestToken?: (token: string) => void;
 } & Partial<SDKConfig>) => {
   fetchMock.get("http://TEST_URI/sso/metabase", {
     id: "TEST_JWT_TOKEN",
@@ -99,7 +126,6 @@ const setup = ({
 
   const config = createMockConfig({
     jwtProviderUri: isValidConfig ? "http://TEST_URI/sso/metabase" : "",
-    fetchRequestToken: configOpts.fetchRequestToken,
   });
 
   renderWithProviders(<TestComponent config={config} {...configOpts} />, {
@@ -176,13 +202,22 @@ describe("useInitData hook", () => {
       );
     });
 
-    it("should use the custom fetchRefreshToken function when specified", async () => {
-      const fetchRequestToken = jest.fn(async () => ({ id: "foobar", exp: 1 }));
+    it("should use a custom fetchRefreshToken function when specified", async () => {
+      const onFetchRequestToken = jest.fn();
 
-      setup({ isValidConfig: true, fetchRequestToken });
+      setup({ isValidConfig: true, onFetchRequestToken });
       expect(await screen.findByText("Test Component")).toBeInTheDocument();
+      expect(onFetchRequestToken).toHaveBeenCalledWith(1);
 
-      expect(fetchRequestToken).toHaveBeenCalledTimes(1);
+      act(() => {
+        screen.getByText("Update Token Fetcher").click();
+      });
+
+      act(() => {
+        screen.getByText("Refresh Token").click();
+      });
+
+      expect(onFetchRequestToken).toHaveBeenCalledWith(2);
     });
   });
 });
