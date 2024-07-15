@@ -926,7 +926,8 @@ See [fonts](../configuring-metabase/fonts.md).")
   :doc        false)
 
 (defsetting sql-parsing-enabled
-  (deferred-tru "SQL Parsing is disabled")
+  (deferred-tru "SQL Parsing is enabled. Please use [[query-analysis-native-disabled]] instead.")
+  :deprecated "0.50.14"
   :visibility :internal
   :export?    false
   :default    true
@@ -937,4 +938,18 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :internal
   :export?    false
   :default    true
+  :type       :boolean)
+
+(defsetting query-analysis-mbql-disabled
+  (deferred-tru "Whether we should disable analysis of all ML-based queries")
+  :visibility :internal
+  :export?    false
+  :default    false
+  :type       :boolean)
+
+(defsetting query-analysis-native-disabled
+  (deferred-tru "Whether we should disable analysis of all native queries")
+  :visibility :internal
+  :export?    false
+  :init       (comp not sql-parsing-enabled)
   :type       :boolean)

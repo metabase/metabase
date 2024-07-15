@@ -75,9 +75,9 @@
   [query-type]
   (and (public-settings/query-analysis-enabled)
        (case query-type
-         :native (public-settings/sql-parsing-enabled)
-         :query true
-         :mbql/query true
+         :native     (public-settings/query-analysis-native-disabled)
+         :query      (public-settings/query-analysis-mbql-disabled)
+         :mbql/query (public-settings/query-analysis-mbql-disabled)
          false)))
 
 (defn- query-field-ids
@@ -89,11 +89,11 @@
    (query-field-ids query (lib/normalized-query-type query)))
   ([query query-type]
    (case query-type
-     :native (try
-               (nqa/field-ids-for-native query)
-               (catch Exception e
-                 (log/error e "Error parsing SQL" query)))
-     :query {:explicit (mbql.u/referenced-field-ids query)}
+     :native     (try
+                   (nqa/field-ids-for-native query)
+                   (catch Exception e
+                     (log/error e "Error parsing SQL" query)))
+     :query      {:explicit (mbql.u/referenced-field-ids query)}
      :mbql/query {:explicit (lib.util/referenced-field-ids query)})))
 
 (defn update-query-analysis-for-card!

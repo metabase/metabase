@@ -11,7 +11,10 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest native-query-enabled-test
-  (mt/discard-setting-changes [sql-parsing-enabled]
+  (mt/discard-setting-changes [query-analysis-enabled
+                               query-analysis-native-disabled
+                               sql-parsing-enabled]
+    (public-settings/query-analysis-enabled! true)
     (testing "sql parsing enabled"
       (public-settings/sql-parsing-enabled! true)
       (is (true? (query-analysis/enabled-type? :native))))
@@ -20,11 +23,37 @@
       (is (false? (query-analysis/enabled-type? :native))))))
 
 (deftest non-native-query-enabled-test
-  (testing "mbql parsing is always enabled"
-    (is (query-analysis/enabled-type? :query))
-    (is (query-analysis/enabled-type? :mbql/query)))
-  (testing "other types are disabled"
-    (is (false? (query-analysis/enabled-type? :unexpected)))))
+  (mt/discard-setting-changes [query-analysis-enabled
+                               query-analysis-mbql-disabled]
+    (public-settings/query-analysis-enabled! true)
+    (testing "mbql parsing enabled"
+      (public-settings/query-analysis-mbql-disabled! false)
+      (is (true? (query-analysis/enabled-type? :query)))
+      (is (true? (query-analysis/enabled-type? :mbql/query))))
+    (testing "mbql parsing disabled"
+      (public-settings/query-analysis-mbql-disabled! true)
+      (is (false? (query-analysis/enabled-type? :query)))
+      (is (false? (query-analysis/enabled-type? :mbql/query))))))
+
+(deftest other-query-type-enabled-test
+  (mt/discard-setting-changes [query-analysis-enabled]
+    (public-settings/query-analysis-enabled! true)
+    (testing "all other query types are disabled"
+      (is (false? (query-analysis/enabled-type? :unexpected))))))
+
+(deftest no-query-analysis-enabled-test
+  (mt/discard-setting-changes [query-analysis-enabled
+                               query-analysis-mbql-enabled
+                               sql-parsing-enabled]
+    (public-settings/query-analysis-enabled! false)
+    (testing "All query analysis is disabled"
+      (public-settings/sql-parsing-enabled! true)
+      (binding [query-analysis/*parse-queries-in-test?* true]
+        (is (false? (query-analysis/enabled? :native))))
+
+      (public-settings/query-analysis-mbql-disabled! false)
+      (is (false? (query-analysis/enabled? :query)))
+      (is (false? (query-analysis/enabled? :mbql/query))))))
 
 (deftest parse-mbql-test
   (testing "Parsing MBQL query returns correct used fields"
