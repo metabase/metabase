@@ -1,7 +1,6 @@
 // note: this file really isn't release-related, but the build tooling here is helpful for it
 import _ from 'underscore';
 import "dotenv/config";
-import "zx/globals";
 
 import type { GithubProps } from './flakes-helpers';
 import {

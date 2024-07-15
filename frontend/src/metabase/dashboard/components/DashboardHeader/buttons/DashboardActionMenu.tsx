@@ -18,7 +18,7 @@ export const DashboardActionMenu = (props: { items: any[] }) => (
     triggerAriaLabel="dashboard-menu-button"
     items={props.items}
     triggerIcon="ellipsis"
-    tooltip={t`Move, trash, and more...`}
+    tooltip={t`Move, trash, and more…`}
     // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
     transitionDuration={0}
   />

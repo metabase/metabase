@@ -12,15 +12,15 @@ import type {
 } from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { DashboardEmptyStateWithoutAddPrompt } from "metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState";
-import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
+import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
+import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
   EmbedHideParameters,
-  EmbedThemeControls,
-  RefreshPeriod,
+  EmbedNightModeControls,
 } from "metabase/dashboard/types";
 import { isActionDashCard } from "metabase/dashboard/utils";
 import { isWithinIframe } from "metabase/lib/dom";
@@ -68,14 +68,6 @@ export function PublicOrEmbeddedDashboardView({
   downloadsEnabled,
 }: {
   dashboard: Dashboard | null;
-  hasNightModeToggle?: boolean;
-  isFullscreen: boolean;
-  isNightMode: boolean;
-  onFullscreenChange: DashboardFullscreenControls["onFullscreenChange"];
-  onNightModeChange: EmbedThemeControls["onNightModeChange"];
-  onRefreshPeriodChange: DashboardRefreshPeriodControls["onRefreshPeriodChange"];
-  refreshPeriod: RefreshPeriod;
-  setRefreshElapsedHook: DashboardRefreshPeriodControls["setRefreshElapsedHook"];
   selectedTabId: SelectedTabId;
   parameters: UiParameter[];
   parameterValues: Record<string, ParameterValueOrArray>;
@@ -97,21 +89,23 @@ export function PublicOrEmbeddedDashboardView({
   slowCards: Record<number, boolean>;
   cardTitled: boolean;
   downloadsEnabled: boolean;
-}) {
-  const buttons = !isWithinIframe()
-    ? getDashboardActions({
-        dashboard,
-        hasNightModeToggle,
-        isFullscreen,
-        isNightMode,
-        onFullscreenChange,
-        onNightModeChange,
-        onRefreshPeriodChange,
-        refreshPeriod,
-        setRefreshElapsedHook,
-        isPublic: true,
-      })
-    : [];
+} & DashboardRefreshPeriodControls &
+  EmbedNightModeControls &
+  DashboardFullscreenControls) {
+  const buttons = !isWithinIframe() ? (
+    <DashboardHeaderButtonRow
+      dashboardActionKeys={DASHBOARD_DISPLAY_ACTIONS}
+      refreshPeriod={refreshPeriod}
+      onRefreshPeriodChange={onRefreshPeriodChange}
+      onFullscreenChange={onFullscreenChange}
+      setRefreshElapsedHook={setRefreshElapsedHook}
+      isFullscreen={isFullscreen}
+      hasNightModeToggle={hasNightModeToggle}
+      onNightModeChange={onNightModeChange}
+      isNightMode={isNightMode}
+      isPublic={true}
+    />
+  ) : null;
 
   const visibleDashcards = (dashboard?.dashcards ?? []).filter(
     dashcard => !isActionDashCard(dashcard),
@@ -142,9 +136,7 @@ export function PublicOrEmbeddedDashboardView({
       setParameterValue={setParameterValue}
       setParameterValueToDefault={setParameterValueToDefault}
       enableParameterRequiredBehavior
-      actionButtons={
-        buttons.length > 0 && <div className={CS.flex}>{buttons}</div>
-      }
+      actionButtons={buttons ? <div className={CS.flex}>{buttons}</div> : null}
       dashboardTabs={
         dashboard?.tabs &&
         dashboard.tabs.length > 1 && <DashboardTabs dashboardId={dashboardId} />

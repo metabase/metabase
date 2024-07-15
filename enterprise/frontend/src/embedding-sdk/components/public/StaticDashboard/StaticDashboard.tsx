@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   type SdkDashboardDisplayProps,
@@ -63,6 +65,9 @@ export const StaticDashboardInner = ({
         onLoad={onLoad}
         onLoadWithoutCards={onLoadWithoutCards}
         downloadsEnabled={withDownloads}
+        isNightMode={false}
+        onNightModeChange={_.noop}
+        hasNightModeToggle={false}
       />
     </Box>
   );
