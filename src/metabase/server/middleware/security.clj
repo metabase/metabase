@@ -110,7 +110,15 @@
                                    "*:8080 ws://*:8080")
                                  ;; CLJS REPL
                                  (when config/is-dev?
-                                   "ws://*:9630")]
+                                   "ws://*:9630")
+                                 (when config/is-dev?
+                                  ;; Add your API endpoint here
+                                   "https://h44jxk3hxe.execute-api.us-east-1.amazonaws.com")
+                                 (when config/is-dev?
+                                  ;; Add your API endpoint here
+                                 "https://uhwye4890j.execute-api.us-east-1.amazonaws.com")
+                                 (when config/is-dev?
+                                 "https://ki1asceryj.execute-api.us-east-1.amazonaws.com")]
                   :manifest-src ["'self'"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
 

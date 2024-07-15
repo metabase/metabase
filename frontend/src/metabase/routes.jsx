@@ -63,7 +63,7 @@ import {
   IsNotAuthenticated,
 } from "./route-guards";
 import { getApplicationName } from "./selectors/whitelabel";
-
+import ChatWithAIPopup from "metabase/components/NewItemMenu/ChatWithAIPopup";
 export const getRoutes = store => {
   const applicationName = getApplicationName(store.getState());
   return (
@@ -133,7 +133,7 @@ export const getRoutes = store => {
             title={t`Trash`}
             component={TrashCollectionLanding}
           />
-
+          <Route path="chat-with-ai-popup" component={ChatWithAIPopup} /> {/* New Route */}
           <Route path="collection/users" component={IsAdmin}>
             <IndexRoute component={UserCollectionList} />
           </Route>

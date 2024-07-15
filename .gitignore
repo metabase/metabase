@@ -112,3 +112,10 @@ modules/drivers/*/.lsp/*
 
 # airgap
 /resources/airgap/
+
+
+metabase.db.mv.db
+metabase.db.trace.db
+node_modules/
+plugins/
+target/

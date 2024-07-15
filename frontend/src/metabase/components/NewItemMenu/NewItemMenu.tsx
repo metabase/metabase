@@ -2,6 +2,7 @@ import type { LocationDescriptor } from "history";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
+import ChatWithAIPopup from "metabase/components/NewItemMenu/ChatWithAIPopup";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -55,6 +56,11 @@ const NewItemMenu = ({
 
   const menuItems = useMemo(() => {
     const items: NewMenuItem[] = [];
+    items.push({
+      title: t`Chat with AI`,
+      icon: "chat",
+      link: "/chat-with-ai-popup",
+    });
 
     if (hasDataAccess) {
       items.push({
@@ -163,3 +169,6 @@ const NewItemMenu = ({
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default NewItemMenu;
+function handleOpenChatModal(): void {
+  throw new Error("Function not implemented.");
+}
