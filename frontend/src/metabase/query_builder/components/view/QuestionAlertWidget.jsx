@@ -82,6 +82,4 @@ export default class QuestionAlertWidget extends Component {
 }
 
 QuestionAlertWidget.shouldRender = ({ question, visualizationSettings }) =>
-  question.alertType(visualizationSettings) !== null &&
-  !question.isArchived() &&
-  question.type() !== "model";
+  question.alertType(visualizationSettings) !== null && !question.isArchived();

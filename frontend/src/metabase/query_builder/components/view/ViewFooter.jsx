@@ -128,23 +128,24 @@ const ViewFooter = ({
               dashboardId={question.card().dashboardId}
             />
           ),
-          QuestionAlertWidget.shouldRender({
-            question,
-            visualizationSettings,
-          }) && (
-            <QuestionAlertWidget
-              key="alerts"
-              className={cx(CS.hide, CS.smShow)}
-              canManageSubscriptions={canManageSubscriptions}
-              question={question}
-              questionAlerts={questionAlerts}
-              onCreateAlert={() =>
-                question.isSaved()
-                  ? onOpenModal("create-alert")
-                  : onOpenModal("save-question-before-alert")
-              }
-            />
-          ),
+          type !== "model" &&
+            QuestionAlertWidget.shouldRender({
+              question,
+              visualizationSettings,
+            }) && (
+              <QuestionAlertWidget
+                key="alerts"
+                className={cx(CS.hide, CS.smShow)}
+                canManageSubscriptions={canManageSubscriptions}
+                question={question}
+                questionAlerts={questionAlerts}
+                onCreateAlert={() =>
+                  question.isSaved()
+                    ? onOpenModal("create-alert")
+                    : onOpenModal("save-question-before-alert")
+                }
+              />
+            ),
           type === "question" &&
             !question.isArchived() &&
             (question.isSaved() ? (
