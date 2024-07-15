@@ -1509,8 +1509,8 @@
       ;; to hit it
       (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}])
       (encryption-test/with-secret-key "whateverwhatever"
-        (t2/insert! :setting [{:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
-                              {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}]))
+        (t2/insert! :setting [{:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100.4")}
+                              {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123.4")}]))
 
       (let [user (create-raw-user! (mt/random-email))
             db   (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
@@ -1578,8 +1578,8 @@
       (encryption-test/with-secret-key "whateverwhatever"
         (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
           (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
-                                {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
-                                {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}])
+                                {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100.4")}
+                                {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123.4")}])
 
           ;; the idea here is that `v50.2024-04-12T12:33:09` during execution with partially encrypted data (see
           ;; `cache-config-migration-test`) instead of throwing an error just silently put zeros in config. If config
