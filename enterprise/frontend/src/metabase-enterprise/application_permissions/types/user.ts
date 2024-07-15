@@ -5,5 +5,6 @@ export interface UserWithApplicationPermissions extends User {
     can_access_monitoring: boolean;
     can_access_setting: boolean;
     can_access_subscription: boolean;
+    can_manage_subscriptions?: boolean;
   };
 }
