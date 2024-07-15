@@ -149,14 +149,6 @@ export function stringFilterParts(
   };
 }
 
-export function isStringFilter(
-  query: Query,
-  stageIndex: number,
-  filterClause: FilterClause,
-): boolean {
-  return stringFilterParts(query, stageIndex, filterClause) != null;
-}
-
 export function numberFilterClause({
   operator,
   column,
@@ -189,14 +181,6 @@ export function numberFilterParts(
     column,
     values,
   };
-}
-
-export function isNumberFilter(
-  query: Query,
-  stageIndex: number,
-  filterClause: FilterClause,
-): boolean {
-  return numberFilterParts(query, stageIndex, filterClause) != null;
 }
 
 export function coordinateFilterClause({
@@ -242,14 +226,6 @@ export function coordinateFilterParts(
   return null;
 }
 
-export function isCoordinateFilter(
-  query: Query,
-  stageIndex: number,
-  filterClause: FilterClause,
-): boolean {
-  return coordinateFilterParts(query, stageIndex, filterClause) != null;
-}
-
 export function booleanFilterClause({
   operator,
   column,
@@ -282,14 +258,6 @@ export function booleanFilterParts(
     column,
     values,
   };
-}
-
-export function isBooleanFilter(
-  query: Query,
-  stageIndex: number,
-  filterClause: FilterClause,
-): boolean {
-  return booleanFilterParts(query, stageIndex, filterClause) != null;
 }
 
 export function specificDateFilterClause(
@@ -357,14 +325,6 @@ export function specificDateFilterParts(
   return null;
 }
 
-export function isSpecificDateFilter(
-  query: Query,
-  stageIndex: number,
-  filterClause: FilterClause,
-): boolean {
-  return specificDateFilterParts(query, stageIndex, filterClause) != null;
-}
-
 export function relativeDateFilterClause({
   column,
   value,
@@ -406,17 +366,9 @@ export function relativeDateFilterParts(
 ): RelativeDateFilterParts | null {
   const filterParts = expressionParts(query, stageIndex, filterClause);
   return (
-    relativeDateFilterPartsWithoutOffset(query, stageIndex, filterParts) ??
-    relativeDateFilterPartsWithOffset(query, stageIndex, filterParts)
+    relativeDateFilterPartsWithoutOffset(filterParts) ??
+    relativeDateFilterPartsWithOffset(filterParts)
   );
-}
-
-export function isRelativeDateFilter(
-  query: Query,
-  stageIndex: number,
-  filterClause: FilterClause,
-): boolean {
-  return relativeDateFilterParts(query, stageIndex, filterClause) != null;
 }
 
 export function excludeDateFilterClause(
@@ -480,14 +432,6 @@ export function excludeDateFilterParts(
   };
 }
 
-export function isExcludeDateFilter(
-  query: Query,
-  stageIndex: number,
-  filterClause: FilterClause,
-): boolean {
-  return excludeDateFilterParts(query, stageIndex, filterClause) != null;
-}
-
 export function timeFilterClause({
   operator,
   column,
@@ -526,14 +470,6 @@ export function timeFilterParts(
     column,
     values,
   };
-}
-
-export function isTimeFilter(
-  query: Query,
-  stageIndex: number,
-  filterClause: FilterClause,
-): boolean {
-  return timeFilterParts(query, stageIndex, filterClause) != null;
 }
 
 export function filterParts(
@@ -739,11 +675,11 @@ function deserializeTime(value: string): Date | null {
   return time.toDate();
 }
 
-function relativeDateFilterPartsWithoutOffset(
-  query: Query,
-  stageIndex: number,
-  { operator, args, options }: ExpressionParts,
-): RelativeDateFilterParts | null {
+function relativeDateFilterPartsWithoutOffset({
+  operator,
+  args,
+  options,
+}: ExpressionParts): RelativeDateFilterParts | null {
   if (operator !== "time-interval" || args.length !== 3) {
     return null;
   }
@@ -769,11 +705,11 @@ function relativeDateFilterPartsWithoutOffset(
   };
 }
 
-function relativeDateFilterPartsWithOffset(
-  query: Query,
-  stageIndex: number,
-  { operator, args, options }: ExpressionParts,
-): RelativeDateFilterParts | null {
+function relativeDateFilterPartsWithOffset({
+  operator,
+  args,
+  options,
+}: ExpressionParts): RelativeDateFilterParts | null {
   if (operator !== "between" || args.length !== 3) {
     return null;
   }
