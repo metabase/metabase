@@ -2,24 +2,27 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  addOrUpdateDashboardCard,
+  assertDescendantNotOverflowsContainer,
+  assertIsEllipsified,
+  assertIsNotEllipsified,
+  createQuestion,
+  cypressWaitAll,
+  echartsContainer,
   editDashboard,
+  getDashboardCard,
+  openNavigationSidebar,
+  popover,
+  queryBuilderHeader,
   resetTestTable,
   restore,
   resyncDatabase,
+  saveDashboard,
   showDashboardCardActions,
   sidebar,
   visitDashboard,
-  addOrUpdateDashboardCard,
-  saveDashboard,
-  openNavigationSidebar,
-  assertDescendantNotOverflowsContainer,
-  cypressWaitAll,
-  assertIsEllipsified,
-  assertIsNotEllipsified,
-  popover,
-  echartsContainer,
-  queryBuilderHeader,
 } from "e2e/support/helpers";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 const { ORDERS, ORDERS_ID, REVIEWS, PRODUCTS, PRODUCTS_ID, REVIEWS_ID } =
   SAMPLE_DATABASE;
@@ -1647,5 +1650,80 @@ describe("issue 32231", () => {
       cy.findByText(multipleSeriesError).should("not.exist");
       cy.findByText(defaultError).should("exist");
     });
+  });
+});
+
+describe("issue 43219", () => {
+  const questionDetails = {
+    display: "line",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "base-type": "type/DateTime",
+            "temporal-unit": "month",
+          },
+        ],
+      ],
+    },
+  };
+
+  const textFilter = createMockParameter({
+    name: "Text",
+    slug: "string",
+    id: "5aefc726",
+    type: "string/=",
+    sectionId: "string",
+  });
+
+  const cardsCount = 10;
+
+  const getQuestionAlias = index => `question-${index}`;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    for (let index = 0; index < cardsCount; ++index) {
+      const name = `Series ${index + 1}`;
+
+      createQuestion({ ...questionDetails, name }).then(
+        ({ body: question }) => {
+          cy.wrap(question).as(getQuestionAlias(index));
+        },
+      );
+    }
+
+    cy.then(function () {
+      cy.createDashboardWithQuestions({
+        dashboardDetails: {
+          parameters: [textFilter],
+        },
+        questions: [questionDetails],
+        cards: [
+          {
+            series: Array.from({ length: cardsCount }, (_value, index) => {
+              const question = this[getQuestionAlias(index)];
+              return question;
+            }),
+          },
+        ],
+      }).then(({ dashboard }) => {
+        visitDashboard(dashboard.id);
+      });
+    });
+  });
+
+  it("is possible to map parameters to dashcards with lots of series (metabase#43219)", () => {
+    editDashboard();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText("Text")
+      .click();
+
+    getDashboardCard(0).findByText("Series 10").should("be.visible");
   });
 });
