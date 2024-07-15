@@ -56,24 +56,22 @@ interface QueryModalsProps {
   onChangeLocation: (location: string) => void;
 }
 
-export function QueryModals(props: QueryModalsProps) {
-  const {
-    questionAlerts,
-    user,
-    onSave,
-    onCreate,
-    updateQuestion,
-    modal,
-    modalContext,
-    card,
-    question,
-    onCloseModal,
-    onOpenModal,
-    setQueryBuilderMode,
-    originalQuestion,
-    onChangeLocation,
-  } = props;
-
+export function QueryModals({
+  questionAlerts,
+  user,
+  onSave,
+  onCreate,
+  updateQuestion,
+  modal,
+  modalContext,
+  card,
+  question,
+  onCloseModal,
+  onOpenModal,
+  setQueryBuilderMode,
+  originalQuestion,
+  onChangeLocation,
+}: QueryModalsProps) {
   const dispatch = useDispatch();
 
   const initialCollectionId = useSelector(state =>
