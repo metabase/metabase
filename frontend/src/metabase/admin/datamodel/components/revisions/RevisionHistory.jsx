@@ -20,7 +20,7 @@ class RevisionHistory extends Component {
   };
 
   render() {
-    const { object, objectType, revisions, table, user } = this.props;
+    const { object, revisions, table, user } = this.props;
 
     let userColorAssignments = {};
     if (revisions) {
@@ -37,10 +37,8 @@ class RevisionHistory extends Component {
             <Breadcrumbs
               className={CS.py4}
               crumbs={[
-                objectType === "segment"
-                  ? [t`Segments`, `/admin/datamodel/segments?table=${table.id}`]
-                  : [t`Metrics`, `/admin/datamodel/metrics?table=${table.id}`],
-                [this.props.objectType + t` History`],
+                [t`Segments`, `/admin/datamodel/segments?table=${table.id}`],
+                [t`Segment` + t` History`],
               ]}
             />
             <div className={cx(CS.wrapper, CS.py4)} style={{ maxWidth: 950 }}>
