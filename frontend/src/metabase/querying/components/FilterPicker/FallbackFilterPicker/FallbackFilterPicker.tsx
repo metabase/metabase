@@ -30,6 +30,7 @@ export function FallbackFilterPicker({
       stageIndex,
       column,
       filter,
+      hasInitialOperator: true,
     });
 
   const handleOperatorChange = (operator: string) => {

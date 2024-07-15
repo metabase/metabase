@@ -94,8 +94,8 @@
    (operator-def :not-null :not-empty)])
 
 (def ^:private default-operators
-  [(operator-def :is-null)
-   (operator-def :not-null)])
+  [(operator-def :is-null :is-empty)
+   (operator-def :not-null :not-empty)])
 
 (def join-operators
   "Operators that should be listed as options in join conditions."
