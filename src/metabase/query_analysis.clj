@@ -73,14 +73,6 @@
     (when (some? res)
       (query-field/update-query-fields-for-card! card-id query-field-rows))))
 
-(defn safe-update-query-analysis-for-card!
-  "A version of [[update-query-analysis-for-card!]] that swallows any exceptions."
-  [card]
-  (try
-    (update-query-analysis-for-card! card)
-    (catch Exception e
-      (log/error e "Error updating query fields"))))
-
 (defn- replaced-inner-query-for-native-card
   [query {:keys [fields tables] :as _replacement-ids}]
   (let [keyvals-set         #(set/union (set (keys %))
