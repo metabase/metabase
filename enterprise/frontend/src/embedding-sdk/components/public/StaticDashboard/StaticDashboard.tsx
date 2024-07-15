@@ -24,7 +24,7 @@ export const StaticDashboardInner = ({
   withDownloads = true,
   hiddenParameters = [],
   onLoad,
-  onLoadWithCards,
+  onLoadWithoutCards,
 }: StaticDashboardProps) => {
   const {
     displayOptions,
@@ -64,7 +64,7 @@ export const StaticDashboardInner = ({
         font={font}
         bordered={displayOptions.bordered}
         onLoad={onLoad}
-        onLoadWithCards={onLoadWithCards}
+        onLoadWithoutCards={onLoadWithoutCards}
         isNightMode={false}
         onNightModeChange={_.noop}
         hasNightModeToggle={false}
