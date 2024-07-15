@@ -45,6 +45,19 @@ In order to spin up a development environment, you need to start the front end a
 
 The following command will install the Javascript dependencies:
 
+install node
+
+```
+# installs nvm (Node Version Manager)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+# download and install Node.js (you may need to restart the terminal)
+nvm install 20
+# verifies the right Node.js version is in the environment
+node -v # should print `v20.15.1`
+# verifies the right NPM version is in the environment
+npm -v # should print `10.7.0`
+```
+
 ```
 $ yarn install
 ```
@@ -61,9 +74,23 @@ To build and run with hot-reload:
 $ yarn build-hot
 ```
 
-### Backend  quick setup
+### Backend quick setup
 
 In order to run the backend, you'll need to build the drivers first, and then start the backend:
+
+instal java 11
+
+```
+sudo apt-get install openjdk-11-jdk
+```
+
+install clojure
+
+```
+curl -L -O https://github.com/clojure/brew-install/releases/latest/download/linux-install.sh
+chmod +x linux-install.sh
+sudo ./linux-install.sh
+```
 
 ```
 $ ./bin/build-drivers.sh
