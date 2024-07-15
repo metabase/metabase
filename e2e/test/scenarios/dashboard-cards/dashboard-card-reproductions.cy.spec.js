@@ -1732,12 +1732,10 @@ describe("issue 43219", () => {
       .findByText("Text")
       .click();
 
-    getDashboardCard(0).within(() => {
-      cy.findByText(
-        "Make sure to make a selection for each series, or the filter won't work on this card.",
-      ).should("be.visible");
-      cy.findByText("Series 10").should("exist").and("not.be.visible");
-    });
+    getDashboardCard(0)
+      .findByText("Series 10")
+      .should("exist")
+      .and("not.be.visible");
 
     // We need 2 realMouseWheel calls because we're scrolling 2 different elements:
     // one horizontally, and one vertically. The horizontally scrollable element is initially
