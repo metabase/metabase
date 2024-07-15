@@ -55,6 +55,7 @@ import { BrowseDatabases } from "./browse/components/BrowseDatabases";
 import { BrowseModels } from "./browse/components/BrowseModels";
 import BrowseSchemas from "./browse/components/BrowseSchemas";
 import { BrowseTables } from "./browse/components/BrowseTables";
+import { Palette } from "./components/Palette/Palette";
 import {
   CanAccessMetabot,
   CanAccessSettings,
@@ -69,6 +70,7 @@ export const getRoutes = store => {
   return (
     <Route title={applicationName} component={App}>
       {/* SETUP */}
+      <Route path="/palette" component={Palette} />
       <Route
         path="/setup"
         component={Setup}

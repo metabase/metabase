@@ -287,7 +287,7 @@ if (WEBPACK_BUNDLE === "hot") {
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
   config.output.publicPath =
-    "http://localhost:8080/" + config.output.publicPath;
+    "http://localhost:3000/" + config.output.publicPath;
 
   config.module.rules.unshift({
     test: /\.(tsx?|jsx?)$/,

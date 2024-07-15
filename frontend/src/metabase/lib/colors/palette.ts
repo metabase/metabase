@@ -12,7 +12,7 @@ export const ACCENT_COUNT = 8;
 // frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
 // frontend/src/metabase/styled-components/theme/css-variables.ts
 // .storybook/preview-head.html
-export const colors = {
+export const defaultColors = {
   brand: "#509EE3",
   summarize: "#88BF4D",
   filter: "#7172AD",
@@ -52,6 +52,12 @@ export const colors = {
   "saturated-red": "#ED6E6E",
   "saturated-yellow": "#F9CF48",
 };
+
+const userColorPalette: typeof defaultColors | null = JSON.parse(
+  localStorage.getItem("colorPalette") ?? "null",
+);
+
+export const colors = { ...defaultColors, ...userColorPalette };
 /* eslint-enable no-color-literals */
 
 export const originalColors = { ...colors };
