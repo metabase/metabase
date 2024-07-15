@@ -183,10 +183,28 @@
                 (is (not (contains? syncable "public")))
                 (is (not (contains? syncable fake-schema-name)))))))))))
 
+;; druid - unknown uuid
+;; maria - unknown uuid
+;; oracle
+;; redshift - unknown type uuid
+;; snowflake - unknown type uuid
+;; sparksql - unknown type uuid
+;; presto - beans??
+;; sqlserver 2017 - unknown type
+;; sqlserver 2022 - unknown type
+
+
+;; postgres -- good
+;; sqlite -- Integer - cannot differentiate based on jdbc type
+;; athena - Text
+;; h2 - Text
+
 (deftest ^:parallel uuid-filtering-test
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+  (mt/test-drivers (set/intersection
+                     (mt/sql-jdbc-drivers)
+                     (mt/normal-drivers-with-feature :uuid-type))
     (let [uuid (random-uuid)
-          uuid-query (mt/native-query {:query (format "select cast('%s' as uuid) as u" uuid)})
+          uuid-query (mt/native-query {:query (format "select * from (values ( cast('%s' as uuid))) as u" uuid)})
           results (qp/process-query uuid-query)
           result-metadata (get-in results [:data :results_metadata :columns])
           col-metadata (first result-metadata)]

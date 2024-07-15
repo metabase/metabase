@@ -34,6 +34,7 @@
 (doseq [[feature supported?] {:datetime-diff                 true
                               :foreign-keys                  true
                               :nested-fields                 false
+                              :uuid-type                     true
                               :connection/multiple-databases true
                               :metadata/key-constraints      false
                               :test/jvm-timezone-setting     false}]
@@ -99,6 +100,7 @@
     :float                               :type/Float
     :integer                             :type/Integer
     :int                                 :type/Integer
+    :uuid                                :type/UUID
     :map                                 :type/*
     :smallint                            :type/Integer
     :string                              :type/Text
