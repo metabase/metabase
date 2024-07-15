@@ -9,7 +9,6 @@ import { fetchRevisions } from "../datamodel";
 import { getRevisions, getCurrentUser } from "../selectors";
 
 const mapStateToProps = (state, props) => ({
-  objectType: props.params.entity,
   id: props.params.id,
   user: getCurrentUser(state),
   revisions: getRevisions(state),
@@ -19,9 +18,9 @@ const mapDispatchToProps = { fetchRevisions };
 
 class RevisionHistoryApp extends Component {
   componentDidMount() {
-    const { id, objectType } = this.props;
+    const { id } = this.props;
     this.props.fetchRevisions({
-      entity: objectType === "metric" ? "legacy-metric" : objectType,
+      entity: "segment",
       id,
     });
   }
