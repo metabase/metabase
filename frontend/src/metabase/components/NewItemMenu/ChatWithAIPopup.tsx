@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import type { DatabaseId,Database } from "metabase-types/api";
+import type { DatabaseId, Database } from "metabase-types/api";
 import {
   ChatWithAIPopupWrapper,
   PopupContent,
@@ -11,7 +11,11 @@ import {
   ButtonGroup,
   PrimaryButton,
   SecondaryButton,
-  DatabaseButton
+  DatabaseButton,
+  DisclaimerButton,
+  Backdrop,
+  LoadingGifContainer,
+  LoadingGif
 } from "./ChatWithAIPopup.styled";
 
 interface ChatWithAIPopupProps {
@@ -28,6 +32,7 @@ const ChatWithAIPopup: React.FC<ChatWithAIPopupProps> = ({ onClose, onClick }) =
   const [loading, setLoading] = useState<boolean>(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [databases, setDatabases] = useState<Database[]>([]);
+  const [showLoadingGif, setShowLoadingGif] = useState<boolean>(false);
 
   const tableApiUrl = "https://h44jxk3hxe.execute-api.us-east-1.amazonaws.com/dev/generate_sql";
   const visualizationApiUrl = "https://uhwye4890j.execute-api.us-east-1.amazonaws.com/dev/generate_visual";
@@ -35,6 +40,21 @@ const ChatWithAIPopup: React.FC<ChatWithAIPopupProps> = ({ onClose, onClick }) =
   useEffect(() => {
     fetchDatabases();
   }, []);
+
+  useEffect(() => {
+    // Add event listener for clicks on the document body to clear error
+    const handleClick = () => {
+      if (error) {
+        setError("");
+      }
+    };
+
+    document.body.addEventListener('click', handleClick);
+
+    return () => {
+      document.body.removeEventListener('click', handleClick);
+    };
+  }, [error]);
 
   const fetchDatabases = async () => {
     try {
@@ -59,6 +79,7 @@ const ChatWithAIPopup: React.FC<ChatWithAIPopupProps> = ({ onClose, onClick }) =
 
     setError("");
     setLoading(true);
+    setShowLoadingGif(true); // Show loading GIF
 
     const apiCalls = [];
 
@@ -90,6 +111,7 @@ const ChatWithAIPopup: React.FC<ChatWithAIPopupProps> = ({ onClose, onClick }) =
       const responses = await Promise.all(apiCalls);
 
       setLoading(false);
+      setShowLoadingGif(false); // Hide loading GIF
 
       responses.forEach((response) => {
         const result = response.data;
@@ -105,6 +127,7 @@ const ChatWithAIPopup: React.FC<ChatWithAIPopupProps> = ({ onClose, onClick }) =
       onClose(); // Close the modal after successful submission
     } catch (error: any) {
       setLoading(false);
+      setShowLoadingGif(false); // Hide loading GIF
       console.error("Error fetching data:", error);
 
       if (error.response) {
@@ -118,13 +141,17 @@ const ChatWithAIPopup: React.FC<ChatWithAIPopupProps> = ({ onClose, onClick }) =
           case 500:
             setError("Internal server error. Please try again later.");
             break;
+          case 600:
+            setError("Error 600: Hiccup in the backend. Please try again later.");
+            break;
+          case 601:
+            setError("Error 601: Hiccup in the backend. Please try again later.");
+            break;
           default:
             setError(`An error occurred: ${error.response.status}`);
         }
       } else if (error.request) {
         setError("No response received from the server. Please check your internet connection and try again.");
-      } else {
-        setError("An unexpected error occurred. Please try again.");
       }
     }
   };
@@ -132,14 +159,14 @@ const ChatWithAIPopup: React.FC<ChatWithAIPopupProps> = ({ onClose, onClick }) =
   const sendDBIndex = async (item: any) => {
     let indexValue = "";
     switch (item.name) {
-      case "automotive":
-        indexValue = "llm_vector_db_metadata_indx2";
-        break;
-      case "Sample Database":
-        indexValue = "llm_vector_db_metadata_indx1";
-        break;
-      case "Chinook":
-        indexValue = "llm_vector_db_metadata_indx3";
+      // case "automotive":
+      //   indexValue = "llm_vector_db_metadata_indx2";
+      //   break;
+      // case "Sample Database":
+      //   indexValue = "llm_vector_db_metadata_indx1";
+      //   break;
+      case "physionet_demo":
+        indexValue = "physionet_demo1";
         break;
       default:
         indexValue = "llm_vector_db_default_index";
@@ -184,6 +211,15 @@ const ChatWithAIPopup: React.FC<ChatWithAIPopupProps> = ({ onClose, onClick }) =
 
   return (
     <ChatWithAIPopupWrapper>
+      {loading && <Backdrop />} {/* Render backdrop if loading */}
+      {showLoadingGif && (
+        <LoadingGifContainer>
+          <LoadingGif
+            src="https://media.giphy.com/media/WiIuC6fAOoXD2/giphy.gif"
+            alt="Loading..."
+          />
+        </LoadingGifContainer>
+      )}
       <PopupContent>
         <Title>Chat with AI</Title>
         <FormGroup>
@@ -242,8 +278,9 @@ const ChatWithAIPopup: React.FC<ChatWithAIPopupProps> = ({ onClose, onClick }) =
           </PrimaryButton>
           <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
         </ButtonGroup>
+        <DisclaimerButton>*Disclaimer: Chatting with an AI! I'm usually spot-on, but I might toss in a virtual banana peel.</DisclaimerButton>
+        {error && <Error>{error}</Error>}
       </PopupContent>
-      {error && <Error>{error}</Error>}
     </ChatWithAIPopupWrapper>
   );
 };

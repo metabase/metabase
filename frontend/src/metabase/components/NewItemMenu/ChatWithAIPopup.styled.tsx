@@ -105,6 +105,18 @@ export const PrimaryButton = styled(Button)`
   }
 `;
 
+export const DisclaimerButton = styled.p `
+  padding: 10px;
+  margin: 20px;
+  border: 1px solid #ccc;
+  background-color: #f9f9f9;
+  font-style: italic;
+  color: #555;
+  border-radius: 5px;
+
+`
+;
+
 export const SecondaryButton = styled(Button)`
   background-color: #e0e0e0;
   color: #333;
@@ -112,6 +124,16 @@ export const SecondaryButton = styled(Button)`
   &:hover {
     background-color: #d5d5d5;
   }
+`;
+
+export const Backdrop = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(39, 38, 38, 0.5); /* Adjust opacity and color as needed */
+  z-index: 1000; /* Ensure it covers other elements */
 `;
 
 export const DatabaseButton = styled(Button)<{ isSelected: boolean }>`
@@ -122,4 +144,17 @@ export const DatabaseButton = styled(Button)<{ isSelected: boolean }>`
   &:hover {
     background-color: ${props => props.isSelected ? '#1565c0' : '#d5d5d5'};
   }
+`;
+
+export const LoadingGifContainer = styled.div`
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1100; /* Ensure it's above the backdrop */
+`;
+
+export const LoadingGif = styled.img`
+  width: 100px; /* Adjust size as needed */
+  height: 100px; /* Adjust size as needed */
 `;
