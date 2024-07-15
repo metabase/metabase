@@ -14,7 +14,7 @@
   (mt/discard-setting-changes [query-analysis-native-disabled sql-parsing-enabled]
     (testing "legacy setting enabled"
       (public-settings/sql-parsing-enabled! true)
-      ;; I'm not sure why this is nil, but it is fine for our purposes.
+      ;; I'm not sure why this is `nil`, but it is fine for our purposes.
       (is (nil? (public-settings/query-analysis-native-disabled)))
       (public-settings/query-analysis-native-disabled! true)
       (is (true? (public-settings/query-analysis-native-disabled)))))
@@ -30,10 +30,10 @@
                                query-analysis-native-disabled]
     (public-settings/query-analysis-enabled! true)
     (testing "sql parsing enabled"
-      (public-settings/query-analysis-native-disabled! true)
+      (public-settings/query-analysis-native-disabled! false)
       (is (true? (query-analysis/enabled-type? :native))))
     (testing "sql parsing disabled"
-      (public-settings/query-analysis-native-disabled! false)
+      (public-settings/query-analysis-native-disabled! true)
       (is (false? (query-analysis/enabled-type? :native))))))
 
 (deftest non-native-query-enabled-test
@@ -58,17 +58,14 @@
 (deftest no-query-analysis-enabled-test
   (mt/discard-setting-changes [query-analysis-enabled
                                query-analysis-mbql-disabled
-                               query-analysis-native-disabled
-                               sql-parsing-enabled]
+                               query-analysis-native-disabled]
     (public-settings/query-analysis-enabled! false)
     (testing "All query analysis is disabled"
-      (public-settings/sql-parsing-enabled! true)
-      (binding [query-analysis/*parse-queries-in-test?* true]
-        (is (false? (query-analysis/enabled? :native))))
-
+      (public-settings/query-analysis-native-disabled! false)
       (public-settings/query-analysis-mbql-disabled! false)
-      (is (false? (query-analysis/enabled? :query)))
-      (is (false? (query-analysis/enabled? :mbql/query))))))
+      (is (false? (query-analysis/enabled-type? :native)))
+      (is (false? (query-analysis/enabled-type? :query)))
+      (is (false? (query-analysis/enabled-type? :mbql/query))))))
 
 (deftest parse-mbql-test
   (testing "Parsing MBQL query returns correct used fields"
