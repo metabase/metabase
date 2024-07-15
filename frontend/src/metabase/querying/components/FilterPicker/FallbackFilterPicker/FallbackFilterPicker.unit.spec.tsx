@@ -85,5 +85,12 @@ describe("FallbackFilterPicker", () => {
       await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
       expect(getNextFilterName()).toBe("Array is not empty");
     });
+
+    it("should go back", async () => {
+      const { onBack, onChange } = setup();
+      await userEvent.click(screen.getByLabelText("Back"));
+      expect(onBack).toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
+    });
   });
 });
