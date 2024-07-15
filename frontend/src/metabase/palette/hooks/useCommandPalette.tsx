@@ -148,6 +148,7 @@ export const useCommandPalette = ({
           name: t`Loading...`,
           keywords: searchQuery,
           section: "search",
+          disabled: true,
         },
       ];
     } else if (searchError) {
@@ -156,6 +157,7 @@ export const useCommandPalette = ({
           id: "search-error",
           name: t`Could not load search results`,
           section: "search",
+          disabled: true,
         },
       ];
     } else if (debouncedSearchText) {
@@ -208,6 +210,7 @@ export const useCommandPalette = ({
             name: t`No results for “${debouncedSearchText}”`,
             keywords: debouncedSearchText,
             section: "search",
+            disabled: true,
           },
         ];
       }
