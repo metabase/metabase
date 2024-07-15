@@ -400,7 +400,22 @@ class View extends Component {
       return (
         <>
           <DatasetEditor {...this.props} />
-          <QueryModals {...this.props} />
+          <QueryModals
+            questionAlerts={this.props.questionAlerts}
+            user={this.props.user}
+            onSave={this.props.onSave}
+            onCreate={this.props.onCreate}
+            updateQuestion={this.props.updateQuestion}
+            modal={this.props.modal}
+            modalContext={this.props.modalContext}
+            card={this.props.card}
+            question={this.props.question}
+            onCloseModal={this.props.onCloseModal}
+            onOpenModal={this.props.onOpenModal}
+            setQueryBuilderMode={this.props.setQueryBuilderMode}
+            originalQuestion={this.props.originalQuestion}
+            onChangeLocation={this.props.onChangeLocation}
+          />
         </>
       );
     }
@@ -460,7 +475,22 @@ class View extends Component {
           />
         )}
 
-        <QueryModals {...this.props} />
+        <QueryModals
+          questionAlerts={this.props.questionAlerts}
+          user={this.props.user}
+          onSave={this.props.onSave}
+          onCreate={this.props.onCreate}
+          updateQuestion={this.props.updateQuestion}
+          modal={this.props.modal}
+          modalContext={this.props.modalContext}
+          card={this.props.card}
+          question={this.props.question}
+          onCloseModal={this.props.onCloseModal}
+          onOpenModal={this.props.onOpenModal}
+          setQueryBuilderMode={this.props.setQueryBuilderMode}
+          originalQuestion={this.props.originalQuestion}
+          onChangeLocation={this.props.onChangeLocation}
+        />
 
         <Toaster
           message={t`Would you like to be notified when this question is done loading?`}

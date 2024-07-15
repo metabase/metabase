@@ -1,10 +1,10 @@
 // note: this file really isn't release-related, but the build tooling here is helpful for it
 import type { Octokit } from '@octokit/rest';
 import dayjs from 'dayjs';
+import fetch from 'node-fetch';
 import { match, P } from 'ts-pattern';
 import _ from 'underscore';
 import "dotenv/config";
-import "zx/globals";
 
 import { slackLink } from './slack';
 import type { Issue } from './types';
@@ -38,11 +38,11 @@ function getFlakeIssueTitle(testName: string) {
 async function getCardData(cardId: number): Promise<FlakeData[]> {
   const cardData = await (await fetch(`https://stats.metabase.com/api/card/${cardId}/query`, {
     method: 'POST',
-    // @ts-expect-error - ts doesn't know about custom headers 🙄
     headers: {
+      // @ts-expect-error - ts doesn't know about custom headers 🙄
       'x-api-key': process.env.METABASE_API_KEY,
     }
-  })).json();
+  })).json() as any;
   const colNames = cardData.data.cols.map((col: any) => col.name);
 
   const data: FlakeData[] = cardData.data.rows.map((row: any) => _.object(
