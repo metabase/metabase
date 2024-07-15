@@ -900,6 +900,7 @@ async function fetchRefreshToken(url) {
 }
 
 // Pass this configuration to MetabaseProvider.
+// Wrap the fetchRequestToken function in useCallback if it has dependencies to prevent re-renders.
 const config = { fetchRefreshToken };
 ```
 
