@@ -20,7 +20,7 @@ export const LogoBadge = ({ dark }: { dark: boolean }) => {
       target="_blank"
     >
       <span>{t`Powered by`}</span>
-      <MetabaseLogoWithText />
+      <MetabaseLogoWithText height={32} />
     </ExternalLink>
   );
 };
