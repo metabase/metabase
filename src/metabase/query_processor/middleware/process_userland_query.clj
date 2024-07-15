@@ -8,13 +8,16 @@
   (:require
    [java-time.api :as t]
    [metabase.events :as events]
+   #_
    [metabase.lib.core :as lib]
+   #_
    [metabase.models.field-usage :as field-usage]
    [metabase.models.query :as query]
    [metabase.models.query-execution
     :as query-execution
     :refer [QueryExecution]]
    [metabase.query-processor.schema :as qp.schema]
+   #_
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.log :as log]
@@ -170,14 +173,15 @@
       (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
             execution-info (query-execution-info query)]
         (letfn [(rff* [metadata]
-                  (let [preprocessed-query (:preprocessed_query metadata)
+                  (let [#_preprocessed-query #_(:preprocessed_query metadata)
                         ;; we only need the preprocessed query to find field usages, so make sure we don't return it
                         result             (rff (dissoc metadata :preprocessed_query))
                         ;; skip internal queries as it use honeysql, not mbql
-                        field-usages       (when-not (qp.util/internal-query? query)
-                                             (field-usage/pmbql->field-usages
-                                              (lib/query (qp.store/metadata-provider) preprocessed-query)))]
-                    (add-and-save-execution-metadata-xform! execution-info field-usages result)))]
+                        ;; temporarily disabled because it impacts query performance
+                        #_field-usages       #_(when-not (qp.util/internal-query? query)
+                                                (field-usage/pmbql->field-usages
+                                                 (lib/query (qp.store/metadata-provider) preprocessed-query)))]
+                    (add-and-save-execution-metadata-xform! execution-info #_field-usages nil result)))]
           (try
             (qp query rff*)
             (catch Throwable e
