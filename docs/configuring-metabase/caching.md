@@ -11,9 +11,11 @@ If your question results don't change frequently, you may want to store the resu
 
 For example, if your data only updates once a day, there's no point in querying the database more than once a day, as the data won't have changed. Returning cached results can be significantly faster, as the database won't have to recompute the results to load your question.
 
+You can set [caching invalidation policies](#cache-invalidation-policies) for [questions](#question-caching-policy), [dashboards](#dashboard-caching-policy), and [databases](#database-caching-policy).
+
 ## Cache invalidation policies
 
-These policies determines how long cached results will be stored.
+These policies determine how long cached results are valid.
 
 - [Duration](#duration-caching-policy)
 - [Schedule](#schedule-caching-policy)
@@ -24,7 +26,7 @@ These policies determines how long cached results will be stored.
 
 {% include plans-blockquote.html feature="Duration caching policy" %}
 
-Keep the cache for a number of hours. When someone runs a query, Metabase will first check if it's cached the results. If not, it runs the query and caches the results for as long as you set the duration.
+Keep the cache for X number of hours. When someone runs a query, Metabase will first check if it's cached the results. If not, it runs the query and caches the results for as long as you set the duration.
 
 ### Schedule caching policy
 
@@ -54,9 +56,9 @@ On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.meta
 
 Always re-run the query to refresh results.
 
-## Set caching policies at different levels
+## Set caching policies for dashboards, questions, and databases
 
-You can set up caching at different levels, from largest to smallest scope. Policies set at more restricted scopes override policies set at larger scopes. So a policy set on a question will take precedence over a dashboard, database, or default policy.
+You can set up caching policies for different entities.
 
 - [Setting a default caching policy](#default-caching-policy)
 - [Database caching policy (specific to each connected database)](#database-caching-policy)*
@@ -103,11 +105,26 @@ To set a caching policy for a question, you must have [curate access](../permiss
 4. Select the [caching invalidation policy](#cache-invalidation-policies).
 5. Save your changes.
 
+## How dashboard, question, database, and default caching policies interact
+
+If you have multiple caching policies set up, Metabase will use the first available policy, in this order:
+
+1. Dashboard
+2. Question
+3. Database
+4. Default (site-wide)
+
+A dashboard policy overrides a question policy, which overrides a database policy, which overrides a default policy.
+
+So if you give a question a caching policy, add that question to a dashboard, then set a caching policy for that dashboard, Metabase would use the dashboard's policy. But that's only when you run the dashboard. If you run the question by itself (outside of the dashboard), Metabase will use the question's policy. If the question appears in multiple dashboards, each with their own policy, the question will use whatever policy is relevant to the current dashboard.
+
+Similarly, if you set a policy for a database, then set a policy for a specific question that queries that database, Metabase will use the question policy.
+
 ## Clearing the cache
 
 To clear the cache and refresh the results:
 
-- **Questions and dashboards**: Vist the item and click through the **Info > Caching policy > Clear cache** (the "Clear cache" button is at the bottom of the sidebar).
+- **Questions and dashboards**: Visit the item and click through the **Info > Caching policy > Clear cache** (the "Clear cache" button is at the bottom of the sidebar).
 - **Database**: Click the **Gear** icon and click through **Admin settings** > **Performance** > **Database caching settings**. Select your database and click the **Clear cache** button (at the bottom of the page).
 
 ## Caching location
