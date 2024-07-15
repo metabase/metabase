@@ -148,14 +148,15 @@
   []
   (queue/blocking-take! queue))
 
-(defn analyze-async!
-  "Put the given card at the back of the high priority analysis queue, or drop it if the queue is full."
-  [card-id]
-  (when (enabled?)
-    (queue/maybe-put! queue card-id)))
 
 (defn analyze-sync!
   "Synchronously hand-off the given card for analysis, at a low priority. May block indefinitely, relies on consumer."
-  [card-id]
+  [card-or-id]
   (when (enabled?)
-    (queue/blocking-put! queue card-id)))
+    (queue/maybe-put! queue (u/the-id card-or-id))))
+
+(defn analyze-sync!
+  "Synchronously hand-off the given card for analysis, at a low priority. May block indefinitely, relies on consumer."
+  [card-or-id]
+  (when (enabled?)
+    (queue/blocking-put! queue (u/the-id card-or-id))))
