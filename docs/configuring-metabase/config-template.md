@@ -92,10 +92,9 @@ config:
     embedding-homepage: hidden
     embedding-secret-key: null
     enable-embedding: false
-    enable-nested-queries: true
     enable-password-login: true
     enable-public-sharing: true
-    enable-query-caching: false
+    enable-query-caching: true
     enable-xrays: true
     enum-cardinality-threshold: 60
     follow-up-email-sent: false
@@ -104,7 +103,7 @@ config:
     google-auth-enabled: null
     health-check-logging-enabled: true
     help-link: metabase
-    help-link-custom-destination: https://www.metabase.com/help/premium
+    help-link-custom-destination: https://www.metabase.com/help
     humanization-strategy: simple
     is-metabot-enabled: false
     jdbc-data-warehouse-max-connection-pool-size: 15
@@ -172,9 +171,9 @@ config:
     retry-randomization-factor: 0.1
     saml-application-name: Metabase
     saml-attribute-email: null
-    saml-attribute-firstname: null
+    saml-attribute-firstname: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname
     saml-attribute-group: member_of
-    saml-attribute-lastname: null
+    saml-attribute-lastname: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname
     saml-enabled: false
     saml-group-mappings: {}
     saml-group-sync: false
@@ -184,6 +183,7 @@ config:
     saml-keystore-alias: metabase
     saml-keystore-password: changeit
     saml-keystore-path: null
+    saml-slo-enabled: false
     saml-user-provisioning-enabled: true
     search-typeahead-enabled: true
     send-new-sso-user-admin-email: null

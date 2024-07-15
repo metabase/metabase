@@ -8,7 +8,17 @@
 
 ;;;; Get settings and their default values
 
-(defn get-settings
+(def settings-to-reset
+  "Some default values require resetting. For example, the `saml-attribute-email` is a link,
+   which fails an email validation check when Metabase loads the config file."
+  '(:saml-attribute-email))
+
+(defn reset-default-values
+  "Sets certain default values to nil."
+  [settings]
+  (reduce (fn [settings k] (assoc settings k nil)) settings settings-to-reset))
+
+(defn settings
   "Gets valid config settings."
   []
   (dox/filter-env-vars (dox/get-settings)))
@@ -27,10 +37,17 @@
        (map get-name-and-default)
        (into (sorted-map))))
 
+(defn- config-settings
+  "Preps settings for the configuration file."
+  []
+  (-> (settings)
+      (create-settings-map)
+      (reset-default-values)))
+
 (defn- add-settings
   "Adds settings to the configuration template."
   [config]
-  (assoc-in config [:config :settings] (create-settings-map (get-settings))))
+    (assoc-in config [:config :settings] (config-settings)))
 
 ;;;; Build Markdown file
 
