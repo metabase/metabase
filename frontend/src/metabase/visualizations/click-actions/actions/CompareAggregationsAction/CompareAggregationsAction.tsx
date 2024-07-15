@@ -1,11 +1,13 @@
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import { setUIControls } from "metabase/query_builder/actions";
 import {
   CompareAggregations,
   getOffsetPeriod,
 } from "metabase/query_builder/components/CompareAggregations";
+import { getQuestion } from "metabase/query_builder/selectors";
 import { trackColumnCompareViaPlusModal } from "metabase/querying/analytics";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
@@ -39,6 +41,7 @@ export const CompareAggregationsAction: LegacyDrill = ({
     onChangeCardAndRun,
     onClose,
   }: ClickActionPopoverProps) => {
+    const currentQuestion = useSelector(getQuestion);
     const dispatch = useDispatch();
 
     function handleSubmit(aggregations: Lib.ExpressionClause[]) {
@@ -47,7 +50,7 @@ export const CompareAggregationsAction: LegacyDrill = ({
         query,
       );
 
-      const nextQuestion = question.setQuery(nextQuery);
+      const nextQuestion = checkNotNull(currentQuestion).setQuery(nextQuery);
       const nextCard = nextQuestion.card();
 
       trackColumnCompareViaPlusModal(

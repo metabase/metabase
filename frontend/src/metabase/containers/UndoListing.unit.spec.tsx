@@ -1,14 +1,15 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import type { UndoState } from "metabase-types/store/undo";
+import type { Undo } from "metabase-types/store/undo";
 
 import { UndoListing } from "./UndoListing";
 
-const AUTO_CONNECT_UNDO: UndoState[number] = {
+const AUTO_CONNECT_UNDO: Undo = {
   icon: null,
   message:
     "Auto-connect this filter to all questions containing “Product.Title”, in the current tab?",
   actionLabel: "Auto-connect",
   timeout: 12000,
+  timeoutId: null,
   id: 0,
   _domId: 1,
   canDismiss: true,

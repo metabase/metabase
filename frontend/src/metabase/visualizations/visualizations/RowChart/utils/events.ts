@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import { isNotNull } from "metabase/lib/types";
-import { sumMetric } from "metabase/visualizations/echarts/cartesian/model/dataset";
+import { sumMetric } from "metabase/visualizations/lib/dataset";
 import type {
   CartesianChartColumns,
   ColumnDescriptor,

@@ -117,18 +117,20 @@
           (= :as x)   (recur (nnext args)
                              (into params (when (map? y)
                                             (let [qp (:query-params (set/map-invert y))]
-                                              ;; {c :count :keys [a b}} ; => [count a b]
-                                              (flatten (vals qp))))))
+                                              (when (map? qp)
+                                                ;; {c :count :keys [a b}} ; => [count a b]
+                                                (flatten (vals qp)))))))
           (symbol? x) (recur (next args)
                              (conj params x)))))))
 
 (defn- compojure-renames
   "Find out everything that's renamed in Compojure routes"
   [args]
-  (let [idx (inc (.indexOf ^PersistentVector args :as))]
-    (when (pos? idx)
-      (let [req-bindings (get args idx)
-            renames      (->> (keys req-bindings) ; {{c :count} :query-params} ; => [{c :count}]
+  (let [idx          (inc (.indexOf ^PersistentVector args :as))
+        req-bindings (get args idx)]
+    (when (and (pos? idx)
+               (map? req-bindings))
+      (let [renames (->> (keys req-bindings) ; {{c :count} :query-params} ; => [{c :count}]
                               (filter map?)       ; no stuff like {:keys [a]}
                               (apply merge))]
         (update-keys renames keyword)))))

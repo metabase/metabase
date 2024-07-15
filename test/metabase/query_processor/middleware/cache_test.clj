@@ -28,7 +28,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [pretty.core :as pretty]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import [java.time ZonedDateTime]))
 
 (set! *warn-on-reflection* true)
 
@@ -91,8 +92,7 @@
 (defn do-with-mock-cache [f]
   (mt/with-open-channels [save-chan  (a/chan 10)
                           purge-chan (a/chan 10)]
-    (mt/with-temporary-setting-values [enable-query-caching  true
-                                       query-caching-max-ttl 60]
+    (mt/with-temporary-setting-values [query-caching-max-ttl 60]
       (binding [cache/*backend* (test-backend save-chan purge-chan)
                 *save-chan*     save-chan
                 *purge-chan*    purge-chan]
@@ -159,13 +159,18 @@
   (boolean (#'cache/is-cacheable? (merge {:cache-strategy (ttl-strategy), :query :abc} query-kvs))))
 
 (deftest is-cacheable-test
-  (testing "something is-cacheable? if it includes `:cache-strategy`"
+  (testing "something is-cacheable? if it includes `:cache-strategy` and it is not `:nocache`"
     (with-mock-cache []
-      (doseq [cache-strategy  [(ttl-strategy) nil]
-              :let            [expected (boolean cache-strategy)]]
+      (doseq [[cache-strategy expected] {(ttl-strategy)   true
+                                         {:type :nocache} false
+                                         nil              false}]
         (testing (format "cache strategy = %s" (pr-str cache-strategy))
           (is (= expected
-                 (boolean (#'cache/is-cacheable? {:cache-strategy cache-strategy})))))))))
+                 (boolean (#'cache/is-cacheable? {:cache-strategy cache-strategy}))))))
+      (testing "but enable-query-caching setting is still respected"
+        (mt/with-temporary-setting-values [enable-query-caching false]
+          (is (= false
+                 (boolean (#'cache/is-cacheable? {:cache-strategy (ttl-strategy)})))))))))
 
 (deftest empty-cache-test
   (testing "if there's nothing in the cache, cached results should *not* be returned"
@@ -349,9 +354,10 @@
             (is (= 1 @save-execution-metadata-count))
             (is (= 1 @update-avg-execution-count))
             (let [avg-execution-time (query/average-execution-time-ms q-hash)]
-              (is (number? avg-execution-time))
+              (is (pos? avg-execution-time))
               ;; rerun query getting cached results
-              (is (:cached (qp/process-query (qp/userland-query query))))
+              (is (instance? ZonedDateTime
+                             (:cached (qp/process-query (qp/userland-query query)))))
               (mt/wait-for-result save-chan)
               (is (= 2 @save-execution-metadata-count)
                   "Saving execution times of a cache lookup")

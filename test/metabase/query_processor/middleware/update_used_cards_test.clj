@@ -8,6 +8,7 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
+   #_
    [toucan2.core :as t2]))
 
 (defmacro with-used-cards-setup
@@ -16,18 +17,23 @@
              qp.util/*execute-async?* false]
      ~@body))
 
+#_
 (defn- card-last-used-at
   [card-id]
   (t2/select-one-fn :last_used_at :model/Card card-id))
 
 (defn do-test
   "Check if `last_used_at` of `card-id` is nil, then execute `f`, then check that `last_used_at` is non nil."
-  [card-id thunk]
+  [_card-id thunk]
   (assert (fn? thunk))
   (testing "last_used_at should be nil to start with"
+    ;; Disable last_used_at updates to handle perf issues  (for now) (#44359)
+    #_
     (is (nil? (card-last-used-at card-id))))
   (thunk)
   (testing "last_used_at should be updated to non nil"
+    ;; Disable last_used_at updates to handle perf issues  (for now) (#44359)
+    #_
     (is (some? (card-last-used-at card-id)))))
 
 (deftest ^:parallel nested-cards-test

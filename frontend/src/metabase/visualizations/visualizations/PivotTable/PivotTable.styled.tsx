@@ -4,11 +4,7 @@ import styled from "@emotion/styled";
 import { color, alpha, adjustBrightness } from "metabase/lib/colors";
 import type { MantineTheme } from "metabase/ui";
 
-import {
-  CELL_HEIGHT,
-  PIVOT_TABLE_FONT_SIZE,
-  RESIZE_HANDLE_WIDTH,
-} from "./constants";
+import { CELL_HEIGHT, RESIZE_HANDLE_WIDTH } from "./constants";
 
 export const RowToggleIconRoot = styled.div`
   display: flex;
@@ -125,7 +121,7 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
   ${props =>
     props.hasTopBorder &&
     css`
-      // compensate the top border
+      /* compensate the top border */
       line-height: ${CELL_HEIGHT - 1}px;
       border-top: 1px solid ${getBorderColor(props)};
     `}
@@ -158,7 +154,7 @@ interface PivotTableRootProps {
 
 export const PivotTableRoot = styled.div<PivotTableRootProps>`
   height: 100%;
-  font-size: ${PIVOT_TABLE_FONT_SIZE};
+  font-size: ${({ theme }) => theme.other.pivotTable.cell.fontSize};
 
   ${props =>
     props.isDashboard
@@ -180,7 +176,6 @@ export const ResizeHandle = styled.div`
   bottom: 0;
   left: -${RESIZE_HANDLE_WIDTH - 1}px;
   width: ${RESIZE_HANDLE_WIDTH}px;
-
   cursor: ew-resize;
 
   &:active {

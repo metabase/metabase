@@ -21,6 +21,7 @@ import {
 } from "__support__/ui";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
+import * as qbSelectors from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
@@ -98,7 +99,7 @@ const setup = async (
       originalCard: originalQuestion?.card(),
     }),
   });
-  renderWithProviders(
+  const { rerender: _rerender } = renderWithProviders(
     <SaveQuestionModal
       question={question}
       originalQuestion={originalQuestion}
@@ -112,7 +113,19 @@ const setup = async (
   );
   await screen.findByRole("button", { name: "Save" });
 
-  return { onSaveMock, onCreateMock, onCloseMock };
+  const rerender = () => {
+    _rerender(
+      <SaveQuestionModal
+        question={question}
+        originalQuestion={originalQuestion}
+        onCreate={onCreateMock}
+        onSave={onSaveMock}
+        onClose={onCloseMock}
+      />,
+    );
+  };
+
+  return { onSaveMock, onCreateMock, onCloseMock, rerender };
 };
 
 const EXPECTED_SUGGESTED_NAME = "Orders, Count";
@@ -631,6 +644,25 @@ describe("SaveQuestionModal", () => {
       expect(
         screen.queryByText(/Replace original question, ".*"/),
       ).not.toBeInTheDocument();
+    });
+
+    it("should not render empty content when render happens after question is saved (metabase#45416)", async () => {
+      const originalQuestion = getQuestion({ isSaved: true });
+      const dirtyQuestion = getDirtyQuestion(originalQuestion);
+
+      const { rerender } = await setup(dirtyQuestion, originalQuestion);
+
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      // simulate slow response and further re-render of the modal
+      jest
+        .spyOn(qbSelectors, "getIsSavedQuestionChanged")
+        .mockReturnValue(false);
+
+      rerender();
+
+      // verify that modal still has content
+      expect(screen.getByText(/replace or save as new/i)).toBeInTheDocument();
     });
   });
 

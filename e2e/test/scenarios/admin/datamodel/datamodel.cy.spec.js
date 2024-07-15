@@ -23,7 +23,7 @@ import {
   summarize,
   modal,
   filter,
-  filterField,
+  saveQuestion,
   visitQuestion,
 } from "e2e/support/helpers";
 import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
@@ -418,6 +418,46 @@ describe("scenarios > admin > datamodel > metadata", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+
+    cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
+  });
+
+  it("should remap FK display value from field ", () => {
+    cy.wrap(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.PRODUCT_ID}/general`,
+    ).as("ORDERS_PRODUCT_ID_URL");
+
+    visitAlias("@ORDERS_PRODUCT_ID_URL");
+
+    cy.findByPlaceholderText("PRODUCT_ID")
+      .clear()
+      .type("Remapped Product ID")
+      .realPress("Tab");
+
+    cy.wait("@fieldUpdate");
+
+    openOrdersTable({ limit: 5 });
+
+    cy.findAllByTestId("header-cell").should("contain", "Remapped Product ID");
+  });
+
+  it("should remap FK display value from the table view", () => {
+    cy.wrap(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+    ).as("ORDERS_TABLE_URL");
+
+    visitAlias("@ORDERS_TABLE_URL");
+
+    cy.findByDisplayValue("Product ID")
+      .clear()
+      .type("Remapped Product ID")
+      .realPress("Tab");
+
+    cy.wait("@fieldUpdate");
+
+    openOrdersTable({ limit: 5 });
+
+    cy.findAllByTestId("header-cell").should("contain", "Remapped Product ID");
   });
 
   it("should correctly show remapped column value", () => {
@@ -749,50 +789,36 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.findByText("Preview");
     });
 
-    it("should show no questions based on a new segment", () => {
+    it("should see a newly asked question in its questions list", () => {
+      cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
+      // Ask question
       cy.visit("/reference/segments/1/questions");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`Questions about ${SEGMENT_NAME}`);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(
-        "Questions about this segment will appear here as they're added",
-      );
-    });
+      cy.wait(["@metadata", "@metadata", "@metadata"]);
 
-    it(
-      "should see a newly asked question in its questions list",
-      { tags: "@flaky" },
-      () => {
-        // Ask question
-        cy.visit("/reference/segments/1/questions");
-
-        cy.button("Ask a question").click();
-        cy.findAllByText("37.65");
-
-        filter();
-        filterField("Product ID", {
-          value: "14",
-        });
-        cy.findByTestId("apply-filters").click();
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Product ID is 14");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Save").click();
-        cy.findAllByText("Save").last().click();
-
-        // Check list
-        cy.visit("/reference/segments/1/questions");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(
+      cy.get("main").should("contain", `Questions about ${SEGMENT_NAME}`);
+      cy.findByRole("status")
+        .as("emptyStateMessage")
+        .should(
+          "have.text",
           "Questions about this segment will appear here as they're added",
-        ).should("not.exist");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(
-          `Orders, Filtered by ${SEGMENT_NAME} and Product ID is 14`,
         );
-      },
-    );
+
+      cy.button("Ask a question").click();
+      cy.findByTestId("filter-pill").should("have.text", "Orders < 100");
+      cy.findAllByTestId("cell-data").should("contain", "37.65");
+
+      summarize();
+      cy.findAllByTestId("sidebar-right").button("Done").click();
+      cy.findByTestId("scalar-value").should("have.text", "13,005");
+      saveQuestion("Foo");
+
+      // Check list
+      cy.visit("/reference/segments/1/questions");
+      cy.wait(["@metadata", "@metadata", "@metadata"]);
+
+      cy.get("@emptyStateMessage").should("not.exist");
+      cy.findByRole("heading", { name: "Foo" }).should("be.visible");
+    });
 
     it("should update that segment", () => {
       cy.visit("/admin");

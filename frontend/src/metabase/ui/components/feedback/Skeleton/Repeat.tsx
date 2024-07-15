@@ -11,10 +11,12 @@ export const Repeat = ({
   if (!isValidElement(children)) {
     return null;
   }
-  return Array.from({ length: times }).map((_, index) => {
-    const props = { key: `${index}` };
-    if (isValidElement(children)) {
-      return cloneElement(children, props);
-    }
-  });
+  return (
+    <>
+      {Array.from({ length: times }).map((_, index) => {
+        const props = { key: `${index}` };
+        return cloneElement(children, props);
+      })}
+    </>
+  );
 };

@@ -51,6 +51,7 @@ export const useChartEvents = (
     onDeselectTimelineEvents,
     hovered,
     metadata,
+    isDashboard,
   }: VisualizationProps,
 ) => {
   const isBrushing = useRef<boolean>();
@@ -322,16 +323,12 @@ export const useChartEvents = (
         settings,
       };
 
-      if (
-        !areMultipleCards &&
-        hasBreakout &&
-        visualizationIsClickable(clickData)
-      ) {
+      if (hasBreakout && visualizationIsClickable(clickData)) {
         onVisualizationClick({
           ...clickData,
           element: event.currentTarget,
         });
-      } else {
+      } else if (isDashboard) {
         onOpenQuestion(seriesModel.cardId);
       }
     },
@@ -342,6 +339,7 @@ export const useChartEvents = (
       visualizationIsClickable,
       onVisualizationClick,
       onOpenQuestion,
+      isDashboard,
     ],
   );
 

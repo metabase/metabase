@@ -26,7 +26,7 @@ export function CurrentDatePicker({ value, onChange }: CurrentDatePickerProps) {
   };
 
   return (
-    <Stack p="md">
+    <Stack>
       {UNIT_GROUPS.map((group, groupIndex) => (
         <Group key={groupIndex}>
           {group.map(unit => (

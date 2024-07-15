@@ -24,7 +24,6 @@ export const AggregationsContainer = styled(Section)`
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-
   padding-top: 0;
 `;
 

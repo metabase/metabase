@@ -17,6 +17,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [methodical.core :as methodical]
+   #_
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -83,7 +84,7 @@
                :average_execution_time nil
                :context                nil
                :running_time           int?
-               :cached                 false}
+               :cached                 nil}
               (process-userland-query query))
           "Result should have query execution info")
       (is (=? {:hash         "58af781ea2ba252ce3131462bdc7c54bc57538ed965d55beec62928ce8b32635"
@@ -174,6 +175,8 @@
         (testing "No QueryExecution should get saved when a query is canceled"
           (is (not @saved-query-execution?)))))))
 
+;; temporarily disabled because it impacts query performance
+#_
 (deftest save-field-usage-test
   (testing "execute an userland query will capture field usages"
     (mt/with-model-cleanup [:model/FieldUsage]

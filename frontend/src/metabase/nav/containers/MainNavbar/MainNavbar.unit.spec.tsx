@@ -4,6 +4,7 @@ import { Route } from "react-router";
 import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
+  setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
@@ -103,6 +104,9 @@ async function setup({
   }
 
   setupCollectionsEndpoints({ collections });
+  setupCollectionByIdEndpoint({
+    collections: [PERSONAL_COLLECTION_BASE, TEST_COLLECTION],
+  });
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints(models);
   fetchMock.get("path:/api/bookmark", []);
@@ -234,10 +238,10 @@ describe("nav > containers > MainNavbar", () => {
   describe("browse models link", () => {
     it("should render when there are models", async () => {
       await setup({ models: [createMockModelResult()] });
-      const listItem = screen.getByRole("listitem", {
+      const listItem = await screen.findByRole("listitem", {
         name: /Browse models/i,
       });
-      const link = within(listItem).getByRole("link");
+      const link = await within(listItem).findByRole("link");
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", "/browse/models");
     });
@@ -254,7 +258,7 @@ describe("nav > containers > MainNavbar", () => {
         models: [createMockModelResult()],
         pathname: "/browse/models",
       });
-      const listItem = screen.getByRole("listitem", {
+      const listItem = await screen.findByRole("listitem", {
         name: /Browse models/i,
       });
       expect(listItem).toHaveAttribute("aria-selected", "true");

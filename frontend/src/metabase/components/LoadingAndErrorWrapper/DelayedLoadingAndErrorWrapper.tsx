@@ -54,7 +54,7 @@ export const DelayedLoadingAndErrorWrapper = ({
   }
   if (!showWrapper) {
     // make tests aware that things are loading
-    return <span data-testid="loading-spinner" />;
+    return <span data-testid="loading-indicator" />;
   }
   return (
     <Transition

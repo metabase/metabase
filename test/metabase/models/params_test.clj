@@ -6,6 +6,7 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models :refer [Card Field]]
    [metabase.models.params :as params]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -28,6 +29,7 @@
             :semantic_type :type/PK
             :name_field    {:id                 (mt/id :venues :name)
                             :table_id           (mt/id :venues)
+                            :name               "NAME"
                             :display_name       "Name"
                             :base_type          :type/Text
                             :semantic_type      :type/Name
@@ -78,6 +80,7 @@
       (is (= {(mt/id :venues :id) {:id                 (mt/id :venues :id)
                                    :table_id           (mt/id :venues)
                                    :display_name       "ID"
+                                   :name               "ID"
                                    :base_type          :type/BigInteger
                                    :semantic_type      :type/PK
                                    :has_field_values   :none
@@ -86,6 +89,7 @@
                                    :name_field         {:id                (mt/id :venues :name)
                                                         :table_id          (mt/id :venues)
                                                         :display_name      "Name"
+                                                        :name              "NAME"
                                                         :base_type         :type/Text
                                                         :semantic_type     :type/Name
                                                         :has_field_values  :list
@@ -101,6 +105,7 @@
       (is (= {(mt/id :venues :id) {:id                 (mt/id :venues :id)
                                    :table_id           (mt/id :venues)
                                    :display_name       "ID"
+                                   :name               "ID"
                                    :base_type          :type/BigInteger
                                    :semantic_type      :type/PK
                                    :has_field_values   :none
@@ -109,6 +114,7 @@
                                    :name_field         {:id                (mt/id :venues :name)
                                                         :table_id          (mt/id :venues)
                                                         :display_name      "Name"
+                                                        :name              "NAME"
                                                         :base_type         :type/Text
                                                         :semantic_type     :type/Name
                                                         :has_field_values  :list
@@ -167,3 +173,18 @@
     (is (= {}
            (params/get-linked-field-ids
             [{:parameter_mappings []}])))))
+
+(deftest ^:parallel param-target->field-id-test
+  (let [q (mt/native-query {:query "SELECT state FROM PEOPLE;"})
+        result-metadata (-> (get-in (qp/process-query q) [:data :results_metadata :columns])
+                            (assoc-in [0 :id] (mt/id :people :state)))]
+    (mt/with-temp [:model/Card card {:dataset_query q
+                                     :result_metadata result-metadata
+                                     :database_id (mt/id)
+                                     :type :model}
+                   :model/Card question {:dataset_query {:database (mt/id)
+                                                         :type :query
+                                                         :query {:source-table (str "card__" (:id card))
+                                                                 :aggregation [[:distinct [:field "STATE" {:base-type :type/Text}]]]}}}]
+      (is (= (mt/id :people :state)
+             (params/param-target->field-id [:field "STATE" {:base-type :type/Text}] question))))))

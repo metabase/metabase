@@ -1200,6 +1200,19 @@
     (fn [_]
       (visible-columns* a-query stage-number))))
 
+;; ## Column keys
+(defn ^:export column-key
+  "Given a column, as returned by [[visible-columns]], [[returned-columns]] etc., return a string suitable for uniquely
+  identifying the column on its query.
+
+  This key will generally not be changed by unrelated edits to the query.
+
+  (Currently this is powered by `:lib/desired-column-alias`, but it's deliberately opaque.)"
+  [a-column]
+  (or (:lib/desired-column-alias a-column)
+      (:name a-column)))
+
+;; ## Legacy refs
 (defn- normalize-legacy-ref
   [a-ref]
   (if (#{:aggregation :metric :segment} (first a-ref))
@@ -1498,12 +1511,12 @@
 
 (defn ^:export join-clause
   "Create a join clause (an `:mbql/join` map) against something `joinable` (Table metadata, a Saved Question, another
-  query, etc.) with 1 or more `conditions`, which should be an array of filter clauses. You can then adjust this join
-  clause with functions like [[with-join-fields]], or add it to a query with [[join]].
+  query, etc.) with 1 or more `conditions`, which should be an array of filter clauses, and a join strategy. You can
+  then adjust this join clause with functions like [[with-join-fields]], or add it to a query with [[join]].
 
   > **Code health:** Healthy"
-  [joinable conditions]
-  (lib.core/join-clause joinable conditions))
+  [joinable conditions strategy]
+  (lib.core/join-clause joinable conditions strategy))
 
 (defn ^:export join
   "Add `a-join`, a join clause as created by [[join-clause]], to the specified stage of `a-query`.
@@ -2126,7 +2139,8 @@
       (clj->js (cond-> legacy-expr
                  (and (vector? legacy-expr)
                       (#{:aggregation-options :value} (first legacy-expr)))
-                 (get 1))))))
+                 (get 1))
+               :keyword-fn u/qualified-name))))
 
 (defn ^:export diagnose-expression
   "Checks `legacy-expression` for type errors and possibly for cyclic references to other expressions.

@@ -78,11 +78,11 @@ interface SaveQuestionModalProps {
   onSave: (question: Question) => Promise<void>;
   onClose: () => void;
   multiStep?: boolean;
-  initialCollectionId?: CollectionId;
+  initialCollectionId?: CollectionId | null;
 }
 
 interface FormValues {
-  saveType: string;
+  saveType: "overwrite" | "create";
   collection_id: CollectionId | null | undefined;
   name: string;
   description: string;
@@ -218,8 +218,12 @@ export const SaveQuestionModal = ({
   );
 
   const isSavedQuestionChanged = useSelector(getIsSavedQuestionChanged);
+  // we care only about the very first result as question can be changed before
+  // the modal is closed
+  const [isSavedQuestionInitiallyChanged] = useState(isSavedQuestionChanged);
+
   const showSaveType =
-    isSavedQuestionChanged &&
+    isSavedQuestionInitiallyChanged &&
     originalQuestion != null &&
     originalQuestion.canWrite();
 

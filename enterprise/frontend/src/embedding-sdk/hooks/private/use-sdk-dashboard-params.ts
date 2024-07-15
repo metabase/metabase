@@ -1,8 +1,8 @@
 import type { Query } from "history";
 import { pick } from "underscore";
 
+import { DEFAULT_DASHBOARD_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
 import {
-  DEFAULT_EMBED_DISPLAY_OPTIONS,
   useDashboardFullscreen,
   useDashboardRefreshPeriod,
   useRefreshDashboard,
@@ -31,7 +31,7 @@ export const useSdkDashboardParams = ({
   const hideDownloadButton = !withDownloads;
 
   const displayOptions: EmbedDisplayParams = {
-    ...DEFAULT_EMBED_DISPLAY_OPTIONS,
+    ...DEFAULT_DASHBOARD_DISPLAY_OPTIONS,
     ...pick(
       {
         titled: withTitle,

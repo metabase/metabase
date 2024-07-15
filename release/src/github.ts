@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import type { Issue, ReleaseProps } from "./types";
+import type { GithubProps, Issue, ReleaseProps } from "./types";
 import {
   getMilestoneName,
   getNextVersions,
@@ -11,14 +11,15 @@ export const getMilestones = async ({
   github,
   owner,
   repo,
-}: Omit<ReleaseProps, "version">) => {
-  const milestones = await github.rest.issues.listMilestones({
+  state = "open",
+}: GithubProps & { state?: 'open' | 'closed' }) => {
+  const milestones = await github.paginate(github.rest.issues.listMilestones, {
     owner,
     repo,
-    state: "open",
+    state,
   });
 
-  return milestones.data;
+  return milestones;
 };
 
 export const findMilestone = async ({
@@ -26,8 +27,9 @@ export const findMilestone = async ({
   github,
   owner,
   repo,
-}: ReleaseProps) => {
-  const milestones = await getMilestones({ github, owner, repo });
+  state,
+}: ReleaseProps & { state?: 'open' | 'closed'}) => {
+  const milestones = await getMilestones({ github, owner, repo, state });
   const expectedMilestoneName = getMilestoneName(version);
 
   return milestones.find(
@@ -84,8 +86,9 @@ export const getMilestoneIssues = async ({
   owner,
   repo,
   state = "closed",
-}: ReleaseProps & { state?: "closed" | "open" }): Promise<Issue[]> => {
-  const milestone = await findMilestone({ version, github, owner, repo });
+  milestoneStatus,
+}: ReleaseProps & { state?: "closed" | "open"; milestoneStatus?: 'open' | 'closed' }): Promise<Issue[]> => {
+  const milestone = await findMilestone({ version, github, owner, repo, state: milestoneStatus });
 
   if (!milestone) {
     return [];
@@ -161,3 +164,31 @@ export const tagRelease = async ({
     throw new Error(`failed to tag release ${version}`);
   }
 };
+
+const _issueCache: Record<number, Issue> = {};
+
+export async function getIssueWithCache ({
+  github,
+  owner,
+  repo,
+  issueNumber,
+}: GithubProps & { issueNumber: number }) {
+  if (_issueCache[issueNumber]) {
+    return _issueCache[issueNumber];
+  }
+
+  const issue = await github.rest.issues.get({
+    owner,
+    repo,
+    issue_number: issueNumber,
+  }).catch((err) => {
+    console.log(err);
+    return null;
+  });
+
+  if (issue?.data) {
+    _issueCache[issueNumber] = issue.data as Issue;
+  }
+
+  return issue?.data as Issue | null;
+}

@@ -81,10 +81,6 @@ export function setParameterType(
   };
 }
 
-export function getIsMultiSelect(parameter: Parameter): boolean {
-  return parameter.isMultiSelect ?? true;
-}
-
 export function hasMapping(parameter: Parameter, dashboard: Dashboard) {
   return dashboard.dashcards.some(dashcard => {
     return dashcard?.parameter_mappings?.some(parameter_mapping => {

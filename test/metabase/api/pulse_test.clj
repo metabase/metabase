@@ -158,7 +158,7 @@
         (dissoc :id :pulse_id :created_at :updated_at)
         (update :entity_id boolean))))
 
-(def ^:private pulse-defaults
+(def pulse-defaults
   {:collection_id       nil
    :collection_position nil
    :created_at          true

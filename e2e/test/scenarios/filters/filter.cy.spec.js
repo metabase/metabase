@@ -133,7 +133,7 @@ describe("scenarios > question > filter", () => {
     cy.findByTestId("apply-filters").click();
 
     cy.log("Reported failing on v0.36.4 and v0.36.5.1");
-    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
     cy.findAllByText("148.23"); // one of the subtotals for this product
     cy.findAllByText("Fantastic Wool Shirt").should("not.exist");
   });

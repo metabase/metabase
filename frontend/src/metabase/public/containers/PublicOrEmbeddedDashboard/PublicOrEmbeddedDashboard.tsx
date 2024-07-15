@@ -1,15 +1,11 @@
-import cx from "classnames";
 import type { Query } from "history";
-import { assoc } from "icepick";
-import { type ComponentType, Component } from "react";
+import { useEffect, useRef } from "react";
 import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
+import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import ColorS from "metabase/css/core/colors.module.css";
-import CS from "metabase/css/core/index.css";
-import DashboardS from "metabase/css/dashboard.module.css";
+import { getEventHandlers } from "embedding-sdk/store/selectors";
 import {
   cancelFetchDashboardCardData,
   fetchDashboard,
@@ -19,14 +15,12 @@ import {
   setParameterValueToDefault,
 } from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
-import { DashboardEmptyStateWithoutAddPrompt } from "metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState";
-import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
-import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
-import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
-import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
 import {
   getDashboardComplete,
   getDraftParameterValues,
+  getIsLoading,
+  getIsLoadingWithoutCards,
+  getIsNavigatingBackToDashboard,
   getParameters,
   getParameterValues,
   getSelectedTabId,
@@ -38,20 +32,14 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
-import { isActionDashCard } from "metabase/dashboard/utils";
-import title from "metabase/hoc/Title";
-import { isWithinIframe } from "metabase/lib/dom";
-import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
-import { WithPublicDashboardEndpoints } from "metabase/public/containers/PublicOrEmbeddedDashboard/WithPublicDashboardEndpoints";
+import { type DispatchFn, useDispatch, useSelector } from "metabase/lib/redux";
+import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { setErrorPage } from "metabase/redux/app";
-import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
-import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
-import type { Dashboard, DashboardCard, DashboardId } from "metabase-types/api";
+import { getErrorPage } from "metabase/selectors/app";
+import type { DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { EmbedFrame } from "../../components/EmbedFrame";
-
-import { DashboardContainer } from "./PublicOrEmbeddedDashboard.styled";
+import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
 const mapStateToProps = (state: State) => {
   return {
@@ -61,16 +49,17 @@ const mapStateToProps = (state: State) => {
     parameterValues: getParameterValues(state),
     draftParameterValues: getDraftParameterValues(state),
     selectedTabId: getSelectedTabId(state),
+    isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
+    isErrorPage: getErrorPage(state),
+    isLoading: getIsLoading(state),
+    isLoadingWithoutCards: getIsLoadingWithoutCards(state),
   };
 };
 
 const mapDispatchToProps = {
-  initialize,
   cancelFetchDashboardCardData,
   setParameterValueToDefault,
   setParameterValue,
-  setErrorPage,
-  fetchDashboard,
   fetchDashboardCardData,
 };
 
@@ -85,7 +74,7 @@ type OwnProps = {
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
-};
+} & PublicOrEmbeddedDashboardEventHandlersProps;
 
 type DisplayProps = Pick<
   DashboardDisplayOptionControls,
@@ -104,219 +93,205 @@ type PublicOrEmbeddedDashboardProps = OwnProps &
   DisplayProps &
   EmbedDisplayParams;
 
-class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboardProps> {
-  _initialize = async () => {
-    const {
-      initialize,
-      fetchDashboard,
-      fetchDashboardCardData,
-      setErrorPage,
-      parameterQueryParams,
-      dashboardId,
-    } = this.props;
+const initializeData = async ({
+  dashboardId,
+  shouldReload,
+  parameterQueryParams,
+  dispatch,
+}: {
+  dashboardId: string;
+  shouldReload: boolean;
+  parameterQueryParams: OwnProps["parameterQueryParams"];
+  dispatch: DispatchFn;
+}) => {
+  dispatch(initialize({ clearCache: shouldReload }));
 
-    initialize();
-
-    const result = await fetchDashboard({
+  const result = await dispatch(
+    fetchDashboard({
       dashId: String(dashboardId),
       queryParams: parameterQueryParams,
-    });
+      options: {
+        clearCache: shouldReload,
+      },
+    }),
+  );
 
-    if (!isSuccessfulFetchDashboardResult(result)) {
-      setErrorPage(result.payload);
+  if (!isSuccessfulFetchDashboardResult(result)) {
+    dispatch(setErrorPage(result.payload));
+    return;
+  }
+
+  try {
+    if ((result.payload.dashboard?.tabs?.length || 0) === 0) {
+      await dispatch(
+        fetchDashboardCardData({ reload: false, clearCache: true }),
+      );
+    }
+  } catch (error) {
+    console.error(error);
+    dispatch(setErrorPage(error));
+  }
+};
+
+const PublicOrEmbeddedDashboardInner = ({
+  dashboard,
+  parameters,
+  parameterValues,
+  draftParameterValues,
+  isFullscreen,
+  isNightMode = false,
+  onFullscreenChange,
+  onNightModeChange,
+  onRefreshPeriodChange,
+  refreshPeriod,
+  setRefreshElapsedHook,
+  hasNightModeToggle,
+  bordered,
+  titled,
+  theme,
+  hideDownloadButton,
+  hideParameters,
+  navigateToNewCardFromDashboard,
+  selectedTabId,
+  slowCards,
+  dashboardId,
+  cardTitled,
+  isNavigatingBackToDashboard,
+  parameterQueryParams,
+  isErrorPage,
+  onLoad,
+  onLoadWithoutCards,
+  isLoading,
+  isLoadingWithoutCards,
+  cancelFetchDashboardCardData,
+  setParameterValueToDefault,
+  setParameterValue,
+  fetchDashboardCardData,
+}: PublicOrEmbeddedDashboardProps) => {
+  const dispatch = useDispatch();
+  const didMountRef = useRef(false);
+
+  const previousDashboardId = usePrevious(dashboardId);
+  const previousSelectedTabId = usePrevious(selectedTabId);
+  const previousParameterValues = usePrevious(parameterValues);
+
+  const previousIsLoading = usePrevious(isLoading);
+  const previousIsLoadingWithoutCards = usePrevious(isLoadingWithoutCards);
+
+  const sdkEventHandlers = useSelector(getEventHandlers);
+
+  const shouldFetchCardData = dashboard?.tabs?.length === 0;
+
+  useUnmount(() => {
+    cancelFetchDashboardCardData();
+  });
+
+  useEffect(() => {
+    if (!didMountRef.current) {
+      initializeData({
+        dashboardId: String(dashboardId),
+        shouldReload: !isNavigatingBackToDashboard,
+        parameterQueryParams,
+        dispatch,
+      });
+
+      didMountRef.current = true;
       return;
     }
 
-    try {
-      if (this.props.dashboard?.tabs?.length === 0) {
-        await fetchDashboardCardData({ reload: false, clearCache: true });
-      }
-    } catch (error) {
-      console.error(error);
-      setErrorPage(error);
-    }
-  };
-
-  async componentDidMount() {
-    await this._initialize();
-  }
-
-  componentWillUnmount() {
-    this.props.cancelFetchDashboardCardData();
-  }
-
-  async componentDidUpdate(prevProps: PublicOrEmbeddedDashboardProps) {
-    if (this.props.dashboardId !== prevProps.dashboardId) {
-      return this._initialize();
-    }
-
-    if (!_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {
-      this.props.fetchDashboardCardData();
+    if (dashboardId !== previousDashboardId) {
+      initializeData({
+        dashboardId: String(dashboardId),
+        shouldReload: true,
+        parameterQueryParams,
+        dispatch,
+      });
       return;
     }
 
-    if (!_.isEqual(this.props.parameterValues, prevProps.parameterValues)) {
-      this.props.fetchDashboardCardData({ reload: false, clearCache: true });
+    if (selectedTabId && selectedTabId !== previousSelectedTabId) {
+      fetchDashboardCardData();
+      return;
     }
-  }
 
-  getCurrentTabDashcards = () => {
-    const { dashboard, selectedTabId } = this.props;
-    if (!Array.isArray(dashboard?.dashcards)) {
-      return [];
+    if (!_.isEqual(parameterValues, previousParameterValues)) {
+      fetchDashboardCardData({ reload: false, clearCache: true });
     }
-    if (!selectedTabId) {
-      return dashboard?.dashcards;
+  }, [
+    dashboardId,
+    dispatch,
+    fetchDashboardCardData,
+    isNavigatingBackToDashboard,
+    parameterQueryParams,
+    parameterValues,
+    previousDashboardId,
+    previousParameterValues,
+    previousSelectedTabId,
+    selectedTabId,
+    shouldFetchCardData,
+  ]);
+
+  useEffect(() => {
+    if (
+      !isLoadingWithoutCards &&
+      previousIsLoadingWithoutCards &&
+      !isErrorPage
+    ) {
+      sdkEventHandlers?.onDashboardLoadWithoutCards?.(dashboard);
+      onLoadWithoutCards?.(dashboard);
     }
-    return dashboard?.dashcards.filter(
-      dashcard => dashcard.dashboard_tab_id === selectedTabId,
-    );
-  };
+  }, [
+    isLoadingWithoutCards,
+    isErrorPage,
+    previousIsLoadingWithoutCards,
+    dashboard,
+    sdkEventHandlers,
+    onLoadWithoutCards,
+  ]);
 
-  getHiddenParameterSlugs = () => {
-    const { parameters } = this.props;
-    const currentTabParameterIds =
-      this.getCurrentTabDashcards()?.flatMap(
-        dashcard =>
-          dashcard.parameter_mappings?.map(mapping => mapping.parameter_id) ??
-          [],
-      ) ?? [];
-    const hiddenParameters = parameters.filter(
-      parameter => !currentTabParameterIds.includes(parameter.id),
-    );
-    return hiddenParameters.map(parameter => parameter.slug).join(",");
-  };
+  useEffect(() => {
+    if (!isLoading && previousIsLoading && !isErrorPage) {
+      sdkEventHandlers?.onDashboardLoad?.(dashboard);
+      onLoad?.(dashboard);
+    }
+  }, [
+    isLoading,
+    isErrorPage,
+    previousIsLoading,
+    sdkEventHandlers,
+    dashboard,
+    onLoad,
+  ]);
 
-  render() {
-    const {
-      dashboard,
-      parameters,
-      parameterValues,
-      draftParameterValues,
-      isFullscreen,
-      isNightMode = false,
-      setParameterValueToDefault,
-      onFullscreenChange,
-      onNightModeChange,
-      onRefreshPeriodChange,
-      refreshPeriod,
-      setRefreshElapsedHook,
-      hasNightModeToggle,
-      bordered,
-      titled,
-      theme,
-      hideDownloadButton,
-      hideParameters,
-      navigateToNewCardFromDashboard,
-      selectedTabId,
-    } = this.props;
-
-    const buttons = !isWithinIframe()
-      ? getDashboardActions({
-          dashboard,
-          hasNightModeToggle,
-          isFullscreen,
-          isNightMode,
-          onFullscreenChange,
-          onNightModeChange,
-          onRefreshPeriodChange,
-          refreshPeriod,
-          setRefreshElapsedHook,
-          isPublic: true,
-        })
-      : [];
-
-    const visibleDashcards = (dashboard?.dashcards ?? []).filter(
-      dashcard => !isActionDashCard(dashcard),
-    );
-
-    const dashboardHasCards = dashboard && visibleDashcards.length > 0;
-
-    const tabHasCards =
-      visibleDashcards.filter(
-        (dc: DashboardCard) => dc.dashboard_tab_id === selectedTabId,
-      ).length > 0;
-
-    return (
-      <EmbedFrame
-        name={dashboard && dashboard.name}
-        description={dashboard && dashboard.description}
-        dashboard={dashboard}
-        parameters={parameters}
-        parameterValues={parameterValues}
-        draftParameterValues={draftParameterValues}
-        hiddenParameterSlugs={this.getHiddenParameterSlugs()}
-        setParameterValue={this.props.setParameterValue}
-        setParameterValueToDefault={setParameterValueToDefault}
-        enableParameterRequiredBehavior
-        actionButtons={
-          buttons.length > 0 ? <div className={CS.flex}>{buttons}</div> : null
-        }
-        dashboardTabs={
-          dashboard?.tabs &&
-          dashboard.tabs.length > 1 && (
-            <DashboardTabs dashboardId={this.props.dashboardId} />
-          )
-        }
-        bordered={bordered}
-        titled={titled}
-        theme={theme}
-        hide_parameters={hideParameters}
-        hide_download_button={hideDownloadButton}
-      >
-        <LoadingAndErrorWrapper
-          className={cx({
-            [DashboardS.DashboardFullscreen]: isFullscreen,
-            [DashboardS.DashboardNight]: isNightMode,
-            [ParametersS.DashboardNight]: isNightMode,
-            [ColorS.DashboardNight]: isNightMode,
-          })}
-          loading={!dashboard}
-        >
-          {() => {
-            if (!dashboard) {
-              return null;
-            }
-
-            if (!dashboardHasCards || !tabHasCards) {
-              return (
-                <DashboardEmptyStateWithoutAddPrompt
-                  isNightMode={isNightMode}
-                />
-              );
-            }
-
-            return (
-              <DashboardContainer>
-                <DashboardGridConnected
-                  dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
-                  isPublicOrEmbedded
-                  mode={
-                    navigateToNewCardFromDashboard
-                      ? EmbeddingSdkMode
-                      : PublicMode
-                  }
-                  selectedTabId={selectedTabId}
-                  slowCards={this.props.slowCards}
-                  isEditing={false}
-                  isEditingParameter={false}
-                  isXray={false}
-                  isFullscreen={isFullscreen}
-                  isNightMode={isNightMode}
-                  withCardTitle={this.props.cardTitled}
-                  clickBehaviorSidebarDashcard={null}
-                  navigateToNewCardFromDashboard={
-                    navigateToNewCardFromDashboard
-                  }
-                />
-              </DashboardContainer>
-            );
-          }}
-        </LoadingAndErrorWrapper>
-      </EmbedFrame>
-    );
-  }
-}
+  return (
+    <PublicOrEmbeddedDashboardView
+      dashboard={dashboard}
+      hasNightModeToggle={hasNightModeToggle}
+      isFullscreen={isFullscreen}
+      isNightMode={isNightMode}
+      onFullscreenChange={onFullscreenChange}
+      onNightModeChange={onNightModeChange}
+      onRefreshPeriodChange={onRefreshPeriodChange}
+      refreshPeriod={refreshPeriod}
+      setRefreshElapsedHook={setRefreshElapsedHook}
+      selectedTabId={selectedTabId}
+      parameters={parameters}
+      parameterValues={parameterValues}
+      draftParameterValues={draftParameterValues}
+      setParameterValue={setParameterValue}
+      setParameterValueToDefault={setParameterValueToDefault}
+      dashboardId={dashboardId}
+      bordered={bordered}
+      titled={titled}
+      theme={theme}
+      hideParameters={hideParameters}
+      hideDownloadButton={hideDownloadButton}
+      navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
+      slowCards={slowCards}
+      cardTitled={cardTitled}
+    />
+  );
+};
 
 function isSuccessfulFetchDashboardResult(
   result: FetchDashboardResult,
@@ -329,13 +304,3 @@ function isSuccessfulFetchDashboardResult(
 export const PublicOrEmbeddedDashboard = connector(
   PublicOrEmbeddedDashboardInner,
 );
-
-// PublicDashboardControlled used for embedding with location
-// Uses DashboardControls to handle display options, and uses WithPublicDashboardEndpoints to set endpoints for public/embed contexts
-export const PublicOrEmbeddedDashboardControlled = _.compose(
-  title(
-    ({ dashboard }: { dashboard: Dashboard }) => dashboard && dashboard.name,
-  ),
-  WithPublicDashboardEndpoints,
-  DashboardControls,
-)(PublicOrEmbeddedDashboard) as ComponentType<OwnProps>;

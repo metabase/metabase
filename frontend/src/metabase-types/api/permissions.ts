@@ -18,7 +18,7 @@ export type PermissionsGraph = {
 };
 
 export type GroupsPermissions = {
-  [key: GroupId]: GroupPermissions;
+  [key: GroupId | string]: GroupPermissions;
 };
 
 export type GroupPermissions = {

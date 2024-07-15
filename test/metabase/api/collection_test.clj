@@ -11,6 +11,7 @@
             NativeQuerySnippet PermissionsGroup PermissionsGroupMembership Pulse
             PulseCard PulseChannel PulseChannelRecipient Revision Timeline TimelineEvent User]]
    [metabase.models.collection :as collection]
+   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.graph-test :as graph.test]
@@ -1111,7 +1112,7 @@
                  [:= :collection_type collection/trash-collection-type] 1
                  :else 2]] :asc]
               [:%lower.name :asc]]
-             (api.collection/children-sort-clause nil app-db)))))
+             (api.collection/children-sort-clause {:official-collections-first? true} app-db)))))
   (testing "Sorting by last-edited-at"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
@@ -1121,7 +1122,9 @@
             [:%isnull.last_edit_timestamp]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]]
-           (api.collection/children-sort-clause [:last-edited-at :asc] :mysql)))
+           (api.collection/children-sort-clause {:sort-column :last-edited-at
+                                                 :sort-direction :asc
+                                                 :official-collections-first? true} :mysql)))
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
                [:= :collection_type nil] 0
@@ -1130,7 +1133,9 @@
             [:last_edit_timestamp :nulls-last]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]]
-           (api.collection/children-sort-clause [:last-edited-at :asc] :postgres))))
+           (api.collection/children-sort-clause {:sort-column :last-edited-at
+                                                 :sort-direction :asc
+                                                 :official-collections-first? true} :postgres))))
   (testing "Sorting by last-edited-by"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
@@ -1142,7 +1147,9 @@
             [:last_edit_first_name :nulls-last]
             [:last_edit_first_name :asc]
             [:%lower.name :asc]]
-           (api.collection/children-sort-clause [:last-edited-by :asc] :postgres)))
+           (api.collection/children-sort-clause {:sort-column :last-edited-by
+                                                 :sort-direction :asc
+                                                 :official-collections-first? true} :postgres)))
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
                [:= :collection_type nil] 0
@@ -1153,7 +1160,9 @@
             [:%isnull.last_edit_first_name]
             [:last_edit_first_name :asc]
             [:%lower.name :asc]]
-           (api.collection/children-sort-clause [:last-edited-by :asc] :mysql))))
+           (api.collection/children-sort-clause {:sort-column :last-edited-by
+                                                 :sort-direction :asc
+                                                 :official-collections-first? true} :mysql))))
   (testing "Sorting by model"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
@@ -1162,7 +1171,9 @@
                :else 2]] :asc]
             [:model_ranking :asc]
             [:%lower.name :asc]]
-           (api.collection/children-sort-clause [:model :asc] :postgres)))
+           (api.collection/children-sort-clause {:sort-column :model
+                                                 :sort-direction :asc
+                                                 :official-collections-first? true} :postgres)))
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
                [:= :collection_type nil] 0
@@ -1170,7 +1181,9 @@
                :else 2]] :asc]
             [:model_ranking :desc]
             [:%lower.name :asc]]
-           (api.collection/children-sort-clause [:model :desc] :mysql)))))
+           (api.collection/children-sort-clause {:sort-column :model
+                                                 :sort-direction :desc
+                                                 :official-collections-first? true} :mysql)))))
 
 (deftest snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
@@ -2250,3 +2263,16 @@
     (testing "Cards can't be moved to the trash"
       (mt/user-http-request :crowberto :put 400 (str "card/" (u/the-id card)) {:collection_id (collection/trash-collection-id)})
       (is (not (t2/exists? :model/Card :collection_id (collection/trash-collection-id)))))))
+
+(deftest skip-graph-skips-graph-on-graph-PUT
+  (is (malli= [:map [:revision :int] [:groups :map]]
+              (mt/user-http-request :crowberto
+                                    :put 200
+                                    "collection/graph"
+                                    {:revision (c-perm-revision/latest-id) :groups {}})))
+  (is (malli= [:map {:closed true} [:revision :int]]
+              (mt/user-http-request :crowberto
+                                    :put 200
+                                    "collection/graph?skip_graph=true"
+                                    {:revision (c-perm-revision/latest-id) :groups {}}))
+      "PUTs with skip_graph should not return the coll permission graph."))

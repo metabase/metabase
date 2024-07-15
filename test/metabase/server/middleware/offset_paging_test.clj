@@ -22,7 +22,7 @@
     (handler* request respond raise)))
 
 (defn- read-response
-  "Responses from our hanlders are inputstream, this is read the stream into real body."
+  "Responses from our handlers are InputStreams; this reads the stream into the real body."
   [response]
   (update response :body
           (fn [body]
@@ -48,7 +48,7 @@
             (read-response (handler (ring.mock/request :get "/" {:offset "200", :limit "100", :whatever "true"}))))))
   (testing "w/ non-numeric paging params, paging is disabled"
     (is (=? {:status 200
-             :body {"limit" nil
+             :body {"limit"  nil
                     "offset" nil
                     "paged?" false
                     "params" {}}}

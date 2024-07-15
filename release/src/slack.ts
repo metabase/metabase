@@ -116,7 +116,7 @@ export async function sendPreReleaseStatus({
 			"type": "section",
 			"text": {
 				"type": "mrkdwn",
-				"text": `_<https://github.com/metabase/metabase/milestone/${milestoneId}|:direction-sign: Milestone> targeted for release on ${date}_`,
+				"text": `_<https://github.com/metabase/metabase/milestone/${milestoneId}|:direction-sign: Milestone> targeted for release on ${date}_ ${mentionSlackTeam('core-release')}`,
 			}
 		},
   ];
@@ -208,7 +208,7 @@ async function sendSlackReply({ channelName, message, messageId, broadcast }: {c
 const getReleaseTitle = (version: string) =>
   `:rocket: *${getGenericVersion(version)} Release* :rocket:`;
 
-function slackLink(text: string, url: string) {
+export function slackLink(text: string, url: string) {
   return `<${url}|${text}>`;
 }
 
@@ -340,4 +340,53 @@ export async function sendPublishCompleteMessage({
     message: `:partydeploy: *Metabase ${getGenericVersion(version)} has been released!* :partydeploy:\n\nSee the ${slackLink('full release notes here', `https://github.com/${owner}/${repo}/releases`)}.`,
     channelName: generalChannelName,
   });
+}
+
+export async function sendFlakeStatusReport({
+  channelName, openFlakeInfo, closedFlakeInfo,
+}: {
+  channelName: string,
+  openFlakeInfo: string,
+  closedFlakeInfo: string,
+}) {
+    const blocks = [
+      {
+        "type": "header",
+        "text": {
+          "type": "plain_text",
+          "text": `:croissant: Flaky Tests Status :croissant:`,
+          "emoji": true
+        }
+      },
+    ];
+
+    const attachments = [
+      {
+        "color": "#46ad1a",
+        "blocks": [{
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": `:muscle: *Recently Closed Flakes*\n ${closedFlakeInfo}`,
+          }
+        }],
+      },
+      {
+        "color": "#d9bb34",
+        "blocks": [{
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": `:clipboard: *Open Flakes*\n ${openFlakeInfo}`,
+          }
+        }],
+      },
+    ];
+
+    return slack.chat.postMessage({
+      channel: channelName,
+      blocks,
+      attachments,
+      text: `Flaky issue summary`,
+    });
 }

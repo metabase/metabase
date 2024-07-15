@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import d3 from "d3";
+import * as d3 from "d3";
 import { Component } from "react";
 
 import CS from "metabase/css/core/index.css";
@@ -15,7 +15,7 @@ const LegacyChoropleth = ({
   onHoverFeature,
   onClickFeature,
 }) => {
-  const geo = d3.geo.path().projection(projection);
+  const geo = d3.geoPath().projection(projection);
 
   const [[minX, minY], [maxX, maxY]] = projectionFrame.map(projection);
   const width = maxX - minX;

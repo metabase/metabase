@@ -160,6 +160,7 @@ function NotebookStep({
                   transparent
                   hasPreviewButton={hasPreviewButton}
                   onClick={openPreview}
+                  data-testid="step-preview-button"
                 />
               </StepButtonContainer>
             )}

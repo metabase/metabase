@@ -11,6 +11,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
+import Bookmarks from "metabase/entities/bookmarks";
 import Questions from "metabase/entities/questions";
 import {
   rememberLastUsedDatabase,
@@ -23,7 +24,7 @@ import * as Lib from "metabase-lib";
 
 import DatasetEditor from "../DatasetEditor";
 import NativeQueryEditor from "../NativeQueryEditor";
-import QueryModals from "../QueryModals";
+import { QueryModals } from "../QueryModals";
 import QueryVisualization from "../QueryVisualization";
 import { SavedQuestionIntroModal } from "../SavedQuestionIntroModal";
 import DataReference from "../dataref/DataReference";
@@ -372,6 +373,15 @@ class View extends Component {
       onConfirmToast,
       isShowingToaster,
       isHeaderVisible,
+      updateQuestion,
+      reportTimezone,
+      readOnly,
+      isDirty,
+      isRunnable,
+      isResultDirty,
+      hasVisualizeButton,
+      runQuestionQuery,
+      setQueryBuilderMode,
     } = this.props;
 
     // if we don't have a question at all or no databases then we are initializing, so keep it simple
@@ -390,7 +400,22 @@ class View extends Component {
       return (
         <>
           <DatasetEditor {...this.props} />
-          <QueryModals {...this.props} />
+          <QueryModals
+            questionAlerts={this.props.questionAlerts}
+            user={this.props.user}
+            onSave={this.props.onSave}
+            onCreate={this.props.onCreate}
+            updateQuestion={this.props.updateQuestion}
+            modal={this.props.modal}
+            modalContext={this.props.modalContext}
+            card={this.props.card}
+            question={this.props.question}
+            onCloseModal={this.props.onCloseModal}
+            onOpenModal={this.props.onOpenModal}
+            setQueryBuilderMode={this.props.setQueryBuilderMode}
+            originalQuestion={this.props.originalQuestion}
+            onChangeLocation={this.props.onChangeLocation}
+          />
         </>
       );
     }
@@ -416,7 +441,16 @@ class View extends Component {
             {!isNative && (
               <NotebookContainer
                 isOpen={isNotebookContainerOpen}
-                {...this.props}
+                updateQuestion={updateQuestion}
+                reportTimezone={reportTimezone}
+                readOnly={readOnly}
+                question={question}
+                isDirty={isDirty}
+                isRunnable={isRunnable}
+                isResultDirty={isResultDirty}
+                hasVisualizeButton={hasVisualizeButton}
+                runQuestionQuery={runQuestionQuery}
+                setQueryBuilderMode={setQueryBuilderMode}
               />
             )}
             <ViewSidebar side="left" isOpen={!!leftSidebar}>
@@ -441,7 +475,22 @@ class View extends Component {
           />
         )}
 
-        <QueryModals {...this.props} />
+        <QueryModals
+          questionAlerts={this.props.questionAlerts}
+          user={this.props.user}
+          onSave={this.props.onSave}
+          onCreate={this.props.onCreate}
+          updateQuestion={this.props.updateQuestion}
+          modal={this.props.modal}
+          modalContext={this.props.modalContext}
+          card={this.props.card}
+          question={this.props.question}
+          onCloseModal={this.props.onCloseModal}
+          onOpenModal={this.props.onOpenModal}
+          setQueryBuilderMode={this.props.setQueryBuilderMode}
+          originalQuestion={this.props.originalQuestion}
+          onChangeLocation={this.props.onChangeLocation}
+        />
 
         <Toaster
           message={t`Would you like to be notified when this question is done loading?`}
@@ -457,7 +506,10 @@ class View extends Component {
 
 const mapDispatchToProps = dispatch => ({
   onSetDatabaseId: id => dispatch(rememberLastUsedDatabase(id)),
-  onUnarchive: question => dispatch(setArchivedQuestion(question, false)),
+  onUnarchive: async question => {
+    await dispatch(setArchivedQuestion(question, false));
+    await dispatch(Bookmarks.actions.invalidateLists());
+  },
   onMove: (question, newCollection) =>
     dispatch(
       Questions.actions.setCollection({ id: question.id() }, newCollection, {

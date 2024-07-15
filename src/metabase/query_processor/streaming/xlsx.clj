@@ -555,6 +555,16 @@
       (.addColumnLabel pivot-table (get aggregation-functions idx DataConsolidateFunction/COUNT) idx))
     wb))
 
+;; As a first step towards hollistically solving this issue: https://github.com/metabase/metabase/issues/44556
+;; (which is basically that very large pivot tables can crash the export process),
+;; The post processing is disabled completely.
+;; This should remain `false` until it's fixed
+;; TODO: rework this post-processing once there's a clear way in app to enable/disable it, or to select alternate download options
+(def ^:dynamic *pivot-export-post-processing-enabled*
+  "Flag to enable/disable export post-processing of pivot tables.
+  Disabled by default and should remain disabled until Issue #44556 is resolved and a clear plan is made."
+  false)
+
 (defmethod qp.si/streaming-results-writer :xlsx
   [_ ^OutputStream os]
   (let [workbook          (SXSSFWorkbook.)
@@ -566,7 +576,7 @@
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols format-rows? pivot-export-options]} :data}
                {col-settings ::mb.viz/column-settings :as viz-settings}]
-        (let [opts      (when pivot-export-options
+        (let [opts      (when (and *pivot-export-post-processing-enabled* pivot-export-options)
                           (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                           :pivot-rows []}
                                                          pivot-export-options) ordered-cols))

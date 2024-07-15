@@ -35,6 +35,7 @@ export function setupCollectionsEndpoints({
 }: CollectionEndpoints) {
   fetchMock.get("path:/api/collection/root", rootCollection);
   fetchMock.get(`path:/api/collection/trash`, trashCollection);
+  fetchMock.get(`path:/api/collection/${trashCollection.id}`, trashCollection);
   fetchMock.get(
     {
       url: "path:/api/collection/tree",
