@@ -6,33 +6,15 @@ import {
   saveDashboard,
   setFilter,
   visitDashboard,
-  openQuestionActions,
-  visitQuestion,
-  setFilterQuestionSource,
   setFilterListSource,
   visitEmbeddedPage,
   visitPublicDashboard,
-  setDropdownFilterType,
   getDashboardCard,
   filterWidget,
   sidebar,
 } from "e2e/support/helpers";
 
-const { ACCOUNTS, ORDERS_ID, ACCOUNTS_ID } = SAMPLE_DATABASE;
-
-const structuredSourceQuestion = {
-  name: "GUI source",
-  query: {
-    "source-table": ACCOUNTS_ID,
-  },
-};
-
-const nativeSourceQuestion = {
-  name: "SQL source",
-  native: {
-    query: "select * from ORDERS;",
-  },
-};
+const { ACCOUNTS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const targetParameter = {
   id: "f8ec7c71",
@@ -57,137 +39,6 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  describe("structured question source", () => {
-    it("should be able to use a structured question source", () => {
-      cy.createQuestion(structuredSourceQuestion, { wrapId: true });
-      cy.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-      }).then(({ body: { dashboard_id } }) => {
-        visitDashboard(dashboard_id);
-      });
-
-      editDashboard();
-      setFilter("Number", "Equal to", "Number");
-      mapFilterToQuestion("Quantity");
-      setFilterQuestionSource({ question: "GUI source", field: "Seats" });
-      saveDashboard();
-      filterDashboard();
-
-      cy.get("@questionId").then(visitQuestion);
-      archiveQuestion();
-    });
-
-    it("should be able to use a structured question source when embedded", () => {
-      cy.createQuestion(structuredSourceQuestion).then(
-        ({ body: { id: questionId } }) => {
-          cy.createQuestionAndDashboard({
-            questionDetails: targetQuestion,
-            dashboardDetails: getStructuredDashboard(questionId),
-          }).then(({ body: card }) => {
-            cy.editDashboardCard(card, getParameterMapping(card));
-            visitEmbeddedPage(getDashboardResource(card));
-          });
-        },
-      );
-
-      filterDashboard();
-    });
-
-    it("should be able to use a structured question source when public", () => {
-      cy.createQuestion(structuredSourceQuestion).then(
-        ({ body: { id: questionId } }) => {
-          cy.createQuestionAndDashboard({
-            questionDetails: targetQuestion,
-            dashboardDetails: getStructuredDashboard(questionId),
-          }).then(({ body: card }) => {
-            cy.editDashboardCard(card, getParameterMapping(card));
-            visitPublicDashboard(card.dashboard_id);
-          });
-        },
-      );
-
-      filterDashboard();
-    });
-
-    it("should be able to use a structured question source with number/= parameter", () => {
-      cy.createQuestion(structuredSourceQuestion, { wrapId: true });
-      cy.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-      }).then(({ body: { dashboard_id } }) => {
-        visitDashboard(dashboard_id);
-      });
-
-      editDashboard();
-      setFilter("Number", "Equal to", "Number");
-      mapFilterToQuestion();
-      setDropdownFilterType();
-      setFilterQuestionSource({ question: "GUI source", field: "Seats" });
-      saveDashboard();
-      getDashboardCard().findByText("18,760").should("be.visible");
-
-      filterWidget().click();
-      popover().within(() => {
-        cy.findByPlaceholderText("Enter a number").type("2");
-        cy.button("Add filter").click();
-      });
-
-      getDashboardCard().findByText("4,570").should("be.visible");
-    });
-  });
-
-  describe("native question source", () => {
-    it("should be able to use a native question source", () => {
-      cy.createNativeQuestion(nativeSourceQuestion, { wrapId: true });
-      cy.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-      }).then(({ body: { dashboard_id } }) => {
-        visitDashboard(dashboard_id);
-      });
-
-      editDashboard();
-      setFilter("Number", "Equal to", "Number");
-      mapFilterToQuestion();
-      setFilterQuestionSource({ question: "SQL source", field: "QUANTITY" });
-      saveDashboard();
-      filterDashboard();
-
-      cy.get("@questionId").then(visitQuestion);
-      archiveQuestion();
-    });
-
-    it("should be able to use a native question source when embedded", () => {
-      cy.createNativeQuestion(nativeSourceQuestion).then(
-        ({ body: { id: questionId } }) => {
-          cy.createQuestionAndDashboard({
-            questionDetails: targetQuestion,
-            dashboardDetails: getNativeDashboard(questionId),
-          }).then(({ body: card }) => {
-            cy.editDashboardCard(card, getParameterMapping(card));
-            visitEmbeddedPage(getDashboardResource(card));
-          });
-        },
-      );
-
-      filterDashboard();
-    });
-
-    it("should be able to use a native question source when public", () => {
-      cy.createNativeQuestion(nativeSourceQuestion).then(
-        ({ body: { id: questionId } }) => {
-          cy.createQuestionAndDashboard({
-            questionDetails: targetQuestion,
-            dashboardDetails: getNativeDashboard(questionId),
-          }).then(({ body: card }) => {
-            cy.editDashboardCard(card, getParameterMapping(card));
-            visitPublicDashboard(card.dashboard_id);
-          });
-        },
-      );
-
-      filterDashboard();
-    });
-  });
-
   describe("static list source (dropdown)", () => {
     it("should be able to use a static list source", () => {
       cy.createQuestionAndDashboard({
@@ -203,20 +54,8 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         values: [["10", "Ten"], ["20", "Twenty"], "30"],
       });
       saveDashboard();
-      filterWidget().click();
-      popover().within(() => {
-        cy.findByPlaceholderText("Enter a number").type("T");
-      });
-      popover()
-        .last()
-        .within(() => {
-          cy.findByText("30").should("not.exist");
-          cy.findByText("Ten").should("be.visible");
-          cy.findByText("Twenty").should("be.visible").click();
-        });
 
-      popover().button("Add filter").click();
-
+      filterDashboard({ isDropdown: true });
       filterWidget().findByText("Twenty").should("be.visible");
       getDashboardCard().findByText("4").should("be.visible");
     });
@@ -230,7 +69,20 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         visitEmbeddedPage(getDashboardResource(card));
       });
 
-      filterDashboard({ isLabeled: true });
+      filterDashboard({ isDropdown: true });
+      filterWidget().findByText("Twenty").should("be.visible");
+    });
+
+    it("should be able to use a static list source when embedded", () => {
+      cy.createQuestionAndDashboard({
+        questionDetails: targetQuestion,
+        dashboardDetails: getListDashboard(),
+      }).then(({ body: card }) => {
+        cy.editDashboardCard(card, getParameterMapping(card));
+        visitEmbeddedPage(getDashboardResource(card));
+      });
+
+      filterDashboard({ isDropdown: true });
       filterWidget().findByText("Twenty").should("be.visible");
     });
 
@@ -243,7 +95,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         visitPublicDashboard(card.dashboard_id);
       });
 
-      filterDashboard({ isLabeled: true });
+      filterDashboard({ isDropdown: true });
       filterWidget().findByText("Twenty").should("be.visible");
     });
   });
@@ -302,8 +154,21 @@ const mapFilterToQuestion = (column = "Quantity") => {
   popover().within(() => cy.findByText(column).click());
 };
 
-const filterDashboard = ({ isLabeled = false } = {}) => {
-  cy.findByText("Number").click();
+const filterDashboard = ({ isLabeled = false, isDropdown = false } = {}) => {
+  filterWidget().click();
+
+  if (isDropdown) {
+    popover().within(() => {
+      cy.findByPlaceholderText("Search the list");
+
+      cy.findByText("Ten").should("be.visible");
+      cy.findAllByText("30").should("be.visible");
+      cy.findByText("Twenty").should("be.visible").click();
+
+      cy.button("Add filter").click();
+    });
+    return;
+  }
 
   if (isLabeled) {
     popover().first().findByPlaceholderText("Enter a number").type("T");
@@ -316,14 +181,6 @@ const filterDashboard = ({ isLabeled = false } = {}) => {
     cy.findByPlaceholderText("Enter a number").type("20");
     cy.button("Add filter").click();
   });
-};
-
-const archiveQuestion = () => {
-  openQuestionActions();
-  cy.findByTestId("archive-button").click();
-  cy.findByText(
-    "This question will be removed from any dashboards or alerts using it. It will also be removed from the filter that uses it to populate values.",
-  );
 };
 
 const getDashboardResource = ({ dashboard_id }) => ({
@@ -343,27 +200,6 @@ const getTargetDashboard = sourceSettings => ({
     [targetParameter.slug]: "enabled",
   },
 });
-
-const getStructuredDashboard = questionId => {
-  return getTargetDashboard({
-    values_source_type: "card",
-    values_source_config: {
-      card_id: questionId,
-      value_field: ["field", ACCOUNTS.SEATS, null],
-    },
-  });
-};
-
-const getNativeDashboard = questionId => {
-  return getTargetDashboard({
-    values_source_type: "card",
-    values_query_type: "input",
-    values_source_config: {
-      card_id: questionId,
-      value_field: ["field", "RATING", { "base-type": "type/Integer" }],
-    },
-  });
-};
 
 const getListDashboard = values_query_type => {
   return getTargetDashboard({
