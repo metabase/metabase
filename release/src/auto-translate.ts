@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import 'zx/globals';
+import fetch from 'node-fetch';
 
 const baseUrl = 'https://api.poeditor.com/v2'
 const POEDITOR_API_TOKEN = process.env.POEDITOR_API_TOKEN;
@@ -72,7 +72,7 @@ const autoTranslate = async (language: string) => {
     body: encodedData,
   });
 
-  const message = (await response.json())?.result;
+  const message = (await response.json() as { result?: string })?.result;
 
   console.log(message);
 }
