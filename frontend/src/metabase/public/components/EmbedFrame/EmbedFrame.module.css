@@ -34,8 +34,21 @@ body {
 }
 
 .ThemeNight.EmbedFrame {
-  --mb-color-text-primary: var(--mb-color-text-white-alpha-85);
-  --mb-color-text-secondary: var(--mb-color-text-light);
+  --mb-color-text-primary: color-mix(
+    in srgb,
+    var(--mb-color-text-white) 90%,
+    transparent
+  );
+  --mb-color-text-secondary: color-mix(
+    in srgb,
+    var(--mb-color-text-white) 65%,
+    transparent
+  );
+  --mb-color-text-tertiary: color-mix(
+    in srgb,
+    var(--mb-color-text-white) 45%,
+    transparent
+  );
   --mb-color-embed-filter-bg-color: var(--mb-color-bg-black);
   --mb-color-border: var(--mb-color-text-medium);
 

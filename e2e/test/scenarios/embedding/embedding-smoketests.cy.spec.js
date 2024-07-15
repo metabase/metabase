@@ -191,9 +191,8 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         });
 
         cy.findByRole("contentinfo").within(() => {
-          cy.findByRole("link")
-            .should("have.text", "Powered by Metabase")
-            .and("have.attr", "href")
+          cy.findByRole("link", { name: "Powered by Metabase" })
+            .should("have.attr", "href")
             .and("contain", "https://www.metabase.com/powered-by-metabase");
         });
 

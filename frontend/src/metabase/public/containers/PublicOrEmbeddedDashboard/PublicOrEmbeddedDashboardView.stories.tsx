@@ -252,7 +252,7 @@ function ScrollDecorator(Story: Story) {
 
 function DarkBackgroundDecorator(Story: Story) {
   return (
-    <Box bg="bg-dark" mih="100vh">
+    <Box bg="#434e56" mih="100vh">
       <Story />
     </Box>
   );

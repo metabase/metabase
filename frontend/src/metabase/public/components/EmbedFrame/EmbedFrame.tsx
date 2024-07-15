@@ -237,9 +237,7 @@ export const EmbedFrame = ({
           className={EmbedFrameS.EmbedFrameFooter}
           variant={footerVariant}
         >
-          {hasEmbedBranding && (
-            <LogoBadge variant={footerVariant} dark={theme === "night"} />
-          )}
+          {hasEmbedBranding && <LogoBadge dark={theme === "night"} />}
           {actionButtons && (
             <ActionButtonsContainer>{actionButtons}</ActionButtonsContainer>
           )}
