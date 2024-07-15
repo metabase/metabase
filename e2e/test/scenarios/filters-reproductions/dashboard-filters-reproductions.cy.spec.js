@@ -2845,6 +2845,30 @@ describe("issue 44288", () => {
   });
 });
 
+describe("issue 27579", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to remove the last exclude hour option (metabase#27579)", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+    setFilter("Time", "All Options");
+    selectDashboardFilter(getDashboardCard(), "Created At");
+    saveDashboard();
+    filterWidget().click();
+    popover().within(() => {
+      cy.findByText("Exclude...").click();
+      cy.findByText("Hours of the day...").click();
+      cy.findByLabelText("12 AM").should("be.checked");
+
+      cy.findByText("Select none...").click();
+      cy.findByLabelText("12 AM").should("not.be.checked");
+    });
+  });
+});
+
 describe("issue 32804", () => {
   const question1Details = {
     name: "Q1",
