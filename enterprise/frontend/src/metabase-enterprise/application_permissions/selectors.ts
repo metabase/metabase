@@ -34,7 +34,7 @@ export function getPermissionWarning(
 
 export const canManageSubscriptions = createSelector(
   (state: ApplicationPermissionsState) => state.currentUser,
-  user => user?.permissions?.can_manage_subscriptions ?? false,
+  user => user?.permissions?.can_access_subscription ?? false,
 );
 
 const getApplicationPermission = (
