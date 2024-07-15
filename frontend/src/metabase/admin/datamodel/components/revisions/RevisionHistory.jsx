@@ -14,13 +14,13 @@ import Revision from "./Revision";
 
 class RevisionHistory extends Component {
   static propTypes = {
-    object: PropTypes.object,
+    segment: PropTypes.object,
     revisions: PropTypes.array,
     table: PropTypes.object,
   };
 
   render() {
-    const { object, revisions, table, user } = this.props;
+    const { segment, revisions, table, user } = this.props;
 
     let userColorAssignments = {};
     if (revisions) {
@@ -31,13 +31,16 @@ class RevisionHistory extends Component {
     }
 
     return (
-      <LoadingAndErrorWrapper loading={!object || !revisions}>
+      <LoadingAndErrorWrapper loading={!segment || !revisions}>
         {() => (
           <div className={CS.wrapper}>
             <Breadcrumbs
               className={CS.py4}
               crumbs={[
-                [t`Segments`, `/admin/datamodel/segments?table=${table.id}`],
+                [
+                  t`Segments`,
+                  `/admin/datamodel/segments?table=${segment.table_id}`,
+                ],
                 [t`Segment` + t` History`],
               ]}
             />
@@ -47,14 +50,14 @@ class RevisionHistory extends Component {
               data-testid="segment-revisions"
             >
               <h2 className={CS.mb4}>
-                {t`Revision History for`} &quot;{object.name}&quot;
+                {t`Revision History for`} &quot;{segment.name}&quot;
               </h2>
               <ol>
                 {revisions.map(revision => (
                   <Revision
                     key={revision.id}
                     revision={revision}
-                    objectName={object.name}
+                    objectName={segment.name}
                     currentUser={user}
                     tableMetadata={table}
                     userColor={userColorAssignments[revision.user.id]}
