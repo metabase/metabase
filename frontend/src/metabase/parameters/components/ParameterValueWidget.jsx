@@ -347,7 +347,7 @@ function Widget({
     );
   }
 
-  if (isNumberParameter(parameter)) {
+  if (isNumberParameter(parameter) && getQueryType(parameter) !== "list") {
     const arity = getNumberParameterArity(parameter);
 
     return (
@@ -379,6 +379,7 @@ function Widget({
       />
     );
   }
+
   return (
     <StringInputWidget
       value={normalizedValue}
