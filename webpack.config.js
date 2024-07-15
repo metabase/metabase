@@ -207,7 +207,7 @@ const config = (module.exports = {
     splitChunks: {
       cacheGroups: {
         vendors: {
-          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas)[\\/])/,
+          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas-pro)[\\/])/,
           chunks: "all",
           name: "vendor",
         },
@@ -222,7 +222,7 @@ const config = (module.exports = {
           name: "jspdf",
         },
         html2canvas: {
-          test: /[\\/]node_modules[\\/]html2canvas[\\/]/,
+          test: /[\\/]node_modules[\\/]html2canvas-pro[\\/]/,
           chunks: "all",
           name: "html2canvas",
         },

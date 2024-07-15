@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { formatNullable } from "metabase/lib/formatting/nullable";
-import { sumMetric } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import { getColumnScaling } from "metabase/visualizations/echarts/cartesian/model/util";
+import { sumMetric } from "metabase/visualizations/lib/dataset";
 import type {
   CartesianChartColumns,
   ColumnDescriptor,

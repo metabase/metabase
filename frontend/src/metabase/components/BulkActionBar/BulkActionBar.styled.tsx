@@ -21,7 +21,6 @@ export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
 
 export const ToastCard = styled(Card)`
   color: var(--mb-color-text-white);
-
   padding: 0.75rem ${space(2)};
   display: flex;
   align-items: center;
@@ -31,7 +30,6 @@ export const ToastCard = styled(Card)`
 
 export const BulkActionButton = styled(Button)`
   color: var(--mb-color-text-white);
-
   border-color: ${() => alpha(color("bg-white"), 0)};
   background-color: ${() => alpha(color("bg-white"), 0.1)};
 
@@ -48,10 +46,8 @@ export const BulkActionButton = styled(Button)`
 ` as unknown as typeof Button;
 
 export const BulkActionDangerButton = styled(BulkActionButton)`
-  color: var(--mb-color-danger);
-
   :hover {
     color: var(--mb-color-text-white);
-    background-color: var(--mb-color-bg-error);
+    background-color: var(--mb-color-error);
   }
 ` as unknown as typeof Button;

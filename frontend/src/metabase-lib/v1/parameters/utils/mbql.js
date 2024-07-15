@@ -163,7 +163,10 @@ export function numberParameterValueToMBQL(parameter, fieldRef) {
   const operatorName = getParameterOperatorName(subtype);
 
   return [operatorName, fieldRef].concat(
-    [].concat(parameterValue).map(v => parseFloat(v)),
+    [].concat(parameterValue).map(value => {
+      const number = parseFloat(value);
+      return isNaN(number) ? null : number;
+    }),
   );
 }
 

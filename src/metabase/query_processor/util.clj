@@ -193,10 +193,10 @@
   the metadata from a run from the query, and `pre-existing` should be the metadata from the database we wish to
   ensure survives."
   [fresh pre-existing]
-  (let [by-key (m/index-by (comp field-ref->key :field_ref) pre-existing)]
-    (for [{:keys [field_ref source] :as col} fresh]
+  (let [by-name (m/index-by :name pre-existing)]
+    (for [{:keys [source] :as col} fresh]
       (if-let [existing (and (not= :aggregation source)
-                             (get by-key (field-ref->key field_ref)))]
+                             (get by-name (:name col)))]
         (merge col (select-keys existing preserved-keys))
         col))))
 

@@ -1,0 +1,11 @@
+.label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+
+  &:hover {
+    background-color: var(--mb-color-bg-medium);
+  }
+}

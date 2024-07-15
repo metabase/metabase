@@ -210,6 +210,7 @@ describe.skip("issue 17777", () => {
       visibility_type: "hidden",
     });
   }
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -267,6 +268,7 @@ describe("issue 19603", () => {
 
 describeEE("issue 20436", () => {
   const url = `/admin/permissions/data/group/${ALL_USERS_GROUP}`;
+
   function changePermissions(from, to) {
     cy.findAllByText(from).first().click();
 
@@ -346,11 +348,9 @@ describe("UI elements that make no sense for users without data permissions (met
     });
 
     cy.findByTextEnsureVisible("Line options");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save")
+    cy.findByTestId("qb-save-button")
       .as("saveButton")
-      .invoke("css", "pointer-events")
-      .should("equal", "none");
+      .should("have.attr", "data-disabled");
 
     cy.get("@saveButton").realHover();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -455,6 +455,7 @@ describeEE("issue 22695 ", () => {
       .should("have.length.above", 0)
       .and("not.contain", "Sample Database");
   }
+
   beforeEach(() => {
     cy.intercept("GET", "/api/search?*").as("searchResults");
 

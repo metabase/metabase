@@ -1,32 +1,33 @@
 import type { FormEvent } from "react";
-import { useState } from "react";
 import { t } from "ttag";
 
 import { Box, Button, Divider, Group } from "metabase/ui";
 
 import { TimeToggle } from "../TimeToggle";
-import { clearTimePart, hasTimeParts } from "../utils";
+import { clearTimePart } from "../utils";
 
 import { SingleDatePickerBody } from "./SingleDatePickerBody";
+import type { SingleDatePickerValue } from "./types";
 
 interface SingleDatePickerProps {
-  value: Date;
+  value: SingleDatePickerValue;
   isNew: boolean;
-  onChange: (value: Date) => void;
+  onChange: (value: SingleDatePickerValue) => void;
   onSubmit: () => void;
 }
 
 export function SingleDatePicker({
-  value,
+  value: { date, hasTime },
   isNew,
   onChange,
   onSubmit,
 }: SingleDatePickerProps) {
-  const [hasTime, setHasTime] = useState(hasTimeParts(value));
+  const handleDateChange = (newDate: Date) => {
+    onChange({ date: newDate, hasTime });
+  };
 
   const handleTimeToggle = () => {
-    setHasTime(!hasTime);
-    onChange(clearTimePart(value));
+    onChange({ date: clearTimePart(date), hasTime: !hasTime });
   };
 
   const handleSubmit = (event: FormEvent) => {
@@ -38,9 +39,9 @@ export function SingleDatePicker({
     <form onSubmit={handleSubmit}>
       <Box p="md">
         <SingleDatePickerBody
-          value={value}
+          value={date}
           hasTime={hasTime}
-          onChange={onChange}
+          onChange={handleDateChange}
         />
       </Box>
       <Divider />

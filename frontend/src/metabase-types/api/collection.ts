@@ -8,6 +8,7 @@ import type {
 
 import type { CardDisplayType, CardType } from "./card";
 import type { DatabaseId } from "./database";
+import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId } from "./user";
 
@@ -136,15 +137,19 @@ export interface CollectionListQuery {
   tree?: boolean;
 }
 
+export type getCollectionRequest = {
+  id: CollectionId;
+  namespace?: "snippets";
+};
+
 export type ListCollectionItemsRequest = {
   id: CollectionId;
   models?: CollectionItemModel[];
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
-  sort_column?: "name" | "last_edited_at" | "last_edited_by" | "model";
-  sort_direction?: "asc" | "desc";
   namespace?: "snippets";
-} & PaginationRequest;
+} & PaginationRequest &
+  Partial<SortingOptions>;
 
 export type ListCollectionItemsResponse = {
   data: CollectionItem[];

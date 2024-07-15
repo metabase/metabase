@@ -62,7 +62,7 @@
 
 (defn- tables->sandboxes [table-ids]
   (qp.store/cached [*current-user-id* table-ids]
-    (let [enforced-sandboxes (mt.api.u/enforced-sandboxes-for *current-user-id*)]
+    (let [enforced-sandboxes (mt.api.u/enforced-sandboxes-for *current-user-id* table-ids)]
        (when (seq enforced-sandboxes)
          (assert-one-gtap-per-table enforced-sandboxes)
          enforced-sandboxes))))

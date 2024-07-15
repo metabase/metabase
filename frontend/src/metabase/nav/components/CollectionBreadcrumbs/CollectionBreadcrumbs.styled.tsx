@@ -8,7 +8,7 @@ export const PathContainer = styled.div`
   min-width: 0;
 `;
 
-export const PathSeparator = styled.div`
+export const BreadcrumbsPathSeparator = styled.div`
   display: flex;
   align-items: center;
   color: var(--mb-color-text-light);
@@ -23,12 +23,12 @@ export const ExpandButton = styled(Button)`
   border: none;
   margin: 0;
   padding: 0.25rem;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-bg-collection-browser-expand-button);
   border-radius: 2px;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-collection-browser-expand-button);
 
   &:hover {
-    color: var(--mb-color-text-white);
-    background-color: var(--mb-color-brand);
+    color: var(--mb-color-text-collection-browser-expand-button-hover);
+    background-color: var(--mb-color-bg-collection-browser-expand-button-hover);
   }
 `;

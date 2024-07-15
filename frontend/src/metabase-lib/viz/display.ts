@@ -99,10 +99,23 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       return Lib.isCoordinate(column);
     });
     if (areBreakoutsCoordinates) {
+      const binningOne = Lib.binning(breakouts[0]);
+      const binningTwo = Lib.binning(breakouts[1]);
+      const areBothBinned = binningOne !== null && binningTwo !== null;
+
+      if (areBothBinned) {
+        return {
+          display: "map",
+          settings: {
+            "map.type": "grid",
+          },
+        };
+      }
+
       return {
         display: "map",
         settings: {
-          "map.type": "grid",
+          "map.type": "pin",
         },
       };
     }

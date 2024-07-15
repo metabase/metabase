@@ -367,6 +367,14 @@
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
+(defn- clear-current-user-cached-permissions!
+  "If [[metabase.api.common/*current-user-permissions-set*]] is bound, reset it so it gets recalculated on next use.
+  Called by [[delete-related-permissions!]] and [[grant-permissions!]] below, mostly as a convenience for tests that
+  bind a current user and then grant or revoke permissions for that user without rebinding it."
+  []
+  ((requiring-resolve 'metabase.server.middleware.session/clear-current-user-cached-permissions-set!))
+  nil)
+
 (mu/defn delete-related-permissions!
   "Delete all 'related' permissions for `group-or-id` (i.e., perms that grant you full or partial access to `path`).
   This includes *both* ancestor and descendant paths. For example:
@@ -398,17 +406,19 @@
                              other-conditions)}]
     (when-let [revoked (t2/select-fn-set :object Permissions where)]
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) revoked))
-      (t2/delete! Permissions where))))
+      (t2/delete! Permissions where)
+      (clear-current-user-cached-permissions!))))
 
 (defn grant-permissions!
   "Grant permissions for `group-or-id` and return the inserted permissions. Two-arity grants any arbitrary Permissions `path`.
   With > 2 args, grants the data permissions from calling [[data-perms-path]]."
   ([group-or-id path]
    (try
-     (t2/insert-returning-instances! Permissions
-                                     (map (fn [path-object]
-                                            {:group_id (u/the-id group-or-id) :object path-object})
-                                          (distinct (conj (perms.u/->v2-path path) path))))
+     (t2/insert! Permissions
+                 (map (fn [path-object]
+                        {:group_id (u/the-id group-or-id) :object path-object})
+                      (distinct (conj (perms.u/->v2-path path) path))))
+     (clear-current-user-cached-permissions!)
      ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
      (catch Throwable e
        (log/error e (u/format-color 'red "Failed to grant permissions"))
@@ -418,20 +428,7 @@
        (when config/is-test?
          (throw e))))))
 
-; Audit Permissions helper fns
-
-(defn check-audit-db-permissions
-  "Check that the changes coming in does not attempt to change audit database permission. Admins should
-  change these permissions in application monitoring permissions."
-  [changes]
-  (let [changes-ids (->> changes
-                         vals
-                         (map keys)
-                         (apply concat))]
-    (when (some #{audit/audit-db-id} changes-ids)
-      (throw (ex-info (tru
-                       (str "Audit database permissions can only be changed by updating audit collection permissions."))
-                      {:status-code 400})))))
+;;;; Audit Permissions helper fns
 
 (defn audit-namespace-clause
   "SQL clause to filter namespaces depending on if audit app is enabled or not, and if the namespace is the default one."

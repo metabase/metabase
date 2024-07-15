@@ -31,12 +31,12 @@ import {
 } from "metabase/ui";
 import type {
   CacheableModel,
+  CacheStrategy,
+  CacheStrategyType,
   ScheduleSettings,
   ScheduleStrategy,
-  Strategy,
-  StrategyType,
 } from "metabase-types/api";
-import { DurationUnit } from "metabase-types/api";
+import { CacheDurationUnit } from "metabase-types/api";
 
 import { strategyValidationSchema } from "../constants/complex";
 import { rootId } from "../constants/simple";
@@ -85,20 +85,20 @@ export const StrategyForm = ({
   targetModel: CacheableModel;
   targetName: string;
   setIsDirty: (isDirty: boolean) => void;
-  saveStrategy: (values: Strategy) => Promise<void>;
-  savedStrategy?: Strategy;
+  saveStrategy: (values: CacheStrategy) => Promise<void>;
+  savedStrategy?: CacheStrategy;
   shouldAllowInvalidation?: boolean;
   shouldShowName?: boolean;
   onReset?: () => void;
   buttonLabels?: ButtonLabels;
   isInSidebar?: boolean;
 }) => {
-  const defaultStrategy: Strategy = {
+  const defaultStrategy: CacheStrategy = {
     type: targetId === rootId ? "nocache" : "inherit",
   };
 
   return (
-    <FormProvider<Strategy>
+    <FormProvider<CacheStrategy>
       key={targetId}
       initialValues={savedStrategy ?? defaultStrategy}
       validationSchema={strategyValidationSchema}
@@ -139,7 +139,7 @@ const StrategyFormBody = ({
   buttonLabels: ButtonLabels;
   isInSidebar?: boolean;
 }) => {
-  const { dirty, values, setFieldValue } = useFormikContext<Strategy>();
+  const { dirty, values, setFieldValue } = useFormikContext<CacheStrategy>();
   const { setStatus } = useFormContext();
   const [wasDirty, setWasDirty] = useState(false);
 
@@ -159,13 +159,18 @@ const StrategyFormBody = ({
 
   useEffect(() => {
     if (selectedStrategyType === "duration") {
-      setFieldValue("unit", DurationUnit.Hours);
+      setFieldValue("unit", CacheDurationUnit.Hours);
     }
   }, [selectedStrategyType, values, setFieldValue]);
 
+  const headingId = "strategy-form-heading";
+
   return (
     <FormWrapper>
-      <StyledForm style={{ overflow: isInSidebar ? undefined : "auto" }}>
+      <StyledForm
+        style={{ overflow: isInSidebar ? undefined : "auto" }}
+        aria-labelledby={headingId}
+      >
         <FormBox>
           {shouldShowName && (
             <Box lh="1rem" pt="md" color="text-medium">
@@ -180,7 +185,11 @@ const StrategyFormBody = ({
             </Box>
           )}
           <Stack maw="35rem" pt={targetId === rootId ? "xl" : 0} spacing="xl">
-            <StrategySelector targetId={targetId} model={targetModel} />
+            <StrategySelector
+              targetId={targetId}
+              model={targetModel}
+              headingId={headingId}
+            />
             {selectedStrategyType === "ttl" && (
               <>
                 <Field
@@ -264,7 +273,7 @@ const FormButtons = ({
   buttonLabels,
   isInSidebar,
 }: FormButtonsProps) => {
-  const { dirty } = useFormikContext<Strategy>();
+  const { dirty } = useFormikContext<CacheStrategy>();
 
   if (targetId === rootId) {
     shouldAllowInvalidation = false;
@@ -375,13 +384,15 @@ const SaveAndDiscardButtons = ({
 const StrategySelector = ({
   targetId,
   model,
+  headingId,
 }: {
   targetId: number | null;
   model?: CacheableModel;
+  headingId: string;
 }) => {
   const { strategies } = PLUGIN_CACHING;
 
-  const { values } = useFormikContext<Strategy>();
+  const { values } = useFormikContext<CacheStrategy>();
 
   const availableStrategies = useMemo(() => {
     return targetId === rootId ? _.omit(strategies, "inherit") : strategies;
@@ -392,7 +403,7 @@ const StrategySelector = ({
       <FormRadioGroup
         label={
           <Stack spacing="xs">
-            <Text lh="1rem" color="text-medium">
+            <Text lh="1rem" color="text-medium" id={headingId}>
               {t`Select the cache invalidation policy`}
             </Text>
             <Text lh="1rem" fw="normal" size="sm" color="text-medium">
@@ -419,6 +430,7 @@ const StrategySelector = ({
                 key={name}
                 label={optionLabelFormatted}
                 autoFocus={values.type === name}
+                role="radio"
               />
             );
           })}
@@ -432,7 +444,7 @@ export const PositiveNumberInput = ({
   strategyType,
   ...props
 }: {
-  strategyType: StrategyType;
+  strategyType: CacheStrategyType;
 } & Partial<FormTextInputProps>) => {
   return (
     <FormTextInput
@@ -476,7 +488,7 @@ const Field = ({
 };
 
 const getDefaultValueForField = (
-  strategyType: StrategyType,
+  strategyType: CacheStrategyType,
   fieldName?: string,
 ) => {
   return fieldName

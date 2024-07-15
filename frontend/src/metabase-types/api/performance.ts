@@ -1,67 +1,67 @@
 /** 'Model' as in 'type of object' */
 export type CacheableModel = "root" | "database" | "dashboard" | "question";
 
-export type StrategyType =
+export type CacheStrategyType =
   | "nocache"
-  | "ttl" // aka Query duration multiplier
+  | "ttl" // aka Adaptive
   | "duration"
   | "schedule"
   | "inherit";
 
-interface StrategyBase {
-  type: StrategyType;
+interface CacheStrategyBase {
+  type: CacheStrategyType;
 }
 
-export enum DurationUnit {
+export enum CacheDurationUnit {
   Hours = "hours",
   Minutes = "minutes",
   Seconds = "seconds",
   Days = "days",
 }
 
-export interface MultiplierStrategy extends StrategyBase {
+export interface AdaptiveStrategy extends CacheStrategyBase {
   type: "ttl";
   multiplier: number;
   min_duration_ms: number;
   min_duration_seconds?: number;
 }
 
-export interface DoNotCacheStrategy extends StrategyBase {
+export interface DoNotCacheStrategy extends CacheStrategyBase {
   type: "nocache";
 }
 
-export interface DurationStrategy extends StrategyBase {
+export interface DurationStrategy extends CacheStrategyBase {
   type: "duration";
   duration: number;
-  unit: DurationUnit;
+  unit: CacheDurationUnit;
 }
 
-export interface InheritStrategy extends StrategyBase {
+export interface InheritStrategy extends CacheStrategyBase {
   type: "inherit";
 }
 
-export interface ScheduleStrategy extends StrategyBase {
+export interface ScheduleStrategy extends CacheStrategyBase {
   type: "schedule";
   schedule: string;
 }
 
 /** Cache invalidation strategy */
-export type Strategy =
+export type CacheStrategy =
   | DoNotCacheStrategy
-  | MultiplierStrategy
+  | AdaptiveStrategy
   | DurationStrategy
   | InheritStrategy
   | ScheduleStrategy;
 
 /** Cache invalidation configuration */
-export interface Config {
+export interface CacheConfig {
   /** The type of cacheable object this configuration concerns */
   model: CacheableModel;
   model_id: number;
   /** Cache invalidation strategy */
-  strategy: Strategy;
+  strategy: CacheStrategy;
 }
 
 export type CacheConfigAPIResponse = {
-  data: Config[];
+  data: CacheConfig[];
 };

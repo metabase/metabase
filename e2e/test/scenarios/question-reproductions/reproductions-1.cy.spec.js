@@ -2,6 +2,9 @@ import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  commandPalette,
+  commandPaletteSearch,
+  createQuestion,
   restore,
   visualize,
   openTable,
@@ -300,7 +303,7 @@ describe("postgres > user > query", { tags: "@external" }, () => {
 
     // Wait until "doing science" spinner disappears (DOM is ready for assertions)
     // TODO: if this proves to be reliable, extract it as a helper function for waiting on DOM to render
-    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
 
     // Assertions
     cy.log("Fails in v0.36.6");
@@ -312,9 +315,9 @@ describe("postgres > user > query", { tags: "@external" }, () => {
   });
 });
 
-const PG_DB_NAME = "QA Postgres12";
+describe("issue 14957", { tags: "@external" }, () => {
+  const PG_DB_NAME = "QA Postgres12";
 
-describe.skip("issue 14957", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();
@@ -323,12 +326,7 @@ describe.skip("issue 14957", { tags: "@external" }, () => {
   it("should save a question before query has been executed (metabase#14957)", () => {
     openNativeEditor({ databaseName: PG_DB_NAME }).type("select pg_sleep(60)");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-
-    cy.findByLabelText("Name").type("14957");
-    cy.button("Save").click();
-
+    saveQuestion("14957");
     modal().should("not.exist");
   });
 });
@@ -862,22 +860,36 @@ describe("issue 18207", () => {
   });
 });
 
-describe("11914, 18978, 18977", () => {
+describe("issues 11914, 18978, 18977, 23857", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.createQuestion({
+    createQuestion({
+      name: "Repro",
       query: {
         "source-table": `card__${ORDERS_QUESTION_ID}`,
         limit: 2,
       },
-    }).then(({ body: { id: questionId } }) => {
-      cy.signIn("nodata");
-      visitQuestion(questionId);
     });
+    cy.signIn("nodata");
   });
 
   it("should not display query editing controls and 'Browse databases' link", () => {
+    cy.log(
+      "Make sure we don't offer to duplicate question with a query for which the user has no permission to run (metabase#23857)",
+    );
+    visitQuestion(ORDERS_QUESTION_ID);
+    cy.findByLabelText("Move, trash, and more...").click();
+    popover().findByText("Duplicate").should("not.exist");
+
+    cy.log(
+      "Make sure we don't offer to duplicate question based on a question with a query for which the user has no permission to run (metabase#23857)",
+    );
+    commandPaletteSearch("Repro", false);
+    commandPalette().findByText("Repro").click();
+    cy.findByLabelText("Move, trash, and more...").click();
+    popover().findByText("Duplicate").should("not.exist");
+
     cy.log(
       "Make sure we don't prompt user to browse databases from the sidebar",
     );
@@ -979,13 +991,13 @@ describe("issue 19341", () => {
     // Test "Saved Questions" table is hidden in QB data selector
     startNewQuestion();
     entityPickerModal().within(() => {
-      cy.findByTestId("loading-spinner").should("not.exist");
+      cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByText("Orders").should("exist");
       cy.findAllByRole("tab").should("not.exist");
 
       // Ensure the search doesn't list saved questions
       cy.findByPlaceholderText("Search…").type("Ord");
-      cy.findByTestId("loading-spinner").should("not.exist");
+      cy.findByTestId("loading-indicator").should("not.exist");
 
       cy.findAllByTestId("result-item").then($result => {
         const searchResults = $result.toArray();

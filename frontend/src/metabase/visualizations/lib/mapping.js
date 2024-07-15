@@ -1,4 +1,4 @@
-import d3 from "d3";
+import * as d3 from "d3";
 import L from "leaflet/dist/leaflet-src.js";
 
 import { COUNTRY_NAME_TO_CODE, STATE_CODES } from "./mapping_codes";

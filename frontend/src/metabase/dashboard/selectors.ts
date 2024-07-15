@@ -1,6 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { createCachedSelector } from "re-reselect";
-import { createSelectorCreator, lruMemoize, weakMapMemoize } from "reselect";
+import { createSelectorCreator, lruMemoize } from "reselect";
 import _ from "underscore";
 
 import {
@@ -55,7 +55,6 @@ function isEditParameterSidebar(
 }
 
 const createDeepEqualSelector = createSelectorCreator(lruMemoize, _.isEqual);
-const createWeakSelector = createSelectorCreator(weakMapMemoize);
 
 export const getDashboardBeforeEditing = (state: State) =>
   state.dashboard.editingDashboard;
@@ -88,9 +87,9 @@ export const getFavicon = (state: State) =>
     ? LOAD_COMPLETE_FAVICON
     : null;
 
-export const getIsRunning = (state: State) =>
+export const getIsDashCardsRunning = (state: State) =>
   state.dashboard.loadingDashCards.loadingStatus === "running";
-export const getIsLoadingComplete = (state: State) =>
+export const getIsDashCardsLoadingComplete = (state: State) =>
   state.dashboard.loadingDashCards.loadingStatus === "complete";
 
 export const getLoadingStartTime = (state: State) =>
@@ -108,6 +107,12 @@ export const getIsSlowDashboard = createSelector(
     }
   },
 );
+
+export const getIsLoadingWithoutCards = (state: State) =>
+  state.dashboard.loadingControls.isLoading;
+
+export const getIsLoading = (state: State) =>
+  getIsLoadingWithoutCards(state) || !getIsDashCardsLoadingComplete(state);
 
 export const getIsAddParameterPopoverOpen = (state: State) =>
   state.dashboard.isAddParameterPopoverOpen;
@@ -191,7 +196,7 @@ export const getDashboardComplete = createSelector(
   },
 );
 
-export const getDashcardHref = createWeakSelector(
+export const getDashcardHref = createSelector(
   [getMetadata, getDashboardComplete, getParameterValues, getDashCardById],
   (metadata, dashboard, parameterValues, dashcard) => {
     if (

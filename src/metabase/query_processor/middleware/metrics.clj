@@ -91,6 +91,16 @@
     stage-path (lib.walk/query-for-path stage-path)
     stage-path :query))
 
+(defn- include-implicit-joins
+  [query metric-query]
+  (let [metric-joins (lib/joins metric-query 0)
+        existing-joins (into #{}
+                             (map (juxt :fk-field-id :alias))
+                             (lib/joins query 0))]
+    (reduce #(lib/join %1 0 %2)
+            query
+            (remove (comp existing-joins (juxt :fk-field-id :alias)) metric-joins))))
+
 (defn splice-compatible-metrics
   "Splices in metric definitions that are compatible with the query."
   [query path expanded-stages]
@@ -108,6 +118,7 @@
                           (let [metric-query (update-metric-query-expression-names metric-query unique-name-fn)]
                             (as-> query $q
                               (reduce expression-with-name-from-source $q (lib/expressions metric-query 0))
+                              (include-implicit-joins $q metric-query)
                               (reduce #(lib/filter %1 0 %2) $q (lib/filters metric-query 0))
                               (replace-metric-aggregation-refs $q 0 lookup)))
                           (throw (ex-info "Incompatible metric" {:query query

@@ -15,8 +15,9 @@ export const Tab = styled(Tabs.Tab)`
   top: 1px;
   margin-bottom: 1px;
   border-bottom-width: 3px !important;
-  padding: 0.625rem 0px;
+  padding: 0.625rem 0;
   margin-inline-end: 1.25rem;
+
   :hover {
     color: var(--mb-color-brand);
     background-color: inherit;
@@ -30,6 +31,5 @@ export const TabsPanel = styled(Tabs.Panel)<{ value: string }>`
   flex: 1;
   justify-content: stretch;
   padding: 1rem 2.5rem;
-  ${props =>
-    props.value === PerformanceTabId.DataCachingSettings && `overflow: hidden;`}
+  ${props => props.value === PerformanceTabId.Databases && `overflow: hidden;`}
 `;

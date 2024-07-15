@@ -13,7 +13,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.connection :as t2.conn])
+   [toucan2.connection :as t2.conn]
+   [toucan2.core :as t2])
   (:import
    (java.io StringWriter)
    (java.sql Connection)
@@ -163,6 +164,14 @@
     (with-liquibase [liquibase liquibase-or-conn]
       (changelog-table-name liquibase))))
 
+(defn changelog-by-id
+  "Return the changelog row value for the given `changelog-id`."
+  [app-db changelog-id]
+  (let [table-name (case (:db-type app-db)
+                     (:postgres :h2) "databasechangelog"
+                     :mysql "DATABASECHANGELOG")]
+    (t2/query-one (format "select * from %s where id = '%s'" table-name changelog-id))))
+
 (defn migrations-sql
   "Return a string of SQL containing the DDL statements needed to perform unrun `liquibase` migrations, custom migrations will be ignored."
   ^String [^Liquibase liquibase]
@@ -258,7 +267,7 @@
   (let [done? #(empty? (locked-instances))]
     (if (done?)
       :none
-      (do (log/infof "Waiting for migration lock(s) to be released (max %.1f secs)" (/ timeout-ms 1000))
+      (do (log/infof "Waiting for migration lock(s) to be released (max %.1f secs)" (double (/ timeout-ms 1000)))
           (wait-until done? sleep-ms timeout-ms)))))
 
 (defn- liquibase->url [^Liquibase liquibase]

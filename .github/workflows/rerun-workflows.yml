@@ -2,7 +2,7 @@ name: Re-run Flaky Workflows
 
 on:
   workflow_run:
-    workflows: [Backend, Driver Tests, E2E Tests, Frontend]
+    workflows: [Backend, Driver Tests, E2E Tests, Frontend, Backend-Cloverage]
     types: [completed]
     branches: [master, 'release-x.**', 'backport-**']
 

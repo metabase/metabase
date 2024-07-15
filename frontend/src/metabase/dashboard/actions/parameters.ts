@@ -16,9 +16,9 @@ import {
   setParameterName as setParamName,
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
-import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { buildTemporalUnitOption } from "metabase-lib/v1/parameters/utils/operators";
+import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import {
   isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
@@ -31,6 +31,7 @@ import type {
   ParameterId,
   ParameterMappingOptions,
   ParameterTarget,
+  TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
@@ -210,7 +211,7 @@ export const setParameterMapping = createThunkAction(
 export const RESET_PARAMETER_MAPPINGS =
   "metabase/dashboard/RESET_PARAMETER_MAPPINGS";
 export const resetParameterMapping = createThunkAction(
-  SET_PARAMETER_MAPPING,
+  RESET_PARAMETER_MAPPINGS,
   (parameterId: ParameterId, dashcardId?: DashCardId) => {
     return (dispatch, getState) => {
       const dashboard = getDashboard(getState());
@@ -481,10 +482,35 @@ export const setParameterIsMultiSelect = createThunkAction(
     updateParameter(dispatch, getState, parameterId, parameter => ({
       ...parameter,
       isMultiSelect: isMultiSelect,
+      default:
+        !isMultiSelect &&
+        Array.isArray(parameter.default) &&
+        parameter.default.length > 1
+          ? [parameter.default[0]]
+          : parameter.default,
     }));
 
     return { id: parameterId, isMultiSelect };
   },
+);
+
+export const SET_PARAMETER_TEMPORAL_UNITS =
+  "metabase/dashboard/SET_PARAMETER_TEMPORAL_UNITS";
+export const setParameterTemporalUnits = createThunkAction(
+  SET_PARAMETER_TEMPORAL_UNITS,
+  (parameterId: ParameterId, temporalUnits: TemporalUnit[]) =>
+    (dispatch, getState) => {
+      updateParameter(dispatch, getState, parameterId, parameter => ({
+        ...parameter,
+        temporal_units: temporalUnits,
+        default:
+          parameter.default && temporalUnits.includes(parameter.default)
+            ? parameter.default
+            : undefined,
+      }));
+
+      return { id: parameterId, temporalUnits };
+    },
 );
 
 export const SET_PARAMETER_QUERY_TYPE =
@@ -644,7 +670,7 @@ export const closeAutoApplyFiltersToast = createThunkAction(
   () => (dispatch, getState) => {
     const toastId = getAutoApplyFiltersToastId(getState());
     if (toastId) {
-      dispatch(dismissUndo(toastId, false));
+      dispatch(dismissUndo({ undoId: toastId, track: false }));
     }
   },
 );

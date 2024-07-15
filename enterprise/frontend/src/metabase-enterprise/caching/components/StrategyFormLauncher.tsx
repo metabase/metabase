@@ -5,7 +5,7 @@ import { rootId } from "metabase/admin/performance/constants/simple";
 import type { UpdateTargetId } from "metabase/admin/performance/types";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { FixedSizeIcon, Flex, Title, Tooltip, useHover } from "metabase/ui";
-import type { Config } from "metabase-types/api";
+import type { CacheConfig } from "metabase-types/api";
 
 import { PolicyToken, StyledLauncher } from "./StrategyFormLauncher.styled";
 
@@ -21,7 +21,7 @@ export const StrategyFormLauncher = ({
   targetId: number | null;
   title: string;
   updateTargetId: UpdateTargetId;
-  configs: Config[];
+  configs: CacheConfig[];
   isFormDirty: boolean;
 }) => {
   const forRoot = forId === rootId;

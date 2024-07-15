@@ -25,9 +25,9 @@
         (is (not-any? (comp #{internal-user-email} :email) data)))
       (testing "does not count the internal user"
         (is (= total (count data))))))
+
   (testing "User Endpoints with :id"
-    (doseq [[method endpoint status-code] [[:get "user/:id" 400]
-                                           [:put "user/:id" 400]
+    (doseq [[method endpoint status-code] [[:put "user/:id" 400]
                                            [:put "user/:id/reactivate" 400]
                                            [:delete "user/:id" 400]
                                            [:put "user/:id/modal/qbnewb" 400]

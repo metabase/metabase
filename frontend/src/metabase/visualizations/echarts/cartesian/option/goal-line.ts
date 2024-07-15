@@ -35,21 +35,24 @@ export function getGoalLineSeriesOption(
     return null;
   }
 
-  const goalValue = settings["graph.goal_value"];
+  const scaleTransformedGoalValue =
+    chartModel.yAxisScaleTransforms.toEChartsAxisValue(
+      settings["graph.goal_value"],
+    );
   const { fontSize } = renderingContext.theme.cartesian.goalLine.label;
 
   return {
     id: GOAL_LINE_SERIES_ID,
     type: "custom",
     data: [
-      [getFirstNonNullXValue(chartModel.dataset), settings["graph.goal_value"]],
+      [getFirstNonNullXValue(chartModel.dataset), scaleTransformedGoalValue],
     ],
     z: Z_INDEXES.goalLine,
     blur: {
       opacity: 1,
     },
     renderItem: (params, api) => {
-      const [_x, y] = api.coord([null, goalValue]);
+      const [_x, y] = api.coord([null, scaleTransformedGoalValue]);
       const coordSys =
         params.coordSys as unknown as EChartsCartesianCoordinateSystem;
       const xStart = coordSys.x;

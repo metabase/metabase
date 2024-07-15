@@ -53,8 +53,8 @@
        ["--collection" "123"]
        {:collection-ids [123]}
 
-       ["-c" "123, 456"]
-       {:collection-ids [123 456]}
+       ["-c" "123, 456, eid:qj0jT7SXwEUezz1wSjTAZ, nicht"]
+       {:collection-ids [123 456 "eid:qj0jT7SXwEUezz1wSjTAZ" nil]}
 
        ["-c" "123,456,789"]
        {:collection-ids [123 456 789]}

@@ -17,7 +17,23 @@
     (t2.with-temp/with-temp [:model/User user {}]
       (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
         (mt/with-full-data-perms-for-all-users!
-          (is (not (mt.api.u/sandboxed-user?))))))))
+          (is (not (mt.api.u/sandboxed-user?)))))))
+
+  (testing "If a user is in another group with another sandbox defined on the table, the user should be considered sandbox"
+    ;; This (conflicting sandboxes) is an invalid state for the QP but `enforce-sandbox?` should return true in order
+    ;; to fail closed
+    (t2.with-temp/with-temp [:model/User user {}]
+      (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
+        (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
+          (is (mt.api.u/sandboxed-user?))))))
+
+  (testing "If a user is in two groups with conflicting sandboxes, *and* a third group that grants full access to the table,
+           neither sandbox is enforced"
+    (t2.with-temp/with-temp [:model/User user {}]
+      (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
+        (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
+          (mt/with-full-data-perms-for-all-users!
+            (is (not (mt.api.u/sandboxed-user?)))))))))
 
 (defn- has-segmented-perms-when-segmented-db-exists?! [user-kw]
   (testing "User is sandboxed when they are not in any other groups that provide unrestricted access"

@@ -8,6 +8,7 @@ import {
   visitDashboard,
   setFilter,
   getDashboardCard,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -78,11 +79,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
     // Add multiple values (metabase#18113)
     filterWidget().click();
     popover().within(() => {
-      cy.findByPlaceholderText("Enter some text")
-        .type("Gizmo")
-        .blur()
-        .type("Gadget")
-        .blur();
+      multiAutocompleteInput().type("Gizmo,Gadget").blur();
     });
 
     cy.button("Add filter").click();

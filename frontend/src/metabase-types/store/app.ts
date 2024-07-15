@@ -17,4 +17,5 @@ export interface AppBreadCrumbs {
 export interface AppState {
   errorPage: AppErrorDescriptor | null;
   isNavbarOpen: boolean;
+  isDndAvailable: boolean;
 }

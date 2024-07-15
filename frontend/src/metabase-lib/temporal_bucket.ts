@@ -1,13 +1,8 @@
 import * as ML from "cljs/metabase.lib.js";
+import type { TemporalUnit } from "metabase-types/api";
 
 import { displayInfo } from "./metadata";
-import type {
-  Bucket,
-  ColumnMetadata,
-  Clause,
-  Query,
-  BucketName,
-} from "./types";
+import type { Bucket, ColumnMetadata, Clause, Query } from "./types";
 
 export function temporalBucket(clause: Clause | ColumnMetadata): Bucket | null {
   return ML.temporal_bucket(clause);
@@ -52,23 +47,23 @@ type IntervalAmount = number | "current" | "next" | "last";
 
 export function describeTemporalInterval(
   n: IntervalAmount,
-  unit?: BucketName,
+  unit?: TemporalUnit,
 ): string {
   return ML.describe_temporal_interval(n, unit);
 }
 
 export function describeRelativeDatetime(
   n: IntervalAmount,
-  unit?: BucketName,
+  unit?: TemporalUnit,
 ): string {
   return ML.describe_relative_datetime(n, unit);
 }
 
 type RelativeDateRangeFormatOpts = {
   value: number | "current";
-  unit: BucketName;
+  unit: TemporalUnit;
   offsetValue?: number;
-  offsetUnit?: BucketName;
+  offsetUnit?: TemporalUnit;
   includeCurrent?: boolean;
 };
 
@@ -84,6 +79,6 @@ export function formatRelativeDateRange({
   });
 }
 
-export function availableTemporalUnits(): string[] {
+export function availableTemporalUnits(): TemporalUnit[] {
   return ML.available_temporal_units();
 }

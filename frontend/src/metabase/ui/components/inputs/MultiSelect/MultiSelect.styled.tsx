@@ -48,10 +48,19 @@ export const getMultiSelectOverrides =
           gap: theme.spacing.xs,
           padding: theme.spacing.xs,
           alignItems: "center",
+          "[data-with-icon=true] &": {
+            paddingLeft: 0,
+          },
         },
         input: {
           padding: 0,
           boxSizing: "border-box",
+          "&[data-with-icon]": {
+            paddingLeft: theme.spacing.lg,
+          },
+        },
+        icon: {
+          width: theme.spacing.lg,
         },
         value: {
           margin: 0,
@@ -67,6 +76,9 @@ export const getMultiSelectOverrides =
           },
           "&::-webkit-search-cancel-button": {
             display: "none",
+          },
+          "[data-with-icon=true] &:first-child": {
+            marginLeft: 0,
           },
         },
         defaultValue: {

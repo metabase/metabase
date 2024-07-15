@@ -42,7 +42,7 @@ const setup = ({ error }: { error?: string } = {}) => {
 describe("useCollectionQuery", () => {
   it("should be initially loading", () => {
     setup();
-    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
   });
 
   it("should display error", async () => {

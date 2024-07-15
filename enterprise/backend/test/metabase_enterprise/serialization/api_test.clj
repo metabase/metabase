@@ -58,7 +58,7 @@
       (mt/with-premium-features #{:serialization}
         (testing "POST /api/ee/serialization/export"
           (mt/with-empty-h2-app-db
-            (mt/with-temp [Collection    coll  {}
+            (mt/with-temp [Collection    coll  {:name "API Collection"}
                            Dashboard     _     {:collection_id (:id coll)}
                            Card          _     {:collection_id (:id coll)}]
               (testing "API respects parameters"
@@ -70,6 +70,12 @@
               (testing "We can export just a single collection"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:id coll) :data_model false :settings false)]
+                  (is (= #{:log :dir :dashboard :card :collection}
+                         (tar-file-types f)))))
+
+              (testing "We can export that collection using entity id"
+                (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                              :collection (str "eid:" (:entity_id coll)) :data_model false :settings false)]
                   (is (= #{:log :dir :dashboard :card :collection}
                          (tar-file-types f)))))
 
@@ -87,7 +93,7 @@
                       (testing "First three lines for coll+dash+card, and then error during compression"
                         (is (= #{"Collection" "Dashboard" "Card"}
                                (log-types (take 3 lines))))
-                        (is (re-find #"ERROR" (nth lines 3))))))))
+                        (is (re-find #"deliberate error message" (str/join "\n" (->> lines (drop 3) (take 3))))))))))
 
               (testing "You can pass specific directory name"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}

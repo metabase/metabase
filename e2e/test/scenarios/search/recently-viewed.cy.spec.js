@@ -34,14 +34,14 @@ describe("search > recently viewed", () => {
     // inside the "Orders in a dashboard" dashboard, the order is queried again,
     // which elicits a ViewLog entry
 
-    cy.intercept("/api/activity/recents?context=views").as("recent");
+    cy.intercept("/api/activity/recents?*").as("recent");
     //Because this is testing keyboard navigation, these tests can run in embedded mode
     visitFullAppEmbeddingUrl({ url: "/", qs: { top_nav: true, search: true } });
     cy.wait("@recent");
 
     cy.findByPlaceholderText("Search…").click();
 
-    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
   });
 
   it("shows list of recently viewed items", () => {
@@ -62,7 +62,7 @@ describe("search > recently viewed", () => {
   it("shows up-to-date list of recently viewed items after another page is visited (metabase#36868)", () => {
     cy.findByPlaceholderText("Search…").click();
     cy.wait("@recent");
-    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
     cy.log("check output");
     cy.wait(10000);
 

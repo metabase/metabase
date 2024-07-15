@@ -5,12 +5,7 @@ import type { DashboardId, DashCardId } from "./dashboard";
 import type { DatabaseId, Database } from "./database";
 import type { Field } from "./field";
 import type { Parameter } from "./parameters";
-import type {
-  DatasetQuery,
-  DimensionReference,
-  FieldReference,
-  PublicDatasetQuery,
-} from "./query";
+import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { Table } from "./table";
 import type { UserInfo } from "./user";
 import type { SmartScalarComparison } from "./visualization-settings";
@@ -119,13 +114,7 @@ export type PivotTableCollapsedRowsSetting = {
 
 export type TableColumnOrderSetting = {
   name: string;
-  key: string;
   enabled: boolean;
-
-  // We have some corrupted visualization settings where both names are mixed
-  // We should settle on `fieldRef`, make it required and remove `field_ref`
-  fieldRef?: DimensionReference;
-  field_ref?: DimensionReference;
 };
 
 export type StackType = "stacked" | "normalized" | null;
