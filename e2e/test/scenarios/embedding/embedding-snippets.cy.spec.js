@@ -17,7 +17,7 @@ import { getEmbeddingJsCode, IFRAME_CODE } from "./shared/embedding-snippets";
 const features = ["none", "all"];
 
 features.forEach(feature => {
-  describe(`[features=${feature}] scenarios > embedding > code snippets`, () => {
+  describe(`[tokenFeatures=${feature}] scenarios > embedding > code snippets`, () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
