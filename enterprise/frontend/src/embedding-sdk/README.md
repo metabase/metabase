@@ -843,6 +843,23 @@ return (
 );
 ```
 
+### Getting Metabase authentication status
+
+You can query the Metabase authentication status using the `useMetabaseAuthStatus` hook.
+This is useful if you want to completely hide Metabase components when the user is not authenticated.
+
+```jsx
+const auth = useMetabaseAuthStatus()
+
+if (auth.status === "error") {
+  return <div>Failed to authenticate: {auth.error.message}</div>
+}
+
+if (auth.status === "success") {
+  return <InteractiveQuestion questionId={110} />;
+}
+```
+
 ### Reloading Metabase components
 
 In case you need to reload a Metabase component, for example, your users modify your application data and that data is used to render a question in Metabase. If you embed this question and want to force Metabase to reload the question to show the latest data, you can do so by using the `key` prop to force a component to reload.
