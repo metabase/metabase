@@ -25,7 +25,10 @@ import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { isValidSourceConfig } from "metabase-lib/v1/parameters/utils/parameter-source";
-import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
+import {
+  getParameterType,
+  isNumberParameter,
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
   ValuesSourceConfig,
   ValuesSourceType,
@@ -495,7 +498,11 @@ const getSourceTypeOptions = (
     ...(hasFields(parameter)
       ? [{ name: t`From connected fields`, value: null }]
       : []),
-    { name: t`From another model or question`, value: "card" },
+    ...(isNumberParameter(parameter)
+      ? []
+      : ([
+          { name: t`From another model or question`, value: "card" },
+        ] as const)),
     { name: t`Custom list`, value: "static-list" },
   ];
 };
