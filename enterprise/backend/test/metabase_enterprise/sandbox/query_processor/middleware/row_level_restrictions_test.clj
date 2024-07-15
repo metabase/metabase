@@ -417,9 +417,8 @@
   not normally have FK tests ran for it. Excludes Presto JDBC, because that driver does NOT support fetching foreign
   keys from the JDBC metadata, even though we enable the feature in the UI."
   []
-  (cond-> (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
-    (@tx.env/test-drivers :bigquery-cloud-sdk) (conj :bigquery-cloud-sdk)
-    true                                       (disj :presto-jdbc)))
+  (cond-> (mt/normal-drivers-with-feature :nested-queries :foreign-keys :metadata/key-constraints)
+    (@tx.env/test-drivers :bigquery-cloud-sdk) (conj :bigquery-cloud-sdk)))
 
 (deftest e2e-fks-test
   (mt/test-drivers (row-level-restrictions-fk-drivers)
@@ -1009,11 +1008,9 @@
                          (mt/rows (mt/run-mbql-query orders {:limit 1})))))))))))))
 
 (deftest pivot-query-test
-  (mt/test-drivers (disj
-                    (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)
-                    ;; this test relies on a FK relation between $product_id->products.category, so skip for Presto
-                    ;; JDBC, because that driver doesn't support resolving FKs from the JDBC metadata
-                    :presto-jdbc)
+  ;; This test relies on a FK relation between $product_id->products.category, hence the requirement on
+  ;; :metadata/key-constraints.
+  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join :metadata/key-constraints)
     (testing "Pivot table queries should work with sandboxed users (#14969)"
       (mt/dataset test-data
         (met/with-gtaps! {:gtaps      (mt/$ids

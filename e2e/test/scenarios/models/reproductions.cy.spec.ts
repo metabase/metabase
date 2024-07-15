@@ -1,4 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   type StructuredQuestionDetails,
   createNativeQuestion,
@@ -27,8 +28,13 @@ import {
   visitModel,
   visualize,
   questionInfoButton,
+  visitDashboard,
+  editDashboard,
+  setFilter,
+  setDropdownFilterType,
+  sidebar,
 } from "e2e/support/helpers";
-import type { FieldReference } from "metabase-types/api";
+import type { CardId, FieldReference } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -867,4 +873,69 @@ describe("issue 34574", () => {
     cy.findByRole("heading", { level: 2, name: "World" }).should("be.visible");
     cy.get("strong").should("be.visible").and("have.text", "important");
   }
+});
+
+describe("issue 35840", () => {
+  const modelName = "M1";
+  const questionName = "Q1";
+
+  const modelDetails: StructuredQuestionDetails = {
+    type: "model",
+    name: modelName,
+    query: {
+      "source-table": PRODUCTS_ID,
+      expressions: {
+        Category: ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+      },
+    },
+  };
+
+  const getQuestionDetails = (modelId: CardId): StructuredQuestionDetails => ({
+    type: "question",
+    name: questionName,
+    query: {
+      "source-table": `card__${modelId}`,
+    },
+  });
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  function checkColumnMapping(entityTab: string, entityName: string) {
+    entityPickerModal().within(() => {
+      entityPickerModalTab(entityTab).click();
+      cy.findByText(entityName).click();
+    });
+    modal().findByText("Pick a column…").click();
+    popover().findAllByText("Category").eq(0).click();
+    modal().within(() => {
+      cy.findByText("Category").should("be.visible");
+      cy.findByText("Category, Category").should("not.exist");
+    });
+  }
+
+  it("should not confuse a model field with an expression that has the same name in dashboard parameter sources (metabase#35840)", () => {
+    cy.log("Setup dashboard");
+    createQuestion(modelDetails).then(({ body: model }) =>
+      createQuestion(getQuestionDetails(model.id)),
+    );
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+    setFilter("Text or Category", "Is");
+    setDropdownFilterType();
+    sidebar().findByText("Edit").click();
+
+    cy.log("Use model for dropdown source");
+    modal().within(() => {
+      cy.findByText("From another model or question").click();
+      cy.findByText("Pick a model or question…").click();
+    });
+    checkColumnMapping("Models", modelName);
+
+    cy.log("Use model-based question for dropdown source");
+    modal().findByText(modelName).click();
+    checkColumnMapping("Questions", questionName);
+  });
 });
