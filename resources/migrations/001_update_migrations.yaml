@@ -8103,6 +8103,7 @@ databaseChangeLog:
       id: v50.2024-06-12T12:33:08
       author: piranha
       comment: 'Copy old cache configurations to cache_config table'
+      validCheckSum: ANY
       changes:
         - sqlFile:
             dbms: postgresql
@@ -8123,6 +8124,7 @@ databaseChangeLog:
       author: piranha
       comment: 'Fix root cache config for mysql if it is wrong'
       dbms: mysql,mariadb
+      validCheckSum: ANY
       changes:
         - sqlFile:
             path: custom_sql/fill_cache_config_root_fix.my.sql

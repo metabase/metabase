@@ -182,3 +182,38 @@
               (let [syncable (driver/syncable-schemas driver/*driver* db-filtered)]
                 (is (not (contains? syncable "public")))
                 (is (not (contains? syncable fake-schema-name)))))))))))
+
+(deftest ^:parallel uuid-filtering-test
+  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+    (let [uuid (random-uuid)
+          uuid-query (mt/native-query {:query (format "select cast('%s' as uuid) as u" uuid)})
+          results (qp/process-query uuid-query)
+          result-metadata (get-in results [:data :results_metadata :columns])
+          col-metadata (first result-metadata)]
+      (is (= :type/UUID (:base_type col-metadata)))
+      (mt/with-temp [:model/Card card {:type :model
+                                       :result_metadata result-metadata
+                                       :dataset_query uuid-query}]
+        (let [model-query {:database (mt/id)
+                           :type :query
+                           :query {:source-table (str "card__" (:id card))}}]
+          (are [expected filt]
+            (= expected
+                 (mt/rows (qp/process-query (assoc-in model-query [:query :filter] filt))))
+            [[uuid]] [:= (:field_ref col-metadata) (str uuid)]
+            [[uuid]] [:!= (:field_ref col-metadata) (str (random-uuid))]
+            [[uuid]] [:starts-with (:field_ref col-metadata) (str uuid)]
+            [[uuid]] [:ends-with (:field_ref col-metadata) (str uuid)]
+            [[uuid]] [:contains (:field_ref col-metadata) (str uuid)]
+
+            ;; Test partial uuid values
+            [[uuid]] [:contains (:field_ref col-metadata) (subs (str uuid) 0 1)]
+            [[uuid]] [:starts-with (:field_ref col-metadata) (subs (str uuid) 0 1)]
+            [[uuid]] [:ends-with (:field_ref col-metadata) (subs (str uuid) (dec (count (str uuid))))]
+
+            ;; Cannot match a uuid, but should not blow up
+            [[uuid]] [:!= (:field_ref col-metadata) "q"]
+            [] [:= (:field_ref col-metadata) "q"]
+            [] [:starts-with (:field_ref col-metadata) "q"]
+            [] [:ends-with (:field_ref col-metadata) "q"]
+            [] [:contains (:field_ref col-metadata) "q"]))))))
