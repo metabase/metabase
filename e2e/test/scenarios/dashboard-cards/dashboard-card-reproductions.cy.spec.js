@@ -1688,15 +1688,16 @@ describe("issue 43219", () => {
     restore();
     cy.signInAsAdmin();
 
-    for (let index = 0; index < cardsCount; ++index) {
-      const name = `Series ${index + 1}`;
-
-      createQuestion({ ...questionDetails, name }).then(
-        ({ body: question }) => {
-          cy.wrap(question).as(getQuestionAlias(index));
-        },
-      );
-    }
+    cypressWaitAll(
+      Array.from({ length: cardsCount }, (_value, index) => {
+        const name = `Series ${index + 1}`;
+        return createQuestion({ ...questionDetails, name }).then(
+          ({ body: question }) => {
+            cy.wrap(question).as(getQuestionAlias(index));
+          },
+        );
+      }),
+    );
 
     cy.then(function () {
       cy.createDashboardWithQuestions({
