@@ -99,12 +99,12 @@ describe("Admin > CollectionPermissionsPage", () => {
       expect(lastRequest).toEqual({
         ...defaultPermissionsGraph,
         groups: {
-          ...defaultPermissionsGraph.groups,
           3: {
             ...defaultPermissionsGraph.groups[3],
             3: "read",
           },
         },
+        skip_graph: true,
       });
     });
 
@@ -155,13 +155,13 @@ describe("Admin > CollectionPermissionsPage", () => {
       expect(lastRequest).toEqual({
         ...defaultPermissionsGraph,
         groups: {
-          ...defaultPermissionsGraph.groups,
           3: {
             ...defaultPermissionsGraph.groups[3],
             1: "write",
             3: "write",
           },
         },
+        skip_graph: true,
       });
     });
 
