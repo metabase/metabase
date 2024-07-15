@@ -1,0 +1,47 @@
+name: CI for PR Review ENV Destroy
+run-name: Destroying Dynamic PR Environment for ${{ github.ref_name }} by @${{ github.actor }}
+
+on:
+  workflow_call:
+
+jobs:
+  destroy_pr:
+    runs-on: ubuntu-latest
+    name: PR Review ENV Destroy
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+      - name: Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          oauth-client-id: ${{ secrets.PR_ENV_TAILSCALE_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.PR_ENV_TAILSCALE_OAUTH_SECRET }}
+          tags: tag:ci
+          version: 1.50.1
+          sha256sum: d9fe6b480fb5078f0aa57dace686898dda7e2a768884271159faa74846bfb576
+      - name: Configure K8s access
+        uses: metabase/actions/configure-k8s-connection@ee8851d9c621f7c9413617853fd3dce5895b535f
+        with:
+          server: ${{ secrets.PR_ENV_K8S_SERVER }}
+          certificate-authority-data: ${{ secrets.PR_ENV_K8S_CERTIFICATE_AUTHORITY_DATA }}
+          namespace:  pr-review-env
+          audience: ${{ secrets.PR_ENV_K8S_AUDIENCE }}
+      - name: Destroy PR Review ENV
+        run: |
+          kubectl delete metabase -n hosting-pr${{ github.event.number }} hosting-pr${{ github.event.number }}
+          kubectl delete ns hosting-pr${{ github.event.number }}
+      - name: Setup psql client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Drop app database if exists
+        run: |
+          PGPASSWORD='${{ secrets.PR_ENV_DB_PASSWORD }}' \
+          psql \
+          -h ${{ secrets.PR_ENV_DB_HOST }} \
+          -U ${{ secrets.PR_ENV_DB_USER }} \
+          -d ${{ secrets.PR_ENV_DB_NAME }} \
+          -c "DROP DATABASE IF EXISTS hosting_pr${{ github.event.number }};"
