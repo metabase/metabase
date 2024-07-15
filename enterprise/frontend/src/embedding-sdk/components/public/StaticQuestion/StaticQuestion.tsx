@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -55,41 +55,43 @@ const _StaticQuestion = ({
     error: null,
   });
 
-  const loadCardData = useCallback(async () => {
-    setState(prevState => ({
-      ...prevState,
-      loading: true,
-    }));
-
-    try {
-      const { card, result } = await loadStaticQuestion({
-        questionId,
-        parameterValues,
-      });
-
+  useEffect(() => {
+    async function loadCardData() {
       setState(prevState => ({
         ...prevState,
-        card,
-        result,
-        loading: false,
-        error: null,
+        loading: true,
       }));
-    } catch (error) {
-      if (typeof error === "object") {
+
+      try {
+        const { card, result } = await loadStaticQuestion({
+          questionId,
+          parameterValues,
+        });
+
         setState(prevState => ({
           ...prevState,
-          result: null,
-          card: null,
+          card,
+          result,
           loading: false,
-          error,
+          error: null,
         }));
+      } catch (error) {
+        if (typeof error === "object") {
+          setState(prevState => ({
+            ...prevState,
+            result: null,
+            card: null,
+            loading: false,
+            error,
+          }));
+        } else {
+          console.error("error loading static question", error);
+        }
       }
     }
-  }, [questionId, parameterValues]);
 
-  useEffect(() => {
     loadCardData();
-  }, [loadCardData]);
+  }, [questionId, parameterValues]);
 
   const changeVisualization = (newQuestion: Question) => {
     setState({
