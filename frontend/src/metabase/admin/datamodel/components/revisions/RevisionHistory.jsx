@@ -41,7 +41,11 @@ class RevisionHistory extends Component {
                 [t`Segment` + t` History`],
               ]}
             />
-            <div className={cx(CS.wrapper, CS.py4)} style={{ maxWidth: 950 }}>
+            <div
+              className={cx(CS.wrapper, CS.py4)}
+              style={{ maxWidth: 950 }}
+              data-testid="segment-revisions"
+            >
               <h2 className={CS.mb4}>
                 {t`Revision History for`} &quot;{object.name}&quot;
               </h2>
