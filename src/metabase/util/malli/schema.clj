@@ -336,11 +336,7 @@
      [:default {:optional true} :any]
      [:sectionId {:optional true} NonBlankString]
      [:temporal_units {:optional true}
-      [:sequential
-       (into [:enum]
-             (concat
-              lib.schema.temporal-bucketing/temporal-bucketing-units
-              (map name lib.schema.temporal-bucketing/temporal-bucketing-units)))]]]
+      [:sequential ::lib.schema.temporal-bucketing/unit]]]
     (deferred-tru "parameter must be a map with :id and :type keys")))
 
 (def ParameterMapping
