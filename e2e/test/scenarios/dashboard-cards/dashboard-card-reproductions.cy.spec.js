@@ -1706,6 +1706,8 @@ describe("issue 43219", () => {
         questions: [questionDetails],
         cards: [
           {
+            size_x: 4,
+            size_y: 3,
             series: Array.from({ length: cardsCount }, (_value, index) => {
               const question = this[getQuestionAlias(index)];
               return question;
@@ -1724,6 +1726,11 @@ describe("issue 43219", () => {
       .findByText("Text")
       .click();
 
+    getDashboardCard(0)
+      .findByText("Series 10")
+      .should("exist")
+      .and("not.be.visible");
+    getDashboardCard(0).realMouseWheel({ deltaX: 1400, deltaY: 400 });
     getDashboardCard(0).findByText("Series 10").should("be.visible");
   });
 });
