@@ -509,6 +509,21 @@ describe("ValuesSourceModal", () => {
         ).toBeInTheDocument();
       });
 
+      it("should not show the option for connected fields if there are none", async () => {
+        await setup({
+          parameter: createMockUiParameter({
+            type: "number/=",
+            values_source_type: "static-list",
+          }),
+          parameterValues: createMockParameterValues({
+            values: [],
+          }),
+        });
+        expect(
+          screen.queryByText("From connected fields"),
+        ).not.toBeInTheDocument();
+      });
+
       it("should show field values", async () => {
         await setup({
           parameter: createMockUiParameter({
