@@ -15,4 +15,3 @@ jobs:
     with:
       wait_for_uberjar: true
     secrets: inherit
-    
