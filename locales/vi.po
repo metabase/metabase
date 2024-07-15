@@ -55,7 +55,7 @@ msgstr "Lưu"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:122
 msgid "To do some of its magic, Metabase needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below."
-msgstr "Để thực hiện một số magic của nó, Metabase cần quét cơ sở dữ liệu của bạn. Chúng tôi cũng sẽ quét lại định kỳ để cập nhật siêu dữ liệu. Bạn có thể kiểm soát khi việc quét lại định kỳ xảy ra dưới đây"
+msgstr "Để thực hiện một số magic của nó, Metabase cần quét cơ sở dữ liệu của bạn. Chúng tôi cũng sẽ quét lại định kỳ để cập nhật siêu dữ liệu. Bạn có thể kiểm soát khi việc quét lại định kỳ xảy ra dưới đây."
 
 #: metabase/driver/common.clj:146
 msgid "Database syncing"
@@ -80,12 +80,11 @@ msgid "Metabase can scan the values present in each\n"
 "field in this database to enable checkbox filters in dashboards and questions. This\n"
 "can be a somewhat resource-intensive process, particularly if you have a very large\n"
 "database."
-msgstr "Metabase có thể quét các giá trị hiện tại trong mỗi \n"
-"\" \"có thể là một quá trình tốn nhiều tài nguyên, đặc biệt nếu bạn có \\ n rất lớn\" \"cơ sở dữ liệ"
+msgstr "Metabase có thể quét các giá trị hiện tại trong mỗi có thể là một quá trình tốn nhiều tài nguyên, đặc biệt nếu bạn có \\ n rất lớn cơ sở dữ liệ."
 
 #: frontend/src/metabase/entities/databases/big-query-fields.js:167
 msgid "When should Metabase automatically scan and cache field values?"
-msgstr "Khi nào Metabase sẽ tự động quét và lưu các giá trị trường bộ đệm "
+msgstr "Khi nào Metabase sẽ tự động quét và lưu các giá trị trường bộ đệm?"
 
 #: frontend/src/metabase/databases/components/DatabaseCacheScheduleField/DatabaseCacheScheduleField.tsx:74
 msgid "Regularly, on a schedule"
@@ -125,7 +124,7 @@ msgstr "Tất cả các câu hỏi, số liệu và phân đoạn đã lưu dự
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:67
 msgid "This cannot be undone."
-msgstr "Hành động này không thể khôi phục"
+msgstr "Hành động này không thể khôi phục."
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:70
 msgid "If you're sure, please type"
@@ -378,7 +377,7 @@ msgstr "Khôi phục lại dữ liệu mẫu"
 
 #: frontend/src/metabase/admin/databases/database.js:181
 msgid "Couldn't connect to the database. Please check the connection details."
-msgstr "Không thể kết nối tới cơ sở dữ liệu. Xin hãy kiểm tra chi tiết kết nối"
+msgstr "Không thể kết nối tới cơ sở dữ liệu. Xin hãy kiểm tra chi tiết kết nối."
 
 #: frontend/src/metabase/admin/databases/database.js:384
 msgid "Successfully created!"
@@ -405,7 +404,7 @@ msgstr "Lịch sử sửa đổi"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:35
 msgid "Retire this {0}?"
-msgstr "Không sử dụng {0} nữa"
+msgstr "Không sử dụng {0} nữa?"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:42
 msgid "Saved questions and other things that depend on this {0} will continue to work, but this {1} will no longer be selectable from the query builder."
