@@ -13,7 +13,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
@@ -154,5 +155,23 @@
      :body {:error-code "oops"}}
     {:status 200
      :body (json/decode body true)}))
+
+(api/defendpoint POST "/mark-stale"
+  "Mark the card or dashboard as stale"
+  [:as {{:keys [id model date-str]} :body}]
+  {id             ms/PositiveInt
+   model          :string
+   date-str       [:maybe :string]}
+  (let [date (if date-str
+               (try (t/local-date "yyyy-MM-dd" date-str)
+                    (catch Exception _
+                      (throw (ex-info (str "invalid date: '"
+                                           date-str
+                                           "' expected format: 'yyyy-MM-dd'")
+                                      {:status 400}))))
+               (t/minus (t/local-date) (t/months 7)))]
+    (case model
+      "card"      (t2/update! :model/Card :id id {:last_used_at date})
+      "dashboard" (t2/update! :model/Dashboard :id id {:last_viewed_at date}))))
 
 (api/define-routes)
