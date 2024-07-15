@@ -68,7 +68,7 @@ On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.meta
 
 ### Don’t cache results
 
-Never cache results.
+Metabase will never cache results. It will always run the query against the database, not cached results.
 
 ## Set caching policies for dashboards, questions, and databases
 
