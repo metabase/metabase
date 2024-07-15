@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import Segments from "metabase/entities/segments";
 
 import RevisionHistory from "../components/revisions/RevisionHistory";
-import { fetchRevisions } from "../datamodel";
+import { fetchSegmentRevisions } from "../datamodel";
 import { getRevisions, getCurrentUser } from "../selectors";
 
 const mapStateToProps = (state, props) => ({
@@ -14,15 +14,12 @@ const mapStateToProps = (state, props) => ({
   revisions: getRevisions(state),
 });
 
-const mapDispatchToProps = { fetchRevisions };
+const mapDispatchToProps = { fetchSegmentRevisions };
 
 class RevisionHistoryApp extends Component {
   componentDidMount() {
     const { id } = this.props;
-    this.props.fetchRevisions({
-      entity: "segment",
-      id,
-    });
+    this.props.fetchSegmentRevisions(id);
   }
 
   render() {
