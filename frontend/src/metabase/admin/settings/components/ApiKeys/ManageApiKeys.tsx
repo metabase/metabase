@@ -162,7 +162,7 @@ export const ManageApiKeys = () => {
       <AuthTabs activeKey="api-keys" />
       <Stack pl="md" spacing="lg">
         <Group
-          align="end"
+          align="start"
           position="apart"
           data-testid="api-keys-settings-header"
         >

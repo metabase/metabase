@@ -1,6 +1,13 @@
 import { useCallback, useState } from "react";
 
-export const useModal = (initialValue = false) => {
+type ModalHookResult = {
+  opened: boolean;
+  open: () => void;
+  close: () => void;
+  toggle: () => void;
+};
+
+export const useModal = (initialValue = false): ModalHookResult => {
   const [opened, setOpened] = useState<boolean>(initialValue);
   const open = useCallback(() => setOpened(true), []);
   const close = useCallback(() => setOpened(false), []);

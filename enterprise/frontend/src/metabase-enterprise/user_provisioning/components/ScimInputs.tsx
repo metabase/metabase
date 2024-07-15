@@ -1,6 +1,7 @@
 import { match } from "ts-pattern";
 
 import { CopyTextInput } from "metabase/components/CopyTextInput";
+import type { TextInputProps } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 
 const fontFamilyMonospace = getThemeOverrides().fontFamilyMonospace as string;
@@ -23,19 +24,17 @@ export const getTextInputStyles = (params: {
 });
 
 export const CopyScimInput = ({
-  label,
-  value,
   disabled = true,
-}: {
+  ...props
+}: TextInputProps & {
   label: string;
   value: string;
   disabled?: boolean;
 }) => (
   <CopyTextInput
-    label={label}
-    value={value}
     readOnly
     disabled={disabled}
+    {...props}
     styles={getTextInputStyles({ masked: false, disabled })}
   />
 );

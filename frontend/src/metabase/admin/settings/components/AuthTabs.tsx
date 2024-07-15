@@ -21,7 +21,7 @@ export const AuthTabs = ({ activeKey }: AuthTabsProps) => {
 
   return (
     <Tabs value={activeKey}>
-      <Tabs.List mx="1rem" mb="2.5rem">
+      <Tabs.List mx="1rem" mb="2rem">
         {_.sortBy(PLUGIN_ADMIN_SETTINGS_AUTH_TABS, "order").map(tab => {
           return (
             <Tabs.Tab

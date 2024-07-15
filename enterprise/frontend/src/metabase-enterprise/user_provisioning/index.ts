@@ -15,7 +15,7 @@ if (hasPremiumFeature("scim")) {
     to: "/admin/settings/authentication/user-provisioning",
   });
 
-  // when scim is enabled, replace the api keys auth card with a tab in the auth section
+  // move api keys to its own tab when scim is enabled
   PLUGIN_ADMIN_SETTINGS_AUTH_TABS.push({
     name: t`API Keys`,
     key: "api-keys",
@@ -26,8 +26,9 @@ if (hasPremiumFeature("scim")) {
     ...sections,
     authentication: {
       ...sections.authentication,
+      // remove api keys from the authentication tab's content when scim is enabled
       settings: sections.authentication.settings.filter(
-        setting => setting.key !== "api-keys",
+        (setting: { key: string }) => setting.key !== "api-keys",
       ),
     },
     "authentication/user-provisioning": {
