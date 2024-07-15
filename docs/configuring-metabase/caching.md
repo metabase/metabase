@@ -7,15 +7,27 @@ redirect_from:
 
 # Caching query results
 
-If your question results don't change frequently, you may want to store the results so that the next time anyone visits the question, Metabase can retrieve the stored results rather than query the database again.
+If your question results don't change frequently, you may want to store the results so that the next time anyone visits the question, Metabase can retrieve the cached results rather than query the database again.
 
 For example, if your data only updates once a day, there's no point in querying the database more than once a day, as the data won't have changed. Returning cached results can be significantly faster, as the database won't have to recompute the results to load your question.
 
 You can set [caching invalidation policies](#cache-invalidation-policies) for [questions](#question-caching-policy), [dashboards](#dashboard-caching-policy), and [databases](#database-caching-policy).
 
+## How caching works in Metabase
+
+Let's say you set a caching policy for a particular question. You set a [duration](#duration-caching-policy) that says to invalidate the results after one hour.
+
+When you view the question for the first time, Metabase will check for stored results. When it doesn't find any, it will run the question, return the results, and store (cache) the results. Those results will remain valid for the next hour (according to the hour-long duration policy you set).
+
+You run the question half an hour later, Metabase will return those stored results.
+
+You run the question over an hour after that initial run, Metabase will notice that the stored results are older than the caching policy allows, so Metabase will delete the stored results, re-run the query, return the results, and store the results anew. These updated results will remain valid for the next hour.
+
+See also [different caching policies interact](#how-dashboard-question-database-and-default-caching-policies-interact).
+
 ## Cache invalidation policies
 
-These policies determine how long cached results are valid.
+These policies determine how long cached results will remain valid.
 
 - [Duration](#duration-caching-policy)
 - [Schedule](#schedule-caching-policy)
@@ -26,7 +38,7 @@ These policies determine how long cached results are valid.
 
 {% include plans-blockquote.html feature="Duration caching policy" %}
 
-Keep the cache for X number of hours. When someone runs a query, Metabase will first check if it's cached the results. If not, it runs the query and caches the results for as long as you set the duration.
+Invalidate and clear the cache after X number of hours. When someone runs a query, Metabase will first check whether it has cached the results, and whether those results are still valid. If not, Metabase runs the query and caches the results. These cached results will remain valid for the duration you've set.
 
 ### Schedule caching policy
 
@@ -48,7 +60,9 @@ We do not yet support lunar cycles.
 Use a query’s average execution time to determine how long to cache the query's results.
 
 - **Minimum query duration**: Metabase will cache this question if it has an average query execution time greater than this many seconds.
-- **Multiplier**: Metabase will cache questions with an average query execution time greater than this many seconds. For example, if a question takes on average 10 seconds to return results, and you set a multiplier of 100, Metabase will store the cache for 10 x 100 seconds: 1,000 seconds (~16 minutes).
+- **Multiplier**: To determine how long each cached result should stick around, we take that query's average execution time and multiply that by what you input here. The result is how many seconds the cache should remain valid for. For example, if a question takes on average 10 seconds to return results, and you set a multiplier of 100, Metabase will store the cache for 10 x 100 seconds: 1,000 seconds (~16 minutes).
+
+Metabase will recalculate a query's average execution time whenever it runs the query to refresh the cached results.
 
 On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans, you can view querying and caching stats in the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection.
 
@@ -58,7 +72,7 @@ Always re-run the query to refresh results.
 
 ## Set caching policies for dashboards, questions, and databases
 
-You can set up caching policies for different entities.
+You can set caching policies for different entities.
 
 - [Setting a default caching policy](#default-caching-policy)
 - [Database caching policy (specific to each connected database)](#database-caching-policy)*
@@ -69,9 +83,11 @@ _* Denotes [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://
 
 ### Default caching policy
 
-To set up a default caching policy for your Metabase: Hit Cmd/Ctrl + k to bring up the command palette and search for **Performance**. Or, click through **Gear** settings icon > **Admin settings** > **Performance** > **Database caching settings**.
+To set a default caching policy for your Metabase: Hit Cmd/Ctrl + k to bring up the command palette and search for **Performance**. Or, click through **Gear** settings icon > **Admin settings** > **Performance** > **Database caching settings**.
 
 Click on the button next to **Default policy**, and select a [cache invalidation policy](#cache-invalidation-policies).
+
+If you have databases connected to Metabase that are set to **Use default** policy, Metabase will update the display to reflect whatever the default policy is set to. For example, if you set the default policy to be "Adaptive", Metabase will display "Adaptive" as the current policy for those databases set to inherit the default policy.
 
 ### Database caching policy
 
