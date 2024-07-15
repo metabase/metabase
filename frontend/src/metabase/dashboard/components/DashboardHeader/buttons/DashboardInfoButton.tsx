@@ -5,7 +5,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { getIsShowDashboardInfoSidebar } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
-import { DashboardHeaderButton } from "./DashboardHeaderButton";
+import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const DashboardInfoButton = () => {
   const dispatch = useDispatch();

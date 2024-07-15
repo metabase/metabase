@@ -6,7 +6,7 @@ import { getDashboard, getDashboardId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Popover, Stack, Switch } from "metabase/ui";
 
-import { DashboardHeaderButton } from "../DashboardHeader/buttons/DashboardHeaderButton";
+import { DashboardHeaderButton } from "../DashboardHeader/DashboardHeaderButton";
 
 const EXTRA_BUTTONS_DESCRIPTION = t`Toggle width`;
 

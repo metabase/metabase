@@ -6,7 +6,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import type { Dashboard, DashboardCard } from "metabase-types/api";
 
-import { DashboardHeaderButton } from "./DashboardHeaderButton";
+import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const DashboardSubscriptionButton = () => {
   const dispatch = useDispatch();

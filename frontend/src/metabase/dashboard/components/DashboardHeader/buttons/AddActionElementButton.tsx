@@ -4,7 +4,7 @@ import { addActionToDashboard } from "metabase/dashboard/actions";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
-import { DashboardHeaderButton } from "./DashboardHeaderButton";
+import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const AddActionElementButton = () => {
   const dispatch = useDispatch();

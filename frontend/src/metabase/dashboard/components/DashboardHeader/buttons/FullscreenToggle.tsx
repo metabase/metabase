@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
 
-import { DashboardHeaderButton } from "./DashboardHeaderButton";
+import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const FullscreenToggle = ({
   isFullscreen,

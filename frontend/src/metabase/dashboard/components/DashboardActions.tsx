@@ -1,4 +1,5 @@
 import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction/DashboardEmbedAction";
+import { RefreshWidget } from "metabase/dashboard/components/RefreshWidget";
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
@@ -6,7 +7,6 @@ import type {
 } from "metabase/dashboard/types";
 import type { Dashboard } from "metabase-types/api";
 
-import { RefreshWidgetButton } from "./DashboardActions.styled";
 import {
   FullscreenToggle,
   NightModeToggleButton,
@@ -52,7 +52,7 @@ export const getDashboardActions = ({
 
   if (!isEmpty && !dashboard?.archived) {
     buttons.push(
-      <RefreshWidgetButton
+      <RefreshWidget
         key="refresh"
         period={refreshPeriod}
         setRefreshElapsedHook={setRefreshElapsedHook}

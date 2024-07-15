@@ -5,7 +5,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { getSidebar } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
-import { DashboardHeaderButton } from "./DashboardHeaderButton";
+import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const AddQuestionButton = () => {
   const dispatch = useDispatch();

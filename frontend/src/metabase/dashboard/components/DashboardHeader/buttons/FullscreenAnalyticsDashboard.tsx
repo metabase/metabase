@@ -3,7 +3,7 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
 
-import { DashboardHeaderButton } from "./DashboardHeaderButton";
+import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const FullscreenAnalyticsDashboard = ({
   isFullscreen,

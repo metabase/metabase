@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { CountdownIcon } from "metabase/components/icons/CountdownIcon";
 import { isNotNull } from "metabase/lib/types";
 
-import { DashboardHeaderButton } from "../DashboardHeader/buttons/DashboardHeaderButton";
+import { DashboardHeaderButton } from "../DashboardHeader/DashboardHeaderButton";
 
 export const RefreshWidgetTarget = ({
   period,

@@ -10,7 +10,7 @@ import { getIsAddParameterPopoverOpen } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Popover } from "metabase/ui";
 
-import { DashboardHeaderButton } from "./DashboardHeaderButton";
+import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const AddFilterParameterButton = () => {
   const dispatch = useDispatch();

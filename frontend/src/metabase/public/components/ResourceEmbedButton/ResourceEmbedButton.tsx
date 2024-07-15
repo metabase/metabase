@@ -2,7 +2,7 @@ import type { MouseEvent, Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/buttons/DashboardHeaderButton";
+import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButton";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 

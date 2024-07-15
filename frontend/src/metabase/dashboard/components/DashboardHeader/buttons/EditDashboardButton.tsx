@@ -5,7 +5,7 @@ import { getDashboardComplete } from "metabase/dashboard/selectors";
 import type { DashboardRefreshPeriodControls } from "metabase/dashboard/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
-import { DashboardHeaderButton } from "./DashboardHeaderButton";
+import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const EditDashboardButton = ({
   onRefreshPeriodChange,

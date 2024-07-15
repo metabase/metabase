@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import type { EmbedThemeControls } from "metabase/dashboard/types";
 
-import { DashboardHeaderButton } from "./DashboardHeaderButton";
+import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const NightModeToggleButton = ({
   isNightMode,

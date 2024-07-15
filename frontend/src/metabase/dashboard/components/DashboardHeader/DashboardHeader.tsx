@@ -37,13 +37,12 @@ import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import { Flex, Loader } from "metabase/ui";
+import { Center, Divider, Flex, Loader } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import { SIDEBAR_NAME } from "../../constants";
-import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
+import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu";
 
-import { DashboardHeaderActionDivider } from "./DashboardHeader.styled";
 import { DashboardHeaderComponent } from "./DashboardHeaderView";
 import {
   AddActionElementButton,
@@ -195,7 +194,9 @@ export const DashboardHeaderInner = ({
 
       if (canEdit && hasModelActionsEnabled) {
         buttons.push(
-          <DashboardHeaderActionDivider />,
+          <Center key="dashboard-divider">
+            <Divider h="1.25rem" orientation="vertical" />
+          </Center>,
           <AddActionElementButton key="add-action-element" />,
         );
       }
@@ -251,7 +252,9 @@ export const DashboardHeaderInner = ({
       buttons.push(
         ...[
           buttons.length > 0 && (
-            <DashboardHeaderActionDivider key="dashboard-button-divider" />
+            <Center key="dashboard-divider">
+              <Divider h="1.25rem" orientation="vertical" />
+            </Center>
           ),
           !dashboard.archived && (
             <DashboardBookmark key="dashboard-bookmark-button" />

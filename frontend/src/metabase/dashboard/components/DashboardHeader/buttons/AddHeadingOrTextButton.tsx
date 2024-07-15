@@ -4,10 +4,11 @@ import {
   addHeadingDashCardToDashboard,
   addMarkdownDashCardToDashboard,
 } from "metabase/dashboard/actions";
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/buttons/DashboardHeaderButton";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Group, Icon, Menu, Text } from "metabase/ui";
+
+import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const AddHeadingOrTextButton = () => {
   const dispatch = useDispatch();

@@ -89,6 +89,11 @@
   background-color: var(--mb-color-bg-medium);
 }
 
+.bgBrand,
+.bgBrandHover:hover {
+  background-color: var(--mb-color-brand);
+}
+
 /* white  - move to bottom for specificity since its often used on hovers, etc */
 .textWhite,
 .textWhiteHover:hover {
