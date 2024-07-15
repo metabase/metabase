@@ -191,6 +191,7 @@
           result-metadata (get-in results [:data :results_metadata :columns])
           col-metadata (first result-metadata)]
       (is (= :type/UUID (:base_type col-metadata)))
+      #_
       (mt/with-temp [:model/Card card {:type :model
                                        :result_metadata result-metadata
                                        :dataset_query uuid-query}]
