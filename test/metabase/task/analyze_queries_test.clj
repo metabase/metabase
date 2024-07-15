@@ -9,6 +9,7 @@
    [metabase.task.analyze-queries :as task.analyze-queries]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
 
 (deftest analyzer-loop-test
@@ -37,6 +38,7 @@
 
         ;; emulate "cards created before QueryField existed"
         (t2/delete! :model/QueryField :card_id [:in card-ids])
+        (queue/clear! @#'query-analysis/queue)
 
         ;; `(first (vals %))` is necessary since h2 generates `:count(id)` as a name for the column
         (let [get-count #(t2/select-one-fn (comp first vals) [:model/QueryField [[:count :id]]] :card_id %)]
