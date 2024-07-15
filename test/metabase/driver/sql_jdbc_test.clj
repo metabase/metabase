@@ -237,6 +237,12 @@
             [] [:ends-with (:field_ref col-metadata) "q"]
             [] [:contains (:field_ref col-metadata) "q"]
 
-            ;; nil handling
+            ;; empty/null handling
+            [] [:is-empty (:field_ref col-metadata)]
+            [[uuid]] [:not-empty (:field_ref col-metadata)]
+            [] [:is-null (:field_ref col-metadata)]
+            [[uuid]] [:not-null (:field_ref col-metadata)]
+
+            ;; nil value handling
             [[uuid]] [:!= (:field_ref col-metadata) nil]
             [] [:= (:field_ref col-metadata) nil]))))))
