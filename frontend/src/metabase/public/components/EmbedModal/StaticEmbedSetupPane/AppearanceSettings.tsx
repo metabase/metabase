@@ -169,7 +169,7 @@ export const AppearanceSettings = ({
                 labelPosition="left"
                 size="sm"
                 variant="stretch"
-                checked={displayOptions.downloads ?? true}
+                checked={displayOptions.downloads}
                 onChange={e =>
                   onChangeDisplayOptions({
                     ...displayOptions,
