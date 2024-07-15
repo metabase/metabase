@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { addSectionToDashboard } from "metabase/dashboard/actions";
-import { SectionMenuItem } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { SectionLayoutPreview } from "metabase/dashboard/components/DashboardHeader/SectionLayoutPreview";
 import { layoutOptions, type SectionLayout } from "metabase/dashboard/sections";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
@@ -41,7 +40,7 @@ export const AddSectionButton = () => {
       <Menu.Dropdown miw="100px">
         <Flex direction="column" align="center" gap="md" p="12px">
           {layoutOptions.map(layout => (
-            <SectionMenuItem
+            <Menu.Item
               className={CS.bgBrandHover}
               key={layout.id}
               bg={darken(color("bg-medium"), 0.1)}
@@ -50,7 +49,7 @@ export const AddSectionButton = () => {
               p="14px"
             >
               <SectionLayoutPreview layout={layout} />
-            </SectionMenuItem>
+            </Menu.Item>
           ))}
         </Flex>
       </Menu.Dropdown>
