@@ -607,6 +607,216 @@ describeEE("scenarios > filters > sql filters > values source", () => {
   });
 });
 
+describe("scenarios > filters > sql filters > values source > number parameter", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+    cy.intercept("PUT", "/api/card/*").as("updateQuestion");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("POST", "/api/dataset/parameter/values").as("parameterValues");
+    cy.intercept("GET", "/api/card/*/params/*/values").as(
+      "cardParameterValues",
+    );
+  });
+
+  describe("static list source (dropdown)", () => {
+    it("should be able to use a static list source in the query builder", () => {
+      openNativeEditor();
+      SQLFilter.enterParameterizedQuery("SELECT {{ x }}");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Number");
+
+      setDropdownFilterType();
+      setFilterListSource({
+        values: [["10", "Ten"], ["20", "Twenty"], "30"],
+      });
+      saveQuestion("SQL filter");
+
+      FieldFilter.openEntryForm();
+      checkFilterValueNotInList("10");
+      FieldFilter.selectFilterValueFromList("Twenty");
+      cy.findByLabelText("X").should("contain.text", "Twenty");
+      SQLFilter.runQuery("cardQuery");
+    });
+
+    it("should be able to use a static list source when embedded", () => {
+      cy.createNativeQuestion(
+        getNumberTargetQuestion({
+          parameter: {
+            values_query_type: "list",
+            values_source_type: "static-list",
+            values_source_config: {
+              values: [["10", "Ten"], ["20", "Twenty"], "30"],
+            },
+          },
+        }),
+      ).then(({ body: { id: targetQuestionId } }) => {
+        visitEmbeddedPage(getQuestionResource(targetQuestionId));
+      });
+
+      FieldFilter.openEntryForm();
+      checkFilterValueNotInList("10");
+      FieldFilter.selectFilterValueFromList("Twenty");
+      cy.findByLabelText("Tag").should("contain.text", "Twenty");
+    });
+
+    it("should be able to use a static list source when public", () => {
+      cy.createNativeQuestion(
+        getNumberTargetQuestion({
+          parameter: {
+            values_query_type: "list",
+            values_source_type: "static-list",
+            values_source_config: {
+              values: [["10", "Ten"], ["20", "Twenty"], "30"],
+            },
+          },
+        }),
+      ).then(({ body: { id: targetQuestionId } }) => {
+        visitPublicQuestion(targetQuestionId);
+      });
+
+      FieldFilter.openEntryForm();
+      checkFilterValueNotInList("10");
+      FieldFilter.selectFilterValueFromList("Twenty");
+      cy.findByLabelText("Tag").should("contain.text", "Twenty");
+    });
+  });
+
+  describe("static list source with custom labels (dropdown)", () => {
+    it("should be able to use a static list source in the query builder", () => {
+      openNativeEditor();
+      SQLFilter.enterParameterizedQuery("SELECT * FROM {{ tag }}");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Number");
+      setSearchBoxFilterType();
+      setFilterListSource({
+        values: [["10", "Ten"], ["20", "Twenty"], "30"],
+      });
+      saveQuestion("SQL filter");
+
+      FieldFilter.openEntryForm();
+      multiAutocompleteInput().type("Tw");
+      checkFilterValueNotInList("10");
+      checkFilterValueNotInList("20");
+      popover().last().findByText("Twenty").click();
+      popover().button("Add filter").click();
+
+      cy.findByLabelText("Tag").should("contain.text", "Twenty");
+      SQLFilter.runQuery("cardQuery");
+    });
+
+    it("should be able to use a static list source when embedded", () => {
+      cy.createNativeQuestion(
+        getNumberTargetQuestion({
+          parameter: {
+            values_query_type: "search",
+            values_source_type: "static-list",
+            values_source_config: {
+              values: [["10", "Ten"], ["20", "Twenty"], "30"],
+            },
+          },
+        }),
+      ).then(({ body: { id: targetQuestionId } }) => {
+        visitEmbeddedPage(getQuestionResource(targetQuestionId));
+      });
+
+      FieldFilter.openEntryForm();
+      multiAutocompleteInput().type("Tw");
+      checkFilterValueNotInList("10");
+      checkFilterValueNotInList("20");
+
+      popover().last().findByText("Twenty").click();
+      popover().button("Add filter").click();
+
+      cy.findByLabelText("Tag").should("contain.text", "Twenty");
+      SQLFilter.runQuery("cardQuery");
+    });
+
+    it("should be able to use a static list source when public", () => {
+      cy.createNativeQuestion(
+        getNumberTargetQuestion({
+          parameter: {
+            values_query_type: "search",
+            values_source_type: "static-list",
+            values_source_config: {
+              values: [["10", "Ten"], ["20", "Twenty"], "30"],
+            },
+          },
+        }),
+      ).then(({ body: { id: targetQuestionId } }) => {
+        visitPublicQuestion(targetQuestionId);
+      });
+
+      FieldFilter.openEntryForm();
+      multiAutocompleteInput().type("Tw");
+      checkFilterValueNotInList("10");
+      checkFilterValueNotInList("20");
+
+      popover().last().findByText("Twenty").click();
+      popover().button("Add filter").click();
+
+      cy.findByLabelText("Tag").should("contain.text", "Twenty");
+    });
+  });
+
+  describe("static list source (search box)", () => {
+    it("should be able to use a static list source in the query builder", () => {
+      openNativeEditor();
+      SQLFilter.enterParameterizedQuery("SELECT {{ tag }}");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Number");
+
+      setSearchBoxFilterType();
+      setFilterListSource({
+        values: [["10", "Ten"], ["20", "Twenty"], "30"],
+      });
+      saveQuestion("SQL filter");
+
+      FieldFilter.openEntryForm();
+
+      multiAutocompleteInput().type("Tw");
+      popover().last().findByText("Twenty").click();
+
+      multiAutocompleteValue(0)
+        .should("be.visible")
+        .should("contain", "Twenty");
+      popover().button("Add filter").click();
+
+      cy.findByLabelText("Tag").should("contain.text", "Twenty");
+    });
+
+    it("should be able to use a static list source when embedded", () => {
+      cy.createNativeQuestion(
+        getNumberTargetQuestion({
+          parameter: {
+            values_query_type: "search",
+            values_source_type: "static-list",
+            values_source_config: {
+              values: [["10", "Ten"], ["20", "Twenty"], "30"],
+            },
+          },
+        }),
+      ).then(({ body: { id: targetQuestionId } }) => {
+        visitEmbeddedPage(getQuestionResource(targetQuestionId));
+      });
+
+      FieldFilter.openEntryForm();
+
+      multiAutocompleteInput().type("Twenty");
+      popover().last().findByText("Twenty").click();
+      multiAutocompleteValue(0)
+        .should("be.visible")
+        .should("contain", "Twenty");
+      popover().button("Add filter").click();
+
+      cy.findByLabelText("Tag").should("contain.text", "Twenty");
+    });
+  });
+});
+
 const getQuestionResource = questionId => ({
   resource: { question: questionId },
   params: {},
@@ -677,6 +887,21 @@ const getNativeTextTargetQuestion = questionId => {
         card_id: questionId,
         value_field: ["field", "EAN", { "base-type": "type/Text" }],
       },
+    },
+  });
+};
+
+const getNumberTargetQuestion = ({ tag, parameter }) => {
+  return getTargetQuestion({
+    query: "SELECT {{tag}}",
+    tag: {
+      type: "number",
+      ...tag,
+    },
+    parameter: {
+      type: "number/=",
+      target: ["variable", ["template-tag", "tag"]],
+      ...parameter,
     },
   });
 };
@@ -755,13 +980,17 @@ const updateQuestion = () => {
 };
 
 const checkFilterValueInList = value => {
-  popover().within(() => {
-    cy.findByText(value).should("exist");
-  });
+  popover()
+    .last()
+    .within(() => {
+      cy.findByText(value).should("exist");
+    });
 };
 
 const checkFilterValueNotInList = value => {
-  popover().within(() => {
-    cy.findByText(value).should("not.exist");
-  });
+  popover()
+    .last()
+    .within(() => {
+      cy.findByText(value).should("not.exist");
+    });
 };
