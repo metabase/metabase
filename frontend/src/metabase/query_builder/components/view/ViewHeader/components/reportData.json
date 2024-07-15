@@ -1,0 +1,23 @@
+{
+  "heading": "Sales Trends and Forecasts Report 3",
+  "sections": [
+    {
+      "subheading": "Total Sales by Month, 2021-2024",
+      "paragraphs": [
+        "This card shows the total sales for each month from 2021-2024, summarized from the Invoice and InvoiceLine tables."
+      ],
+      "insightsSummary": [
+        "Strong growth in early 2022 with sales peaking at $52.62 in January 2022",
+        "Sales drop in late 2023, down to $23.76 in November 2023",
+        "Average monthly sales of around $38 excluding outliers",
+        "Monthly sales generally stable year to year excluding some seasonal peaks and valleys"
+      ],
+      "actionableInsights": [
+        "Prepare for higher sales volume in early 2022 based on growth trends",
+        "Investigate reasons for sales drop in late 2023 to see if preventative action can be taken",
+        "Use stable average monthly sales for capacity planning and targets"
+      ],
+      "forecastSummary": "The Prophet forecast shows monthly sales remaining relatively stable year over year around $38, with some seasonal fluctuations. It predicts a peak in early 2023 and a drop in late 2023 aligning with historical trends. The XGBoost and LSTM forecasts show steadier sales year over year around $38 as well."
+    }
+  ]
+}

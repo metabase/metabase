@@ -41,11 +41,11 @@ export const getAdminPaths: () => AdminPath[] = () => {
       path: "/admin/permissions",
       key: "permissions",
     },
-    {
-      name: t`Performance`,
-      path: "/admin/performance",
-      key: "performance",
-    },
+    // {
+    //   name: t`Performance`,
+    //   path: "/admin/performance",
+    //   key: "performance",
+    // },
   ];
 
   const isModelPersistenceEnabled = Settings.get("persisted-models-enabled");
@@ -58,11 +58,11 @@ export const getAdminPaths: () => AdminPath[] = () => {
     });
   }
 
-  items.push(...PLUGIN_ADMIN_NAV_ITEMS, {
-    name: t`Troubleshooting`,
-    path: "/admin/troubleshooting",
-    key: "troubleshooting",
-  });
+  // items.push(...PLUGIN_ADMIN_NAV_ITEMS, {
+  //   name: t`Troubleshooting`,
+  //   path: "/admin/troubleshooting",
+  //   key: "troubleshooting",
+  // });
 
   return items;
 };

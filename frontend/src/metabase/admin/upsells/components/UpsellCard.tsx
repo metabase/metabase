@@ -39,7 +39,7 @@ export const _UpsellCard = ({
 
   return (
     <UpsellCardComponent data-testid="upsell-card">
-      {illustrationSrc && <Image src={illustrationSrc} w="100%" />}
+      {/* {illustrationSrc && <Image src={illustrationSrc} w="100%" />}
       <Flex gap="sm" justify="center" p="1rem" pb="0.75rem">
         <UpsellGem />
         <Text fw="bold" size="0.875rem">
@@ -54,7 +54,7 @@ export const _UpsellCard = ({
         href={url}
       >
         {buttonText}
-      </UpsellCTALink>
+      </UpsellCTALink> */}
     </UpsellCardComponent>
   );
 };

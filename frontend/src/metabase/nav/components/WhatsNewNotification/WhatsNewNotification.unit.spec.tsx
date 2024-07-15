@@ -60,7 +60,7 @@ const setup = ({
       version: versionMock,
       "version-info": createMockVersionInfo({ latest, older }),
       "last-acknowledged-version": lastAcknowledged,
-      "application-name": isWhiteLabeling ? "My App" : "Metabase",
+      "application-name": isWhiteLabeling ? "My App" : "DataLM.ai",
       "token-features": createMockTokenFeatures({
         whitelabel: isWhiteLabeling,
       }),

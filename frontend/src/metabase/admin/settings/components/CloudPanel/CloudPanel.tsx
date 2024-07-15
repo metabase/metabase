@@ -89,14 +89,14 @@ export const CloudPanel = ({
   return (
     <LoadingAndErrorWrapper loading={isLoading} error={error}>
       <Box maw="36rem">
-        <Text fw="bold" size="1.5rem" mb="2rem">{t`Migrate to Cloud`}</Text>
+        {/* <Text fw="bold" size="1.5rem" mb="2rem">{t`Migrate to Cloud`}</Text>
 
         {getStartedVisibleStates.has(migrationState) && (
           <MigrationStart
             startNewMigration={handleCreateMigration}
             isStarting={createCloudMigrationResult.isLoading}
           />
-        )}
+        )} */}
 
         <Box mt="2rem">
           {migration && isInProgressMigration(migration) && (

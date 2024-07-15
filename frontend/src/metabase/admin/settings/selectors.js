@@ -271,12 +271,12 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
     ],
   },
-  slack: {
-    name: "Slack",
-    order: 50,
-    component: SlackSettings,
-    settings: [],
-  },
+  // slack: {
+  //   name: "Slack",
+  //   order: 50,
+  //   component: SlackSettings,
+  //   settings: [],
+  // },
   authentication: {
     name: t`Authentication`,
     order: 60,
@@ -402,147 +402,147 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
     ],
   },
-  "embedding-in-other-applications": {
-    key: "enable-embedding",
-    name: t`Embedding`,
-    order: 100,
-    settings: [
-      {
-        key: "enable-embedding",
-        display_name: t`Embedding`,
-        description: null,
-        widget: EmbeddingSwitchWidget,
-      },
-      {
-        key: "-static-embedding",
-        widget: StaticEmbeddingOptionCard,
-      },
-      {
-        key: "-interactive-embedding",
-        widget: InteractiveEmbeddingOptionCard,
-      },
-    ],
-  },
-  "embedding-in-other-applications/standalone": {
-    settings: [
-      {
-        key: "-breadcrumb",
-        widget: () => {
-          return (
-            <Breadcrumbs
-              size="large"
-              crumbs={[
-                [
-                  t`Embedding`,
-                  "/admin/settings/embedding-in-other-applications",
-                ],
-                [t`Static embedding`],
-              ]}
-            />
-          );
-        },
-      },
-      {
-        key: "embedding-secret-key",
-        display_name: t`Embedding secret key`,
-        description: t`Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.`,
-        widget: SecretKeyWidget,
-        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-        props: {
-          confirmation: {
-            header: t`Regenerate embedding key?`,
-            dialog: t`This will cause existing embeds to stop working until they are updated with the new key.`,
-          },
-        },
-      },
+  // "embedding-in-other-applications": {
+  //   key: "enable-embedding",
+  //   name: t`Embedding`,
+  //   order: 100,
+  //   settings: [
+  //     {
+  //       key: "enable-embedding",
+  //       display_name: t`Embedding`,
+  //       description: null,
+  //       widget: EmbeddingSwitchWidget,
+  //     },
+  //     {
+  //       key: "-static-embedding",
+  //       widget: StaticEmbeddingOptionCard,
+  //     },
+  //     {
+  //       key: "-interactive-embedding",
+  //       widget: InteractiveEmbeddingOptionCard,
+  //     },
+  //   ],
+  // },
+  // "embedding-in-other-applications/standalone": {
+  //   settings: [
+  //     {
+  //       key: "-breadcrumb",
+  //       widget: () => {
+  //         return (
+  //           <Breadcrumbs
+  //             size="large"
+  //             crumbs={[
+  //               [
+  //                 t`Embedding`,
+  //                 "/admin/settings/embedding-in-other-applications",
+  //               ],
+  //               [t`Static embedding`],
+  //             ]}
+  //           />
+  //         );
+  //       },
+  //     },
+  //     {
+  //       key: "embedding-secret-key",
+  //       display_name: t`Embedding secret key`,
+  //       description: t`Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.`,
+  //       widget: SecretKeyWidget,
+  //       getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
+  //       props: {
+  //         confirmation: {
+  //           header: t`Regenerate embedding key?`,
+  //           dialog: t`This will cause existing embeds to stop working until they are updated with the new key.`,
+  //         },
+  //       },
+  //     },
 
-      {
-        key: "-embedded-resources",
-        display_name: t`Manage embeds`,
+  //     {
+  //       key: "-embedded-resources",
+  //       display_name: t`Manage embeds`,
 
-        widget: EmbeddedResources,
-        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-      },
-      {
-        key: "-redirect-widget",
-        widget: () => (
-          <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
-        ),
-        getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
-      },
-    ],
-  },
-  "embedding-in-other-applications/full-app": {
-    settings: [
-      {
-        key: "-breadcrumbs",
-        widget: () => {
-          return (
-            <Breadcrumbs
-              size="large"
-              crumbs={[
-                [
-                  t`Embedding`,
-                  "/admin/settings/embedding-in-other-applications",
-                ],
-                [t`Interactive embedding`],
-              ]}
-            />
-          );
-        },
-      },
-      {
-        key: "-redirect-widget",
-        widget: () => (
-          <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
-        ),
-        getHidden: (_, derivedSettings) =>
-          PLUGIN_EMBEDDING.isEnabled() && derivedSettings["enable-embedding"],
-      },
-    ],
-  },
-  license: {
-    name: t`License`,
-    order: 110,
-    component: SettingsLicense,
-    settings: [],
-  },
-  metabot: {
-    name: t`Metabot`,
-    order: 130,
-    getHidden: settings => !settings["is-metabot-enabled"],
-    settings: [
-      {
-        key: "openai-api-key",
-        display_name: t`OpenAI API Key`,
-        description: null,
-        type: "string",
-        getHidden: (_, settings) => !settings["is-metabot-enabled"],
-      },
-      {
-        key: "openai-organization",
-        display_name: t`OpenAI Organization ID`,
-        description: null,
-        type: "string",
-        getHidden: (_, settings) => !settings["is-metabot-enabled"],
-      },
-      {
-        key: "openai-model",
-        display_name: t`OpenAI Model`,
-        description: null,
-        type: "select",
-        getProps: (_, settings) => {
-          const models = settings["openai-available-models"] ?? [];
+  //       widget: EmbeddedResources,
+  //       getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
+  //     },
+  //     {
+  //       key: "-redirect-widget",
+  //       widget: () => (
+  //         <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
+  //       ),
+  //       getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
+  //     },
+  //   ],
+  // },
+  // "embedding-in-other-applications/full-app": {
+  //   settings: [
+  //     {
+  //       key: "-breadcrumbs",
+  //       widget: () => {
+  //         return (
+  //           <Breadcrumbs
+  //             size="large"
+  //             crumbs={[
+  //               [
+  //                 t`Embedding`,
+  //                 "/admin/settings/embedding-in-other-applications",
+  //               ],
+  //               [t`Interactive embedding`],
+  //             ]}
+  //           />
+  //         );
+  //       },
+  //     },
+  //     {
+  //       key: "-redirect-widget",
+  //       widget: () => (
+  //         <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
+  //       ),
+  //       getHidden: (_, derivedSettings) =>
+  //         PLUGIN_EMBEDDING.isEnabled() && derivedSettings["enable-embedding"],
+  //     },
+  //   ],
+  // },
+  // license: {
+  //   name: t`License`,
+  //   order: 110,
+  //   component: SettingsLicense,
+  //   settings: [],
+  // },
+  // metabot: {
+  //   name: t`Metabot`,
+  //   order: 130,
+  //   getHidden: settings => !settings["is-metabot-enabled"],
+  //   settings: [
+  //     {
+  //       key: "openai-api-key",
+  //       display_name: t`OpenAI API Key`,
+  //       description: null,
+  //       type: "string",
+  //       getHidden: (_, settings) => !settings["is-metabot-enabled"],
+  //     },
+  //     {
+  //       key: "openai-organization",
+  //       display_name: t`OpenAI Organization ID`,
+  //       description: null,
+  //       type: "string",
+  //       getHidden: (_, settings) => !settings["is-metabot-enabled"],
+  //     },
+  //     {
+  //       key: "openai-model",
+  //       display_name: t`OpenAI Model`,
+  //       description: null,
+  //       type: "select",
+  //       getProps: (_, settings) => {
+  //         const models = settings["openai-available-models"] ?? [];
 
-          return {
-            options: models.map(model => ({ name: model.id, value: model.id })),
-            disabled: !models.length,
-          };
-        },
-        getHidden: (_, settings) => !settings["is-metabot-enabled"],
-      },
-    ],
-  },
+  //         return {
+  //           options: models.map(model => ({ name: model.id, value: model.id })),
+  //           disabled: !models.length,
+  //         };
+  //       },
+  //       getHidden: (_, settings) => !settings["is-metabot-enabled"],
+  //     },
+  //   ],
+  // },
   llm: {
     name: t`AI Features`,
     getHidden: () => !PLUGIN_LLM_AUTODESCRIPTION.isEnabled(),
@@ -562,13 +562,13 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
     ],
   },
-  cloud: {
-    name: t`Cloud`,
-    getHidden: settings => settings["token-features"]?.hosting === true,
-    order: 132,
-    component: CloudPanel,
-    settings: [],
-  },
+  // cloud: {
+  //   name: t`Cloud`,
+  //   getHidden: settings => settings["token-features"]?.hosting === true,
+  //   order: 132,
+  //   component: CloudPanel,
+  //   settings: [],
+  // },
 };
 
 export const getSectionsWithPlugins = _.once(() =>
