@@ -1,4 +1,7 @@
 import 'dotenv/config';
+import fs from 'fs';
+
+import chalk from 'chalk';
 import fetch from 'node-fetch';
 
 const baseUrl = 'https://api.poeditor.com/v2'
