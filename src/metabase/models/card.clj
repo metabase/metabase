@@ -30,14 +30,13 @@
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse]
    [metabase.models.query :as query]
-   [metabase.models.query-field :as query-field]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
-   [metabase.native-query-analyzer :as query-analyzer]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.query-analysis :as query-analysis]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
@@ -534,7 +533,7 @@
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
-    (query-field/update-query-fields-for-card! card)))
+    (query-analysis/update-query-analysis-for-card! card)))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
@@ -562,7 +561,7 @@
   [card]
   (u/prog1 card
     (when (contains? (t2/changes card) :dataset_query)
-      (query-field/update-query-fields-for-card! card))))
+      (query-analysis/update-query-analysis-for-card! card))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
@@ -792,61 +791,6 @@
   (let [card (cond-> card
                (map? (:dataset_query card)) (update :dataset_query dissoc :lib/metadata))]
     (next-method card json-generator)))
-
-(defn- replaced-inner-query-for-native-card
-  [query {:keys [fields tables] :as _replacement-ids}]
-  (let [keyvals-set         #(set/union (set (keys %))
-                                        (set (vals %)))
-        id->field           (if (empty? fields)
-                              {}
-                              (m/index-by :id
-                                          (t2/query {:select [[:f.id :id]
-                                                              [:f.name :column]
-                                                              [:t.name :table]
-                                                              [:t.schema :schema]]
-                                                     :from   [[:metabase_field :f]]
-                                                     :join   [[:metabase_table :t] [:= :f.table_id :t.id]]
-                                                     :where  [:in :f.id (keyvals-set fields)]})))
-        id->table           (if (empty? tables)
-                              {}
-                              (m/index-by :id
-                                          (t2/query {:select [[:t.id :id]
-                                                              [:t.name :table]
-                                                              [:t.schema :schema]]
-                                                     :from   [[:metabase_table :t]]
-                                                     :where  [:in :t.id (keyvals-set tables)]})))
-        remove-id           #(select-keys % [:column :table :schema])
-        get-or-throw-from   (fn [m] (fn [k] (if (contains? m k)
-                                              (remove-id (get m k))
-                                              (throw (ex-info "ID not found" {:id k :available m})))))
-        ids->replacements   (fn [id->replacement-id id->row row->identifier]
-                              (-> id->replacement-id
-                                  (u/update-keys-vals (get-or-throw-from id->row))
-                                  (update-vals row->identifier)))
-        ;; Note: we are naively providing unqualified new identifier names as the replacements.
-        ;; this will break if previously unambiguous identifiers become ambiguous due to the replacements
-        column-replacements (ids->replacements fields id->field :column)
-        table-replacements  (ids->replacements tables id->table :table)]
-    (query-analyzer/replace-names query {:columns column-replacements
-                                         :tables  table-replacements})))
-
-
-(defn replace-fields-and-tables!
-  "Given a card and a map of the form
-
-  {:fields {1 2, 3 4}
-   :tables {100 101}}
-
-  Update the card so that its references to the Field with ID 1 is replaced by Field 2, etc."
-  [{q :dataset_query :as card} replacements]
-  (if (= :native (:type q))
-    (let [new-query (assoc-in q [:native :query]
-                              (replaced-inner-query-for-native-card q replacements))]
-      (update-card! {:card-before-update card
-                     :card-updates       {:dataset_query new-query}
-                     :actor              api/*current-user*}))
-    (throw (ex-info "We don't (yet) support replacing field and table refs in cards with MBQL queries"
-                    {:card card :replacements replacements}))))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
