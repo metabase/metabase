@@ -33,6 +33,13 @@ import {
   setFilter,
   setDropdownFilterType,
   sidebar,
+  describeEE,
+  setTokenFeatures,
+  getPinnedSection,
+  summarize,
+  rightSidebar,
+  assertQueryBuilderRowCount,
+  navigationSidebar,
 } from "e2e/support/helpers";
 import type { CardId, FieldReference } from "metabase-types/api";
 
@@ -670,6 +677,26 @@ describe("issue 39749", () => {
     cy.findByLabelText("Description").should("have.text", "A");
     tableHeaderClick("Sum of Total");
     cy.findByLabelText("Description").should("have.text", "B");
+  });
+});
+
+describeEE("issue 43088", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should be able to create ad-hoc questions based on instance analytics models (metabase#43088)", () => {
+    cy.visit("/");
+    navigationSidebar().findByText("Metabase analytics").click();
+    getPinnedSection().findByText("People").scrollIntoView().click();
+    cy.wait("@dataset");
+    summarize();
+    rightSidebar().button("Done").click();
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(1);
   });
 });
 
