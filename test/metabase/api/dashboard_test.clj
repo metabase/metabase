@@ -907,6 +907,7 @@
             (is (= "should be either fixed or full, received: 1200"
                    (-> (mt/user-http-request :rasta :put 400 (str "dashboard/" (u/the-id dashboard)) {:width 1200})
                        :specific-errors
+                       :dash-updates
                        :width
                        first)))))))))
 

@@ -841,7 +841,7 @@
    [:embedding_params        {:optional true} [:maybe ms/EmbeddingParams]]
    [:parameters              {:optional true} [:maybe [:sequential ms/Parameter]]]
    [:position                {:optional true} [:maybe ms/PositiveInt]]
-   [:width                   {:optional true} [:maybe [:enum "fixed" "full"]]]
+   [:width                   {:optional true} [:enum "fixed" "full"]]
    [:archived                {:optional true} [:maybe :boolean]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position     {:optional true} [:maybe ms/PositiveInt]]
