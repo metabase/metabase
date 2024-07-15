@@ -2,7 +2,7 @@ import { type PropsWithChildren, useMemo } from "react";
 
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
+import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import type { CardId } from "metabase-types/api";
 
 import {
@@ -25,7 +25,7 @@ type InteractiveQuestionProps = PropsWithChildren<{
   withResetButton?: boolean;
   withTitle?: boolean;
   customTitle?: React.ReactNode;
-  plugins?: SdkClickActionPluginsConfig;
+  plugins?: SdkPluginsConfig;
   height?: string | number;
 }>;
 

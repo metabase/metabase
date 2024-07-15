@@ -1,3 +1,4 @@
+import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   runQuestionQuery,
@@ -13,12 +14,10 @@ import { getSetting } from "metabase/selectors/settings";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
-import { useInteractiveQuestionData } from "../hooks";
-
 type NotebookProps = { onApply?: () => void };
 
 export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
-  const { question } = useInteractiveQuestionData();
+  const { question } = useInteractiveQuestionContext();
 
   const isDirty = useSelector(getIsDirty);
   const isRunnable = useSelector(getIsRunnable);

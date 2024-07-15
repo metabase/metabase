@@ -6,6 +6,7 @@ import { t } from "ttag";
 import EditBar from "metabase/components/EditBar";
 import CS from "metabase/css/core/index.css";
 import { updateDashboard } from "metabase/dashboard/actions";
+import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import {
   getIsHeaderVisible,
   getIsSidebarOpen,
@@ -28,7 +29,6 @@ import {
   HeaderFixedWidthContainer,
   HeaderContainer,
 } from "../../components/DashboardHeaderView.styled";
-import { DashboardTabs } from "../../components/DashboardTabs/DashboardTabs";
 
 interface DashboardHeaderViewProps {
   editingTitle?: string;

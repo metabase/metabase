@@ -203,32 +203,34 @@
              ;; passed to the QP
              make-run    process-query-for-card-default-run-fn}}]
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
-  (let [dash-viz (when (and (not= context :question)
-                            dashcard-id)
-                   (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
-        card     (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :collection_id
-                                                 :type :result_metadata :visualization_settings :display
-                                                 :cache_invalidated_at]
-                                                :id card-id))
+  (let [card       (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :collection_id
+                                                   :type :result_metadata :visualization_settings :display
+                                                   :cache_invalidated_at]
+                                                  :id card-id))
+        dash-viz   (when (and (not= context :question)
+                              dashcard-id)
+                     (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
+        card-viz   (:visualization_settings card)
+        merged-viz (m/deep-merge card-viz dash-viz)
         ;; We need to check this here because dashcards don't get selected until this point
-        qp       (if (= :pivot (:display card))
-                   qp.pivot/run-pivot-query
-                   (or qp process-query-for-card-default-qp))
-        runner   (make-run qp export-format)
-        query    (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
-                     (update :viz-settings (fn [viz] (merge viz dash-viz)))
-                     (update :middleware (fn [middleware]
-                                           (merge
-                                             {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
-                                             middleware))))
-        info     (cond-> {:executed-by            api/*current-user-id*
-                          :context                context
-                          :card-id                card-id
-                          :card-name              (:name card)
-                          :dashboard-id           dashboard-id
-                          :visualization-settings (:visualization_settings card)}
-                   (and (= (:type card) :model) (seq (:result_metadata card)))
-                   (assoc :metadata/model-metadata (:result_metadata card)))]
+        qp         (if (= :pivot (:display card))
+                     qp.pivot/run-pivot-query
+                     (or qp process-query-for-card-default-qp))
+        runner     (make-run qp export-format)
+        query      (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
+                       (assoc :viz-settings merged-viz)
+                       (update :middleware (fn [middleware]
+                                             (merge
+                                              {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
+                                              middleware))))
+        info       (cond-> {:executed-by            api/*current-user-id*
+                            :context                context
+                            :card-id                card-id
+                            :card-name              (:name card)
+                            :dashboard-id           dashboard-id
+                            :visualization-settings merged-viz}
+                     (and (= (:type card) :model) (seq (:result_metadata card)))
+                     (assoc :metadata/model-metadata (:result_metadata card)))]
     (when (seq parameters)
       (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id

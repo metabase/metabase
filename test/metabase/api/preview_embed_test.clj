@@ -567,7 +567,7 @@
   (testing "embedding with parameter that has source is a static list"
     (with-embedding-enabled-and-new-secret-key
       (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
-        (t2/update! Dashboard (u/the-id dashboard) {:enable_embedding true
+        (t2/update! Dashboard (u/the-id dashboard) {:enable_embedding false ;; works without enabling embedding on the dashboard (#44962)
                                                     :embedding_params {"static_category"       "enabled"
                                                                        "static_category_label" "enabled"}})
         (let [signed-token (dash-token dashboard)

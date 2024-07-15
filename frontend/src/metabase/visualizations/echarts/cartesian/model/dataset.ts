@@ -25,6 +25,7 @@ import type {
   TimeSeriesXAxisModel,
   StackModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import { sumMetric } from "metabase/visualizations/lib/dataset";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import {
@@ -46,25 +47,6 @@ import { tryGetDate } from "../utils/timeseries";
 
 import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";
 import { getBarSeriesDataLabelKey, getColumnScaling } from "./util";
-
-/**
- * Sums two metric column values.
- *
- * @param left - A value to sum.
- * @param right - A value to sum.
- * @returns The sum of the two values unless both values are not numbers.
- */
-export const sumMetric = (left: RowValue, right: RowValue): number | null => {
-  if (typeof left === "number" && typeof right === "number") {
-    return left + right;
-  } else if (typeof left === "number") {
-    return left;
-  } else if (typeof right === "number") {
-    return right;
-  }
-
-  return null;
-};
 
 /**
  * Creates a unique series key for a dataset based on the provided column, card ID, and optional breakout value.

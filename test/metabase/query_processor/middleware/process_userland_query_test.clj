@@ -17,6 +17,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [methodical.core :as methodical]
+   #_
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -174,6 +175,8 @@
         (testing "No QueryExecution should get saved when a query is canceled"
           (is (not @saved-query-execution?)))))))
 
+;; temporarily disabled because it impacts query performance
+#_
 (deftest save-field-usage-test
   (testing "execute an userland query will capture field usages"
     (mt/with-model-cleanup [:model/FieldUsage]
