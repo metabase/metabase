@@ -66,7 +66,8 @@
                            :realtime-events realtime-events)]
 
       (testing "We processed all the events that were enqueued"
-        (is (= (count processed) (+ (count backfill-events) sent))))
+        (is (= (+ (count backfill-events) sent)
+               (count processed))))
 
       (if dedupe?
         (testing "Some items are deduplicated"

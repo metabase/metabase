@@ -17,7 +17,7 @@
   (t2/select-fn-set qf->map :model/QueryField
                     :card_id card-id))
 
-(defn- do-with-test-setup [f]
+(defn- do-with-test-setup! [f]
   (binding [query-analysis/*analyze-queries-in-test?* true]
     (let [table-id (mt/id :orders)
           tax-id   (mt/id :orders :tax)
@@ -34,11 +34,11 @@
           (finally
             (t2/delete! :model/QueryField :card_id card-id)))))))
 
-(defmacro ^:private with-test-setup
+(defmacro ^:private with-test-setup!
   "Creates a new card that queries one column that exists (TOTAL) and one that does not (NOT_TAX). Anaphorically
   provides `card-id`, `table-id`, `tax-id`, and `total-id`."
   [& body]
-  `(do-with-test-setup (fn [{:keys [~'table-id ~'tax-id ~'total-id ~'card-id]}]
+  `(do-with-test-setup! (fn [{:keys [~'table-id ~'tax-id ~'total-id ~'card-id]}]
                          ~@body)))
 
 (defn- trigger-parse!
@@ -54,12 +54,12 @@
 ;;;;
 
 (deftest query-fields-created-by-queries-test
-  (with-test-setup
-    (let [total-qf {:card_id          card-id
-                    :field_id         total-id
+  (with-test-setup!
+    (let [total-qf {:card_id            card-id
+                    :field_id           total-id
                     :explicit_reference true}
-          tax-qf   {:card_id          card-id
-                    :field_id         tax-id
+          tax-qf   {:card_id            card-id
+                    :field_id           tax-id
                     :explicit_reference true}]
 
       (testing "A freshly created card has relevant corresponding QueryFields"
@@ -78,7 +78,7 @@
 
       (testing "Columns referenced via field filters are still found"
         (trigger-parse! card-id
-                        (mt/native-query {:query "SELECT tax FROM orders WHERE {{adequate_total}}"
+                        (mt/native-query {:query         "SELECT tax FROM orders WHERE {{adequate_total}}"
                                           :template-tags {"adequate_total"
                                                           {:type         :dimension
                                                            :name         "adequate_total"
@@ -90,13 +90,13 @@
                (query-fields-for-card card-id)))))))
 
 (deftest bogus-queries-test
-  (with-test-setup
+  (with-test-setup!
     (testing "Updating a query with bogus columns does not create QueryFields"
       (trigger-parse! card-id "SELECT DOES, NOT_EXIST FROM orders")
       (is (empty? (t2/select :model/QueryField :card_id card-id))))))
 
 (deftest wildcard-test
-  (with-test-setup
+  (with-test-setup!
     (let [total-qf {:card_id          card-id
                     :field_id         total-id
                     :explicit_reference false}
@@ -111,7 +111,7 @@
           (is (set/subset? #{total-qf tax-qf} qfs)))))))
 
 (deftest table-wildcard-test
-  (with-test-setup
+  (with-test-setup!
     (let [total-qf {:card_id          card-id
                     :field_id         total-id
                     :explicit_reference true}
