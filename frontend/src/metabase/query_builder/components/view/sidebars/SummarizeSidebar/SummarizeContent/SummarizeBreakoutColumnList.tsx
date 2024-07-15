@@ -10,6 +10,7 @@ import { SectionTitle } from "../SummarizeSidebar.styled";
 
 type SummarizeBreakoutColumnListProps = {
   query: Lib.Query;
+  stageIndex: number;
   onAddBreakout: (column: Lib.ColumnMetadata) => void;
   onUpdateBreakout: (
     clause: Lib.BreakoutClause,
@@ -21,6 +22,7 @@ type SummarizeBreakoutColumnListProps = {
 
 export const SummarizeBreakoutColumnList = ({
   query,
+  stageIndex,
   onAddBreakout,
   onUpdateBreakout,
   onRemoveBreakout,
@@ -36,6 +38,7 @@ export const SummarizeBreakoutColumnList = ({
     <SectionTitle>{t`Group by`}</SectionTitle>
     <BreakoutColumnList
       query={query}
+      stageIndex={stageIndex}
       onAddBreakout={onAddBreakout}
       onUpdateBreakout={onUpdateBreakout}
       onRemoveBreakout={onRemoveBreakout}
