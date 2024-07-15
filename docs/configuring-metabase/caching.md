@@ -69,8 +69,6 @@ _* Denotes [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://
 
 ### Default caching policy
 
-![Database caching settings in the Admin settings under the Performance tab](./images/data-caching-settings.png)
-
 To set up a default caching policy for your Metabase: Hit Cmd/Ctrl + k to bring up the command palette and search for **Performance**. Or, click through **Gear** settings icon > **Admin settings** > **Performance** > **Database caching settings**.
 
 Click on the button next to **Default policy**, and select a [cache invalidation policy](#cache-invalidation-policies).
@@ -78,6 +76,8 @@ Click on the button next to **Default policy**, and select a [cache invalidation
 ### Database caching policy
 
 {% include plans-blockquote.html feature="Database caching" %}
+
+![Database caching settings in the Admin settings under the Performance tab](./images/data-caching-settings.png)
 
 Same as the default caching policy, though you can set a caching policy for specific databases.
 
