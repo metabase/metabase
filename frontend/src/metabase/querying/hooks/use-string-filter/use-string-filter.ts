@@ -41,7 +41,7 @@ export function useStringFilter({
   );
 
   const [values, setValues] = useState(() =>
-    getDefaultValues(operator, filterParts?.values ?? []),
+    getDefaultValues(operator, filterParts ? filterParts.values : []),
   );
 
   const [options, setOptions] = useState(

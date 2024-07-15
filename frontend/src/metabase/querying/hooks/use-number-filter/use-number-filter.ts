@@ -42,7 +42,7 @@ export function useNumberFilter({
   );
 
   const [values, setValues] = useState(() =>
-    getDefaultValues(operator, filterParts?.values ?? []),
+    getDefaultValues(operator, filterParts ? filterParts.values : []),
   );
 
   const { valueCount, hasMultipleValues } = getOptionByOperator(operator);

@@ -48,7 +48,7 @@ export function useCoordinateFilter({
     filterParts ? filterParts.operator : getDefaultOperator(availableOptions),
   );
   const [values, setValues] = useState(
-    getDefaultValues(operator, filterParts?.values ?? []),
+    getDefaultValues(operator, filterParts ? filterParts.values : []),
   );
   const [secondColumn, setSecondColumn] = useState(
     getDefaultSecondColumn(availableColumns, filterParts?.longitudeColumn),
