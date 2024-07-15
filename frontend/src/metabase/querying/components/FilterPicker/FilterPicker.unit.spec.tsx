@@ -33,6 +33,7 @@ import {
   findDateColumn,
   createQueryWithExcludeDateFilter,
   createQueryWithRelativeDateFilter,
+  createQueryWithFallbackFilter,
 } from "./test-utils";
 
 const productCategories = PRODUCT_CATEGORY_VALUES.values.flat() as string[];
@@ -139,6 +140,11 @@ const WIDGET_TEST_CASES: WidgetTestCase[] = [
     "time",
     createQueryWithTimeFilter(),
     { columnName: "Time", pickerId: "time-filter-picker" },
+  ],
+  [
+    "fallback",
+    createQueryWithFallbackFilter(),
+    { columnName: "Array", pickerId: "fallback-filter-picker" },
   ],
 ];
 
