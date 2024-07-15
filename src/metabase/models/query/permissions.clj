@@ -142,11 +142,11 @@
               table-ids           (filter integer? table-ids-or-native)
               native?             (.contains ^clojure.lang.PersistentVector table-ids-or-native ::native)]
           (merge
-           (native-query-perms query)
            (when (seq table-ids)
-             {:perms/create-queries (zipmap table-ids (repeat :query-builder))})
+             {:perms/create-queries (zipmap table-ids (repeat :query-builder))
+              :perms/data-access    (zipmap table-ids (repeat :unrestricted))})
            (when native?
-             {:perms/create-queries :query-builder-and-native})))))
+             (native-query-perms query))))))
     ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
     ;; that means no one will ever get to see it
     (catch Throwable e
@@ -168,7 +168,7 @@
             (format "Expected QP preprocessing to return legacy MBQL query, got: %s" (pr-str legacy-query)))
     (legacy-mbql-required-perms legacy-query perms-opts)))
 
-(defn required-perms
+(defn required-perms-for-query
   "Returns a map representing the permissions requried to run `query`. The map has the optional keys
   :paths (containing legacy permission paths), :perms/view-data, and :perms/create-queries."
   [query & {:as perms-opts}]
@@ -181,6 +181,25 @@
         :mbql/query (pmbql-required-perms query perms-opts)
         (throw (ex-info (tru "Invalid query type: {0}" query-type)
                         {:query query}))))))
+
+(defn check-table-level-perms
+  "TODO"
+  [perm-type table-id->perm gtap-table-perms db-id]
+  (if table-id->perm
+    (doseq [[table-id required-perm] table-id->perm]
+      (or
+       (data-perms/user-has-permission-for-table?
+        api/*current-user-id*
+        perm-type
+        required-perm
+        db-id
+        table-id)
+       (when-let [gtap-perm (get gtap-table-perms table-id)]
+         (data-perms/at-least-as-permissive? perm-type
+                                             gtap-perm
+                                             required-perm))
+       (throw (perms-exception {db-id {perm-type {table-id required-perm}}}))))
+    true))
 
 (defn check-data-perms
   "Checks whether the current user has sufficient data permissions to run `query`. Returns `true` if the user has data
@@ -196,28 +215,37 @@
       (let [paths-excluding-gtap-paths (set/difference paths (-> gtap-perms :paths))]
         (or (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* paths-excluding-gtap-paths)
             (throw (perms-exception paths)))))
+
     ;; Check native query access if required
     (when (= (:perms/create-queries required-perms) :query-builder-and-native)
       (or (= (:perms/create-queries gtap-perms) :query-builder-and-native)
           (= (data-perms/full-db-permission-for-user api/*current-user-id* :perms/create-queries db-id) :query-builder-and-native)
           (throw (perms-exception {db-id {:perms/create-queries :query-builder-and-native}}))))
+
+    ;; Check full view-data access to the DB if required
     (when (= (:perms/view-data required-perms) :unrestricted)
       (or (= (:perms/view-data gtap-perms) :unrestricted)
           (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data db-id))
           (throw (perms-exception {db-id {:perms/view-data :unrestricted}}))))
-    (when-let [table-id->perm (and (coll? (:perms/create-queries required-perms))
-                                   (:perms/create-queries required-perms))]
-      (doseq [[table-id _] table-id->perm]
-        (or
-         (contains? #{:query-builder :query-builder-and-native}
-                    (get-in gtap-perms [:perms/create-queries table-id]))
-         (data-perms/user-has-permission-for-table?
-          api/*current-user-id*
-          :perms/create-queries
-          :query-builder
-          db-id
-          table-id)
-         (throw (perms-exception {db-id {:perms/create-queries {table-id :query-builder}}})))))
+
+    ;; Check view-data permissions for individual tables if required
+    (when-let [table-level-view-data-perms (:perms/view-data required-perms)]
+      (and
+       (map? table-level-view-data-perms)
+       (check-table-level-perms :perms/view-data
+                                table-level-view-data-perms
+                                (:perms/view-data gtap-perms)
+                                db-id)))
+
+    ;; Check create-queries permissions for individual tables if required
+    (when-let [table-level-create-queries-perms (:perms/create-queries required-perms)]
+      (and
+       (map? table-level-create-queries-perms)
+       (check-table-level-perms :perms/create-queries
+                                table-level-create-queries-perms
+                                (:perms/create-queries gtap-perms)
+                                db-id)))
+
     true
     (catch clojure.lang.ExceptionInfo e
       (if throw-exceptions?
@@ -225,9 +253,9 @@
         false))))
 
 (mu/defn can-run-query?
-  "Return `true` if the current-user has sufficient permissions to run `query`, and `false` otherwise."
+  "Return `true` if the current user has sufficient permissions to run `query`, and `false` otherwise."
   [query]
-  (let [required-perms (required-perms query)]
+  (let [required-perms (required-perms-for-query query)]
     (check-data-perms query required-perms :throw-exceptions? false)))
 
 (defn can-query-table?
