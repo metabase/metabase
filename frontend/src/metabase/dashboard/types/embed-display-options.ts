@@ -6,8 +6,10 @@ export type EmbedTitledControls = {
 };
 
 export type EmbedHideDownloadButton = boolean | null;
+export type EmbedDownloadsEnabled = boolean | null;
 export type EmbedHideDownloadButtonControls = {
   hideDownloadButton: EmbedHideDownloadButton;
+  downloadsEnabled: EmbedDownloadsEnabled;
 };
 
 export type EmbedHideParameters = string | null;
