@@ -12,6 +12,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
@@ -1041,18 +1042,18 @@
    sort_column    [:maybe {:default :name} (into [:enum] (map keyword valid-sort-columns))]
    sort_direction [:maybe {:default :asc} (into [:enum] (map keyword valid-sort-directions))]}
   (premium-features/assert-has-feature :stale (tru "Stale"))
-  (let [before-date (if before_date
-                      (try (t/local-date "yyyy-MM-dd" before_date)
-                           (catch Exception _
-                             (throw (ex-info (str "invalid before_date: '"
-                                                  before_date
-                                                  "' expected format: 'yyyy-MM-dd'")
-                                             {:status 400}))))
-                      (t/minus (t/local-date) (t/months 6)))
-        collection (if (= id :root)
-                     (root-collection nil)
-                     (t2/select-one :model/Collection id))
-        _ (api/read-check collection)
+  (let [before-date    (if before_date
+                         (try (t/local-date "yyyy-MM-dd" before_date)
+                              (catch Exception _
+                                (throw (ex-info (str "invalid before_date: '"
+                                                     before_date
+                                                     "' expected format: 'yyyy-MM-dd'")
+                                                {:status 400}))))
+                         (t/minus (t/local-date) (t/months 6)))
+        collection     (if (= id :root)
+                         (root-collection nil)
+                         (t2/select-one :model/Collection id))
+        _              (api/read-check collection)
         collection-ids (->> (if is_recursive
                               (conj (effective-children-ids collection @api/*current-user-permissions-set*)
                                     id)
@@ -1061,14 +1062,18 @@
                             set)
         {:keys [total rows]}
         (find-stale-candidates {:collection-ids collection-ids
-                                :cutoff-date before-date
-                                :limit mw.offset-paging/*limit*
-                                :offset mw.offset-paging/*offset*
-                                :sort-column sort_column
-                                :sort-direction sort_direction})]
-    {:total total
-     :data (api/present-items present-model-items rows)
-     :limit mw.offset-paging/*limit*
+                                :cutoff-date    before-date
+                                :limit          mw.offset-paging/*limit*
+                                :offset         mw.offset-paging/*offset*
+                                :sort-column    sort_column
+                                :sort-direction sort_direction})
+
+        snowplow-payload {:total-stale-items-found total
+                          :cutoff-date             before-date}]
+    (snowplow/track-event! ::snowplow/collection-read-stale api/*current-user-id* snowplow-payload)
+    {:total  total
+     :data   (api/present-items present-model-items rows)
+     :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
 
 (api/defendpoint GET "/trash"

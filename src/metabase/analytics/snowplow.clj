@@ -45,7 +45,8 @@
    ::action        "1-0-0"
    ::embed_share   "1-0-0"
    ::llm_usage     "1-0-0"
-   ::serialization "1-0-0"})
+   ::serialization "1-0-0"
+   ::read_stale    "1-0-0"})
 
 (def ^:private event->schema
   "The schema to use for each analytics event."
@@ -79,7 +80,8 @@
    ::embedding-enabled              ::embed_share
    ::embedding-disabled             ::embed_share
    ::llm-usage                      ::llm_usage
-   ::serialization                  ::serialization})
+   ::serialization                  ::serialization
+   ::collection-read-stale          ::read_stale})
 
 (defsetting analytics-uuid
   (deferred-tru
