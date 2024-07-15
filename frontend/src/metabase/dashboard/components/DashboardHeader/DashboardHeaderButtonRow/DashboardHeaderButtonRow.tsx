@@ -42,14 +42,14 @@ export const DashboardHeaderButtonRow = ({
     ? DASHBOARD_EDITING_ACTIONS
     : DASHBOARD_VIEW_ACTIONS;
 
-  const visibleKeys = dashboardActionKeys
+  const visibleDashboardActionKeys = dashboardActionKeys
     ? buttonOptions.filter(key => dashboardActionKeys.includes(key))
     : buttonOptions;
 
   return (
     <>
-      {visibleKeys.map(key => {
-        const config = dashboardActionButtons[key];
+      {visibleDashboardActionKeys.map(dashboardActionKey => {
+        const config = dashboardActionButtons[dashboardActionKey];
         if (dashboard) {
           const buttonComponentProps: HeaderButtonProps = {
             isEditing,
@@ -68,10 +68,10 @@ export const DashboardHeaderButtonRow = ({
             const Component = config.component;
             return (
               <Box
-                key={key}
+                key={dashboardActionKey}
                 display="contents"
                 data-testid="dashboard-header-row-button"
-                data-element-id={key}
+                data-element-id={dashboardActionKey}
               >
                 <Component {...buttonComponentProps} />
               </Box>

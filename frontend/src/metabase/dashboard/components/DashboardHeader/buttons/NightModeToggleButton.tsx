@@ -15,7 +15,7 @@ export const NightModeToggleButton = ({
         icon={
           <NightModeButtonIcon
             isNightMode={isNightMode}
-            onClick={() => onNightModeChange?.(!isNightMode)}
+            onClick={() => onNightModeChange(!isNightMode)}
           />
         }
       />

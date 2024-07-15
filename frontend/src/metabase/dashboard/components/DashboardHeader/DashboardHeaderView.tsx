@@ -75,7 +75,7 @@ export function DashboardHeaderView({
   const isNavBarOpen = useSelector(getIsNavbarOpen);
   const isEditing = useSelector(getIsEditing);
 
-  const handleSetDashboardAttribute = useSetDashboardAttributeHandler();
+  const setDashboardAttribute = useSetDashboardAttributeHandler();
   const [showSubHeader, setShowSubHeader] = useState(true);
   const header = useRef<HTMLDivElement>(null);
   const dispatch = useDispatch();
@@ -119,12 +119,12 @@ export function DashboardHeaderView({
 
   const handleUpdateCaption = useCallback(
     async (name: string) => {
-      await handleSetDashboardAttribute("name", name);
+      await setDashboardAttribute("name", name);
       if (!isEditing) {
         await dispatch(updateDashboard({ attributeNames: ["name"] }));
       }
     },
-    [handleSetDashboardAttribute, isEditing, dispatch],
+    [setDashboardAttribute, isEditing, dispatch],
   );
 
   useEffect(() => {
