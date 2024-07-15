@@ -1,11 +1,11 @@
-(ns metabase.native-query-analyzer.replacement
+(ns metabase.query-analysis.native-query-analyzer.replacement
   (:require
    [clojure.string :as str]
    [macaw.core :as macaw]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.common.parameters.values :as params.values]
-   [metabase.native-query-analyzer.impl :as nqa.impl]
+   [metabase.query-analysis.native-query-analyzer.impl :as nqa.impl]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.query-processor.store :as qp.store]))
 

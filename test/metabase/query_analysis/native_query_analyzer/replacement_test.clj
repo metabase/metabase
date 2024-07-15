@@ -1,8 +1,8 @@
-(ns ^:parallel metabase.native-query-analyzer.replacement-test
+(ns ^:parallel metabase.query-analysis.native-query-analyzer.replacement-test
   (:require
    [clojure.test :refer :all]
    [metabase.lib.native :as lib-native]
-   [metabase.native-query-analyzer.replacement :refer [replace-names]]
+   [metabase.query-analysis.native-query-analyzer.replacement :refer [replace-names]]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
