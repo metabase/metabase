@@ -7,20 +7,18 @@ import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import Tables from "metabase/entities/tables";
 import { assignUserColors } from "metabase/lib/formatting";
 
 import Revision from "./Revision";
 
-class RevisionHistory extends Component {
+export default class RevisionHistory extends Component {
   static propTypes = {
     segment: PropTypes.object,
     revisions: PropTypes.array,
-    table: PropTypes.object,
   };
 
   render() {
-    const { segment, revisions, table, user } = this.props;
+    const { segment, revisions, user } = this.props;
 
     let userColorAssignments = {};
     if (revisions) {
@@ -59,7 +57,6 @@ class RevisionHistory extends Component {
                     revision={revision}
                     objectName={segment.name}
                     currentUser={user}
-                    tableMetadata={table}
                     userColor={userColorAssignments[revision.user.id]}
                   />
                 ))}
@@ -71,7 +68,3 @@ class RevisionHistory extends Component {
     );
   }
 }
-
-export default Tables.load({
-  id: (state, { object: { table_id } }) => table_id,
-})(RevisionHistory);
