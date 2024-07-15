@@ -35,8 +35,10 @@ export function useNumberFilter({
     [query, stageIndex, column],
   );
 
-  const [operator, setOperator] = useState(
-    () => filterParts?.operator ?? getDefaultOperator(column),
+  const [operator, setOperator] = useState(() =>
+    filterParts
+      ? filterParts.operator
+      : getDefaultOperator(column, availableOptions),
   );
 
   const [values, setValues] = useState(() =>
