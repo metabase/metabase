@@ -61,7 +61,7 @@ class OnScriptError {
         (data, cb) => {
           // Manipulate the content
           data.assetTags.scripts.forEach(script => {
-            script.attributes.onerror = `AssetErrorLoad(this)`;
+            script.attributes.onerror = `metabase.AssetErrorLoad(this)`;
           });
           // Tell webpack to move on
           cb(null, data);
