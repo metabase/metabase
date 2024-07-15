@@ -3,7 +3,7 @@
   --mb-color-background: var(--mb-color-bg-light);
   /* SVG logo */
   --mb-color-logo-text: #5a6072;
-  --mb-color-logo-primary: var(--mb-color-blue);
+  --mb-color-logo-primary: var(--mb-base-color-blue);
   --mb-color-logo-secondary: #c2daf0;
 
   display: flex;
@@ -23,7 +23,7 @@
   --mb-color-border: var(--mb-color-text-medium);
   --mb-color-background: #2f353a;
   /* SVG logo */
-  --mb-color-logo-text: var(--mb-color-white);
-  --mb-color-logo-primary: var(--mb-color-white);
+  --mb-color-logo-text: var(--mb-base-color-white);
+  --mb-color-logo-primary: var(--mb-base-color-white);
   --mb-color-logo-secondary: #5a6072;
 }

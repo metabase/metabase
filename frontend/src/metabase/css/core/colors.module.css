@@ -6,8 +6,9 @@
  * .storybook/preview-head.html
  */
 :root {
-  --mb-color-text-white: #fff;
-  --mb-color-brand: var(--mb-color-blue);
+  /* Semantic colors */
+  --mb-color-text-white: var(--mb-base-color-white);
+  --mb-color-brand: var(--mb-base-color-blue);
   --mb-color-brand-light: #f9fbfc;
   --mb-color-brand-lighter: #eef6fc;
   --mb-color-success: #84bb4c;
@@ -21,7 +22,7 @@
   --mb-color-bg-dark: #93a1ab;
   --mb-color-bg-medium: #edf2f5;
   --mb-color-bg-light: #f9fbfc;
-  --mb-color-bg-white: var(--mb-color-white);
+  --mb-color-bg-white: var(--mb-base-color-white);
   --mb-color-bg-error: #ed6e6e55;
   --mb-color-bg-night: #42484e;
   --mb-color-shadow: rgba(0, 0, 0, 0.13);
@@ -32,9 +33,32 @@
   --mb-color-text-primary: var(--mb-color-text-dark);
   --mb-color-text-secondary: var(--mb-color-text-medium);
   --mb-color-text-tertiary: var(--mb-color-text-light);
-  /* main colors */
-  --mb-color-white: #fff;
-  --mb-color-blue: #509ee3;
+
+  /**
+    * Base colors
+    *
+    * These are the base colors that should never change and never be used
+    * directly in any components or CSS properties. They should only be used
+    * to define the other semantic colors in this file.
+    *
+    * For example. This is how you should use the base color ✅
+    *
+    * .darkTheme {
+    *   --mb-color-border: var(--mb-base-color-some-gray);
+    * }
+    *
+    * This is NOT how you should use the base color ❌
+    *
+    * .someClass {
+    *   color: var(--mb-base-color-white);
+    * }
+    *
+    * or
+    *
+    * <Component someColorProp="var(--mb-base-color-white)" />
+    */
+  --mb-base-color-white: #fff;
+  --mb-base-color-blue: #509ee3;
 }
 
 .textDefault {
