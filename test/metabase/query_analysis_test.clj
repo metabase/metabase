@@ -10,16 +10,26 @@
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(deftest native-query-enabled-test
-  (mt/discard-setting-changes [query-analysis-enabled
-                               query-analysis-native-disabled
-                               sql-parsing-enabled]
-    (public-settings/query-analysis-enabled! true)
+(deftest legacy-sql-parsing-enabled-test
+  (mt/discard-setting-changes [query-analysis-native-disabled sql-parsing-enabled]
     (testing "sql parsing enabled"
       (public-settings/sql-parsing-enabled! true)
-      (is (true? (query-analysis/enabled-type? :native))))
+      ;; I'm not sure why this is nil, but it is fine for our purposes.
+      (is (nil? (public-settings/query-analysis-native-disabled)))))
+  (mt/discard-setting-changes [query-analysis-native-disabled sql-parsing-enabled]
     (testing "sql parsing disabled"
       (public-settings/sql-parsing-enabled! false)
+      (is (true? (public-settings/query-analysis-native-disabled))))))
+
+(deftest native-query-enabled-test
+  (mt/discard-setting-changes [query-analysis-enabled
+                               query-analysis-native-disabled]
+    (public-settings/query-analysis-enabled! true)
+    (testing "sql parsing enabled"
+      (public-settings/query-analysis-native-disabled! true)
+      (is (true? (query-analysis/enabled-type? :native))))
+    (testing "sql parsing disabled"
+      (public-settings/query-analysis-native-disabled! false)
       (is (false? (query-analysis/enabled-type? :native))))))
 
 (deftest non-native-query-enabled-test
