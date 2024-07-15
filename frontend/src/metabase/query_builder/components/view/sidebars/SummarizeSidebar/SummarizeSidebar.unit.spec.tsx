@@ -124,14 +124,28 @@ describe("SummarizeSidebar", () => {
       expect(onQueryChange).toHaveBeenCalledTimes(1);
     });
 
-    it("should allow to remove a default aggregation", async () => {
-      const { getNextAggregations, onQueryChange } = await setup();
+    it("should allow to remove the default aggregation without triggering a query update", async () => {
+      const { onQueryChange } = await setup();
 
       const countButton = screen.getByLabelText("Count");
       await userEvent.click(within(countButton).getByLabelText("close icon"));
 
+      expect(screen.queryByLabelText("Count")).not.toBeInTheDocument();
+      expect(onQueryChange).not.toHaveBeenCalled();
+    });
+
+    it("should allow to add the default aggregation manually after it was removed", async () => {
+      const { getNextAggregations, onQueryChange } = await setup();
+
+      const countButton = screen.getByLabelText("Count");
+      await userEvent.click(within(countButton).getByLabelText("close icon"));
+      await userEvent.click(screen.getByText("Add a metric"));
+      await userEvent.click(await screen.findByText("Count of rows"));
+
       const aggregations = getNextAggregations();
-      expect(aggregations).toHaveLength(0);
+      const [aggregation] = aggregations;
+      expect(aggregations).toHaveLength(1);
+      expect(aggregation.displayName).toBe("Count");
       expect(onQueryChange).toHaveBeenCalledTimes(1);
     });
 

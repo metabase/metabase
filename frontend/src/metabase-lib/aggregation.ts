@@ -37,8 +37,7 @@ export function aggregate(
   return ML.aggregate(query, stageIndex, clause);
 }
 
-export function aggregateByCount(query: Query): Query {
-  const stageIndex = -1;
+export function aggregateByCount(query: Query, stageIndex: number): Query {
   const operators = availableAggregationOperators(query, stageIndex);
   const countOperator = operators.find(operator => {
     const info = displayInfo(query, stageIndex, operator);
