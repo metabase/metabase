@@ -1,9 +1,11 @@
 import 'dotenv/config';
-import "zx/globals"; // includes fs and fetch
+import fs from 'fs';
+
 
 import { WebClient } from '@slack/web-api';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import fetch from 'node-fetch';
 
 dayjs.extend(relativeTime);
 import _githubSlackMap from "../github-slack-map.json";
