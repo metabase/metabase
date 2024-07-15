@@ -94,4 +94,4 @@
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
 
-(api/define-routes +auth)
+(api/define-routes api/+check-superuser +auth)
