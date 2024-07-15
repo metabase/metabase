@@ -815,6 +815,29 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       cy.findByLabelText("Tag").should("contain.text", "Twenty");
     });
   });
+
+  it("should show the values when picking the default value", () => {
+    openNativeEditor();
+    SQLFilter.enterParameterizedQuery("SELECT {{ x }}");
+    SQLFilter.openTypePickerFromDefaultFilterType();
+    SQLFilter.chooseType("Number");
+
+    setDropdownFilterType();
+    setFilterListSource({
+      values: [["10", "Ten"], ["20", "Twenty"], "30"],
+    });
+
+    cy.findByTestId("sidebar-content")
+      .findByPlaceholderText("Select a default value…")
+      .click();
+
+    popover().findByText("20").click();
+
+    saveQuestion("SQL filter");
+
+    cy.findByLabelText("X").should("contain.text", "Twenty");
+    SQLFilter.runQuery("cardQuery");
+  });
 });
 
 const getQuestionResource = questionId => ({
