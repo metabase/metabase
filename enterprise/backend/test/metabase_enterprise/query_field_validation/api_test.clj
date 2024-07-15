@@ -109,7 +109,7 @@
   (testing "It requires the premium feature"
     (mt/with-premium-features #{}
       (is (= "Query Field Validation is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-             (mt/user-http-request :rasta :get 402 url))))))
+             (mt/user-http-request :crowberto :get 402 url))))))
 
 (deftest pagination-test
   (testing "Lets you page results"
@@ -172,5 +172,10 @@
     (with-test-setup
       (is (str/starts-with? (:sort_column
                              (:errors
-                              (mt/user-http-request :rasta :get 400 (str url "?sort_column=favorite_bird"))))
+                              (mt/user-http-request :crowberto :get 400 (str url "?sort_column=favorite_bird"))))
                             "nullable enum of")))))
+
+(deftest is-admin-test
+  (mt/with-premium-features #{:query-field-validation}
+    (testing "The endpoint is unavailable for normal users"
+      (is (mt/user-http-request :rasta :get 403 url)))))
