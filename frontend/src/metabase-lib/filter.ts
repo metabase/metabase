@@ -16,6 +16,7 @@ import {
   COORDINATE_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
+  FALLBACK_FILTER_OPERATORS,
   NUMBER_FILTER_OPERATORS,
   RELATIVE_DATE_BUCKETS,
   SPECIFIC_DATE_FILTER_OPERATORS,
@@ -47,6 +48,8 @@ import type {
   ExpressionOperatorName,
   ExpressionOptions,
   ExpressionParts,
+  FallbackFilterOperatorName,
+  FallbackFilterParts,
   FilterClause,
   FilterOperator,
   FilterParts,
@@ -472,6 +475,34 @@ export function timeFilterParts(
   };
 }
 
+export function fallbackFilterClause({
+  operator,
+  column,
+}: FallbackFilterParts): ExpressionClause {
+  return expressionClause(operator, [column]);
+}
+
+export function fallbackFilterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): FallbackFilterParts | null {
+  const { operator, args } = expressionParts(query, stageIndex, filterClause);
+  if (!isFallbackOperator(operator) || args.length !== 1) {
+    return null;
+  }
+
+  const [column] = args;
+  if (!isColumnMetadata(column) || isStringOrStringLike(column)) {
+    return null;
+  }
+
+  return {
+    operator,
+    column,
+  };
+}
+
 export function filterParts(
   query: Query,
   stageIndex: number,
@@ -485,7 +516,8 @@ export function filterParts(
     specificDateFilterParts(query, stageIndex, filterClause) ??
     relativeDateFilterParts(query, stageIndex, filterClause) ??
     excludeDateFilterParts(query, stageIndex, filterClause) ??
-    timeFilterParts(query, stageIndex, filterClause)
+    timeFilterParts(query, stageIndex, filterClause) ??
+    fallbackFilterParts(query, stageIndex, filterClause)
   );
 }
 
@@ -613,6 +645,13 @@ function isTimeOperator(
   operator: ExpressionOperatorName,
 ): operator is TimeFilterOperatorName {
   const operators: ReadonlyArray<string> = TIME_FILTER_OPERATORS;
+  return operators.includes(operator);
+}
+
+function isFallbackOperator(
+  operator: ExpressionOperatorName,
+): operator is FallbackFilterOperatorName {
+  const operators: ReadonlyArray<string> = FALLBACK_FILTER_OPERATORS;
   return operators.includes(operator);
 }
 

@@ -77,8 +77,6 @@
    (operator-def :!=)
    (operator-def :contains)
    (operator-def :does-not-contain)
-   (operator-def :is-null)
-   (operator-def :not-null)
    (operator-def :is-empty)
    (operator-def :not-empty)
    (operator-def :starts-with)
@@ -87,8 +85,6 @@
 (def ^:private text-like-operators
   [(operator-def :=)
    (operator-def :!=)
-   (operator-def :is-null)
-   (operator-def :not-null)
    (operator-def :is-empty)
    (operator-def :not-empty)])
 
@@ -98,9 +94,7 @@
    (operator-def :not-null :not-empty)])
 
 (def ^:private default-operators
-  [(operator-def :=)
-   (operator-def :!=)
-   (operator-def :is-null)
+  [(operator-def :is-null)
    (operator-def :not-null)])
 
 (def join-operators
@@ -116,8 +110,9 @@
   (condp lib.types.isa/field-type? column
     :metabase.lib.types.constants/string      text-operators
     :metabase.lib.types.constants/string_like text-like-operators
+    :metabase.lib.types.constants/number      numeric-key-operators
     ;; default
-    numeric-key-operators))
+    default-operators))
 
 (mu/defn filter-operators :- [:sequential ::lib.schema.filter/operator]
   "The list of available filter operators.
