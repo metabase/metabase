@@ -26,7 +26,7 @@ export function getAvailableOperatorOptions<
 
 export function getDefaultAvailableOperator<T extends Lib.FilterOperatorName>(
   options: FilterOperatorOption<T>[],
-  desiredOperator: T,
+  desiredOperator?: T,
 ): T {
   return (
     options.find(option => option.operator === desiredOperator)?.operator ??

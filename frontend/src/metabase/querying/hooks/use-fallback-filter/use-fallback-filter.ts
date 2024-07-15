@@ -2,13 +2,18 @@ import { useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
-import { getAvailableOptions, getFilterClause } from "./utils";
+import {
+  getAvailableOptions,
+  getDefaultOperator,
+  getFilterClause,
+} from "./utils";
 
 interface UseFallbackOperatorFilterProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
+  hasInitialOperator?: boolean;
 }
 
 export function useFallbackFilter({
@@ -16,6 +21,7 @@ export function useFallbackFilter({
   stageIndex,
   column,
   filter,
+  hasInitialOperator = false,
 }: UseFallbackOperatorFilterProps) {
   const filterParts = useMemo(
     () => (filter ? Lib.fallbackFilterParts(query, stageIndex, filter) : null),
@@ -27,7 +33,11 @@ export function useFallbackFilter({
     [query, stageIndex, column],
   );
 
-  const [operator, setOperator] = useState(filterParts?.operator);
+  const [operator, setOperator] = useState(
+    filterParts
+      ? filterParts.operator
+      : getDefaultOperator(availableOptions, hasInitialOperator),
+  );
 
   return {
     operator,
