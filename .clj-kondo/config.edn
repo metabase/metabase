@@ -474,6 +474,7 @@
     metabase.models.collection                                    collection
     metabase.models.collection.graph                              graph
     metabase.models.collection-permission-graph-revision          c-perm-revision
+    metabase.models.channel                                       models.channel
     metabase.models.dashboard-card                                dashboard-card
     metabase.models.database                                      database
     metabase.models.dependency                                    dependency
