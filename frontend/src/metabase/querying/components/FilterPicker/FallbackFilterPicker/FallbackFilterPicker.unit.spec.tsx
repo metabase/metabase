@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   createQuery,
+  createQueryWithFallbackFilter,
   findArrayColumn,
   storeInitialState,
 } from "metabase/querying/components/FilterPicker/test-utils";
@@ -88,6 +89,53 @@ describe("FallbackFilterPicker", () => {
 
     it("should go back", async () => {
       const { onBack, onChange } = setup();
+      await userEvent.click(screen.getByLabelText("Back"));
+      expect(onBack).toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("existing filter", () => {
+    it("should update a filter with 'is-empty' operator", async () => {
+      const { getNextFilterName } = setup(
+        createQueryWithFallbackFilter({
+          operator: "is-null",
+        }),
+      );
+      expect(screen.getByLabelText("Is empty")).toBeChecked();
+      expect(screen.getByLabelText("Not empty")).not.toBeChecked();
+
+      await userEvent.click(screen.getByLabelText("Not empty"));
+      expect(screen.getByLabelText("Is empty")).not.toBeChecked();
+      expect(screen.getByLabelText("Not empty")).toBeChecked();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Update filter" }),
+      );
+      expect(getNextFilterName()).toBe("Array is not empty");
+    });
+
+    it("should update a filter with 'not-empty' operator", async () => {
+      const { getNextFilterName } = setup(
+        createQueryWithFallbackFilter({
+          operator: "not-null",
+        }),
+      );
+      expect(screen.getByLabelText("Is empty")).not.toBeChecked();
+      expect(screen.getByLabelText("Not empty")).toBeChecked();
+
+      await userEvent.click(screen.getByLabelText("Is empty"));
+      expect(screen.getByLabelText("Is empty")).toBeChecked();
+      expect(screen.getByLabelText("Not empty")).not.toBeChecked();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Update filter" }),
+      );
+      expect(getNextFilterName()).toBe("Array is empty");
+    });
+
+    it("should go back", async () => {
+      const { onBack, onChange } = setup(createQueryWithFallbackFilter());
       await userEvent.click(screen.getByLabelText("Back"));
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
