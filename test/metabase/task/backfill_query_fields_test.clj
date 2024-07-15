@@ -5,7 +5,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models :refer [Card]]
-   [metabase.native-query-analyzer :as query-analyzer]
+   [metabase.query-analysis :as query-analysis]
    [metabase.task.backfill-query-fields :as backfill]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -43,7 +43,7 @@
           (is (zero? (get-count (:id c3))))
           (is (zero? (get-count (:id c4))))
           (is (zero? (get-count (:id arch)))))
-        (binding [query-analyzer/*parse-queries-in-test?* true]
+        (binding [query-analysis/*parse-queries-in-test?* true]
           (#'backfill/backfill-query-fields!))
         (testing "QueryField is filled now"
           (testing "for a native query"
