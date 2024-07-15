@@ -207,7 +207,17 @@ describe("dashboard actions", () => {
 
       expect(dispatch).toHaveBeenCalledWith({
         payload: {
-          args: ["/dashboard/1"],
+          args: [
+            {
+              action: "POP",
+              hash: "",
+              key: "",
+              pathname: "/dashboard/1",
+              query: {},
+              search: "",
+              state: undefined,
+            },
+          ],
           method: "push",
         },
         type: "@@router/CALL_HISTORY_METHOD",

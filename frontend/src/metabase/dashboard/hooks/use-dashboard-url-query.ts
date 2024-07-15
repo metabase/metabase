@@ -1,5 +1,4 @@
 import type { Location } from "history";
-import qs from "querystring";
 import { useEffect, useMemo } from "react";
 import type { InjectedRouter } from "react-router";
 import { push, replace } from "react-router-redux";
@@ -66,9 +65,6 @@ export function useDashboardUrlQuery(
     if (!_.isEqual(nextQueryParams, currentQueryParams)) {
       const otherQueryParams = _.pick(currentQuery, ...QUERY_PARAMS_ALLOW_LIST);
       const nextQuery = { ...otherQueryParams, ...nextQueryParams };
-      const nextSearch =
-        Object.keys(nextQuery).length > 0 ? `?${qs.stringify(nextQuery)}` : "";
-      const nextLocation = location.pathname + nextSearch + location.hash;
 
       const isDashboardTabChange =
         queryParams &&
@@ -76,7 +72,7 @@ export function useDashboardUrlQuery(
         queryParams.tab !== previousQueryParams.tab;
 
       const action = isDashboardTabChange ? push : replace;
-      dispatch(action(nextLocation));
+      dispatch(action({ ...location, query: nextQuery }));
     }
   }, [queryParams, previousQueryParams, location, dispatch]);
 
