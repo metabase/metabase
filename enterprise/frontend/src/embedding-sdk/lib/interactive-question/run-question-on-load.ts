@@ -8,6 +8,8 @@ import {
   parseHash,
   resolveCards,
 } from "metabase/query_builder/actions";
+import { getParameterValuesForQuestion } from "metabase/query_builder/actions/core/parameterUtils";
+import { syncQuestionTemplateTagParameters } from "metabase/query_builder/actions/core/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
@@ -35,11 +37,25 @@ export const runQuestionOnLoadSdk =
     await dispatch(loadMetadataForCard(card));
     const metadata = getMetadata(getState());
 
+    let question = new Question(card, metadata);
+
+    question = syncQuestionTemplateTagParameters(question);
+
+    const parameterValues = getParameterValuesForQuestion({
+      card,
+      metadata,
+      queryParams: location.query,
+    });
+
+    if (parameterValues) {
+      question = question.setParameterValues(parameterValues);
+    }
+
     const originalQuestion =
       originalCard && new Question(originalCard, metadata);
 
     const result = await runQuestionQuerySdk({
-      question: new Question(card, metadata),
+      question,
       originalQuestion,
       cancelDeferred,
     });

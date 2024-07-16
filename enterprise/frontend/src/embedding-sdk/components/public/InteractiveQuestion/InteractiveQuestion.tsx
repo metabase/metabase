@@ -1,9 +1,10 @@
-import { type PropsWithChildren, useMemo } from "react";
+import { type PropsWithChildren, type ReactNode, useMemo } from "react";
+import _ from "underscore";
 
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
-import type { CardId } from "metabase-types/api";
+import type { CardId, ParameterId } from "metabase-types/api";
 
 import {
   BackButton,
@@ -20,13 +21,16 @@ import {
 } from "./components";
 import { InteractiveQuestionProvider } from "./context";
 
+type ParameterValues = Record<ParameterId, string | number>;
+
 type InteractiveQuestionProps = PropsWithChildren<{
   questionId: CardId;
   withResetButton?: boolean;
   withTitle?: boolean;
-  customTitle?: React.ReactNode;
+  customTitle?: ReactNode;
   plugins?: SdkPluginsConfig;
   height?: string | number;
+  parameterValues?: ParameterValues;
 }>;
 
 export const _InteractiveQuestion = ({
@@ -37,11 +41,11 @@ export const _InteractiveQuestion = ({
   plugins,
   height,
   children = null,
+  parameterValues,
 }: InteractiveQuestionProps): JSX.Element | null => {
-  const { location, params } = useMemo(
-    () => getQuestionParameters(questionId),
-    [questionId],
-  );
+  const { location, params } = useMemo(() => {
+    return getQuestionParameters(questionId, parameterValues);
+  }, [questionId, parameterValues]);
 
   return (
     <InteractiveQuestionProvider
@@ -61,16 +65,17 @@ export const _InteractiveQuestion = ({
   );
 };
 
-export const getQuestionParameters = (questionId: CardId) => {
+export const getQuestionParameters = (
+  questionId: CardId,
+  parameterValues?: ParameterValues,
+) => {
+  const query = parameterValues
+    ? _.mapObject(parameterValues, value => String(value))
+    : {};
+
   return {
-    location: {
-      query: {}, // TODO: add here wrapped parameterValues
-      hash: "",
-      pathname: `/question/${questionId}`,
-    },
-    params: {
-      slug: questionId.toString(),
-    },
+    location: { pathname: `/question/${questionId}`, query, hash: "" },
+    params: { slug: questionId.toString() },
   };
 };
 
