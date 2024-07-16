@@ -2109,6 +2109,80 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
     });
   });
+
+  it("should navigate to correct dashboard tab via custom destination click behavior (metabase#34447 metabase#44106)", () => {
+    createDashboardWithTabs({
+      name: TARGET_DASHBOARD.name,
+      tabs: [
+        {
+          id: -1,
+          name: "first-tab",
+        },
+        {
+          id: -2,
+          name: "second-tab",
+        },
+      ],
+    }).then(targetDashboard => {
+      const baseClickBehavior = {
+        type: "link",
+        linkType: "dashboard",
+        targetId: targetDashboard.id,
+        parameterMapping: {},
+      };
+
+      const [firstTab, secondTab] = targetDashboard.tabs;
+
+      cy.createDashboard({
+        dashcards: [
+          createMockDashboardCard({
+            id: -1,
+            card_id: ORDERS_QUESTION_ID,
+            size_x: 12,
+            size_y: 6,
+            visualization_settings: {
+              click_behavior: {
+                ...baseClickBehavior,
+                tabId: firstTab.id,
+              },
+            },
+          }),
+          createMockDashboardCard({
+            id: -2,
+            card_id: ORDERS_QUESTION_ID,
+            size_x: 12,
+            size_y: 6,
+            visualization_settings: {
+              click_behavior: {
+                ...baseClickBehavior,
+                tabId: secondTab.id,
+              },
+            },
+          }),
+        ],
+      }).then(({ body: dashboard }) => {
+        visitDashboard(dashboard.id);
+
+        getDashboardCard(1).findByText("14").click();
+        cy.location("pathname").should(
+          "eq",
+          `/dashboard/${targetDashboard.id}`,
+        );
+        cy.location("search").should("eq", `?tab=${secondTab.id}-second-tab`);
+
+        cy.go("back");
+        cy.location("pathname").should("eq", `/dashboard/${dashboard.id}`);
+        cy.location("search").should("eq", "");
+
+        getDashboardCard(0).findByText("14").click();
+        cy.location("pathname").should(
+          "eq",
+          `/dashboard/${targetDashboard.id}`,
+        );
+        cy.location("search").should("eq", `?tab=${firstTab.id}-first-tab`);
+      });
+    });
+  });
 });
 
 /**
