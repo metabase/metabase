@@ -180,8 +180,6 @@ export const PublicOrEmbeddedQuestion = ({
       parameterValues={parameterValues}
       setParameterValue={setParameterValue}
       setParameterValueToDefault={setParameterValueToDefault}
-      // We don't support background: false on questions (metabase#43838)
-      background
       bordered={bordered}
       hide_download_button={hide_download_button}
       hide_parameters={hide_parameters}

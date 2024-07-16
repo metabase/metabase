@@ -31,7 +31,6 @@ export function PublicOrEmbeddedQuestionView({
   parameterValues,
   setParameterValue,
   setParameterValueToDefault,
-  background,
   bordered,
   hide_download_button,
   hide_parameters,
@@ -49,7 +48,6 @@ export function PublicOrEmbeddedQuestionView({
   parameterValues: ParameterValuesMap;
   setParameterValue: (parameterId: ParameterId, value: any) => Promise<void>;
   setParameterValueToDefault: (parameterId: ParameterId) => void;
-  background: boolean;
   bordered: boolean;
   hide_download_button: boolean | null;
   hide_parameters: string | null;
@@ -79,7 +77,8 @@ export function PublicOrEmbeddedQuestionView({
       setParameterValue={setParameterValue}
       enableParameterRequiredBehavior
       setParameterValueToDefault={setParameterValueToDefault}
-      background={background}
+      // We don't support background: false on questions (metabase#43838)
+      background
       bordered={bordered}
       hide_download_button={hide_download_button}
       hide_parameters={hide_parameters}
