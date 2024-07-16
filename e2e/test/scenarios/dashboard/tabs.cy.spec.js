@@ -105,6 +105,7 @@ describe("scenarios > dashboard > tabs", () => {
   });
 
   afterEach(() => {
+    cy.signInAsAdmin();
     changeSynchronousBatchUpdateSetting(false);
   });
 
