@@ -18,8 +18,6 @@
   :visibility :admin
   :type       :boolean
   :audit      :getter
-  :default    false
-  ;; TODO: should this be exported?
   :export?    false)
 
 (defsetting scim-base-url
@@ -34,6 +32,8 @@
 
 (defn- scim-api-key-name
   []
+  ;; This is only used internally, since API keys require names, but isn't displayed on the UI, so it doesn't need to be
+  ;; translated.
   (format "Metabase SCIM API Key - %s" (random-uuid)))
 
 (defn- backfill-required-entity-ids!
