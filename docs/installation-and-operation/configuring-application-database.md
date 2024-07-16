@@ -6,15 +6,17 @@ redirect_from:
 
 # Configuring the Metabase application database
 
-The application database is where Metabase stores information about users, saved questions, dashboards, and any other
-data needed to run the application. The default settings use an embedded H2 database, but this is configurable.
+The application database is where Metabase stores information about user accounts, questions, dashboards, and any other data needed to run the Metabase application.
 
-## Notes
+We recommend using PostgreSQL for production, but you can also use MySQL:
 
-- Using Metabase with an H2 application database is not recommended for production deployments. For production
-  deployments, we highly recommend using PostgreSQL. If you decide to continue to use H2, please be sure to back up the database file regularly.
-- You cannot change the application database while the application is running. Connection configuration information is
-  read only once when the application starts up and will remain constant throughout the running of the application.
+
+- [H2](#h2-default)
+- [PostgreSQL](#postgresql) (recommended for production)
+- [MySQL] (also works for production)
+
+Metabase will read the connection configuration information when the application starts up. You can't change the application database while the application is running.
+
 - Metabase provides limited support for migrating from H2 to Postgres if you decide to upgrade to a more
   production-ready database. See [Migrating from H2 to PostgreSQL](migrating-from-h2.md) for more details.
 
@@ -22,7 +24,9 @@ data needed to run the application. The default settings use an embedded H2 data
 
 > **For production installations of Metabase we recommend that people [replace the H2 database with PostgreSQL](./migrating-from-h2.md)**. Postgres offers a greater degree of performance and reliability when Metabase is running with many users.
 
-To use the H2 database for your Metabase instance you don't need to do anything at all. When the application is first launched it will attempt to create a new H2 database in the same filesystem location the application is launched from.
+By default, Metabase ships with an H2 database to make it easy to demo Metabase on your local machine. **Avoid using this default database in production**.
+
+To use the H2 database for your Metabase,. When the application is first launched it will attempt to create a new H2 database in the same filesystem location the application is launched from.
 
 You can see these database files from the terminal:
 
@@ -41,17 +45,19 @@ If for any reason you want to use an H2 database file in a separate location fro
 
 Note that H2 automatically appends `.mv.db` or `.h2.db` to the path you specify; do not include those in your path! In other words, `MB_DB_FILE` should be something like `/path/to/metabase.db`, rather than something like `/path/to/metabase.db.mv.db` (even though this is the file that actually gets created).
 
-## [Postgres](https://www.postgresql.org/)
+## PostgreSQL
 
 You can change the application database to use Postgres using a few simple environment variables. For example:
 
-    export MB_DB_TYPE=postgres
-    export MB_DB_DBNAME=metabase
-    export MB_DB_PORT=5432
-    export MB_DB_USER=<username>
-    export MB_DB_PASS=<password>
-    export MB_DB_HOST=localhost
-    java -jar metabase.jar
+```sh
+export MB_DB_TYPE=postgres
+export MB_DB_DBNAME=metabase
+export MB_DB_PORT=5432
+export MB_DB_USER=<username>
+export MB_DB_PASS=<password>
+export MB_DB_HOST=localhost
+java -jar metabase.jar
+```
 
 Metabase will not create this database for you. Example command to create the database:
 
