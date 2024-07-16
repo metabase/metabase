@@ -879,6 +879,52 @@ describe("scenarios > admin > datamodel > segments", () => {
       modal().find("textarea").type("delete it");
       modal().contains("button", "Retire").click();
     });
+
+    it("should show segment revision history (metabase#45577)", () => {
+      cy.request("PUT", "/api/segment/1", {
+        description: "Medium orders",
+        revision_message: "Foo",
+      });
+
+      cy.visit("/admin/datamodel/segments");
+      cy.get("tr")
+        .filter(`:contains(${SEGMENT_NAME})`)
+        .icon("ellipsis")
+        .click();
+      popover().findByTextEnsureVisible("Revision History").click();
+
+      cy.log(
+        "Make sure revisions are displayed properly in admin table metadata",
+      );
+      cy.location("pathname").should(
+        "eq",
+        "/admin/datamodel/segment/1/revisions",
+      );
+      cy.findByTestId("breadcrumbs")
+        .should("contain", "Segments")
+        .and("contain", "Segment History");
+
+      assertRevisionHistory();
+
+      cy.log("Make sure revisions are displayed properly in /references");
+      cy.visit("/reference/segments/1/revisions");
+      assertRevisionHistory();
+
+      function assertRevisionHistory() {
+        cy.findByTestId("segment-revisions")
+          .findAllByRole("listitem")
+          .as("revisions")
+          .should("have.length", 2);
+        cy.get("@revisions")
+          .first()
+          .should("contain", "You edited the description")
+          .and("contain", "Foo");
+        cy.get("@revisions")
+          .last()
+          .should("contain", `You created "${SEGMENT_NAME}"`)
+          .and("contain", "All orders with a total under $100.");
+      }
+    });
   });
 });
 
