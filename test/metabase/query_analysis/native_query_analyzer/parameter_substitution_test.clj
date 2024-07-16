@@ -1,10 +1,10 @@
-(ns ^:parallel metabase.native-query-analyzer.parameter-substitution-test
+(ns ^:parallel metabase.query-analysis.native-query-analyzer.parameter-substitution-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.lib.native :as lib-native]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.native-query-analyzer.parameter-substitution :as nqa.sub]
+   [metabase.query-analysis.native-query-analyzer.parameter-substitution :as nqa.sub]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
 

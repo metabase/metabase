@@ -1,5 +1,4 @@
 import _ from "underscore";
-import 'zx/globals';
 
 import {
   getMilestones,

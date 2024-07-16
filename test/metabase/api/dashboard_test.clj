@@ -907,6 +907,7 @@
             (is (= "should be either fixed or full, received: 1200"
                    (-> (mt/user-http-request :rasta :put 400 (str "dashboard/" (u/the-id dashboard)) {:width 1200})
                        :specific-errors
+                       :dash-updates
                        :width
                        first)))))))))
 
@@ -924,7 +925,8 @@
                            :slug      "time_unit"
                            :id        "927e929"
                            :type      :temporal-unit
-                           :sectionId "temporal-unit"}]]
+                           :sectionId "temporal-unit"
+                           :temporal_units ["week" "month"]}]]
               (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:parameters params})
               (is (= params
                      (t2/select-one-fn :parameters Dashboard :id (u/the-id dashboard)))))))))))

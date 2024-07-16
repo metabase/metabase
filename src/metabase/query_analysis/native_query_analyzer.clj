@@ -1,4 +1,4 @@
-(ns metabase.native-query-analyzer
+(ns metabase.query-analysis.native-query-analyzer
   "Integration with Macaw, which parses native SQL queries. All SQL-specific logic is in Macaw, the purpose of this
   namespace is to:
 
@@ -14,13 +14,11 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [macaw.core :as macaw]
-   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.native-query-analyzer.impl :as nqa.impl]
-   [metabase.native-query-analyzer.parameter-substitution :as nqa.sub]
-   [metabase.native-query-analyzer.replacement :as nqa.replacement]
-   [metabase.public-settings :as public-settings]
+   [metabase.query-analysis.native-query-analyzer.impl :as nqa.impl]
+   [metabase.query-analysis.native-query-analyzer.parameter-substitution :as nqa.sub]
+   [metabase.query-analysis.native-query-analyzer.replacement :as nqa.replacement]
    [metabase.util :as u]
    [potemkin :as p]
    [toucan2.core :as t2]))
@@ -29,22 +27,6 @@
 
 (p/import-vars
  [nqa.replacement replace-names])
-
-(def ^:dynamic *parse-queries-in-test?*
-  "Normally, a native card's query is parsed on every create/update. For most tests, this is an unnecessary
-  expense. Therefore, we skip parsing while testing unless this variable is turned on.
-
-  c.f. [[active?]]"
-  false)
-
-(defn- active?
-  "Should the query run? Either we're not testing or it's been explicitly turned on.
-
-  c.f. [[*parse-queries-in-test?*]], [[public-settings/sql-parsing-enabled]]"
-  []
-  (and (public-settings/sql-parsing-enabled)
-       (or (not config/is-test?)
-           *parse-queries-in-test?*)))
 
 (def ^:private field-and-table-fragment
   "HoneySQL fragment to get the Field and Table"
@@ -162,9 +144,8 @@
   "Returns a `{:explicit #{...} :implicit #{...}}` map with field IDs that (may) be referenced in the given card's
   query. Currently only support SQL-based dialects."
   [query]
-  (when (and (active?) (:native query))
-    (let [driver (driver.u/database->driver (:database query))]
-      ;; TODO this approach is not extensible, we need to move to multimethods.
-      ;; See https://github.com/metabase/metabase/issues/43516 for long term solution.
-      (when (isa? driver/hierarchy driver :sql)
-        (field-ids-for-sql driver query)))))
+  (let [driver (driver.u/database->driver (:database query))]
+    ;; TODO this approach is not extensible, we need to move to multimethods.
+    ;; See https://github.com/metabase/metabase/issues/43516 for long term solution.
+    (when (isa? driver/hierarchy driver :sql)
+      (field-ids-for-sql driver query))))
