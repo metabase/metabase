@@ -32,14 +32,14 @@
   ::disabled)
 
 (defmacro with-queued-analysis
-  "Override default execution mode to always use the queue."
+  "Override default execution mode to always use the queue. Does nothing in prod."
   [& body]
   `(binding [*analyze-execution-in-dev?*  ::queued
              *analyze-execution-in-test?* ::queued]
      ~@body))
 
 (defmacro with-immediate-analysis
-  "Override default execution mode to always use the current thread."
+  "Override default execution mode to always use the current thread. Does nothing in prod."
   [& body]
   `(binding [*analyze-execution-in-dev?*  ::immediate
              *analyze-execution-in-test?* ::immediate]
