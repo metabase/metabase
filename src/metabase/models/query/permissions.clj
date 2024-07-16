@@ -218,9 +218,9 @@
     true))
 
 (defn check-data-perms
-  "Checks whether the current user has sufficient data permissions to run `query`. Returns `true` if the user has data
-  perms for the query, and throws an exception otherwise (exceptions can be disabled by setting `throw-exceptions?` to
-  `false`).
+  "Checks whether the current user has sufficient view data and query permissions to run `query`. Returns `true` if the
+  user has perms for the query, and throws an exception otherwise (exceptions can be disabled by setting
+  `throw-exceptions?` to `false`).
 
   If the [:gtap ::perms] path is present in the query, these perms are implicitly granted to the current user."
   [{{gtap-perms :gtaps} ::perms, db-id :database} required-perms & {:keys [throw-exceptions?]
@@ -235,6 +235,9 @@
     ;; Check view-data and create-queries permissions, for individual tables or the entire DB
     (doseq [perm-type [:perms/view-data :perms/create-queries]]
       (when-let [db-or-table-perms (perm-type required-perms)]
+        ;; In practice, `view-data` will be defined at the table-level, and `create-queries` will either be table-level
+        ;; or :query-builder-and-native for the entire DB. But we should enforce whatever `required-perms` are provided,
+        ;; in case that ever changes.
         (cond
           (keyword? db-or-table-perms)
           (check-db-level-perms perm-type db-or-table-perms (perm-type gtap-perms) db-id)
