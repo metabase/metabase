@@ -1466,13 +1466,16 @@
                                    [:field field-id nil]]}))))))))
 
 (deftest ^:parallel space-names-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :identifiers-with-spaces)
+                                   #{:athena
+                                     :redshift})
     (mt/dataset
       crazy-names
       (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             query (as-> (lib/query mp (lib.metadata/table mp (mt/id "space table"))) $q
                     (lib/join $q (-> (lib/join-clause (lib.metadata/table mp (mt/id "space table")))
                                      (lib/with-join-alias "Space Table")
+                                     (lib/with-join-strategy :left-join)
                                      (lib/with-join-conditions [(lib/=
                                                                   (lib.metadata/field mp (mt/id "space table" "space column"))
                                                                   (lib/with-join-alias (lib.metadata/field mp (mt/id "space table" "space column"))
@@ -1482,4 +1485,4 @@
                                                    (lib/breakoutable-columns $q)))
                     (lib/append-stage $q)
                     (lib/aggregate $q (lib/max (first (lib/visible-columns $q)))))]
-        (is (= [[20]] (mt/rows (qp/process-query query))))))))
+        (is (= [[20]] (mt/formatted-rows [int] (qp/process-query query))))))))

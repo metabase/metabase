@@ -127,6 +127,9 @@ title: Driver interface changelog
   This is the common case for classic relational DBs like Postgres, and some cloud databases. In contrast, a driver like
   Athena sets this to `true` because it connects to an S3 bucket and treats each file within it as a database.
 
+- New feature `:identifiers-with-spaces` has been added to indicate where a driver supports identifiers like table or
+  column names that contains a space character. Defaults to `false`.
+
 ## Metabase 0.49.9
 
 - Another driver feature has been added: `upload-with-auto-pk`. It only affects drivers that support `uploads`, and
