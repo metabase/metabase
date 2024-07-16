@@ -72,7 +72,7 @@
                           #_#_(lib/concat string-field "abc") :type/Text
                           (lib/substring string-field 0 10) :type/Text
                           (lib/replace string-field "abc" "def") :type/Text
-                          (lib/regexextract string-field "abc") :type/Text
+                          (lib/regex-match-first string-field "abc") :type/Text
                           (lib/length string-field) :type/Integer
                           (lib/trim string-field) :type/Text
                           (lib/rtrim string-field) :type/Text
