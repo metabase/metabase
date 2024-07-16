@@ -169,7 +169,10 @@ function ActionMenu({
   return (
     // this component is used within a `<Link>` component,
     // so we must prevent events from triggering the activation of the link
-    <EventSandbox preventDefault>
+    <EventSandbox
+      preventDefault
+      unsandboxEvents={["onKeyDown", "onKeyPress", "onKeyUp"]}
+    >
       <>
         <EntityItemMenu
           className={className}
