@@ -33,7 +33,8 @@
 (def ^:private ChannelType
   ;; TODO can we add a decoder that turn a string to a keyword?
   (mu/with-api-error-message
-    [:fn #(= "channel" (namespace (keyword %)))]
+    [:fn {:decode/string keyword}
+     #(= "channel" (namespace (keyword %)))]
     (deferred-tru "Must be a namespaced channel. E.g: channel/http")))
 
 (api/defendpoint POST "/"
@@ -44,7 +45,7 @@
    details :map
    active  [:maybe {:default true} :boolean]}
   (validation/check-has-application-permission :setting)
-  (test-channel-connection! (keyword type) details)
+  (test-channel-connection! type details)
   (t2/insert-returning-instance! :model/Channel {:name    name
                                                  :type    type
                                                  :details details
@@ -67,10 +68,10 @@
   (validation/check-has-application-permission :setting)
   (let [channel-before-update (api/check-404 (t2/select-one :model/Channel id))
         details-changed? (some-> details (not= (:details channel-before-update)))
-        type-changed?    (some-> type keyword (not= (:type channel-before-update)))]
+        type-changed?    (some-> type (not= (:type channel-before-update)))]
 
     (when (or details-changed? type-changed?)
-      (test-channel-connection! (or (keyword type) (:type channel-before-update))
+      (test-channel-connection! (or type (:type channel-before-update))
                                 (or details (:details channel-before-update))))
    (t2/update! :model/Channel id body)))
 
@@ -79,7 +80,7 @@
   [:as {{:keys [type details]} :body}]
   {type    ChannelType
    details :map}
-  (test-channel-connection! (keyword type) details)
+  (test-channel-connection! type details)
   {:ok true})
 
 (api/define-routes)
