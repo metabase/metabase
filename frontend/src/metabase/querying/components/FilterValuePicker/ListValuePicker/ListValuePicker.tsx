@@ -1,4 +1,4 @@
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, FocusEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -26,6 +26,8 @@ interface ListValuePickerProps {
   autoFocus?: boolean;
   compact?: boolean;
   onChange: (newValues: string[]) => void;
+  onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
+  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
 export function ListValuePicker(props: ListValuePickerProps) {
@@ -124,6 +126,8 @@ export function AutocompletePicker({
   shouldCreate,
   autoFocus,
   onChange,
+  onFocus,
+  onBlur,
 }: ListValuePickerProps) {
   const options = useMemo(() => getFieldOptions(fieldValues), [fieldValues]);
 
@@ -137,6 +141,8 @@ export function AutocompletePicker({
       searchable
       aria-label={t`Filter value`}
       onChange={onChange}
+      onFocus={onFocus}
+      onBlur={onBlur}
     />
   );
 }

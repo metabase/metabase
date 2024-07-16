@@ -16,7 +16,7 @@ import type {
 import { CollectionPicker } from "./CollectionPicker";
 import { NewCollectionDialog } from "./NewCollectionDialog";
 
-interface CollectionPickerModalProps {
+export interface CollectionPickerModalProps {
   title?: string;
   onChange: (item: CollectionPickerValueItem) => void;
   onClose: () => void;
@@ -135,6 +135,7 @@ export const CollectionPickerModal = ({
             : "root"
         }
         onNewCollection={handleNewCollectionCreate}
+        namespace={options.namespace}
       />
     </>
   );

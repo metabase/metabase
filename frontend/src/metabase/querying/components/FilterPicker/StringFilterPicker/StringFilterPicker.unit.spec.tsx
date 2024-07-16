@@ -94,14 +94,6 @@ async function setOperator(operator: string) {
 }
 
 describe("StringFilterPicker", () => {
-  beforeAll(() => {
-    jest.useFakeTimers({ advanceTimers: true });
-  });
-
-  afterAll(() => {
-    jest.useRealTimers();
-  });
-
   describe("new filter", () => {
     it("should render a blank editor", () => {
       setup();
@@ -170,7 +162,6 @@ describe("StringFilterPicker", () => {
       await userEvent.click(screen.getByDisplayValue("Contains"));
       await userEvent.click(screen.getByText("Is"));
       await userEvent.type(screen.getByPlaceholderText("Search by Email"), "t");
-      jest.advanceTimersByTime(500);
       await userEvent.click(await screen.findByText("test@metabase.test"));
 
       await userEvent.click(screen.getByText("Add filter"));

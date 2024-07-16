@@ -376,3 +376,15 @@
     (is (=? {:status :completed
              :data   {:results_metadata (symbol "nil #_\"key is not present.\"")}}
             (qp/process-query (assoc-in query [:middleware :skip-results-metadata?] true))))))
+
+(deftest ^:parallel results-metadata-disambiguated-field-names-test
+  (let [query (mt/mbql-query orders {:joins  [{:source-table $$products
+                                               :alias        "Products"
+                                               :condition    [:= $product_id &Products.products.id]
+                                               :fields       [&Products.$products.id]}]
+                                     :fields [$id]
+                                     :limit  5})]
+    (is (=? {:status :completed
+             :data   {:results_metadata {:columns [{:name "ID"}
+                                                   {:name "ID_2"}]}}}
+            (mt/process-query query)))))
