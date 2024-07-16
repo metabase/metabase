@@ -25,7 +25,7 @@
   (clear-recent-views-for-user :crowberto)
   (clear-recent-views-for-user :rasta)
   (mt/test-helpers-set-global-values!
-    (mt/with-temporary-setting-values [disable-grouper-batch-processing true]
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
       (mt/with-temp [Card      card-1  {:name       "rand-name"
                                         :creator_id (mt/user->id :crowberto)
                                         :display    "table"}
@@ -67,7 +67,7 @@
 
 (deftest most-recently-viewed-dashboard-views-include-collection-test
   (mt/test-helpers-set-global-values!
-    (mt/with-temporary-setting-values [disable-grouper-batch-processing true]
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
       (mt/with-temp [:model/Collection coll   {:name "Analytics"}
                      :model/Dashboard  dash-1 {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto))}
                      :model/Dashboard  dash-2 {:collection_id (:id coll)}]

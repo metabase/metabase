@@ -5,9 +5,9 @@
    [metabase.util :as u]
    [metabase.util.grouper :as grouper]))
 
-(deftest disable-grouper-test
+(deftest synchronous-batch-updates-test
   (testing "with grouper disabled, the submitted item should be processed immediately"
-    (mt/with-temporary-setting-values [disable-grouper-batch-processing true]
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
       (let [processed?  (atom nil)
             g           (grouper/start!
                          (fn [items]

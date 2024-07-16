@@ -91,8 +91,8 @@ const TAB_2 = {
   name: "Tab 2",
 };
 
-const changeDisableGrouperBatchProcessingSetting = value => {
-  cy.request("PUT", "/api/setting/disable-grouper-batch-processing", {
+const changeSynchronousBatchUpdateSetting = value => {
+  cy.request("PUT", "/api/setting/synchronous-batch-updates", {
     value: value,
   });
 };
@@ -100,18 +100,17 @@ const changeDisableGrouperBatchProcessingSetting = value => {
 describe("scenarios > dashboard > tabs", () => {
   before(() => {
     cy.signInAsAdmin();
-    changeDisableGrouperBatchProcessingSetting(true);
+    changeSynchronousBatchUpdateSetting(true);
   });
 
   after(() => {
     cy.signInAsAdmin();
-    changeDisableGrouperBatchProcessingSetting(false);
+    changeSynchronousBatchUpdateSetting(false);
   });
 
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    changeDisableGrouperBatchProcessingSetting(true);
   });
 
   it("should only display cards on the selected tab", () => {

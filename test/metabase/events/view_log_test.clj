@@ -105,7 +105,7 @@
 
 (deftest card-read-view-count-test
   (mt/test-helpers-set-global-values!
-    (mt/with-temporary-setting-values [disable-grouper-batch-processing true]
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
       (mt/with-temp [:model/User user {}
                      :model/Card card {:creator_id (u/id user)}]
         (testing "Card read events are recorded by a card's view_count"
@@ -118,7 +118,7 @@
 
 (deftest dashboard-read-view-count-test
   (mt/test-helpers-set-global-values!
-    (mt/with-temporary-setting-values [disable-grouper-batch-processing true]
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
       (mt/with-temp [:model/User          user      {}
                      :model/Dashboard     dashboard {:creator_id (u/id user)}
                      :model/Card          card      {:name "Dashboard Test Card"}
@@ -136,7 +136,7 @@
 
 (deftest table-read-view-count-test
   (mt/test-helpers-set-global-values!
-    (mt/with-temporary-setting-values [disable-grouper-batch-processing true]
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
       (mt/with-temp [:model/User  user  {}
                      :model/Table table {}]
         (testing "Card read events are recorded by a card's view_count"

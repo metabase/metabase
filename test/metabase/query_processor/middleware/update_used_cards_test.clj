@@ -29,7 +29,7 @@
   (assert (fn? thunk))
   (testing "last_used_at should be nil to start with"
     (is (nil? (card-last-used-at card-id))))
-  (mt/with-temporary-setting-values [disable-grouper-batch-processing true]
+  (mt/with-temporary-setting-values [synchronous-batch-updates true]
     (thunk))
   (testing "last_used_at should be updated to non nil"
     (is (some? (card-last-used-at card-id)))))

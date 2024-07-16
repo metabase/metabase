@@ -25,8 +25,8 @@
  p/keep-me
  Grouper/keep-me)
 
-(defsetting disable-grouper-batch-processing
-  (deferred-tru "Disable grouper batch processing. If true, all `submit!` calls will be processed immediately.")
+(defsetting synchronous-batch-updates
+  (deferred-tru "Process batches updates synchronously. If true, all `submit!` calls will be processed immediately. Default is false.")
   ;; Should be used for testing purposes only, currently set by some e2e tests
   :type       :boolean
   :default    false
@@ -44,7 +44,7 @@
   We use grouper for fire-and-forget scenarios, so we don't care about the result."
   [& args]
   (let [p (apply grouper/submit! args)]
-    (when (disable-grouper-batch-processing)
+    (when (synchronous-batch-updates)
       ;; wake up the group immediately and wait for it to finish
       (.wakeUp ^Grouper (first args))
       (deref p))

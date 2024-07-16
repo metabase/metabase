@@ -746,7 +746,7 @@
 (deftest update-dashboard-test
   (testing "PUT /api/dashboard/:id"
     (mt/test-helpers-set-global-values!
-      (mt/with-temporary-setting-values [disable-grouper-batch-processing true]
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
         (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
           (with-dashboards-in-writeable-collection [dashboard-id]
             (testing "GET before update"
