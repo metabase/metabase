@@ -235,8 +235,10 @@ export function DashCardVisualization({
 
   return (
     <Visualization
-      className={cx(CS.flexFull, CS.overflowHidden, {
+      className={cx(CS.flexFull, {
         [CS.pointerEventsNone]: isEditingDashboardLayout,
+        [CS.overflowAuto]: visualizationOverlay,
+        [CS.overflowHidden]: !visualizationOverlay,
       })}
       classNameWidgets={cx({
         [cx(CS.textLight, CS.textMediumHover)]: isEmbed,

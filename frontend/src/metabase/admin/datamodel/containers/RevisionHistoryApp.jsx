@@ -32,7 +32,7 @@ export default connect(mapStateToProps, mapDispatchToProps)(RevisionHistoryApp);
 class SegmentRevisionHistoryInner extends Component {
   render() {
     const { segment, ...props } = this.props;
-    return <RevisionHistory object={segment} {...props} />;
+    return <RevisionHistory segment={segment} {...props} />;
   }
 }
 
