@@ -6,6 +6,7 @@ import {
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  createCollection,
   createQuestion,
   entityPickerModal,
   entityPickerModalItem,
@@ -476,17 +477,15 @@ describe("issue 32252", () => {
     restore("setup");
     cy.signInAsAdmin();
 
-    cy.createCollection({ name: "My collection" }).then(
-      ({ body: collection }) => {
-        createQuestion({
-          name: "My question",
-          collection_id: collection.id,
-          query: {
-            "source-table": ORDERS_ID,
-          },
-        });
-      },
-    );
+    createCollection({ name: "My collection" }).then(({ body: collection }) => {
+      createQuestion({
+        name: "My question",
+        collection_id: collection.id,
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      });
+    });
   });
 
   it("refreshes data picker sources after archiving a collection (metabase#32252)", () => {
