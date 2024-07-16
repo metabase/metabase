@@ -203,7 +203,7 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Orders, Count").should("not.exist");
     });
 
-    it("should show an alert if applications assets are not served", done => {
+    it("should show an alert if applications assets are not served", () => {
       // intercepting and modifying index.html to cause a network error. originally
       // attempted to intercept the request for the JS file, but the browser
       // generally loaded it from a cache, making it difficult to force an error.
@@ -222,12 +222,19 @@ describe("scenarios > home > homepage", () => {
         },
       );
 
-      cy.visit("/");
-
-      cy.on("window:alert", text => {
-        expect(text).to.contain("Failed to load an asset");
-        done();
+      cy.on("window:before:load", win => {
+        cy.spy(win.console, "error").as("errorConsole");
       });
+
+      cy.visit("/");
+      cy.get("@errorConsole").should(
+        "have.been.calledWithMatch",
+        /Could not download asset/,
+      );
+      cy.get("@errorConsole").should(
+        "have.been.calledWithMatch",
+        /bad-link\.js/,
+      );
     });
   });
 });
