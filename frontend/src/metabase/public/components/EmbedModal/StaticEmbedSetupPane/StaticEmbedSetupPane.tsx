@@ -89,7 +89,7 @@ export const StaticEmbedSetupPane = ({
     useState<EmbeddingParametersValues>({});
 
   const canWhitelabel = useSelector(getCanWhitelabel);
-  const shouldShowDownloadData = canWhitelabel && resourceType === "question";
+  const shouldShowDownloadData = canWhitelabel;
   const [displayOptions, setDisplayOptions] = useState<EmbeddingDisplayOptions>(
     getDefaultDisplayOptions(shouldShowDownloadData),
   );
