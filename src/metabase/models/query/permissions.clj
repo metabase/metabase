@@ -144,7 +144,7 @@
           (merge
            (when (seq table-ids)
              {:perms/create-queries (zipmap table-ids (repeat :query-builder))
-              :perms/data-access    (zipmap table-ids (repeat :unrestricted))})
+              :perms/view-data      (zipmap table-ids (repeat :unrestricted))})
            (when native?
              (native-query-perms query))))))
     ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
