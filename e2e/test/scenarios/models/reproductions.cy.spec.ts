@@ -33,6 +33,13 @@ import {
   setFilter,
   setDropdownFilterType,
   sidebar,
+  describeEE,
+  setTokenFeatures,
+  getPinnedSection,
+  summarize,
+  rightSidebar,
+  assertQueryBuilderRowCount,
+  navigationSidebar,
 } from "e2e/support/helpers";
 import type { CardId, FieldReference } from "metabase-types/api";
 
@@ -763,6 +770,26 @@ describe("issue 25885", () => {
   });
 });
 
+describeEE("issue 43088", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should be able to create ad-hoc questions based on instance analytics models (metabase#43088)", () => {
+    cy.visit("/");
+    navigationSidebar().findByText("Metabase analytics").click();
+    getPinnedSection().findByText("People").scrollIntoView().click();
+    cy.wait("@dataset");
+    summarize();
+    rightSidebar().button("Done").click();
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(1);
+  });
+});
+
 describe("issue 39993", () => {
   const columnName = "Exp";
 
@@ -873,6 +900,26 @@ describe("issue 34574", () => {
     cy.findByRole("heading", { level: 2, name: "World" }).should("be.visible");
     cy.get("strong").should("be.visible").and("have.text", "important");
   }
+});
+
+describe("issue 34517", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not change the url when reloading the page while editing a model (metabase#34517)", () => {
+    startNewModel();
+    cy.location("pathname").should("eq", "/model/query");
+
+    // wait for the model editor to be fully loaded
+    entityPickerModal().should("exist");
+    cy.reload();
+
+    // wait for the model editor to be fully loaded
+    entityPickerModal().should("exist");
+    cy.location("pathname").should("eq", "/model/query");
+  });
 });
 
 describe("issue 35840", () => {

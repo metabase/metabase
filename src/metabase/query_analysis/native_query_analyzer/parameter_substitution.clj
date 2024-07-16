@@ -1,4 +1,4 @@
-(ns metabase.native-query-analyzer.parameter-substitution
+(ns metabase.query-analysis.native-query-analyzer.parameter-substitution
   "Replace {{variable}}s and {{field filters}} in SQL queries with parse-able equivalents."
   (:require
    [metabase.query-processor.compile :as qp.compile]))
