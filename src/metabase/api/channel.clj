@@ -31,7 +31,6 @@
       (throw (ex-info "Unable to connect channel" (merge {:status-code 400} (ex-data e)))))))
 
 (def ^:private ChannelType
-  ;; TODO can we add a decoder that turn a string to a keyword?
   (mu/with-api-error-message
     [:fn {:decode/string keyword}
      #(= "channel" (namespace (keyword %)))]
