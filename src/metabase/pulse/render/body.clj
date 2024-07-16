@@ -234,7 +234,8 @@
         table-body                  [:div
                                      (table/render-table
                                       (color/make-color-selector data viz-settings)
-                                      (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
+                                      {:cols-for-color-lookup (mapv :name ordered-cols)
+                                       :col-names (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
                                       (prep-for-html-rendering timezone-id card data))
                                      (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
     {:attachments
