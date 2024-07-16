@@ -1735,10 +1735,8 @@ describe("issue 43219", () => {
     getDashboardCard(0).within(() => {
       cy.findByText("Series 10").should("exist").and("not.be.visible");
 
-      cy.findByTestId("visualization-root").realMouseWheel({ deltaY: 400 });
-      cy.findByTestId("parameter-mapper-container").realMouseWheel({
-        deltaX: 1400,
-      });
+      cy.findByTestId("visualization-root").scrollTo("bottom");
+      cy.findByTestId("parameter-mapper-container").scrollTo("right");
 
       cy.findByText("Series 10").should("be.visible");
     });
