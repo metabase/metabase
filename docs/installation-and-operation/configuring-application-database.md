@@ -8,17 +8,85 @@ redirect_from:
 
 The application database is where Metabase stores information about user accounts, questions, dashboards, and any other data needed to run the Metabase application.
 
-We recommend using PostgreSQL for production, but you can also use MySQL:
+For production, we recommend using PostgreSQL as your application database.
 
-
-- [H2](#h2-default)
 - [PostgreSQL](#postgresql) (recommended for production)
-- [MySQL] (also works for production)
+- [MySQL](#mysql-or-mariadb) (also works for production)
+- [H2](#h2-default) (default - AVOID in production)
 
 Metabase will read the connection configuration information when the application starts up. You can't change the application database while the application is running.
 
-- Metabase provides limited support for migrating from H2 to Postgres if you decide to upgrade to a more
-  production-ready database. See [Migrating from H2 to PostgreSQL](migrating-from-h2.md) for more details.
+## PostgreSQL
+
+We recommend that you use [PostgreSQL](https://www.postgresql.org/) for your Metabase application database.
+
+You can change the application database to use Postgres using a few simple environment variables. For example, the following command tells Metabase to look for its application database using the supplied Postgres connection information.
+
+```sh
+export MB_DB_TYPE=postgres
+export MB_DB_DBNAME=metabase
+export MB_DB_PORT=5432
+export MB_DB_USER=<username>
+export MB_DB_PASS=<password>
+export MB_DB_HOST=localhost
+java -jar metabase.jar
+```
+
+Metabase will not create this database for you. Example command to create the database:
+
+```sh
+createdb --encoding=UTF8 -e metabase
+```
+
+If you have additional parameters, Metabase also supports providing a full JDBC connection string:
+
+```sh
+export MB_DB_CONNECTION_URI="jdbc:postgresql://localhost:5432/metabase?user=<username>&password=<password>"
+java -jar metabase.jar
+```
+
+If you want to pass the connection URI, user, and password credentials separately from the JDBC connection string (useful if the password contains special characters), you can use the `MB_DB_CONNECTION_URI` [environment variable](../configuring-metabase/environment-variables.md) in combination with `MB_DB_USER` and `MB_DB_PASS` variables:
+
+```sh
+export MB_DB_CONNECTION_URI="jdbc:postgresql://localhost:5432/metabase"
+export MB_DB_USER=<username>
+export MB_DB_PASS=<password>
+java -jar metabase.jar
+```
+
+## [MySQL](https://www.mysql.com/) or [MariaDB](https://www.mariadb.org/)
+
+We recommend [PostgreSQL](#postgresql), but you can also use MySQL or MariaDB.
+
+The minimum recommended version is MySQL 8.0.17 or MariaDB
+10.2.2, and the `utf8mb4` character set is required. You can change the application database to use MySQL using
+environment variables like this:
+
+    export MB_DB_TYPE=mysql
+    export MB_DB_DBNAME=metabase
+    export MB_DB_PORT=3306
+    export MB_DB_USER=<username>
+    export MB_DB_PASS=<password>
+    export MB_DB_HOST=localhost
+    java -jar metabase.jar
+
+Metabase will not create this database for you. Example SQL statement to create the database:
+
+    CREATE DATABASE metabase CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+This will tell Metabase to look for its application database using the supplied MySQL connection information. Metabase
+also supports providing a full JDBC connection string if you have additional parameters:
+
+    export MB_DB_CONNECTION_URI="jdbc:mysql://localhost:3306/metabase?user=<username>&password=<password>"
+    java -jar metabase.jar
+
+As with Postgres, `MB_DB_CONNECTION_URI` can also be used in combination with `MB_DB_USER` and/or `MB_DB_PASS` if you
+want to pass one or both separately from the rest of the JDBC connection string:
+
+    export MB_DB_CONNECTION_URI="jdbc:mysql://localhost:5432/metabase"
+    export MB_DB_USER=<username>
+    export MB_DB_PASS=<password>
+    java -jar metabase.jar
 
 ## [H2](https://www.h2database.com/) (default)
 
@@ -45,38 +113,9 @@ If for any reason you want to use an H2 database file in a separate location fro
 
 Note that H2 automatically appends `.mv.db` or `.h2.db` to the path you specify; do not include those in your path! In other words, `MB_DB_FILE` should be something like `/path/to/metabase.db`, rather than something like `/path/to/metabase.db.mv.db` (even though this is the file that actually gets created).
 
-## PostgreSQL
+## Migrating from H2
 
-You can change the application database to use Postgres using a few simple environment variables. For example:
-
-```sh
-export MB_DB_TYPE=postgres
-export MB_DB_DBNAME=metabase
-export MB_DB_PORT=5432
-export MB_DB_USER=<username>
-export MB_DB_PASS=<password>
-export MB_DB_HOST=localhost
-java -jar metabase.jar
-```
-
-Metabase will not create this database for you. Example command to create the database:
-
-    createdb --encoding=UTF8 -e metabase
-
-This will tell Metabase to look for its application database using the supplied Postgres connection information.
-Metabase also supports providing a full JDBC connection string if you have additional parameters:
-
-    export MB_DB_CONNECTION_URI="jdbc:postgresql://localhost:5432/metabase?user=<username>&password=<password>"
-    java -jar metabase.jar
-
-`MB_DB_CONNECTION_URI` can also be used in combination with `MB_DB_USER` and/or `MB_DB_PASS` if you want to pass one
-or both separately from the rest of the JDBC connection string (useful if the password contains special characters):
-
-    export MB_DB_CONNECTION_URI="jdbc:postgresql://localhost:5432/metabase"
-    export MB_DB_USER=<username>
-    export MB_DB_PASS=<password>
-    java -jar metabase.jar
-
+If you've started out using the default, H2 database, but you want to preserve the content you've created and move to a production application database, Metabase provides limited support for [migrating from H2 to PostgreSQL](migrating-from-h2.md).
 
 ## Upgrading from a Metabase version pre-0.38
 
@@ -119,36 +158,3 @@ If that does not work, you can enable `NonValidatingFactory` by adding the follo
 
 For more options to further tune the SSL connection parameters,
 see the [PostgreSQL SSL client documentation](https://jdbc.postgresql.org/documentation/ssl/#configuring-the-client).
-
-
-## [MySQL](https://www.mysql.com/) or [MariaDB](https://www.mariadb.org/)
-
-We recommend PostgreSQL, but you can also use MySQL or MariaDB. The minimum recommended version is MySQL 8.0.17 or MariaDB
-10.2.2, and the `utf8mb4` character set is required. You can change the application database to use MySQL using
-environment variables like this:
-
-    export MB_DB_TYPE=mysql
-    export MB_DB_DBNAME=metabase
-    export MB_DB_PORT=3306
-    export MB_DB_USER=<username>
-    export MB_DB_PASS=<password>
-    export MB_DB_HOST=localhost
-    java -jar metabase.jar
-
-Metabase will not create this database for you. Example SQL statement to create the database:
-
-    CREATE DATABASE metabase CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-This will tell Metabase to look for its application database using the supplied MySQL connection information. Metabase
-also supports providing a full JDBC connection string if you have additional parameters:
-
-    export MB_DB_CONNECTION_URI="jdbc:mysql://localhost:3306/metabase?user=<username>&password=<password>"
-    java -jar metabase.jar
-
-As with Postgres, `MB_DB_CONNECTION_URI` can also be used in combination with `MB_DB_USER` and/or `MB_DB_PASS` if you
-want to pass one or both separately from the rest of the JDBC connection string:
-
-    export MB_DB_CONNECTION_URI="jdbc:mysql://localhost:5432/metabase"
-    export MB_DB_USER=<username>
-    export MB_DB_PASS=<password>
-    java -jar metabase.jar
