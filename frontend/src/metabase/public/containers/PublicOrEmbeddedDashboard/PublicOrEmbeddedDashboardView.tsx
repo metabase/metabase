@@ -127,6 +127,11 @@ export function PublicOrEmbeddedDashboardView({
     selectedTabId,
   });
 
+  const normalizedTheme = normalizeTheme({
+    theme,
+    background,
+  });
+
   return (
     <EmbedFrame
       name={dashboard && dashboard.name}
@@ -147,7 +152,7 @@ export function PublicOrEmbeddedDashboardView({
       background={background}
       bordered={bordered}
       titled={titled}
-      theme={theme}
+      theme={normalizedTheme}
       hide_parameters={hideParameters}
       hide_download_button={hideDownloadButton}
     >
@@ -234,4 +239,22 @@ function getCurrentTabDashcards({
   return dashboard?.dashcards.filter(
     dashcard => dashcard.dashboard_tab_id === selectedTabId,
   );
+}
+
+/**
+ * When both `background: false` and `theme: "transparent"` options are supplied,
+ * the new behavior takes precedence (metabase#43838)
+ */
+function normalizeTheme({
+  theme,
+  background,
+}: {
+  theme: DisplayTheme;
+  background: boolean;
+}) {
+  if (!background && theme === "transparent") {
+    return "light";
+  }
+
+  return theme;
 }
