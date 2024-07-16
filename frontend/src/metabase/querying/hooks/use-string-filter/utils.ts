@@ -18,10 +18,9 @@ export function getAvailableOptions(
   initialOperator: Lib.StringFilterOperatorName | undefined,
 ) {
   const options =
-    initialOperator != null &&
-    OPERATOR_OPTIONS_WITHOUT_NULL[initialOperator] == null
-      ? OPERATOR_OPTIONS
-      : OPERATOR_OPTIONS_WITHOUT_NULL;
+    initialOperator !== "is-null" && initialOperator !== "not-null"
+      ? OPERATOR_OPTIONS_WITHOUT_NULL
+      : OPERATOR_OPTIONS;
 
   return getAvailableOperatorOptions(query, stageIndex, column, options);
 }
