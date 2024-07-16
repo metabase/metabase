@@ -113,6 +113,8 @@ export const DashCardMenu = ({
             close();
             handleDownload(opts);
           }}
+          px="sm"
+          py="md"
         />
       );
     }

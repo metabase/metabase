@@ -78,6 +78,8 @@ const QueryDownloadWidget = ({
             setIsPopoverOpen(false);
             handleDownload(opts);
           }}
+          px="md"
+          py="lg"
         />
       </Popover.Dropdown>
     </Popover>

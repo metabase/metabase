@@ -5,7 +5,15 @@ import { t } from "ttag";
 import { isMac } from "metabase/lib/browser";
 import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Group, Icon, Stack, Text, Title, Tooltip } from "metabase/ui";
+import {
+  Group,
+  Icon,
+  Stack,
+  type StackProps,
+  Text,
+  Title,
+  Tooltip,
+} from "metabase/ui";
 import { canSavePng } from "metabase/visualizations";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
@@ -17,7 +25,7 @@ type QueryDownloadPopoverProps = {
   question: Question;
   result: Dataset;
   onDownload: (opts: { type: string; enableFormatting: boolean }) => void;
-};
+} & StackProps;
 
 const getFormattingInfoTooltipLabel = () => {
   return isMac()
@@ -29,6 +37,7 @@ export const QueryDownloadPopover = ({
   question,
   result,
   onDownload,
+  ...stackProps
 }: QueryDownloadPopoverProps) => {
   const canDownloadPng = canSavePng(question.display());
   const hasTruncatedResults =
@@ -53,7 +62,7 @@ export const QueryDownloadPopover = ({
   );
 
   return (
-    <Stack w={hasTruncatedResults ? "18.75rem" : "16.25rem"} py="sm">
+    <Stack w={hasTruncatedResults ? "18.75rem" : "16.25rem"} {...stackProps}>
       <Group align="center" position="apart" px="sm">
         <Title order={4}>{t`Download full results`}</Title>
         <Tooltip label={getFormattingInfoTooltipLabel()}>
