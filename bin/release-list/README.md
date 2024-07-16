@@ -1,5 +1,7 @@
 # Release list
 
+**Deprecated. This is now handled by github actions. This script is now a manual fallback.**
+
 Builds a page that lists all Metabase releases for docs: `docs/releases.md`.
 
 ## Requirements
