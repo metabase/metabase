@@ -39,10 +39,11 @@
                                 "last_edited_at" :c.updated_at)
         cards                 (t2/select :model/Card
                                          (m/assoc-some
-                                          {:from     [[(t2/table-name :model/Card) :c]]
-                                           :join     (concat card-joins additional-joins)
-                                           :where    [:= :c.archived false]
-                                           :order-by [[order-by-column (keyword sort-direction)]]}
+                                          {:select-distinct [:c.*]
+                                           :from            [[(t2/table-name :model/Card) :c]]
+                                           :join            (concat card-joins additional-joins)
+                                           :where           [:= :c.archived false]
+                                           :order-by        [[order-by-column (keyword sort-direction)]]}
                                           :limit limit
                                           :offset offset))
         card-id->query-fields (when (seq cards)
