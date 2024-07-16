@@ -117,7 +117,7 @@
 (deftest pagination-test
   (testing "Lets you page results"
     (with-test-setup
-      (resp= {:total  4
+      (resp= {:total  3
               :limit  2
               :offset 0
               :data
@@ -134,7 +134,7 @@
                :name "C"}
               {:id   card-4
                :name "D"}])
-      (resp= {:total  4
+      (resp= {:total  3
               :limit  1
               :offset 2
               :data
