@@ -183,22 +183,6 @@
                 (is (not (contains? syncable "public")))
                 (is (not (contains? syncable fake-schema-name)))))))))))
 
-;; druid - unknown uuid
-;; maria - unknown uuid
-;; oracle
-;; redshift - unknown type uuid
-;; snowflake - unknown type uuid
-;; sparksql - unknown type uuid
-;; presto - beans??
-;; sqlserver 2017 - unknown type
-;; sqlserver 2022 - unknown type
-
-
-;; postgres -- good
-;; sqlite -- Integer - cannot differentiate based on jdbc type
-;; athena - Text
-;; h2 - Text
-
 (deftest ^:parallel uuid-filtering-test
   (mt/test-drivers (set/intersection
                      (mt/sql-jdbc-drivers)
