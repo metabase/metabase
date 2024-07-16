@@ -185,10 +185,12 @@
 (defn check-db-level-perms
   "Checks that the current user has at least `required-perm` for the entire DB specified by `db-id`."
   [perm-type required-perm gtap-perms db-id]
-  (or (data-perms/at-least-as-permissive? perm-type (perm-type gtap-perms) required-perm)
+  (or
       (data-perms/at-least-as-permissive? perm-type
                                           (data-perms/full-db-permission-for-user api/*current-user-id* perm-type db-id)
                                           required-perm)
+      (when gtap-perms
+       (data-perms/at-least-as-permissive? perm-type gtap-perms required-perm))
       (throw (perms-exception {db-id {perm-type required-perm}}))))
 
 (defn check-table-level-perms
