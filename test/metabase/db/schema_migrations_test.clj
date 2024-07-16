@@ -488,7 +488,9 @@
   (mt/test-driver :postgres
     (testing "FKs are not created automatically in Postgres, check that migrations add necessary indexes"
      (is (= [{:table_name  "field_usage"
-              :column_name "query_execution_id"}]
+              :column_name "query_execution_id"}
+             {:table_name  "pulse_channel"
+              :column_name "channel_id"}]
             (t2/query
               "SELECT
                    conrelid::regclass::text AS table_name,
