@@ -1,6 +1,5 @@
 (ns metabase.api.embed.common
   (:require
-   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
@@ -126,13 +125,22 @@
   not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect.
   Also, any param values that are blank strings should be parsed as nil, representing the absence of a value."
   [query-params]
-  (-> query-params
-      (update-keys keyword)
-      (update-vals (fn [v] (if (= v "")
-                             nil
-                             (if (string? v)
-                               (json/parse-string v)
-                               v))))))
+  (letfn [(maybe-read [v]
+            (if (string? v)
+              (or (parse-long v)
+                (parse-boolean v)
+                (parse-double v)
+                (if (str/blank? v)
+                  nil
+                  v))
+              v))]
+    (-> query-params
+        (update-keys keyword)
+        (update-vals (fn [v]
+                       (if (and (not (string? v))
+                                (seq v))
+                         (mapv maybe-read v)
+                         (maybe-read v)))))))
 
 (mu/defn validate-and-merge-params :- [:map-of :keyword :any]
   "Validate that the `token-params` passed in the JWT and the `user-params` (passed as part of the URL) are allowed, and
@@ -430,6 +438,8 @@
         slug-token-params                    (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         {parameters       :parameters
          embedding-params :embedding_params} (t2/select-one :model/Dashboard :id dashboard-id)
+        embedding-params                     (or embedding-params
+                                                 (when preview (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])))
         id->slug                             (into {} (map (juxt :id :slug) parameters))
         slug->id                             (into {} (map (juxt :slug :id) parameters))
         searched-param-slug                  (get id->slug searched-param-id)]
