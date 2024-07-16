@@ -18,7 +18,7 @@
                     :card_id card-id))
 
 (defn- do-with-test-setup [f]
-  (binding [query-analysis/*parse-queries-in-test?* true]
+  (binding [query-analysis/*analyze-queries-in-test?* true]
     (let [table-id (mt/id :orders)
           tax-id   (mt/id :orders :tax)
           total-id (mt/id :orders :total)]

@@ -50,7 +50,7 @@
 
           ;; run the analysis for 1s
           (try
-            (binding [query-analysis/*parse-queries-in-test?* true]
+            (binding [query-analysis/*analyze-queries-in-test?* true]
               (u/with-timeout 1000
                 (#'task.analyze-queries/analyzer-loop!)))
             (catch Exception _))

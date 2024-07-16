@@ -21,27 +21,21 @@
 
 (defonce ^:private queue (queue/bounded-transfer-queue realtime-queue-capacity {:dedupe? true}))
 
-(def ^:dynamic *parse-queries-in-test?*
-  "Normally, a native card's query is parsed on every create/update. For most tests, this is an unnecessary
-  expense. Therefore, we skip parsing while testing unless this variable is turned on.
-
-  c.f. [[native-analysis-active?]]"
+(def ^:dynamic *analyze-queries-in-test?*
+  "Normally, a card's query is analyzed on every create/update. For most tests, this is an unnecessary expense.
+  Therefore, we skip parsing while testing unless this variable is turned on."
   false)
 
-(defn- native-analysis-active?
-  "Should the query run? Either we're not testing or it's been explicitly turned on.
 
-  c.f. [[*parse-queries-in-test?*]], [[public-settings/sql-parsing-enabled]]"
-  []
-  (and (public-settings/sql-parsing-enabled)
-       (or (not config/is-test?)
-           *parse-queries-in-test?*)))
+(defn- enabled? []
+  (or (not config/is-test?)
+      *analyze-queries-in-test?*))
 
-(defn enabled?
+(defn enabled-type?
   "Is analysis of the given query type enabled?"
   [query-type]
   (case query-type
-    :native     (native-analysis-active?)
+    :native     (public-settings/sql-parsing-enabled)
     :query      true
     :mbql/query true
     false))
@@ -53,7 +47,7 @@
   Does not track wildcards for queries rendered as tables afterwards."
   [query]
   (let [query-type (lib/normalized-query-type query)]
-    (when (enabled? query-type)
+    (when (enabled-type? query-type)
       (case query-type
         :native     (try
                       (nqa/field-ids-for-native query)
@@ -64,8 +58,6 @@
 
 (defn update-query-analysis-for-card!
   "Clears QueryFields associated with this card and creates fresh, up-to-date-ones.
-
-  If you're invoking this from a test, be sure to turn on [[*parse-queries-in-test?*]].
 
   Returns `nil` (and logs the error) if there was a parse error."
   [{card-id :id, query :dataset_query}]
@@ -142,13 +134,14 @@
 (defn analyze-card!
   "Update the analysis for the given card, if it is active."
   [card-id]
-  (let [card (t2/select-one [:model/Card :id :archived :dataset_query] card-id)]
-    (cond
-      (not card)       (log/warnf "Card not found: %" card-id)
-      (:archived card) (log/warnf "Skipping archived card: %" card-id)
-      :else            (log/infof "Performing query analysis for card %s" card-id))
-    (when (and card (not (:archived card)))
-      (update-query-analysis-for-card! card))))
+  (when (enabled?)
+    (let [card (t2/select-one [:model/Card :id :archived :dataset_query] card-id)]
+      (cond
+        (not card)       (log/warnf "Card not found: %" card-id)
+        (:archived card) (log/warnf "Skipping archived card: %" card-id)
+        :else            (log/infof "Performing query analysis for card %s" card-id))
+      (when (and card (not (:archived card)))
+        (update-query-analysis-for-card! card)))))
 
 (defn next-card-id!
   "Get the id of the next card id to be analyzed. May block indefinitely, relies on producer."
@@ -158,9 +151,11 @@
 (defn analyze-async!
   "Put the given card at the back of the high priority analysis queue, or drop it if the queue is full."
   [card-id]
-  (queue/maybe-put! queue card-id))
+  (when (enabled?)
+    (queue/maybe-put! queue card-id)))
 
 (defn analyze-sync!
   "Synchronously hand-off the given card for analysis, at a low priority. May block indefinitely, relies on consumer."
   [card-id]
-  (queue/blocking-put! queue card-id))
+  (when (enabled?)
+    (queue/blocking-put! queue card-id)))

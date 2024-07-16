@@ -14,8 +14,6 @@
 (defn update-query-fields-for-card!
   "Clears QueryFields associated with this card and creates fresh, up-to-date-ones.
 
-  If you're invoking this from a test, be sure to turn on [[*parse-queries-in-test?*]].
-
   Returns `nil` (and logs the error) if there was a parse error."
   [card-id query-field-rows]
   (t2/with-transaction [_conn]
