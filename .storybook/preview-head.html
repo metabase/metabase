@@ -54,4 +54,10 @@
     --mb-color-bg-dashboard: var(--mb-color-bg-white);
     --mb-color-bg-dashboard-card: var(--mb-color-bg-white);
   }
+
+  /* For Embed frame questions to render properly */
+  #root:has([data-testid="embed-frame"]),
+  [data-testid="embed-frame"] {
+    height: 100%;
+  }
 </style>

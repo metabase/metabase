@@ -416,6 +416,7 @@ describe("#39152 sharing an unsaved question", () => {
             location: "code_overview",
             code: "backend",
             appearance: {
+              background: true,
               bordered: true,
               titled: true,
               font: "instance",
@@ -434,6 +435,7 @@ describe("#39152 sharing an unsaved question", () => {
             location: "code_overview",
             code: "view",
             appearance: {
+              background: true,
               bordered: true,
               titled: true,
               font: "instance",
@@ -459,6 +461,7 @@ describe("#39152 sharing an unsaved question", () => {
             location: "code_params",
             code: "backend",
             appearance: {
+              background: true,
               bordered: true,
               titled: true,
               font: "instance",
@@ -498,6 +501,7 @@ describe("#39152 sharing an unsaved question", () => {
             location: "code_appearance",
             code: "backend",
             appearance: {
+              background: true,
               bordered: false,
               titled: false,
               font: "instance",
@@ -505,6 +509,30 @@ describe("#39152 sharing an unsaved question", () => {
               hide_download_button: null,
             },
           });
+
+          // Question don't have an option to disable background (metabase#43838)
+          if (resource === "dashboard") {
+            cy.findByLabelText("Dashboard background").click({ force: true });
+
+            cy.findByTestId("embed-backend")
+              .findByTestId("copy-button")
+              .realClick();
+            expectGoodSnowplowEvent({
+              event: "static_embed_code_copied",
+              artifact: resource,
+              language: "python",
+              location: "code_appearance",
+              code: "backend",
+              appearance: {
+                background: false,
+                bordered: false,
+                titled: false,
+                font: "instance",
+                theme: "night",
+                hide_download_button: null,
+              },
+            });
+          }
         });
 
         describeEE("Pro/EE instances", () => {
@@ -529,6 +557,7 @@ describe("#39152 sharing an unsaved question", () => {
               location: "code_overview",
               code: "backend",
               appearance: {
+                background: true,
                 bordered: true,
                 titled: true,
                 font: "instance",
@@ -547,6 +576,7 @@ describe("#39152 sharing an unsaved question", () => {
               location: "code_overview",
               code: "view",
               appearance: {
+                background: true,
                 bordered: true,
                 titled: true,
                 font: "instance",
@@ -572,6 +602,7 @@ describe("#39152 sharing an unsaved question", () => {
               location: "code_params",
               code: "backend",
               appearance: {
+                background: true,
                 bordered: true,
                 titled: true,
                 font: "instance",
@@ -618,6 +649,7 @@ describe("#39152 sharing an unsaved question", () => {
               location: "code_appearance",
               code: "backend",
               appearance: {
+                background: true,
                 bordered: false,
                 titled: false,
                 font: "custom",

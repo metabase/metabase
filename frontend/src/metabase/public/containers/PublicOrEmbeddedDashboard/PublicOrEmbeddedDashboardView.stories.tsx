@@ -240,6 +240,42 @@ DarkThemeNoBackgroundScroll.decorators = [
   ScrollDecorator,
 ];
 
+// Transparent theme
+export const TransparentThemeDefault = Template.bind({});
+TransparentThemeDefault.args = {
+  ...defaultArgs,
+  theme: "transparent",
+};
+TransparentThemeDefault.decorators = [LightBackgroundDecorator];
+
+export const TransparentThemeScroll = Template.bind({});
+TransparentThemeScroll.args = {
+  ...defaultArgs,
+  theme: "transparent",
+  dashboard: createDashboard({ hasScroll: true }),
+};
+TransparentThemeScroll.decorators = [LightBackgroundDecorator, ScrollDecorator];
+
+export const TransparentThemeNoBackgroundDefault = Template.bind({});
+TransparentThemeNoBackgroundDefault.args = {
+  ...defaultArgs,
+  theme: "transparent",
+  background: false,
+};
+TransparentThemeNoBackgroundDefault.decorators = [LightBackgroundDecorator];
+
+export const TransparentThemeNoBackgroundScroll = Template.bind({});
+TransparentThemeNoBackgroundScroll.args = {
+  ...defaultArgs,
+  theme: "transparent",
+  background: false,
+  dashboard: createDashboard({ hasScroll: true }),
+};
+TransparentThemeNoBackgroundScroll.decorators = [
+  LightBackgroundDecorator,
+  ScrollDecorator,
+];
+
 const EXPLICIT_SIZE_WAIT_TIME = 300;
 function ScrollDecorator(Story: Story) {
   useEffect(() => {
@@ -253,6 +289,14 @@ function ScrollDecorator(Story: Story) {
 function DarkBackgroundDecorator(Story: Story) {
   return (
     <Box bg="#434e56" mih="100vh">
+      <Story />
+    </Box>
+  );
+}
+
+function LightBackgroundDecorator(Story: Story) {
+  return (
+    <Box bg="#ddd" mih="100vh">
       <Story />
     </Box>
   );
