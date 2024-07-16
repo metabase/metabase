@@ -5,15 +5,7 @@ import { t } from "ttag";
 import { isMac } from "metabase/lib/browser";
 import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import {
-  Group,
-  Icon,
-  Stack,
-  type StackProps,
-  Text,
-  Title,
-  Tooltip,
-} from "metabase/ui";
+import { Group, Icon, Stack, Text, Title, Tooltip } from "metabase/ui";
 import { canSavePng } from "metabase/visualizations";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
@@ -25,7 +17,7 @@ type QueryDownloadPopoverProps = {
   question: Question;
   result: Dataset;
   onDownload: (opts: { type: string; enableFormatting: boolean }) => void;
-} & StackProps;
+};
 
 const getFormattingInfoTooltipLabel = () => {
   return isMac()
