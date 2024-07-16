@@ -1,7 +1,7 @@
 (ns macros.metabase.models.query-field-test
   (:require [macros.common]))
 
-(defmacro with-test-setup! [& body]
+(defmacro with-test-setup [& body]
   `(let [~(macros.common/ignore-unused 'card-id)  1
          ~(macros.common/ignore-unused 'table-id) 2
          ~(macros.common/ignore-unused 'tax-id)   3

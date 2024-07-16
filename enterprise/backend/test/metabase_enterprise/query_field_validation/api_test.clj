@@ -8,7 +8,7 @@
    [ring.util.codec :as codec]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(defn- do-with-test-setup! [f]
+(defn- do-with-test-setup [f]
   ;; Make sure that no additional analysis is created by hooks
   (query-analysis/without-analysis
     (t2.with-temp/with-temp [:model/Table      {table  :id}  {:name "T"}
@@ -46,14 +46,14 @@
       (mt/with-premium-features #{:query-field-validation}
         (mt/call-with-map-params f [card-1 card-2 card-3 card-4 qf-1 qf-2 qf-3])))))
 
-(defmacro ^:private with-test-setup!
+(defmacro ^:private with-test-setup
   "Creates some non-stale QueryFields and anaphorical provides stale QueryField IDs called `qf-{1-3}` and their
   corresponding Card IDs (`card-{1-3}`). The cards are named A, B, and C. The Fields are called FA, FB, FB and they
   all point to a Table called T.
 
   `card-4` is guaranteed not to have problems"
   [& body]
-  `(do-with-test-setup! (mt/with-anaphora [qf-1 qf-2 qf-3 card-1 card-2 card-3 card-4]
+  `(do-with-test-setup (mt/with-anaphora [qf-1 qf-2 qf-3 card-1 card-2 card-3 card-4]
                          ~@body)))
 
 (def ^:private url "ee/query-field-validation/invalid-cards")
@@ -91,7 +91,7 @@
 
 (deftest list-invalid-cards-basic-test
   (testing "Only returns cards with problematic field refs"
-    (with-test-setup!
+    (with-test-setup
       (resp= {:total 3,
               :data
               [{:id     card-1
@@ -116,7 +116,7 @@
 
 (deftest pagination-test
   (testing "Lets you page results"
-    (with-test-setup!
+    (with-test-setup
       (resp= {:total  4
               :limit  2
               :offset 0
@@ -152,7 +152,7 @@
 
 (deftest sorting-test
   (testing "Lets you specify the sort key"
-    (with-test-setup!
+    (with-test-setup
       (resp= {:total 3
               :data
               [{:id card-3}
@@ -172,7 +172,7 @@
                {:id card-1}]}
              (get! {:sort_column "last_edited_at" :sort_direction "desc"}))))
   (testing "Rejects bad keys"
-    (with-test-setup!
+    (with-test-setup
       (is (str/starts-with? (:sort_column
                              (:errors
                               (mt/user-http-request :crowberto :get 400 (str url "?sort_column=favorite_bird"))))
