@@ -33,7 +33,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
 
   database_id?: DatabaseId;
   collection?: Collection | null;
-  collection_id: CollectionId | null;
+  collection_id: number | null;
   collection_position: number | null;
 
   result_metadata: Field[];
