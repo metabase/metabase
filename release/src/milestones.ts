@@ -1,3 +1,5 @@
+import fs from "fs";
+
 import _ from "underscore";
 
 import { nonUserFacingLabels } from "./constants";

@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import fs from 'fs';
 
-
 import { WebClient } from '@slack/web-api';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
