@@ -5,6 +5,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.channel.core :as channel]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models
@@ -885,4 +886,29 @@
                       (comp #(select-keys % [:display_name :description]) first :result_metadata)
                       :model/Card :id card-id)))))))))
 
-#_(deftest partial-channel-failure-will-deliver-all-that-success-test)
+(deftest partial-channel-failure-will-deliver-all-that-success-test
+  (testing "if a pulse is set to send to multiple channels and one of them fail, the other channels should still receive the message"
+    (mt/with-temp
+      [Card         {card-id :id}  (pulse.test-util/checkins-query-card {:breakout [!day.date]
+                                                                         :limit    1})
+       Pulse        {pulse-id :id} {:name "Test Pulse"
+                                    :alert_condition "rows"}
+       PulseCard    _              {:pulse_id pulse-id
+                                    :card_id  card-id}
+       PulseChannel _              {:pulse_id pulse-id
+                                    :channel_type "email"
+                                    :details      {:emails ["foo@metabase.com"]}}
+       PulseChannel _              {:pulse_id     pulse-id
+                                    :channel_type "slack"
+                                    :details      {:channel "#general"}}]
+     (let [original-render-noti (var-get #'channel/render-notification)]
+       (with-redefs [channel/render-notification (fn [& args]
+                                                   (if (= :channel/slacke (:type (first args)))
+                                                     (throw (ex-info "Slack failed" {}))
+                                                     (apply original-render-noti args)))]
+         ;; slack failed but email should still be sent
+         (is (= {:channel/email 1}
+                (update-vals
+                 (pulse.test-util/with-captured-channel-send-messages!
+                   (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                 count))))))))

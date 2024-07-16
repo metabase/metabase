@@ -4,7 +4,6 @@
    [metabase.api.common :as api]
    [metabase.channel.core :as channel]
    [metabase.events :as events]
-   [metabase.models.channel :as models.channel]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.database :refer [Database]]
@@ -258,7 +257,6 @@
         {:kind :user
          :user recipient}))
     []))
-
 
 (defn- channel-send!
   [& args]
