@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
-import LegendLayout from "metabase/visualizations/components/legend/LegendLayout";
+import { LegendLayout } from "metabase/visualizations/components/legend/LegendLayout";
 
 type CartesianChartRootProps = {
   isQueryBuilder?: boolean;
