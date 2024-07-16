@@ -42,6 +42,8 @@ export const archiveCollection = (id: CollectionId) => {
 
 /**
  * Clicks the "+" icon on the collection page and selects one of the menu options
+ *
+ * @deprecated Use newButton helper
  */
 export function openNewCollectionItemFlowFor(
   type: "question" | "dashboard" | "collection",
