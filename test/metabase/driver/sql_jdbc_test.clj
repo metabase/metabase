@@ -204,7 +204,7 @@
                      (mt/sql-jdbc-drivers)
                      (mt/normal-drivers-with-feature :uuid-type))
     (let [uuid (random-uuid)
-          uuid-query (mt/native-query {:query (format "values ( cast('%s' as uuid) )" uuid)})
+          uuid-query (mt/native-query {:query (format "select cast('%s' as uuid) as x" uuid)})
           results (qp/process-query uuid-query)
           result-metadata (get-in results [:data :results_metadata :columns])
           col-metadata (first result-metadata)]
