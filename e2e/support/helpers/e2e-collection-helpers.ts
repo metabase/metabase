@@ -5,7 +5,7 @@ import {
   getFullName,
   popover,
 } from "e2e/support/helpers";
-import type { CollectionId } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 export const createCollection = ({
   name,
@@ -17,7 +17,7 @@ export const createCollection = ({
   description?: string | null;
   parent_id?: CollectionId | null;
   authority_level?: "official" | null;
-}) => {
+}): Cypress.Chainable<Cypress.Response<Collection>> => {
   cy.log(`Create a collection: ${name}`);
 
   return cy.request("POST", "/api/collection", {
