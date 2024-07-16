@@ -28,10 +28,18 @@
   {:type    mi/transform-keyword
    :details mi/transform-encrypted-json})
 
-(defn keywordize-type
-  "Ensure that `channel-type` is a keyword with the namespace `channel`."
-  [channel-type]
-  (if (and (keyword? channel-type)
-           (= "channel" (namespace channel-type)))
-    channel-type
-    (keyword "channel" (name channel-type))))
+(defn- assert-channel-type
+  [{channel-type :type}]
+  (when-not (= "channel" (-> channel-type keyword namespace))
+    (throw (ex-info "Channel type must be a namespaced keyword like :channel/http" {:status-code  400
+                                                                                    :channel-type channel-type}))))
+
+(t2/define-before-insert :model/Channel
+  [instance]
+  (assert-channel-type instance)
+  instance)
+
+(t2/define-before-update :model/Channel
+  [instance]
+  (assert-channel-type instance)
+  instance)
