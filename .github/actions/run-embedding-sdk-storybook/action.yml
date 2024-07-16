@@ -1,0 +1,10 @@
+name: Run Embedding SDK Storybook
+runs:
+  using: "composite"
+  steps:
+    - name: Launch Embedding SDK Storybook
+      run: yarn storybook-embedding-sdk
+      shell: bash
+    - name: Wait until Embedding SDK Storybook is ready
+      run: while ! curl -s 'http://localhost:6006' | grep '404'; do sleep 1; done
+      shell: bash

@@ -2,15 +2,19 @@ const webpack = require("webpack");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const appConfig = require("../webpack.config");
 
+const isEmbeddingSDK = process.env.IS_SDK === "true";
+const isDefault = !isEmbeddingSDK;
+
 module.exports = {
   core: {
     builder: "webpack5",
   },
-  stories: [
-    // "../frontend/**/*.stories.mdx",
-    // "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
-    "../enterprise/frontend/src/embedding-sdk/**/*.stories.tsx",
-  ],
+  stories: isDefault
+    ? [
+        "../frontend/**/*.stories.mdx",
+        "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
+      ]
+    : ["../enterprise/frontend/src/embedding-sdk/**/*.stories.tsx"],
   staticDirs: ["../resources/frontend_client"],
   addons: [
     "@storybook/addon-essentials",

@@ -12,6 +12,7 @@ const {
 } = require("./commands/downloads/downloadUtils");
 
 const isEnterprise = process.env["MB_EDITION"] === "ee";
+const isEmbeddingSdk = process.env["IS_SDK"];
 
 const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
@@ -133,6 +134,7 @@ const defaultConfig = {
     config.env.grepFilterSpecs = true;
 
     config.env.IS_ENTERPRISE = isEnterprise;
+    config.env.IS_EMBEDDING_SDK = isEmbeddingSdk;
     config.env.HAS_SNOWPLOW_MICRO = hasSnowplowMicro;
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
     config.env.SOURCE_VERSION = sourceVersion;
