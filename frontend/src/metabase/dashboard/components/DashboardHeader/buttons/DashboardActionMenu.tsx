@@ -6,7 +6,10 @@ import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
 import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
-import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
+import {
+  getExportTabAsPdfButtonText,
+  saveDashboardPdf,
+} from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { Dashboard } from "metabase-types/api";
 
 export const DashboardActionMenu = (props: { items: any[] }) => (
@@ -42,10 +45,7 @@ export const getExtraButtons = ({
   });
 
   extraButtons.push({
-    title:
-      Array.isArray(dashboard.tabs) && dashboard.tabs.length > 1
-        ? t`Export tab as PDF`
-        : t`Export as PDF`,
+    title: getExportTabAsPdfButtonText(dashboard.tabs),
     icon: "document",
     testId: "dashboard-export-pdf-button",
     action: async () => {

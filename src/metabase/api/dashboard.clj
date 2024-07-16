@@ -829,29 +829,32 @@
             hydrate-dashboard-details
             (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))))
 
+(def ^:private DashUpdates
+  "Schema for Dashboard Updates."
+  [:map
+   [:name                    {:optional true} [:maybe ms/NonBlankString]]
+   [:description             {:optional true} [:maybe :string]]
+   [:caveats                 {:optional true} [:maybe :string]]
+   [:points_of_interest      {:optional true} [:maybe :string]]
+   [:show_in_getting_started {:optional true} [:maybe :boolean]]
+   [:enable_embedding        {:optional true} [:maybe :boolean]]
+   [:embedding_params        {:optional true} [:maybe ms/EmbeddingParams]]
+   [:parameters              {:optional true} [:maybe [:sequential ms/Parameter]]]
+   [:position                {:optional true} [:maybe ms/PositiveInt]]
+   [:width                   {:optional true} [:enum "fixed" "full"]]
+   [:archived                {:optional true} [:maybe :boolean]]
+   [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position     {:optional true} [:maybe ms/PositiveInt]]
+   [:cache_ttl               {:optional true} [:maybe ms/PositiveInt]]
+   [:dashcards               {:optional true} [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)]]
+   [:tabs                    {:optional true} [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]]])
+
 (api/defendpoint PUT "/:id"
   "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
   structure as the response from `GET /api/dashboard/:id`."
-  [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
-                   embedding_params position width archived collection_id collection_position cache_ttl dashcards tabs]
-            :as   dash-updates} :body}]
-  {id                      ms/PositiveInt
-   name                    [:maybe ms/NonBlankString]
-   description             [:maybe :string]
-   caveats                 [:maybe :string]
-   points_of_interest      [:maybe :string]
-   show_in_getting_started [:maybe :boolean]
-   enable_embedding        [:maybe :boolean]
-   embedding_params        [:maybe ms/EmbeddingParams]
-   parameters              [:maybe [:sequential ms/Parameter]]
-   position                [:maybe ms/PositiveInt]
-   width                   [:maybe [:enum "fixed" "full"]]
-   archived                [:maybe :boolean]
-   collection_id           [:maybe ms/PositiveInt]
-   collection_position     [:maybe ms/PositiveInt]
-   cache_ttl               [:maybe ms/PositiveInt]
-   dashcards               [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)]
-   tabs                    [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
+  [id :as {dash-updates :body}]
+  {id           ms/PositiveInt
+   dash-updates DashUpdates}
   (update-dashboard id dash-updates))
 
 (api/defendpoint PUT "/:id/cards"
