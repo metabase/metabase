@@ -74,6 +74,7 @@
 ;;            :123
 ;;            defendpoint-transformer)
 ;; ;; => 123
+
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require
