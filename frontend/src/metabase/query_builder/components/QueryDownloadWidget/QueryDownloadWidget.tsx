@@ -70,7 +70,7 @@ const QueryDownloadWidget = ({
           )}
         </Flex>
       </Popover.Target>
-      <Popover.Dropdown>
+      <Popover.Dropdown p="0.75rem">
         <QueryDownloadPopover
           question={question}
           result={result}

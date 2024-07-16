@@ -289,27 +289,41 @@ describe("parameters/utils/mbql", () => {
       });
     });
 
-    it("should add a filter for a string parameter", () => {
-      const containsFilterQuery = applyFilterParameter(query, stageIndex, {
-        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-        type: "string/contains",
-        value: "foo",
-      });
-      const [containsFilter] = Lib.filters(containsFilterQuery, -1);
-      expect(Lib.displayInfo(query, stageIndex, containsFilter)).toMatchObject({
-        displayName: "Category contains foo",
-      });
-
-      const startsFilterQuery = applyFilterParameter(query, stageIndex, {
-        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-        type: "string/starts-with",
-        value: ["foo"],
-      });
-      const [startsFilter] = Lib.filters(startsFilterQuery, -1);
-      expect(Lib.displayInfo(query, stageIndex, startsFilter)).toMatchObject({
-        displayName: "Category starts with foo",
-      });
-    });
+    it.each([
+      {
+        parameter: {
+          target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+          type: "string/contains",
+          value: "foo",
+        },
+        expectedDisplayName: "Category contains foo",
+      },
+      {
+        parameter: {
+          target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+          type: "string/contains",
+          value: ["a", "b"],
+        },
+        expectedDisplayName: "Category contains 2 selections",
+      },
+      {
+        parameter: {
+          target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+          type: "string/starts-with",
+          value: ["foo"],
+        },
+        expectedDisplayName: "Category starts with foo",
+      },
+    ])(
+      "should add a filter for a string parameter",
+      ({ parameter, expectedDisplayName }) => {
+        const newQuery = applyFilterParameter(query, stageIndex, parameter);
+        const [filter] = Lib.filters(newQuery, -1);
+        expect(Lib.displayInfo(query, stageIndex, filter)).toMatchObject({
+          displayName: expectedDisplayName,
+        });
+      },
+    );
 
     it("should adda filter for a category parameter", () => {
       const newQuery = applyFilterParameter(query, stageIndex, {
