@@ -673,29 +673,29 @@
 
 (deftest current-datetime-honeysql-form-test
   (mt/test-driver :bigquery-cloud-sdk
-                  (qp.store/with-metadata-provider (mt/id)
-                    (testing (str "The object returned by `current-datetime-honeysql-form` should be a magic object that can take on "
-                                  "whatever temporal type we want.")
-                      (doseq [report-timezone [nil "UTC"]]
-                        (mt/with-report-timezone-id! report-timezone
-                          (let [form (sql.qp/current-datetime-honeysql-form :bigquery-cloud-sdk)]
-                            (is (= nil
-                                   (#'bigquery.qp/temporal-type form))
-                                "When created the temporal type should be unspecified. The world's your oyster!")
-                            (is (= ["CURRENT_TIMESTAMP()"]
-                                   (sql/format-expr form))
-                                "Should fall back to acting like a timestamp if we don't coerce it to something else first")
-                            (doseq [[temporal-type expected-sql] {:date      (if report-timezone "CURRENT_DATE('UTC')"     "CURRENT_DATE()")
-                                                                  :time      (if report-timezone "CURRENT_TIME('UTC')"     "CURRENT_TIME()")
-                                                                  :datetime  (if report-timezone "CURRENT_DATETIME('UTC')" "CURRENT_DATETIME()")
-                                                                  :timestamp "CURRENT_TIMESTAMP()"}]
-                              (testing (format "temporal type = %s" temporal-type)
-                                (is (= temporal-type
-                                       (#'bigquery.qp/temporal-type (#'bigquery.qp/->temporal-type temporal-type form)))
-                                    "Should be possible to convert to another temporal type/should report its type correctly")
-                                (is (= [expected-sql]
-                                       (sql/format-expr (#'bigquery.qp/->temporal-type temporal-type form)))
-                                    "Should convert to the correct SQL"))))))))))
+    (qp.store/with-metadata-provider (mt/id)
+      (testing (str "The object returned by `current-datetime-honeysql-form` should be a magic object that can take on "
+                    "whatever temporal type we want.")
+        (doseq [report-timezone [nil "UTC"]]
+          (mt/with-report-timezone-id! report-timezone
+            (let [form (sql.qp/current-datetime-honeysql-form :bigquery-cloud-sdk)]
+              (is (= nil
+                     (#'bigquery.qp/temporal-type form))
+                  "When created the temporal type should be unspecified. The world's your oyster!")
+              (is (= ["CURRENT_TIMESTAMP()"]
+                     (sql/format-expr form))
+                  "Should fall back to acting like a timestamp if we don't coerce it to something else first")
+              (doseq [[temporal-type expected-sql] {:date      (if report-timezone "CURRENT_DATE('UTC')"     "CURRENT_DATE()")
+                                                    :time      (if report-timezone "CURRENT_TIME('UTC')"     "CURRENT_TIME()")
+                                                    :datetime  (if report-timezone "CURRENT_DATETIME('UTC')" "CURRENT_DATETIME()")
+                                                    :timestamp "CURRENT_TIMESTAMP()"}]
+                (testing (format "temporal type = %s" temporal-type)
+                  (is (= temporal-type
+                         (#'bigquery.qp/temporal-type (#'bigquery.qp/->temporal-type temporal-type form)))
+                      "Should be possible to convert to another temporal type/should report its type correctly")
+                  (is (= [expected-sql]
+                         (sql/format-expr (#'bigquery.qp/->temporal-type temporal-type form)))
+                      "Should convert to the correct SQL"))))))))))
 
 (deftest current-datetime-honeysql-form-test-2
   (mt/test-driver :bigquery-cloud-sdk
