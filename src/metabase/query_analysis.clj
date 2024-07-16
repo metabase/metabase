@@ -31,7 +31,7 @@
   we disable analysis by default."
   ::disabled)
 
-(defmacro ^:private with-execution*
+(defmacro with-execution*
   "Override the default execution mode, except in prod."
   [execution & body]
   `(binding [*analyze-execution-in-dev?* ~execution
