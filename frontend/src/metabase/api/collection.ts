@@ -62,7 +62,7 @@ export const collectionApi = Api.injectEndpoints({
     >({
       query: ({ id, ...params }) => ({
         method: "GET",
-        url: `/api/collection/${id}/items`, // TODO: change to real endpoint once it exists
+        url: `/api/collection/${id}/stale`,
         params,
       }),
       providesTags: response =>
