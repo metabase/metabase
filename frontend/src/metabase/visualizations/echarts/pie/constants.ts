@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 export const DIMENSIONS = {
   maxSideLength: 550,
+  totalDiameterThreshold: 120,
   padding: {
     legend: 16,
     side: 12,

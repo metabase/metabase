@@ -1,6 +1,6 @@
 import type { RegisteredSeriesOption } from "echarts";
 
-import { DIMENSIONS, TOTAL_TEXT } from "../constants";
+import { DIMENSIONS } from "../constants";
 
 export const SUNBURST_SERIES_OPTION: RegisteredSeriesOption["sunburst"] = {
   type: "sunburst",
@@ -42,7 +42,7 @@ export const TOTAL_GRAPHIC_OPTION = {
         fontSize: "14px",
         fontWeight: "700",
         textAlign: "center",
-        text: TOTAL_TEXT,
+        text: "",
       },
     },
   ],

@@ -32,9 +32,15 @@ function getTotalGraphicOption(
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
   renderingContext: RenderingContext,
-  hoveredIndex?: number,
+  hoveredIndex: number | undefined,
+  outerRadius: number,
 ) {
   const graphicOption = cloneDeep(TOTAL_GRAPHIC_OPTION);
+
+  // Don't display any text if there isn't enough width
+  if (outerRadius * 2 < DIMENSIONS.totalDiameterThreshold) {
+    return graphicOption;
+  }
 
   graphicOption.children.forEach(child => {
     child.style.fontFamily = renderingContext.fontFamily;
@@ -143,6 +149,7 @@ export function getPieChartOption(
         formatters,
         renderingContext,
         hoveredIndex,
+        outerRadius,
       )
     : undefined;
 
