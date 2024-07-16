@@ -300,7 +300,7 @@
            #"Setting help-link-custom-destination is not enabled because feature :whitelabel is not available"
            (public-settings/help-link-custom-destination! "http://www.metabase.com")))
 
-      (is (= nil (public-settings/help-link-custom-destination))))))
+      (is (= "https://www.metabase.com/help/premium" (public-settings/help-link-custom-destination))))))
 
 (deftest landing-page-setting-test
     (testing "should return relative url for valid inputs"

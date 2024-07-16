@@ -103,7 +103,7 @@ config:
     google-auth-enabled: null
     health-check-logging-enabled: true
     help-link: metabase
-    help-link-custom-destination: https://www.metabase.com/help
+    help-link-custom-destination: https://www.metabase.com/help/premium
     humanization-strategy: simple
     is-metabot-enabled: false
     jdbc-data-warehouse-max-connection-pool-size: 15
