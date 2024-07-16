@@ -21,7 +21,8 @@
    [metabase.util.log :as log])
   (:import
    (java.sql Connection DatabaseMetaData)
-   (java.time OffsetDateTime ZonedDateTime)))
+   (java.time OffsetDateTime ZonedDateTime)
+   [java.util UUID]))
 
 (set! *warn-on-reflection* true)
 
@@ -126,6 +127,14 @@
   (condp = (u/lower-case-en (.getColumnTypeName rsmeta i))
     "time"
     (fn read-column-as-LocalTime [] (.getObject rs i java.time.LocalTime))
+
+    "uuid"
+    (fn read-column-as-UUID []
+      (when-let [s (.getObject rs i)]
+        (try
+          (UUID/fromString s)
+          (catch IllegalArgumentException _
+            s))))
 
     "timestamp with time zone"
     (fn read-column-as-ZonedDateTime []
