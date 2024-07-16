@@ -1228,7 +1228,7 @@
   {dashboard-id ms/PositiveInt
    dashcard-id  ms/PositiveInt
    card-id      ms/PositiveInt
-   parameters   [:maybe [:sequential ms/Parameter]]}
+   parameters   [:maybe [:sequential ParameterWithID]]}
   (with-dashboard-load-id dashboard-load-id
     (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
                        (merge
