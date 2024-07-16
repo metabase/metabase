@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
 
-import { SyncedParametersList } from "../../parameters/components/ParametersList";
+import { SyncedParametersList } from "./SyncedParametersList";
 
 export const FilterButton = styled(Button)`
   color: var(--mb-color-brand);

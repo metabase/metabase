@@ -3,10 +3,11 @@ import { useEffect, useMemo } from "react";
 import _ from "underscore";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import type { ParametersListProps } from "metabase/parameters/components/ParametersList/types";
+import {
+  ParametersList,
+  type ParametersListProps,
+} from "metabase/parameters/components/ParametersList";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
-
-import { ParametersList } from "./ParametersList";
 
 export const SyncedParametersList = ({
   parameters,
