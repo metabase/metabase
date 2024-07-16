@@ -120,7 +120,7 @@ export function DashCardVisualization({
       : null;
   }, [dashcard.card, metadata]);
 
-  const renderVisualizationOverlay = useCallback(() => {
+  const visualizationOverlay = useMemo(() => {
     if (isClickBehaviorSidebarOpen) {
       const disableClickBehavior =
         getVisualizationRaw(series)?.disableClickBehavior;
@@ -220,8 +220,10 @@ export function DashCardVisualization({
 
   return (
     <Visualization
-      className={cx(CS.flexFull, CS.overflowHidden, {
+      className={cx(CS.flexFull, {
         [CS.pointerEventsNone]: isEditingDashboardLayout,
+        [CS.overflowAuto]: visualizationOverlay,
+        [CS.overflowHidden]: !visualizationOverlay,
       })}
       classNameWidgets={cx({
         [cx(CS.textLight, CS.textMediumHover)]: isEmbed,
@@ -248,7 +250,7 @@ export function DashCardVisualization({
       isEditingParameter={isEditingParameter}
       isMobile={isMobile}
       actionButtons={renderActionButtons()}
-      replacementContent={renderVisualizationOverlay()}
+      replacementContent={visualizationOverlay}
       getExtraDataForClick={getExtraDataForClick}
       onUpdateVisualizationSettings={onUpdateVisualizationSettings}
       onChangeCardAndRun={onChangeCardAndRun}
