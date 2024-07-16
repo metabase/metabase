@@ -120,7 +120,7 @@ export function DashCardVisualization({
       : null;
   }, [dashcard.card, metadata]);
 
-  const renderVisualizationOverlay = useCallback(() => {
+  const visualizationOverlay = useMemo(() => {
     if (isClickBehaviorSidebarOpen) {
       const disableClickBehavior =
         getVisualizationRaw(series)?.disableClickBehavior;
@@ -250,7 +250,7 @@ export function DashCardVisualization({
       isEditingParameter={isEditingParameter}
       isMobile={isMobile}
       actionButtons={renderActionButtons()}
-      replacementContent={renderVisualizationOverlay()}
+      replacementContent={visualizationOverlay}
       getExtraDataForClick={getExtraDataForClick}
       onUpdateVisualizationSettings={onUpdateVisualizationSettings}
       onChangeCardAndRun={onChangeCardAndRun}
