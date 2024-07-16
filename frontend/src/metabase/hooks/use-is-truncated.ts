@@ -36,9 +36,13 @@ export const useIsTruncated = <E extends Element>({
 };
 
 const getIsTruncated = (element: Element): boolean => {
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  const elementRect = element.getBoundingClientRect();
+  const rangeRect = range.getBoundingClientRect();
+
   return (
-    element.scrollHeight > element.clientHeight ||
-    element.scrollWidth > element.clientWidth
+    rangeRect.height > elementRect.height || rangeRect.width > elementRect.width
   );
 };
 
