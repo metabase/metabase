@@ -6,12 +6,15 @@
    [metabase.api.embed-test :as embed-test]
    [metabase.api.public-test :as public-test]
    [metabase.events :as events]
+   [metabase.events.view-log :as events.view-log]
    [metabase.http-client :as client]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn latest-view
   "Returns the most recent view for a given user and model ID"
@@ -100,52 +103,74 @@
           (testing "Card read events are not recorded when viewing a dashboard"
             (is (nil? (latest-view (u/id user) (u/id card))))))))))
 
-;; Disable view_count updates to handle perf issues  (for now) (#44359)
-#_
 (deftest card-read-view-count-test
-  (mt/with-temp [:model/User user {}
-                 :model/Card card {:creator_id (u/id user)}]
-    (testing "Card read events are recorded by a card's view_count"
-      (is (= 0 (:view_count card))
-          "view_count should be 0 before the event is published")
-      (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
-      (is (= 1 (t2/select-one-fn :view_count :model/Card (:id card))))
-      (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
-      (is (= 2 (t2/select-one-fn :view_count :model/Card (:id card)))))))
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/with-temp [:model/User user {}
+                     :model/Card card {:creator_id (u/id user)}]
+        (testing "Card read events are recorded by a card's view_count"
+          (is (= 0 (:view_count card))
+              "view_count should be 0 before the event is published")
+          (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
+          (is (= 1 (t2/select-one-fn :view_count :model/Card (:id card))))
+          (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
+          (is (= 2 (t2/select-one-fn :view_count :model/Card (:id card)))))))))
 
-;; Disable view_count updates to handle perf issues  (for now) (#44359)
-#_
 (deftest dashboard-read-view-count-test
-  (mt/with-temp [:model/User          user      {}
-                 :model/Dashboard     dashboard {:creator_id (u/id user)}
-                 :model/Card          card      {:name "Dashboard Test Card"}
-                 :model/DashboardCard _dashcard {:dashboard_id (u/id dashboard) :card_id (u/id card)}]
-    (let [dashboard (t2/hydrate dashboard [:dashcards :card])]
-      (testing "Dashboard read events are recorded by a dashboard's view_count"
-        (is (= 0 (:view_count dashboard) (:view_count card))
-            "view_count should be 0 before the event is published")
-        (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
-        (is (= 1 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))
-        (is (= 0 (t2/select-one-fn :view_count :model/Card (:id card)))
-            "view_count for cards on the dashboard should not be incremented")
-        (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
-        (is (= 2 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))))))
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/with-temp [:model/User          user      {}
+                     :model/Dashboard     dashboard {:creator_id (u/id user)}
+                     :model/Card          card      {:name "Dashboard Test Card"}
+                     :model/DashboardCard _dashcard {:dashboard_id (u/id dashboard) :card_id (u/id card)}]
+        (let [dashboard (t2/hydrate dashboard [:dashcards :card])]
+          (testing "Dashboard read events are recorded by a dashboard's view_count"
+            (is (= 0 (:view_count dashboard) (:view_count card))
+                "view_count should be 0 before the event is published")
+            (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
+            (is (= 1 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))
+            (is (= 0 (t2/select-one-fn :view_count :model/Card (:id card)))
+                "view_count for cards on the dashboard should not be incremented")
+            (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
+            (is (= 2 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))))))))
 
-;; Disable view_count updates to handle perf issues  (for now) (#44359)
-#_
 (deftest table-read-view-count-test
-  (mt/with-temp [:model/User  user  {}
-                 :model/Table table {}]
-    (testing "Card read events are recorded by a card's view_count"
-      (is (= 0 (:view_count table))
-          "view_count should be 0 before the event is published")
-      (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
-      (is (= 1 (t2/select-one-fn :view_count :model/Table (:id table)))
-          "view_count should be incremented")
-      (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
-      (is (= 2 (t2/select-one-fn :view_count :model/Table (:id table)))
-          "view_count should be incremented"))))
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/with-temp [:model/User  user  {}
+                     :model/Table table {}]
+        (testing "Card read events are recorded by a card's view_count"
+          (is (= 0 (:view_count table))
+              "view_count should be 0 before the event is published")
+          (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
+          (is (= 1 (t2/select-one-fn :view_count :model/Table (:id table)))
+              "view_count should be incremented")
+          (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
+          (is (= 2 (t2/select-one-fn :view_count :model/Table (:id table)))
+              "view_count should be incremented"))))))
 
+(deftest increment-view-counts!*-test
+  (mt/with-temp [:model/Card  {card-1-id :id} {}
+                 :model/Card  {card-2-id :id} {:view_count 2}
+                 :model/Table {table-id :id}  {}]
+    (t2/with-call-count [call-count]
+      (testing "increment-view-counts!* update the view_count correctly"
+        (#'events.view-log/increment-view-counts!* [;; table-id : 1 views, card-id-1: 2 views, card-id 2: 2 views
+                                                    {:model :model/Table :id table-id}
+                                                    {:model :model/Card  :id card-1-id}
+                                                    {:model :model/Card  :id card-1-id}
+                                                    {:model :model/Card  :id card-2-id}
+                                                    {:model :model/Card  :id card-2-id}])
+        (is (= 2 ;; one for update card, one for table
+               (call-count))
+            "and groups db calls by frequency")
+        (is (= 1 (t2/select-one-fn :view_count :model/Table table-id))
+            "view_count for table-id should be 1")
+        (is (= 2 (t2/select-one-fn :view_count :model/Card card-1-id))
+            "view_count for card-1 should be 2")
+        (is (= 4 ;; 2 old + 2 new
+               (t2/select-one-fn :view_count :model/Card card-2-id))
+            "view_count for card-2 should be 2")))))
 
 ;;; ---------------------------------------- API tests begin -----------------------------------------
 
