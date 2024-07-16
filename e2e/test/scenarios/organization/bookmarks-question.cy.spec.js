@@ -1,12 +1,12 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
+  getSidebarSectionTitle,
   navigationSidebar,
-  openQuestionActions,
   openNavigationSidebar,
+  openQuestionActions,
+  restore,
   visitQuestion,
 } from "e2e/support/helpers";
-import { getSidebarSectionTitle as getSectionTitle } from "e2e/support/helpers/e2e-collection-helpers";
 
 describe("scenarios > question > bookmarks", () => {
   beforeEach(() => {
@@ -21,7 +21,7 @@ describe("scenarios > question > bookmarks", () => {
 
     openNavigationSidebar();
     navigationSidebar().within(() => {
-      getSectionTitle(/Bookmarks/);
+      getSidebarSectionTitle(/Bookmarks/);
       cy.findByText("Orders");
     });
 
@@ -67,7 +67,7 @@ describe("scenarios > question > bookmarks", () => {
     toggleBookmark({ wasSelected: true });
 
     navigationSidebar().within(() => {
-      getSectionTitle(/Bookmarks/).should("not.exist");
+      getSidebarSectionTitle(/Bookmarks/).should("not.exist");
       cy.findByText("Orders 2").should("not.exist");
     });
   });
