@@ -489,13 +489,14 @@ describe("issue 32252", () => {
     );
   });
 
-  it("refreshes data picker sources after archiving a question (metabase#32252)", () => {
+  it("refreshes data picker sources after archiving a collection (metabase#32252)", () => {
     cy.visit("/");
 
     newButton("Question").click();
     entityPickerModal().within(() => {
+      cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByText("Recents").should("not.exist");
-      cy.findByText("Saved questions").should("not.exist");
+      cy.findByText("Saved questions").should("be.visible");
       cy.button("Close").click();
     });
 
@@ -504,9 +505,43 @@ describe("issue 32252", () => {
 
     cy.button("Actions").click();
     popover().findByText("Move to trash").click();
+    cy.findByTestId("toast-undo")
+      .findByText("Trashed collection")
+      .should("be.visible");
 
     newButton("Question").click();
     entityPickerModal().within(() => {
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findByText("Recents").should("not.exist");
+      cy.findByText("Saved questions").should("not.exist");
+      cy.findByText("Orders").should("be.visible");
+    });
+  });
+
+  it("refreshes data picker sources after archiving a question (metabase#32252)", () => {
+    cy.visit("/");
+
+    newButton("Question").click();
+    entityPickerModal().within(() => {
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findByText("Recents").should("not.exist");
+      cy.findByText("Saved questions").should("be.visible");
+      cy.button("Close").click();
+    });
+
+    cy.findByTestId("sidebar-toggle").click();
+    navigationSidebar().findByText("Our analytics").click();
+
+    cy.findByTestId("collection-entry-name").click();
+    cy.button("Actions").click();
+    popover().findByText("Move to trash").click();
+    cy.findByTestId("toast-undo")
+      .findByText("Trashed question")
+      .should("be.visible");
+
+    newButton("Question").click();
+    entityPickerModal().within(() => {
+      cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByText("Recents").should("not.exist");
       cy.findByText("Saved questions").should("not.exist");
       cy.findByText("Orders").should("be.visible");
