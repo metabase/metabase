@@ -18,7 +18,7 @@
                                              :where     [:and
                                                          [:not :c.archived]
                                                          [:= :f.id nil]]}])]
-    (run! query-analysis/analyze-async! cards)))
+    (run! query-analysis/analyze-sync! cards)))
 
 (jobs/defjob ^{DisallowConcurrentExecution true
                :doc                        "Backfill QueryField for cards created earlier. Runs once per instance."}

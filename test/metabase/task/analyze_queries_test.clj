@@ -46,7 +46,7 @@
             (is (every? zero? (map get-count card-ids))))
 
           ;; queue the cards
-          (binding [query-analysis/*analyze-queries-in-test?* true]
+          (query-analysis/with-queued-analysis
             (run! query-analysis/analyze-async! card-ids))
 
           ;; run the analysis for 1s

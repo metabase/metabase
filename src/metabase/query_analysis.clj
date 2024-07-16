@@ -21,26 +21,35 @@
 
 (defonce ^:private queue (queue/bounded-transfer-queue realtime-queue-capacity {:dedupe? true}))
 
-(def ^:dynamic *analyze-queries-in-test?*
-  "A card's query is normally analyzed on every create/update. For most tests, this is an unnecessary expense, hence
-  we use this dynamic variable to opt-in where applicable."
-  false)
-
-(def ^:dynamic *analyze-async-in-dev?*
+(def ^:dynamic *analyze-execution-in-dev?*
   "Managing a background thread in the REPL is likely to confound and infuriate, especially when we're using it to run
-  tests. For this reason we require an opt-in to use the worker queue, as opposed to just doing the work on the main
-  thread."
-  false)
+  tests. For this reason we run analysis on the main thread by default."
+  ::immediate)
+
+(def ^:dynamic *analyze-execution-in-test?*
+  "A card's query is normally analyzed on every create/update. For most tests, this is an unnecessary expense, hence
+  we disable analysis by default."
+  ::disabled)
+
+(defmacro with-queued-analysis
+  "Override default execution mode to always use the queue."
+  [& body]
+  `(binding [*analyze-execution-in-dev?*  ::queued
+             *analyze-execution-in-test?* ::queued]
+     ~@body))
+
+(defmacro with-immediate-analysis
+  "Override default execution mode to always use the current thread."
+  [& body]
+  `(binding [*analyze-execution-in-dev?*  ::immediate
+             *analyze-execution-in-test?* ::immediate]
+     ~@body))
 
 (defn- execution []
   (case config/run-mode
-    :prod ::worker-queue
-    :dev  (if *analyze-async-in-dev?*
-            ::worker-queue
-            ::current-thread)
-    :test (if *analyze-queries-in-test?*
-            ::current-thread
-            ::off)))
+    :prod ::queued
+    :dev  *analyze-execution-in-dev?*
+    :test *analyze-execution-in-test?*))
 
 
 (defn enabled-type?
@@ -153,9 +162,9 @@
 
 (defn- queue-or-analyze! [offer-fn! card-or-id]
   (case (execution)
-    ::current-thread (analyze-card! (u/the-id card-or-id))
-    ::worker-queue   (offer-fn! queue (u/the-id card-or-id))
-    ::none           nil))
+    ::immediate (analyze-card! (u/the-id card-or-id))
+    ::queued   (offer-fn! queue (u/the-id card-or-id))
+    ::disabled           nil))
 
 (defn analyze-async!
   "Asynchronously hand-off the given card for analysis, at a high priority."
