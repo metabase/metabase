@@ -37,5 +37,5 @@ export function getColumnIcon(column: Lib.ColumnMetadata): IconName {
     return "int";
   }
 
-  return "unknown";
+  return "list";
 }
