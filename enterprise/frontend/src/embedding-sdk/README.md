@@ -848,6 +848,8 @@ return (
 You can query the Metabase authentication status using the `useMetabaseAuthStatus` hook.
 This is useful if you want to completely hide Metabase components when the user is not authenticated.
 
+This hook can only be used within components wrapped by `MetabaseProvider`.
+
 ```jsx
 const auth = useMetabaseAuthStatus()
 
