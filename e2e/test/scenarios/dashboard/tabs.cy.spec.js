@@ -98,19 +98,14 @@ const changeSynchronousBatchUpdateSetting = value => {
 };
 
 describe("scenarios > dashboard > tabs", () => {
-  before(() => {
+  beforeEach(() => {
+    restore();
     cy.signInAsAdmin();
     changeSynchronousBatchUpdateSetting(true);
   });
 
-  after(() => {
-    cy.signInAsAdmin();
+  afterEach(() => {
     changeSynchronousBatchUpdateSetting(false);
-  });
-
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
   });
 
   it("should only display cards on the selected tab", () => {
