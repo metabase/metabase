@@ -62,7 +62,7 @@ function createQueryWithSegmentFilter() {
 function createQueryWithCustomStringFilter() {
   const query = createQuery();
   const column = findStringColumn(query);
-  const clause = Lib.expressionClause("is-null", [column], null);
+  const clause = Lib.expressionClause("concat", [column, column], null);
 
   return createFilteredQuery(query, clause);
 }
