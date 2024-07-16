@@ -315,7 +315,7 @@
         (u/prog1 (doseq [pulse-channel channels]
                    (try
                      (let [channel  (pc->channel pulse-channel)
-                           messages (channel/render-notification channel
+                           messages (channel/render-notification (:type channel)
                                                                  (get-notification-info pulse parts pulse-channel)
                                                                  (channel-recipients pulse-channel))]
                        (log/debugf "Rendered messages for %s %d to channel %s. Got %d"

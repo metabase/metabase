@@ -55,7 +55,7 @@
                                  :bcc?         (email/bcc-enabled?)}))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/alert] :- [:sequential EmailMessage]
-  [_channel {:keys [card pulse payload pulse-channel]} recipients]
+  [_channel-type {:keys [card pulse payload pulse-channel]} recipients]
   (let [condition-kwd             (messages/pulse->alert-condition-kwd pulse)
         email-subject             (case condition-kwd
                                     :meets (trs "Alert: {0} has reached its goal" (:name card))
@@ -86,7 +86,7 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard-subscription] :- [:sequential EmailMessage]
-  [_channel {:keys [dashboard payload pulse]} recipients]
+  [_channel-type {:keys [dashboard payload pulse]} recipients]
   (let [{:keys [user-emails
                 non-user-emails]} (recipients->emails recipients)
         timezone                  (some->> payload (some :card) channel.shared/defaulted-timezone)
