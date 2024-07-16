@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
-const STAGE_INDEX = -1;
+export const STAGE_INDEX = -1;
 
 interface UseSummarizeQueryProps {
   query: Lib.Query;
