@@ -11,6 +11,7 @@
             NativeQuerySnippet PermissionsGroup PermissionsGroupMembership Pulse
             PulseCard PulseChannel PulseChannelRecipient Revision Timeline TimelineEvent User]]
    [metabase.models.collection :as collection]
+   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.graph-test :as graph.test]
@@ -2262,3 +2263,18 @@
     (testing "Cards can't be moved to the trash"
       (mt/user-http-request :crowberto :put 400 (str "card/" (u/the-id card)) {:collection_id (collection/trash-collection-id)})
       (is (not (t2/exists? :model/Card :collection_id (collection/trash-collection-id)))))))
+
+(deftest skip-graph-skips-graph-on-graph-PUT
+  (is (malli= [:map [:revision :int] [:groups :map]]
+              (mt/user-http-request :crowberto
+                                    :put 200
+                                    "collection/graph"
+                                    {:revision (c-perm-revision/latest-id) :groups {}})))
+  (is (malli= [:map {:closed true} [:revision :int]]
+              (mt/user-http-request :crowberto
+                                    :put 200
+                                    "collection/graph"
+                                    {:revision (c-perm-revision/latest-id)
+                                     :groups {}
+                                     :skip_graph true}))
+      "PUTs with skip_graph should not return the coll permission graph."))

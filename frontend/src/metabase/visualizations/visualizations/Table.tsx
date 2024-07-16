@@ -338,6 +338,7 @@ class Table extends Component<TableProps, TableState> {
       );
       this.setState({
         data: DataGrid.pivot(data, normalIndex, pivotIndex, cellIndex),
+        question,
       });
     } else {
       const { cols, rows, results_timezone } = data;
@@ -355,7 +356,6 @@ class Table extends Component<TableProps, TableState> {
           rows: rows.map(row => columnIndexes.map(i => row[i])),
           results_timezone,
         },
-        // cache question for performance reasons
         question,
       });
     }

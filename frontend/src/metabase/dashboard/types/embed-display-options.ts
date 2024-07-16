@@ -15,13 +15,16 @@ export type EmbedHideParametersControls = {
   hideParameters: EmbedHideParameters;
 };
 
+export type EmbedNightModeControls = {
+  hasNightModeToggle: boolean;
+  onNightModeChange: (isNightMode: boolean) => void;
+  isNightMode: boolean;
+};
+
 export type EmbedThemeControls = {
   theme: DisplayTheme;
   setTheme: (theme: DisplayTheme) => void;
-  hasNightModeToggle?: boolean;
-  onNightModeChange?: (isNightMode: boolean) => void;
-  isNightMode?: boolean;
-};
+} & EmbedNightModeControls;
 
 export type EmbedFont = string | null;
 export type EmbedFontControls = {

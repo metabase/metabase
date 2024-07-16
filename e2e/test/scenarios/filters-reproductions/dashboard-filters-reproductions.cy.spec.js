@@ -146,7 +146,7 @@ describe("issue 8030 + 32444", () => {
   };
 
   const interceptRequests = ({ dashboard_id, card1_id, card2_id }) => {
-    cy.intercept("GET", `/api/dashboard/${dashboard_id}`).as("getDashboard");
+    cy.intercept("GET", `/api/dashboard/${dashboard_id}*`).as("getDashboard");
     cy.intercept(
       "POST",
       `/api/dashboard/${dashboard_id}/dashcard/*/card/${card1_id}/query`,
@@ -2842,6 +2842,30 @@ describe("issue 44288", () => {
       }),
     );
     verifyFilter();
+  });
+});
+
+describe("issue 27579", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to remove the last exclude hour option (metabase#27579)", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+    setFilter("Time", "All Options");
+    selectDashboardFilter(getDashboardCard(), "Created At");
+    saveDashboard();
+    filterWidget().click();
+    popover().within(() => {
+      cy.findByText("Exclude...").click();
+      cy.findByText("Hours of the day...").click();
+      cy.findByLabelText("12 AM").should("be.checked");
+
+      cy.findByText("Select none...").click();
+      cy.findByLabelText("12 AM").should("not.be.checked");
+    });
   });
 });
 

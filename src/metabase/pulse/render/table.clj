@@ -82,12 +82,19 @@
     (str (str/trim (subs text 0 max-column-character-length)) "...")
     text))
 
-(defn- render-table-head [{:keys [bar-width row]}]
+(defn- render-table-head [column-names {:keys [bar-width row]}]
   [:thead
    (conj (into [:tr]
-               (for [header-cell row]
-                 [:th {:style (style/style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :42px}) :title header-cell}
-                  (truncate-text (h header-cell))]))
+               (map-indexed
+                (fn [idx header-cell]
+                  (let [title (get column-names idx)]
+                    [:th {:style (style/style
+                                  (row-style-for-type header-cell)
+                                  (heading-style-for-type header-cell)
+                                  {:min-width :42px})
+                          :title title}
+                     (truncate-text (h title))]))
+                row))
          (when bar-width
            [:th {:style (style/style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}]))])
 
@@ -141,12 +148,12 @@
    (render-table color-selector 0 column-names contents))
 
   ([color-selector normalized-zero column-names [header & rows]]
-   [:table {:style (style/style {:max-width "100%"
-                                 :white-space :nowrap
-                                 :border  (str "1px solid " style/color-border)
-                                 :border-radius :6px
-                                 :width "1%"})
+   [:table {:style       (style/style {:max-width     "100%"
+                                       :white-space   :nowrap
+                                       :border        (str "1px solid " style/color-border)
+                                       :border-radius :6px
+                                       :width         "1%"})
             :cellpadding "0"
             :cellspacing "0"}
-    (render-table-head header)
+    (render-table-head (vec column-names) header)
     (render-table-body (partial color/get-background-color color-selector) normalized-zero column-names rows)]))

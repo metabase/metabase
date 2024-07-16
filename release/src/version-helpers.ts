@@ -1,5 +1,7 @@
 import { compare as compareVersions, coerce } from "semver";
 
+import type { GithubProps, Tag } from "./types";
+
 // https://regexr.com/7l1ip
 export const isValidVersionString = (versionString: string) => {
   return /^(v0|v1)\.(\d|\.){3,}(\-rc\d+|\-RC\d+)*$/.test(versionString);
@@ -195,3 +197,56 @@ export const getMilestoneName = (version: string) => {
     .replace(/-rc\d+$/i, "") // RC versions use the major version milestone
     .replace(/\.0$/, "");
 };
+
+// for auto-setting milestones, we don't ever want to auto-set a patch milestone
+// which we release VERY rarely
+export function ignorePatches(version: string) {
+  return version.split('.').length < 4;
+}
+
+const normalizeVersionForSorting = (version: string) =>
+  version.replace(/^(v?)(0|1)\./, '');
+
+export function versionSort(a: string, b: string) {
+  const [aMajor, aMinor] = normalizeVersionForSorting(a).split('.').map(Number);
+  const [bMajor, bMinor] = normalizeVersionForSorting(b).split('.').map(Number);
+
+  if (aMajor !== bMajor) {
+    return aMajor - bMajor;
+  }
+
+  if (aMinor !== bMinor) {
+    return aMinor - bMinor;
+  }
+
+  return 0;
+}
+
+export function getLastReleaseFromTags(tags: Tag[]) {
+  return tags
+    .map(tag => tag.ref.replace('refs/tags/', ''))
+    .filter(tag => !isRCVersion(tag)) // we want to ignore RC tags because release notes should be cumulative
+    .sort(versionSort)
+    .reverse()[0];
+}
+
+/**
+ * queries the github api to get all release version tags,
+ * optionally filtered by a major version
+ */
+export async function getLastReleaseTag({
+  github,
+  owner,
+  repo,
+  version = '',
+}: GithubProps & { version?: string }) {
+  const tags =  await github.paginate(github.rest.git.listMatchingRefs, {
+    owner,
+    repo,
+    ref: `tags/v0.${version ? getMajorVersion(version) : ''}`,
+  })
+
+  const lastRelease = getLastReleaseFromTags(tags);
+
+  return lastRelease;
+}
