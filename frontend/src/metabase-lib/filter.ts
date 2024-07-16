@@ -488,18 +488,12 @@ export function defaultFilterParts(
   filterClause: FilterClause,
 ): DefaultFilterParts | null {
   const { operator, args } = expressionParts(query, stageIndex, filterClause);
-  if (!isFallbackOperator(operator) || args.length !== 1) {
+  if (!isDefaultOperator(operator) || args.length !== 1) {
     return null;
   }
 
   const [column] = args;
-  if (
-    !isColumnMetadata(column) ||
-    isStringOrStringLike(column) ||
-    isNumeric(column) ||
-    isBoolean(column) ||
-    isTemporal(column)
-  ) {
+  if (!isColumnMetadata(column)) {
     return null;
   }
 
@@ -654,7 +648,7 @@ function isTimeOperator(
   return operators.includes(operator);
 }
 
-function isFallbackOperator(
+function isDefaultOperator(
   operator: ExpressionOperatorName,
 ): operator is DefaultFilterOperatorName {
   const operators: ReadonlyArray<string> = DEFAULT_FILTER_OPERATORS;
