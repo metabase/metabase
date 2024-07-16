@@ -201,19 +201,17 @@
      :http (fn [{:keys [card-id pulse-id]} [request]]
              (let [pulse (t2/select-one :model/Pulse pulse-id)
                    card  (t2/select-one :model/Card card-id)]
-              (is (=? {:auth-method "none"
-                       :url         "https://metabase.com/testhttp"
-                       :body        {:type               "alert"
-                                     :alert_id           pulse-id
-                                     :alert_creator_id   (mt/malli=? int?)
-                                     :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id pulse))
-                                     :data               {:type          "question"
-                                                          :question_id   card-id
-                                                          :question_name (:name card)
-                                                          :question_url  (mt/malli=? [:fn #(str/ends-with? % (str card-id))])
-                                                          :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64")])
-                                                          :raw_data      {:cols ["DATE" "count"], :rows [["2013-01-03T00:00:00Z" 1]]}}
-                                     :sent_at            (mt/malli=? :any)}}
+              (is (=? {:body {:type               "alert"
+                              :alert_id           pulse-id
+                              :alert_creator_id   (mt/malli=? int?)
+                              :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id pulse))
+                              :data               {:type          "question"
+                                                   :question_id   card-id
+                                                   :question_name (:name card)
+                                                   :question_url  (mt/malli=? [:fn #(str/ends-with? % (str card-id))])
+                                                   :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64")])
+                                                   :raw_data      {:cols ["DATE" "count"], :rows [["2013-01-03T00:00:00Z" 1]]}}
+                              :sent_at            (mt/malli=? :any)}}
                       request))))}}))
 
 (deftest basic-table-test
