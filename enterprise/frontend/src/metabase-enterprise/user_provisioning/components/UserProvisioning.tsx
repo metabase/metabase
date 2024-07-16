@@ -55,6 +55,10 @@ interface UserProvisioningProps {
   updateSetting: (
     settingElement: SettingElement,
     newValue: SettingValue,
+    options?: {
+      onChanged?: () => void;
+      onError?: (error: unknown, message: string) => void;
+    },
   ) => Promise<void>;
 }
 
@@ -101,16 +105,14 @@ export const UserProvisioning = ({
   const showSamlWarning = samlUserProvisioningEnabled && !isScimInitialized;
 
   const handleScimEnabledChange = async (enabled: boolean) => {
-    const setting = fields["scim-enabled"];
-    // HACK: this is the only way to conditionally update the UI
-    // in response to the setting being successfully set
-    setting.onChanged = async () => {
-      if (enabled && !isScimInitialized) {
-        await regenerateToken();
-        firstEnabledModal.open();
-      }
-    };
-    await updateSetting(fields["scim-enabled"], enabled);
+    await updateSetting(fields["scim-enabled"], enabled, {
+      onChanged: async () => {
+        if (enabled && !isScimInitialized) {
+          await regenerateToken();
+          firstEnabledModal.open();
+        }
+      },
+    });
   };
 
   const scimTokenInputText = maskedTokenRequest.data?.masked_key ?? "";

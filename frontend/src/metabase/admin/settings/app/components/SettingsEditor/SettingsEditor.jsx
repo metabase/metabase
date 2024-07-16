@@ -82,7 +82,14 @@ class SettingsEditor extends Component {
     this.props.initializeSettings();
   }
 
-  updateSetting = async (setting, newValue) => {
+  /**
+   * @param {Object} setting
+   * @param {*} newValue
+   * @param {Object} options - allows external callers in setting's that user custom components to hook into the success or failure of the update
+   * @param {function} [options.onChanged] - callback fired after the setting has been updated
+   * @param {function} [options.onError] - callback fired after the setting has failed to update
+   */
+  updateSetting = async (setting, newValue, options) => {
     const { settingValues, updateSetting, reloadSettings, dispatch } =
       this.props;
 
@@ -92,14 +99,17 @@ class SettingsEditor extends Component {
 
     // TODO: mutation bad!
     setting.value = newValue;
+
+    const handlerParams = [
+      oldValue,
+      newValue,
+      settingValues,
+      this.handleChangeSetting,
+    ];
+
     try {
       if (setting.onBeforeChanged) {
-        await setting.onBeforeChanged(
-          oldValue,
-          newValue,
-          settingValues,
-          this.handleChangeSetting,
-        );
+        await setting.onBeforeChanged(...handlerParams);
       }
 
       if (!setting.disableDefaultUpdate) {
@@ -107,12 +117,11 @@ class SettingsEditor extends Component {
       }
 
       if (setting.onChanged) {
-        await setting.onChanged(
-          oldValue,
-          newValue,
-          settingValues,
-          this.handleChangeSetting,
-        );
+        await setting.onChanged(...handlerParams);
+      }
+
+      if (options?.onChanged) {
+        await options.onChanged(...handlerParams);
       }
 
       if (setting.disableDefaultUpdate) {
@@ -143,9 +152,13 @@ class SettingsEditor extends Component {
         typeof value === "number" && value,
       );
     } catch (error) {
+      console.error(error);
       const message =
         error && (error.message || (error.data && error.data.message));
       this.saveStatusRef.current.setSaveError(message);
+      if (options?.onError) {
+        options.onError(error, message);
+      }
       MetabaseAnalytics.trackStructEvent(
         "General Settings",
         setting.display_name,

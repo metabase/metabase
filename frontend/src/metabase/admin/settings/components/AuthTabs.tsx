@@ -19,6 +19,10 @@ interface AuthTabsProps {
 export const AuthTabs = ({ activeKey }: AuthTabsProps) => {
   const dispatch = useDispatch();
 
+  if (PLUGIN_ADMIN_SETTINGS_AUTH_TABS.length === 1) {
+    return null;
+  }
+
   return (
     <Tabs value={activeKey}>
       <Tabs.List mx="1rem" mb="2rem">
