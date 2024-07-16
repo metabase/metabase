@@ -126,6 +126,7 @@ export function pickEntity({
   if (tab) {
     entityPickerModalTab(tab).click();
   }
+
   if (path) {
     cy.findByTestId("nested-item-picker").within(() => {
       for (const [index, name] of path.entries()) {
