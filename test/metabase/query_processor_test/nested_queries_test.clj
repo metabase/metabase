@@ -1474,12 +1474,12 @@
       (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             query (as-> (lib/query mp (lib.metadata/table mp (mt/id "space table"))) $q
                     (lib/join $q (-> (lib/join-clause (lib.metadata/table mp (mt/id "space table")))
-                                     (lib/with-join-alias "Space Table")
+                                     (lib/with-join-alias "Space Table Alias")
                                      (lib/with-join-strategy :left-join)
                                      (lib/with-join-conditions [(lib/=
                                                                   (lib.metadata/field mp (mt/id "space table" "space column"))
                                                                   (lib/with-join-alias (lib.metadata/field mp (mt/id "space table" "space column"))
-                                                                    "Space Table"))])))
+                                                                    "Space Table Alias"))])))
 
                     (lib/breakout $q (m/find-first (every-pred (comp #{"Space Column"} :display-name) :source-alias)
                                                    (lib/breakoutable-columns $q)))
