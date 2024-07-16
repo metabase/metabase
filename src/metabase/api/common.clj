@@ -39,10 +39,11 @@
 ;; ## How does defendpoint coersion work?
 ;;
 ;; The `defendpoint` macro uses the `auto-coerce` function to generate a let code which binds args to their decoded
-;; values. Values are decoded by their corresponding malli schema. n.b.: Only in the arg->schema map will NOT be
-;; affected by this behavior. The exact coersion function [[mc/decode]], and uses the
-;; [[metabase.api.common.internal/defendpoint-transformer]], and gets called with the schema, value, and transformer.
-;; see: https://github.com/metosin/malli#value-transformation
+;; values. Values are decoded by their corresponding malli schema. n.b.: Only symbols in the arg->schema map will be
+;; coerced; additional aliases (eg. after the :as key) will not automatically be coerced.
+;;
+;; The exact coersion function [[mc/decode]], and uses the [[metabase.api.common.internal/defendpoint-transformer]],
+;; and gets called with the schema, value, and transformer. see: https://github.com/metosin/malli#value-transformation
 ;;
 ;; ### Here's an example repl session showing how it works:
 ;;
@@ -70,9 +71,7 @@
 ;;   [:int {:decode/string (fn kw-int->int-decoder [kw-int]
 ;;                           (if (int? kw-int) kw-int (parse-long (name kw-int))))}])
 ;;
-;; (mc/decode DecodableKwInt
-;;            :123
-;;            defendpoint-transformer)
+;; (mc/decode DecodableKwInt :123 defendpoint-transformer)
 ;; ;; => 123
 
 (ns metabase.api.common
