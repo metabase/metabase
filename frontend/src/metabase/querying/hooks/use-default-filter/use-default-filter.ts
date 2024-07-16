@@ -8,7 +8,7 @@ import {
   getFilterClause,
 } from "./utils";
 
-interface UseFallbackOperatorFilterProps {
+interface UseDefaultFilterProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
@@ -16,15 +16,15 @@ interface UseFallbackOperatorFilterProps {
   hasInitialOperator?: boolean;
 }
 
-export function useFallbackFilter({
+export function useDefaultFilter({
   query,
   stageIndex,
   column,
   filter,
   hasInitialOperator = false,
-}: UseFallbackOperatorFilterProps) {
+}: UseDefaultFilterProps) {
   const filterParts = useMemo(
-    () => (filter ? Lib.fallbackFilterParts(query, stageIndex, filter) : null),
+    () => (filter ? Lib.defaultFilterParts(query, stageIndex, filter) : null),
     [query, stageIndex, filter],
   );
 
@@ -42,7 +42,7 @@ export function useFallbackFilter({
   return {
     operator,
     availableOptions,
-    getFilterClause: (operator: Lib.FallbackFilterOperatorName | undefined) =>
+    getFilterClause: (operator: Lib.DefaultFilterOperatorName | undefined) =>
       getFilterClause(operator, column),
     setOperator,
   };

@@ -16,7 +16,7 @@ import {
   COORDINATE_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
-  FALLBACK_FILTER_OPERATORS,
+  DEFAULT_FILTER_OPERATORS,
   NUMBER_FILTER_OPERATORS,
   RELATIVE_DATE_BUCKETS,
   SPECIFIC_DATE_FILTER_OPERATORS,
@@ -48,8 +48,8 @@ import type {
   ExpressionOperatorName,
   ExpressionOptions,
   ExpressionParts,
-  FallbackFilterOperatorName,
-  FallbackFilterParts,
+  DefaultFilterOperatorName,
+  DefaultFilterParts,
   FilterClause,
   FilterOperator,
   FilterParts,
@@ -475,18 +475,18 @@ export function timeFilterParts(
   };
 }
 
-export function fallbackFilterClause({
+export function defaultFilterClause({
   operator,
   column,
-}: FallbackFilterParts): ExpressionClause {
+}: DefaultFilterParts): ExpressionClause {
   return expressionClause(operator, [column]);
 }
 
-export function fallbackFilterParts(
+export function defaultFilterParts(
   query: Query,
   stageIndex: number,
   filterClause: FilterClause,
-): FallbackFilterParts | null {
+): DefaultFilterParts | null {
   const { operator, args } = expressionParts(query, stageIndex, filterClause);
   if (!isFallbackOperator(operator) || args.length !== 1) {
     return null;
@@ -517,7 +517,7 @@ export function filterParts(
     relativeDateFilterParts(query, stageIndex, filterClause) ??
     excludeDateFilterParts(query, stageIndex, filterClause) ??
     timeFilterParts(query, stageIndex, filterClause) ??
-    fallbackFilterParts(query, stageIndex, filterClause)
+    defaultFilterParts(query, stageIndex, filterClause)
   );
 }
 
@@ -650,8 +650,8 @@ function isTimeOperator(
 
 function isFallbackOperator(
   operator: ExpressionOperatorName,
-): operator is FallbackFilterOperatorName {
-  const operators: ReadonlyArray<string> = FALLBACK_FILTER_OPERATORS;
+): operator is DefaultFilterOperatorName {
+  const operators: ReadonlyArray<string> = DEFAULT_FILTER_OPERATORS;
   return operators.includes(operator);
 }
 

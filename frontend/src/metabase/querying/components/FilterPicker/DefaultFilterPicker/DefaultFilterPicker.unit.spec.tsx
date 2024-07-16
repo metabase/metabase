@@ -3,13 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   createQuery,
-  createQueryWithFallbackFilter,
+  createQueryWithDefaultFilter,
   findArrayColumn,
   storeInitialState,
 } from "metabase/querying/components/FilterPicker/test-utils";
 import * as Lib from "metabase-lib";
 
-import { FallbackFilterPicker } from "./FallbackFilterPicker";
+import { DefaultFilterPicker } from "./DefaultFilterPicker";
 
 type SetupOpts = {
   query?: Lib.Query;
@@ -28,7 +28,7 @@ function setup({
   const onBack = jest.fn();
 
   renderWithProviders(
-    <FallbackFilterPicker
+    <DefaultFilterPicker
       query={query}
       stageIndex={stageIndex}
       column={column}
@@ -56,7 +56,7 @@ function setup({
   };
 }
 
-describe("FallbackFilterPicker", () => {
+describe("DefaultFilterPicker", () => {
   describe("new filter", () => {
     it("should create a new filter with the initial operator", async () => {
       const { getNextFilterName } = setup();
@@ -98,7 +98,7 @@ describe("FallbackFilterPicker", () => {
   describe("existing filter", () => {
     it("should update a filter with 'is-empty' operator", async () => {
       const { getNextFilterName } = setup(
-        createQueryWithFallbackFilter({
+        createQueryWithDefaultFilter({
           operator: "is-null",
         }),
       );
@@ -117,7 +117,7 @@ describe("FallbackFilterPicker", () => {
 
     it("should update a filter with 'not-empty' operator", async () => {
       const { getNextFilterName } = setup(
-        createQueryWithFallbackFilter({
+        createQueryWithDefaultFilter({
           operator: "not-null",
         }),
       );
@@ -135,7 +135,7 @@ describe("FallbackFilterPicker", () => {
     });
 
     it("should go back", async () => {
-      const { onBack, onChange } = setup(createQueryWithFallbackFilter());
+      const { onBack, onChange } = setup(createQueryWithDefaultFilter());
       await userEvent.click(screen.getByLabelText("Back"));
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();

@@ -330,16 +330,16 @@ export function findArrayColumn(query: Lib.Query) {
   return findFilteredColumn(query, "ORDERS", ARRAY_FIELD.name);
 }
 
-type FallbackFilterQueryOpts = Partial<Lib.FallbackFilterParts> & {
+type DefaultFilterQueryOpts = Partial<Lib.DefaultFilterParts> & {
   query?: Lib.Query;
   column?: Lib.ColumnMetadata;
 };
 
-export function createQueryWithFallbackFilter({
+export function createQueryWithDefaultFilter({
   query = createQuery(),
   column = findArrayColumn(query),
   operator = "is-null",
-}: FallbackFilterQueryOpts = {}) {
-  const clause = Lib.fallbackFilterClause({ operator, column });
+}: DefaultFilterQueryOpts = {}) {
+  const clause = Lib.defaultFilterClause({ operator, column });
   return createFilteredQuery(query, clause);
 }

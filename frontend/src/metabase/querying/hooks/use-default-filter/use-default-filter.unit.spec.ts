@@ -12,16 +12,16 @@ import {
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
 
-import { useFallbackFilter } from "./use-fallback-filter";
+import { useDefaultFilter } from "./use-default-filter";
 
 interface CreateFilterCase {
-  operator: Lib.FallbackFilterOperatorName;
+  operator: Lib.DefaultFilterOperatorName;
   expectedDisplayName: string;
 }
 
 interface UpdateFilterCase {
   expression: Lib.ExpressionClause;
-  operator: Lib.FallbackFilterOperatorName;
+  operator: Lib.DefaultFilterOperatorName;
   expectedDisplayName: string;
 }
 
@@ -47,7 +47,7 @@ const METADATA = createMockMetadata({
   ],
 });
 
-describe("useFallbackOptionFilter", () => {
+describe("useDefaultFilter", () => {
   const defaultQuery = createQuery({ metadata: METADATA });
   const stageIndex = 0;
   const availableColumns = Lib.filterableColumns(defaultQuery, stageIndex);
@@ -69,7 +69,7 @@ describe("useFallbackOptionFilter", () => {
     'should allow to create a filter for "$operator" operator',
     ({ operator: newOperator, expectedDisplayName }) => {
       const { result } = renderHook(() =>
-        useFallbackFilter({
+        useDefaultFilter({
           query: defaultQuery,
           stageIndex,
           column,
@@ -93,7 +93,7 @@ describe("useFallbackOptionFilter", () => {
 
   it.each<UpdateFilterCase>([
     {
-      expression: Lib.fallbackFilterClause({
+      expression: Lib.defaultFilterClause({
         operator: "is-null",
         column,
       }),
@@ -107,7 +107,7 @@ describe("useFallbackOptionFilter", () => {
       const [filter] = Lib.filters(query, stageIndex);
 
       const { result } = renderHook(() =>
-        useFallbackFilter({
+        useDefaultFilter({
           query,
           stageIndex,
           column,
@@ -130,7 +130,7 @@ describe("useFallbackOptionFilter", () => {
 
   it("should be invalid if the initial operator is not set", () => {
     const { result } = renderHook(() =>
-      useFallbackFilter({
+      useDefaultFilter({
         query: defaultQuery,
         stageIndex,
         column,
@@ -143,7 +143,7 @@ describe("useFallbackOptionFilter", () => {
 
   it("should be valid if the initial operator is set", () => {
     const { result } = renderHook(() =>
-      useFallbackFilter({
+      useDefaultFilter({
         query: defaultQuery,
         stageIndex,
         column,

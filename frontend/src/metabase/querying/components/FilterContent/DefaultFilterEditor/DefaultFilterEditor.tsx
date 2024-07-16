@@ -1,16 +1,16 @@
 import { useMemo } from "react";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
-import {
-  useFallbackFilter,
-  type OperatorOption,
-} from "metabase/querying/hooks/use-fallback-filter";
 import { Checkbox, Grid, Group } from "metabase/ui";
 
+import {
+  useDefaultFilter,
+  type OperatorOption,
+} from "../../../hooks/use-default-filter";
 import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";
 
-export function FallbackFilterEditor({
+export function DefaultFilterEditor({
   query,
   stageIndex,
   column,
@@ -23,7 +23,7 @@ export function FallbackFilterEditor({
   }, [column]);
 
   const { operator, availableOptions, getFilterClause, setOperator } =
-    useFallbackFilter({
+    useDefaultFilter({
       query,
       stageIndex,
       column,

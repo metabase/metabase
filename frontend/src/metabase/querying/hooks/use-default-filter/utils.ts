@@ -23,17 +23,17 @@ export function getAvailableOptions(
 export function getDefaultOperator(
   availableOptions: OperatorOption[],
   hasInitialOperator: boolean,
-): Lib.FallbackFilterOperatorName | undefined {
+): Lib.DefaultFilterOperatorName | undefined {
   return hasInitialOperator
     ? getDefaultAvailableOperator(availableOptions)
     : undefined;
 }
 
 export function getFilterClause(
-  operator: Lib.FallbackFilterOperatorName | undefined,
+  operator: Lib.DefaultFilterOperatorName | undefined,
   column: Lib.ColumnMetadata,
 ) {
   if (operator) {
-    return Lib.fallbackFilterClause({ operator, column });
+    return Lib.defaultFilterClause({ operator, column });
   }
 }

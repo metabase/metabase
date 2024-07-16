@@ -1,16 +1,16 @@
 import type { FormEvent } from "react";
 import { useMemo } from "react";
 
-import { useFallbackFilter } from "metabase/querying/hooks/use-fallback-filter";
 import { Box, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { useDefaultFilter } from "../../../hooks/use-default-filter";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
-export function FallbackFilterPicker({
+export function DefaultFilterPicker({
   query,
   stageIndex,
   column,
@@ -25,7 +25,7 @@ export function FallbackFilterPicker({
   );
 
   const { operator, availableOptions, getFilterClause, setOperator } =
-    useFallbackFilter({
+    useDefaultFilter({
       query,
       stageIndex,
       column,
