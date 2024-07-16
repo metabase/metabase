@@ -19,7 +19,6 @@ To see what's new, check out all the [major release announcements](https://www.m
 
 ## Metabase Enterprise Edition releases
 
-- [v1.49.21](https://github.com/metabase/metabase/releases/tag/v1.49.21)
 - [v1.50.13](https://github.com/metabase/metabase/releases/tag/v1.50.13)
 - [v1.50.12](https://github.com/metabase/metabase/releases/tag/v1.50.12)
 - [v1.50.11](https://github.com/metabase/metabase/releases/tag/v1.50.11)
@@ -33,6 +32,7 @@ To see what's new, check out all the [major release announcements](https://www.m
 - [v1.50.3](https://github.com/metabase/metabase/releases/tag/v1.50.3)
 - [v1.50.2](https://github.com/metabase/metabase/releases/tag/v1.50.2)
 - [v1.50.1](https://github.com/metabase/metabase/releases/tag/v1.50.1)
+- [v1.49.21](https://github.com/metabase/metabase/releases/tag/v1.49.21)
 - [v1.49.20](https://github.com/metabase/metabase/releases/tag/v1.49.20)
 - [v1.49.19](https://github.com/metabase/metabase/releases/tag/v1.49.19)
 - [v1.49.18](https://github.com/metabase/metabase/releases/tag/v1.49.18)
@@ -188,7 +188,6 @@ To see what's new, check out all the [major release announcements](https://www.m
 
 ## Metabase Open Source Edition releases
 
-- [v0.49.21](https://github.com/metabase/metabase/releases/tag/v0.49.21)
 - [v0.50.13](https://github.com/metabase/metabase/releases/tag/v0.50.13)
 - [v0.50.12](https://github.com/metabase/metabase/releases/tag/v0.50.12)
 - [v0.50.11](https://github.com/metabase/metabase/releases/tag/v0.50.11)
@@ -202,6 +201,7 @@ To see what's new, check out all the [major release announcements](https://www.m
 - [v0.50.3](https://github.com/metabase/metabase/releases/tag/v0.50.3)
 - [v0.50.2](https://github.com/metabase/metabase/releases/tag/v0.50.2)
 - [v0.50.1](https://github.com/metabase/metabase/releases/tag/v0.50.1)
+- [v0.49.21](https://github.com/metabase/metabase/releases/tag/v0.49.21)
 - [v0.49.20](https://github.com/metabase/metabase/releases/tag/v0.49.20)
 - [v0.49.19](https://github.com/metabase/metabase/releases/tag/v0.49.19)
 - [v0.49.18](https://github.com/metabase/metabase/releases/tag/v0.49.18)
