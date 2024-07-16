@@ -241,7 +241,7 @@
 
           (map? db-or-table-perms)
           (check-table-level-perms perm-type
-                                   :asdf
+                                   db-or-table-perms
                                    (perm-type gtap-perms)
                                    db-id)
 
