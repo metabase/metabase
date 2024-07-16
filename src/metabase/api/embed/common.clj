@@ -127,12 +127,12 @@
   [query-params]
   (letfn [(maybe-read [v]
             (if (string? v)
-              (or (parse-long v)
-                (parse-boolean v)
-                (parse-double v)
-                (if (str/blank? v)
-                  nil
-                  v))
+              (cond
+                (#{"true" "false"} v) (parse-boolean v)
+                (str/blank? v)        nil
+                :else                 (or (parse-long v)
+                                          (parse-double v)
+                                          v))
               v))]
     (-> query-params
         (update-keys keyword)
@@ -438,8 +438,11 @@
         slug-token-params                    (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         {parameters       :parameters
          embedding-params :embedding_params} (t2/select-one :model/Dashboard :id dashboard-id)
+        ;; when previewing an embed, embedding-params may initially be empty (not in Appdb yet)
+        ;; to prevent an error, use the embedding params from the token in this case
         embedding-params                     (or embedding-params
-                                                 (when preview (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])))
+                                                 (when preview
+                                                   (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])))
         id->slug                             (into {} (map (juxt :id :slug) parameters))
         slug->id                             (into {} (map (juxt :slug :id) parameters))
         searched-param-slug                  (get id->slug searched-param-id)]
