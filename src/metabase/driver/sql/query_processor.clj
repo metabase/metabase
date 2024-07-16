@@ -1308,7 +1308,9 @@
 (mu/defn ^:private maybe-cast-uuid-for-equality
   "For := and :!=. Comparing UUID fields against non-uuid values requires casting."
   [driver field arg]
-  (if (and (isa? (:base-type (get field 2)) :type/UUID)
+  (if (and (isa? (or (:effective-type (get field 2))
+                     (:base-type (get field 2)))
+                 :type/UUID)
            ;; If we could not convert the arg to a UUID then we have to cast the Field.
            ;; This will not hit indexes, but then we're passing an arg that can only be compared textually.
            (not (uuid? (->honeysql driver arg))))
@@ -1319,7 +1321,9 @@
   "For :contains, :starts-with, and :ends-with.
    Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
   [field]
-  (if (isa? (:base-type (get field 2)) :type/UUID)
+  (if (isa? (or (:effective-type (get field 2))
+                (:base-type (get field 2)))
+            :type/UUID)
     [::cast field "text"]
     field))
 
