@@ -105,6 +105,16 @@ describe("useStringFilter", () => {
       values: [],
       expectedDisplayName: "Category is not empty",
     },
+    {
+      operator: "is-null",
+      values: [],
+      expectedDisplayName: "Category is empty",
+    },
+    {
+      operator: "not-null",
+      values: [],
+      expectedDisplayName: "Category is not empty",
+    },
   ])(
     'should allow to create a filter for "$operator" operator',
     ({ operator: newOperator, values: newValues, expectedDisplayName }) => {
@@ -293,4 +303,75 @@ describe("useStringFilter", () => {
       expect(operator).toBe(expectedOperator);
     },
   );
+
+  it.each<Lib.StringFilterOperatorName>(["is-null", "not-null"])(
+    'should allow "%s" operator if is used in the filter',
+    operator => {
+      const query = Lib.filter(
+        defaultQuery,
+        stageIndex,
+        Lib.stringFilterClause({
+          operator,
+          column,
+          values: [],
+          options: {},
+        }),
+      );
+      const [filter] = Lib.filters(query, stageIndex);
+
+      const { result } = renderHook(() =>
+        useStringFilter({
+          query: defaultQuery,
+          stageIndex,
+          column,
+          filter,
+        }),
+      );
+
+      const { availableOptions } = result.current;
+      expect(
+        availableOptions.find(option => option.operator === "is-null"),
+      ).toMatchObject({
+        name: "Is null",
+        operator: "is-null",
+      });
+      expect(
+        availableOptions.find(option => option.operator === "not-null"),
+      ).toMatchObject({
+        name: "Not null",
+        operator: "not-null",
+      });
+    },
+  );
+
+  it("should not allow is-null and not-null operators if they were not used in the filter", () => {
+    const query = Lib.filter(
+      defaultQuery,
+      stageIndex,
+      Lib.stringFilterClause({
+        operator: "is-empty",
+        column,
+        values: [],
+        options: {},
+      }),
+    );
+    const [filter] = Lib.filters(query, stageIndex);
+
+    const { result } = renderHook(() =>
+      useStringFilter({
+        query: defaultQuery,
+        stageIndex,
+        column,
+        filter,
+      }),
+    );
+
+    const { availableOptions } = result.current;
+    expect(
+      availableOptions.find(option => option.operator === "is-null"),
+    ).toBeUndefined();
+    expect(
+      availableOptions.find(option => option.operator === "not-null"),
+    ).toBeUndefined();
+  });
 });
