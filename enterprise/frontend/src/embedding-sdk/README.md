@@ -569,9 +569,10 @@ const theme = {
       },
     },
 
-    // Numerical value display
-    scalar: {
-      // The primary value to display
+    // Number chart
+    number: {
+      // Value displayed on number charts.
+      // This also applies to the primary value in trend charts.
       value: {
         fontSize: "24px",
         lineHeight: "21px",
