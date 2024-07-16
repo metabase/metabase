@@ -50,7 +50,7 @@
 ;; <pre><code>
 ;; (require '[malli.core :as mc] '[malli.error :as me] '[malli.util :as mut] '[metabase.util.malli :as mu]
 ;;          '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
-;;          '[malli.transform :as mtx] '[metabase.api.common.internal :refer [defendpoint-transformer]
+;;          '[malli.transform :as mtx] '[metabase.api.common.internal :refer [defendpoint-transformer]])
 ;; </code></pre>
 ;;
 ;; To see how a schema will be transformed, call `mc/decode` with `defendpoint-transformer`.
@@ -66,13 +66,15 @@
 ;; to test them out in the REPL to see how they'll be transformed.
 ;;
 ;; Example:
-;;
+;; <pre><code>
 ;; (def DecodableKwInt
 ;;   [:int {:decode/string (fn kw-int->int-decoder [kw-int]
 ;;                           (if (int? kw-int) kw-int (parse-long (name kw-int))))}])
 ;;
 ;; (mc/decode DecodableKwInt :123 defendpoint-transformer)
 ;; ;; => 123
+;; </code></pre>
+;; <hr />
 
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
