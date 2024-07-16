@@ -19,9 +19,9 @@ Let's say you set a caching policy for a particular question. You set a [duratio
 
 When you view the question for the first time, Metabase will check for stored results. When it doesn't find any, it will run the question, return the results, and store (cache) the results. Those results will remain valid for the next hour (according to the hour-long duration policy you set).
 
-You run the question half an hour later, Metabase will return those stored results.
+If you run the question half an hour later, Metabase will return those stored results.
 
-You run the question over an hour after that initial run, Metabase will notice that the stored results are older than the caching policy allows, so Metabase will delete the stored results, re-run the query, return the results, and store the results anew. These updated results will remain valid for the next hour.
+If you run the question over an hour after that initial run, Metabase will notice that the stored results are older than the caching policy allows. It will delete the stored results, run the query again, and return the results, caching them for the future. This cache will remain valid for the next hour.
 
 See also [different caching policies interact](#how-dashboard-question-database-and-default-caching-policies-interact).
 
@@ -123,7 +123,7 @@ To set a caching policy for a question, you must have [curate access](../permiss
 
 ## How dashboard, question, database, and default caching policies interact
 
-If you have multiple caching policies set, Metabase will use the first available policy, in this order:
+If multiple caching policies affect the same question, Metabase will use the first available policy, in this order:
 
 1. Dashboard
 2. Question
