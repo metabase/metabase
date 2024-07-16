@@ -22,14 +22,26 @@
 (defonce ^:private queue (queue/bounded-transfer-queue realtime-queue-capacity {:dedupe? true}))
 
 (def ^:dynamic *analyze-queries-in-test?*
-  "Normally, a card's query is analyzed on every create/update. For most tests, this is an unnecessary expense.
-  Therefore, we skip parsing while testing unless this variable is turned on."
+  "A card's query is normally analyzed on every create/update. For most tests, this is an unnecessary expense, hence
+  we use this dynamic variable to opt-in where applicable."
   false)
 
+(def ^:dynamic *analyze-async-in-dev?*
+  "Managing a background thread in the REPL is likely to confound and infuriate, especially when we're using it to run
+  tests. For this reason we require an opt-in to use the worker queue, as opposed to just doing the work on the main
+  thread."
+  false)
 
-(defn- enabled? []
-  (or (not config/is-test?)
-      *analyze-queries-in-test?*))
+(defn- execution []
+  (case config/run-mode
+    :prod ::worker-queue
+    :dev  (if *analyze-async-in-dev?*
+            ::worker-queue
+            ::current-thread)
+    :test (if *analyze-queries-in-test?*
+            ::current-thread
+            ::off)))
+
 
 (defn enabled-type?
   "Is analysis of the given query type enabled?"
@@ -126,29 +138,31 @@
 (defn analyze-card!
   "Update the analysis for the given card, if it is active."
   [card-id]
-  (when (enabled?)
-    (let [card (t2/select-one [:model/Card :id :archived :dataset_query] card-id)]
+  (let [card (t2/select-one [:model/Card :id :archived :dataset_query] card-id)]
       (cond
-        (not card)       (log/warnf "Card not found: %" card-id)
-        (:archived card) (log/warnf "Skipping archived card: %" card-id)
+        (not card)       (log/warnf "Card not found: %s" card-id)
+        (:archived card) (log/warnf "Skipping archived card: %s" card-id)
         :else            (log/infof "Performing query analysis for card %s" card-id))
       (when (and card (not (:archived card)))
-        (update-query-analysis-for-card! card)))))
+        (update-query-analysis-for-card! card))))
 
 (defn next-card-id!
   "Get the id of the next card id to be analyzed. May block indefinitely, relies on producer."
   []
   (queue/blocking-take! queue))
 
+(defn- queue-or-analyze! [offer-fn! card-or-id]
+  (case (execution)
+    ::current-thread (analyze-card! (u/the-id card-or-id))
+    ::worker-queue   (offer-fn! queue (u/the-id card-or-id))
+    ::none           nil))
+
+(defn analyze-async!
+  "Asynchronously hand-off the given card for analysis, at a high priority."
+  [card-or-id]
+  (queue-or-analyze! queue/maybe-put! card-or-id))
 
 (defn analyze-sync!
   "Synchronously hand-off the given card for analysis, at a low priority. May block indefinitely, relies on consumer."
   [card-or-id]
-  (when (enabled?)
-    (queue/maybe-put! queue (u/the-id card-or-id))))
-
-(defn analyze-sync!
-  "Synchronously hand-off the given card for analysis, at a low priority. May block indefinitely, relies on consumer."
-  [card-or-id]
-  (when (enabled?)
-    (queue/blocking-put! queue (u/the-id card-or-id))))
+  (queue-or-analyze! queue/blocking-put! card-or-id))

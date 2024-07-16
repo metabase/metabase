@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
-   [metabase.query-analysis :as query-analysis]
    [metabase.test :as mt]
    [ring.util.codec :as codec]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -41,7 +40,6 @@
                                                             :field_id field-2}
                            :model/QueryField {qf-3 :id}    {:card_id  card-3
                                                             :field_id field-3}]
-    (run! query-analysis/analyze-card! [card-1 card-2 card-3 card-4])
     (mt/with-premium-features #{:query-field-validation}
       (mt/call-with-map-params f [card-1 card-2 card-3 card-4 qf-1 qf-2 qf-3]))))
 

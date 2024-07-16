@@ -25,8 +25,6 @@
       (t2.with-temp/with-temp [:model/Card {card-id :id}
                                {:dataset_query (mt/native-query {:query "SELECT NOT_TAX, TOTAL FROM orders"})}]
         (try
-          ;; TODO - it would be nice if we could rather just enable the actual analyzer for the duration of this test
-          (query-analysis/analyze-card! card-id)
           (f {:card-id  card-id
               :tax-id   tax-id
               :total-id total-id
@@ -46,8 +44,7 @@
   [card-id query]
   (if (string? query)
     (t2/update! :model/Card card-id {:dataset_query (mt/native-query {:query query})})
-    (t2/update! :model/Card card-id {:dataset_query query}))
-  (query-analysis/analyze-card! card-id))
+    (t2/update! :model/Card card-id {:dataset_query query})))
 
 ;;;;
 ;;;; Actual tests
