@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type FocusEvent, useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
@@ -23,6 +23,8 @@ interface SearchValuePickerProps {
   shouldCreate: (query: string) => boolean;
   autoFocus?: boolean;
   onChange: (newValues: string[]) => void;
+  onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
+  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
 export function SearchValuePicker({
@@ -33,6 +35,8 @@ export function SearchValuePicker({
   shouldCreate,
   autoFocus,
   onChange,
+  onFocus,
+  onBlur,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
@@ -96,6 +100,8 @@ export function SearchValuePicker({
       nothingFound={notFoundMessage}
       onChange={onChange}
       onSearchChange={handleSearchChange}
+      onFocus={onFocus}
+      onBlur={onBlur}
     />
   );
 }

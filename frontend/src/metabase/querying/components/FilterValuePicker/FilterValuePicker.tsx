@@ -76,6 +76,8 @@ function FilterValuePicker({
         autoFocus={autoFocus}
         compact={compact}
         onChange={onChange}
+        onFocus={onFocus}
+        onBlur={onBlur}
       />
     );
   }
@@ -92,6 +94,8 @@ function FilterValuePicker({
         shouldCreate={shouldCreate}
         autoFocus={autoFocus}
         onChange={onChange}
+        onFocus={onFocus}
+        onBlur={onBlur}
       />
     );
   }
