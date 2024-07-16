@@ -145,6 +145,13 @@ function addTimeFilter(query: Lib.Query, filterClause: Lib.ExpressionClause) {
   return addFilter(query, filterClause, Lib.timeFilterParts);
 }
 
+function addDefaultFilter(
+  query: Lib.Query,
+  filterClause: Lib.ExpressionClause,
+) {
+  return addFilter(query, filterClause, Lib.defaultFilterParts);
+}
+
 describe("filter", () => {
   const query = createQuery({ metadata: METADATA });
 
@@ -206,7 +213,12 @@ describe("filter", () => {
       },
     );
 
-    it.each<Lib.StringFilterOperatorName>(["is-empty", "not-empty"])(
+    it.each<Lib.StringFilterOperatorName>([
+      "is-empty",
+      "not-empty",
+      "is-null",
+      "not-null",
+    ])(
       'should be able to create and destructure a string filter with "%s" operator without values',
       operator => {
         const { filterParts, columnInfo } = addStringFilter(
@@ -325,21 +337,6 @@ describe("filter", () => {
           options: {},
         });
         expect(columnInfo?.name).toBe(columnName);
-      },
-    );
-
-    it.each<Lib.ExpressionOperatorName>(["is-null", "not-null"])(
-      "should ignore expressions with unsupported %s operator without values",
-      operator => {
-        const { filterParts } = addStringFilter(
-          query,
-          Lib.expressionClause(operator, [
-            findColumn(query, tableName, columnName),
-            "A",
-          ]),
-        );
-
-        expect(filterParts).toBeNull();
       },
     );
 
@@ -1523,6 +1520,40 @@ describe("filter", () => {
           column: findColumn(query, tableName, "CREATED_AT"),
           values: [new Date(2015, 0, 1, 10, 20), new Date(2015, 0, 1, 18, 50)],
         }),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+  });
+
+  describe("default filters", () => {
+    const tableName = "PRODUCTS";
+    const columnName = "CATEGORY";
+    const column = findColumn(query, tableName, columnName);
+
+    it.each<Lib.DefaultFilterOperatorName>(["is-null", "not-null"])(
+      'should be able to create and destructure a default filter with "%s" operator',
+      operator => {
+        const { filterParts, columnInfo } = addDefaultFilter(
+          query,
+          Lib.defaultFilterClause({
+            operator,
+            column,
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it("should ignore expressions with not supported operators", () => {
+      const { filterParts } = addDefaultFilter(
+        query,
+        Lib.expressionClause("=", [column, "Widget"]),
       );
 
       expect(filterParts).toBeNull();
