@@ -17,6 +17,7 @@
         (mt/with-temp [:model/Database                   db {}
                        :model/Collection                 collection {}
                        :model/Table                      table {:db_id (u/the-id db)}
+                       :model/Field                      _field {:table_id (u/the-id table) :name "field"}
                        :model/PermissionsGroup           group {}
                        :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
                                                             :group_id (u/the-id group)}
@@ -36,6 +37,7 @@
         (mt/with-temp [:model/Database                   db {}
                        :model/Collection                 collection {}
                        :model/Table                      table {:db_id (u/the-id db)}
+                       :model/Field                      _field {:table_id (u/the-id table) :name "field"}
                        :model/PermissionsGroup           group {}
                        :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
                                                             :group_id (u/the-id group)}
@@ -51,7 +53,54 @@
               (is (= "Another Name"
                      (:name (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                                                   {:name          "Another Name"
-                                                   :dataset_query (api.card-test/mbql-count-query db table)})))))))))))
+                                                   :dataset_query (api.card-test/mbql-count-query db table)})))))))))
+
+    (testing "Legacy no self service doesn't override the sandbox when updating a card"
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Database                   db {}
+                       :model/Collection                 collection {}
+                       :model/Table                      table {:db_id (u/the-id db)}
+                       :model/Table                      other-table {:db_id (u/the-id db)}
+                       :model/Field                      _field {:table_id (u/the-id table) :name "field"}
+                       :model/PermissionsGroup           group {}
+                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
+                                                            :group_id (u/the-id group)}
+                       :model/Card                       card {:name "Some Name"
+                                                               :collection_id (u/the-id collection)}
+                       :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
+                                                               :table_id (u/the-id table)}]
+          (mt/with-db db
+            (mt/with-no-data-perms-for-all-users!
+              (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
+              (data-perms/set-table-permission! group other-table :perms/view-data :legacy-no-self-service)
+              (data-perms/set-table-permission! group table :perms/create-queries :query-builder)
+              (perms/grant-collection-readwrite-permissions! group collection)
+              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
+                                    {:name          "Another Name"
+                                     :dataset_query (api.card-test/mbql-count-query db table)})))))
+
+      (testing "Legacy no self service doesn't override the sandbox when creating a new card"
+        (mt/with-model-cleanup [:model/Card]
+          (mt/with-temp [:model/Database                   db {}
+                         :model/Collection                 collection {}
+                         :model/Table                      table {:db_id (u/the-id db)}
+                         :model/Table                      other-table {:db_id (u/the-id db)}
+                         :model/Field                      _field {:table_id (u/the-id table) :name "field"}
+                         :model/PermissionsGroup           group {}
+                         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
+                                                              :group_id (u/the-id group)}
+                         :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
+                                                                 :table_id (u/the-id table)}]
+            (mt/with-db db
+              (mt/with-no-data-perms-for-all-users!
+                (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
+                (data-perms/set-table-permission! group other-table :perms/view-data :legacy-no-self-service)
+                (data-perms/set-table-permission! group table :perms/create-queries :query-builder)
+                (perms/grant-collection-readwrite-permissions! group collection)
+                (mt/user-http-request :rasta :post 200 "card"
+                                      (assoc (api.card-test/card-with-name-and-query "foobar"
+                                                                                     (api.card-test/mbql-count-query db table))
+                                             :collection_id (u/the-id collection)))))))))))
 
 (deftest parameters-with-source-is-card-test
   (testing "a card with a parameter whose source is a card should respect sandboxing"
