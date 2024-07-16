@@ -52,6 +52,8 @@ const SummarizeInner = ({
   };
 
   const {
+    query,
+    stageIndex,
     aggregations,
     handleAddAggregations,
     handleAddBreakout,
@@ -61,13 +63,16 @@ const SummarizeInner = ({
     handleUpdateAggregation,
     handleUpdateBreakout,
     hasAggregations,
-    query,
-  } = useSummarizeQuery(currentQuery, setCurrentQuery);
+  } = useSummarizeQuery({
+    query: currentQuery,
+    onQueryChange: setCurrentQuery,
+  });
 
   return (
     <Stack w="100%" h="100%">
       <SummarizeAggregationItemList
         query={query}
+        stageIndex={stageIndex}
         aggregations={aggregations}
         onAddAggregations={handleAddAggregations}
         onUpdateAggregation={handleUpdateAggregation}
@@ -77,6 +82,7 @@ const SummarizeInner = ({
       {hasAggregations && (
         <SummarizeBreakoutColumnList
           query={query}
+          stageIndex={stageIndex}
           onAddBreakout={handleAddBreakout}
           onUpdateBreakout={handleUpdateBreakout}
           onRemoveBreakout={handleRemoveBreakout}

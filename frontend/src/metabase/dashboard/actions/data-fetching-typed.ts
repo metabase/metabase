@@ -1,3 +1,4 @@
+import { createAction } from "@reduxjs/toolkit";
 import { denormalize, normalize, schema } from "normalizr";
 
 import {
@@ -17,7 +18,7 @@ import { uuid } from "metabase/lib/uuid";
 import { addFields, addParamValues } from "metabase/redux/metadata";
 import { AutoApi, DashboardApi, EmbedApi, PublicApi } from "metabase/services";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
-import type { DashboardCard, DashboardId } from "metabase-types/api";
+import type { Card, DashboardCard, DashboardId } from "metabase-types/api";
 
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");
@@ -188,4 +189,23 @@ export const fetchDashboard = createAsyncThunk(
       return rejectWithValue(error);
     }
   },
+);
+
+export const MARK_CARD_AS_SLOW = "metabase/dashboard/MARK_CARD_AS_SLOW";
+export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, (card: Card) => {
+  return {
+    payload: {
+      id: card.id,
+      result: true,
+    },
+  };
+});
+
+export const SET_DOCUMENT_TITLE = "metabase/dashboard/SET_DOCUMENT_TITLE";
+export const setDocumentTitle = createAction<string>(SET_DOCUMENT_TITLE);
+
+export const SET_SHOW_LOADING_COMPLETE_FAVICON =
+  "metabase/dashboard/SET_SHOW_LOADING_COMPLETE_FAVICON";
+export const setShowLoadingCompleteFavicon = createAction<boolean>(
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
 );

@@ -90,7 +90,7 @@ export function DashboardSidebars({
     [addCardToDashboard, dashboard.id, selectedTabId],
   );
 
-  const handleSetDashboardAttribute = useSetDashboardAttributeHandler();
+  const setDashboardAttribute = useSetDashboardAttributeHandler();
 
   if (isFullscreen) {
     return null;
@@ -170,7 +170,7 @@ export function DashboardSidebars({
       return (
         <DashboardInfoSidebar
           dashboard={dashboard}
-          setDashboardAttribute={handleSetDashboardAttribute}
+          setDashboardAttribute={setDashboardAttribute}
         />
       );
     default:
