@@ -478,6 +478,10 @@ describe("issue 32252", () => {
     cy.signInAsAdmin();
 
     createCollection({ name: "My collection" }).then(({ body: collection }) => {
+      if (typeof collection.id !== "number") {
+        throw new Error("collection.id is not a number");
+      }
+
       createQuestion({
         name: "My question",
         collection_id: collection.id,
