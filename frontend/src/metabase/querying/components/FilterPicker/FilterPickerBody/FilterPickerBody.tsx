@@ -52,7 +52,7 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
   if (Lib.isTime(column)) {
     return TimeFilterPicker;
   }
-  if (Lib.isDate(column)) {
+  if (Lib.isTemporal(column)) {
     return DateFilterPicker;
   }
   if (Lib.isCoordinate(column)) {

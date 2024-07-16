@@ -18,7 +18,7 @@ export function getColumnIcon(column: Lib.ColumnMetadata): IconName {
   }
 
   if (
-    Lib.isDate(column) ||
+    Lib.isTemporal(column) ||
     Lib.isDateWithoutTime(column) ||
     Lib.isTime(column)
   ) {
