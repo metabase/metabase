@@ -164,7 +164,6 @@ export const EmbedFrame = ({
     theme !== "transparent" && // https://github.com/metabase/metabase/pull/38766#discussion_r1491549200
     isParametersWidgetContainersSticky(visibleParameters.length);
 
-  // TODO: pass this as headerActions  from PublicDashboard ?
   const saveAsPDF = async () => {
     const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
     await saveDashboardPdf(
@@ -214,7 +213,6 @@ export const EmbedFrame = ({
                     />
                   )}
                   <Box style={{ flex: 1 }} />
-                  {/* TODO: move this to a prop passed by PublicDashboard ? */}
                   {dashboard && downloadsEnabled && (
                     <Button
                       variant="subtle"
