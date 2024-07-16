@@ -27,7 +27,6 @@ export const ParametersList = ({
   editingParameter,
 
   isFullscreen,
-  isNightMode,
   hideParameters,
   isEditing,
   vertical = false,
@@ -66,7 +65,6 @@ export const ParametersList = ({
       className={cx({ [CS.mb2]: vertical })}
       isEditing={isEditing}
       isFullscreen={isFullscreen}
-      isNightMode={isNightMode}
       parameter={valuePopulatedParameter}
       parameters={parameters}
       question={question}
