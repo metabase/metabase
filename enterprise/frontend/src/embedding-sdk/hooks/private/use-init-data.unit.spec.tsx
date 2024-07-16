@@ -1,6 +1,5 @@
 import { act } from "@testing-library/react";
 import fetchMock from "fetch-mock";
-import { useCallback, useReducer } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -31,30 +30,15 @@ import { createMockState } from "metabase-types/store/mocks";
 
 const TEST_USER = createMockUser();
 
-const TestComponent = ({
-  config,
-  onFetchRequestToken,
-}: {
-  config: SDKConfig;
-  onFetchRequestToken?: (token: string) => void;
-}) => {
+const TestComponent = ({ config }: { config: SDKConfig }) => {
   const dispatch = useDispatch();
 
   const loginStatus = useSdkSelector(getLoginStatus);
   const isLoggedIn = useSdkSelector(getIsLoggedIn);
 
-  const [tokenId, incrementTokenId] = useReducer(id => id + 1, 1);
-
-  const fetchRequestToken = useCallback(async () => {
-    onFetchRequestToken?.(tokenId);
-
-    return { id: `${tokenId}`, exp: 1 };
-  }, [tokenId, onFetchRequestToken]);
-
   useInitData({
     config: {
       ...config,
-      ...(onFetchRequestToken && { fetchRequestToken }),
       metabaseInstanceUrl: "http://localhost",
     } as SDKConfig,
   });
@@ -70,7 +54,6 @@ const TestComponent = ({
       data-error-message={(loginStatus as LoginStatusError).error?.message}
     >
       Test Component
-      <button onClick={incrementTokenId}>Update Token Fetcher</button>
       <button onClick={refreshToken}>Refresh Token</button>
     </div>
   );
@@ -85,7 +68,6 @@ const setup = ({
 }: {
   isValidConfig?: boolean;
   isValidUser?: boolean;
-  onFetchRequestToken?: (token: string) => void;
 } & Partial<SDKConfig>) => {
   fetchMock.get("http://TEST_URI/sso/metabase", {
     id: "TEST_JWT_TOKEN",
@@ -126,9 +108,10 @@ const setup = ({
 
   const config = createMockConfig({
     jwtProviderUri: isValidConfig ? "http://TEST_URI/sso/metabase" : "",
+    ...configOpts,
   });
 
-  renderWithProviders(<TestComponent config={config} {...configOpts} />, {
+  return renderWithProviders(<TestComponent config={config} />, {
     storeInitialState: state,
     customReducers: sdkReducers,
   });
@@ -203,21 +186,29 @@ describe("useInitData hook", () => {
     });
 
     it("should use a custom fetchRefreshToken function when specified", async () => {
-      const onFetchRequestToken = jest.fn();
+      let fetchRequestToken = jest.fn(async () => ({ id: "foo", exp: 10 }));
 
-      setup({ isValidConfig: true, onFetchRequestToken });
+      const { rerender } = setup({ isValidConfig: true, fetchRequestToken });
+
       expect(await screen.findByText("Test Component")).toBeInTheDocument();
-      expect(onFetchRequestToken).toHaveBeenCalledWith(1);
+      expect(fetchRequestToken).toHaveBeenCalledTimes(1);
 
-      act(() => {
-        screen.getByText("Update Token Fetcher").click();
+      // Pass in a new fetchRequestToken function
+      // We expect the new function to be called when the "Refresh Token" button is clicked
+      fetchRequestToken = jest.fn(async () => ({ id: "bar", exp: 10 }));
+
+      const config = createMockConfig({
+        jwtProviderUri: "http://TEST_URI/sso/metabase",
+        fetchRequestToken,
       });
+
+      rerender(<TestComponent config={config} />);
 
       act(() => {
         screen.getByText("Refresh Token").click();
       });
 
-      expect(onFetchRequestToken).toHaveBeenCalledWith(2);
+      expect(fetchRequestToken).toHaveBeenCalledTimes(1);
     });
   });
 });
