@@ -3,45 +3,48 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
+   [metabase.query-analysis :as query-analysis]
    [metabase.test :as mt]
    [ring.util.codec :as codec]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- do-with-test-setup! [f]
-  (t2.with-temp/with-temp [:model/Table      {table  :id}  {:name "T"}
-                           :model/Collection {coll-1 :id}  {:name "ZZX"}
-                           :model/Collection {coll-2 :id}  {:name "ZZY"}
-                           :model/Collection {coll-3 :id}  {:name "ZZZ"}
-                           :model/Card       {card-1 :id}  {:name "A" :collection_id coll-1}
-                           :model/Card       {card-2 :id}  {:name "B" :collection_id coll-2}
-                           :model/Card       {card-3 :id}  {:name "C" :collection_id coll-3}
-                           :model/Card       {card-4 :id}  {:name "D"}
-                           :model/Field      {field-1 :id} {:active   false
-                                                            :name     "FA"
-                                                            :table_id table}
-                           :model/Field      {field-2 :id} {:active   false
-                                                            :name     "FB"
-                                                            :table_id table}
-                           :model/Field      {field-3 :id} {:active   false
-                                                            :name     "FC"
-                                                            :table_id table}
-                           ;; QFs not to include:
-                           ;; - Field is still active
-                           :model/QueryField {}            {:card_id  card-1
-                                                            :field_id (mt/id :orders :tax)}
-                           ;; - Implicit reference
-                           :model/QueryField {}            {:card_id            card-2
-                                                            :field_id           field-1
-                                                            :explicit_reference false}
-                           ;; QFs to include:
-                           :model/QueryField {qf-1 :id}    {:card_id  card-1
-                                                            :field_id field-1}
-                           :model/QueryField {qf-2 :id}    {:card_id  card-2
-                                                            :field_id field-2}
-                           :model/QueryField {qf-3 :id}    {:card_id  card-3
-                                                            :field_id field-3}]
-    (mt/with-premium-features #{:query-field-validation}
-      (mt/call-with-map-params f [card-1 card-2 card-3 card-4 qf-1 qf-2 qf-3]))))
+  ;; Make sure that no additional analysis is created by hooks
+  (query-analysis/without-analysis
+    (t2.with-temp/with-temp [:model/Table      {table  :id}  {:name "T"}
+                             :model/Collection {coll-1 :id}  {:name "ZZX"}
+                             :model/Collection {coll-2 :id}  {:name "ZZY"}
+                             :model/Collection {coll-3 :id}  {:name "ZZZ"}
+                             :model/Card       {card-1 :id}  {:name "A" :collection_id coll-1}
+                             :model/Card       {card-2 :id}  {:name "B" :collection_id coll-2}
+                             :model/Card       {card-3 :id}  {:name "C" :collection_id coll-3}
+                             :model/Card       {card-4 :id}  {:name "D"}
+                             :model/Field      {field-1 :id} {:active   false
+                                                              :name     "FA"
+                                                              :table_id table}
+                             :model/Field      {field-2 :id} {:active   false
+                                                              :name     "FB"
+                                                              :table_id table}
+                             :model/Field      {field-3 :id} {:active   false
+                                                              :name     "FC"
+                                                              :table_id table}
+                             ;; QFs not to include:
+                             ;; - Field is still active
+                             :model/QueryField {}            {:card_id  card-1
+                                                              :field_id (mt/id :orders :tax)}
+                             ;; - Implicit reference
+                             :model/QueryField {}            {:card_id            card-2
+                                                              :field_id           field-1
+                                                              :explicit_reference false}
+                             ;; QFs to include:
+                             :model/QueryField {qf-1 :id}    {:card_id  card-1
+                                                              :field_id field-1}
+                             :model/QueryField {qf-2 :id}    {:card_id  card-2
+                                                              :field_id field-2}
+                             :model/QueryField {qf-3 :id}    {:card_id  card-3
+                                                              :field_id field-3}]
+      (mt/with-premium-features #{:query-field-validation}
+        (mt/call-with-map-params f [card-1 card-2 card-3 card-4 qf-1 qf-2 qf-3])))))
 
 (defmacro ^:private with-test-setup!
   "Creates some non-stale QueryFields and anaphorical provides stale QueryField IDs called `qf-{1-3}` and their

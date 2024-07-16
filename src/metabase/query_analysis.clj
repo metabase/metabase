@@ -45,6 +45,13 @@
              *analyze-execution-in-test?* ::immediate]
      ~@body))
 
+(defmacro without-analysis
+  "Override default execution mode to always use the current thread. Does nothing in prod."
+  [& body]
+  `(binding [*analyze-execution-in-dev?*  ::immediate
+             *analyze-execution-in-test?* ::immediate]
+     ~@body))
+
 (defn- execution []
   (case config/run-mode
     :prod ::queued
