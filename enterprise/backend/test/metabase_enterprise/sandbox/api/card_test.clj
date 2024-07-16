@@ -10,8 +10,8 @@
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(deftest users-with-segmented-perms-test
-  (testing "Users with segmented permissions should be able to save cards"
+(deftest users-with-sandboxed-perms-test
+  (testing "Users with sandboxed permissions should be able to save cards"
     (let [card-name (mt/random-name)]
       (mt/with-model-cleanup [:model/Card]
         (mt/with-temp [:model/Database                   db {}
@@ -32,7 +32,7 @@
                                                (assoc (api.card-test/card-with-name-and-query card-name (api.card-test/mbql-count-query db table))
                                                       :collection_id (u/the-id collection))))))))))
 
-    (testing "Users with segmented permissions should be able to update the query associated to a card"
+    (testing "Users with sandboxed permissions should be able to update the query associated to a card"
       (mt/with-model-cleanup [:model/Card]
         (mt/with-temp [:model/Database                   db {}
                        :model/Collection                 collection {}
@@ -101,6 +101,40 @@
                                       (assoc (api.card-test/card-with-name-and-query "foobar"
                                                                                      (api.card-test/mbql-count-query db table))
                                              :collection_id (u/the-id collection)))))))))))
+
+(deftest sandbox-join-permissions-test
+  (testing "Sandboxed query can't be saved when sandboxed table is joined to a table that the current user doesn't have access to"
+    (mt/with-temp [:model/Collection collection {}]
+      (mt/with-model-cleanup [:model/Card]
+        (met/with-gtaps! (mt/$ids orders
+                                  {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
+                                   :attributes {"user_id" 1}})
+          (perms/grant-collection-readwrite-permissions! &group collection)
+          (data-perms/set-table-permission! &group (mt/id :products) :perms/view-data :legacy-no-self-service)
+          (data-perms/set-table-permission! &group (mt/id :products) :perms/create-queries :no)
+          (let [query (mt/mbql-query orders
+                                     {:limit 5
+                                      :aggregation [:count]
+                                      :joins [{:source-table $$products
+                                               :fields       :all
+                                               :alias        "Products"
+                                               :condition    [:= $product_id &Products.products.id]}]})]
+            (mt/user-http-request :rasta :post 403 "card"
+                                  (assoc (api.card-test/card-with-name-and-query (mt/random-name) query)
+                                         :collection_id (u/the-id collection))))
+
+          (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query products)}]
+            (let [query (mt/mbql-query orders
+                                       {:limit 5
+                                        :aggregation [:count]
+                                        :joins [{:source-table (str "card__" (:id card))
+                                                 :fields       :all
+                                                 :strategy     :left-join
+                                                 :alias        "Products"
+                                                 :condition    [:= $product_id &Products.products.id]}]})]
+             (mt/user-http-request :rasta :post 403 "card"
+                                   (assoc (api.card-test/card-with-name-and-query (mt/random-name) query)
+                                          :collection_id (u/the-id collection))))))))))
 
 (deftest parameters-with-source-is-card-test
   (testing "a card with a parameter whose source is a card should respect sandboxing"
