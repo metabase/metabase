@@ -27,12 +27,11 @@
   "Check if `last_used_at` of `card-id` is nil, then execute `f`, then check that `last_used_at` is non nil."
   [card-id thunk]
   (assert (fn? thunk))
-  (testing "last_used_at should be nil to start with"
-    (is (nil? (card-last-used-at card-id))))
-  (mt/with-temporary-setting-values [synchronous-batch-updates true]
-    (thunk))
-  (testing "last_used_at should be updated to non nil"
-    (is (some? (card-last-used-at card-id)))))
+  (let [original-last-used-at (card-last-used-at card-id)]
+   (mt/with-temporary-setting-values [synchronous-batch-updates true]
+     (thunk))
+   (testing "last_used_at should be updated after executing the query"
+     (is (not= original-last-used-at (card-last-used-at card-id))))))
 
 (deftest nested-cards-test
   (with-used-cards-setup!
@@ -75,9 +74,9 @@
   (let [now           (t/offset-date-time)
         one-hour-ago  (t/minus now (t/hours 1))
         two-hours-ago (t/minus now (t/hours 2))]
-    (testing "update with multiple card of the same ids will set timestamp to the latest"
+    (testing "update with multiple cards of the same ids will set timestamp to the latest"
       (mt/with-temp
-        [:model/Card {card-id-1 :id} {}]
+        [:model/Card {card-id-1 :id} {:last_used_at two-hours-ago}]
         (#'qp.update-used-cards/update-used-cards!* [{:id card-id-1 :timestamp two-hours-ago}
                                                      {:id card-id-1 :timestamp one-hour-ago}])
         (is (= one-hour-ago (t2/select-one-fn :last_used_at :model/Card card-id-1)))))
