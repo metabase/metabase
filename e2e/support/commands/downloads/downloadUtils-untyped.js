@@ -103,12 +103,14 @@ const addCustomCommands = () => {
   Cypress.Commands.add("verifyDownload", verifyDownload);
 };
 
-module.exports = {
+const verifyDownloadTasks = {
+  isFileExist,
+  findFiles,
+};
+
+export {
   removeDirectory,
   deleteDownloadsFolder,
   addCustomCommands,
-  verifyDownloadTasks: {
-    isFileExist,
-    findFiles,
-  },
+  verifyDownloadTasks,
 };

@@ -11,6 +11,7 @@ import type { GetFieldValuesResponse } from "metabase-types/api";
 import { createMockFieldValues } from "metabase-types/api/mocks";
 import {
   PEOPLE,
+  PEOPLE_STATE_VALUES,
   PRODUCT_CATEGORY_VALUES,
 } from "metabase-types/api/mocks/presets";
 
@@ -78,25 +79,43 @@ describe("StringFilterEditor", () => {
   const column = findColumn("PRODUCTS", "CATEGORY");
 
   describe("new filter", () => {
-    it("should handle list values", async () => {
-      const { getNextFilterName } = setup({
+    it("should handle list values when they are rendered as a list of checkboxes", async () => {
+      const { getNextFilterName, onChange } = setup({
         query,
         stageIndex,
         column,
       });
 
       await userEvent.click(await screen.findByText("Gadget"));
-
       expect(getNextFilterName()).toBe("Category is Gadget");
+      expect(onChange).toHaveBeenCalledTimes(1);
+    });
+
+    it("should handle list values when they are rendered as an autocomplete input", async () => {
+      const { getNextFilterName, onChange, onInput } = setup({
+        query,
+        stageIndex,
+        column: findColumn("PEOPLE", "STATE"),
+        fieldValues: PEOPLE_STATE_VALUES,
+      });
+
+      const input = await screen.findByPlaceholderText("Search the list");
+      await userEvent.type(input, "T");
+      await userEvent.click(await screen.findByText("TX"));
+      expect(onInput).toHaveBeenCalled();
+
+      await userEvent.tab();
+      expect(getNextFilterName()).toBe("State is TX");
+      expect(onChange).toHaveBeenCalledTimes(1);
     });
 
     it("should handle searchable values", async () => {
-      const { getNextFilterName } = setup({
+      const { getNextFilterName, onChange, onInput } = setup({
         query,
         stageIndex,
         column: findColumn("PEOPLE", "EMAIL"),
         searchValues: {
-          a: createMockFieldValues({
+          "a@metabase": createMockFieldValues({
             field_id: PEOPLE.EMAIL,
             values: [["a@metabase.test"]],
           }),
@@ -105,14 +124,23 @@ describe("StringFilterEditor", () => {
 
       await userEvent.click(screen.getByText("contains"));
       await userEvent.click(screen.getByText("Is"));
-      await userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
-      await userEvent.click(await screen.findByText("a@metabase.test"));
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(getNextFilterName()).toBeNull();
 
+      await userEvent.type(
+        screen.getByPlaceholderText("Search by Email"),
+        "a@metabase",
+      );
+      await userEvent.click(await screen.findByText("a@metabase.test"));
+      expect(onInput).toHaveBeenCalled();
+
+      await userEvent.tab();
       expect(getNextFilterName()).toBe("Email is a@metabase.test");
+      expect(onChange).toHaveBeenCalledTimes(2);
     });
 
     it("should handle non-searchable values", async () => {
-      const { getNextFilterName, onInput } = setup({
+      const { getNextFilterName, onChange, onInput } = setup({
         query,
         stageIndex,
         column: findColumn("PEOPLE", "PASSWORD"),
@@ -120,14 +148,18 @@ describe("StringFilterEditor", () => {
 
       await userEvent.click(screen.getByText("contains"));
       await userEvent.click(screen.getByText("Is"));
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(getNextFilterName()).toBeNull();
+
       await userEvent.type(
         screen.getByPlaceholderText("Enter some text"),
         "Test",
       );
-      await userEvent.tab();
-
-      expect(getNextFilterName()).toBe("Password is Test");
       expect(onInput).toHaveBeenCalled();
+
+      await userEvent.tab();
+      expect(getNextFilterName()).toBe("Password is Test");
+      expect(onChange).toHaveBeenCalledTimes(2);
     });
 
     it("should add a filter with one value", async () => {
@@ -143,10 +175,10 @@ describe("StringFilterEditor", () => {
         screen.getByPlaceholderText("Enter some text"),
         "Ga",
       );
-      await userEvent.tab();
-
-      expect(getNextFilterName()).toBe("Category starts with Ga");
       expect(onInput).toHaveBeenCalled();
+
+      await userEvent.tab();
+      expect(getNextFilterName()).toBe("Category starts with Ga");
     });
 
     it("should add a filter with no value", async () => {
@@ -214,7 +246,7 @@ describe("StringFilterEditor", () => {
         operator: "=",
         values: ["a@metabase.test"],
       });
-      const { getNextFilterName } = setup({
+      const { getNextFilterName, onInput } = setup({
         query,
         stageIndex,
         column,
@@ -230,6 +262,9 @@ describe("StringFilterEditor", () => {
 
       await userEvent.type(screen.getByLabelText("Filter value"), "b");
       await userEvent.click(await screen.findByText("b@metabase.test"));
+      expect(onInput).toHaveBeenCalled();
+
+      await userEvent.tab();
       expect(getNextFilterName()).toBe("Email is 2 selections");
       expect(screen.getByText("a@metabase.test")).toBeInTheDocument();
       expect(screen.getByText("b@metabase.test")).toBeInTheDocument();
@@ -242,7 +277,7 @@ describe("StringFilterEditor", () => {
         operator: "=",
         values: ["abc"],
       });
-      const { getNextFilterName } = setup({
+      const { getNextFilterName, onInput } = setup({
         query,
         stageIndex,
         column,
@@ -251,8 +286,9 @@ describe("StringFilterEditor", () => {
       expect(screen.getByText("abc")).toBeInTheDocument();
 
       await userEvent.type(screen.getByLabelText("Filter value"), "bcd");
-      await userEvent.tab();
+      expect(onInput).toHaveBeenCalled();
 
+      await userEvent.tab();
       expect(getNextFilterName()).toBe("Password is 2 selections");
       expect(screen.getByText("abc")).toBeInTheDocument();
       expect(screen.getByText("bcd")).toBeInTheDocument();
@@ -265,7 +301,7 @@ describe("StringFilterEditor", () => {
         operator: "starts-with",
         values: ["Ga"],
       });
-      const { getNextFilterName } = setup({
+      const { getNextFilterName, onInput } = setup({
         query,
         stageIndex,
         column,
@@ -274,8 +310,9 @@ describe("StringFilterEditor", () => {
 
       const input = screen.getByLabelText("Filter value");
       await userEvent.type(input, "{backspace}Wi");
-      await userEvent.tab();
+      expect(onInput).toHaveBeenCalled();
 
+      await userEvent.tab();
       expect(getNextFilterName()).toBe("Category starts with Wi");
     });
 

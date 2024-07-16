@@ -11,6 +11,7 @@ import {
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
+import { isUuid } from "metabase/lib/uuid";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName, IconProps } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
@@ -84,6 +85,8 @@ interface DashCardVisualizationProps {
   onChangeCardAndRun: DashCardOnChangeCardAndRunHandler | null;
   showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
+
+  downloadsEnabled: boolean;
 }
 
 // This is done to add the `getExtraDataForClick` prop.
@@ -120,6 +123,7 @@ export function DashCardVisualization({
   showClickBehaviorSidebar,
   onChangeLocation,
   onUpdateVisualizationSettings,
+  downloadsEnabled,
 }: DashCardVisualizationProps) {
   const metadata = useSelector(getMetadata);
   const question = useMemo(() => {
@@ -199,9 +203,9 @@ export function DashCardVisualization({
       question,
       result: mainSeries,
       isXray,
-      isEmbed,
       isPublicOrEmbedded,
       isEditing,
+      downloadsEnabled,
     });
 
     if (!shouldShowDashCardMenu) {
@@ -210,11 +214,13 @@ export function DashCardVisualization({
 
     return (
       <DashCardMenu
+        downloadsEnabled={downloadsEnabled}
         question={question}
         result={mainSeries}
         dashcardId={dashcard.id}
         dashboardId={dashboard.id}
         token={isEmbed ? String(dashcard.dashboard_id) : undefined}
+        uuid={isUuid(dashcard.dashboard_id) ? dashcard.dashboard_id : undefined}
       />
     );
   }, [
@@ -227,6 +233,7 @@ export function DashCardVisualization({
     isEditing,
     isXray,
     dashboard.id,
+    downloadsEnabled,
   ]);
 
   const { getExtraDataForClick } = useClickBehaviorData({
@@ -235,8 +242,10 @@ export function DashCardVisualization({
 
   return (
     <Visualization
-      className={cx(CS.flexFull, CS.overflowHidden, {
+      className={cx(CS.flexFull, {
         [CS.pointerEventsNone]: isEditingDashboardLayout,
+        [CS.overflowAuto]: visualizationOverlay,
+        [CS.overflowHidden]: !visualizationOverlay,
       })}
       classNameWidgets={cx({
         [cx(CS.textLight, CS.textMediumHover)]: isEmbed,
