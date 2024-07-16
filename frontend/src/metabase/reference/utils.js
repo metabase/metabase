@@ -67,7 +67,7 @@ export const getQuestion = ({
     let query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
 
     if (getCount) {
-      query = Lib.aggregateByCount(query);
+      query = Lib.aggregateByCount(query, -1);
     }
 
     if (fieldId) {
