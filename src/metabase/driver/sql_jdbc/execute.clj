@@ -651,7 +651,7 @@
      (let [col-name     (.getColumnLabel rsmeta i)
            db-type-name (.getColumnTypeName rsmeta i)
            base-type    (sql-jdbc.sync.interface/database-type->base-type driver (keyword db-type-name))]
-       (log/errorf "Column %d '%s' is a %s which is mapped to base type %s for driver %s\n"
+       (log/tracef "Column %d '%s' is a %s which is mapped to base type %s for driver %s\n"
                    i col-name db-type-name base-type driver)
        {:name      col-name
         ;; TODO - disabled for now since it breaks a lot of tests. We can re-enable it when the tests are in a better
