@@ -1732,16 +1732,15 @@ describe("issue 43219", () => {
       .findByText("Text")
       .click();
 
-    getDashboardCard(0)
-      .findByText("Series 10")
-      .should("exist")
-      .and("not.be.visible");
+    getDashboardCard(0).within(() => {
+      cy.findByText("Series 10").should("exist").and("not.be.visible");
 
-    // We need 2 realMouseWheel calls because we're scrolling 2 different elements:
-    // one horizontally, and one vertically. The horizontally scrollable element is initially
-    // out of view and we need to scroll vertically to it.
-    getDashboardCard(0).realMouseWheel({ deltaY: 400 });
-    getDashboardCard(0).realMouseWheel({ deltaX: 1400 });
-    getDashboardCard(0).findByText("Series 10").should("be.visible");
+      cy.findByTestId("visualization-root").realMouseWheel({ deltaY: 400 });
+      cy.findByTestId("parameter-mapper-container").realMouseWheel({
+        deltaX: 1400,
+      });
+
+      cy.findByText("Series 10").should("be.visible");
+    });
   });
 });
