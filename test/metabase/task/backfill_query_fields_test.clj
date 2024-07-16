@@ -18,8 +18,7 @@
         venues            (lib.metadata/table metadata-provider (mt/id :venues))
         venues-name       (lib.metadata/field metadata-provider (mt/id :venues :name))
         mlv2-query        (-> (lib/query metadata-provider venues)
-                              (lib/aggregate (lib/distinct venues-name)))
-        analyzed-card-id  (t2/select-one-fn :card_id :model/QueryField)]
+                              (lib/aggregate (lib/distinct venues-name)))]
 
     (mt/with-temp [Card c1   {:query_type    "native"
                               :dataset_query (mt/native-query {:query "SELECT id FROM venues"})}
@@ -42,10 +41,11 @@
 
       ;; Make sure some other card has analysis
       (testing "There is at least one card with existing analysis"
-        (is (pos? (count (t2/select :model/QueryField :card_id analyzed-card-id)))))
+        (query-analysis/analyze-card! (:id c3))
+        (is (pos? (count (t2/select :model/QueryField :card_id (:id c3))))))
 
       (let [queued-ids   (atom #{})
-            expected-ids (into #{} (map :id) [c1 c2 c3 c4])]
+            expected-ids (into #{} (map :id) [c1 c2 c4])]
 
         ;; Run the backfill with a mocked out publisher
         (#'backfill/backfill-missing-query-fields!
@@ -55,7 +55,7 @@
           (is (= expected-ids (set/intersection expected-ids @queued-ids))))
 
         (testing "The card with existing analysis was not sent to the analyzer again"
-          (is (not (@queued-ids analyzed-card-id))))))))
+          (is (not (@queued-ids (:id c3)))))))))
 
 
 (comment
