@@ -163,8 +163,8 @@
 (defn- queue-or-analyze! [offer-fn! card-or-id]
   (case (execution)
     ::immediate (analyze-card! (u/the-id card-or-id))
-    ::queued   (offer-fn! queue (u/the-id card-or-id))
-    ::disabled           nil))
+    ::queued    (offer-fn! queue (u/the-id card-or-id))
+    ::disabled  nil))
 
 (defn analyze-async!
   "Asynchronously hand-off the given card for analysis, at a high priority."

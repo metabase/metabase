@@ -10,20 +10,18 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- backfill-query-fields! []
+(defn- backfill-missing-query-fields! []
   (let [cards (t2/reducible-select [:model/Card :id]
-                                   :id [:in {:from      [[:report_card :c]]
-                                             :left-join [[:query_field :f] [:= :f.card_id :c.id]]
-                                             :select    [:c.id]
-                                             :where     [:and
-                                                         [:not :c.archived]
-                                                         [:= :f.id nil]]}])]
+                                   {:left-join [[:query_field :f] [:= :f.card_id :report_card.id]]
+                                    :where     [:and
+                                                [:not :report_card.archived]
+                                                [:= :f.id nil]]})]
     (run! query-analysis/analyze-sync! cards)))
 
 (jobs/defjob ^{DisallowConcurrentExecution true
                :doc                        "Backfill QueryField for cards created earlier. Runs once per instance."}
              BackfillQueryField [_ctx]
-  (backfill-query-fields!))
+  (backfill-missing-query-fields!))
 
 (defmethod task/init! ::BackfillQueryField [_]
   (let [job     (jobs/build
