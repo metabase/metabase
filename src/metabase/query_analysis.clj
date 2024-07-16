@@ -31,26 +31,27 @@
   we disable analysis by default."
   ::disabled)
 
-(defmacro with-queued-analysis
-  "Override default execution mode to always use the queue. Does nothing in prod."
-  [& body]
-  `(binding [*analyze-execution-in-dev?*  ::queued
-             *analyze-execution-in-test?* ::queued]
+(defmacro with-execution*
+  "Override the default execution mode, except in prod."
+  [execution & body]
+  `(binding [*analyze-execution-in-dev?* ~execution
+             *analyze-execution-in-test?* ~execution]
      ~@body))
+
+(defmacro with-queued-analysis
+  "Override the default execution mode to always use the queue. Does nothing in prod - only use this in tests."
+  [& body]
+  `(with-execution* ::queued ~@body))
 
 (defmacro with-immediate-analysis
-  "Override default execution mode to always use the current thread. Does nothing in prod."
+  "Override the default execution mode to always use the current thread. Does nothing in prod - only use this in tests."
   [& body]
-  `(binding [*analyze-execution-in-dev?*  ::immediate
-             *analyze-execution-in-test?* ::immediate]
-     ~@body))
+  `(with-execution* ::immediate ~@body))
 
 (defmacro without-analysis
-  "Override default execution mode to always use the current thread. Does nothing in prod."
+  "Override the default execution mode to always use the current thread. Does nothing in prod - only use this in tests."
   [& body]
-  `(binding [*analyze-execution-in-dev?*  ::immediate
-             *analyze-execution-in-test?* ::immediate]
-     ~@body))
+  `(with-execution* ::disabled ~@body))
 
 (defn- execution []
   (case config/run-mode

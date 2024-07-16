@@ -48,9 +48,8 @@
             expected-ids (into #{} (map :id) [c1 c2 c3 c4])]
 
         ;; Run the backfill with a mocked out publisher
-        (query-analysis/with-queued-analysis
-          (#'backfill/backfill-missing-query-fields!
-           #(swap! queued-ids conj (:id %))))
+        (#'backfill/backfill-missing-query-fields!
+         #(swap! queued-ids conj (:id %)))
 
         (testing "The expected cards were all sent to the analyzer"
           (is (= expected-ids (set/intersection expected-ids @queued-ids))))
