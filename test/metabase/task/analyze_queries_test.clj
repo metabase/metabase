@@ -46,13 +46,13 @@
             (is (every? zero? (map get-count card-ids))))
 
           ;; queue the cards
-          (run! query-analysis/analyze-async! card-ids)
+          (binding [query-analysis/*analyze-queries-in-test?* true]
+            (run! query-analysis/analyze-async! card-ids))
 
           ;; run the analysis for 1s
           (try
-            (binding [query-analysis/*analyze-queries-in-test?* true]
-              (u/with-timeout 1000
-                (#'task.analyze-queries/analyzer-loop!)))
+            (u/with-timeout 1000
+              (#'task.analyze-queries/analyzer-loop!))
             (catch Exception _))
 
           (testing "QueryField is filled now"
