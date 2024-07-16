@@ -14,6 +14,7 @@ import { getParameterMappingOptions as _getParameterMappingOptions } from "metab
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -504,10 +505,14 @@ export const getTabs = createSelector([getDashboard], dashboard => {
 });
 
 export const getSelectedTabId = createSelector(
-  [getDashboard, state => state.dashboard.selectedTabId],
-  (dashboard, selectedTabId) => {
+  [
+    getDashboard,
+    state => state.dashboard.selectedTabId,
+    state => getSetting(state, "site-url"),
+  ],
+  (dashboard, selectedTabId, siteUrl) => {
     if (dashboard && selectedTabId === null) {
-      return getInitialSelectedTabId(dashboard);
+      return getInitialSelectedTabId(dashboard, siteUrl);
     }
 
     return selectedTabId;
@@ -524,21 +529,25 @@ export const getSelectedTab = createSelector(
   },
 );
 
-export function getInitialSelectedTabId(dashboard: Dashboard | StoreDashboard) {
-  // TODO handle site-url setting
-  const isDashboardUrl =
-    window.location.pathname.includes("/dashboard/") &&
-    Urls.extractEntityId(
-      window.location.pathname.replace("/dashboard/", ""),
-    ) === dashboard.id;
+export function getInitialSelectedTabId(
+  dashboard: Dashboard | StoreDashboard,
+  siteUrl: string,
+) {
+  const pathname = window.location.pathname.replace(siteUrl, "");
+  const isDashboardUrl = pathname.startsWith("/dashboard/");
 
   if (isDashboardUrl) {
-    const searchParams = new URLSearchParams(window.location.search);
-    const tabParam = searchParams.get("tab");
-    const tabId = tabParam ? parseInt(tabParam, 10) : null;
-    const hasTab = dashboard.tabs?.find?.(tab => tab.id === tabId);
-    if (hasTab) {
-      return tabId;
+    const dashboardSlug = pathname.replace("/dashboard/", "");
+    const dashboardUrlId = Urls.extractEntityId(dashboardSlug);
+    const isNavigationInProgress = dashboardUrlId !== dashboard.id;
+    if (!isNavigationInProgress) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const tabParam = searchParams.get("tab");
+      const tabId = tabParam ? parseInt(tabParam, 10) : null;
+      const hasTab = dashboard.tabs?.find?.(tab => tab.id === tabId);
+      if (hasTab) {
+        return tabId;
+      }
     }
   }
 
