@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { useState } from "react";
+import type { ReactNode} from "react";
+import { useEffect, useState, useRef  } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -7,6 +7,7 @@ import { isNotNull } from "metabase/lib/types";
 import { Button, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
+import { debounce } from 'lodash';
 import type { Expression } from "metabase-types/api";
 
 import {
@@ -95,7 +96,15 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
   const isValid =
     !error && isValidName && (isValidExpression || isValidExpressionClause);
 
-  const handleCommit = (
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (nameInputRef.current) {
+      nameInputRef.current.focus();
+    }
+  }, [name]);
+
+    const handleCommit = (
     expression: Expression | null,
     clause: Clause | Lib.ExpressionClause | null,
   ) => {
@@ -192,6 +201,30 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
   return (
     <Container data-testid="expression-editor">
       {header}
+      {withName && (
+        <FieldWrapper>
+          <FieldLabel htmlFor="expression-name">{t`Name`}</FieldLabel>
+          <TextInput
+            classNames={{
+              input: CS.textBold,
+            }}
+            id="expression-name"
+            data-testid="expression-name"
+            type="text"
+            value={name}
+            placeholder={t`Something nice and descriptive`}
+            w="100%"
+            radius="md"
+            ref={nameInputRef}
+            onChange={event => setName(event.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter") {
+                handleCommit(expression, clause);
+              }
+            }}
+          />
+        </FieldWrapper>
+      )}
       <ExpressionFieldWrapper>
         <FieldLabel htmlFor="expression-content">
           {t`Expression`}
@@ -230,29 +263,6 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
           ].filter(Boolean)}
         />
       </ExpressionFieldWrapper>
-      {withName && (
-        <FieldWrapper>
-          <FieldLabel htmlFor="expression-name">{t`Name`}</FieldLabel>
-          <TextInput
-            classNames={{
-              input: CS.textBold,
-            }}
-            id="expression-name"
-            data-testid="expression-name"
-            type="text"
-            value={name}
-            placeholder={t`Something nice and descriptive`}
-            w="100%"
-            radius="md"
-            onChange={event => setName(event.target.value)}
-            onKeyDown={e => {
-              if (e.key === "Enter") {
-                handleCommit(expression, clause);
-              }
-            }}
-          />
-        </FieldWrapper>
-      )}
 
       <Footer>
         <ActionButtonsWrapper>

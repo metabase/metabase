@@ -18,6 +18,7 @@ import { isExpression } from "metabase-lib/v1/expressions";
 import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
 import { format } from "metabase-lib/v1/expressions/format";
 import { processSource } from "metabase-lib/v1/expressions/process";
+import { generateSummarizeExpression } from "metabase-lib/v1/ai/generate-expression";
 import type {
   GroupName,
   SuggestArgs,
@@ -35,6 +36,7 @@ import type { State } from "metabase-types/store";
 
 import { ExpressionEditorHelpText } from "../ExpressionEditorHelpText";
 import { ExpressionEditorSuggestions } from "../ExpressionEditorSuggestions";
+import { Button, Loader, Textarea } from "metabase/ui";
 import ExpressionMode from "../ExpressionMode";
 
 import {
@@ -45,6 +47,13 @@ import {
 
 ace.config.set("basePath", "/assets/ui/");
 ace.config.set("useStrictCSP", true);
+
+
+interface ExpressionEditorTextfieldState {
+  // ... existing state properties
+  autoSuggestedExpression: string;
+  loadingSuggestions: boolean;
+}
 
 export type SuggestionFooter = {
   footer: true;
@@ -130,12 +139,14 @@ interface ExpressionEditorTextfieldProps {
   onChange: (
     expression: Expression | null,
     expressionClause: Lib.ExpressionClause | null,
+    name: string,
   ) => void;
   onError: (error: ErrorWithMessage | null) => void;
   onBlankChange: (isBlank: boolean) => void;
   onCommit: (
     expression: Expression | null,
     expressionClause: Lib.ExpressionClause | null,
+    name: string,
   ) => void;
   helpTextTarget: RefObject<HTMLElement>;
   showMetabaseLinks: boolean;
@@ -144,6 +155,7 @@ interface ExpressionEditorTextfieldProps {
 
 interface ExpressionEditorTextfieldState {
   source: string;
+  suggestedTitle: string;
   suggestions: (Suggestion | SuggestionFooter | SuggestionShortcut)[];
   highlightedSuggestionIndex: number;
   isFocused: boolean;
@@ -201,6 +213,9 @@ function transformPropsToState(
     isFocused: false,
     errorMessage: null,
     hasChanges: false,
+    suggestedTitle: "",
+    autoSuggestedExpression: '',
+    loadingSuggestions: false,
   };
 }
 
@@ -325,11 +340,15 @@ class ExpressionEditorTextfield extends React.Component<
     }
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps: ExpressionEditorTextfieldProps) {
     const { textAreaId } = this.props;
     if (this.input.current && textAreaId) {
       const textArea = this.input.current.editor.textInput.getElement?.();
       textArea?.setAttribute?.("id", textAreaId);
+    }
+    if (this.props.name && prevProps.name !== this.props.name) {
+      // debounce parsing the source with LLM
+      this.debouncedParseSourceWithLLM();
     }
   }
 
@@ -475,31 +494,7 @@ class ExpressionEditorTextfield extends React.Component<
       return;
     }
 
-    const { onChange, onError } = this.props;
-
-    this.clearSuggestions();
-
-    const errorMessage = this.diagnoseExpression();
-    this.setState({ errorMessage });
-
-    // whenever our input blurs we push the updated expression to our parent if valid
-    if (errorMessage) {
-      onError(errorMessage);
-    } else {
-      const compiledExpression = this.compileExpression();
-
-      if (compiledExpression) {
-        const { expression, expressionClause } = compiledExpression;
-
-        if (!isExpression(expression)) {
-          console.warn("isExpression=false", expression);
-        }
-
-        onChange(expression, expressionClause);
-      } else {
-        onError({ message: t`Invalid expression` });
-      }
-    }
+    this.triggerOnChangeEvent();
   };
 
   clearSuggestions() {
@@ -541,6 +536,7 @@ class ExpressionEditorTextfield extends React.Component<
     if (!source || source.length === 0) {
       return null;
     }
+    console.log('Compiling expression', source)
     const { expression, expressionClause } = processSource({
       name,
       source,
@@ -579,6 +575,84 @@ class ExpressionEditorTextfield extends React.Component<
     });
   }
 
+  triggerOnChangeEvent = () => {
+    const { onChange, onError } = this.props;
+
+    this.clearSuggestions();
+
+    const errorMessage = this.diagnoseExpression();
+    this.setState({ errorMessage });
+
+    // whenever our input blurs we push the updated expression to our parent if valid
+    if (errorMessage) {
+      onError(errorMessage);
+    } else {
+      const compiledExpression = this.compileExpression();
+
+      if (compiledExpression) {
+        const { expression, expressionClause } = compiledExpression;
+
+        if (!isExpression(expression)) {
+          console.warn("isExpression=false", expression);
+        }
+        const name = this.state.suggestedTitle || this.props.name;
+        onChange(expression, expressionClause, name);
+      } else {
+        onError({ message: t`Invalid expression` });
+      }
+    }
+  }
+
+
+  // Function to call an API with the `source` content. The API will return an updated source content
+  parseSourceWithLLM = async () => {
+    console.log('Parsing with LLM')
+    // Set the loading state to true
+    this.setState({ loadingSuggestions: true });
+    const { query, stageIndex, expressionIndex, metadata } = this.props;
+    const columnMetadata = Lib.expressionableColumns(query, stageIndex, expressionIndex);
+
+    const displayInfos = columnMetadata.map(column => {
+      return Lib.displayInfo(query, stageIndex, column);
+    });
+
+    const availableData = Object.values(metadata.tables).map(table => {
+      if (!table.fields) {
+        return;
+      }
+
+      const columns = [];
+      for (const field of table.fields) {
+        const displayInfo = displayInfos.find(displayInfo => displayInfo.name === field.name && displayInfo.table?.name === table.name);
+
+        if (!displayInfo) {
+          continue;
+        }
+        columns.push({
+          name: `[${displayInfo.longDisplayName}]`,
+          database_type: field.effective_type,
+        });
+      }
+      return {
+        table: table.name,
+        description: table.description,
+        columns,
+      };
+    });
+
+    const response = await generateSummarizeExpression(this.props.name, JSON.stringify(availableData));
+    try {
+      this.setState({
+        autoSuggestedExpression: response.expression,
+      });
+    } catch (error) {
+      console.error("Error setting state:", error);
+    }
+    this.setState({ loadingSuggestions: false });
+  }
+
+  debouncedParseSourceWithLLM = _.debounce(this.parseSourceWithLLM, 1000);
+
   commitExpression() {
     const {
       query,
@@ -609,7 +683,8 @@ class ExpressionEditorTextfield extends React.Component<
         const { expression, expressionClause } = compiledExpression;
 
         if (isExpression(expression)) {
-          onCommit(expression, expressionClause);
+          const name = this.state.suggestedTitle;
+          onCommit(expression, expressionClause, name);
         }
       } else {
         onError({ message: t`Invalid expression` });
@@ -729,10 +804,18 @@ class ExpressionEditorTextfield extends React.Component<
       isFocused,
       highlightedSuggestionIndex,
       helpText,
+      autoSuggestedExpression
     } = this.state;
 
     return (
       <div ref={this.helpTextTarget}>
+
+
+        {autoSuggestedExpression && (
+                <Button onClick={() => this.handleExpressionChange(autoSuggestedExpression)}>
+                  {autoSuggestedExpression}
+                </Button>
+            )}
         <ExpressionEditorSuggestions
           query={query}
           stageIndex={stageIndex}
@@ -743,6 +826,7 @@ class ExpressionEditorTextfield extends React.Component<
           open={isFocused}
           ref={this.popupMenuTarget}
         >
+
           <EditorContainer
             isFocused={isFocused}
             hasError={Boolean(errorMessage)}
@@ -767,6 +851,13 @@ class ExpressionEditorTextfield extends React.Component<
               onCursorChange={this.handleCursorChange}
               width="100%"
             />
+            { this.state.loadingSuggestions && (
+              <div style={{ fontSize: "0.8rem" }}>
+                <Loader size="1rem" />
+                Loading suggestions...
+              </div>
+            )}
+
           </EditorContainer>
         </ExpressionEditorSuggestions>
         {errorMessage && hasChanges && (
