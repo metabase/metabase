@@ -10,10 +10,10 @@ import EventSandbox from "metabase/components/EventSandbox";
 import { isCypressActive } from "metabase/env";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { useMantineTheme } from "metabase/ui";
 
 import type { SizeToFitOptions } from "./SizeToFitModifier";
 import { sizeToFitModifierFn } from "./SizeToFitModifier";
-import { DEFAULT_Z_INDEX } from "./constants";
 
 const TippyComponent = TippyReact.default;
 type TippyProps = TippyReact.TippyProps;
@@ -91,6 +91,9 @@ function TippyPopover({
   const shouldShowContent = mounted && content != null;
   const isControlled = props.visible != null;
 
+  const theme = useMantineTheme();
+  const { zIndex } = theme.other.popover ?? {};
+
   const { setupCloseHandler, removeCloseHandler } =
     useSequencedContentCloseHandler();
 
@@ -140,7 +143,7 @@ function TippyPopover({
     <TippyComponent
       className={cx("popover", className)}
       theme="popover"
-      zIndex={DEFAULT_Z_INDEX}
+      zIndex={zIndex}
       arrow={false}
       offset={OFFSET}
       appendTo={appendTo}

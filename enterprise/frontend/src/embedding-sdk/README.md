@@ -609,6 +609,12 @@ const theme = {
         },
       },
     },
+
+    // Popover are used in components such as click actions in interactive questions.
+    popover: {
+      // z-index of the popover. Useful for embedding components in a modal. defaults to 4.
+      zIndex: 4,
+    },
   },
 };
 ```
