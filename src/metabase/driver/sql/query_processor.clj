@@ -579,9 +579,11 @@
   (inline-num n))
 
 (defmethod ->honeysql [:sql :value]
-  [driver [_ value {base-type :base_type}]]
+  [driver [_ value {base-type :base_type effective-type :effective_type}]]
   (when (some? value)
-    (condp #(isa? %2 %1) base-type
+    (condp #(isa? %2 %1) (or effective-type base-type)
+      ;; When we are dealing with a uuid type we should try to convert to a real UUID
+      ;; If that fails,, we will add a fallback cast to "text"
       :type/UUID (when (not= "" value) ; support is-empty/non-empty checks
                    (try
                      (UUID/fromString value)
@@ -1307,7 +1309,9 @@
   "Comparing UUID fields against text values requires casting."
   [driver field arg]
   (if (and (isa? (:base-type (get field 2)) :type/UUID)
-           (= (:database-type (h2x/type-info (->honeysql driver arg))) "text"))
+           ;; If we could not convert the arg to a UUID then we have to cast the Field.
+           ;; This will not hit indexes, but then we're passing an arg that can only be compared textually.
+           (not (uuid? (->honeysql driver arg))))
     [::cast field "text"]
     field))
 

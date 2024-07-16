@@ -7,6 +7,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database
     :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Field Table]]
    [metabase.query-processor :as qp]
@@ -229,4 +230,13 @@
 
             ;; nil value handling
             [[uuid]] [:!= (:field_ref col-metadata) nil]
-            [] [:= (:field_ref col-metadata) nil]))))))
+            [] [:= (:field_ref col-metadata) nil])
+          (testing ":= uses indexable query"
+            (is (= [:= [:metabase.util.honey-sql-2/identifier :field [(second (:field_ref col-metadata))]] uuid]
+                   (sql.qp/->honeysql
+                     driver/*driver*
+                     [:= (:field_ref col-metadata) [:value (str uuid) {:base_type :type/UUID}]])))
+            (is (= [:= [:metabase.util.honey-sql-2/identifier :field [(second (:field_ref col-metadata))]] uuid]
+                   (sql.qp/->honeysql
+                     driver/*driver*
+                     [:= (:field_ref col-metadata) uuid])))))))))
