@@ -355,12 +355,12 @@ describeEE("scenarios > question > snippets (EE)", () => {
       });
 
       // API check
-      cy.get("@updatePermissions").then(intercept => {
-        const { groups } = intercept.response.body;
-        const allUsers = groups[ALL_USERS_GROUP];
-
-        expect(allUsers.root).to.equal("write");
-      });
+      cy.request("GET", "/api/collection/graph?namespace=snippets").then(
+        ({ body }) => {
+          const allUsers = body.groups[ALL_USERS_GROUP];
+          expect(allUsers.root).to.equal("write");
+        },
+      );
     });
   });
 });

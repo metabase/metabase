@@ -8,9 +8,11 @@
    [metabase.api.collection :as api.collection]
    [metabase.models
     :refer [Card Collection Dashboard DashboardCard ModerationReview
-            NativeQuerySnippet PermissionsGroup PermissionsGroupMembership Pulse
-            PulseCard PulseChannel PulseChannelRecipient Revision Timeline TimelineEvent User]]
+            NativeQuerySnippet PermissionsGroup PermissionsGroupMembership
+            Pulse PulseCard PulseChannel PulseChannelRecipient Revision
+            Timeline TimelineEvent User]]
    [metabase.models.collection :as collection]
+   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.graph-test :as graph.test]
@@ -2012,3 +2014,18 @@
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       (is (= #{[false "card"] [false "dataset"] [false "dashboard"]}
              (into #{} (map (juxt :can_write :model) (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items"))))))))))
+
+(deftest skip-graph-skips-graph-on-graph-PUT
+  (is (malli= [:map [:revision :int] [:groups :map]]
+              (mt/user-http-request :crowberto
+                                    :put 200
+                                    "collection/graph"
+                                    {:revision (c-perm-revision/latest-id) :groups {}})))
+  (is (malli= [:map {:closed true} [:revision :int]]
+              (mt/user-http-request :crowberto
+                                    :put 200
+                                    "collection/graph"
+                                    {:revision (c-perm-revision/latest-id)
+                                     :groups {}
+                                     :skip_graph true}))
+      "PUTs with skip_graph should not return the coll permission graph."))
