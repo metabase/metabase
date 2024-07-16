@@ -5,7 +5,11 @@ import {
   getFullName,
   popover,
 } from "e2e/support/helpers";
-import type { Collection, CollectionId } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  RegularCollectionId,
+} from "metabase-types/api";
 
 export const createCollection = ({
   name,
@@ -15,7 +19,7 @@ export const createCollection = ({
 }: {
   name: string;
   description?: string | null;
-  parent_id?: CollectionId | null;
+  parent_id?: RegularCollectionId | null;
   authority_level?: "official" | null;
 }): Cypress.Chainable<Cypress.Response<Collection>> => {
   cy.log(`Create a collection: ${name}`);
