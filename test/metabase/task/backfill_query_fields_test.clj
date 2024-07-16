@@ -9,23 +9,17 @@
    [metabase.query-analysis :as query-analysis]
    [metabase.task.backfill-query-fields :as backfill]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [metabase.util.queue :as queue]
-   [toucan2.core :as t2])
-  (:import
-   [java.util.concurrent TimeoutException]))
+   [toucan2.core :as t2]))
 
 
 (deftest backfill-query-field-test
-  ;; Clean up any cruft from the REPL, or other failed tests.
-  (queue/clear! @#'query-analysis/queue)
-
   (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         venues            (lib.metadata/table metadata-provider (mt/id :venues))
         venues-name       (lib.metadata/field metadata-provider (mt/id :venues :name))
         mlv2-query        (-> (lib/query metadata-provider venues)
                               (lib/aggregate (lib/distinct venues-name)))
-        some-card-id      (t2/select-one-pk :model/Card :archived false)]
+        analyzed-card-id  (t2/select-one-fn :card_id :model/QueryField)]
 
     (mt/with-temp [Card c1   {:query_type    "native"
                               :dataset_query (mt/native-query {:query "SELECT id FROM venues"})}
@@ -48,31 +42,21 @@
 
       ;; Make sure some other card has analysis
       (testing "There is at least one card with existing analysis"
-        (query-analysis/analyze-card! some-card-id)
-        (is (pos? (count (t2/select :model/QueryField :card_id some-card-id)))))
+        (is (pos? (count (t2/select :model/QueryField :card_id analyzed-card-id)))))
 
       (let [queued-ids   (atom #{})
-            expected-ids (into #{} (map :id) [c1 c2 c3 c4])
-            analyzer     (future
-                           (try
-                             (while true
-                               (u/with-timeout 500
-                                 (swap! queued-ids conj (query-analysis/next-card-id!))))
-                             (catch TimeoutException _)))]
+            expected-ids (into #{} (map :id) [c1 c2 c3 c4])]
 
-        ;; Run the backfill - note that it is blocking.
+        ;; Run the backfill with a mocked out publisher
         (query-analysis/with-queued-analysis
-          (#'backfill/backfill-missing-query-fields!))
-
-        ;; make sure the analyzer thread has died
-        (u/with-timeout 1000
-          @analyzer)
+          (#'backfill/backfill-missing-query-fields!
+           #(swap! queued-ids conj (:id %))))
 
         (testing "The expected cards were all sent to the analyzer"
           (is (= expected-ids (set/intersection expected-ids @queued-ids))))
 
         (testing "The card with existing analysis was not sent to the analyzer again"
-          (is (not (@queued-ids some-card-id))))))))
+          (is (not (@queued-ids analyzed-card-id))))))))
 
 
 (comment
