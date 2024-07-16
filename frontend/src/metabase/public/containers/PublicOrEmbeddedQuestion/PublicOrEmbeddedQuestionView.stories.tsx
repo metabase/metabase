@@ -10,6 +10,7 @@ import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { explicitSizeRefreshModeContext } from "metabase/components/ExplicitSize/context";
 import { publicReducers } from "metabase/reducers-public";
+import { Box } from "metabase/ui";
 import {
   createMockCard,
   createMockColumn,
@@ -123,3 +124,19 @@ DarkThemeDefault.args = {
   ...defaultArgs,
   theme: "night",
 };
+
+// Transparent theme
+export const TransparentThemeDefault = Template.bind({});
+TransparentThemeDefault.args = {
+  ...defaultArgs,
+  theme: "transparent",
+};
+TransparentThemeDefault.decorators = [LightBackgroundDecorator];
+
+function LightBackgroundDecorator(Story: Story) {
+  return (
+    <Box bg="#ddd" h="100%">
+      <Story />
+    </Box>
+  );
+}
