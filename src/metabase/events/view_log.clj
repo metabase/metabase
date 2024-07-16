@@ -93,11 +93,27 @@
 (derive ::dashboard-queried :metabase/event)
 (derive :event/dashboard-queried ::dashboard-queried)
 
+(def ^:private update-dashboard-last-viewed-at-interval-seconds 20)
+
+(defn- update-dashboard-last-viewed-at!* [dashboard-ids]
+  (t2/update! :model/Dashboard {:id [:in (into #{} dashboard-ids)]} {:last_viewed_at :%now}))
+
+(def ^:private update-dashboard-last-viewed-at-queue
+  (delay (grouper/start!
+          update-dashboard-last-viewed-at!*
+          :capacity 500
+          :interval (* update-dashboard-last-viewed-at-interval-seconds 1000))))
+
+(defn- update-dashboard-last-viewed-at!
+  "Update the `last_used_at` of a dashboard asynchronously"
+  [dashboard-id]
+  (grouper/submit! @update-dashboard-last-viewed-at-queue dashboard-id))
+
 (m/defmethod events/publish-event! ::dashboard-queried
   "Handle processing for a dashboard query being run"
   [topic {:keys [object-id] :as _event}]
   (try
-    (t2/update! :model/Dashboard {:id object-id} {:last_viewed_at :%now})
+    (update-dashboard-last-viewed-at! object-id)
     (catch Throwable e
       (log/warnf e "Failed to process dashboard query event. %s" topic))))
 
