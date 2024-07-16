@@ -271,7 +271,7 @@
 (defn- send-retrying!
   [& args]
   (try
-    (apply (retry/decorate channel-send!) args)
+    (apply channel-send! args)
     (catch Throwable e
       (log/error e "Error sending notification!"))))
 

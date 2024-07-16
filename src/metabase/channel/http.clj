@@ -22,21 +22,27 @@
 (def ^:private HTTPDetails
   [:map
    [:url                           ms/Url]
-   [:auth-method                   [:enum  "none" "header" "query-param" "request-body"]]
+   [:auth-method                   [:enum "none" "header" "query-param" "request-body"]]
    [:method       {:optional true} [:enum "get" "post" "put"]]
    [:query-params {:optional true} [:maybe [:map-of string-or-keyword :any]]]
    [:headers      {:optional true} [:maybe [:map-of string-or-keyword :any]]]
    [:body         {:optional true} :any]])
 
+(def ^:private HTTPChannel
+  [:map
+   [:type    [:= :channel/http]]
+   [:details HTTPDetails]])
+
 (mu/defmethod channel/send! :channel/http
-  [{:keys [url method auth-method auth-info]} :- HTTPDetails
+  [{{:keys [url method auth-method auth-info]} :details} :- HTTPChannel
    request]
   (let [req (merge
              {:accept       :json
               :content-type :json
               :method       :post}
-             {:url    url
-              :method (keyword method)}
+             {:url url}
+             (when method
+               {:method (keyword method)})
              (cond-> request
                (= "request-body" auth-method) (update :body merge auth-info)
                (= "header" auth-method)       (update :headers merge auth-info)
@@ -48,7 +54,7 @@
   [_channel-type details]
   (channel.shared/validate-channel-details HTTPDetails details)
   (try
-    (channel/send! (merge {:type :channel/http} details) {})
+    (channel/send! {:type :channel/http :details details} {})
     true
     (catch Exception e
       (let [data (ex-data e)]
@@ -68,8 +74,8 @@
     {:cols (map :name (:cols data))
      :rows (:rows data)}))
 
-(mu/defmethod channel/render-notification [:channel/http :notification/alert] :- [:sequential HTTPDetails]
-  [{details :details} {:keys [card pulse payload]} _recipients]
+(mu/defmethod channel/render-notification [:channel/http :notification/alert]
+  [_channel :- HTTPChannel {:keys [card pulse payload]} _recipients]
   (let [request-body      {:type               "alert"
                            :alert_id           (:id pulse)
                            :alert_creator_id   (get-in pulse [:creator :id])
@@ -83,4 +89,4 @@
                                                                   (channel.shared/defaulted-timezone card) card dashcard result image-width))
                                                 :raw_data      (qp-result->raw-data (:result payload))}
                            :sent_at            (t/offset-date-time)}]
-    [(assoc details :body request-body)]))
+    [{:body request-body}]))
