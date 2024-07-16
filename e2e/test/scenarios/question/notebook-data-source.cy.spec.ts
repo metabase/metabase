@@ -6,32 +6,35 @@ import {
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  join,
-  type StructuredQuestionDetails,
+  createCollection,
   createQuestion,
   entityPickerModal,
   entityPickerModalItem,
   entityPickerModalLevel,
   entityPickerModalTab,
+  join,
+  navigationSidebar,
+  newButton,
+  onlyOnOSS,
   openNotebook,
+  openOrdersTable,
   openQuestionActions,
   openReviewsTable,
   popover,
+  queryBuilderMain,
   resetTestTable,
   restore,
   resyncDatabase,
   saveQuestion,
-  onlyOnOSS,
   startNewQuestion,
   visitModel,
   visitQuestion,
   visualize,
-  openOrdersTable,
-  queryBuilderMain,
+  type StructuredQuestionDetails,
 } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 
-const { REVIEWS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > notebook > data source", () => {
   describe("empty app db", () => {
@@ -512,6 +515,86 @@ describe("issue 28106", () => {
       });
     },
   );
+});
+
+describe("issue 32252", () => {
+  beforeEach(() => {
+    restore("setup");
+    cy.signInAsAdmin();
+
+    createCollection({ name: "My collection" }).then(({ body: collection }) => {
+      if (typeof collection.id !== "number") {
+        throw new Error("collection.id is not a number");
+      }
+
+      createQuestion({
+        name: "My question",
+        collection_id: collection.id,
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      });
+    });
+  });
+
+  it("refreshes data picker sources after archiving a collection (metabase#32252)", () => {
+    cy.visit("/");
+
+    newButton("Question").click();
+    entityPickerModal().within(() => {
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findByText("Recents").should("not.exist");
+      cy.findByText("Saved questions").should("be.visible");
+      cy.button("Close").click();
+    });
+
+    cy.findByTestId("sidebar-toggle").click();
+    navigationSidebar().findByText("Our analytics").click();
+
+    cy.button("Actions").click();
+    popover().findByText("Archive").click();
+    cy.findByTestId("toast-undo")
+      .findByText("Archived collection")
+      .should("be.visible");
+
+    newButton("Question").click();
+    entityPickerModal().within(() => {
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findByText("Recents").should("not.exist");
+      cy.findByText("Saved questions").should("not.exist");
+      cy.findByText("Orders").should("be.visible");
+    });
+  });
+
+  it("refreshes data picker sources after archiving a question (metabase#32252)", () => {
+    cy.visit("/");
+
+    newButton("Question").click();
+    entityPickerModal().within(() => {
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findByText("Recents").should("not.exist");
+      cy.findByText("Saved questions").should("be.visible");
+      cy.button("Close").click();
+    });
+
+    cy.findByTestId("sidebar-toggle").click();
+    navigationSidebar().findByText("Our analytics").click();
+
+    cy.findByTestId("collection-entry-name").click();
+    cy.button("Actions").click();
+    popover().findByText("Archive").click();
+    cy.findByTestId("toast-undo")
+      .findByText("Archived question")
+      .should("be.visible");
+
+    newButton("Question").click();
+    entityPickerModal().within(() => {
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findByText("Recents").should("not.exist");
+      cy.findByText("Saved questions").should("not.exist");
+      cy.findByText("Orders").should("be.visible");
+    });
+  });
 });
 
 function moveToCollection(collection: string) {
