@@ -42,6 +42,8 @@ const defaultConfig = {
     /********************************************************************
      **                        PREPROCESSOR                            **
      ********************************************************************/
+    require("cypress-mochawesome-reporter/plugin")();
+    require("cypress-terminal-report/src/installLogsPrinter")(on);
 
     if (runWithReplay) {
       on = replay.wrapOn(on);

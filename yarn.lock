@@ -10440,6 +10440,17 @@ cyclist@^1.0.1:
   resolved "https://registry.yarnpkg.com/cyclist/-/cyclist-1.0.1.tgz#596e9698fd0c80e12038c2b82d6eb1b35b6224d9"
   integrity sha1-WW6WmP0MgOEgOMK4LW6xs1tiJNk=
 
+cypress-mochawesome-reporter@^3.8.2:
+  version "3.8.2"
+  resolved "https://registry.yarnpkg.com/cypress-mochawesome-reporter/-/cypress-mochawesome-reporter-3.8.2.tgz#44a5e640916ac9686b0cb0d6882b2d4baa33729d"
+  integrity sha512-oJZkNzhNmN9ZD+LmZyFuPb8aWaIijyHyqYh52YOBvR6B6ckfJNCHP3A98a+/nG0H4t46CKTNwo+wNpMa4d2kjA==
+  dependencies:
+    commander "^10.0.1"
+    fs-extra "^10.0.1"
+    mochawesome "^7.1.3"
+    mochawesome-merge "^4.2.1"
+    mochawesome-report-generator "^6.2.0"
+
 cypress-multi-reporters@^1.6.4:
   version "1.6.4"
   resolved "https://registry.yarnpkg.com/cypress-multi-reporters/-/cypress-multi-reporters-1.6.4.tgz#6f9d25ed8a0d8d7fa5597977adcd2237d1249931"
@@ -10452,6 +10463,17 @@ cypress-real-events@^1.12.0:
   version "1.12.0"
   resolved "https://registry.yarnpkg.com/cypress-real-events/-/cypress-real-events-1.12.0.tgz#ffeb2b23686ba5b16ac91dd9bc3b6785d36d38d3"
   integrity sha512-oiy+4kGKkzc2PT36k3GGQqkGxNiVypheWjMtfyi89iIk6bYmTzeqxapaLHS3pnhZOX1IEbTDUVxh8T4Nhs1tyQ==
+
+cypress-terminal-report@^6.1.2:
+  version "6.1.2"
+  resolved "https://registry.yarnpkg.com/cypress-terminal-report/-/cypress-terminal-report-6.1.2.tgz#7b219f53c66db86d2a726be4ce9d81f534fb0bc8"
+  integrity sha512-lGYLyy/fB2j3ZSfwGCZAh9z6Xmc5hompUFdAWxXgDimPZwsilQS9w7WI7QG/UoAAnLrl2P1zu+dX38HThQiSgg==
+  dependencies:
+    chalk "^4.0.0"
+    fs-extra "^10.1.0"
+    process "^0.11.10"
+    semver "^7.5.4"
+    tv4 "^1.3.0"
 
 cypress@^13.9.0:
   version "13.9.0"
@@ -13116,7 +13138,7 @@ fs-extra@^0.30.0:
     path-is-absolute "^1.0.0"
     rimraf "^2.2.8"
 
-fs-extra@^10.0.0:
+fs-extra@^10.0.0, fs-extra@^10.0.1, fs-extra@^10.1.0:
   version "10.1.0"
   resolved "https://registry.yarnpkg.com/fs-extra/-/fs-extra-10.1.0.tgz#02873cfbc4084dde127eaa5f9905eef2325d1abf"
   integrity sha512-oRXApq54ETRj4eMiFzGnHWGy+zo5raudjuxN0b8H7s/RU2oW0Wvsx9O0ACRN/kRq9E8Vu/ReskGB5o3ji+FzHQ==
@@ -23811,6 +23833,11 @@ tunnel-agent@^0.6.0:
   integrity sha512-McnNiV1l8RYeY8tBgEpuodCC1mLUdbSN+CYBL7kJsJNInOP8UjDDEwdk6Mw60vdLLrr5NHKZhMAOSrR2NZuQ+w==
   dependencies:
     safe-buffer "^5.0.1"
+
+tv4@^1.3.0:
+  version "1.3.0"
+  resolved "https://registry.yarnpkg.com/tv4/-/tv4-1.3.0.tgz#d020c846fadd50c855abb25ebaecc68fc10f7963"
+  integrity sha512-afizzfpJgvPr+eDkREK4MxJ/+r8nEEHcmitwgnPUqpaP+FpwQyadnxNoSACbgc/b1LsZYtODGoPiFxQrgJgjvw==
 
 tweetnacl@^0.14.3, tweetnacl@~0.14.0:
   version "0.14.5"

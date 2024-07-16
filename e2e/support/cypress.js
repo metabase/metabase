@@ -7,11 +7,21 @@ import "cypress-real-events/support";
 import addContext from "mochawesome/addContext";
 import "./commands";
 
-const runWithReplay = Cypress.env("REPLAYIO_ENABLED");
+require("cypress-mochawesome-reporter/register");
+
+const runWithReplay = false;
 
 if (runWithReplay) {
   require("@replayio/cypress/support");
 }
+
+afterEach(() => {
+  cy.wait(50, { log: false }).then(() => {
+    cy.addTestContext(Cypress.TerminalReport.getLogs("txt"));
+  });
+});
+
+require("cypress-terminal-report/src/installLogsCollector")();
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
 
