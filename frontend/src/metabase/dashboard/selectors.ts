@@ -15,6 +15,7 @@ import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
+import { getIsWebApp } from "metabase/selectors/web-app";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -506,13 +507,14 @@ export const getTabs = createSelector([getDashboard], dashboard => {
 
 export const getSelectedTabId = createSelector(
   [
+    getIsWebApp,
+    state => getSetting(state, "site-url"),
     getDashboard,
     state => state.dashboard.selectedTabId,
-    state => getSetting(state, "site-url"),
   ],
-  (dashboard, selectedTabId, siteUrl) => {
+  (isWebApp, siteUrl, dashboard, selectedTabId) => {
     if (dashboard && selectedTabId === null) {
-      return getInitialSelectedTabId(dashboard, siteUrl);
+      return getInitialSelectedTabId(dashboard, siteUrl, isWebApp);
     }
 
     return selectedTabId;
@@ -532,15 +534,16 @@ export const getSelectedTab = createSelector(
 export function getInitialSelectedTabId(
   dashboard: Dashboard | StoreDashboard,
   siteUrl: string,
+  isWebApp: boolean,
 ) {
   const pathname = window.location.pathname.replace(siteUrl, "");
-  const isDashboardUrl = pathname.startsWith("/dashboard/");
+  const isDashboardUrl = pathname.includes("/dashboard/");
 
   if (isDashboardUrl) {
     const dashboardSlug = pathname.replace("/dashboard/", "");
     const dashboardUrlId = Urls.extractEntityId(dashboardSlug);
     const isNavigationInProgress = dashboardUrlId !== dashboard.id;
-    if (!isNavigationInProgress) {
+    if (!isNavigationInProgress || !isWebApp) {
       const searchParams = new URLSearchParams(window.location.search);
       const tabParam = searchParams.get("tab");
       const tabId = tabParam ? parseInt(tabParam, 10) : null;
