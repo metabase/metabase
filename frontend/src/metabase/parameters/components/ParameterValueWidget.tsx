@@ -3,7 +3,6 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
 import { Sortable } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
@@ -11,7 +10,7 @@ import S from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { ParameterValueWidgetTrigger } from "metabase/parameters/components/ParameterValueWidgetTrigger";
 import { WidgetStatusIcon } from "metabase/parameters/components/WidgetStatusIcon";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
-import { Box, Icon, Popover } from "metabase/ui";
+import { Box, Icon, Popover, type PopoverProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
@@ -45,7 +44,7 @@ export type ParameterValueWidgetProps = {
   enableRequiredBehavior?: boolean;
   mimicMantine?: boolean;
   isSortable?: boolean;
-};
+} & Partial<PopoverProps>;
 
 export const ParameterValueWidget = ({
   className,
@@ -64,6 +63,7 @@ export const ParameterValueWidget = ({
   setParameterValueToDefault,
   setValue,
   value,
+  ...popoverProps
 }: ParameterValueWidgetProps) => {
   const [isFocused, setIsFocused] = useState(false);
 
@@ -198,7 +198,12 @@ export const ParameterValueWidget = ({
     : placeholder || t`Select…`;
 
   return (
-    <Popover opened={isOpen} onChange={toggle} zIndex={DEFAULT_Z_INDEX - 1}>
+    <Popover
+      opened={isOpen}
+      onChange={toggle}
+      position="bottom-start"
+      {...popoverProps}
+    >
       <Popover.Target>
         <Box onClick={toggle}>
           <Sortable

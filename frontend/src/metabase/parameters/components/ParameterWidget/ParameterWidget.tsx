@@ -106,6 +106,10 @@ export const ParameterWidget = ({
           className={className}
         >
           <ParameterValueWidget
+            offset={{
+              mainAxis: 8,
+              crossAxis: -16,
+            }}
             parameter={parameter}
             parameters={parameters}
             question={question}
