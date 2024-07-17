@@ -1,5 +1,5 @@
 import Color from "color";
-import d3 from "d3";
+import { pie } from "d3";
 import _ from "underscore";
 
 import { findWithIndex } from "metabase/lib/arrays";
@@ -183,8 +183,7 @@ export function getPieChartModel(
 
   // We need d3 slices for the label formatter, to determine if we should the
   // percent label on the chart for a specific slice
-  const d3Pie = d3.layout
-    .pie<PieSliceData>()
+  const d3Pie = pie<PieSliceData>()
     .sort(null)
     // 1 degree in radians
     .padAngle((Math.PI / 180) * 1)
