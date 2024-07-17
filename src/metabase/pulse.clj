@@ -232,28 +232,33 @@
     true))
 
 (defn- get-notification-info
-  [pulse parts channel]
+  [pulse parts pulse-channel]
   (let [alert? (nil? (:dashboard_id pulse))]
-    (merge {:payload-type (if alert?
-                            :notification/alert
-                            :notification/dashboard-subscription)
-            :payload      (if alert? (first parts) parts)
-            :pulse        pulse
-            :channel      channel}
+    (merge {:payload-type  (if alert?
+                             :notification/alert
+                             :notification/dashboard-subscription)
+            :payload       (if alert? (first parts) parts)
+            :pulse         pulse
+            :pulse-channel pulse-channel}
            (if alert?
              {:card  (t2/select-one :model/Card (-> parts first :card :id))}
              {:dashboard (t2/select-one :model/Dashboard (:dashboard_id pulse))}))))
 
-(defn- channels-to-channel-recipients
-  [channel]
-  (if (= :slack (keyword (:channel_type channel)))
-    [(get-in channel [:details :channel])]
-    (for [recipient (:recipients channel)]
+(defn- channel-recipients
+  [pulse-channel]
+  (case (keyword (:channel_type pulse-channel))
+    :slack
+    [(get-in pulse-channel [:details :channel])]
+    :email
+    (for [recipient (:recipients pulse-channel)]
       (if-not (:id recipient)
         {:kind :external-email
          :email (:email recipient)}
         {:kind :user
-         :user recipient}))))
+         :user recipient}))
+    (do
+     (log/warnf "Unknown channel type %s" (:channel_type pulse-channel))
+     [])))
 
 (defn- channel-send!
   [& args]
@@ -285,6 +290,15 @@
           :when part]
       part)))
 
+(defn- pc->channel
+  "Given a pulse channel, return the channel object.
+
+  Only supports HTTP channels for now, returns a map with type key for slack and email"
+  [{channel-type :channel_type :as pulse-channel}]
+  (if (= :http channel-type)
+    (t2/select-one :model/Channel :id (:channel_id pulse-channel))
+    {:type (keyword "channel" (name channel-type))}))
+
 (defn- send-pulse!*
   [{:keys [channels channel-ids] pulse-id :id :as pulse} dashboard]
   (let [parts                  (execute-pulse pulse dashboard)
@@ -300,18 +314,25 @@
                                            :user-id (:creator_id pulse)
                                            :object  {:recipients (map :recipients (:channels pulse))
                                                      :filters    (:parameters pulse)}})
-        (u/prog1 (doseq [channel channels]
+        (u/prog1 (doseq [pulse-channel channels]
                    (try
-                     (let [channel-type (if (= :email (keyword (:channel_type channel)))
-                                            :channel/email
-                                            :channel/slack)
-                           messages     (channel/render-notification channel-type
-                                                                     (get-notification-info pulse parts channel)
-                                                                     (channels-to-channel-recipients channel))]
+                     (let [channel  (pc->channel pulse-channel)
+                           messages (channel/render-notification (:type channel)
+                                                                 (get-notification-info pulse parts pulse-channel)
+                                                                 (channel-recipients pulse-channel))]
+                       (log/debugf "Rendered %d messages for %s %d to channel %s"
+                                   (count messages)
+                                   (alert-or-pulse pulse)
+                                   (:id pulse)
+                                   (:type channel))
                        (doseq [message messages]
-                         (send-retrying! {:type channel-type} message)))
+                         (log/debugf "Sending %s %d to channel %s"
+                                     (alert-or-pulse pulse)
+                                     (:id pulse)
+                                     (:channel_type pulse-channel))
+                         (send-retrying! channel message)))
                      (catch Exception e
-                       (log/errorf e "Error sending %s %d to channel %s" (alert-or-pulse pulse) (:id pulse) (:channel_type channel)))))
+                       (log/errorf e "Error sending %s %d to channel %s" (alert-or-pulse pulse) (:id pulse) (:channel_type pulse-channel)))))
           (when (:alert_first_only pulse)
             (t2/delete! Pulse :id pulse-id))))
       (log/infof "Skipping sending %s %d" (alert-or-pulse pulse) (:id pulse)))))

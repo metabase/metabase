@@ -287,7 +287,8 @@
                                  :updated_at    true
                                  :pulse_id      true
                                  :id            true
-                                 :created_at    true})]
+                                 :created_at    true
+                                 :channel_id    false})]
    :skip_if_empty       true
    :collection_id       false
    :collection_position nil

@@ -2,14 +2,17 @@
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [compojure.core :as compojure]
    [medley.core :as m]
    [metabase.channel.core :as channel]
+   [metabase.pulse :as pulse]
+   [metabase.test :as mt]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.urls :as urls]
    [ring.adapter.jetty :as jetty]
-   [ring.middleware.params :refer [wrap-params]])
+   [ring.middleware.params :refer [wrap-params]]
+   [toucan2.core :as t2])
   (:import
    (org.eclipse.jetty.server Server)))
 
@@ -225,50 +228,97 @@
     (is (= {:errors {:auth-method ["missing required key"]}}
            (exception-data (can-connect? {:url "https://www.secret_service.xyz"}))))
 
-    (is (= {:request-body   "\"API endpoint does not exist.\""
-            :request-status 404}
-           (exception-data (can-connect? {:url         (str (urls/site-url) "/api/not-exists")
-                                          :method      "get"
-                                          :auth-method "none"}))))))
+    (with-server [url [get-400]]
+      (is (= {:request-body   "\"Bad request\""
+              :request-status 400}
+             (exception-data (can-connect? {:url         (str url (:path get-400))
+                                            :method      "get"
+                                            :auth-method "none"})))))))
 (deftest ^:parallel send!-test
   (testing "basic send"
     (with-captured-http-requests [requests]
       (channel/send! {:type        :channel/http
-                      :url         "https://www.secret_service.xyz"
-                      :auth-method "none"
-                      :method      "get"}
+                      :details     {:url         "https://www.secret_service.xyz"
+                                    :auth-method "none"
+                                    :method      "get"}}
                      nil)
       (is (= (merge default-request
                     {:method       :get
                      :url          "https://www.secret_service.xyz"})
              (first @requests)))))
 
-  (testing "preserves req headers when use auth-method=:header"
+  (testing "default method is post"
     (with-captured-http-requests [requests]
-      (channel/send! {:type        :channel/http
-                      :url         "https://www.secret_service.xyz"
-                      :auth-method "header"
-                      :auth-info   {:Authorization "Bearer 123"}
-                      :method      "get"}
-                     {:headers     {:X-Request-Id "123"}})
+      (channel/send! {:type    :channel/http
+                      :details {:url         "https://www.secret_service.xyz"
+                                :auth-method "none"}}
+                     nil)
       (is (= (merge default-request
-                    {:method       :get
-                     :url          "https://www.secret_service.xyz"
-                     :headers      {:Authorization "Bearer 123"
-                                    :X-Request-Id "123"}})
+                    {:method       :post
+                     :url          "https://www.secret_service.xyz"})
              (first @requests)))))
 
-  (testing "preserves req query-params when use auth-method=:query-param"
-    (with-captured-http-requests [requests]
-      (channel/send! {:type        :channel/http
-                      :url         "https://www.secret_service.xyz"
-                      :auth-method "query-param"
-                      :auth-info   {:token "123"}
-                      :method      "get"}
-                     {:query-params {:page 1}})
-      (is (= (merge default-request
-                    {:method       :get
-                     :url          "https://www.secret_service.xyz"
-                     :query-params {:token "123"
-                                    :page 1}})
-             (first @requests))))))
+ (testing "preserves req headers when use auth-method=:header"
+   (with-captured-http-requests [requests]
+     (channel/send! {:type    :channel/http
+                     :details {:url         "https://www.secret_service.xyz"
+                               :auth-method "header"
+                               :auth-info   {:Authorization "Bearer 123"}
+                               :method      "get"}}
+                    {:headers     {:X-Request-Id "123"}})
+     (is (= (merge default-request
+                   {:method  :get
+                    :url          "https://www.secret_service.xyz"
+                    :headers      {:Authorization "Bearer 123"
+                                   :X-Request-Id "123"}})
+            (first @requests)))))
+
+ (testing "preserves req query-params when use auth-method=:query-param"
+   (with-captured-http-requests [requests]
+     (channel/send! {:type    :channel/http
+                     :details {:url         "https://www.secret_service.xyz"
+                               :auth-method "query-param"
+                               :auth-info   {:token "123"}
+                               :method      "get"}}
+                    {:query-params {:page 1}})
+     (is (= (merge default-request
+                   {:method       :get
+                    :url          "https://www.secret_service.xyz"
+                    :query-params {:token "123"
+                                   :page 1}})
+            (first @requests))))))
+
+(deftest ^:parallel alert-http-channel-e2e-test
+  (let [received-message (atom nil)
+        receive-route    (make-route :post "/test_http_channel"
+                          (fn [res]
+                            (reset! received-message res)
+                            {:status 200}))]
+    (with-server [url [receive-route]]
+      (mt/with-temp
+        [:model/Card         {card-id :id
+                              :as card}     {:dataset_query (mt/mbql-query checkins {:aggregation [:count]})}
+         :model/Pulse        {pulse-id :id
+                              :as pulse}    {:alert_condition "rows"}
+         :model/PulseCard    _              {:pulse_id        pulse-id
+                                             :card_id         card-id
+                                             :position        0}
+         :model/Channel      {chn-id :id}  {:type    :channel/http
+                                            :details {:url         (str url (:path receive-route))
+                                                      :auth-method "none"}}
+         :model/PulseChannel _             {:pulse_id     pulse-id
+                                            :channel_type "http"
+                                            :channel_id   chn-id}]
+        (pulse/send-pulse! pulse)
+        (is (=? {:body {:type               "alert"
+                        :alert_id           pulse-id
+                        :alert_creator_id   (mt/malli=? int?)
+                        :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id pulse))
+                        :data               {:type          "question"
+                                             :question_id   card-id
+                                             :question_name (:name card)
+                                             :question_url  (mt/malli=? [:fn #(str/ends-with? % (str card-id))])
+                                             :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64")])
+                                             :raw_data      {:cols ["count"] :rows [[1000]]}}
+                        :sent_at            (mt/malli=? :any)}}
+                @received-message))))))

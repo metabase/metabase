@@ -5,6 +5,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.channel.core :as channel]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models
@@ -51,22 +52,31 @@
   [{:keys [pulse pulse-card channel card]
     :or   {channel :email}}
    f]
-  (mt/with-temp [Pulse        {pulse-id :id, :as pulse} (->> pulse
-                                                             (merge {:name            "Pulse Name"
-                                                                     :alert_condition "rows"}))
-                 PulseCard    _ (merge {:pulse_id        pulse-id
-                                        :card_id         (u/the-id card)
-                                        :position        0}
+  (mt/with-temp [:model/Pulse        {pulse-id :id, :as pulse} (->> pulse
+                                                                (merge {:name            "Pulse Name"
+                                                                        :alert_condition "rows"}))
+                 :model/PulseCard    _ (merge {:pulse_id        pulse-id
+                                               :card_id         (u/the-id card)
+                                               :position        0}
+                                           pulse-card)
+                 ;; channel is currently only used for http
+                 :model/Channel      {chn-id :id} {:type    :channel/http
+                                                   :details {:url         "https://metabase.com/testhttp"
+                                                             :auth-method "none"}}
+                 :model/PulseChannel {pc-id :id} (case channel
+                                                  :email
+                                                  {:pulse_id pulse-id
+                                                   :channel_type "email"}
 
-                                       pulse-card)
-                 PulseChannel {pc-id :id} (case channel
-                                            :email
-                                            {:pulse_id pulse-id}
+                                                  :slack
+                                                  {:pulse_id     pulse-id
+                                                   :channel_type "slack"
+                                                   :details      {:channel "#general"}}
 
-                                            :slack
-                                            {:pulse_id     pulse-id
-                                             :channel_type "slack"
-                                             :details      {:channel "#general"}})]
+                                                  :http
+                                                  {:pulse_id     pulse-id
+                                                   :channel_type "http"
+                                                   :channel_id   chn-id})]
     (if (= channel :email)
       (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                                         :pulse_channel_id pc-id}]
@@ -97,8 +107,8 @@
                         (is (= {:sent pulse-id}
                                response)))}})"
   [{:keys [card pulse pulse-card display fixture], assertions :assert}]
-  {:pre [(map? assertions) ((some-fn :email :slack) assertions)]}
-  (doseq [channel-type [:email :slack]
+  {:pre [(map? assertions) ((some-fn :email :slack :http) assertions)]}
+  (doseq [channel-type [:email :slack :http]
           :let         [f (get assertions channel-type)]
           :when        f]
     (assert (fn? f))
@@ -113,9 +123,7 @@
                                :channel    channel-type}]
           (letfn [(thunk* []
                     (f {:card-id card-id, :pulse-id pulse-id}
-                       ((if (= :email channel-type)
-                          :channel/email
-                          :channel/slack)
+                       ((keyword "channel" (name channel-type))
                         (pulse.test-util/with-captured-channel-send-messages!
                           (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
                             (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
@@ -124,7 +132,7 @@
                       (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
                       (thunk*)))]
             (case channel-type
-              :email (thunk)
+              (:http :email) (thunk)
               :slack (pulse.test-util/slack-test-setup! (thunk)))))))))
 
 (defn- tests!
@@ -188,7 +196,23 @@
                 :attachment-name "image.png"
                 :channel-id      "FOO"
                 :fallback        pulse.test-util/card-name}]}
-             (pulse.test-util/thunk->boolean pulse-results))))}}))
+             (pulse.test-util/thunk->boolean pulse-results))))
+
+     :http (fn [{:keys [card-id pulse-id]} [request]]
+             (let [pulse (t2/select-one :model/Pulse pulse-id)
+                   card  (t2/select-one :model/Card card-id)]
+              (is (=? {:body {:type               "alert"
+                              :alert_id           pulse-id
+                              :alert_creator_id   (mt/malli=? int?)
+                              :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id pulse))
+                              :data               {:type          "question"
+                                                   :question_id   card-id
+                                                   :question_name (:name card)
+                                                   :question_url  (mt/malli=? [:fn #(str/ends-with? % (str card-id))])
+                                                   :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64")])
+                                                   :raw_data      {:cols ["DATE" "count"], :rows [["2013-01-03T00:00:00Z" 1]]}}
+                              :sent_at            (mt/malli=? :any)}}
+                      request))))}}))
 
 (deftest basic-table-test
   (tests! {:display :table}
@@ -859,3 +883,30 @@
                      (t2/select-one-fn
                       (comp #(select-keys % [:display_name :description]) first :result_metadata)
                       :model/Card :id card-id)))))))))
+
+(deftest partial-channel-failure-will-deliver-all-that-success-test
+  (testing "if a pulse is set to send to multiple channels and one of them fail, the other channels should still receive the message"
+    (mt/with-temp
+      [Card         {card-id :id}  (pulse.test-util/checkins-query-card {:breakout [!day.date]
+                                                                         :limit    1})
+       Pulse        {pulse-id :id} {:name "Test Pulse"
+                                    :alert_condition "rows"}
+       PulseCard    _              {:pulse_id pulse-id
+                                    :card_id  card-id}
+       PulseChannel _              {:pulse_id pulse-id
+                                    :channel_type "email"
+                                    :details      {:emails ["foo@metabase.com"]}}
+       PulseChannel _              {:pulse_id     pulse-id
+                                    :channel_type "slack"
+                                    :details      {:channel "#general"}}]
+     (let [original-render-noti (var-get #'channel/render-notification)]
+       (with-redefs [channel/render-notification (fn [& args]
+                                                   (if (= :channel/slacke (:type (first args)))
+                                                     (throw (ex-info "Slack failed" {}))
+                                                     (apply original-render-noti args)))]
+         ;; slack failed but email should still be sent
+         (is (= {:channel/email 1}
+                (update-vals
+                 (pulse.test-util/with-captured-channel-send-messages!
+                   (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                 count))))))))
