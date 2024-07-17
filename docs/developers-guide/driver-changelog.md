@@ -88,9 +88,11 @@ title: Driver interface changelog
     `metabase.test.data.sql-jdbc.load-data/do-insert!` is now a `java.sql.Connection` instead of a `clojure.java.jdbc`
     spec.
 
-  - Similarly, `metabase.test.data.sql-jdbc.execute/execute-sql!` is now called with a `java.sql.Connection` instead
-    of a `DatabaseDefinition` and either `:server` or `:db` *context*; the appropriate connection type is created
-    automatically and passed in in the calling code.
+  - Similarly, `metabase.test.data.sql-jdbc.execute/execute-sql!` and helper functions like
+    `metabase.test.data.sql-jdbc.execute/sequentially-execute-sql!` are now called with a `java.sql.Connection`
+    instead of both a `DatabaseDefinition` and either `:server` or `:db` *context*; the appropriate connection type is
+    created automatically and passed in in the calling code. Update your method implementations and usages
+    accordingly.
 
 ## Metabase 0.50.0
 
