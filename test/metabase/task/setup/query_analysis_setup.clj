@@ -1,19 +1,16 @@
-(ns metabase.task.backfill-query-fields-test
+(ns metabase.task.setup.query-analysis-setup
   (:require
-   [clojure.set :as set]
-   [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models :refer [Card]]
    [metabase.query-analysis :as query-analysis]
-   [metabase.task.backfill-query-fields :as backfill]
    [metabase.test :as mt]
-   [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
 
-
-(deftest backfill-query-field-test
+(defn do-with-test-setup!
+  "Set up the data required to test the Query Analysis related tasks"
+  [f]
   (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         venues            (lib.metadata/table metadata-provider (mt/id :venues))
         venues-name       (lib.metadata/field metadata-provider (mt/id :venues :name))
@@ -36,31 +33,17 @@
                               :query_type    "native"
                               :dataset_query (mt/native-query {:query "SELECT id FROM venues"})}]
 
-      ;; Make sure there is no existing analysis for the relevant cards
-      (t2/delete! :model/QueryField :card_id [:in (map :id [c1 c2 c3 c4 arch])])
+                  ;; Make sure there is no existing analysis for the relevant cards
+                  (t2/delete! :model/QueryField :card_id [:in (map :id [c1 c2 c3 c4 arch])])
 
-      ;; Make sure some other card has analysis
-      (testing "There is at least one card with existing analysis"
-        (query-analysis/analyze-card! (:id c3))
-        (is (pos? (count (t2/select :model/QueryField :card_id (:id c3))))))
+                  ;; Make sure some other card has analysis
+                  (query-analysis/analyze-card! (:id c3))
 
-      (let [queued-ids   (atom #{})
-            expected-ids (into #{} (map :id) [c1 c2 c4])]
+                  (mt/call-with-map-params f [c1 c2 c3 c4 arch]))))
 
-        ;; Run the backfill with a mocked out publisher
-        (#'backfill/backfill-missing-query-fields!
-         #(swap! queued-ids conj (:id %)))
-
-        (testing "The expected cards were all sent to the analyzer"
-          (is (= expected-ids (set/intersection expected-ids @queued-ids))))
-
-        (testing "The card with existing analysis was not sent to the analyzer again"
-          (is (not (@queued-ids (:id c3)))))))))
-
-
-(comment
-  (set! *warn-on-reflection* true)
-  (queue/clear! @#'query-analysis/queue)
-  (.-queued-set @#'query-analysis/queue)
-  (.peek (.-async-queue @#'query-analysis/queue))
-  (.peek (.-sync-queue @#'query-analysis/queue)))
+(defmacro with-test-setup!
+  "Set up the data required to test the Query Analysis related tasks"
+  [& body]
+  `(do-with-test-setup!
+    (mt/with-anaphora [c1 c2 c3 c4 arch]
+                      ~@body)))

@@ -1,0 +1,90 @@
+(ns metabase.task.sweep-query-analysis
+  (:require
+   [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.schedule.cron :as cron]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.query-analysis :as query-analysis]
+   [metabase.task :as task]
+   [toucan2.core :as t2])
+  (:import
+   (org.quartz DisallowConcurrentExecution)))
+
+(set! *warn-on-reflection* true)
+
+(defn- analyze-cards-without-query-fields!
+  ([]
+   (analyze-cards-without-query-fields! query-analysis/analyze-sync!))
+  ([analyze-fn]
+   (let [cards (t2/reducible-select [:model/Card :id]
+                                    {:left-join [[:query_field :f] [:= :f.card_id :report_card.id]]
+                                     :where     [:and
+                                                 [:not :report_card.archived]
+                                                 [:= :f.id nil]]})]
+     (run! analyze-fn cards))))
+
+(defn- analyze-stale-cards!
+  ([]
+   (analyze-cards-without-query-fields! query-analysis/analyze-sync!))
+  ([analyze-fn]
+   (let [cards (t2/reducible-select [:model/Card :id])]
+     (run! analyze-fn cards))))
+
+(defn- delete-orphan-analysis! []
+  (transduce
+   (comp (map :id)
+         (partition-all 3))
+   (fn
+     ([final-count] final-count)
+     ([running-count ids]
+      (t2/delete! :model/QueryField :id [:in ids])
+      (+ running-count (count ids))))
+   0
+   (t2/reducible-select [:model/QueryField :id]
+                        {:join  [[:report_card :c] [:= :c.id :query_field.card_id]]
+                         :where [:or
+                                 [:= :c.id nil]
+                                 :c.archived]})))
+
+(def ^:private has-run?
+  "Has the sweeper been run before?"
+  (atom false))
+
+(defn- sweep-query-analysis-loop!
+  ([]
+   (sweep-query-analysis-loop! (not @has-run?))
+   (reset! has-run? true))
+  ([first-time?]
+   (sweep-query-analysis-loop! first-time? query-analysis/analyze-sync!))
+  ([first-time? analyze-fn]
+   ;; prioritize cards that are missing analysis
+   (analyze-cards-without-query-fields! analyze-fn)
+
+   ;; we run through all the existing analysis on our first run, as it may be stale due to an old macaw version, etc.
+   (when first-time?
+     ;; this will repeat the cards we've just back-filled, but in the steady state there should be none of those.
+     ;; in the future, we will track versions, hashes, and timestamps to reduce the cost of this operation.
+     (analyze-stale-cards! analyze-fn))
+
+   ;; empty out useless records
+   (delete-orphan-analysis!)))
+
+(jobs/defjob ^{DisallowConcurrentExecution true
+               :doc                        "Backfill QueryField for cards created earlier. Runs once per instance."}
+             SweepQueryAnalysis [_ctx]
+  (sweep-query-analysis-loop!))
+
+(defmethod task/init! ::SweepQueryAnalysis [_]
+  (let [job     (jobs/build
+                  (jobs/of-type SweepQueryAnalysis)
+                  (jobs/with-identity (jobs/key "metabase.task.backfill-query-fields.job"))
+                  (jobs/store-durably))
+        trigger (triggers/build
+                  (triggers/with-identity (triggers/key "metabase.task.backfill-query-fields.trigger"))
+                  (triggers/start-now)
+                  (triggers/with-schedule
+                   (cron/schedule
+                    (cron/cron-schedule
+                     ;; run every 4 hours at a random minute:
+                     (format "0 %d 0/4 1/1 * ? *" (rand-int 60)))
+                    (cron/with-misfire-handling-instruction-do-nothing))))]
+    (task/schedule-task! job trigger)))
