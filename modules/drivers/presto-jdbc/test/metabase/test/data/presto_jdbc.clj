@@ -93,35 +93,34 @@
   [& args]
   (apply execute/sequentially-execute-sql! args))
 
-(defn- load-data [dbdef tabledef]
+(defmethod load-data/chunk-size :presto-jdbc
+  [_driver _dbdef tabledef]
   ;; the JDBC driver statements fail with a cryptic status 500 error if there are too many
   ;; parameters being set in a single statement; these numbers were arrived at empirically
-  (let [chunk-size (case (:table-name tabledef)
-                     "people" 30
-                     "reviews" 40
-                     "orders" 30
-                     "venues" 50
-                     "products" 50
-                     "cities" 50
-                     "sightings" 50
-                     "incidents" 50
-                     "checkins" 25
-                     "airport" 50
-                     100)
-        load-fn    (load-data/make-load-data-fn load-data/load-data-add-ids
-                     (partial load-data/load-data-chunked pmap chunk-size))]
-    (load-fn :presto-jdbc dbdef tabledef)))
+  (case (:table-name tabledef)
+    "people" 30
+    "reviews" 40
+    "orders" 30
+    "venues" 50
+    "products" 50
+    "cities" 50
+    "sightings" 50
+    "incidents" 50
+    "checkins" 25
+    "airport" 50
+    100))
 
-(defmethod load-data/load-data! :presto-jdbc
-  [_ dbdef tabledef]
-  (load-data dbdef tabledef))
+(defmethod load-data/row-xform :presto-jdbc
+  [_driver _dbdef _tabledef]
+  (load-data/add-ids-xform)
+  #_(load-data/parallel-xform))
 
 (defmethod load-data/do-insert! :presto-jdbc
-  [driver spec table-identifier row-or-rows]
+  [driver ^java.sql.Connection conn table-identifier row-or-rows]
   (let [statements (ddl/insert-rows-ddl-statements driver table-identifier row-or-rows)]
     (sql-jdbc.execute/do-with-connection-with-options
      driver
-     spec
+     {:connection conn}
      {:write? true, :presto-jdbc/force-fresh? true}
      (fn [^Connection conn]
        (doseq [[^String sql & params] statements]

@@ -115,20 +115,21 @@
       {:base_type :type/Decimal}))))
 
 (defmethod execute/execute-sql! :h2
-  [driver _ dbdef sql]
+  [driver ^java.sql.Connection conn sql]
   ;; we always want to use 'server' context when execute-sql! is called (never
   ;; try connect as GUEST, since we're not giving them priviledges to create
   ;; tables / etc)
-  ((get-method execute/execute-sql! :sql-jdbc/test-extensions) driver :server dbdef sql))
+  ((get-method execute/execute-sql! :sql-jdbc/test-extensions) driver conn sql))
 
 ;; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
 (defmethod spec/dbdef->spec :h2
   [driver context dbdef]
   (mdb/spec :h2 (tx/dbdef->connection-details driver context dbdef)))
 
-(defmethod load-data/load-data! :h2
-  [& args]
-  (apply load-data/load-data-all-at-once! args))
+(defmethod load-data/chunk-size :h2
+  [_driver _dbdef _tabledef]
+  ;; load data all at once
+  nil)
 
 (defmethod sql.tx/inline-column-comment-sql :h2
   [& args]
@@ -139,3 +140,21 @@
   (apply sql.tx/standard-standalone-table-comment-sql args))
 
 (defmethod sql.tx/session-schema :h2 [_driver] "PUBLIC")
+
+;;; Make sure the misc one-off test drivers based on H2 aren't trying to reload or destroy the actual H2 data. The need
+;;; to implement these methods themselves and no-op
+(defmethod tx/create-db! :h2
+  [driver dbdef & options]
+  (when (= (:database-name dbdef) "test-data")
+    (assert (= driver :h2)
+            (format "Driver %s is attempting to use H2's implementation of %s, this will stomp on the H2 test data!"
+                    driver `tx/create-db!)))
+  (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver dbdef options))
+
+(defmethod tx/destroy-db! :h2
+  [driver dbdef]
+  (when (= (:database-name dbdef) "test-data")
+    (assert (= driver :h2)
+            (format "Driver %s is attempting to use H2's implementation of %s, this will stomp on the H2 test data!"
+                    driver `tx/destroy-db!)))
+  ((get-method tx/destroy-db! :sql-jdbc/test-extensions) driver dbdef))

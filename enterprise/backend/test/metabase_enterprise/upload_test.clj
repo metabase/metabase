@@ -18,13 +18,19 @@
         (mt/with-db db
           (testing "If the user is sandboxed, creating a new upload should fail"
             (upload-test/with-uploads-enabled
-              (is (thrown-with-msg? Exception #"Uploads are not permitted for sandboxed users\."
-                    (upload-test/upload-example-csv! {:grant-permission? false})))))
+              (is (thrown-with-msg?
+                   Exception
+                   #"Uploads are not permitted for sandboxed users\."
+                   (upload-test/do-with-uploaded-example-csv!
+                    {:grant-permission? false}
+                    identity)))))
           (upload-test/with-uploads-enabled
             (doseq [verb [:metabase.upload/append :metabase.upload/replace]]
               (testing (format "If the user is sandboxed, %s should fail" (name verb))
-                (is (thrown-with-msg? Exception #"Uploads are not permitted for sandboxed users\."
-                      (upload-test/update-csv-with-defaults! verb :user-id (mt/user->id :rasta))))))))))))
+                (is (thrown-with-msg?
+                     Exception
+                     #"Uploads are not permitted for sandboxed users\."
+                     (upload-test/update-csv-with-defaults! verb :user-id (mt/user->id :rasta))))))))))))
 
 (deftest based-on-upload-for-sandboxed-user-test
     ;; FIXME: Redshift is flaking on `mt/dataset` and I don't know why, so I'm excluding it temporarily

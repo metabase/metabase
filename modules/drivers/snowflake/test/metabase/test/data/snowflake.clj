@@ -198,9 +198,9 @@
 
 (defmethod tx/id-field-type :snowflake [_] :type/Number)
 
-(defmethod load-data/load-data! :snowflake
-  [& args]
-  (apply load-data/load-data-maybe-add-ids-chunked! args))
+(defmethod load-data/row-xform :snowflake
+  [_driver _dbdef tabledef]
+  (load-data/maybe-add-ids-xform tabledef))
 
 (defmethod tx/aggregate-column-info :snowflake
   ([driver ag-type]

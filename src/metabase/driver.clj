@@ -1056,8 +1056,11 @@
   :hierarchy #'hierarchy)
 
 (defmulti drop-table!
-  "Drop a table named `table-name`. If the table doesn't exist it will not be dropped."
-  {:added "0.47.0", :arglists '([driver db-id table-name])}
+  "Drop a table named `table-name`. If the table doesn't exist it will not be dropped. `table-name` may be qualified
+  by schema e.g.
+
+    schema.table"
+  {:added "0.47.0", :arglists '([driver db-id ^String table-name])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

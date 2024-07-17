@@ -190,17 +190,17 @@
 ;; Might have to figure out autoincrement settings
 (defmethod sql.tx/pk-sql-type :athena [_] "INTEGER")
 
-;; Add IDs to the sample data
-(defmethod load-data/load-data! :athena
-  [& args]
-  ;;; 200 is super slow, and the query ends up being too large around 500 rows... for some reason the same dataset
-  ;;; orders table (about 17k rows) stalls out at row 10,000 when loading them 200 at a time. It works when you do 400
-  ;;; at a time tho. This is just going to have to be ok for now.
-  (binding [load-data/*chunk-size* 400
-            ;; This tells Athena to convert `timestamp with time zone` literals to `timestamp` because otherwise it gets
-            ;; very fussy! See [[athena/*loading-data*]] for more info.
-            athena/*loading-data*  true]
-    (apply load-data/load-data-maybe-add-ids-chunked! args)))
+(defmethod load-data/row-xform :athena
+  [_driver _dbdef tabledef]
+  ;; Add IDs to the sample data
+  (load-data/maybe-add-ids-xform tabledef))
+
+;;; 200 is super slow, and the query ends up being too large around 500 rows... for some reason the same dataset orders
+;;; table (about 17k rows) stalls out at row 10,000 when loading them 200 at a time. It works when you do 400 at a time
+;;; tho. This is just going to have to be ok for now.
+(defmethod load-data/chunk-size :athena
+  [_driver _dbdef _tabledef]
+  400)
 
 (defn- server-connection-details []
   (tx/dbdef->connection-details :athena :server nil))
@@ -240,7 +240,9 @@
                   (pr-str database-name))
 
       :else
-      (do
+      (binding [ ;; This tells Athena to convert `timestamp with time zone` literals to `timestamp` because otherwise it gets
+                ;; very fussy! See [[athena/*loading-data*]] for more info.
+                athena/*loading-data*  true]
         (log/infof "Creating Athena database %s" (pr-str database-name))
         ;; call the default impl for SQL JDBC drivers
         (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)))))

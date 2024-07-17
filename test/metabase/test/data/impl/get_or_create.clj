@@ -147,29 +147,62 @@
   (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/create-queries :query-builder-and-native)
   (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/download-results :one-million-rows))
 
+(defonce ^:private driver->loaded-datasets
+  (atom {}))
+
+(defn- driver-has-loaded-dataset? [driver dbdef]
+  (let [datasets (get @driver->loaded-datasets driver)]
+    (contains? datasets (:database-name dbdef))))
+
+(defn- record-dataset-loaded!
+  "Record that we've loaded a test dataset for `driver` in the current session."
+  [driver dbdef]
+  (swap! driver->loaded-datasets update driver (fn [datasets]
+                                                 (conj (set datasets) (:database-name dbdef)))))
+
+;;; TODO -- every call to `destroy-db!` needs to call this as well
+(defn- record-dataset-destroyed!
+  "Record that we've destroyed a test dataset for `driver` in the current session."
+  [driver dbdef]
+  (swap! driver->loaded-datasets update driver (fn [datasets]
+                                                 (disj (set datasets) (:database-name dbdef)))))
+
+(defn- load-dataset-data-if-needed!
+  "Create the test dataset and load its data if needed. No-ops if this was already done successfully during this
+  session."
+  [driver dbdef]
+  ;; there's locking around this stuff elsewhere.
+  (when-not (driver-has-loaded-dataset? driver dbdef)
+    (u/with-timeout create-database-timeout-ms
+      ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests.
+      (test.tz/with-system-timezone-id! "UTC"
+        (tx/create-db! driver dbdef))
+      (record-dataset-loaded! driver dbdef))))
+
+(defn- create-and-sync-Database!
+  "Add DB object to Metabase DB. Return an instance of `:model/Database`."
+  [driver {:keys [database-name], :as database-definition}]
+  (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
+        db                 (first (t2/insert-returning-instances! Database
+                                                                  (merge
+                                                                   (t2.with-temp/with-temp-defaults :model/Database)
+                                                                   {:name    database-name
+                                                                    :engine  (u/qualified-name driver)
+                                                                    :details connection-details})))]
+    (sync-newly-created-database! driver database-definition connection-details db)
+    (set-test-db-permissions! (u/the-id db))
+    ;; make sure we're returing an up-to-date copy of the DB
+    (t2/select-one Database :id (u/the-id db))))
+
 (defn- create-database! [driver {:keys [database-name], :as database-definition}]
   {:pre [(seq database-name)]}
   (try
-    ;; Create the database and load its data
-    ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests
-    (u/with-timeout create-database-timeout-ms
-      (test.tz/with-system-timezone-id! "UTC"
-        (tx/create-db! driver database-definition)))
-    ;; Add DB object to Metabase DB
-    (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
-          db                 (first (t2/insert-returning-instances! Database
-                                                                    (merge
-                                                                     (t2.with-temp/with-temp-defaults :model/Database)
-                                                                     {:name    database-name
-                                                                      :engine  (u/qualified-name driver)
-                                                                      :details connection-details})))]
-      (sync-newly-created-database! driver database-definition connection-details db)
-      (set-test-db-permissions! (u/the-id db))
-      ;; make sure we're returing an up-to-date copy of the DB
-      (t2/select-one Database :id (u/the-id db)))
+    (load-dataset-data-if-needed! driver database-definition)
+    (create-and-sync-Database! driver database-definition)
     (catch Throwable e
       (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
       (tx/destroy-db! driver database-definition)
+      (record-dataset-destroyed! driver database-definition)
       (throw e))))
 
 (defn- create-database-with-bound-settings! [driver dbdef]

@@ -225,7 +225,7 @@
   [db-name table-name]
   (str/starts-with? table-name (db-qualified-table-name-prefix db-name)))
 
-(defn db-qualified-table-name
+(mu/defn db-qualified-table-name :- [:string {:max 30}]
   "Return a combined table name qualified with the name of its database, suitable for use as an identifier.
   Provided for drivers where testing wackiness makes it hard to actually create separate Databases, such as Oracle,
   where this is disallowed on RDS. (Since Oracle can't create seperate DBs, we just create various tables in the same
@@ -233,11 +233,9 @@
 
   Asserts that the resulting name has fewer than 30 characters, because databases like Oracle have limits on the
   lengths of identifiers."
-  ^String [^String database-name, ^String table-name]
-  {:pre [(string? database-name)
-         (string? table-name)]
-   :post [(qualified-by-db-name? database-name %)
-          (<= (count %) 30)]}
+  ^String [^String database-name :- :string
+           ^String table-name    :- :string]
+  {:post [(qualified-by-db-name? database-name %)]}
   (str (db-qualified-table-name-prefix database-name)
        (normalize-qualified-name table-name)))
 
@@ -359,16 +357,11 @@
   and load the appropriate data. (This refers to creating the actual *DBMS* database itself, *not* a Metabase
   `Database` object.)
 
-  Optional `options` as third param. Currently supported options include `skip-drop-db?`. If unspecified,
-  `skip-drop-db?` should default to `false`.
-
-  This method should drop existing databases with the same name if applicable, unless the `skip-drop-db?` arg is
-  truthy. This is to work around a scenario where the Postgres driver terminates the connection before dropping the DB
-  and causes some tests to fail.
+  Optional key-value parameter `options`. Not currently used.
 
   This method is not expected to return anything; use `dbdef->connection-details` to get connection details for this
   database after you create it."
-  {:arglists '([driver database-definition & {:keys [skip-drop-db?]}])}
+  {:arglists '([driver database-definition & {:as _options}])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 

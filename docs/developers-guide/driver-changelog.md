@@ -54,6 +54,44 @@ title: Driver interface changelog
   Honey SQL version) has been removed; replace all usages with the two-arity version. Honey SQL 2 has been the only
   supported version since Metabase 0.49.0.
 
+- The `:skip-drop-db?` option sometimes passed to methods for loading and destroying test data is no longer passed,
+  you can remove code that checks for it. Test data code is now better about avoiding unneeded/redundant calls to
+  `metabase.test.data.interface/create-db!`, so test data loading code should not need to call `DROP DATABASE IF
+  EXISTS` before loading test data.
+
+- Test data loading for JDBC-based databases has been overhauled somewhat. The multimethod
+  `metabase.test.data.sql-jdbc.load-data/load-data!` and helper functions for it have been removed in favor of several
+  new simpler to compose and understand multimethods.
+
+  - `metabase.test.data.sql-jdbc.load-data/row-xform` is a transducer applied to each row when loading test data. The
+    default implementation is `identity`, but you can use `metabase.test.data.sql-jdbc.load-data/add-ids-xform` to add
+    IDs to each row (this replaces the removed `metabase.test.data.sql-jdbc.load-data/load-data-add-ids` function) and
+    `metabase.test.data.sql-jdbc.load-data/maybe-add-ids-xform` (which replaces
+    `metabase.test.data.sql-jdbc.load-data/load-data-maybe-add-ids!` and
+    `metabase.test.data.sql-jdbc.load-data/load-data-maybe-add-ids-chunked!`).
+
+  - `metabase.test.data.sql-jdbc.load-data/chunk-size` is used to control the number of rows that should be loaded in
+    each batch. The default is `200`, but you can implement this method and return `nil` to load data all at once
+    regardless of the number of rows. `metabase.test.data.sql-jdbc.load-data/*chunk-size*`,
+    `metabase.test.data.sql-jdbc.load-data/load-data-chunked`,
+    `metabase.test.data.sql-jdbc.load-data/load-data-all-at-once!`,
+    `metabase.test.data.sql-jdbc.load-data/load-data-chunked!`, and other similar functions are no longer needed and
+    have been removed.
+
+  - `metabase.test.data.sql-jdbc.load-data/chunk-xform` is a transducer applied to each chunk of rows (dependent on
+    `chunk-size`) or the entire group of rows if `chunk-size` is `nil`. The default is `identity`. It can be used to
+    implement special behavior for each chunk, for example writing the chunk to a CSV file to load separately in the
+    `metabase.test.data.sql-jdbc.load-data/do-insert!` method. See the `metabase.test.data.vertica` for an example of
+    this.
+
+  - Connections are now created once and reused for much of test data loading. The second argument to
+    `metabase.test.data.sql-jdbc.load-data/do-insert!` is now a `java.sql.Connection` instead of a `clojure.java.jdbc`
+    spec.
+
+  - Similarly, `metabase.test.data.sql-jdbc.execute/execute-sql!` is now called with a `java.sql.Connection` instead
+    of a `DatabaseDefinition` and either `:server` or `:db` *context*; the appropriate connection type is created
+    automatically and passed in in the calling code.
+
 ## Metabase 0.50.0
 
 - The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to
