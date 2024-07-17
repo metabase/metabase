@@ -1,3 +1,5 @@
+import html2canvas from "html2canvas-pro";
+import jspdf from "jspdf";
 import { t } from "ttag";
 
 import type { Dashboard } from "metabase-types/api";
@@ -16,7 +18,6 @@ export const saveDashboardPdf = async (
     return;
   }
 
-  const { default: html2canvas } = await import("html2canvas-pro");
   const image = await html2canvas(node, {
     useCORS: true,
     onclone: (doc: Document, node: HTMLElement) => {
@@ -35,7 +36,6 @@ export const saveDashboardPdf = async (
   const pdfWidth = imageWidth;
   const pdfHeight = imageHeight + 80;
 
-  const { default: jspdf } = await import("jspdf");
   const pdf = new jspdf({
     unit: "px",
     hotfixes: ["px_scaling"],
