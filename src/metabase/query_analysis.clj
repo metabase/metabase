@@ -19,7 +19,7 @@
 
 (def ^:private realtime-queue-capacity 1000)
 
-(defonce ^:private queue (queue/bounded-transfer-queue realtime-queue-capacity {:dedupe? true}))
+(defonce ^:private queue (queue/bounded-transfer-queue realtime-queue-capacity {:dedupe? false}))
 
 (def ^:dynamic *analyze-execution-in-dev?*
   "Managing a background thread in the REPL is likely to confound and infuriate, especially when we're using it to run
