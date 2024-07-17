@@ -17,7 +17,7 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { scalarToCartesianTransform } from "metabase/visualizations/visualizations/Scalar/scalars-cartesian-transform";
-import { scalarToFunnelTransform } from "metabase/visualizations/visualizations/Scalar/scalars-funnel-transform";
+import { scalarToSingleSeriesTransform } from "metabase/visualizations/visualizations/Scalar/scalars-single-series-transform";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -64,7 +64,7 @@ export function useVisualizerSeries(
       const display = computedSettings["scalar.multiseries.display"] ?? "bar";
       const transform = isCartesianViz(display)
         ? scalarToCartesianTransform
-        : scalarToFunnelTransform;
+        : scalarToSingleSeriesTransform;
       series = transform(series, computedSettings);
     }
 

@@ -6,7 +6,7 @@ import type { DatasetColumn, SingleSeries } from "metabase-types/api";
 
 import { findScalarMetricColumnIndex } from "./utils";
 
-export const scalarToFunnelTransform: TransformSeries = rawSeries => {
+export const scalarToSingleSeriesTransform: TransformSeries = rawSeries => {
   const [firstSeries] = rawSeries;
 
   const firstSeriesMetricColumnIndex = findScalarMetricColumnIndex(firstSeries);

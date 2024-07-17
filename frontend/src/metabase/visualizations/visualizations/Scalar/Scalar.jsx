@@ -24,7 +24,7 @@ import {
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
 import { TITLE_ICON_SIZE } from "./constants";
 import { scalarToCartesianTransform } from "./scalars-cartesian-transform";
-import { scalarToFunnelTransform } from "./scalars-funnel-transform";
+import { scalarToSingleSeriesTransform } from "./scalars-single-series-transform";
 import { getTitleLinesCount, getValueHeight, getValueWidth } from "./utils";
 
 // convert legacy `scalar.*` visualization settings to format options
@@ -164,7 +164,9 @@ export class Scalar extends Component {
       return (
         <TransformedVisualization
           transformSeries={
-            isCartesian ? scalarToCartesianTransform : scalarToFunnelTransform
+            isCartesian
+              ? scalarToCartesianTransform
+              : scalarToSingleSeriesTransform
           }
           originalProps={this.props}
         />
