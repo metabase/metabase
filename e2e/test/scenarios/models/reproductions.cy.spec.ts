@@ -40,6 +40,7 @@ import {
   rightSidebar,
   assertQueryBuilderRowCount,
   navigationSidebar,
+  newButton,
 } from "e2e/support/helpers";
 import type { CardId, FieldReference } from "metabase-types/api";
 
@@ -991,36 +992,63 @@ describe("issue 34514", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+
+    cy.visit("/");
+    // It's important to navigate via UI so that there are
+    // enough entries in the browser history to go back to.
+    newButton("Model").click();
+    cy.findByTestId("new-model-options")
+      .findByText("Use the notebook editor")
+      .click();
   });
 
   it("should allow browser history navigation between tabs (metabase#34514)", () => {
-    startNewModel();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
+
     cy.findByTestId("run-button").click();
+    assertQueryTabState();
+
     cy.findByTestId("editor-tabs-metadata-name").click();
+    assertMetadataTabState();
 
     cy.go("back");
+    assertQueryTabState();
 
+    cy.go("back");
+    assertBackToEmptyState();
+  });
+
+  it("should not make network request with invalid query (metabase#34514)", () => {
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+
+    cy.findByTestId("run-button").click();
+    assertQueryTabState();
+
+    cy.go("back");
+    assertBackToEmptyState();
+  });
+
+  function assertQueryTabState() {
     entityPickerModal().should("not.exist");
     getNotebookStep("data").findByText("Orders").should("be.visible");
     cy.findByTestId("TableInteractive-root")
       .findByText("39.72")
       .should("be.visible");
-  });
+  }
 
-  it("should not make network request with invalid query (metabase#34514)", () => {
-    startNewModel();
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
-    });
-    cy.findByTestId("run-button").click();
+  function assertMetadataTabState() {
+    cy.findByLabelText("Description")
+      .should("be.visible")
+      .and("include.value", "This is a unique ID for the product.");
+  }
 
-    cy.go("back");
-
+  function assertBackToEmptyState() {
     entityPickerModal().should("be.visible");
     entityPickerModal().button("Close").click();
 
@@ -1030,5 +1058,5 @@ describe("issue 34514", () => {
         "be.visible",
       );
     });
-  });
+  }
 });
