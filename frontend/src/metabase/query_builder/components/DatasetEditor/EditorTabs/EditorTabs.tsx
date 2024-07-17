@@ -19,11 +19,7 @@ export function EditorTabs({
   return (
     <TabBar {...props}>
       <li>
-        <Tab
-          id="editor-tabs-query-label"
-          htmlFor="editor-tabs-query"
-          selected={currentTab === "query"}
-        >
+        <Tab htmlFor="editor-tabs-query" selected={currentTab === "query"}>
           <Icon name="notebook" />
           <RadioInput
             id="editor-tabs-query"
@@ -33,7 +29,6 @@ export function EditorTabs({
             onChange={() => {
               onChange("query");
             }}
-            aria-labelledby="editor-tabs-query-label"
           />
           <span>{t`Query`}</span>
         </Tab>
@@ -41,7 +36,6 @@ export function EditorTabs({
 
       <li>
         <Tab
-          id="editor-tabs-metadata-label"
           htmlFor="editor-tabs-metadata"
           selected={currentTab === "metadata"}
           disabled={disabledMetadata}
@@ -55,7 +49,6 @@ export function EditorTabs({
             onChange={() => {
               onChange("metadata");
             }}
-            aria-labelledby="editor-tabs-metadata-label"
             disabled={disabledMetadata}
             data-testid="editor-tabs-metadata"
           />
