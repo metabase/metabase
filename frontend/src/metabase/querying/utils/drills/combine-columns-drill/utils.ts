@@ -93,7 +93,7 @@ const getColumnExample = (column: Lib.ColumnMetadata): string => {
     return "2042-01-01";
   }
 
-  if (Lib.isDate(column)) {
+  if (Lib.isTemporal(column)) {
     return "2042-01-01 12:34:56.789";
   }
 
