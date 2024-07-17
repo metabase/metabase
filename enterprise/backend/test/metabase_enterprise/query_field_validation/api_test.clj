@@ -53,8 +53,9 @@
 
   `card-4` is guaranteed not to have problems"
   [& body]
-  `(do-with-test-setup (mt/with-anaphora [qf-1 qf-2 qf-3 card-1 card-2 card-3 card-4]
-                         ~@body)))
+  `(do-with-test-setup
+    (mt/with-anaphora [qf-1 qf-2 qf-3 card-1 card-2 card-3 card-4]
+      ~@body)))
 
 (def ^:private url "ee/query-field-validation/invalid-cards")
 
