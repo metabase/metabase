@@ -28,9 +28,9 @@ export type ParameterValueWidgetProps = {
   setValue: (value: any) => void;
   value: any;
   placeholder?: string;
-  isEditing: boolean;
+  isEditing?: boolean;
 
-  commitImmediately: boolean;
+  commitImmediately?: boolean;
   focusChanged?: (focused: boolean) => void;
   isFullscreen?: boolean;
   className?: string;
@@ -52,7 +52,7 @@ export const ParameterValueWidget = ({
   dashboard,
   enableRequiredBehavior,
   focusChanged,
-  isEditing,
+  isEditing = false,
   isFullscreen,
   isSortable = false,
   mimicMantine,
