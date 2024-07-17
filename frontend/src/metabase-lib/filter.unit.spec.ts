@@ -1572,55 +1572,46 @@ describe("filter", () => {
       },
     );
 
-    it.each<Lib.DefaultFilterOperatorName>(["is-null", "not-null"])(
-      'should be able to create and destructure a default filter with numeric columns and "%s" operator',
-      operator => {
-        const column = findColumn(query, "ORDERS", "TAX");
-        const { filterParts, columnInfo } = addDefaultFilter(
-          query,
-          Lib.defaultFilterClause({
-            operator,
-            column,
-          }),
-        );
-
-        expect(filterParts).toMatchObject({
-          operator,
-          column: expect.anything(),
-        });
-        expect(columnInfo?.name).toBe("TAX");
+    it.each([
+      {
+        title: "a string column",
+        tableName: "PRODUCTS",
+        columnName: "CATEGORY",
       },
-    );
-
-    it.each<Lib.DefaultFilterOperatorName>(["is-null", "not-null"])(
-      'should ignore expressions with string columns and "%s" operator',
-      operator => {
-        const column = findColumn(query, "PRODUCTS", "CATEGORY");
-        const { filterParts } = addDefaultFilter(
-          query,
-          Lib.expressionClause(operator, [column]),
-        );
-        expect(filterParts).toBeNull();
+      {
+        title: "a numeric column",
+        tableName: "ORDERS",
+        columnName: "TAX",
       },
-    );
-
-    it.each<Lib.DefaultFilterOperatorName>(["is-null", "not-null"])(
-      'should ignore expressions with coordinate columns and "%s" operator',
-      operator => {
-        const column = findColumn(query, "PRODUCTS", "CATEGORY");
-        const { filterParts } = addDefaultFilter(
-          query,
-          Lib.expressionClause(operator, [column]),
-        );
-        expect(filterParts).toBeNull();
+      {
+        title: "a date column",
+        tableName: "ORDERS",
+        columnName: "CREATED_AT",
       },
-    );
+      {
+        title: "a time column",
+        tableName: "PEOPLE",
+        columnName: TIME_FIELD.name,
+      },
+      {
+        title: "a boolean column",
+        tableName: "PEOPLE",
+        columnName: BOOLEAN_FIELD.name,
+      },
+    ])(`should ignore filters with $title`, ({ tableName, columnName }) => {
+      const column = findColumn(query, tableName, columnName);
+      const { filterParts } = addDefaultFilter(
+        query,
+        Lib.expressionClause("is-null", [column]),
+      );
+      expect(filterParts).toBeNull();
+    });
 
     it("should ignore expressions with not supported operators", () => {
       const column = findColumn(query, "ORDERS", "TAX");
       const { filterParts } = addDefaultFilter(
         query,
-        Lib.expressionClause("=", [column, 10]),
+        Lib.expressionClause("is-empty", [column]),
       );
       expect(filterParts).toBeNull();
     });

@@ -25,11 +25,11 @@ interface UpdateFilterCase {
   expectedDisplayName: string;
 }
 
-const ARRAY_FIELD = createMockField({
+const UNKNOWN_FIELD = createMockField({
   id: 102,
   table_id: ORDERS_ID,
-  name: "ARRAY",
-  display_name: "Array",
+  name: "UNKNOWN",
+  display_name: "Unknown",
   base_type: "type/*",
   effective_type: "type/*",
   semantic_type: null,
@@ -40,7 +40,7 @@ const METADATA = createMockMetadata({
     createSampleDatabase({
       tables: [
         createOrdersTable({
-          fields: [createOrdersIdField(), ARRAY_FIELD],
+          fields: [createOrdersIdField(), UNKNOWN_FIELD],
         }),
       ],
     }),
@@ -53,17 +53,17 @@ describe("useDefaultFilter", () => {
   const availableColumns = Lib.filterableColumns(defaultQuery, stageIndex);
   const column = columnFinder(defaultQuery, availableColumns)(
     "ORDERS",
-    ARRAY_FIELD.name,
+    UNKNOWN_FIELD.name,
   );
 
   it.each<CreateFilterCase>([
     {
       operator: "is-null",
-      expectedDisplayName: "Array is empty",
+      expectedDisplayName: `${UNKNOWN_FIELD.display_name} is empty`,
     },
     {
       operator: "not-null",
-      expectedDisplayName: "Array is not empty",
+      expectedDisplayName: `${UNKNOWN_FIELD.display_name} is not empty`,
     },
   ])(
     'should allow to create a filter for "$operator" operator',
@@ -98,7 +98,7 @@ describe("useDefaultFilter", () => {
         column,
       }),
       operator: "not-null",
-      expectedDisplayName: "Array is not empty",
+      expectedDisplayName: `${UNKNOWN_FIELD.display_name} is not empty`,
     },
   ])(
     'should allow to update a filter for "$operator" operator',
@@ -154,7 +154,7 @@ describe("useDefaultFilter", () => {
     const { operator, getFilterClause } = result.current;
     const newFilter = checkNotNull(getFilterClause(operator));
     expect(Lib.displayInfo(defaultQuery, stageIndex, newFilter)).toMatchObject({
-      displayName: "Array is empty",
+      displayName: `${UNKNOWN_FIELD.display_name} is empty`,
     });
   });
 });

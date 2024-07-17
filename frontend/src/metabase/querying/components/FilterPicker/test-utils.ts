@@ -80,11 +80,11 @@ const TIME_FIELD = createMockField({
   semantic_type: null,
 });
 
-const ARRAY_FIELD = createMockField({
+const UNKNOWN_FIELD = createMockField({
   id: 103,
   table_id: ORDERS_ID,
-  name: "ARRAY",
-  display_name: "Array",
+  name: "UNKNOWN",
+  display_name: "Unknown",
   base_type: "type/*",
   effective_type: "type/*",
   semantic_type: null,
@@ -98,7 +98,7 @@ const _productsFields =
 const database = createSampleDatabase({
   tables: [
     createOrdersTable({
-      fields: [..._ordersFields, TIME_FIELD, ARRAY_FIELD],
+      fields: [..._ordersFields, TIME_FIELD, UNKNOWN_FIELD],
       segments: [SEGMENT_1, SEGMENT_2],
     }),
     createPeopleTable({ fields: [..._peopleFields, BOOLEAN_FIELD] }),
@@ -326,8 +326,8 @@ export function createQueryWithTimeFilter({
   return createFilteredQuery(query, clause);
 }
 
-export function findArrayColumn(query: Lib.Query) {
-  return findFilteredColumn(query, "ORDERS", ARRAY_FIELD.name);
+export function findUnknownColumn(query: Lib.Query) {
+  return findFilteredColumn(query, "ORDERS", UNKNOWN_FIELD.name);
 }
 
 type DefaultFilterQueryOpts = Partial<Lib.DefaultFilterParts> & {
@@ -337,7 +337,7 @@ type DefaultFilterQueryOpts = Partial<Lib.DefaultFilterParts> & {
 
 export function createQueryWithDefaultFilter({
   query = createQuery(),
-  column = findArrayColumn(query),
+  column = findUnknownColumn(query),
   operator = "is-null",
 }: DefaultFilterQueryOpts = {}) {
   const clause = Lib.defaultFilterClause({ operator, column });

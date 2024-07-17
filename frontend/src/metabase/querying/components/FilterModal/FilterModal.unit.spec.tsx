@@ -105,23 +105,23 @@ describe("FilterModal", () => {
   });
 
   it("should allow to add filters for unknown column types", async () => {
-    const arrayField = createMockField({
+    const unknownField = createMockField({
       id: 100,
       table_id: ORDERS_ID,
-      name: "ARRAY",
-      display_name: "Array",
+      name: "UNKNOWN",
+      display_name: "Unknown",
       base_type: "type/*",
       effective_type: "type/*",
       semantic_type: null,
     });
     const metadata = createMockMetadata({
       databases: [createSampleDatabase()],
-      fields: [arrayField],
+      fields: [unknownField],
     });
     const { getNextQuery } = setup({ query: createQuery({ metadata }) });
 
-    const arraySection = screen.getByTestId(`filter-column-Array`);
-    await userEvent.click(within(arraySection).getByLabelText("Is empty"));
+    const columnSection = screen.getByTestId(`filter-column-Unknown`);
+    await userEvent.click(within(columnSection).getByLabelText("Is empty"));
     await userEvent.click(
       screen.getByRole("button", { name: "Apply filters" }),
     );

@@ -1,8 +1,16 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import { createMockField } from "metabase-types/api/mocks";
+import {
+  createOrdersIdField,
+  createOrdersTable,
+  createSampleDatabase,
+  ORDERS_ID,
+} from "metabase-types/api/mocks/presets";
 
 import { DefaultFilterEditor } from "./DefaultFilterEditor";
 
@@ -39,12 +47,34 @@ function setup({ query, stageIndex, column, filter }: SetupOpts) {
   return { onChange, onInput, getNextFilterName };
 }
 
+const UNKNOWN_FIELD = createMockField({
+  id: 102,
+  table_id: ORDERS_ID,
+  name: "UNKNOWN",
+  display_name: "Unknown",
+  base_type: "type/*",
+  effective_type: "type/*",
+  semantic_type: null,
+});
+
+const METADATA = createMockMetadata({
+  databases: [
+    createSampleDatabase({
+      tables: [
+        createOrdersTable({
+          fields: [createOrdersIdField(), UNKNOWN_FIELD],
+        }),
+      ],
+    }),
+  ],
+});
+
 describe("DefaultFilterEditor", () => {
-  const query = createQuery();
+  const query = createQuery({ metadata: METADATA });
   const stageIndex = 0;
   const availableColumns = Lib.filterableColumns(query, stageIndex);
   const findColumn = columnFinder(query, availableColumns);
-  const column = findColumn("ORDERS", "TOTAL");
+  const column = findColumn("ORDERS", UNKNOWN_FIELD.name);
 
   describe("new filter", () => {
     it('should add a "is-null" filter', async () => {
@@ -63,7 +93,9 @@ describe("DefaultFilterEditor", () => {
       expect(notEmptyCheckbox).not.toBeChecked();
 
       await userEvent.click(isEmptyCheckbox);
-      expect(getNextFilterName()).toBe("Total is empty");
+      expect(getNextFilterName()).toBe(
+        `${UNKNOWN_FIELD.display_name} is empty`,
+      );
       expect(isEmptyCheckbox).toBeChecked();
       expect(notEmptyCheckbox).not.toBeChecked();
     });
@@ -83,7 +115,9 @@ describe("DefaultFilterEditor", () => {
       });
       await userEvent.click(notEmptyCheckbox);
 
-      expect(getNextFilterName()).toBe("Total is not empty");
+      expect(getNextFilterName()).toBe(
+        `${UNKNOWN_FIELD.display_name} is not empty`,
+      );
       expect(isEmptyCheckbox).not.toBeChecked();
       expect(notEmptyCheckbox).toBeChecked();
     });
@@ -102,7 +136,9 @@ describe("DefaultFilterEditor", () => {
         name: "Not empty",
       });
       await userEvent.click(isEmptyCheckbox);
-      expect(getNextFilterName()).toBe("Total is empty");
+      expect(getNextFilterName()).toBe(
+        `${UNKNOWN_FIELD.display_name} is empty`,
+      );
       expect(isEmptyCheckbox).toBeChecked();
       expect(notEmptyCheckbox).not.toBeChecked();
 
@@ -112,7 +148,9 @@ describe("DefaultFilterEditor", () => {
       expect(notEmptyCheckbox).not.toBeChecked();
 
       await userEvent.click(notEmptyCheckbox);
-      expect(getNextFilterName()).toBe("Total is not empty");
+      expect(getNextFilterName()).toBe(
+        `${UNKNOWN_FIELD.display_name} is not empty`,
+      );
       expect(isEmptyCheckbox).not.toBeChecked();
       expect(notEmptyCheckbox).toBeChecked();
 
@@ -145,7 +183,9 @@ describe("DefaultFilterEditor", () => {
       expect(notEmptyCheckbox).not.toBeChecked();
 
       await userEvent.click(notEmptyCheckbox);
-      expect(getNextFilterName()).toBe("Total is not empty");
+      expect(getNextFilterName()).toBe(
+        `${UNKNOWN_FIELD.display_name} is not empty`,
+      );
       expect(isEmptyCheckbox).not.toBeChecked();
       expect(notEmptyCheckbox).toBeChecked();
     });
@@ -157,13 +197,13 @@ interface QueryWithFilterOpts {
 }
 
 function createQueryWithFilter({ operator }: QueryWithFilterOpts) {
-  const defaultQuery = createQuery();
+  const defaultQuery = createQuery({ metadata: METADATA });
   const stageIndex = 0;
   const findColumn = columnFinder(
     defaultQuery,
     Lib.filterableColumns(defaultQuery, stageIndex),
   );
-  const column = findColumn("ORDERS", "TOTAL");
+  const column = findColumn("ORDERS", UNKNOWN_FIELD.name);
   const query = Lib.filter(
     defaultQuery,
     stageIndex,

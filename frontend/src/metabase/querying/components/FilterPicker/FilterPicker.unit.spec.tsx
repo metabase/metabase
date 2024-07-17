@@ -144,7 +144,7 @@ const WIDGET_TEST_CASES: WidgetTestCase[] = [
   [
     "default",
     createQueryWithDefaultFilter(),
-    { columnName: "Array", pickerId: "default-filter-picker" },
+    { columnName: "Unknown", pickerId: "default-filter-picker" },
   ],
 ];
 

@@ -4,7 +4,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import {
   createQuery,
   createQueryWithDefaultFilter,
-  findArrayColumn,
+  findUnknownColumn,
   storeInitialState,
 } from "metabase/querying/components/FilterPicker/test-utils";
 import * as Lib from "metabase-lib";
@@ -21,7 +21,7 @@ type SetupOpts = {
 function setup({
   query = createQuery(),
   stageIndex = -1,
-  column = findArrayColumn(query),
+  column = findUnknownColumn(query),
   filter,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
@@ -64,7 +64,7 @@ describe("DefaultFilterPicker", () => {
       expect(screen.getByLabelText("Not empty")).not.toBeChecked();
 
       await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
-      expect(getNextFilterName()).toBe("Array is empty");
+      expect(getNextFilterName()).toBe("Unknown is empty");
     });
 
     it("should create a new filter with 'is-empty' operator", async () => {
@@ -74,7 +74,7 @@ describe("DefaultFilterPicker", () => {
       expect(screen.getByLabelText("Not empty")).not.toBeChecked();
 
       await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
-      expect(getNextFilterName()).toBe("Array is empty");
+      expect(getNextFilterName()).toBe("Unknown is empty");
     });
 
     it("should create a new filter with 'not-empty' operator", async () => {
@@ -84,7 +84,7 @@ describe("DefaultFilterPicker", () => {
       expect(screen.getByLabelText("Not empty")).toBeChecked();
 
       await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
-      expect(getNextFilterName()).toBe("Array is not empty");
+      expect(getNextFilterName()).toBe("Unknown is not empty");
     });
 
     it("should go back", async () => {
@@ -112,7 +112,7 @@ describe("DefaultFilterPicker", () => {
       await userEvent.click(
         screen.getByRole("button", { name: "Update filter" }),
       );
-      expect(getNextFilterName()).toBe("Array is not empty");
+      expect(getNextFilterName()).toBe("Unknown is not empty");
     });
 
     it("should update a filter with 'not-empty' operator", async () => {
@@ -131,7 +131,7 @@ describe("DefaultFilterPicker", () => {
       await userEvent.click(
         screen.getByRole("button", { name: "Update filter" }),
       );
-      expect(getNextFilterName()).toBe("Array is empty");
+      expect(getNextFilterName()).toBe("Unknown is empty");
     });
 
     it("should go back", async () => {

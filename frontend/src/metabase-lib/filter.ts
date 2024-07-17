@@ -174,6 +174,7 @@ export function numberFilterParts(
   if (
     !isColumnMetadata(column) ||
     !isNumeric(column) ||
+    isCoordinate(column) || // coordinates have their own filterParts
     !isNumberLiteralArray(values)
   ) {
     return null;
@@ -495,10 +496,11 @@ export function defaultFilterParts(
   const [column] = args;
   if (
     !isColumnMetadata(column) ||
-    // is-null and not-null operators are available only in custom expressions
-    // for these column types
+    // these types have their own filterParts
     isStringOrStringLike(column) ||
-    isCoordinate(column)
+    isNumeric(column) ||
+    isBoolean(column) ||
+    isTemporal(column)
   ) {
     return null;
   }
