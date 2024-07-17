@@ -325,18 +325,19 @@
                                             :details {:db "my_db"}})
                 db   (t2/select-one :model/Database (:id resp))]
             (is (malli= [:merge
-                         (into [:map] (m/map-vals (fn [v] [:fn #(= % v)]) (mt/object-defaults Database)))
+                         (into [:map] (m/map-vals (fn [v] [:= {} v]) (mt/object-defaults Database)))
                          [:map
-                          [:metadata_sync_schedule #"0 \d{1,2} \* \* \* \? \*"]
+                          [:settings                    :nil]
+                          [:metadata_sync_schedule      #"0 \d{1,2} \* \* \* \? \*"]
                           [:cache_field_values_schedule #"0 \d{1,2} \d{1,2} \* \* \? \*"]
-                          [:created_at (ms/InstanceOfClass java.time.temporal.Temporal)]
-                          [:engine     [:= ::test-driver]]
-                          [:id         ms/PositiveInt]
-                          [:details    [:fn #(= % {:db "my_db"})]]
-                          [:updated_at (ms/InstanceOfClass java.time.temporal.Temporal)]
-                          [:name       ms/NonBlankString]
-                          [:features   [:= (driver.u/features ::test-driver (mt/db))]]
-                          [:creator_id [:= (mt/user->id :crowberto)]]]]
+                          [:created_at                  (ms/InstanceOfClass java.time.temporal.Temporal)]
+                          [:engine                      [:= ::test-driver]]
+                          [:id                          ms/PositiveInt]
+                          [:details                     [:fn #(= % {:db "my_db"})]]
+                          [:updated_at                  (ms/InstanceOfClass java.time.temporal.Temporal)]
+                          [:name                        ms/NonBlankString]
+                          [:features                    [:= (driver.u/features ::test-driver (mt/db))]]
+                          [:creator_id                  [:= (mt/user->id :crowberto)]]]]
                         db))
             (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
                    (task.sync-databases-test/query-all-db-sync-triggers-name db)))))))))
