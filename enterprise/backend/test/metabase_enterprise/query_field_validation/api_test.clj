@@ -87,9 +87,12 @@
   ([expected actual]
    (resp= expected actual nil))
   ([expected actual unexpected]
+   ;; CI is swallowing 500 errors; here's a cheeky way to surface them
+   (is (empty? (filter some? ((juxt :via :trace) actual))))
    (is (<= (:total expected)  (:total actual)))
    (is (=  (:limit expected)  (:limit actual)))
    (is (=  (:offset expected) (:offset actual)))
+   (is (some? (:data actual)))
    (is (mt/ordered-subset? (:data expected)
                            (map #(select-keys % (keys (first (:data expected)))) (:data actual)) approx=))
    (is (none-found? unexpected (:data actual)))))
