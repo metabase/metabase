@@ -27,27 +27,37 @@
 
 (defn- cards-with-inactive-fields
   [sort-column sort-direction offset limit]
-  (let [additional-joins      (condp = sort-column
+  (let [sort-dir-kw           (keyword sort-direction)
+        additional-joins      (condp = sort-column
                                 "name"           []
-                                "collection"     [[(t2/table-name :model/Collection) :coll] [:= :coll.id :c.collection_id]]
+                                "collection"     [[(t2/table-name :model/Collection) :coll] [:or
+                                                                                             [:= :coll.id :c.collection_id]
+                                                                                             [:= nil :c.collection_id]]]
                                 "created_by"     [[(t2/table-name :model/User) :u] [:= :u.id :c.creator_id]]
                                 "last_edited_at" [])
         order-by-column       (condp = sort-column
-                                "name"           :c.name
-                                "collection"     :coll.name
-                                "created_by"     [:coalesce [:|| :u.first_name " " :u.last_name] :u.first_name :u.last_name :u.email]
-                                "last_edited_at" :c.updated_at)
+                                "name"           [[:c.name sort-dir-kw]]
+                                "collection"     [[[:case [:= nil :coll.name] 0 :else 1] sort-dir-kw]
+                                                  [:coll.name sort-dir-kw]]
+                                "created_by"     [[[:coalesce [:|| :u.first_name " " :u.last_name]
+                                                    :u.first_name :u.last_name :u.email]
+                                                   sort-dir-kw]]
+                                "last_edited_at" [[:c.updated_at sort-dir-kw]])
         extra-selects         (condp = sort-column
-                                "created_by" [:u.first_name :u.last_name :u.email]
-                                [order-by-column])
+                                "name"           [:c.name]
+                                "collection"     [:coll.name]
+                                "created_by"     [:u.first_name :u.last_name :u.email]
+                                "last_edited_at" [:c.updated_at])
         cards                 (t2/select :model/Card
                                          (m/assoc-some
                                           {:select-distinct (into [:c.*] extra-selects)
                                            :from            [[(t2/table-name :model/Card) :c]]
-                                           :join            (concat card-joins additional-joins)
+                                           :join            card-joins
+                                           :left-join       additional-joins
                                            :where           [:= :c.archived false]
-                                           :order-by        [[order-by-column (keyword sort-direction)]]}
-                                          :limit limit
+                                           :order-by        order-by-column
+                                           :group-by        :c.id}
+                                          :limit  limit
                                           :offset offset))
         card-id->query-fields (when (seq cards)
                                 (group-by :card_id (t2/select :model/QueryField
