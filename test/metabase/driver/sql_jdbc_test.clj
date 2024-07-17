@@ -202,7 +202,7 @@
                            :query {:source-table (str "card__" (:id card))}}]
           (are [expected filt]
             (= expected
-                 (mt/rows (qp/process-query (assoc-in model-query [:query :filter] filt))))
+               (mt/rows (qp/process-query (assoc-in model-query [:query :filter] filt))))
             [[uuid]] [:= (:field_ref col-metadata) [:value (str uuid) {:base_type :type/UUID}]]
             [[uuid]] [:= (:field_ref col-metadata) (str uuid)]
             [[uuid]] [:!= (:field_ref col-metadata) (str (random-uuid))]
@@ -232,11 +232,21 @@
             [[uuid]] [:!= (:field_ref col-metadata) nil]
             [] [:= (:field_ref col-metadata) nil])
           (testing ":= uses indexable query"
-            (is (= [:= [:metabase.util.honey-sql-2/identifier :field [(second (:field_ref col-metadata))]] uuid]
-                   (sql.qp/->honeysql
-                     driver/*driver*
-                     [:= (:field_ref col-metadata) [:value (str uuid) {:base_type :type/UUID}]])))
-            (is (= [:= [:metabase.util.honey-sql-2/identifier :field [(second (:field_ref col-metadata))]] uuid]
-                   (sql.qp/->honeysql
-                     driver/*driver*
-                     [:= (:field_ref col-metadata) uuid])))))))))
+            (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [(second (:field_ref col-metadata))]]
+                     (some-fn #(= uuid %)
+                              #(= [:metabase.util.honey-sql-2/typed
+                                   [:cast (str uuid) [:raw "uuid"]]
+                                   {:database-type "uuid"}]
+                                  %))]
+                    (sql.qp/->honeysql
+                      driver/*driver*
+                      [:= (:field_ref col-metadata) [:value (str uuid) {:base_type :type/UUID}]])))
+            (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [(second (:field_ref col-metadata))]]
+                     (some-fn #(= uuid %)
+                              #(= [:metabase.util.honey-sql-2/typed
+                                   [:cast (str uuid) [:raw "uuid"]]
+                                   {:database-type "uuid"}]
+                                  %))]
+                    (sql.qp/->honeysql
+                      driver/*driver*
+                      [:= (:field_ref col-metadata) uuid])))))))))

@@ -588,7 +588,7 @@
                    (try
                      (UUID/fromString value)
                      (catch IllegalArgumentException _
-                       (h2x/with-type-info value {:database-type "text"}))))
+                       (h2x/with-type-info value {:database-type "varchar"}))))
       (->honeysql driver value))))
 
 (defmethod ->honeysql [:sql :expression]
@@ -1313,8 +1313,10 @@
                  :type/UUID)
            ;; If we could not convert the arg to a UUID then we have to cast the Field.
            ;; This will not hit indexes, but then we're passing an arg that can only be compared textually.
-           (not (uuid? (->honeysql driver arg))))
-    [::cast field "text"]
+           (not (uuid? (->honeysql driver arg)))
+           ;; Check for inlined values
+           (not (= (:database-type (h2x/type-info (->honeysql driver arg))) "uuid")))
+    [::cast field "varchar"]
     field))
 
 (mu/defn ^:private maybe-cast-uuid-for-text-compare
@@ -1324,7 +1326,7 @@
   (if (isa? (or (:effective-type (get field 2))
                 (:base-type (get field 2)))
             :type/UUID)
-    [::cast field "text"]
+    [::cast field "varchar"]
     field))
 
 (defmethod ->honeysql [:sql ::cast]

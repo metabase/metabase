@@ -189,6 +189,11 @@
     (sql.qp/inline-value driver (t/offset-date-time t))
     (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-id t))))
 
+(defmethod sql.qp/inline-value [:athena UUID]
+  [_driver uuid]
+  ;; since we inline, we need to cast to string to uuid
+  (format "cast('%s' as uuid)" uuid))
+
 ;;; for some evil reason Athena expects `OFFSET` *before* `LIMIT`, unlike every other database in the known universe; so
 ;;; we'll have to have a custom implementation of `:page` here and do our own version of `:offset` that comes before
 ;;; `LIMIT`.
