@@ -154,7 +154,8 @@
               :is_sample                   false
               :name                        (u.random/random-name)
               :metadata_sync_schedule      "0 50 * * * ? *"
-              :cache_field_values_schedule "0 50 0 * * ? *"}))
+              :cache_field_values_schedule "0 50 0 * * ? *"
+              :settings                    {:database-source-dataset-name "test-data"}}))
 
    :model/Dimension
    (fn [_] (default-timestamped

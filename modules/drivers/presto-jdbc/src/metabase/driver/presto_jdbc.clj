@@ -181,6 +181,10 @@
 
 ;; See https://prestodb.io/docs/current/functions/datetime.html
 
+(defmethod sql.qp/inline-value [:presto-jdbc OffsetTime]
+  [_driver t]
+  (format "time '%s %s'" (t/local-time t) (t/zone-offset t)))
+
 (defmethod sql.qp/inline-value [:presto-jdbc OffsetDateTime]
   [_driver t]
   (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t)))

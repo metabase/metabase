@@ -2036,40 +2036,43 @@
                                                  {:settings m})
                     (is (=? {:id (mt/id)}
                             <>)))))]
-        (testing "Should initially be nil"
-          (is (nil? (settings))))
+        (testing "Should not contain :unaggregated-query-row-limit"
+          (is (=? {:unaggregated-query-row-limit (symbol "nil #_\"key is not present.\"")}
+                  (settings))))
         (testing "Set initial value"
           (testing "response"
-            (is (partial= {:settings {:unaggregated-query-row-limit 1337}}
-                          (set-settings! {:unaggregated-query-row-limit 1337}))))
+            (is (=? {:settings {:unaggregated-query-row-limit 1337}}
+                    (set-settings! {:unaggregated-query-row-limit 1337}))))
           (testing "App DB"
-            (is (= {:unaggregated-query-row-limit 1337}
-                   (settings)))))
+            (is (=? {:unaggregated-query-row-limit 1337}
+                    (settings)))))
         (testing "Setting a different value should not affect anything not specified (PATCH-style update)"
           (testing "response"
-            (is (partial= {:settings {:unaggregated-query-row-limit   1337
-                                      :database-enable-actions true}}
-                          (set-settings! {:database-enable-actions true}))))
+            (is (=? {:settings {:unaggregated-query-row-limit 1337
+                                :database-enable-actions      true}}
+                    (set-settings! {:database-enable-actions true}))))
           (testing "App DB"
-            (is (= {:unaggregated-query-row-limit   1337
-                    :database-enable-actions true}
-                   (settings)))))
+            (is (=? {:unaggregated-query-row-limit 1337
+                     :database-enable-actions      true}
+                    (settings)))))
         (testing "Update existing value"
           (testing "response"
-            (is (partial= {:settings {:unaggregated-query-row-limit   1337
-                                      :database-enable-actions false}}
-                          (set-settings! {:database-enable-actions false}))))
+            (is (=? {:settings {:unaggregated-query-row-limit 1337
+                                :database-enable-actions      false}}
+                    (set-settings! {:database-enable-actions false}))))
           (testing "App DB"
-            (is (= {:unaggregated-query-row-limit   1337
-                    :database-enable-actions false}
-                   (settings)))))
+            (is (=? {:unaggregated-query-row-limit 1337
+                     :database-enable-actions      false}
+                    (settings)))))
         (testing "Unset a value"
           (testing "response"
-            (is (partial= {:settings {:database-enable-actions false}}
-                          (set-settings! {:unaggregated-query-row-limit nil}))))
+            (is (=? {:settings {:database-enable-actions      false
+                                :unaggregated-query-row-limit (symbol "nil #_\"key is not present.\"")}}
+                    (set-settings! {:unaggregated-query-row-limit nil}))))
           (testing "App DB"
-            (is (= {:database-enable-actions false}
-                   (settings)))))))))
+            (is (=? {:database-enable-actions      false
+                     :unaggregated-query-row-limit (symbol "nil #_\"key is not present.\"")}
+                    (settings)))))))))
 
 (deftest log-an-error-if-contains-undefined-setting-test
   (testing "should log an error message if database contains undefined settings"
