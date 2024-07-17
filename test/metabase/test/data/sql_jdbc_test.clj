@@ -17,6 +17,6 @@
       ;; force loading of test-data
       (mt/db)
       (testing "should return true for test-data"
-        (is (tx/dataset-already-loaded? :h2 "test-data")))
+        (is (tx/dataset-already-loaded? driver/*driver* "test-data")))
       (testing "should return false for dataset that definitely does not exist"
-        (is (not (tx/dataset-already-loaded? :h2 "test-dataaaaa")))))))
+        (is (not (tx/dataset-already-loaded? driver/*driver* "test-dataaaaa")))))))
