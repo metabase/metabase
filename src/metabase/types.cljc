@@ -253,6 +253,17 @@
 (derive :type/DruidHyperUnique :type/field-values-unsupported)
 (derive :type/DruidJSON :type/field-values-unsupported)
 
+;;; The Snowflake `VARIANT` type is allowed to be anything, so just mark it as deriving from the core root types so
+;;; we're allowed to use any sort of filter with it (whether it makes sense or not). See
+;;; https://docs.snowflake.com/en/sql-reference/data-types-semistructured
+(doseq [t [:type/Number
+           :type/Text
+           :type/Temporal
+           :type/Boolean
+           :type/Collection
+           :type/field-values-unsupported]]
+  (derive :type/SnowflakeVariant t))
+
 ;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced
 ;;; filter options like starts with / contains
 
@@ -292,7 +303,6 @@
 ;;
 ;; but for the time being we'll have to live with these being "weird" semantic types.
 (derive :type/Structured :Semantic/*)
-(derive :type/Structured :type/Text)
 
 (derive :type/SerializedJSON :type/Structured)
 (derive :type/XML :type/Structured)
