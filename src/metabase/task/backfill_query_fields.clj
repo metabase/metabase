@@ -2,25 +2,29 @@
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.models.query-field :as query-field]
+   [metabase.query-analysis :as query-analysis]
    [metabase.task :as task]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (org.quartz DisallowConcurrentExecution)))
 
 (set! *warn-on-reflection* true)
 
-(defn- backfill-query-fields! []
-  (let [cards (t2/reducible-select :model/Card :id [:in {:from      [[:report_card :c]]
-                                                         :left-join [[:query_field :f] [:= :f.card_id :c.id]]
-                                                         :select    [:c.id]
-                                                         :where     [:and
-                                                                     [:not :c.archived]
-                                                                     [:= :f.id nil]]}])]
-    (run! query-field/update-query-fields-for-card! cards)))
+(defn- backfill-missing-query-fields!
+  ([]
+   (backfill-missing-query-fields! query-analysis/analyze-sync!))
+  ([analyze-fn]
+   (let [cards (t2/reducible-select [:model/Card :id]
+                                    {:left-join [[:query_field :f] [:= :f.card_id :report_card.id]]
+                                     :where     [:and
+                                                 [:not :report_card.archived]
+                                                 [:= :f.id nil]]})]
+     (run! analyze-fn cards))))
 
-(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Backfill QueryField for cards created earlier. Runs once per instance."}
-  BackfillQueryField [_ctx]
-  (backfill-query-fields!))
+(jobs/defjob ^{DisallowConcurrentExecution true
+               :doc                        "Backfill QueryField for cards created earlier. Runs once per instance."}
+             BackfillQueryField [_ctx]
+  (backfill-missing-query-fields!))
 
 (defmethod task/init! ::BackfillQueryField [_]
   (let [job     (jobs/build

@@ -2273,6 +2273,8 @@
   (is (malli= [:map {:closed true} [:revision :int]]
               (mt/user-http-request :crowberto
                                     :put 200
-                                    "collection/graph?skip_graph=true"
-                                    {:revision (c-perm-revision/latest-id) :groups {}}))
+                                    "collection/graph"
+                                    {:revision (c-perm-revision/latest-id)
+                                     :groups {}
+                                     :skip_graph true}))
       "PUTs with skip_graph should not return the coll permission graph."))

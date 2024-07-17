@@ -47,7 +47,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     });
   });
 
-  it.skip("should drill to a question with multi-value 'contains' filter applied (metabase#42999)", () => {
+  it("should drill to a question with multi-value 'contains' filter applied (metabase#42999)", () => {
     setFilter("Text or Category", "Contains");
     cy.findAllByRole("radio", { name: "Multiple values" }).should("be.checked");
     cy.findByTestId("visualization-root").findByText("Select…").click();

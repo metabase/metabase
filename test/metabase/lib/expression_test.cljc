@@ -518,7 +518,7 @@
 (deftest ^:parallel diagnose-expression-test-4-offset-not-allowed-in-expressions
   (testing "adding/editing an expression using offset is not allowed"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
-      (is (=? {:message "OFFSET is not supported in custom expressions"}
+      (is (=? {:message "OFFSET is not supported in custom columns"}
               (lib.expression/diagnose-expression query 0 :expression
                                                   (lib/offset (meta/field-metadata :orders :subtotal) -1)
                                                   nil))))))

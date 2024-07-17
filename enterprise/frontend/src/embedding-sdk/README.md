@@ -235,6 +235,14 @@ export default function App() {
 }
 ```
 
+You can pass parameter values to questions defined with SQL via `parameterValues` prop,
+in the format of `{parameter_name: parameter_value}`. Refer to the [SQL parameters](https://www.metabase.com/docs/v0.50/questions/native-editor/sql-parameters.html)
+documentation for more information.
+
+```jsx
+<StaticQuestion questionId={questionId} parameterValues={{product_id: 50}} />
+```
+
 ### Embedding an interactive question (with drill-down)
 
 ```typescript jsx
@@ -561,9 +569,10 @@ const theme = {
       },
     },
 
-    // Numerical value display
-    scalar: {
-      // The primary value to display
+    // Number chart
+    number: {
+      // Value displayed on number charts.
+      // This also applies to the primary value in trend charts.
       value: {
         fontSize: "24px",
         lineHeight: "21px",
@@ -835,6 +844,25 @@ return (
 );
 ```
 
+### Getting Metabase authentication status
+
+You can query the Metabase authentication status using the `useMetabaseAuthStatus` hook.
+This is useful if you want to completely hide Metabase components when the user is not authenticated.
+
+This hook can only be used within components wrapped by `MetabaseProvider`.
+
+```jsx
+const auth = useMetabaseAuthStatus()
+
+if (auth.status === "error") {
+  return <div>Failed to authenticate: {auth.error.message}</div>
+}
+
+if (auth.status === "success") {
+  return <InteractiveQuestion questionId={110} />;
+}
+```
+
 ### Reloading Metabase components
 
 In case you need to reload a Metabase component, for example, your users modify your application data and that data is used to render a question in Metabase. If you embed this question and want to force Metabase to reload the question to show the latest data, you can do so by using the `key` prop to force a component to reload.
@@ -892,6 +920,7 @@ async function fetchRefreshToken(url) {
 }
 
 // Pass this configuration to MetabaseProvider.
+// Wrap the fetchRequestToken function in useCallback if it has dependencies to prevent re-renders.
 const config = { fetchRefreshToken };
 ```
 

@@ -6,8 +6,10 @@ export type EmbedTitledControls = {
 };
 
 export type EmbedHideDownloadButton = boolean | null;
+export type EmbedDownloadsEnabled = boolean | null;
 export type EmbedHideDownloadButtonControls = {
   hideDownloadButton: EmbedHideDownloadButton;
+  downloadsEnabled: EmbedDownloadsEnabled;
 };
 
 export type EmbedHideParameters = string | null;
@@ -15,13 +17,16 @@ export type EmbedHideParametersControls = {
   hideParameters: EmbedHideParameters;
 };
 
+export type EmbedNightModeControls = {
+  hasNightModeToggle: boolean;
+  onNightModeChange: (isNightMode: boolean) => void;
+  isNightMode: boolean;
+};
+
 export type EmbedThemeControls = {
   theme: DisplayTheme;
   setTheme: (theme: DisplayTheme) => void;
-  hasNightModeToggle?: boolean;
-  onNightModeChange?: (isNightMode: boolean) => void;
-  isNightMode?: boolean;
-};
+} & EmbedNightModeControls;
 
 export type EmbedFont = string | null;
 export type EmbedFontControls = {
@@ -33,10 +38,10 @@ export type EmbedDisplayParams = {
   bordered: boolean;
   titled: EmbedTitle;
   cardTitled: EmbedTitle;
-  hideDownloadButton: EmbedHideDownloadButton;
   hideParameters: EmbedHideParameters;
   font: EmbedFont;
   theme: DisplayTheme;
+  downloadsEnabled: boolean;
 };
 
 export type EmbedDisplayControls = EmbedThemeControls &

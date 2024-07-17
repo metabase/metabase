@@ -23,7 +23,7 @@ export const AddQuestionButton = () => {
       icon="add"
       isActive={sidebar.name === SIDEBAR_NAME.addQuestion}
       onClick={() => dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion))}
-      aria-label={t`Add questions`}
+      aria-label={addQuestionButtonHint}
     />
   );
 };

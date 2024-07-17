@@ -1,6 +1,8 @@
-(ns metabase.test.util.async
+(ns ^{:added "0.50.0"} metabase.test.util.async
   (:require
    [clojure.core.async :as a]))
+
+(set! *warn-on-reflection* true)
 
 (defmacro with-open-channels
   "Like [[with-open]], but closes core.async channels at the conclusion of `body`."

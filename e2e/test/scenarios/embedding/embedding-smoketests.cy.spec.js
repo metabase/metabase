@@ -36,7 +36,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
     cy.findByTestId("view-footer").within(() => {
       cy.icon("download").should("exist");
-      cy.icon("bell").should("exist");
+      cy.icon("bell").should("not.exist");
       cy.icon("share").should("not.exist");
     });
   });

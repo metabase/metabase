@@ -1,20 +1,26 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupPublicCardQueryEndpoints,
   setupPublicQuestionEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
+  getIcon,
+  queryIcon,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   createMockEmbedDataset,
   createMockPublicCard,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -59,7 +65,11 @@ jest.mock(
   () => VisualizationMock,
 );
 
-async function setup() {
+async function setup({
+  hash,
+}: {
+  hash?: string;
+} = {}) {
   setupPublicQuestionEndpoints(
     FAKE_UUID,
     createMockPublicCard({ name: QUESTION_NAME }),
@@ -76,13 +86,22 @@ async function setup() {
     {
       storeInitialState: createMockState(),
       withRouter: true,
-      initialRoute: `public/question/${FAKE_UUID}`,
+      initialRoute: `public/question/${FAKE_UUID}${hash ? "#" + hash : ""}`,
     },
   );
   expect(await screen.findByText(QUESTION_NAME)).toBeInTheDocument();
 }
 
 describe("PublicOrEmbeddedQuestion", () => {
+  beforeAll(() => {
+    mockSettings({
+      // the `whitelabel` feature is needed to test #downloads=false
+      "token-features": createMockTokenFeatures({ whitelabel: true }),
+    });
+
+    setupEnterprisePlugins();
+  });
+
   it("should render data", async () => {
     await setup();
     expect(await screen.findByText("John W.")).toBeInTheDocument();
@@ -104,5 +123,26 @@ describe("PublicOrEmbeddedQuestion", () => {
     expect(screen.getByTestId("settings")).toHaveTextContent(
       JSON.stringify({ foo: "bar" }),
     );
+  });
+
+  describe("downloads flag", () => {
+    it("should allow downloading the results when downloads are enabled", async () => {
+      await setup({ hash: "downloads=true" });
+      await waitForLoaderToBeRemoved();
+
+      await userEvent.click(getIcon("download"));
+
+      expect(
+        within(screen.getByRole("dialog")).getByText("Download full results"),
+      ).toBeInTheDocument();
+    });
+
+    it("should not allow downloading results when downloads are enabled", async () => {
+      await setup({ hash: "downloads=false" });
+
+      await waitForLoaderToBeRemoved();
+
+      expect(queryIcon("download")).not.toBeInTheDocument();
+    });
   });
 });
