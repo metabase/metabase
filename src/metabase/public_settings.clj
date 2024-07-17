@@ -931,3 +931,10 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    false
   :default    true
   :type       :boolean)
+
+(defsetting query-analysis-enabled
+  (deferred-tru "Whether or not we analyze any queries at all")
+  :visibility :internal
+  :export?    false
+  :default    true
+  :type       :boolean)

@@ -64,7 +64,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   table: {
     cell: {
       fontSize: FONT_SIZES.tableCell.px,
-      textColor: "var(--mb-color-text-dark)",
+      textColor: "var(--mb-color-text-primary)",
     },
     idColumn: {
       textColor: "var(--mb-color-brand)",

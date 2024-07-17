@@ -138,9 +138,12 @@ export type MetabaseComponentTheme = {
     };
   };
 
-  /** Numerical value display */
-  scalar?: {
-    /** The primary numerical value */
+  /** Number chart */
+  number?: {
+    /**
+     * Value displayed on number charts.
+     * This also applies to the primary value in trend charts.
+     **/
     value?: {
       fontSize?: CSSProperties["fontSize"];
       lineHeight?: string;

@@ -31270,7 +31270,7 @@ msgstr "Připojit"
 
 #: frontend/src/metabase/components/SchedulePicker/SchedulePicker.tsx:283
 msgid "your {0} timezone"
-msgstr "vaše {0} časová zóna"
+msgstr "vaší časové zóně {0}"
 
 #: frontend/src/metabase/dashboard/actions/tabs.ts:323
 msgid "Copy of {0}"
