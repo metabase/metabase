@@ -493,7 +493,13 @@ export function defaultFilterParts(
   }
 
   const [column] = args;
-  if (!isColumnMetadata(column)) {
+  if (
+    !isColumnMetadata(column) ||
+    // is-empty and not-empty operators are available only in custom expressions
+    // for these column types
+    isStringOrStringLike(column) ||
+    isCoordinate(column)
+  ) {
     return null;
   }
 

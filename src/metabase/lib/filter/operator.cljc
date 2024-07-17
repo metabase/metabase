@@ -67,8 +67,6 @@
    (operator-def :!=)
    (operator-def :contains)
    (operator-def :does-not-contain)
-   (operator-def :is-null)
-   (operator-def :not-null)
    (operator-def :is-empty)
    (operator-def :not-empty)
    (operator-def :starts-with)
@@ -77,8 +75,6 @@
 (def ^:private text-like-operators
   [(operator-def :=)
    (operator-def :!=)
-   (operator-def :is-null)
-   (operator-def :not-null)
    (operator-def :is-empty)
    (operator-def :not-empty)])
 

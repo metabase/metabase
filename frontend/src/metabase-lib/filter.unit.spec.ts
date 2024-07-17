@@ -1527,13 +1527,10 @@ describe("filter", () => {
   });
 
   describe("default filters", () => {
-    const tableName = "PRODUCTS";
-    const columnName = "CATEGORY";
-    const column = findColumn(query, tableName, columnName);
-
     it.each<Lib.DefaultFilterOperatorName>(["is-null", "not-null"])(
-      'should be able to create and destructure a default filter with "%s" operator',
+      'should be able to create and destructure a default filter numeric columns and "%s" operator',
       operator => {
+        const column = findColumn(query, "ORDERS", "TAX");
         const { filterParts, columnInfo } = addDefaultFilter(
           query,
           Lib.defaultFilterClause({
@@ -1546,16 +1543,40 @@ describe("filter", () => {
           operator,
           column: expect.anything(),
         });
-        expect(columnInfo?.name).toBe(columnName);
+        expect(columnInfo?.name).toBe("TAX");
+      },
+    );
+
+    it.each<Lib.DefaultFilterOperatorName>(["is-null", "not-null"])(
+      'should ignore expressions with string columns and "%s" operator',
+      operator => {
+        const column = findColumn(query, "PRODUCTS", "CATEGORY");
+        const { filterParts } = addDefaultFilter(
+          query,
+          Lib.expressionClause(operator, [column]),
+        );
+        expect(filterParts).toBeNull();
+      },
+    );
+
+    it.each<Lib.DefaultFilterOperatorName>(["is-null", "not-null"])(
+      'should ignore expressions with coordinate columns and "%s" operator',
+      operator => {
+        const column = findColumn(query, "PRODUCTS", "CATEGORY");
+        const { filterParts } = addDefaultFilter(
+          query,
+          Lib.expressionClause(operator, [column]),
+        );
+        expect(filterParts).toBeNull();
       },
     );
 
     it("should ignore expressions with not supported operators", () => {
+      const column = findColumn(query, "ORDERS", "TAX");
       const { filterParts } = addDefaultFilter(
         query,
-        Lib.expressionClause("=", [column, "Widget"]),
+        Lib.expressionClause("=", [column, 10]),
       );
-
       expect(filterParts).toBeNull();
     });
   });

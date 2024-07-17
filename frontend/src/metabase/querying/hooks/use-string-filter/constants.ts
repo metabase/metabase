@@ -2,9 +2,9 @@ import type * as Lib from "metabase-lib";
 
 import type { OperatorOption } from "./types";
 
-export const OPERATOR_OPTIONS_WITHOUT_NULL: Omit<
-  Record<Lib.StringFilterOperatorName, OperatorOption>,
-  "is-null" | "not-null"
+export const OPERATOR_OPTIONS: Record<
+  Lib.StringFilterOperatorName,
+  OperatorOption
 > = {
   "=": {
     operator: "=",
@@ -36,21 +36,6 @@ export const OPERATOR_OPTIONS_WITHOUT_NULL: Omit<
   },
   "not-empty": {
     operator: "not-empty",
-    type: "empty",
-  },
-};
-
-export const OPERATOR_OPTIONS: Record<
-  Lib.StringFilterOperatorName,
-  OperatorOption
-> = {
-  ...OPERATOR_OPTIONS_WITHOUT_NULL,
-  "is-null": {
-    operator: "is-null",
-    type: "empty",
-  },
-  "not-null": {
-    operator: "not-null",
     type: "empty",
   },
 };

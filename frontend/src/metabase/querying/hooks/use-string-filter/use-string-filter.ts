@@ -29,11 +29,9 @@ export function useStringFilter({
     [query, stageIndex, filter],
   );
 
-  const [initialOperator] = useState(filterParts?.operator);
-
   const availableOptions = useMemo(
-    () => getAvailableOptions(query, stageIndex, column, initialOperator),
-    [query, stageIndex, column, initialOperator],
+    () => getAvailableOptions(query, stageIndex, column),
+    [query, stageIndex, column],
   );
 
   const [operator, setOperator] = useState(() =>

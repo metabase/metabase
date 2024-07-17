@@ -59,10 +59,10 @@ function createQueryWithSegmentFilter() {
   return createFilteredQuery(query, segment);
 }
 
-function createQueryWithCustomStringFilter() {
+function createQueryWithNullStringFilter() {
   const query = createQuery();
   const column = findStringColumn(query);
-  const clause = Lib.expressionClause("concat", [column, column], null);
+  const clause = Lib.expressionClause("is-null", [column], null);
 
   return createFilteredQuery(query, clause);
 }
@@ -440,7 +440,7 @@ describe("FilterPicker", () => {
     });
 
     it("should open the expression editor for unsupported expressions", async () => {
-      setup(createQueryWithCustomStringFilter());
+      setup(createQueryWithNullStringFilter());
       expect(screen.getByLabelText("Expression")).toBeInTheDocument();
     });
 

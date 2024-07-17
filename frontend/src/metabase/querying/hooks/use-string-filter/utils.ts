@@ -4,7 +4,7 @@ import {
 } from "metabase/querying/utils/filters";
 import * as Lib from "metabase-lib";
 
-import { OPERATOR_OPTIONS, OPERATOR_OPTIONS_WITHOUT_NULL } from "./constants";
+import { OPERATOR_OPTIONS } from "./constants";
 import type { OperatorOption } from "./types";
 
 function isNotEmpty(value: string) {
@@ -15,14 +15,13 @@ export function getAvailableOptions(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
-  initialOperator: Lib.StringFilterOperatorName | undefined,
 ) {
-  const options =
-    initialOperator !== "is-null" && initialOperator !== "not-null"
-      ? OPERATOR_OPTIONS_WITHOUT_NULL
-      : OPERATOR_OPTIONS;
-
-  return getAvailableOperatorOptions(query, stageIndex, column, options);
+  return getAvailableOperatorOptions(
+    query,
+    stageIndex,
+    column,
+    OPERATOR_OPTIONS,
+  );
 }
 
 export function getOptionByOperator(operator: Lib.StringFilterOperatorName) {
