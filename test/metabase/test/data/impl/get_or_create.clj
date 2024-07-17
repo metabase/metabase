@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.models :refer [Database Field Table]]
@@ -15,6 +16,7 @@
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -24,6 +26,9 @@
 
 (defonce ^:private dataset-locks
   (atom {}))
+
+(defonce ^:private session-init-time
+  (t/offset-date-time))
 
 (defmulti dataset-lock
   "We'll have a very bad time if any sort of test runs that calls [[metabase.test.data/db]] for the first time calls it
@@ -147,50 +152,37 @@
   (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/create-queries :query-builder-and-native)
   (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/download-results :one-million-rows))
 
-(defonce ^:private driver->loaded-datasets
-  (atom {}))
-
-(defn- driver-has-loaded-dataset? [driver dbdef]
-  (let [datasets (get @driver->loaded-datasets driver)]
-    (contains? datasets (:database-name dbdef))))
-
-(defn- record-dataset-loaded!
-  "Record that we've loaded a test dataset for `driver` in the current session."
-  [driver dbdef]
-  (swap! driver->loaded-datasets update driver (fn [datasets]
-                                                 (conj (set datasets) (:database-name dbdef)))))
-
-;;; TODO -- every call to `destroy-db!` needs to call this as well
-(defn- record-dataset-destroyed!
-  "Record that we've destroyed a test dataset for `driver` in the current session."
-  [driver dbdef]
-  (swap! driver->loaded-datasets update driver (fn [datasets]
-                                                 (disj (set datasets) (:database-name dbdef)))))
-
 (defn- load-dataset-data-if-needed!
   "Create the test dataset and load its data if needed. No-ops if this was already done successfully during this
-  session."
-  [driver dbdef]
+  session.
+
+  You can use this from the REPL like
+
+    (load-dataset-data-if-needed!
+     driver
+     (tx/get-dataset-definition metabase.test.data.dataset-definitions/test-data))"
+  [driver {:keys [database-name], :as dbdef}]
+  (log/infof "Checking if test data for %s %s has already been loaded..." driver (pr-str database-name))
   ;; there's locking around this stuff elsewhere.
-  (if (driver-has-loaded-dataset? driver dbdef)
-    (log/errorf "Duplicate call to load test data detected and ignored: we have already loaded %s for driver %s"
-                (pr-str (:database-name dbdef))
-                driver)
+  (if (tx/dataset-already-loaded? driver database-name)
+    (log/infof "test dataset %s already loaded for driver %s; not reloading data."
+               (pr-str database-name)
+               driver)
     (u/with-timeout create-database-timeout-ms
       ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests.
       (test.tz/with-system-timezone-id! "UTC"
-        (tx/create-db! driver dbdef))
-      (record-dataset-loaded! driver dbdef))))
+        (tx/create-db! driver dbdef)))))
 
-(defn- create-and-sync-Database!
+(mu/defn ^:private create-and-sync-Database!
   "Add DB object to Metabase DB. Return an instance of `:model/Database`."
-  [driver {:keys [database-name], :as database-definition}]
+  [driver                                           :- :keyword
+   {:keys [database-name], :as database-definition} :- [:map [:database-name :string]]]
   (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
         db                 (first (t2/insert-returning-instances! Database
                                                                   (merge
                                                                    (t2.with-temp/with-temp-defaults :model/Database)
-                                                                   {:name    database-name
-                                                                    :engine  (u/qualified-name driver)
+                                                                   {:name    (tx/database-name-for-driver driver database-name)
+                                                                    :engine  driver
                                                                     :details connection-details})))]
     (sync-newly-created-database! driver database-definition connection-details db)
     (set-test-db-permissions! (u/the-id db))
@@ -205,7 +197,6 @@
     (catch Throwable e
       (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
       (tx/destroy-db! driver database-definition)
-      (record-dataset-destroyed! driver database-definition)
       (throw e))))
 
 (defn- create-database-with-bound-settings! [driver dbdef]
@@ -223,7 +214,7 @@
        thunk)
       (thunk))))
 
-(defn- create-database-with-write-lock! [driver {:keys [database-name], :as dbdef}]
+(defn- create-and-sync-database-with-write-lock! [driver {:keys [database-name], :as dbdef}]
   (let [lock (dataset-lock driver database-name)]
     (try
       (.. lock writeLock lock)
@@ -233,11 +224,40 @@
       (finally
         (.. lock writeLock unlock)))))
 
+(defn- reload-data-if-needed!
+  "If a test dataset was loaded before [[session-init-time]], get the write lock and
+  call [[load-dataset-data-if-needed!]] to make sure the test data is loaded; update the `created_at` timestamp so we
+  don't need to check again next time around."
+  [driver {:keys [database-name], :as dbdef} existing-database]
+  (log/debugf "Test data %s %s was loaded at %s; session started at %s"
+              driver (pr-str database-name) (:created_at existing-database) session-init-time)
+  (when (t/before? (:created_at existing-database) session-init-time)
+    (log/infof "Test data for %s %s was loaded by previous session, checking to see if data needs to be reloaded..."
+               driver
+               (pr-str database-name))
+    (let [lock (dataset-lock driver database-name)]
+      (try
+        (.. lock writeLock lock)
+        ;; once we acquire the write lock, check that the value of `created_at` hasn't been updated by another thread
+        ;; before reloading the data.
+        (when-let [created-at (t2/select-one-fn :created_at :model/Database :id (u/the-id existing-database))]
+          (when (t/before? created-at session-init-time)
+            (log/infof "Reloading test data for %s %s if needed..." driver (pr-str database-name))
+            ;; load the data again if needed.
+            (load-dataset-data-if-needed! driver dbdef)
+            ;; update the `created_at` timestamp for the test data so the next call to `get-or-create-database!` doesn't
+            ;; need to go thru this again.
+            (t2/update! :model/Database (u/the-id existing-database) {:created_at (t/offset-date-time)})))
+        (finally
+          (.. lock writeLock unlock))))))
+
 (defn default-get-or-create-database!
   "Default implementation of [[metabase.test.data.impl/get-or-create-database!]]."
   [driver dbdef]
   (initialize/initialize-if-needed! :plugins :db)
   (let [dbdef (tx/get-dataset-definition dbdef)]
     (or
-     (get-existing-database-with-read-lock driver dbdef)
-     (create-database-with-write-lock! driver dbdef))))
+     (when-let [existing-database (get-existing-database-with-read-lock driver dbdef)]
+       (reload-data-if-needed! driver dbdef existing-database)
+       existing-database)
+     (create-and-sync-database-with-write-lock! driver dbdef))))

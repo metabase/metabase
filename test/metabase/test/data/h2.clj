@@ -5,8 +5,6 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.h2]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.models.database :refer [Database]]
-   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -14,32 +12,13 @@
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql-jdbc.spec :as spec]
    [metabase.test.data.sql.ddl :as ddl]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (comment metabase.driver.h2/keep-me)
 
+(set! *warn-on-reflection* true)
+
 (sql-jdbc.tx/add-test-extensions! :h2)
-
-(defonce ^:private h2-test-dbs-created-by-this-instance (atom #{}))
-
-(defn- destroy-test-database-if-created-by-another-instance!
-  "For H2, test databases are all in-memory, which don't work if they're saved from a different REPL session or the
-  like. So delete any 'stale' in-mem DBs from the application DB when someone calls `get-or-create-database!` as
-  needed."
-  [database-name]
-  (when-not (contains? @h2-test-dbs-created-by-this-instance database-name)
-    (locking h2-test-dbs-created-by-this-instance
-      (when-not (contains? @h2-test-dbs-created-by-this-instance database-name)
-        (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
-        (t2/delete! Database :engine "h2", :name database-name)
-        (swap! h2-test-dbs-created-by-this-instance conj database-name)))))
-
-(defmethod data.impl/get-or-create-database! :h2
-  [driver dbdef]
-  (let [{:keys [database-name], :as dbdef} (tx/get-dataset-definition dbdef)]
-    (destroy-test-database-if-created-by-another-instance! database-name)
-    ((get-method data.impl/get-or-create-database! :default) driver dbdef)))
 
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
                                    :type/Boolean        "BOOLEAN"

@@ -81,9 +81,15 @@
                                 (->inline val)))))]
     ((get-method ddl/insert-rows-honeysql-form :sql/test-extensions) driver table-identifier rows)))
 
+;;; since we're not parameterizing these statements at all we can load data in bigger chunks than the default 200. For
+;;; bigger tables like ORDERS this means loading data takes ~11 seconds instead of ~60
+(defmethod load-data/chunk-size :sparksql
+  [_driver _dbdef _tabledef]
+  1000)
+
 (defmethod load-data/do-insert! :sparksql
-  [driver ^java.sql.Connection conn table-identifier row-or-rows]
-  (let [statements (ddl/insert-rows-ddl-statements driver table-identifier row-or-rows)]
+  [driver ^java.sql.Connection conn table-identifier rows]
+  (let [statements (ddl/insert-rows-ddl-statements driver table-identifier rows)]
     (try
       (.setAutoCommit conn true)
       (doseq [sql+args statements]

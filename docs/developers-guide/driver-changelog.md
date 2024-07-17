@@ -94,6 +94,10 @@ title: Driver interface changelog
     created automatically and passed in in the calling code. Update your method implementations and usages
     accordingly.
 
+- Added method `metabase.test.data.interface/dataset-already-loaded?` to check if a test dataset has already been
+  loaded. JDBC-based drivers have a default implementation that checks whether we can connect to the database; you may
+  need to override this for drivers that don't actually physically create new databases in tests.
+
 ## Metabase 0.50.0
 
 - The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to

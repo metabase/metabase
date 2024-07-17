@@ -2416,7 +2416,7 @@
                  (mt/test-drivers test-drivers
                    (let [db-def      {:database-name "field-test-db"}
                          data-source (load-from-h2-test/get-data-source driver/*driver* db-def)]
-                     (load-from-h2-test/create-current-database driver/*driver* db-def data-source)
+                     (load-from-h2-test/create-current-database! driver/*driver* db-def data-source)
                      (binding [mdb.connection/*application-db* (mdb.connection/application-db driver/*driver* data-source)]
                        (load-from-h2/load-from-h2! h2-filename)
                        (testing "The defective field should still exist after loading from H2"

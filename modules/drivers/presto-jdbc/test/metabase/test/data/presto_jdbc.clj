@@ -116,8 +116,8 @@
   #_(load-data/parallel-xform))
 
 (defmethod load-data/do-insert! :presto-jdbc
-  [driver ^java.sql.Connection conn table-identifier row-or-rows]
-  (let [statements (ddl/insert-rows-ddl-statements driver table-identifier row-or-rows)]
+  [driver ^java.sql.Connection conn table-identifier rows]
+  (let [statements (ddl/insert-rows-ddl-statements driver table-identifier rows)]
     (sql-jdbc.execute/do-with-connection-with-options
      driver
      {:connection conn}

@@ -255,7 +255,6 @@
   ([session-schema _ db-name table-name]            [session-schema (db-qualified-table-name db-name table-name)])
   ([session-schema _ db-name table-name field-name] [session-schema (db-qualified-table-name db-name table-name) field-name]))
 
-
 (defmulti metabase-instance
   "Return the Metabase object associated with this definition, if applicable. `context` should be the parent object (the
   actual instance, *not* the definition) of the Metabase object to return (e.g., a pass a `Table` to a
@@ -282,14 +281,18 @@
     (or (table-with-name (u/lower-case-en (:table-name this)))
         (table-with-name (db-qualified-table-name (:name database) (:table-name this))))))
 
-(defmethod metabase-instance DatabaseDefinition
-  [{:keys [database-name]} driver]
-  (assert (string? database-name))
-  (assert (keyword? driver))
+(defn database-name-for-driver
+  "Get the name for a test dataset for a driver, e.g. `test-data` for `:postgres` is `test-data (postgres)`."
+  [driver database-name]
+  (format "%s (%s)" database-name (u/qualified-name driver)))
+
+(mu/defmethod metabase-instance DatabaseDefinition :- [:maybe :map]
+  [{:keys [database-name]} :- [:map [:database-name :string]]
+   driver                  :- :keyword]
   (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
   (t2/select-one Database
-                 :name    database-name
-                 :engine (u/qualified-name driver)
+                 :name   (database-name-for-driver driver database-name)
+                 :engine driver
                  {:order-by [[:id :asc]]}))
 
 (declare after-run)
@@ -352,6 +355,23 @@
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
+;;; TODO -- ok, I'm thinking this should take `database-definition` instead of `dataset-name` so we can implement more
+;;; sophisticated checks if we want like check if the hash of the data matches or if all the tables exist/have the right
+;;; number of rows etc.
+(defmulti dataset-already-loaded?
+  "Check whether a dataset named by unique `dataset-name` has already been loaded, so we can skip the calls to
+  [[create-db!]] when adding a test dataset.
+
+  There is a default implementation for `:sql-jdbc` in [[metabase.test.data.sql-jdbc]]. Default implementation for
+  other drivers returns `false`."
+  {:arglists '([driver dataset-name]), :added "0.51.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod dataset-already-loaded? ::test-extensions
+  [_driver _dataset-name]
+  false)
+
 (defmulti create-db!
   "Create a new database from `database-definition`, including adding tables, fields, and foreign key constraints,
   and load the appropriate data. (This refers to creating the actual *DBMS* database itself, *not* a Metabase
@@ -359,8 +379,10 @@
 
   Optional key-value parameter `options`. Not currently used.
 
-  This method is not expected to return anything; use `dbdef->connection-details` to get connection details for this
-  database after you create it."
+  This method is not expected to return anything; you use [[dbdef->connection-details]] to get connection details for this
+  database after you create it.
+
+  Sync is done automatically with the newly created data."
   {:arglists '([driver database-definition & {:as _options}])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
@@ -382,7 +404,6 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod id-field-type ::test-extensions [_] :type/Integer)
-
 
 (defmulti sorts-nil-first?
   "Whether this database will sort nil values (of type `base-type`) before or after non-nil values. Defaults to `true`.

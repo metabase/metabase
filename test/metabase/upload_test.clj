@@ -363,7 +363,9 @@
 (defn do-with-upload-table! [table thunk]
   (try (thunk table)
        (finally
-         (when (not= driver/*driver* :redshift) ; redshift tests flake when tables are dropped
+         ;; I'm experimenting with disabling this, it seems preposterous that this would actually cause test flakes --
+         ;; Cam
+         (do #_when #_(not= driver/*driver* :redshift) ; redshift tests flake when tables are dropped
            (driver/drop-table! driver/*driver*
                                (:db_id table)
                                (#'upload/table-identifier table))))))

@@ -150,11 +150,22 @@
                     chunk-xform)]
     (reify clojure.lang.IReduceInit
       (reduce [_this rf init]
-        (let [rf (xform rf)]
-          (if chunk-size
-            (let [rf ((partition-all chunk-size) rf)]
-              (reduce rf init rows))
-            (rf init rows)))))))
+        (if chunk-size
+          ;; using `transduce` here inside a `reduce` implementation is a little questionable here but the transducer
+          ;; for `partition-all` doesn't actually work unless the completing arity gets called =(
+          (transduce
+           (comp (partition-all chunk-size)
+                 xform)
+           rf
+           init
+           rows)
+          ;; for chunk-size = nil simulate a single mega chunk by wrapping rows, that way the chunk-xform can still work
+          ;; the way we expect.
+          (transduce
+           xform
+           rf
+           init
+           [rows]))))))
 
 (deftest ^:parallel reducible-chunked-rows-test
   (letfn [(reducible-chunks* [chunk-size]
@@ -172,6 +183,12 @@
                {:c 3, :id 3, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}
                {:d 4, :id 4, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}]]
              (into [] (reducible-chunks* nil)))))
+    (testing "chunk size = 5"
+      (is (= [[{:a 1, :id 1, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}
+               {:b 2, :id 2, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}
+               {:c 3, :id 3, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}
+               {:d 4, :id 4, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}]]
+             (into [] (reducible-chunks* 5)))))
     (testing "chunk size = 2"
       (is (= [[{:a 1, :id 1, ::chunk [{:a 1, :id 1} {:b 2, :id 2}]}
                {:b 2, :id 2, ::chunk [{:a 1, :id 1} {:b 2, :id 2}]}]
@@ -230,6 +247,33 @@
                  {:name "Bar"}
                  {:name "Beer Garden"}]]
                (chunks ::h2-chunked)))))))
+
+(driver/register! ::h2-large-chunk-size, :parent :h2)
+
+(defmethod chunk-size ::h2-large-chunk-size
+  [_driver _dbdef _tabledef]
+  1000)
+
+(deftest ^:parallel large-chunk-size-test
+  (testing "Make sure we load EVERY row if we have chunks less than chunk-size"
+    (let [driver   ::h2-large-chunk-size
+          dbdef    (tx/get-dataset-definition metabase.test.data.dataset-definitions/test-data)
+          tabledef (fn [table-name]
+                     (m/find-first
+                      #(= (:table-name %) table-name)
+                      (:table-definitions dbdef)))
+          num-rows (fn [table-name]
+                     (transduce
+                      (keep (fn [chunk]
+                              (count chunk)))
+                      +
+                      0
+                      (reducible-chunks driver dbdef (tabledef table-name))))]
+      (assert (some? tabledef))
+      (are [table-name num-expected-rows] (= num-expected-rows
+                                             (num-rows table-name))
+        "people" 2500
+        "venues" 100))))
 
 (defn- load-data-for-table-definition!
   [driver ^java.sql.Connection conn dbdef tabledef]
