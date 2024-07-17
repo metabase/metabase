@@ -11,8 +11,8 @@ import type { WithRouterProps } from "react-router";
 import { useMount, usePrevious } from "react-use";
 import _ from "underscore";
 
-import { utf8_to_b64url, b64hash_to_utf8 } from "metabase/lib/encoding";
 import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { getMetadata } from "metabase/selectors/metadata";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import type { OnChangeCardAndRun } from "metabase/visualizations/types";
@@ -53,8 +53,7 @@ export function Visualizer({ router, location }: WithRouterProps) {
   } = useVisualizerSeries(getInitialCards(location), {
     onSeriesChange: nextSeries => {
       const cards = nextSeries.map(({ card }) => card);
-      const hash =
-        cards.length > 0 ? utf8_to_b64url(JSON.stringify(cards)) : "";
+      const hash = Urls.encodeVisualizerState(cards);
       router.push({ ...location, hash: hash ? `#${hash}` : undefined });
     },
   });
@@ -199,7 +198,7 @@ function getInitialCards(location: Location) {
     return [];
   }
   try {
-    const result = JSON.parse(b64hash_to_utf8(location.hash));
+    const result = Urls.decodeVisualizerState(location.hash);
     return Array.isArray(result) ? result : [];
   } catch (e) {
     // pass

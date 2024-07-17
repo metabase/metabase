@@ -4,6 +4,7 @@ import { useListCompatibleCardsQuery } from "metabase/api";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
 import { Menu, Text, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
@@ -28,7 +29,7 @@ export function CompatibleSeriesButton({ question }: { question: Question }) {
       <Menu.Dropdown>
         {compatibleCards.map(card => (
           <Menu.Item key={card.id}>
-            <Link to={`/v?c1=${mainCardId}&c2=${card.id}`}>
+            <Link to={Urls.visualizer([question.card(), card])}>
               <Text>{card.name}</Text>
             </Link>
           </Menu.Item>
