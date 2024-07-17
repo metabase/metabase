@@ -100,26 +100,6 @@
           (testing "channels that has no recipients are deleted"
             (is (false? (t2/exists? :model/PulseChannel pc-no-recipient)))))))))
 
-(deftest send-pulse!*-update-trigger-priority-test
-  (testing "send-pulse!* should update the priority of the trigger based on the duration of the pulse"
-    (pulse-channel-test/with-send-pulse-setup!
-     (with-redefs [task.send-pulses/ms-duration->priority (constantly 7)
-                   metabase.pulse/send-pulse!             (constantly nil)]
-       (mt/with-temp
-         [:model/Pulse        {pulse :id} {}
-          :model/PulseChannel {pc :id}    (merge
-                                           {:pulse_id     pulse
-                                            :channel_type :slack
-                                            :details      {:channel "#random"}}
-                                           daily-at-1am)]
-         (testing "priority is 6 to start with"
-           (is (= 6 (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority))))
-         (#'task.send-pulses/send-pulse!* daily-at-1am pulse #{pc})
-         (testing "send pulse should update its priority"
-           ;; 5 is the default priority of a trigger, we need it to be higher than that because
-           ;; pulse is time sensitive compared to other tasks like sync
-           (is (= 7 (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority)))))))))
-
 (deftest init-send-pulse-triggers!-group-runs-test
   (testing "a SendJob trigger will send pulse to channels that have the same schedueld time"
     (pulse-channel-test/with-send-pulse-setup!
