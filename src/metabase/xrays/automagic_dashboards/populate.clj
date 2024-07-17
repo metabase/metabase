@@ -328,7 +328,7 @@
                                                      (fn [dashcard card]
                                                        (m/assoc-some dashcard :card card))
                                                      dashcards
-                                                     (card/with-can-run-adhoc-query cards)))))]
+                                                     cards))))]
 
      (log/debugf "Adding %s cards to dashboard %s:\n%s"
                  (count cards)

@@ -159,39 +159,6 @@
             :when (seq table-ids)]
       (lib.metadata.protocols/metadatas mp :metadata/table table-ids))))
 
-(defn with-can-run-adhoc-query
-  "Adds can_run_adhoc_query to each card."
-  [cards]
-  (let [dataset-cards (filter (comp seq :dataset_query) cards)
-        source-card-ids (into #{}
-                              (keep (comp source-card-id :dataset_query))
-                              dataset-cards)]
-    ;; Prefetching code should not propagate any exceptions.
-    (when lib.metadata.jvm/*metadata-provider-cache*
-      (try
-        (prefetch-tables-for-cards! dataset-cards)
-      (catch Throwable t
-        (log/errorf t "Failed prefething cards `%s`." (pr-str (map :id dataset-cards))))))
-    (binding [query-perms/*card-instances*
-              (when (seq source-card-ids)
-                (t2/select-fn->fn :id identity [Card :id :collection_id] :id [:in source-card-ids]))]
-      (mi/instances-with-hydrated-data
-       cards :can_run_adhoc_query
-       (fn []
-         (into {}
-               (map
-                (fn [{card-id :id :keys [dataset_query]}]
-                  [card-id (query-perms/can-run-query? dataset_query)]))
-               dataset-cards))
-       :id
-       {:default false}))))
-
-(mi/define-batched-hydration-method add-can-run-adhoc-query
-  :can_run_adhoc_query
-  "Hydrate can_run_adhoc_query onto cards"
-  [cards]
-  (with-can-run-adhoc-query cards))
-
 (methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
   [_model k cards]
   (mi/instances-with-hydrated-data

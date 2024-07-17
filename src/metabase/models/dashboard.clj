@@ -484,9 +484,9 @@
                                                                :dataset_query
                                                                legacy-result-metadata-for-query)))
                             ;; Xrays populate this in their transient cards
-                           (dissoc :id :can_run_adhoc_query))))]
+                           (dissoc :id))))]
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
-      (t2/hydrate card :creator :dashboard_count :can_write :can_run_adhoc_query :collection))))
+      (t2/hydrate card :creator :dashboard_count :can_write :collection))))
 
 (defn- ensure-unique-collection-name
   [collection-name parent-collection-id]
