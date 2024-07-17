@@ -94,7 +94,7 @@ describe("scenarios > question > offset", () => {
 
       popover().within(() => {
         cy.button("Done").should("be.disabled");
-        cy.findByText("OFFSET is not supported in custom expressions").should(
+        cy.findByText("OFFSET is not supported in custom columns").should(
           "exist",
         );
       });
