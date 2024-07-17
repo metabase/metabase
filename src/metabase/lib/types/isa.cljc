@@ -56,6 +56,7 @@
                  ::lib.types.constants/foreign_key
                  ::lib.types.constants/primary_key
                  ::lib.types.constants/boolean
+                 ::lib.types.constants/structured
                  ::lib.types.constants/string
                  ::lib.types.constants/string_like
                  ::lib.types.constants/number]))
