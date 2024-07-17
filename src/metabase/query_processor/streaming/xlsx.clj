@@ -395,6 +395,35 @@
          (catch Exception _ value
                 value))))
 
+;; ColumnHelper hack.
+;;
+;; Starting with Apache POI 5.2.3, when a cell is added, its default style is computed from the styles of the whole
+;; column. When exporting big datasets, this creates a lot of unnecessary work. Unfortunately, there is no easy way to
+;; undo this other than hacking into private fields to replace the ColumnHelper object with our custom proxy.
+;;
+;; See https://github.com/apache/poi/blob/0dac5680/poi-ooxml/src/main/java/org/apache/poi/xssf/usermodel/helpers/ColumnHelper.java#L306.
+
+(defn- private-field ^java.lang.reflect.Field [object field-name]
+  (doto (.getDeclaredField (class object) field-name)
+    (.setAccessible true)))
+
+(defn- sxssfsheet->xssfsheet [sxssfsheet]
+  (.get (private-field sxssfsheet "_sh") sxssfsheet))
+
+(defn- xssfsheet->worksheet [xssfsheet]
+  (.get (private-field xssfsheet "worksheet") xssfsheet))
+
+(defn- no-style-column-helper
+  "Returns a proxy ColumnHelper that always returns `-1` (meaning empty style) as a default column style."
+  [worksheet]
+  (proxy [org.apache.poi.xssf.usermodel.helpers.ColumnHelper] [worksheet]
+    (getColDefaultStyle [idx] -1)))
+
+(defn- set-no-style-custom-helper [sxssfsheet]
+  (let [xssfsheet (sxssfsheet->xssfsheet sxssfsheet)
+        new-helper (no-style-column-helper (xssfsheet->worksheet xssfsheet))]
+    (.set (private-field xssfsheet "columnHelper") xssfsheet new-helper)))
+
 (defmulti ^:private add-row!
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
@@ -569,6 +598,7 @@
   [_ ^OutputStream os]
   (let [workbook          (SXSSFWorkbook.)
         sheet             (spreadsheet/add-sheet! workbook (tru "Query result"))
+        _                 (set-no-style-custom-helper sheet)
         data-format       (. workbook createDataFormat)
         cell-styles       (volatile! nil)
         typed-cell-styles (volatile! nil)
