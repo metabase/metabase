@@ -133,7 +133,9 @@
   (try
     (let [query (mbql.normalize/normalize query)]
       ;; if we are using a Card as our source, our perms are that Card's (i.e. that Card's Collection's) read perms
-      (if-let [source-card-id (qp.util/query->source-card-id query)]
+      (if-let [source-card-id (if already-preprocessed?
+                                (:qp/source-card-id query)
+                                (qp.util/query->source-card-id query))]
         {:paths (source-card-read-perms source-card-id)}
         ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
         (let [query               (cond-> query
@@ -263,7 +265,14 @@
 (mu/defn can-run-query?
   "Return `true` if the current user has sufficient permissions to run `query`, and `false` otherwise."
   [query]
-  (let [required-perms (required-perms-for-query query)]
+  (let [preprocessed-query (try ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query)
+                                (catch Exception e
+                                 (log/info e "Failed to preprocess query, falling back to unprocessed")
+                                 false))
+        query (or preprocessed-query query)
+        required-perms (required-perms-for-query query
+                                                 :already-preprocessed?
+                                                 (boolean preprocessed-query))]
     (check-data-perms query required-perms :throw-exceptions? false)))
 
 (defn can-query-table?
