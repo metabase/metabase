@@ -39,13 +39,28 @@ const TIME_FIELD = createMockField({
   semantic_type: null,
 });
 
+const UNKNOWN_FIELD = createMockField({
+  id: 103,
+  table_id: PEOPLE_ID,
+  name: "UNKNOWN",
+  display_name: "Unknown",
+  base_type: "type/*",
+  effective_type: "type/*",
+  semantic_type: null,
+});
+
 const DATABASE = createSampleDatabase({
   tables: [
     createOrdersTable(),
     createProductsTable(),
     createReviewsTable(),
     createPeopleTable({
-      fields: [...(PEOPLE_TABLE.fields ?? []), BOOLEAN_FIELD, TIME_FIELD],
+      fields: [
+        ...(PEOPLE_TABLE.fields ?? []),
+        BOOLEAN_FIELD,
+        TIME_FIELD,
+        UNKNOWN_FIELD,
+      ],
     }),
   ],
 });
@@ -213,12 +228,7 @@ describe("filter", () => {
       },
     );
 
-    it.each<Lib.StringFilterOperatorName>([
-      "is-empty",
-      "not-empty",
-      "is-null",
-      "not-null",
-    ])(
+    it.each<Lib.StringFilterOperatorName>(["is-empty", "not-empty"])(
       'should be able to create and destructure a string filter with "%s" operator without values',
       operator => {
         const { filterParts, columnInfo } = addStringFilter(
@@ -337,6 +347,21 @@ describe("filter", () => {
           options: {},
         });
         expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it.each<Lib.ExpressionOperatorName>(["is-null", "not-null"])(
+      "should ignore expressions with unsupported %s operator without values",
+      operator => {
+        const { filterParts } = addStringFilter(
+          query,
+          Lib.expressionClause(operator, [
+            findColumn(query, tableName, columnName),
+            "A",
+          ]),
+        );
+
+        expect(filterParts).toBeNull();
       },
     );
 
@@ -1528,7 +1553,27 @@ describe("filter", () => {
 
   describe("default filters", () => {
     it.each<Lib.DefaultFilterOperatorName>(["is-null", "not-null"])(
-      'should be able to create and destructure a default filter numeric columns and "%s" operator',
+      'should be able to create and destructure a default filter with unknown column types and "%s" operator',
+      operator => {
+        const column = findColumn(query, "PEOPLE", UNKNOWN_FIELD.name);
+        const { filterParts, columnInfo } = addDefaultFilter(
+          query,
+          Lib.defaultFilterClause({
+            operator,
+            column,
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+        });
+        expect(columnInfo?.name).toBe(UNKNOWN_FIELD.name);
+      },
+    );
+
+    it.each<Lib.DefaultFilterOperatorName>(["is-null", "not-null"])(
+      'should be able to create and destructure a default filter with numeric columns and "%s" operator',
       operator => {
         const column = findColumn(query, "ORDERS", "TAX");
         const { filterParts, columnInfo } = addDefaultFilter(
