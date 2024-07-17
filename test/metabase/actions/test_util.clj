@@ -291,7 +291,7 @@
 (defn do-with-actions-set!
   "Impl for [[with-actions-enabled]]."
   [enable? thunk]
-  (tu/with-temp-vals-in-db Database (data/id) {:settings (assoc (:settings (data/db)) :database-enable-actions enable?)}
+  (tu/with-temp-vals-in-db Database (data/id) {:settings {:database-enable-actions enable?}}
     (thunk)))
 
 ;;; TODO -- FIXME, rename this to `with-actions-enabled!` and remove the `:clj-kondo/ignore`
