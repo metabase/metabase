@@ -39,8 +39,8 @@
   (let [req (merge
              {:accept       :json
               :content-type :json
-              :method       :post}
-             {:url url}
+              :method       :post
+              :url          url}
              (when method
                {:method (keyword method)})
              (cond-> request

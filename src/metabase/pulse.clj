@@ -256,7 +256,9 @@
          :email (:email recipient)}
         {:kind :user
          :user recipient}))
-    []))
+    (do
+     (log/warnf "Unknown channel type %s" (:channel_type pulse-channel))
+     [])))
 
 (defn- channel-send!
   [& args]
@@ -318,17 +320,17 @@
                            messages (channel/render-notification (:type channel)
                                                                  (get-notification-info pulse parts pulse-channel)
                                                                  (channel-recipients pulse-channel))]
-                       (log/debugf "Rendered messages for %s %d to channel %s. Got %d"
+                       (log/debugf "Rendered %d messages for %s %d to channel %s"
+                                   (count messages)
                                    (alert-or-pulse pulse)
                                    (:id pulse)
-                                   (:type channel)
-                                   (count messages))
-                      (doseq [message messages]
-                        (log/debugf "Sending %s %d to channel %s"
-                                    (alert-or-pulse pulse)
-                                    (:id pulse)
-                                    (:channel_type pulse-channel))
-                        (send-retrying! channel message)))
+                                   (:type channel))
+                       (doseq [message messages]
+                         (log/debugf "Sending %s %d to channel %s"
+                                     (alert-or-pulse pulse)
+                                     (:id pulse)
+                                     (:channel_type pulse-channel))
+                         (send-retrying! channel message)))
                      (catch Exception e
                        (log/errorf e "Error sending %s %d to channel %s" (alert-or-pulse pulse) (:id pulse) (:channel_type pulse-channel)))))
           (when (:alert_first_only pulse)

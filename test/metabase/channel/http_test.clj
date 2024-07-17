@@ -303,10 +303,9 @@
          :model/PulseCard    _              {:pulse_id        pulse-id
                                              :card_id         card-id
                                              :position        0}
-         ;; channel is currently only used for http
-         :model/Channel      {chn-id :id} {:type    :channel/http
-                                           :details {:url         (str url (:path receive-route))
-                                                     :auth-method "none"}}
+         :model/Channel      {chn-id :id}  {:type    :channel/http
+                                            :details {:url         (str url (:path receive-route))
+                                                      :auth-method "none"}}
          :model/PulseChannel _             {:pulse_id     pulse-id
                                             :channel_type "http"
                                             :channel_id   chn-id}]
