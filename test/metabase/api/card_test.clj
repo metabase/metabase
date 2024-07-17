@@ -3421,7 +3421,7 @@
   including GET /api/collection/:id/items and GET /api/card/:id"
   [request]
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (mt/with-discard-model-updates [:model/Database] ; to restore any existing metabase_database.uploads_enabled=true
+    (mt/with-discard-model-updates! [:model/Database] ; to restore any existing metabase_database.uploads_enabled=true
       (mt/with-temp [:model/Database   {db-id :id}         {:engine driver/*driver*}
                      :model/Database   {other-db-id :id}   {:engine driver/*driver* :uploads_enabled true}
                      :model/Table      {table-id :id}      {:db_id db-id, :is_upload true}

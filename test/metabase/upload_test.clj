@@ -298,7 +298,7 @@
     :as options}
    f :- [:=> [:cat [:map [:id ::lib.schema.id/card]]] :any]]
   {:pre [(keyword? driver/*driver*)]}
-  (mt/with-discard-model-updates [:model/Database]
+  (mt/with-discard-model-updates! [:model/Database]
     (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
     (t2/update! :model/Database db-id {:uploads_enabled uploads-enabled})
     (mt/with-current-user user-id
@@ -341,7 +341,7 @@
 (defn do-with-uploads-enabled!
   "Set uploads_enabled to true the current database, and as an admin user, run the thunk"
   [thunk]
-  (mt/with-discard-model-updates [:model/Database]
+  (mt/with-discard-model-updates! [:model/Database]
     (t2/update! :model/Database (mt/id) {:uploads_enabled     true
                                          :uploads_schema_name (sql.tx/session-schema driver/*driver*)})
     (mt/with-current-user (mt/user->id :crowberto)
@@ -353,7 +353,7 @@
 (defn do-with-uploads-disabled!
   "Set uploads_enabled to false the current database, and as an admin user, run the thunk"
   [thunk]
-  (mt/with-discard-model-updates [:model/Database]
+  (mt/with-discard-model-updates! [:model/Database]
     (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
     (mt/with-current-user (mt/user->id :crowberto)
       (thunk))))
@@ -1282,7 +1282,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
-        (mt/with-discard-model-updates [:model/Database]
+        (mt/with-discard-model-updates! [:model/Database]
           ;; start with uploads disabled for all databases
           (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
           (testing "Updates fail if uploads are disabled for all databases."

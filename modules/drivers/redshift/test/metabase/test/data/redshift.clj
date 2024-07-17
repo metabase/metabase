@@ -123,27 +123,26 @@
   [^java.sql.Connection conn schemas]
   (let [threshold (t/minus (t/instant) (t/hours hours-before-expired-threshold))]
     (with-open [stmt (.createStatement conn)]
-      (let [classify! (fn [schema-name]
-                        (try (let [sql (format "select value from %s.cache_info where key = 'created-at'"
-                                               schema-name)
-                                   rset (.executeQuery stmt sql)]
-                               (if (.next rset)
-                                 (let [date-string (.getString rset "value")
-                                       created-at  (java.time.Instant/parse date-string)]
-                                   (if (t/before? created-at threshold)
-                                     :expired
-                                     :recent))
-                                 :lacking-created-at))
-                             (catch com.amazon.redshift.util.RedshiftException e
-                               (if (re-find #"relation .* does not exist" (or (ex-message e) ""))
-                                 :old-style-cache
-                                 (do (log/error e "Error classifying cache schema")
-                                     :unknown-error)))
-                             (catch Exception e
-                               (log/error e "Error classifying cache schema")
-                               :unknown-error)))]
-
-        (group-by classify! schemas)))))
+      (let [classify (fn [schema-name]
+                       (try (let [sql (format "select value from %s.cache_info where key = 'created-at'"
+                                              schema-name)]
+                              (with-open [rset (.executeQuery stmt sql)]
+                                (if (.next rset)
+                                  (let [date-string (.getString rset "value")
+                                        created-at  (java.time.Instant/parse date-string)]
+                                    (if (t/before? created-at threshold)
+                                      :expired
+                                      :recent))
+                                  :lacking-created-at)))
+                            (catch com.amazon.redshift.util.RedshiftException e
+                              (if (re-find #"relation .* does not exist" (or (ex-message e) ""))
+                                :old-style-cache
+                                (do (log/error e "Error classifying cache schema")
+                                    :unknown-error)))
+                            (catch Exception e
+                              (log/error e "Error classifying cache schema")
+                              :unknown-error)))]
+        (group-by classify schemas)))))
 
 (defn- delete-old-schemas!
   "Remove unneeded schemas from redshift. Local databases are thrown away after a test run. Shared cloud instances do

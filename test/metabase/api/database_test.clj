@@ -211,9 +211,9 @@
               (data-perms/set-table-permission! group table-id-2 :perms/create-queries :query-builder)
               (mt/user-http-request user :get 200 (format "database/%d" db-id))))))))
 
-(deftest ^:parallel get-database-can-upload-test
+(deftest get-database-can-upload-test
   (testing "GET /api/database"
-    (mt/with-discard-model-updates [:model/Database] ; to restore any existing metabase_database.uploads_enabled=true
+    (mt/with-discard-model-updates! [:model/Database] ; to restore any existing metabase_database.uploads_enabled=true
       (doseq [uploads-enabled? [true false]]
         (mt/with-temp [Database {db-id :id} {:engine          :postgres
                                              :name            "The Chosen One"
@@ -494,8 +494,10 @@
                       :name         "Cam's Awesome Toucan Database"
                       :is_full_sync false
                       :features     (driver.u/features :h2 curr-db)}
-                     (into {} curr-db)))))))))
+                     (into {} curr-db)))))))))))
 
+(deftest update-database-test-2
+  (testing "PUT /api/database/:id"
     (testing "should be able to set `auto_run_queries`"
       (testing "when creating a Database"
         (is (= {:auto_run_queries false}
@@ -505,16 +507,20 @@
           (let [updates {:auto_run_queries false}]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
           (is (= false
-                 (t2/select-one-fn :auto_run_queries Database, :id db-id))))))
+                 (t2/select-one-fn :auto_run_queries Database, :id db-id))))))))
 
+(deftest update-database-test-3
+  (testing "PUT /api/database/:id"
     (testing "should not be able to modify `cache_ttl` in OSS"
       (with-redefs [premium-features/enable-cache-granular-controls? (constantly false)]
         (t2.with-temp/with-temp [Database {db-id :id} {:engine ::test-driver}]
           (let [updates {:cache_ttl 13}]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
           (is (= nil
-                 (t2/select-one-fn :cache_ttl Database, :id db-id))))))
+                 (t2/select-one-fn :cache_ttl Database, :id db-id))))))))
 
+(deftest update-database-test-4
+  (testing "PUT /api/database/:id"
     (testing "should be able to set and unset `cache_ttl` in EE"
       (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
         (t2.with-temp/with-temp [Database {db-id :id} {:engine ::test-driver}]
@@ -937,7 +943,7 @@
            :is_saved_questions
            (mt/user-http-request :lucky :get 200 "database?saved=true"))))))
 
-(deftest ^:parallel databases-list-include-saved-questions-test-3
+(deftest databases-list-include-saved-questions-test-3
   (testing "GET /api/database?saved=true"
     (testing "Omit virtual DB if nested queries are disabled"
       (tu/with-temporary-setting-values [enable-nested-queries false]
@@ -1211,7 +1217,6 @@
                                                         :cache_field_values schedule-map-for-last-friday-at-11pm}
                                           :is_full_sync true
                                           :is_on_demand false})]
-            (def db db)
             (is (not= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                       (:metadata_sync_schedule db)))
             (is (not= (u.cron/schedule-map->cron-string schedule-map-for-last-friday-at-11pm)
@@ -1416,9 +1421,9 @@
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :post 403 (format "database/%d/discard_values" (mt/id)))))))
 
-(defn- api-validate-database
+(defn- api-validate-database!
   ([request-body]
-   (api-validate-database nil request-body))
+   (api-validate-database! nil request-body))
 
   ([{:keys [expected-status-code user]
      :or   {expected-status-code 200
@@ -1431,12 +1436,12 @@
   (with-redefs [h2/*allow-testing-h2-connections* true]
     (#'api.database/test-connection-details engine details)))
 
-(deftest ^:parallel validate-database-test
+(deftest validate-database-test
   (testing "POST /api/database/validate"
     (testing "Should require superuser permissions"
       (is (= "You don't have permissions to do that."
-             (api-validate-database {:user :rasta, :expected-status-code 403}
-                                    {:details {:engine :h2, :details (:details (mt/db))}}))))
+             (api-validate-database! {:user :rasta, :expected-status-code 403}
+                                     {:details {:engine :h2, :details (:details (mt/db))}}))))
 
     (testing "Underlying `test-connection-details` function should work"
       (is (= (:details (mt/db))
@@ -1444,7 +1449,7 @@
 
     (testing "Valid database connection details"
       (is (= (merge (:details (mt/db)) {:valid true})
-             (api-validate-database {:details {:engine :h2, :details (:details (mt/db))}}))))
+             (api-validate-database! {:details {:engine :h2, :details (:details (mt/db))}}))))
 
     (testing "invalid database connection details"
       (testing "calling test-connection-details directly"
@@ -1457,7 +1462,7 @@
         (is (= {:errors  {:db "check your connection string"}
                 :message "Implicitly relative file paths are not allowed."
                 :valid   false}
-               (api-validate-database {:details {:engine :h2, :details {:db "ABC"}}})))))))
+               (api-validate-database! {:details {:engine :h2, :details {:db "ABC"}}})))))))
 
 (deftest validate-database-test-2
   (testing "POST /api/database/validate"
@@ -1982,7 +1987,7 @@
   :visibility :internal
   :type :integer)
 
-(deftest ^:parallel database-local-settings-come-back-with-database-test
+(deftest database-local-settings-come-back-with-database-test
   (testing "Database-local Settings should come back with"
     (mt/with-temp-vals-in-db Database (mt/id) {:settings {:test-db-local-setting-public        1
                                                           :test-db-local-setting-authenticated 1

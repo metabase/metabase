@@ -890,10 +890,10 @@
   [collection-or-id & body]
   `(do-with-discarded-collections-perms-changes ~collection-or-id (fn [] ~@body)))
 
-(declare with-discard-model-updates)
+(declare with-discard-model-updates!)
 
-(defn do-with-discard-model-updates
-  "Impl for `with-discard-model-changes`."
+(defn do-with-discard-model-updates!
+  "Impl for [[with-discard-model-updates!]]."
   [models thunk]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-discard-model-changes")
   (if (= (count models) 1)
@@ -910,18 +910,18 @@
        (methodical/remove-aux-method-with-unique-key! #'t2.before-update/before-update :before model method-unique-key)
        (doseq [[id original-val] @pk->original]
          (t2/update! model id original-val)))))
-   (with-discard-model-updates (rest models)
+   (with-discard-model-updates! (rest models)
      (thunk))))
 
-(defmacro with-discard-model-updates
+(defmacro with-discard-model-updates!
   "Exceute `body` and makes sure that every updates operation on `models` will be reverted."
   [models & body]
   (if (> (count models) 1)
     (let [[model & more] models]
-      `(with-discard-model-updates [~model]
-         (with-discard-model-updates [~@more]
+      `(with-discard-model-updates! [~model]
+         (with-discard-model-updates! [~@more]
            ~@body)))
-    `(do-with-discard-model-updates ~models (fn [] ~@body))))
+    `(do-with-discard-model-updates! ~models (fn [] ~@body))))
 
 (deftest with-discard-model-changes-test
   (t2.with-temp/with-temp
@@ -930,7 +930,7 @@
     (let [count-aux-method-before (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))]
 
       (testing "with single model"
-        (with-discard-model-updates [:model/Card]
+        (with-discard-model-updates! [:model/Card]
           (t2/update! :model/Card card-id {:name "New Card name"})
           (testing "the changes takes affect inside the macro"
             (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))))
@@ -939,7 +939,7 @@
           (is (= card (t2/select-one :model/Card card-id)))))
 
       (testing "with multiple models"
-        (with-discard-model-updates [:model/Card :model/Dashboard]
+        (with-discard-model-updates! [:model/Card :model/Dashboard]
           (testing "the changes takes affect inside the macro"
             (t2/update! :model/Card card-id {:name "New Card name"})
             (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))
