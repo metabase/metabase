@@ -1002,6 +1002,19 @@ describe("issue 34514", () => {
       .click();
   });
 
+  it("should not make network request with invalid query (metabase#34514)", () => {
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+
+    cy.findByTestId("run-button").click();
+    assertQueryTabState();
+
+    cy.go("back");
+    assertBackToEmptyState();
+  });
+
   it("should allow browser history navigation between tabs (metabase#34514)", () => {
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
@@ -1015,19 +1028,6 @@ describe("issue 34514", () => {
     assertMetadataTabState();
 
     cy.go("back");
-    assertQueryTabState();
-
-    cy.go("back");
-    assertBackToEmptyState();
-  });
-
-  it("should not make network request with invalid query (metabase#34514)", () => {
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
-    });
-
-    cy.findByTestId("run-button").click();
     assertQueryTabState();
 
     cy.go("back");
