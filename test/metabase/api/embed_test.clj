@@ -1665,3 +1665,52 @@
                            (format "embed/dashboard/%s/dashcard/%s/card/%s/%s?format_rows=%s"
                                    (dash-token dashboard-id) dashcard-id card-id (name export-format) apply-formatting?))
                           ((get output-helper export-format))))))))))))
+
+(deftest filter-linked-to-locked-filter-test
+  (testing ""
+    (mt/dataset test-data
+      (with-embedding-enabled-and-new-secret-key
+        (t2.with-temp/with-temp [Card {card-id :id} {:enable_embedding true
+                                                     :display          :table
+                                                     :dataset_query    {:database (mt/id)
+                                                                        :type     :query
+                                                                        :query    {:source-table (mt/id :products)}}}
+                                 Dashboard {dashboard-id :id} {:enable_embedding true
+                                                               :parameters
+                                                               [{:name      "Category"
+                                                                 :slug      "category"
+                                                                 :id        "ad5f614b"
+                                                                 :type      :string/=
+                                                                 :sectionId "string"}
+                                                                {:name                "Title"
+                                                                 :slug                "title"
+                                                                 :id                  "7ef6f58c"
+                                                                 :type                :string/=
+                                                                 :sectionId           "string"
+                                                                 :filteringParameters ["ad5f614b"]}]
+                                                               :embedding_params {:category "locked"
+                                                                                  :title    "enabled"}}
+                                 DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                                  :card_id      card-id
+                                                                  :parameter_mappings
+                                                                  [{:parameter_id "ad5f614b"
+                                                                    :card_id      card-id
+                                                                    :target       [:dimension [:field (mt/id :products :category) {:base-type :type/Text}]]}
+                                                                   {:parameter_id "7ef6f58c"
+                                                                    :card_id      card-id
+                                                                    :target       [:dimension [:field (mt/id :products :title) {:base-type :type/Text}]]}]}]
+          (doseq [[params test-str] [#_[{} "Locked filter is not set in the token."]
+                                     [{:category ["Widget"]} "Locked filter is set to a list of values in the token."]
+                                     [{:category []}         "Locked filter is set to an empty list in the token."]
+                                     [{:category nil}        "Locked filter is set to `nil` (null in js code) in the token."]]]
+            (testing test-str
+              (let [token     (dash-token dashboard-id {:params params})
+                    row-count (-> (mt/user-http-request :crowberto :get 202
+                                                        (format "embed/dashboard/%s/dashcard/%s/card/%s" token dashcard-id card-id))
+                                  (get-in [:data :rows])
+                                  count)]
+                (is (= row-count
+                       (-> (mt/user-http-request :crowberto :get 200
+                                               (format "embed/dashboard/%s/params/%s/values" token "7ef6f58c"))
+                         :values
+                         count)))))))))))
