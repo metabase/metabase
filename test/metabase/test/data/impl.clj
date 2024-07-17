@@ -196,8 +196,8 @@
    table-name :- :string]
   (or (cached-table-id db-id table-name)
       (table-id-from-app-db db-id table-name)
-      (let [db-name                  (database-source-dataset-name (t2/select-one :model/Database :id db-id))
-            qualified-table-name     (tx/db-qualified-table-name db-name table-name)]
+      (let [db-name              (database-source-dataset-name (t2/select-one [:model/Database :settings] :id db-id))
+            qualified-table-name (tx/db-qualified-table-name db-name table-name)]
         (cached-table-id db-id qualified-table-name)
         (table-id-from-app-db db-id qualified-table-name))
       (throw-unfound-table-error db-id table-name)))
@@ -337,12 +337,13 @@
   "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
   false)
 
+;;; TODO -- this doesn't seem safe in parallel tests, right? Should this be renamed `do-with-temp-copy-of-db!`?
 (defn do-with-temp-copy-of-db
   "Internal impl of [[metabase.test/with-temp-copy-of-db]]. Run `f` with a temporary Database that copies the details
   from the standard test database, and syncs it."
   [f]
   (let [{old-db-id :id, :as old-db} (*db-fn*)
-        original-db (-> old-db copy-secrets (select-keys [:details :engine :name]))
+        original-db (-> old-db copy-secrets (select-keys [:details :engine :name :settings]))
         {new-db-id :id, :as new-db} (first (t2/insert-returning-instances! Database original-db))]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)
