@@ -927,7 +927,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting sql-parsing-enabled
   (deferred-tru "SQL Parsing is enabled. Please use [[query-analysis-native-disabled]] instead.")
-  :deprecated "0.50.14"
+  :deprecated "0.51.0"
   :visibility :internal
   :export?    false
   :default    true
