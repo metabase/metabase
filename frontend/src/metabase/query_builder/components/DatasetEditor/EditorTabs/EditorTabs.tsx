@@ -34,9 +34,8 @@ export function EditorTabs({
               onChange("query");
             }}
             aria-labelledby="editor-tabs-query-label"
-            data-testid="editor-tabs-query"
           />
-          <span data-testid="query-name">{t`Query`}</span>
+          <span>{t`Query`}</span>
         </Tab>
       </li>
 
@@ -60,7 +59,7 @@ export function EditorTabs({
             disabled={disabledMetadata}
             data-testid="editor-tabs-metadata"
           />
-          <span data-testid="metadata-name">{t`Metadata`}</span>
+          <span>{t`Metadata`}</span>
         </Tab>
       </li>
     </TabBar>
