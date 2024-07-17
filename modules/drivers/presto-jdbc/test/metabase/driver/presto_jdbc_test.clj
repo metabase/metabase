@@ -192,7 +192,7 @@
   (-> (:details (mt/db))
       (dissoc :ssl-keystore-id :ssl-keystore-password-id
               :ssl-truststore-id :ssl-truststore-password-id)
-      (merge (select-keys (data.presto-jdbc/dbdef->connection-details (:name (mt/db)))
+      (merge (select-keys (data.presto-jdbc/db-connection-details)
                           [:ssl-keystore-path :ssl-keystore-password-value
                            :ssl-truststore-path :ssl-truststore-password-value]))))
 

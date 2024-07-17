@@ -61,7 +61,7 @@
                              :type/TimeWithTZ             "TIME WITH TIME ZONE"}]
   (defmethod sql.tx/field-base-type->sql-type [:presto-jdbc base-type] [_ _] db-type))
 
-(defn dbdef->connection-details [_database-name]
+(defn db-connection-details []
   (let [base-details
         {:host                               (tx/db-test-env-var-or-throw :presto-jdbc :host "localhost")
          :port                               (tx/db-test-env-var :presto-jdbc :port "8080")
@@ -87,8 +87,8 @@
            :ssl-use-truststore (every? some? (map base-details [:ssl-truststore-path :ssl-truststore-password-value])))))
 
 (defmethod tx/dbdef->connection-details :presto-jdbc
-  [_driver _connection-type {:keys [database-name]}]
-  (dbdef->connection-details database-name))
+  [_driver _connection-type _dbdef]
+  (db-connection-details))
 
 (defmethod execute/execute-sql! :presto-jdbc
   [& args]

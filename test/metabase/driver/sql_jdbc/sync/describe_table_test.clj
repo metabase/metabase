@@ -19,6 +19,7 @@
    [metabase.models.table :refer [Table]]
    [metabase.sync :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.data.sql :as sql.tx]
    [metabase.timeseries-query-processor-test.util :as tqpt]
@@ -220,7 +221,7 @@
      nil
      (fn [conn]
        (is (= ["id"]
-              (sql-jdbc.describe-table/get-table-pks driver/*driver* conn (:name (mt/db)) (t2/select-one :model/Table (mt/id :venues)))))))))
+              (sql-jdbc.describe-table/get-table-pks driver/*driver* conn "test-data" (t2/select-one :model/Table (mt/id :venues)))))))))
 
 ;;; ------------------------------------------- Tests for netsed field columns --------------------------------------------
 
