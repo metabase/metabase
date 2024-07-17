@@ -68,7 +68,7 @@
   []
   (:count
    (first
-    (t2/query {:select [[:%count.* :count]]
+    (t2/query {:select [[[:count [:distinct :c.id]] :count]]
                :from   [[(t2/table-name :model/Card) :c]]
                :join   card-joins
                :where  [:= :c.archived false]}))))
