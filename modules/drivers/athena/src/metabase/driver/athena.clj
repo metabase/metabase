@@ -35,6 +35,7 @@
                               :foreign-keys                  true
                               :nested-fields                 false
                               :connection/multiple-databases true
+                              :identifiers-with-spaces       false
                               :metadata/key-constraints      false
                               :test/jvm-timezone-setting     false}]
   (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))

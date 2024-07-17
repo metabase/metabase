@@ -1466,9 +1466,8 @@
                                    [:field field-id nil]]}))))))))
 
 (deftest ^:parallel space-names-test
-  (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :identifiers-with-spaces)
-                                   #{:athena
-                                     :redshift})
+  (mt/test-drivers (set/union (mt/normal-drivers-with-feature :identifiers-with-spaces)
+                              (mt/normal-drivers-with-feature :left-join))
     (mt/dataset
       crazy-names
       (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))

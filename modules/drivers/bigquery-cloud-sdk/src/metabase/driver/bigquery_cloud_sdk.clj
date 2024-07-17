@@ -552,7 +552,6 @@
                               :datetime-diff            true
                               :expressions              true
                               :foreign-keys             true
-                              :left-join                true
                               :now                      true
                               :percentile-aggregations  true
                               :identifiers-with-spaces  true
