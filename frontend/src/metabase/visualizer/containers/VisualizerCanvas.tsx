@@ -14,7 +14,6 @@ import {
   Stack,
   type IconName,
 } from "metabase/ui";
-import { hasAxes as checkHasAxes } from "metabase/visualizations";
 import BaseVisualization from "metabase/visualizations/components/Visualization";
 import type {
   ComputedVisualizationSettings,
@@ -26,6 +25,7 @@ import type { Series, VisualizationSettings } from "metabase-types/api";
 import { VisualizerAxis } from "../components/VisualizerAxis";
 import { VizTypePicker } from "../components/VizTypePicker";
 import { DROPPABLE_CANVAS_ID } from "../dnd";
+import { isCartesianSeries } from "../utils";
 
 interface VisualizerCanvasProps {
   series: Series;
@@ -62,14 +62,7 @@ export function VisualizerCanvas({
   const currentMetrics = settings?.["graph.metrics"] ?? [];
   const currentDimensions = settings?.["graph.dimensions"] ?? [];
 
-  const hasAxes = useMemo(() => {
-    if (series.length === 0) {
-      return false;
-    }
-    const mainSeries = { ...series[0] };
-    const mainCard = mainSeries.card;
-    return checkHasAxes(mainCard.display);
-  }, [series]);
+  const hasAxes = isCartesianSeries(series, settings);
 
   const displaySeries = useMemo(() => {
     if (hasAxes) {

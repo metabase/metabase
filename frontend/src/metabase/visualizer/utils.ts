@@ -1,10 +1,12 @@
+import { isCartesianViz } from "metabase/visualizations";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
   isNumeric,
   isDate,
   isDateWithoutTime,
   isTime,
 } from "metabase-lib/v1/types/utils/isa";
-import type { Card, Field } from "metabase-types/api";
+import type { Card, Field, Series } from "metabase-types/api";
 
 const areaBarLine = ["area", "bar", "line"];
 
@@ -65,4 +67,23 @@ function areAreaBarLineSeriesCompatible(card1: Card, card2: Card) {
 
 function isTemporal(col: Field) {
   return isDate(col) || isDateWithoutTime(col) || isTime(col);
+}
+
+export function isCartesianSeries(
+  series: Series,
+  settings?: ComputedVisualizationSettings,
+) {
+  if (series.length === 0) {
+    return false;
+  }
+  const [{ card }] = series;
+
+  if (card.display === "scalar" && series.length > 1) {
+    const display =
+      settings?.["scalar.multiseries.display"] ??
+      card?.visualization_settings["scalar.multiseries.display"];
+    return isCartesianViz(display);
+  }
+
+  return isCartesianViz(card.display);
 }

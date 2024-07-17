@@ -15,7 +15,7 @@ import type { RawSeries } from "metabase-types/api";
 export type TransformSeries = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
+  renderingContext?: RenderingContext,
 ) => RawSeries;
 
 export interface TransformedVisualizationProps {

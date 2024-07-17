@@ -39,6 +39,7 @@ export const scalarToCartesianTransform: TransformSeries = rawSeries => {
         "graph.dimensions": [transformedDataset.cols[0].name],
         "graph.metrics": [card.name],
         "legend.is_reversed": false,
+        ...card?.visualization_settings,
       },
     };
 

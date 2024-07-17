@@ -148,16 +148,6 @@ export function hasGraphDataSettings(display: string) {
   );
 }
 
-export function hasAxes(display: string) {
-  const visualization = visualizations.get(display);
-  const settingDefinitions = visualization?.settings ?? {};
-  const settingNames = Object.keys(settingDefinitions);
-  return (
-    settingNames.some(name => name.startsWith("graph.x_axis.")) &&
-    settingNames.some(name => name.startsWith("graph.y_axis."))
-  );
-}
-
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column
 export const extractRemappedColumns = (data: DatasetData) => {
   const cols: RemappingHydratedDatasetColumn[] = data.cols.map(col => ({
@@ -198,6 +188,13 @@ export const extractRemappedColumns = (data: DatasetData) => {
     cols: cols.filter(col => col.remapped_from == null),
   };
 };
+
+// TODO switch to visualizations map
+export function isCartesianViz(display: string) {
+  return ["area", "bar", "line", "combo", "scatter", "waterfall"].includes(
+    display,
+  );
+}
 
 // eslint-disable-next-line import/no-default-export
 export default visualizations;

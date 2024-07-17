@@ -12,8 +12,12 @@ import { MetabaseApi } from "metabase/services";
 import {
   extractRemappings,
   getVisualizationTransformed,
+  isCartesianViz,
 } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { scalarToCartesianTransform } from "metabase/visualizations/visualizations/Scalar/scalars-cartesian-transform";
+import { scalarToFunnelTransform } from "metabase/visualizations/visualizations/Scalar/scalars-funnel-transform";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -44,10 +48,27 @@ export function useVisualizerSeries(
     if (rawSeries.length === 0) {
       return [];
     }
+    let series = [...rawSeries];
+
     const transformed = getVisualizationTransformed(
       extractRemappings(rawSeries),
     );
-    return transformed.series;
+    series = transformed.series;
+
+    const [{ card }] = series;
+    const isScalar = card.display === "scalar";
+    if (isScalar && series.length > 0) {
+      const computedSettings = getComputedSettingsForSeries(
+        series,
+      ) as ComputedVisualizationSettings;
+      const display = computedSettings["scalar.multiseries.display"] ?? "bar";
+      const transform = isCartesianViz(display)
+        ? scalarToCartesianTransform
+        : scalarToFunnelTransform;
+      series = transform(series, computedSettings);
+    }
+
+    return series;
   }, [rawSeries]);
 
   const mainQuestion = useMemo(() => {

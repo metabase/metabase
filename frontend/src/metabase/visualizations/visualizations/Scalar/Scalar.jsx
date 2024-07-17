@@ -7,6 +7,7 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { isCartesianViz } from "metabase/visualizations";
 import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
@@ -157,14 +158,9 @@ export class Scalar extends Component {
     } = this.props;
 
     if (rawSeries.length > 1) {
-      const isCartesian = [
-        "area",
-        "bar",
-        "combo",
-        "line",
-        "scatter",
-        "waterfall",
-      ].includes(settings["scalar.multiseries.display"]);
+      const isCartesian = isCartesianViz(
+        settings["scalar.multiseries.display"],
+      );
       return (
         <TransformedVisualization
           transformSeries={

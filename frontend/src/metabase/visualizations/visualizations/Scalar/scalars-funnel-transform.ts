@@ -34,7 +34,10 @@ export const scalarToFunnelTransform: TransformSeries = rawSeries => {
   const transformedCard = {
     ...firstSeries.card,
     display,
-    visualization_settings: getTransformedSettings(display, cols),
+    visualization_settings: {
+      ...getTransformedSettings(display, cols),
+      ...firstSeries.card?.visualization_settings,
+    },
   };
 
   const transformedSeries: SingleSeries = {
