@@ -8418,12 +8418,20 @@ databaseChangeLog:
                   name: channel_id
                   type: integer
                   remarks: The channel ID
-                  constraints:
-                    nullable: true
-                    referencedTableName: channel
-                    referencedColumnNames: id
-                    foreignKeyName: fk_pulse_channel_channel_id
-                    deleteCascade: true
+
+  - changeSet:
+      id: v51.2024-07-08T10:00:02
+      author: qnkhuat
+      comment: Add fk constraint to pulse_channel.channel_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse_channel
+            baseColumnNames: channel_id
+            referencedTableName: channel
+            referencedColumnNames: id
+            constraintName: fk_pulse_channel_channel_id
+            nullable: true
+            deleteCascade: true
 
   - changeSet:
       id: v51.2024-07-09T17:15:43
