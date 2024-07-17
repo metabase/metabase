@@ -1,6 +1,6 @@
 import { assoc } from "icepick";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import { t, ngettext, msgid } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
@@ -248,24 +248,7 @@ export function getStartingFrom(mbql) {
 }
 
 export function formatStartingFrom(bucketing, n) {
-  const suffix = n >= 0 ? "from now" : "ago";
-  switch (bucketing) {
-    case "minute":
-      return ngettext(msgid`minute ${suffix}`, `minutes ${suffix}`, n);
-    case "hour":
-      return ngettext(msgid`hour ${suffix}`, `hours ${suffix}`, n);
-    case "day":
-      return ngettext(msgid`day ${suffix}`, `days ${suffix}`, n);
-    case "week":
-      return ngettext(msgid`week ${suffix}`, `weeks ${suffix}`, n);
-    case "month":
-      return ngettext(msgid`month ${suffix}`, `months ${suffix}`, n);
-    case "quarter":
-      return ngettext(msgid`quarter ${suffix}`, `quarters ${suffix}`, n);
-    case "year":
-      return ngettext(msgid`year ${suffix}`, `years ${suffix}`, n);
-  }
-  return "";
+  return Lib.describeRelativeDatetime(n, bucketing);
 }
 
 function getTimeInterval(mbql) {
