@@ -74,6 +74,14 @@
                                             "UTC"]}
                         :filter      [:= [:expression "cc" {:base-type :type/DateTime}] "2019-02-11"]})))))
     (testing "Expressions not appropriate for bucketing are left untouched"
+      (is (= [:= [:expression "cc" {:base-type :type/DateTime}] "2024-07-16T13:24:00"]
+             (:filter (auto-bucket-mbql
+                       {:source-table 1
+                        :expressions {"cc" [:convert-timezone
+                                            [:field (meta/id :orders :created-at) {:base-type :type/DateTime}]
+                                            "America/Argentina/Buenos_Aires"
+                                            "UTC"]}
+                        :filter      [:= [:expression "cc" {:base-type :type/DateTime}] "2024-07-16T13:24:00"]}))))
       (is (= [:= [:expression "cc" {:base-type :type/DateTime}] 1]
              (:filter (auto-bucket-mbql
                        {:source-table 1
