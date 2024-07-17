@@ -29,7 +29,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest describe-database-test
+(deftest ^:parallel describe-database-test
   (mt/test-driver :presto-jdbc
     (is (= {:tables #{{:name "test_data_categories" :schema "default"}
                       {:name "test_data_checkins" :schema "default"}
@@ -42,7 +42,7 @@
                                                                  "test_data_users"}
                                                                :name)))))))))
 
-(deftest describe-table-test
+(deftest ^:parallel describe-table-test
   (mt/test-driver :presto-jdbc
     (is (= {:name   "test_data_venues"
             :schema "default"
@@ -74,7 +74,7 @@
                        :database-position 0}}}
            (driver/describe-table :presto-jdbc (mt/db) (t2/select-one 'Table :id (mt/id :venues)))))))
 
-(deftest table-rows-sample-test
+(deftest ^:parallel table-rows-sample-test
   (mt/test-driver :presto-jdbc
     (is (= [[1 "Red Medicine"]
             [2 "Stout Burgers & Beers"]

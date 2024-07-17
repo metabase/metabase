@@ -164,14 +164,16 @@
   [driver {:keys [database-name], :as dbdef}]
   (log/infof "Checking if test data for %s %s has already been loaded..." driver (pr-str database-name))
   ;; there's locking around this stuff elsewhere.
-  (if (tx/dataset-already-loaded? driver database-name)
+  (if (tx/dataset-already-loaded? driver dbdef)
     (log/infof "test dataset %s already loaded for driver %s; not reloading data."
                (pr-str database-name)
                driver)
-    (u/with-timeout create-database-timeout-ms
+    (do
+      (log/info "Data has not been loaded yet. Loading...")
+      (u/with-timeout create-database-timeout-ms
       ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests.
-      (test.tz/with-system-timezone-id! "UTC"
-        (tx/create-db! driver dbdef)))))
+        (test.tz/with-system-timezone-id! "UTC"
+          (tx/create-db! driver dbdef))))))
 
 (mu/defn ^:private create-and-sync-Database!
   "Add DB object to Metabase DB. Return an instance of `:model/Database`."

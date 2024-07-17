@@ -21,9 +21,9 @@
   (log/infof "Added SQL JDBC test extensions for %s ➕" driver))
 
 (mu/defmethod tx/dataset-already-loaded? :sql-jdbc/test-extensions
-  [driver       :- :keyword
-   dataset-name :- :string]
-  (let [details   (tx/dbdef->connection-details driver :db {:database-name dataset-name})
+  [driver :- :keyword
+   dbdef  :- [:map [:database-name :string]]]
+  (let [details   (tx/dbdef->connection-details driver :db dbdef)
         jdbc-spec (sql-jdbc.conn/connection-details->spec driver details)]
     (try
       (sql-jdbc.execute/do-with-connection-with-options

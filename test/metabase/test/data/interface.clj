@@ -355,21 +355,18 @@
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-;;; TODO -- ok, I'm thinking this should take `database-definition` instead of `dataset-name` so we can implement more
-;;; sophisticated checks if we want like check if the hash of the data matches or if all the tables exist/have the right
-;;; number of rows etc.
 (defmulti dataset-already-loaded?
   "Check whether a dataset named by unique `dataset-name` has already been loaded, so we can skip the calls to
   [[create-db!]] when adding a test dataset.
 
   There is a default implementation for `:sql-jdbc` in [[metabase.test.data.sql-jdbc]]. Default implementation for
   other drivers returns `false`."
-  {:arglists '([driver dataset-name]), :added "0.51.0"}
+  {:arglists '([driver dbdef]), :added "0.51.0"}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
 (defmethod dataset-already-loaded? ::test-extensions
-  [_driver _dataset-name]
+  [_driver _dbdef]
   false)
 
 (defmulti create-db!

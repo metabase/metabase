@@ -164,9 +164,9 @@
 ;; The Athena JDBC driver doesn't support parameterized queries.
 ;; So go ahead and deparameterize all the statements for now.
 (defmethod ddl/insert-rows-ddl-statements :athena
-  [driver table-identifier row-or-rows]
+  [driver table-identifier rows]
   (binding [driver/*compile-with-inline-parameters* true]
-    ((get-method ddl/insert-rows-ddl-statements :sql-jdbc/test-extensions) driver table-identifier row-or-rows)))
+    ((get-method ddl/insert-rows-ddl-statements :sql-jdbc/test-extensions) driver table-identifier rows)))
 
 (doseq [[base-type sql-type] {:type/BigInteger     "BIGINT"
                               :type/Boolean        "BOOLEAN"

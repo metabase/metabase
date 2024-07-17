@@ -186,9 +186,9 @@
 ;; INSERT statements, even though the documentation suggests it should. Just go ahead and deparameterize all the
 ;; statements for now.
 (defmethod ddl/insert-rows-ddl-statements :snowflake
-  [driver table-identifier row-or-rows]
+  [driver table-identifier rows]
   (binding [driver/*compile-with-inline-parameters* true]
-    ((get-method ddl/insert-rows-ddl-statements :sql-jdbc/test-extensions) driver table-identifier row-or-rows)))
+    ((get-method ddl/insert-rows-ddl-statements :sql-jdbc/test-extensions) driver table-identifier rows)))
 
 (defmethod execute/execute-sql! :snowflake
   [& args]

@@ -30,7 +30,7 @@
   (:import
    (com.facebook.presto.jdbc PrestoConnection)
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
-   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Time Types)
+   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Types)
    (java.time LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.time.temporal ChronoField Temporal)))
@@ -108,7 +108,7 @@
   (str "SHOW TABLES FROM " (sql.u/quote-name driver :schema catalog schema)))
 
 (defn- describe-table-sql
-  "The DESCRIBE  statement that will list information about the given `table`, in the given `catalog` and schema`."
+  "The DESCRIBE statement that will list information about the given `table`, in the given `catalog` and schema`."
   {:added "0.39.0"}
   [driver catalog schema table]
   (str "DESCRIBE " (sql.u/quote-name driver :table catalog schema table)))
@@ -181,17 +181,12 @@
 
 ;; See https://prestodb.io/docs/current/functions/datetime.html
 
-;; This is only needed for test purposes, because some of the sample data still uses legacy types
-(defmethod sql.qp/inline-value [:presto-jdbc Time]
-  [driver t]
-  (sql.qp/inline-value driver (t/local-time t)))
-
 (defmethod sql.qp/inline-value [:presto-jdbc OffsetDateTime]
-  [_ t]
+  [_driver t]
   (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t)))
 
 (defmethod sql.qp/inline-value [:presto-jdbc ZonedDateTime]
-  [_ t]
+  [_driver t]
   (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-id t)))
 
 ;;; `:sql-driver` methods
@@ -296,21 +291,17 @@
   (sql.qp/->honeysql driver [:sum-where 1.00M pred]))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :time]
-  [_ [_ t]]
+  [_driver [_ t]]
   ;; make time in UTC to avoid any interpretation by Presto in the connection (i.e. report) time zone
-  (h2x/cast "time with time zone" (u.date/format-sql (t/offset-time (t/local-time t) 0))))
+  [:inline (t/offset-time (t/local-time t) 0)])
 
 (defmethod sql.qp/->honeysql [:presto-jdbc ZonedDateTime]
-  [_ ^ZonedDateTime t]
-  ;; use the Presto cast to `timestamp with time zone` operation to interpret in the correct TZ, regardless of
-  ;; connection zone
-  (h2x/cast timestamp-with-time-zone-db-type (u.date/format-sql t)))
+  [_driver ^ZonedDateTime t]
+  [:inline t])
 
 (defmethod sql.qp/->honeysql [:presto-jdbc OffsetDateTime]
-  [_ ^OffsetDateTime t]
-  ;; use the Presto cast to `timestamp with time zone` operation to interpret in the correct TZ, regardless of
-  ;; connection zone
-  (h2x/cast timestamp-with-time-zone-db-type (u.date/format-sql t)))
+  [_driver ^OffsetDateTime t]
+  [:inline t])
 
 (defn- in-report-zone
   "Returns a HoneySQL form to interpret the `expr` (a temporal value) in the current report time zone, via Presto's
