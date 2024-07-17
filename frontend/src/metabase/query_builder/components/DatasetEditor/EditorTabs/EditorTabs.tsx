@@ -1,57 +1,68 @@
-import type { IconName } from "metabase/ui";
+import { t } from "ttag";
+
 import { Icon } from "metabase/ui";
 
-import { TabBar, Tab, RadioInput } from "./EditorTabs.styled";
+import { RadioInput, Tab, TabBar } from "./EditorTabs.styled";
 
 type Props = {
   currentTab: string;
-  options: {
-    id: string;
-    name: string;
-    icon: IconName;
-    disabled?: boolean;
-  }[];
+  disabledMetadata: boolean;
   onChange: (optionId: string) => void;
 };
 
-function EditorTabs({ currentTab, options, onChange, ...props }: Props) {
-  const inputId = "editor-tabs";
-
+export function EditorTabs({
+  currentTab,
+  disabledMetadata,
+  onChange,
+  ...props
+}: Props) {
   return (
     <TabBar {...props}>
-      {options.map(option => {
-        const selected = currentTab === option.id;
-        const id = `${inputId}-${option.id}`;
-        const labelId = `${id}-label`;
-        return (
-          <li key={option.id}>
-            <Tab
-              id={labelId}
-              htmlFor={id}
-              selected={selected}
-              disabled={option.disabled}
-            >
-              <Icon name={option.icon} />
-              <RadioInput
-                id={id}
-                name={inputId}
-                value={option.id}
-                checked={selected}
-                onChange={() => {
-                  onChange(option.id);
-                }}
-                aria-labelledby={labelId}
-                disabled={option.disabled}
-                data-testid={id}
-              />
-              <span data-testid={`${id}-name`}>{option.name}</span>
-            </Tab>
-          </li>
-        );
-      })}
+      <li>
+        <Tab
+          id="editor-tabs-query-label"
+          htmlFor="editor-tabs-query"
+          selected={currentTab === "query"}
+        >
+          <Icon name="notebook" />
+          <RadioInput
+            id="editor-tabs-query"
+            name="editor-tabs"
+            value="query"
+            checked={currentTab === "query"}
+            onChange={() => {
+              onChange("query");
+            }}
+            aria-labelledby="editor-tabs-query-label"
+            data-testid="editor-tabs-query"
+          />
+          <span data-testid="query-name">{t`Query`}</span>
+        </Tab>
+      </li>
+
+      <li>
+        <Tab
+          id="editor-tabs-metadata-label"
+          htmlFor="editor-tabs-metadata"
+          selected={currentTab === "metadata"}
+          disabled={disabledMetadata}
+        >
+          <Icon name="notebook" />
+          <RadioInput
+            id="editor-tabs-metadata"
+            name="editor-tabs"
+            value="metadata"
+            checked={currentTab === "metadata"}
+            onChange={() => {
+              onChange("metadata");
+            }}
+            aria-labelledby="editor-tabs-metadata-label"
+            disabled={disabledMetadata}
+            data-testid="editor-tabs-metadata"
+          />
+          <span data-testid="metadata-name">{t`Metadata`}</span>
+        </Tab>
+      </li>
     </TabBar>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default EditorTabs;
