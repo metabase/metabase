@@ -184,7 +184,7 @@
         db                 (first (t2/insert-returning-instances! Database
                                                                   (merge
                                                                    (t2.with-temp/with-temp-defaults :model/Database)
-                                                                   {:name    (tx/database-name-for-driver driver database-name)
+                                                                   {:name    (tx/database-display-name-for-driver driver database-name)
                                                                     :engine  driver
                                                                     :details connection-details})))]
     (sync-newly-created-database! driver database-definition connection-details db)

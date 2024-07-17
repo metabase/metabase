@@ -11,6 +11,8 @@
       ...]]"
   (:require
    [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql-jdbc.load-data :as sql-jdbc.load-data]
@@ -38,6 +40,13 @@
     (let [dbdef (->dbdef dbdeffable)]
       (m/find-first #(= (:table-name %) tabledeffable)
                     (:table-definitions dbdef)))))
+
+(defn dataset-already-loaded?
+  "Check whether `driver` thinks a test dataset is already loaded or not.
+
+    (dataset-already-loaded? :redshift 'test-data)"
+  [driver dbdeffable]
+  (tx/dataset-already-loaded? driver (->dbdef dbdeffable)))
 
 (defn jdbc-create-db-ddl-statements
   "Return a sequence of DDL statements used to create the database itself for a Database Definition for `driver`."
@@ -79,3 +88,17 @@
   "Generate the `INSERT` statements for a table definition for `driver`."
   [driver dbdeffable tabledeffable]
   (into [] (reducible-jdbc-insert-rows-dml-statements driver dbdeffable tabledeffable)))
+
+(defn db
+  "Like [[metabase.test/db]] but takes `driver` and optionally `dbdeffable` as parameters for ease of use from the REPL without using [[metabase.driver/with-driver]]` or [[metabase.test/dataset]].
+  Forces loading of test data and/or Database creation as side-effects.
+
+    (db :redshift 'test-data)"
+  ([driver]
+   (db driver 'test-data))
+
+  ([driver dbdeffable]
+   (driver/with-driver driver
+     (data.impl/do-with-dataset
+      (->dbdef dbdeffable)
+      mt/db))))

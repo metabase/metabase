@@ -16,6 +16,7 @@
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.models :refer [Field]]
    [metabase.models.table :as table]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -239,12 +240,16 @@
   actual physical database name for things like sync. Check and make sure we're not trying to use the user-friendly
   Database `:name` under the hood, since the actual name should still be something like `test-data`."
   [driver db-name]
-  (when db-name
-    (assert (not (str/ends-with? db-name (format "(%s)" (u/qualified-name driver))))
-            (str (format "Invalid database name %s; this is used to name the database in the UI, not in reality."
-                         (pr-str db-name))
-                 \newline
-                 "Use metabase.driver.sql-jdbc.sync.describe-table/database-name to get the actual physical database name."))))
+  (when (and db-name
+             (str/ends-with? db-name (format "(%s)" (u/qualified-name driver))))
+    ;; not i18n'ed because this is an assertion meant to catch bugs in driver implementations during test runs
+    (throw (ex-info (str "Error: Database display :name detected where you should be using its physical name"
+                         \newline
+                         "Database `:name` (e.g. `test-data (h2)`) is the human-friendly display name used in the GUI,"
+                         " it does not necessarily correspond to any actual names of anything in the data warehouse"
+                         " itself. Make sure you're using the actual physical name (e.g. `test-data`) rather than the "
+                         " display name.")
+                    {:driver driver, :db-name db-name, :type qp.error-type/driver}))))
 
 (defmethod get-table-pks :sql-jdbc
   [driver ^Connection conn db-name-or-nil table]

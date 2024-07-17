@@ -17,6 +17,7 @@
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql-jdbc.sync.describe-table]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.table :refer [Table]]
@@ -210,19 +211,28 @@
   purpose of this is to allow for a new Database to clone an existing one with the same details (ex: to test different
   connection methods with syncing, etc.).
 
-  Currently, this only affects `db-qualified-table-name`."
+  Currently, this only affects [[db-qualified-table-name]]."
   nil)
 
 (defn- normalize-qualified-name [n]
   (-> n u/lower-case-en (str/replace #"-" "_")))
 
+(defn- assert-database-name-does-not-include-driver
+  "Throw an error if you're passing in Database display name e.g. `test-data (h2)` as opposed to the actual physical
+  name e.g. `test-data` -- this is almost certainly a bug."
+  [db-name]
+  (when driver/*driver*
+    (#'metabase.driver.sql-jdbc.sync.describe-table/assert-database-name-does-not-include-driver driver/*driver* db-name)))
+
 (defn- db-qualified-table-name-prefix [db-name]
+  (assert-database-name-does-not-include-driver db-name)
   (str (normalize-qualified-name (or *database-name-override* db-name))
        \_))
 
 (defn qualified-by-db-name?
   "Is `table-name` qualified by the name of its database? See [[db-qualified-table-name]] for more details."
   [db-name table-name]
+  (assert-database-name-does-not-include-driver db-name)
   (str/starts-with? table-name (db-qualified-table-name-prefix db-name)))
 
 (mu/defn db-qualified-table-name :- [:string {:max 30}]
@@ -281,7 +291,7 @@
     (or (table-with-name (u/lower-case-en (:table-name this)))
         (table-with-name (db-qualified-table-name (:name database) (:table-name this))))))
 
-(defn database-name-for-driver
+(defn database-display-name-for-driver
   "Get the name for a test dataset for a driver, e.g. `test-data` for `:postgres` is `test-data (postgres)`."
   [driver database-name]
   (format "%s (%s)" database-name (u/qualified-name driver)))
@@ -291,7 +301,7 @@
    driver                  :- :keyword]
   (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
   (t2/select-one Database
-                 :name   (database-name-for-driver driver database-name)
+                 :name   (database-display-name-for-driver driver database-name)
                  :engine driver
                  {:order-by [[:id :asc]]}))
 
