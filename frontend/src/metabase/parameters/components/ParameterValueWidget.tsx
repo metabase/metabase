@@ -27,11 +27,11 @@ export type ParameterValueWidgetProps = {
   parameter: UiParameter;
   setValue: (value: any) => void;
   value: any;
-  placeholder: string;
+  placeholder?: string;
   isEditing: boolean;
 
   commitImmediately: boolean;
-  focusChanged: (focused: boolean) => void;
+  focusChanged?: (focused: boolean) => void;
   isFullscreen?: boolean;
   className?: string;
   parameters?: UiParameter[];
@@ -48,13 +48,13 @@ export type ParameterValueWidgetProps = {
 
 export const ParameterValueWidget = ({
   className,
-  commitImmediately,
+  commitImmediately = false,
   dashboard,
   enableRequiredBehavior,
   focusChanged,
   isEditing,
   isFullscreen,
-  isSortable,
+  isSortable = false,
   mimicMantine,
   parameter,
   parameters,
