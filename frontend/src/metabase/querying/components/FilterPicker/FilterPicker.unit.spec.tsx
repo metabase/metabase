@@ -144,7 +144,7 @@ const WIDGET_TEST_CASES: WidgetTestCase[] = [
   [
     "fallback",
     createQueryWithDefaultFilter(),
-    { columnName: "Array", pickerId: "fallback-filter-picker" },
+    { columnName: "Array", pickerId: "default-filter-picker" },
   ],
 ];
 

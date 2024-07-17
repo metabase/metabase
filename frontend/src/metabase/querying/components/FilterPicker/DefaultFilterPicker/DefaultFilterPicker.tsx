@@ -55,7 +55,7 @@ export function DefaultFilterPicker({
     <Box
       component="form"
       miw={MIN_WIDTH}
-      data-testid="fallback-filter-picker"
+      data-testid="default-filter-picker"
       onSubmit={handleSubmit}
     >
       <FilterPickerHeader
