@@ -81,6 +81,7 @@
    (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map #{:public})]
      {:bootstrapJS          (load-inline-js "index_bootstrap")
       :bootstrapJSON        (escape-script (json/generate-string public-settings))
+      :assetOnErrorJS       (load-inline-js "asset_loading_error")
       :userLocalizationJSON (escape-script (load-localization (:locale params)))
       :siteLocalizationJSON (escape-script (load-localization (public-settings/site-locale)))
       :nonceJSON            (escape-script (json/generate-string nonce))

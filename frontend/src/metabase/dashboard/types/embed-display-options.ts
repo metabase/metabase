@@ -6,8 +6,10 @@ export type EmbedTitledControls = {
 };
 
 export type EmbedHideDownloadButton = boolean | null;
+export type EmbedDownloadsEnabled = boolean | null;
 export type EmbedHideDownloadButtonControls = {
   hideDownloadButton: EmbedHideDownloadButton;
+  downloadsEnabled: EmbedDownloadsEnabled;
 };
 
 export type EmbedHideParameters = string | null;
@@ -36,10 +38,10 @@ export type EmbedDisplayParams = {
   bordered: boolean;
   titled: EmbedTitle;
   cardTitled: EmbedTitle;
-  hideDownloadButton: EmbedHideDownloadButton;
   hideParameters: EmbedHideParameters;
   font: EmbedFont;
   theme: DisplayTheme;
+  downloadsEnabled: boolean;
 };
 
 export type EmbedDisplayControls = EmbedThemeControls &

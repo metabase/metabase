@@ -1042,3 +1042,15 @@
      (let [buf (js/Uint8Array. max-length-bytes)
            result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}
        (subs s 0 (.-read result)))))
+
+#?(:clj
+   (defn start-timer
+     "Start and return a timer. Treat the \"timer\" as an opaque object, the implementation may change."
+     []
+     (System/nanoTime)))
+
+#?(:clj
+   (defn since-ms
+     "Return how many milliseconds have elapsed since the given timer was started."
+     [timer]
+     (/ (- (System/nanoTime) timer) 1e6)))
