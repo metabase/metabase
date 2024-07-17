@@ -37,9 +37,12 @@
                                 "collection"     :coll.name
                                 "created_by"     [:coalesce [:|| :u.first_name " " :u.last_name] :u.first_name :u.last_name :u.email]
                                 "last_edited_at" :c.updated_at)
+        extra-selects         (condp = sort-column
+                                "created_by" [:u.first_name :u.last_name :u.email]
+                                [order-by-column])
         cards                 (t2/select :model/Card
                                          (m/assoc-some
-                                          {:select-distinct [:c.*]
+                                          {:select-distinct (into [:c.*] extra-selects)
                                            :from            [[(t2/table-name :model/Card) :c]]
                                            :join            (concat card-joins additional-joins)
                                            :where           [:= :c.archived false]
@@ -59,9 +62,9 @@
 
         add-errors            (fn [{:keys [id] :as card}]
                                 (assoc-in card
-                                           [:errors :inactive-fields]
-                                           (for [{:keys [table_name column_name]} (card-id->query-fields id)]
-                                             {:table table_name :field column_name})))]
+                                          [:errors :inactive-fields]
+                                          (for [{:keys [table_name column_name]} (card-id->query-fields id)]
+                                            {:table table_name :field column_name})))]
     (map add-errors (t2/hydrate cards :collection :creator))))
 
 (defn- invalid-card-count
