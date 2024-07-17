@@ -93,7 +93,7 @@
                                                         :channel_type :slack
                                                         :details      {}}
                                                        daily-at-1am)]
-          (#'task.send-pulses/send-pulse!* daily-at-1am pulse #{pc pc-disabled pc-no-recipient})
+          (#'task.send-pulses/send-pulse!* pulse #{pc pc-disabled pc-no-recipient})
           (testing "only send to enabled channels that has recipients"
             (is (= #{pc} @sent-channel-ids)))
 
