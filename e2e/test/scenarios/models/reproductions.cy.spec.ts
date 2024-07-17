@@ -1011,9 +1011,24 @@ describe("issue 34514", () => {
       .should("be.visible");
   });
 
-  // TODO
-  // it.skip("should not make network request with invalid query (metabase#34514)", () => {
-  //   startNewModel();
-  //   entityPickerModal().findByText("Orders").click();
-  // });
+  it("should not make network request with invalid query (metabase#34514)", () => {
+    startNewModel();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    cy.findByTestId("run-button").click();
+
+    cy.go("back");
+
+    entityPickerModal().should("be.visible");
+    entityPickerModal().button("Close").click();
+
+    cy.findByTestId("query-visualization-root").within(() => {
+      cy.findByText("We're experiencing server issues").should("not.exist");
+      cy.findByText("Here's where your results will appear").should(
+        "be.visible",
+      );
+    });
+  });
 });
