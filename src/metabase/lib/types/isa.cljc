@@ -28,16 +28,16 @@
     (cond
       (nil? column) false
 
+      ;; recursively check if it's not an excluded type
+      (some #(field-type? % column) (:exclude type-definition))
+      false
+
       ;; check field types
       (some (fn [[type-type types]]
               (and (#{:effective-type :semantic-type} type-type)
                    (some #(clojure.core/isa? (type-type column) %) types)))
             type-definition)
       true
-
-      ;; recursively check if it's not an excluded type
-      (some #(field-type? % column) (:exclude type-definition))
-      false
 
       ;; recursively check if it's an included type
       (some #(field-type? % column) (:include type-definition))

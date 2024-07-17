@@ -154,7 +154,7 @@
             [{:pred #'lib.types.isa/temporal?,           :positive :type/DateTime,          :negative :type/City}
              {:pred #'lib.types.isa/numeric?,            :positive :type/Integer,           :negative :type/FK}
              {:pred #'lib.types.isa/boolean?,            :positive :type/Boolean,           :negative :type/PK}
-             {:pred #'lib.types.isa/string?,             :positive :type/URL,               :negative :tpye/Address}
+             {:pred #'lib.types.isa/string?,             :positive :type/URL,               :negative :type/Address}
              {:pred #'lib.types.isa/summable?,           :positive :type/Number,            :negative :type/Address}
              {:pred #'lib.types.isa/scope?,              :positive :type/Time,              :negative :type/Address}
              {:pred #'lib.types.isa/category?,           :positive :type/Company,           :negative :type/URL}
@@ -196,6 +196,11 @@
         (when negative
           (testing negative
             (is (false? (pred (column negative))))))))))
+
+(deftest ^:parallel string?-test
+  (are [exp column] (= exp (lib.types.isa/string? column))
+       true  {:base-type :type/Text :semantic-type :type/SerializedJSON}
+       false {:base-type :type/JSON :semantic-type :type/SerializedJSON}))
 
 (deftest ^:parallel has-latitude-and-longitude?-test
   (is (true? (lib.types.isa/has-latitude-and-longitude?
