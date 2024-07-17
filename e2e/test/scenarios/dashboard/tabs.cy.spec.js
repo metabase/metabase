@@ -48,6 +48,7 @@ import {
   openStaticEmbeddingModal,
   publishChanges,
   visitIframe,
+  duplicateTab,
 } from "e2e/support/helpers";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
@@ -783,6 +784,34 @@ describe("scenarios > dashboard > tabs", () => {
     cy.findAllByTestId("tab-button-input-wrapper").eq(0).findByText(longName);
     cy.findAllByTestId("tab-button-input-wrapper").eq(1).findByText("Tab 1");
     cy.findAllByTestId("tab-button-input-wrapper").eq(2).findByText("Tab 2");
+  });
+
+  it("should allow users to duplicate and delete tabs more than once (#45364)", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+
+    duplicateTab("Tab 1");
+
+    cy.findAllByRole("tab").eq(0).should("have.text", "Tab 1");
+    cy.findAllByRole("tab").eq(1).should("have.text", "Copy of Tab 1");
+
+    duplicateTab("Tab 1");
+
+    cy.findAllByRole("tab").eq(0).should("have.text", "Tab 1");
+    cy.findAllByRole("tab").eq(1).should("have.text", "Copy of Tab 1");
+    cy.findAllByRole("tab").eq(2).should("have.text", "Copy of Tab 1");
+
+    deleteTab("Tab 1");
+
+    cy.findAllByRole("tab").eq(0).should("have.text", "Copy of Tab 1");
+    cy.findAllByRole("tab").eq(1).should("have.text", "Copy of Tab 1");
+
+    cy.findAllByRole("tab").eq(0).findByRole("button").click();
+    popover().within(() => {
+      cy.findByText("Delete").click();
+    });
+
+    cy.findByRole("tab").should("have.text", "Copy of Tab 1");
   });
 });
 
