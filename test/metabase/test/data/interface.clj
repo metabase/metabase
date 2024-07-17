@@ -296,7 +296,8 @@
                            :%lower.name table-name
                            {:order-by [[:id :asc]]}))]
     (or (table-with-name (u/lower-case-en (:table-name this)))
-        (table-with-name (db-qualified-table-name (:name database) (:table-name this))))))
+        (when-let [dataset-name (get-in database [:settings :database-source-dataset-name])]
+          (table-with-name (db-qualified-table-name dataset-name (:table-name this)))))))
 
 (defn database-display-name-for-driver
   "Get the name for a test dataset for a driver, e.g. `test-data` for `:postgres` is `test-data (postgres)`."
