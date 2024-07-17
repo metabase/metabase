@@ -25,7 +25,7 @@ export function EditorTabs({ currentTab, disabledMetadata, onChange }: Props) {
               onChange("query");
             }}
           />
-          <span>{t`Query`}</span>
+          <span data-testid="editor-tabs-query-name">{t`Query`}</span>
         </Tab>
       </li>
 
@@ -47,7 +47,7 @@ export function EditorTabs({ currentTab, disabledMetadata, onChange }: Props) {
             disabled={disabledMetadata}
             data-testid="editor-tabs-metadata"
           />
-          <span>{t`Metadata`}</span>
+          <span data-testid="editor-tabs-metadata-name">{t`Metadata`}</span>
         </Tab>
       </li>
     </TabBar>
