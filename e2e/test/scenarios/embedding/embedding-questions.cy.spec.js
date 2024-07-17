@@ -306,7 +306,7 @@ describeEE("scenarios > embedding > questions > downloads", () => {
           "Trying to prevent downloads via query params doesn't have any effect",
         );
         cy.url().then(url => {
-          cy.visit(url + "&hide_download_button=true");
+          cy.visit(url + "&downloads=false");
         });
 
         cy.get("[data-testid=cell-data]").should("have.text", "Foo");
@@ -349,7 +349,7 @@ describeEE("scenarios > embedding > questions > downloads", () => {
         cy.get("[data-testid=cell-data]").should("have.text", "Foo");
 
         cy.location("search").should("eq", "?text=Foo");
-        cy.location("hash").should("match", /&hide_download_button=true$/);
+        cy.location("hash").should("match", /&downloads=false$/);
 
         cy.log("We don't even show the footer if it's empty");
         cy.findByRole("contentinfo").should("not.exist");

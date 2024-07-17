@@ -12,6 +12,7 @@ import {
 } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
+import { isUuid } from "metabase/lib/uuid";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName, IconProps } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
@@ -85,6 +86,8 @@ interface DashCardVisualizationProps {
   onChangeCardAndRun: DashCardOnChangeCardAndRunHandler | null;
   showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
+
+  downloadsEnabled: boolean;
 }
 
 // This is done to add the `getExtraDataForClick` prop.
@@ -121,6 +124,7 @@ export function DashCardVisualization({
   showClickBehaviorSidebar,
   onChangeLocation,
   onUpdateVisualizationSettings,
+  downloadsEnabled,
 }: DashCardVisualizationProps) {
   const metadata = useSelector(getMetadata);
   const question = useMemo(() => {
@@ -200,9 +204,9 @@ export function DashCardVisualization({
       question,
       result: mainSeries,
       isXray,
-      isEmbed,
       isPublicOrEmbedded,
       isEditing,
+      downloadsEnabled,
     });
 
     if (!shouldShowDashCardMenu) {
@@ -211,6 +215,7 @@ export function DashCardVisualization({
 
     return (
       <DashCardMenu
+        downloadsEnabled={downloadsEnabled}
         question={question}
         result={mainSeries}
         dashcardId={dashcard.id}
@@ -220,18 +225,19 @@ export function DashCardVisualization({
             ? String(dashcard.dashboard_id)
             : undefined
         }
+        uuid={isUuid(dashcard.dashboard_id) ? dashcard.dashboard_id : undefined}
       />
     );
   }, [
     question,
     series,
     isXray,
-    isEmbed,
     isPublicOrEmbedded,
     isEditing,
     dashcard.id,
     dashcard.dashboard_id,
     dashboard.id,
+    downloadsEnabled,
   ]);
 
   const { getExtraDataForClick } = useClickBehaviorData({

@@ -31,4 +31,5 @@ import "./commands/visibility/isRenderedWithinViewport";
 
 import "./commands/overwrites/log";
 
-require("./commands/downloads/downloadUtils").addCustomCommands();
+import { addCustomCommands } from "./commands/downloads/downloadUtils";
+addCustomCommands();
