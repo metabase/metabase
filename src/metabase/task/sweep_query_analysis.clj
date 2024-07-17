@@ -11,15 +11,22 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private has-run?
+  "Has the sweeper been run before, in this process?"
+  (atom false))
+
+;; This number has not been chosen scientifically.
+(def ^:private max-delete-batch-size 1000)
+
 (defn- analyze-cards-without-query-fields!
   ([]
    (analyze-cards-without-query-fields! query-analysis/analyze-sync!))
   ([analyze-fn]
    (let [cards (t2/reducible-select [:model/Card :id]
-                                    {:left-join [[:query_field :f] [:= :f.card_id :report_card.id]]
+                                    {:left-join [[:query_field :qf] [:= :qf.card_id :report_card.id]]
                                      :where     [:and
                                                  [:not :report_card.archived]
-                                                 [:= :f.id nil]]})]
+                                                 [:= :qf.id nil]]})]
      (run! analyze-fn cards))))
 
 (defn- analyze-stale-cards!
@@ -32,7 +39,7 @@
 (defn- delete-orphan-analysis! []
   (transduce
    (comp (map :id)
-         (partition-all 3))
+         (partition-all max-delete-batch-size))
    (fn
      ([final-count] final-count)
      ([running-count ids]
@@ -41,13 +48,7 @@
    0
    (t2/reducible-select [:model/QueryField :id]
                         {:join  [[:report_card :c] [:= :c.id :query_field.card_id]]
-                         :where [:or
-                                 [:= :c.id nil]
-                                 :c.archived]})))
-
-(def ^:private has-run?
-  "Has the sweeper been run before?"
-  (atom false))
+                         :where :c.archived})))
 
 (defn- sweep-query-analysis-loop!
   ([]

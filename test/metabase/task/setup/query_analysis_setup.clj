@@ -46,4 +46,4 @@
   [& body]
   `(do-with-test-setup!
     (mt/with-anaphora [c1 c2 c3 c4 arch]
-                      ~@body)))
+      ~@body)))
