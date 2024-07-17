@@ -356,6 +356,11 @@
        (throw (Exception. (format "Dataset definition not found: '%s/%s' or 'metabase.test.data.dataset-definitions/%s'"
                                   namespace-symb symb symb)))))
 
+(def ^:dynamic ^{:added "0.51.0"} *dbdef-used-to-create-db*
+  "The database definition used to create the currently bound test database. For those rare occasions when you need to
+  refer back to it."
+  nil)
+
 (defn do-with-dataset
   "Impl for [[metabase.test/dataset]] macro."
   [dataset-definition f]
@@ -367,6 +372,7 @@
                                (assert (pos-int? (:id db)))
                                db)))
         db-fn             #(get-db-for-driver (tx/driver))]
-    (binding [*db-fn*    db-fn
-              *db-id-fn* #(u/the-id (db-fn))]
+    (binding [*db-fn*                   db-fn
+              *db-id-fn*                #(u/the-id (db-fn))
+              *dbdef-used-to-create-db* dbdef]
       (f))))

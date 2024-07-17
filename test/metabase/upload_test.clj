@@ -25,6 +25,7 @@
    [metabase.query-processor :as qp]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
+   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.sql :as sql.tx]
    [metabase.upload :as upload]
    [metabase.upload.parsing :as upload-parsing]
@@ -1176,7 +1177,7 @@
                  (is (re-matches #"^The schema public is not syncable\.$"
                                  (.getMessage e))))))
         (testing "\nThe table should be deleted"
-          (is (false? (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
+          (is (false? (let [details (mt/dbdef->connection-details driver/*driver* :db data.impl/*dbdef-used-to-create-db*)]
                         (-> (jdbc/query (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                                         ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public')"])
                             first vals first)))))))))

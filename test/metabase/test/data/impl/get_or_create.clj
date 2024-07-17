@@ -84,10 +84,11 @@
       (finally
         (.. lock readLock unlock)))))
 
-(defn- add-extra-metadata!
+(mu/defn ^:private add-extra-metadata!
   "Add extra metadata like Field base-type, etc."
-  [{:keys [table-definitions], :as _database-definition} db]
-  {:pre [(seq table-definitions)]}
+  [{:keys [table-definitions], :as _database-definition} :- [:map
+                                                             [:table-definitions {:optional true} [:maybe [:sequential :map]]]]
+   db                                                    :- :map]
   (doseq [{:keys [table-name], :as table-definition} table-definitions]
     (let [table (delay (or (tx/metabase-instance table-definition db)
                            (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
