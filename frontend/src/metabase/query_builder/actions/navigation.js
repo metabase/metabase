@@ -58,7 +58,6 @@ export const popState = createThunkAction(
     if (location.state && location.state.card) {
       if (!equals(card, location.state.card)) {
         const shouldUpdateUrl = location.state.card.type === "model";
-
         const isEmptyQuery = !location.state.card.dataset_query.database;
 
         if (isEmptyQuery) {
