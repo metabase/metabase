@@ -21,8 +21,8 @@ import {
   getIsLoading,
   getIsLoadingWithoutCards,
   getIsNavigatingBackToDashboard,
-  getParameters,
   getParameterValues,
+  getParameters,
   getSelectedTabId,
   getSlowCards,
 } from "metabase/dashboard/selectors";
@@ -32,7 +32,7 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
-import { type DispatchFn, useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector, type DispatchFn } from "metabase/lib/redux";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
@@ -70,7 +70,7 @@ type ReduxProps = ConnectedProps<typeof connector>;
 type OwnProps = {
   dashboardId: DashboardId;
   parameterQueryParams: Query;
-
+  downloadsEnabled?: boolean;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
@@ -146,10 +146,11 @@ const PublicOrEmbeddedDashboardInner = ({
   refreshPeriod,
   setRefreshElapsedHook,
   hasNightModeToggle,
+  background,
   bordered,
   titled,
   theme,
-  hideDownloadButton,
+  downloadsEnabled = true,
   hideParameters,
   navigateToNewCardFromDashboard,
   selectedTabId,
@@ -281,14 +282,15 @@ const PublicOrEmbeddedDashboardInner = ({
       setParameterValue={setParameterValue}
       setParameterValueToDefault={setParameterValueToDefault}
       dashboardId={dashboardId}
+      background={background}
       bordered={bordered}
       titled={titled}
       theme={theme}
       hideParameters={hideParameters}
-      hideDownloadButton={hideDownloadButton}
       navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
       slowCards={slowCards}
       cardTitled={cardTitled}
+      downloadsEnabled={downloadsEnabled}
     />
   );
 };

@@ -486,7 +486,7 @@
            :friendly true})
         (when (and (= expression-mode :expression)
                    (lib.util.match/match-one expr :offset))
-          {:message  (i18n/tru "OFFSET is not supported in custom expressions")
+          {:message  (i18n/tru "OFFSET is not supported in custom columns")
            :friendly true})
         (when (and (= expression-mode :expression)
                    (lib.util.match/match-one expr :offset)

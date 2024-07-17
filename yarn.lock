@@ -3327,6 +3327,13 @@
     mime-types "^2.1.35"
     shelljs "^0.8.3"
 
+"@loki/create-async-callback@^0.35.0":
+  version "0.35.0"
+  resolved "https://registry.yarnpkg.com/@loki/create-async-callback/-/create-async-callback-0.35.0.tgz#f7d8b3e80c37afdc945af9781343feb1ba8759ca"
+  integrity sha512-NUlJw/1x0SjqzrKPCpEHmOa0/GPz5b2w0WDwxbqtpxetmm0+U3BPtO7CeWFoBAiohqCj9TFZH4Qn9wo9cLoJWQ==
+  dependencies:
+    "@loki/integration-react-native" "^0.35.0"
+
 "@loki/diff-graphics-magick@^0.35.0":
   version "0.35.0"
   resolved "https://registry.yarnpkg.com/@loki/diff-graphics-magick/-/diff-graphics-magick-0.35.0.tgz#328eb5eed978b56dc8d45df5ec5167e44809e36f"
