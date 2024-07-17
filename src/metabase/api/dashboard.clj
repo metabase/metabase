@@ -1222,10 +1222,10 @@
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
   [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body}          :body
                                          {dashboard-load-id "dashboard_load_id"} :query-params}]
-  {dashboard-id  ms/PositiveInt
-   dashcard-id   ms/PositiveInt
-   card-id       ms/PositiveInt
-   parameters    [:maybe [:sequential ParameterWithID]]}
+  {dashboard-id ms/PositiveInt
+   dashcard-id  ms/PositiveInt
+   card-id      ms/PositiveInt
+   parameters   [:maybe [:sequential ParameterWithID]]}
   (with-dashboard-load-id dashboard-load-id
     (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
                        (merge
