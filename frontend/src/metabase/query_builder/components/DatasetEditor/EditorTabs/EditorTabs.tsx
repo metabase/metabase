@@ -10,14 +10,9 @@ type Props = {
   onChange: (optionId: string) => void;
 };
 
-export function EditorTabs({
-  currentTab,
-  disabledMetadata,
-  onChange,
-  ...props
-}: Props) {
+export function EditorTabs({ currentTab, disabledMetadata, onChange }: Props) {
   return (
-    <TabBar {...props}>
+    <TabBar>
       <li>
         <Tab htmlFor="editor-tabs-query" selected={currentTab === "query"}>
           <Icon name="notebook" />
