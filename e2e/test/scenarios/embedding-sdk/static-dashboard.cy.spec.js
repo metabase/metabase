@@ -9,7 +9,7 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
 
   it("should show dashboard content", () => {
     visitFullAppEmbeddingUrl({
-      url: "http://localhost:6006/iframe.html",
+      url: "http://localhost:6008/iframe.html",
       qs: { id: "embeddingsdk-staticdashboard--default", viewMode: "story" },
     });
 

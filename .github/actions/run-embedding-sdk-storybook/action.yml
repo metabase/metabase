@@ -19,13 +19,13 @@ runs:
       shell: bash
 
     - name: Serve Storybook
-      run: yarn http-server storybook-static -p 6006 &
+      run: yarn http-server storybook-static -p 6008 &
       shell: bash
 
     - name: Wait for Storybook to become available
       run: |
         echo "Waiting for Storybook to be served..."
-        while ! curl --silent --fail http://localhost:6006; do
+        while ! curl --silent --fail http://localhost:6008; do
           sleep 5
           echo "Retrying..."
         done
