@@ -9,7 +9,7 @@
 
 (comment metabase.test.data.sql-jdbc/keep-me)
 
-(deftest ^:parallel dataset-already-loaded-test?
+(deftest ^:parallel dataset-already-loaded?-test
   (mt/test-drivers (into #{}
                          (filter #(isa? driver/hierarchy % :sql-jdbc))
                          (mt/normal-drivers))
