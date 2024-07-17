@@ -43,7 +43,9 @@
                   :semantic-type  [:type/Number]}
    ::integer     {:effective-type [:type/Integer]}
    ::string      {:effective-type [:type/Text]
-                  :semantic-type  [:type/Text :type/Category]}
+                  :semantic-type  [:type/Text :type/Category]
+                  ;; see comment in types.cljc about :type/Structured
+                  :exclude [::structured]}
    ::string_like {:effective-type [:type/TextLike]}
    ::boolean     {:effective-type [:type/Boolean]}
    ::coordinate  {:semantic-type [:type/Coordinate]}
