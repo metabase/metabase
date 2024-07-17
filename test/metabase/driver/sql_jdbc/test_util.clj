@@ -1,15 +1,9 @@
 (ns metabase.driver.sql-jdbc.test-util
   (:require
    [metabase.driver :as driver]
-   [metabase.driver.sql :as driver.sql]
-   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.interface :as tx]))
-
-(comment
-  driver.sql/keep-me
-  driver.sql-jdbc/keep-me)
 
 (defn sql-jdbc-drivers
   "Set of drivers descending from `:sql-jdbc` for test purposes."

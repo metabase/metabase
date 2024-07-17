@@ -31,6 +31,7 @@
 ;; SQLite does not support a lot of features, so do not show the options in the interface
 (doseq [[feature supported?] {:right-join                             false
                               :full-join                              false
+                              :left-join                              true
                               :regex                                  false
                               :percentile-aggregations                false
                               :advanced-math-expressions              false
