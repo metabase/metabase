@@ -184,11 +184,12 @@
                          (pr-str table-name) driver db-id (pr-str db-name)
                          (u/pprint-to-str (t2/select-pk->fn :name Table, :db_id db-id, :active true)))))))
 
-(defn database-source-dataset-name
+(mu/defn database-source-dataset-name :- :string
   "Get the name of the test dataset this Database was created from, e.g. `test-data`."
-  [database]
-  (or (get-in database [:settings :database-source-dataset-name])
-      (:database-name *dbdef-used-to-create-db*)))
+  ;; If this schema fails you probably need to reload your test Database or manually add the dataset name to
+  ;; `:settings`. This was added on 2024-07-17
+  [database :- [:map [:settings [:map [:database-source-dataset-name :string]]]]]
+  (get-in database [:settings :database-source-dataset-name]))
 
 (mu/defn the-table-id :- ::lib.schema.id/table
   "Internal impl of `(data/id table)."
