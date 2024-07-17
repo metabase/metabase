@@ -166,7 +166,10 @@ export function getPieChartOption(
   };
 
   return {
-    animation: false, // TODO when implementing the dynamic pie chart, use animations for opacity transitions, but disable initial animation
+    // Unlike the cartesian chart, `animationDuration: 0` does not prevent the
+    // chart from animating on initial render, so we unfroutnately have to
+    // disable all animations.
+    animation: false,
     textStyle: {
       fontFamily: renderingContext.fontFamily,
     },
