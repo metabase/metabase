@@ -15,7 +15,9 @@
    [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl]
-   [metabase.util.log :as log]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -208,9 +210,7 @@
 (defn- server-connection-spec []
   (sql-jdbc.conn/connection-details->spec :athena (server-connection-details)))
 
-(defn- existing-databases
-  "Set of databases that already exist in our S3 bucket, so we don't try to create them a second time."
-  []
+(defn- existing-databases* []
   (sql-jdbc.execute/do-with-connection-with-options
    :athena
    (server-connection-spec)
@@ -219,6 +219,15 @@
      (let [dbs (into #{} (map :database_name) (jdbc/query {:connection conn} ["SHOW DATABASES;"]))]
        (log/infof "The following Athena databases have already been created: %s" (pr-str (sort dbs)))
        dbs))))
+
+(defonce ^:private cached-existing-databases (atom nil))
+
+(defn- existing-databases
+  "Set of databases that already exist in our S3 bucket, so we don't try to create them a second time."
+  []
+  (or @cached-existing-databases
+      (u/prog1 (existing-databases*)
+        (reset! cached-existing-databases <>))))
 
 (def ^:private ^:dynamic *allow-database-creation*
   "Whether to allow database creation. This is normally disabled to prevent people from accidentally loading duplicate
@@ -244,6 +253,7 @@
                 ;; very fussy! See [[athena/*loading-data*]] for more info.
                 athena/*loading-data*  true]
         (log/infof "Creating Athena database %s" (pr-str database-name))
+        (reset! cached-existing-databases nil)
         ;; call the default impl for SQL JDBC drivers
         (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)))))
 
@@ -258,3 +268,9 @@
 (defmethod tx/supports-timestamptz-type? :athena
   [_driver]
   false)
+
+(mu/defmethod tx/dataset-already-loaded? :athena
+  [driver                              :- :keyword
+   {:keys [database-name], :as _dbdef} :- [:map [:database-name :string]]]
+  (let [physical-name (ddl.i/format-name driver database-name)]
+    (contains? (existing-databases) physical-name)))
