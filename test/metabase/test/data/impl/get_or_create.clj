@@ -181,12 +181,13 @@
   [driver                                           :- :keyword
    {:keys [database-name], :as database-definition} :- [:map [:database-name :string]]]
   (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
-        db                 (first (t2/insert-returning-instances! Database
+        db                 (first (t2/insert-returning-instances! :model/Database
                                                                   (merge
                                                                    (t2.with-temp/with-temp-defaults :model/Database)
-                                                                   {:name    (tx/database-display-name-for-driver driver database-name)
-                                                                    :engine  driver
-                                                                    :details connection-details})))]
+                                                                   {:name     (tx/database-display-name-for-driver driver database-name)
+                                                                    :engine   driver
+                                                                    :details  connection-details
+                                                                    :settings {:database-source-dataset-name  database-name}})))]
     (sync-newly-created-database! driver database-definition connection-details db)
     (set-test-db-permissions! (u/the-id db))
     ;; make sure we're returing an up-to-date copy of the DB

@@ -154,12 +154,18 @@
 (defn- cached-field-id [table-id parent-id field-name]
   (get (field-lookup-map table-id) [parent-id field-name]))
 
+(def ^:dynamic ^{:added "0.51.0"} *dbdef-used-to-create-db*
+  "The database definition used to create the currently bound test database. For those rare occasions when you need to
+  refer back to it."
+  nil)
+
 (mu/defn do-with-db
   "Internal impl of [[metabase.test.data/with-db]]."
   [db    :- [:map [:id ::lib.schema.id/database]]
    thunk :- fn?]
-  (binding [*db-fn*    (constantly db)
-            *db-id-fn* (constantly (u/the-id db))]
+  (binding [*db-fn*                   (constantly db)
+            *db-id-fn*                (constantly (u/the-id db))
+            *dbdef-used-to-create-db* nil]
     (thunk)))
 
 
@@ -178,14 +184,20 @@
                          (pr-str table-name) driver db-id (pr-str db-name)
                          (u/pprint-to-str (t2/select-pk->fn :name Table, :db_id db-id, :active true)))))))
 
+(defn database-source-dataset-name
+  "Get the name of the test dataset this Database was created from, e.g. `test-data`."
+  [database]
+  (or (get-in database [:settings :database-source-dataset-name])
+      (:database-name *dbdef-used-to-create-db*)))
+
 (mu/defn the-table-id :- ::lib.schema.id/table
   "Internal impl of `(data/id table)."
   [db-id      :- ::lib.schema.id/database
    table-name :- :string]
   (or (cached-table-id db-id table-name)
       (table-id-from-app-db db-id table-name)
-      (let [db-name              (t2/select-one-fn :name [:model/Database :name] :id db-id)
-            qualified-table-name (tx/db-qualified-table-name db-name table-name)]
+      (let [db-name                  (database-source-dataset-name (t2/select-one :model/Database :id db-id))
+            qualified-table-name     (tx/db-qualified-table-name db-name table-name)]
         (cached-table-id db-id qualified-table-name)
         (table-id-from-app-db db-id qualified-table-name))
       (throw-unfound-table-error db-id table-name)))
@@ -355,11 +367,6 @@
          (ns-resolve 'metabase.test.data.dataset-definitions symb))
        (throw (Exception. (format "Dataset definition not found: '%s/%s' or 'metabase.test.data.dataset-definitions/%s'"
                                   namespace-symb symb symb)))))
-
-(def ^:dynamic ^{:added "0.51.0"} *dbdef-used-to-create-db*
-  "The database definition used to create the currently bound test database. For those rare occasions when you need to
-  refer back to it."
-  nil)
 
 (defn do-with-dataset
   "Impl for [[metabase.test/dataset]] macro."

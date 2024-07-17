@@ -20,6 +20,7 @@
    [metabase.driver.sql-jdbc.sync.describe-table]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -36,6 +37,12 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defsetting database-source-dataset-name
+  "The name of the test dataset this Database was created from, if any."
+  :visibility     :internal
+  :type           :string
+  :database-local :only)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Dataset Definition Record Types & Protocol                                   |
