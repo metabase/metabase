@@ -8,16 +8,17 @@
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
 
-(deftest analyzer-loop-test
+;; This cannot be run in parallel due to its use of the global queue.
+;; Perhaps we should fix that...
+(deftest ^:synchronized analyzer-loop-test
   (setup/with-test-setup! [c1 c2 c3 c4 arch]
     (let [card-ids (map :id [c1 c2 c3 c4 arch])]
 
       ;; Make sure there is *no* pre-existing analysis.
-      (t2/delete! :model/QueryField :card_id [:in card-ids])
       (queue/clear! @#'query-analysis/queue)
+      (t2/delete! :model/QueryField :card_id [:in card-ids])
 
-      ;; `(first (vals %))` is necessary since h2 generates `:count(id)` as a name for the column
-      (let [get-count #(t2/select-one-fn (comp first vals) [:model/QueryField [[:count :id]]] :card_id %)]
+      (let [get-count #(t2/select-one-fn :cnt [:model/QueryField [[:count :id] :cnt]] :card_id %)]
         (testing "QueryField is empty - queries weren't analyzed"
           (is (every? zero? (map get-count card-ids))))
 
@@ -25,9 +26,9 @@
         (query-analysis/with-queued-analysis
          (run! query-analysis/analyze-async! card-ids))
 
-        ;; run the analysis for 1s
+        ;; run the analysis for 2s
         (try
-          (u/with-timeout 1000
+          (u/with-timeout 2000
             (#'task.analyze-queries/analyzer-loop!))
           (catch Exception _))
 
