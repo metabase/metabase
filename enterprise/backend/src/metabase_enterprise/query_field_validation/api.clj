@@ -37,12 +37,16 @@
                                 "collection"     :coll.name
                                 "created_by"     [:coalesce [:|| :u.first_name " " :u.last_name] :u.first_name :u.last_name :u.email]
                                 "last_edited_at" :c.updated_at)
+        extra-selects         (condp = sort-column
+                                "created_by" [:u.first_name :u.last_name :u.email]
+                                [order-by-column])
         cards                 (t2/select :model/Card
                                          (m/assoc-some
-                                          {:from     [[(t2/table-name :model/Card) :c]]
-                                           :join     (concat card-joins additional-joins)
-                                           :where    [:= :c.archived false]
-                                           :order-by [[order-by-column (keyword sort-direction)]]}
+                                          {:select-distinct (into [:c.*] extra-selects)
+                                           :from            [[(t2/table-name :model/Card) :c]]
+                                           :join            (concat card-joins additional-joins)
+                                           :where           [:= :c.archived false]
+                                           :order-by        [[order-by-column (keyword sort-direction)]]}
                                           :limit limit
                                           :offset offset))
         card-id->query-fields (when (seq cards)
@@ -58,16 +62,16 @@
 
         add-errors            (fn [{:keys [id] :as card}]
                                 (assoc-in card
-                                           [:errors :inactive-fields]
-                                           (for [{:keys [table_name column_name]} (card-id->query-fields id)]
-                                             {:table table_name :field column_name})))]
+                                          [:errors :inactive-fields]
+                                          (for [{:keys [table_name column_name]} (card-id->query-fields id)]
+                                            {:table table_name :field column_name})))]
     (map add-errors (t2/hydrate cards :collection :creator))))
 
 (defn- invalid-card-count
   []
   (:count
    (first
-    (t2/query {:select [[:%count.* :count]]
+    (t2/query {:select [[[:count [:distinct :c.id]] :count]]
                :from   [[(t2/table-name :model/Card) :c]]
                :join   card-joins
                :where  [:= :c.archived false]}))))
