@@ -7,7 +7,8 @@
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.util.date-2 :as u.date])
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.performance :as perf])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
@@ -66,9 +67,9 @@
                             (let [row-v (into [] row)]
                               (for [i output-order] (row-v i)))
                             row)
-              xf-row      (mapv (fn [formatter r]
-                                  (formatter (common/format-value r)))
-                                @ordered-formatters ordered-row)]
+              xf-row      (perf/mapv (fn [formatter r]
+                                       (formatter (common/format-value r)))
+                                     @ordered-formatters ordered-row)]
           (if @pivot-options
             ;; if we're processing a pivot result, we don't write it out yet, just store it
             ;; so that we can post process the full set of results in finish!
