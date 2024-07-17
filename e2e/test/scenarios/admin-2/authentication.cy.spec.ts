@@ -109,6 +109,14 @@ describe("scenarios > admin > settings > user provisioning", () => {
         "/admin/settings/authentication/user-provisioning",
       );
 
+      cy.log(
+        "should not show endpoint and token inputs if scim has never been enabled before",
+      );
+      main().within(() => {
+        scimEndpointInput().should("not.exist");
+        scimTokenInput().should("not.exist");
+      });
+
       cy.log("can enable scim");
       scimToggle().should("exist");
       scimToggle().click();
