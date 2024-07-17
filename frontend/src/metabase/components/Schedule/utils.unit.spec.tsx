@@ -75,10 +75,6 @@ describe("utils", () => {
     });
   });
 
-  describe("addBlanks", () => {
-    //
-  });
-
   describe("getLongestSelectLabel", () => {
     it("should return the longest label from an array of strings", () => {
       const data: SelectProps["data"] = [
