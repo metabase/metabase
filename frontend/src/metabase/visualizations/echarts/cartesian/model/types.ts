@@ -250,8 +250,6 @@ export type WaterfallChartModel = BaseCartesianChartModel & {
   dataDensity: WaterFallChartDataDensity;
 };
 
-export type ShowWarning = (warning: string) => void;
-
 export type LegendItem = {
   key: string;
   name: string;

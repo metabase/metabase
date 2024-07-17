@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { findWithIndex } from "metabase/lib/arrays";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { pieNegativesWarning } from "metabase/visualizations/lib/warnings";
 import { getDefaultColors } from "metabase/visualizations/shared/settings/pie";
 import type {
   ComputedVisualizationSettings,
@@ -11,6 +12,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { RawSeries, RowValue } from "metabase-types/api";
 
+import type { ShowWarning } from "../../types";
 import { OTHER_SLICE_MIN_PERCENTAGE, OTHER_SLICE_KEY } from "../constants";
 
 import type {
@@ -72,6 +74,7 @@ export function getPieChartModel(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
+  showWarning?: ShowWarning,
 ): PieChartModel {
   const [
     {
@@ -90,6 +93,7 @@ export function getPieChartModel(
   const total = rows.reduce((currTotal, row) => {
     const metricValue = getRowValues(row, colDescs).metricValue;
     if (!isNonPositive && metricValue < 0) {
+      showWarning?.(pieNegativesWarning().text);
       return currTotal;
     }
 
