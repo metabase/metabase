@@ -7042,6 +7042,7 @@ databaseChangeLog:
       id: v50.2024-02-26T22:15:55
       author: noahmoss
       comment: New `create_queries` permission
+      validCheckSum: 9:7c2bc517b6def4e3278394b0399c3d4b
       changes:
         - sqlFile:
             path: permissions/create_queries.sql
