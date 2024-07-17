@@ -2823,7 +2823,7 @@ describe("issue 44288", () => {
     visitDashboard("@dashboardId");
     editDashboard();
     verifyMapping();
-    saveDashboard();
+    saveDashboard({ awaitRequest: false });
     verifyFilter();
     cy.signOut();
 
