@@ -1214,7 +1214,7 @@ describe("45252", { tags: "@external" }, () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it("should allow using is-null and not-null operators with unknown data types (metabase#45252)", () => {
+  it("should allow using is-null and not-null operators with unsupported data types (metabase#45252,metabase#38111)", () => {
     startNewQuestion();
 
     cy.log("filter picker - new filter");
@@ -1258,6 +1258,21 @@ describe("45252", { tags: "@external" }, () => {
     });
     cy.wait("@dataset");
     assertQueryBuilderRowCount(0);
+
+    cy.log("filter modal - json column");
+    queryBuilderHeader().button("Filter").click();
+    modal().within(() => {
+      cy.findByTestId("filter-column-Binary")
+        .findByLabelText("Not empty")
+        .click();
+      cy.findByTestId("filter-column-Jsonb")
+        .findByLabelText("Not empty")
+        .click();
+      cy.button("Apply filters").click();
+      cy.wait("@dataset");
+    });
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(2);
   });
 });
 
