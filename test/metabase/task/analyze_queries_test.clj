@@ -4,7 +4,6 @@
    [metabase.query-analysis :as query-analysis]
    [metabase.task.analyze-queries :as task.analyze-queries]
    [metabase.task.setup.query-analysis-setup :as setup]
-   [metabase.util :as u]
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
 
@@ -15,22 +14,21 @@
     (let [card-ids (map :id [c1 c2 c3 c4 arch])]
 
       ;; Make sure there is *no* pre-existing analysis.
-      (queue/clear! @#'query-analysis/queue)
       (t2/delete! :model/QueryField :card_id [:in card-ids])
 
       (let [get-count #(t2/select-one-fn :cnt [:model/QueryField [[:count :id] :cnt]] :card_id %)]
         (testing "QueryField is empty - queries weren't analyzed"
           (is (every? zero? (map get-count card-ids))))
 
+        ;; the queue should already be empty - but trust noone!
+        (queue/clear! @#'query-analysis/queue)
+
         ;; queue the cards
         (query-analysis/with-queued-analysis
-         (run! query-analysis/analyze-async! card-ids))
+          (run! query-analysis/analyze-async! card-ids))
 
-        ;; run the analysis for 2s
-        (try
-          (u/with-timeout 2000
-            (#'task.analyze-queries/analyzer-loop!))
-          (catch Exception _))
+        ;; process the queue
+        (#'task.analyze-queries/analyzer-loop! (count card-ids))
 
         (testing "QueryField is filled now"
           (testing "for a native query"
