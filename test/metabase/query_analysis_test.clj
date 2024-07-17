@@ -16,8 +16,9 @@
       (public-settings/sql-parsing-enabled! true)
       ;; I'm not sure why this is `nil`, but it is fine for our purposes.
       (is (nil? (public-settings/query-analysis-native-disabled)))
-      (public-settings/query-analysis-native-disabled! true)
-      (is (true? (public-settings/query-analysis-native-disabled)))))
+      (testing "we can override the legacy setting"
+        (public-settings/query-analysis-native-disabled! true)
+        (is (true? (public-settings/query-analysis-native-disabled))))))
   (mt/discard-setting-changes [query-analysis-native-disabled sql-parsing-enabled]
     (testing "legacy setting disabled"
       (public-settings/sql-parsing-enabled! false)

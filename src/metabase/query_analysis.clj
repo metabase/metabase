@@ -75,9 +75,9 @@
   [query-type]
   (and (public-settings/query-analysis-enabled)
        (case query-type
-         :native     (public-settings/query-analysis-native-disabled)
-         :query      (public-settings/query-analysis-mbql-disabled)
-         :mbql/query (public-settings/query-analysis-mbql-disabled)
+         :native     (not (public-settings/query-analysis-native-disabled))
+         :query      (not (public-settings/query-analysis-mbql-disabled))
+         :mbql/query (not (public-settings/query-analysis-mbql-disabled))
          false)))
 
 (defn- query-field-ids
