@@ -8,10 +8,18 @@
     ;; => [[[\"SELECT * FROM report_card\"] 100]]
     (stop!)"
   (:require
+   [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [dev.util :as dev.u]
+   [metabase.db.query :as mdb.query]
    [metabase.test.util.log :as tu.log]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan2.pipeline :as t2.pipeline]))
+   [toucan2.pipeline :as t2.pipeline])
+  (:import
+   (java.io File)))
+
 
 (set! *warn-on-reflection* true)
 
@@ -79,11 +87,23 @@
    :default
    ::monitor))
 
+(defn to-csv!
+  "Save all the queries and its execution time to a csv file with 3 columns: query, params, execution time."
+  []
+  (let [qs        (queries)
+        format-q  (fn [[q t]]
+                    [(-> q first #_mdb.query/format-sql) (-> q rest vec) t])
+        temp-file (File/createTempFile "queries" ".csv")]
+    (with-open [w (io/writer temp-file)]
+      (csv/write-csv w (cons ["query" "params" "execution-time"] (map format-q qs))))
+    (dev.u/os-open temp-file)))
+
 (comment
  (start!)
  (queries)
  (stop!)
  (reset-queries!)
  (summary)
+ (to-csv!)
  (doseq [q (querles)]
    (println q)))
