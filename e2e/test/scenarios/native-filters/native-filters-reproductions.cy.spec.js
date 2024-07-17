@@ -1062,7 +1062,7 @@ describe("issue 31606", { tags: "@external" }, () => {
       cy.findByText("Enter a default value…").should("not.exist");
       cy.findByText("Default filter widget value")
         .next()
-        .find("a")
+        .find("div")
         .first()
         .click();
     });

@@ -43,7 +43,9 @@ const EditParameterWidget = ({
   parameter,
   setEditingParameter,
   isEditingParameter,
-}: { isEditingParameter: boolean } & Pick<
+}: {
+  isEditingParameter: boolean;
+} & Pick<
   ParameterWidgetProps,
   "parameter" | "setEditingParameter" | "isEditing" | "dragHandle"
 >) => {
@@ -95,10 +97,7 @@ export const ParameterWidget = ({
 
   if (!isEditing || !setEditingParameter) {
     return (
-      <Box
-        fz={isFullscreen ? "md" : undefined}
-        display={!isFullscreen ? "contents" : undefined}
-      >
+      <Box fz={isFullscreen ? "md" : undefined}>
         <ParameterFieldSet
           legend={legend}
           required={enableParameterRequiredBehavior && parameter.required}

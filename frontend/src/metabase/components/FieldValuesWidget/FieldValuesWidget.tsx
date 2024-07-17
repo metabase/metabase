@@ -608,6 +608,7 @@ export function FieldValuesWidgetInner({
           />
         ) : !isSimpleInput ? (
           <MultiAutocomplete
+            data-testid="field-values-multi-autocomplete"
             onSearchChange={onInputChange}
             onChange={values => onChange(values.map(parseFreeformValue))}
             value={value

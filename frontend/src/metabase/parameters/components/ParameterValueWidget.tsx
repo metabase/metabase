@@ -3,6 +3,7 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
 import { Sortable } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
@@ -197,7 +198,7 @@ export const ParameterValueWidget = ({
     : placeholder || t`Select…`;
 
   return (
-    <Popover opened={isOpen} onChange={toggle}>
+    <Popover opened={isOpen} onChange={toggle} zIndex={DEFAULT_Z_INDEX - 1}>
       <Popover.Target>
         <Box onClick={toggle}>
           <Sortable
@@ -231,7 +232,7 @@ export const ParameterValueWidget = ({
           </Sortable>
         </Box>
       </Popover.Target>
-      <Popover.Dropdown>
+      <Popover.Dropdown data-testid="parameter-value-dropdown">
         <ParameterDropdownWidget
           parameter={parameter}
           parameters={parameters}
