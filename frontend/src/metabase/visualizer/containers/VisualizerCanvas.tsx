@@ -91,12 +91,35 @@ export function VisualizerCanvas({
     });
   };
 
+  const handleMetricLabelChange = (metricColumn: string, label: string) => {
+    const [{ card: mainCard }] = series;
+    if (currentMetrics.length === 1) {
+      onChange({
+        ...mainCard.visualization_settings,
+        "graph.y_axis.title_text": label,
+      });
+    }
+  };
+
   const handleDimensionsChange = (dimensions: string[]) => {
     const [{ card: mainCard }] = series;
     onChange({
       ...mainCard.visualization_settings,
       "graph.dimensions": dimensions,
     });
+  };
+
+  const handleDimensionLabelChange = (
+    dimensionColumn: string,
+    label: string,
+  ) => {
+    const [{ card: mainCard }] = series;
+    if (currentDimensions.length === 1) {
+      onChange({
+        ...mainCard.visualization_settings,
+        "graph.x_axis.title_text": label,
+      });
+    }
   };
 
   const title = displaySeries.length > 0 ? displaySeries[0].card.name : "";
@@ -109,7 +132,9 @@ export function VisualizerCanvas({
             direction="vertical"
             columns={currentMetrics}
             columnOptions={metrics}
+            settings={settings}
             onColumnsChange={handleMetricsChange}
+            onLabelChange={handleMetricLabelChange}
           />
           <Stack w="90%" h="100%">
             <BaseVisualization
@@ -120,7 +145,9 @@ export function VisualizerCanvas({
             <VisualizerAxis
               columns={currentDimensions}
               columnOptions={dimensions}
+              settings={settings}
               onColumnsChange={handleDimensionsChange}
+              onLabelChange={handleDimensionLabelChange}
             />
           </Stack>
         </Group>

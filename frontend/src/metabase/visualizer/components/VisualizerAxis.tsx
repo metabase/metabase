@@ -5,7 +5,10 @@ import { CSS } from "@dnd-kit/utilities";
 import { ActionIcon } from "@mantine/core";
 import type { CSSProperties } from "react";
 
-import { Flex, Icon, Menu, Text } from "metabase/ui";
+import EditableText from "metabase/core/components/EditableText";
+import { color } from "metabase/lib/colors";
+import { Flex, Icon, Menu } from "metabase/ui";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 
 import {
   DRAGGABLE_ACTIVE_DIMENSION_TYPE,
@@ -16,14 +19,18 @@ interface VisualizerAxisProps {
   direction?: "horizontal" | "vertical";
   columns: string[];
   columnOptions: Array<{ label: string; value: string }>;
+  settings: ComputedVisualizationSettings;
   onColumnsChange: (columns: string[]) => void;
+  onLabelChange: (column: string, label: string) => void;
 }
 
 export function VisualizerAxis({
   direction = "horizontal",
   columns,
   columnOptions,
+  settings,
   onColumnsChange,
+  onLabelChange,
 }: VisualizerAxisProps) {
   const handleColumnChange = (column: string, nextColumn: string) => {
     const nextColumns = columns.map(c => (c === column ? nextColumn : c));
@@ -43,6 +50,11 @@ export function VisualizerAxis({
         }
       : { w: "100%" };
 
+  const axisLabelSettingKey =
+    direction === "vertical" // 🥴
+      ? "graph.y_axis.title_text"
+      : "graph.x_axis.title_text";
+
   return (
     <Flex
       {...flexProps}
@@ -59,10 +71,16 @@ export function VisualizerAxis({
         <ColumnPicker
           key={column}
           column={column}
+          label={
+            columns.length === 1 ? settings[axisLabelSettingKey] : undefined
+          }
           columns={columns}
           columnOptions={columnOptions}
           direction={direction}
-          onChange={nextColumn => handleColumnChange(column, nextColumn)}
+          onChangeColumn={nextColumn => handleColumnChange(column, nextColumn)}
+          onChangeLabel={label => {
+            onLabelChange(column, label);
+          }}
         />
       ))}
       <AddColumnButton
@@ -78,17 +96,21 @@ export function VisualizerAxis({
 interface ColumnPickerProps {
   direction?: "horizontal" | "vertical";
   column: string;
+  label?: string;
   columns: string[];
   columnOptions: Array<{ label: string; value: string }>;
-  onChange: (column: string) => void;
+  onChangeColumn: (column: string) => void;
+  onChangeLabel: (label: string) => void;
 }
 
 function ColumnPicker({
   column,
+  label,
   columns,
   columnOptions,
   direction = "horizontal",
-  onChange,
+  onChangeColumn,
+  onChangeLabel,
 }: ColumnPickerProps) {
   const type =
     direction === "horizontal" // 🥴
@@ -147,9 +169,15 @@ function ColumnPicker({
             gap="4px"
           >
             <Icon name="grabber" size={12} />
-            <Text color="text-medium" fw="bold">
-              {option?.label ?? column}
-            </Text>
+            <EditableText
+              initialValue={label ?? option?.label ?? column}
+              onChange={label => {
+                if (label.length > 0) {
+                  onChangeLabel(label);
+                }
+              }}
+              style={{ color: color("text-medium"), fontWeight: "bold" }}
+            />
             {hasOptions && <Icon name="chevrondown" size={12} />}
           </Flex>
         </Flex>
@@ -159,7 +187,7 @@ function ColumnPicker({
           <Menu.Item
             key={option.value}
             value={option.value}
-            onClick={() => onChange(option.value)}
+            onClick={() => onChangeColumn(option.value)}
           >
             {option.label}
           </Menu.Item>
