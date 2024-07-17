@@ -44,7 +44,8 @@
    ::integer     {:effective-type [:type/Integer]}
    ::string      {:effective-type [:type/Text]
                   :semantic-type  [:type/Text :type/Category]
-                  ;; see comment in types.cljc about :type/Structured
+                  ;; :type/Structured inherits from :type/Text and has to be excluded
+                  ;; see comment in types.cljc about :type/Structured for more details
                   :exclude [::structured]}
    ::string_like {:effective-type [:type/TextLike]}
    ::boolean     {:effective-type [:type/Boolean]}
