@@ -1036,6 +1036,7 @@ describe("issue 34514", () => {
 
   function assertQueryTabState() {
     entityPickerModal().should("not.exist");
+    cy.button("Save").should("be.enabled");
     getNotebookStep("data").findByText("Orders").should("be.visible");
     cy.findByTestId("TableInteractive-root")
       .findByText("39.72")
@@ -1046,12 +1047,19 @@ describe("issue 34514", () => {
     cy.findByLabelText("Description")
       .should("be.visible")
       .and("include.value", "This is a unique ID for the product.");
+    cy.button("Save").should("be.enabled");
   }
 
   function assertBackToEmptyState() {
     entityPickerModal().should("be.visible");
     entityPickerModal().button("Close").click();
 
+    cy.findByTestId("editor-tabs-metadata").should("be.disabled");
+    cy.button("Save").should("be.disabled");
+    getNotebookStep("data")
+      .findByText("Pick your starting data")
+      .should("be.visible");
+    cy.findByTestId("TableInteractive-root").should("not.exist");
     cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("We're experiencing server issues").should("not.exist");
       cy.findByText("Here's where your results will appear").should(
