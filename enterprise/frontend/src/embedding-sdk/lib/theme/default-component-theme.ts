@@ -3,7 +3,6 @@ import { merge } from "icepick";
 import type { MetabaseComponentTheme } from "embedding-sdk";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import type { DeepPartial } from "embedding-sdk/types/utils";
-import { DEFAULT_Z_INDEX as DEFAULT_POPOVER_Z_INDEX } from "metabase/components/Popover/constants";
 import type { MantineThemeOverride } from "metabase/ui";
 
 export const DEFAULT_SDK_FONT_SIZE = 14;
@@ -86,9 +85,6 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
       label: { fontSize: FONT_SIZES.goalLabel.px },
     },
   },
-  popover: {
-    zIndex: DEFAULT_POPOVER_Z_INDEX,
-  },
 };
 
 /**
@@ -128,14 +124,19 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
   },
 });
 
-export const EMBEDDING_SDK_COMPONENTS_OVERRIDES: MantineThemeOverride["components"] =
-  {
+export function getEmbeddingComponentOverrides(
+  theme?: DeepPartial<MetabaseComponentTheme>,
+): MantineThemeOverride["components"] {
+  return {
     HoverCard: {
       defaultProps: {
         withinPortal: true,
         portalProps: {
           target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
         },
+
+        ...(theme?.popover?.zIndex && { zIndex: theme.popover.zIndex }),
       },
     },
   };
+}
