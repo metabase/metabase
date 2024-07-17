@@ -88,7 +88,6 @@ features.forEach(feature => {
               type: "dashboard",
               id: ORDERS_DASHBOARD_ID,
               background: false,
-              theme: "transparent",
               downloads: defaultDownloadsValue,
             }),
           );
@@ -106,7 +105,7 @@ features.forEach(feature => {
               getEmbeddingJsCode({
                 type: "dashboard",
                 id: ORDERS_DASHBOARD_ID,
-                theme: "transparent",
+                background: false,
                 downloads: false,
               }),
             );
