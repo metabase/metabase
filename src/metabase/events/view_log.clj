@@ -96,7 +96,8 @@
 (def ^:private update-dashboard-last-viewed-at-interval-seconds 20)
 
 (defn- update-dashboard-last-viewed-at!* [dashboard-ids]
-  (t2/update! :model/Dashboard {:id [:in (into #{} dashboard-ids)]} {:last_viewed_at :%now}))
+  (t2/update! :model/Dashboard :id [:in dashboard-ids]
+              {:last_viewed_at :%now}))
 
 (def ^:private update-dashboard-last-viewed-at-queue
   (delay (grouper/start!

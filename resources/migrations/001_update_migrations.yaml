@@ -8372,10 +8372,6 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
-      rollback:
-        - dropColumn:
-            tableName: report_dashboard
-            columnName: last_viewed_at
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

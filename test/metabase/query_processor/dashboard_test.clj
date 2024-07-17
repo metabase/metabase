@@ -9,7 +9,9 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.dashboard :as qp.dashboard]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.util.thread-local :as tu.thread-local]
+   [toucan2.core :as t2]))
 
 ;; there are more tests in [[metabase.api.dashboard-test]]
 
@@ -403,3 +405,17 @@
                                                         :type    "category"
                                                         :value   nil
                                                         :default ["Gizmo"]}])))))))))
+
+(deftest running-a-query-for-dashcard-sets-last-viewed-at
+  (binding [tu.thread-local/*thread-local* false]
+    (mt/dataset test-data
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {:last_viewed_at #t "2000-01-01"}
+                     :model/Card {card-id :id} {:dataset_query (mt/native-query
+                                                                 {:query "SELECT COUNT(*) FROM \"ORDERS\""
+                                                                  :template-tags {}})}
+                     :model/DashboardCard {dashcard-id :id} {:card_id card-id
+                                                             :dashboard_id dashboard-id}]
+        (let [original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id)]
+          (mt/with-temporary-setting-values [synchronous-batch-updates true]
+            (run-query-for-dashcard dashboard-id card-id dashcard-id)
+            (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)))))))))
