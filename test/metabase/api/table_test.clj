@@ -37,7 +37,7 @@
                          :cache_field_values_schedule :metadata_sync_schedule :uploads_enabled :uploads_schema_name
                          :uploads_table_prefix])
    {:engine                      "h2"
-    :name                        "test-data"
+    :name                        "test-data (h2)"
     :is_sample                   false
     :is_full_sync                true
     :is_on_demand                false
