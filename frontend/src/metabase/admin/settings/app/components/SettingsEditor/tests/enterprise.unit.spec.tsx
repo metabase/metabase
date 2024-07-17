@@ -1,5 +1,6 @@
 import "metabase/plugins/builtin";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupGroupsEndpoint } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
@@ -7,6 +8,7 @@ import {
   createMockGroup,
   createMockSettingDefinition,
   createMockSettings,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import type { SetupOpts } from "./setup";
@@ -17,6 +19,25 @@ const setupEnterprise = async (opts?: SetupOpts) => {
 };
 
 describe("SettingsEditor", () => {
+  it("shows notify admin of new users provisioned options", async () => {
+    fetchMock.get("path:/api/ee/scim/api_key", 404);
+
+    await setupEnterprise({
+      initialRoute: "/admin/settings/authentication/user-provisioning",
+      settings: [
+        createMockSettingDefinition({ key: "saml-enabled", value: true }),
+      ],
+      settingValues: createMockSettings({ "saml-enabled": true }),
+      tokenFeatures: createMockTokenFeatures({ scim: true, sso_saml: true }),
+    });
+
+    expect(
+      await screen.findByText(
+        "Notify admins of new users provisioned from SSO",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("should not allow to configure the origin and SameSite cookie for interactive embedding", async () => {
     await setupEnterprise({
       settings: [
@@ -96,18 +117,6 @@ describe("SettingsEditor", () => {
       expect(screen.getByText("Sign in with Google")).toBeInTheDocument();
 
       expect(screen.queryByText("Session timeout")).not.toBeInTheDocument();
-    });
-
-    it("should not show the admin sso notification setting", async () => {
-      await setupEnterprise({
-        initialRoute: "/admin/settings/authentication",
-      });
-
-      expect(screen.getByText("Sign in with Google")).toBeInTheDocument();
-
-      expect(
-        screen.queryByText("Notify admins of new SSO users"),
-      ).not.toBeInTheDocument();
     });
 
     it("should not show the advanced LDAP settings", async () => {
