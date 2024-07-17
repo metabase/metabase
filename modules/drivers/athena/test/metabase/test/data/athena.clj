@@ -89,7 +89,7 @@
 ;;;    enable [[*allow-database-creation*]] for this to work:
 ;;;
 ;;;    ```
-;;;    (t2/delete! 'Database :engine "athena", :name "test-data")
+;;;    (t2/delete! 'Database :engine "athena", :name "test-data (athena)")
 ;;;    (binding [metabase.test.data.athena/*allow-database-creation* true]
 ;;;      (metabase.driver/with-driver :athena
 ;;;        (metabase.test/dataset test-data

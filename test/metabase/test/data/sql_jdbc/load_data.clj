@@ -1,10 +1,9 @@
 (ns metabase.test.data.sql-jdbc.load-data
+  "There are tests for some of this stuff in [[metabase.test.data.sql-jdbc.load-data-test]]."
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.test :refer :all]
    [clojure.tools.reader.edn :as edn]
-   [medley.core :as m]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -12,7 +11,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.test :as mt]
-   [metabase.test.data.dataset-definitions]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc.execute :as execute]
@@ -87,13 +85,6 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                  Loading Data                                                  |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;;;; Loading Table Data
-
 (defn add-ids-xform
   "Add an `:id` column to each row in each row chunk, for databases that should have data inserted with the ID
   explicitly specified."
@@ -101,12 +92,6 @@
   (let [id-counter (atom 0)]
     (map (fn [row]
            (assoc row :id (swap! id-counter inc))))))
-
-(deftest ^:parallel add-ids-xform-test
-  (is (= [{:name "A", :id 1} {:name "B", :id 2} {:name "C", :id 3} {:name "D", :id 4}]
-         (into []
-               (add-ids-xform)
-               [{:name "A"} {:name "B"} {:name "C"} {:name "D"}]))))
 
 (defn maybe-add-ids-xform
   "Like [[add-ids-xform]], but only adds `:id` to tables that don't have a `:pk` column."
@@ -141,7 +126,7 @@
   [:=> [:cat ::rf] ::rf])
 
 (mu/defn ^:private reducible-chunked-rows :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
-  [rows        :- [:sequential :any] ; rows is allowed to be empty.
+  [rows        :- [:sequential :any]    ; rows is allowed to be empty.
    chunk-size  :- [:maybe [:int {:min 1}]]
    row-xform   :- ::xform
    chunk-xform :- ::xform]
@@ -150,51 +135,21 @@
                     chunk-xform)]
     (reify clojure.lang.IReduceInit
       (reduce [_this rf init]
-        (if chunk-size
-          ;; using `transduce` here inside a `reduce` implementation is a little questionable here but the transducer
-          ;; for `partition-all` doesn't actually work unless the completing arity gets called =(
-          (transduce
-           (comp (partition-all chunk-size)
-                 xform)
-           rf
-           init
-           rows)
-          ;; for chunk-size = nil simulate a single mega chunk by wrapping rows, that way the chunk-xform can still work
-          ;; the way we expect.
-          (transduce
-           xform
-           rf
-           init
-           [rows]))))))
-
-(deftest ^:parallel reducible-chunked-rows-test
-  (letfn [(reducible-chunks* [chunk-size]
-            (reducible-chunked-rows
-             [{:a 1} {:b 2} {:c 3} {:d 4}]
-             chunk-size
-             (add-ids-xform)
-             (map (fn [chunk]
-                    (mapv (fn [row]
-                            (assoc row ::chunk chunk))
-                          chunk)))))]
-    (testing "unchunked"
-      (is (= [[{:a 1, :id 1, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}
-               {:b 2, :id 2, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}
-               {:c 3, :id 3, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}
-               {:d 4, :id 4, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}]]
-             (into [] (reducible-chunks* nil)))))
-    (testing "chunk size = 5"
-      (is (= [[{:a 1, :id 1, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}
-               {:b 2, :id 2, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}
-               {:c 3, :id 3, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}
-               {:d 4, :id 4, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}]]
-             (into [] (reducible-chunks* 5)))))
-    (testing "chunk size = 2"
-      (is (= [[{:a 1, :id 1, ::chunk [{:a 1, :id 1} {:b 2, :id 2}]}
-               {:b 2, :id 2, ::chunk [{:a 1, :id 1} {:b 2, :id 2}]}]
-              [{:c 3, :id 3, ::chunk [{:c 3, :id 3} {:d 4, :id 4}]}
-               {:d 4, :id 4, ::chunk [{:c 3, :id 3} {:d 4, :id 4}]}]]
-             (into [] (reducible-chunks* 2)))))))
+        (let [rf (xform rf)]
+          (if chunk-size
+            (transduce
+             (partition-all chunk-size)
+             ;; we are very deliberately not passing `rf` directly here, because calling the completing arity with it
+             ;; breaks things since we're not supposed to be doing that inside `reduce`. We have to use `transduce` here
+             ;; to get the `partition-all` transducer to work correctly tho which is why we're not just using reduce
+             (fn
+               ([acc]
+                acc)
+               ([acc chunk]
+                (rf acc chunk)))
+             init
+             rows)
+            (rf init rows)))))))
 
 (mu/defn ^:private reducible-chunks  :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
   [driver   :- :keyword
@@ -207,72 +162,6 @@
                      (row-xform driver dbdef tabledef))
         chunk-xform (chunk-xform driver dbdef tabledef)]
     (reducible-chunked-rows rows chunk-size row-xform chunk-xform)))
-
-(driver/register! ::h2-unchunked, :parent :h2)
-
-(defmethod chunk-size ::h2-unchunked
-  [_driver _dbdef _tabledef]
-  nil)
-
-(driver/register! ::h2-chunked, :parent :h2)
-
-(defmethod chunk-size ::h2-chunked
-  [_driver _dbdef _tabledef]
-  5)
-
-(deftest ^:parallel reducible-chunks-test
-  (let [dbdef    (tx/get-dataset-definition metabase.test.data.dataset-definitions/test-data)
-        tabledef (m/find-first
-                  #(= (:table-name %) "categories")
-                  (:table-definitions dbdef))]
-    (is (some? tabledef))
-    (letfn [(chunks [driver]
-              (into []
-                    (comp (take 2)
-                          (map (fn [chunk]
-                                 (into [] (take 3) chunk))))
-                    (reducible-chunks driver dbdef tabledef)))]
-      (testing ::h2-unchunked
-        ;; only one chunk, we took the first 3 rows
-        (is (= [[{:name "African"}
-                 {:name "American"}
-                 {:name "Artisan"}]]
-               (chunks ::h2-unchunked))))
-      (testing ::h2-chunked
-        ;; many chunks of size 5, we took the first 3 rows from the first 2 chunks.
-        (is (= [[{:name "African"}
-                 {:name "American"}
-                 {:name "Artisan"}]
-                [{:name "Bakery"}
-                 {:name "Bar"}
-                 {:name "Beer Garden"}]]
-               (chunks ::h2-chunked)))))))
-
-(driver/register! ::h2-large-chunk-size, :parent :h2)
-
-(defmethod chunk-size ::h2-large-chunk-size
-  [_driver _dbdef _tabledef]
-  1000)
-
-(deftest ^:parallel large-chunk-size-test
-  (testing "Make sure we load EVERY row if we have chunks less than chunk-size"
-    (let [driver   ::h2-large-chunk-size
-          dbdef    (tx/get-dataset-definition metabase.test.data.dataset-definitions/test-data)
-          tabledef (fn [table-name]
-                     (m/find-first
-                      #(= (:table-name %) table-name)
-                      (:table-definitions dbdef)))
-          num-rows (fn [table-name]
-                     (transduce
-                      (keep count)
-                      +
-                      0
-                      (reducible-chunks driver dbdef (tabledef table-name))))]
-      (assert (some? tabledef))
-      (are [table-name num-expected-rows] (= num-expected-rows
-                                             (num-rows table-name))
-        "people" 2500
-        "venues" 100))))
 
 (defn- load-data-for-table-definition!
   [driver ^java.sql.Connection conn dbdef tabledef]
@@ -287,10 +176,6 @@
      rf
      init
      (reducible-chunks driver dbdef tabledef))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              CREATING DBS/TABLES                                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;;; default impl
 (mu/defmethod do-insert! :sql-jdbc/test-extensions

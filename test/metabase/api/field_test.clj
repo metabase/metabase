@@ -27,7 +27,7 @@
   (merge
    (dissoc (mt/object-defaults Database) :details :initial_sync_status :dbms_version)
    {:engine        "h2"
-    :name          "test-data"
+    :name          "test-data (h2)"
     :features      (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
     :timezone      "UTC"}
    (select-keys (mt/db) [:id :timezone :initial_sync_status :cache_field_values_schedule :metadata_sync_schedule])))

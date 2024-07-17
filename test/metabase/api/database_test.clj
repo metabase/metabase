@@ -621,7 +621,7 @@
   (testing "GET /api/database/:id/metadata"
     (is (= (merge (dissoc (db-details) :details)
                   {:engine        "h2"
-                   :name          "test-data"
+                   :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
                    :tables        [(merge
                                     (mt/obj->json->obj (mt/object-defaults Table))
