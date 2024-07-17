@@ -288,23 +288,27 @@
     (something model-card-id id action-id model-id))
   nil)
 
-(defn do-with-actions-set
+(defn do-with-actions-set!
   "Impl for [[with-actions-enabled]]."
   [enable? thunk]
-  (tu/with-temp-vals-in-db Database (data/id) {:settings {:database-enable-actions enable?}}
+  (tu/with-temp-vals-in-db Database (data/id) {:settings (assoc (:settings (data/db)) :database-enable-actions enable?)}
     (thunk)))
 
+;;; TODO -- FIXME, rename this to `with-actions-enabled!` and remove the `:clj-kondo/ignore`
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-actions-enabled
   "Execute `body` with Actions enabled for the current test Database."
   {:style/indent 0}
   [& body]
-  `(do-with-actions-set true (fn [] ~@body)))
+  `(do-with-actions-set! true (fn [] ~@body)))
 
+;;; TODO -- FIXME, rename this to `with-actions-disabled!` and remove the `:clj-kondo/ignore`
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-actions-disabled
   "Execute `body` with Actions disabled for the current test Database."
   {:style/indent 0}
   [& body]
-  `(do-with-actions-set false (fn [] ~@body)))
+  `(do-with-actions-set! false (fn [] ~@body)))
 
 (defmacro with-actions-test-data-and-actions-enabled
   "Combines [[with-actions-test-data]] and [[with-actions-enabled]]."
