@@ -28,16 +28,16 @@
     (cond
       (nil? column) false
 
-      ;; recursively check if it's not an excluded type
-      (some #(field-type? % column) (:exclude type-definition))
-      false
-
       ;; check field types
       (some (fn [[type-type types]]
               (and (#{:effective-type :semantic-type} type-type)
                    (some #(clojure.core/isa? (type-type column) %) types)))
             type-definition)
       true
+
+      ;; recursively check if it's not an excluded type
+      (some #(field-type? % column) (:exclude type-definition))
+      false
 
       ;; recursively check if it's an included type
       (some #(field-type? % column) (:include type-definition))
@@ -56,7 +56,6 @@
                  ::lib.types.constants/foreign_key
                  ::lib.types.constants/primary_key
                  ::lib.types.constants/boolean
-                 ::lib.types.constants/structured
                  ::lib.types.constants/string
                  ::lib.types.constants/string_like
                  ::lib.types.constants/number]))

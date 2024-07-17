@@ -129,10 +129,7 @@
         :type/Name :type/Category))
     (testing "boolean, regardless of the semantic type"
       (is (= ::lib.types.constants/boolean (lib.types.isa/field-type {base-or-effective-type-key :type/Boolean
-                                                                      :semantic-type             :type/Category}))))
-    (testing "structured types"
-      (are [typ] (= ::lib.types.constants/structured (lib.types.isa/field-type {base-or-effective-type-key typ}))
-        :type/Structured :type/XML :type/JSON :type/DruidJSON :type/SerializedJSON)))
+                                                                      :semantic-type             :type/Category})))))
   (testing "unexpected things"
     (are [column] (nil? (lib.types.isa/field-type column))
       {:effective-type "DERP DERP DERP"}
