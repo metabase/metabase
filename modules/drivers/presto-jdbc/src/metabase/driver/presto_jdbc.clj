@@ -737,7 +737,8 @@
   ;; I could find to do it
   ;; reported as https://github.com/dm3/clojure.java-time/issues/74
   (let [millis-of-day (.get t ChronoField/MILLI_OF_DAY)]
-    (.setTime ps i (Time. millis-of-day))))
+    ;; TODO -- why the HECK are we using `java.sql.Time` here!!!!!
+    (.setTime ps i (java.sql.Time. millis-of-day))))
 
 (defmethod sql-jdbc.execute/set-parameter [:presto-jdbc OffsetTime]
   [_ ^PreparedStatement ps ^Integer i t]
