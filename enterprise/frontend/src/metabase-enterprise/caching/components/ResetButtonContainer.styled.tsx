@@ -4,6 +4,7 @@ import styled from "@emotion/styled";
 import type { FormSubmitButtonProps } from "metabase/forms";
 import { FormSubmitButton } from "metabase/forms";
 import { alpha } from "metabase/lib/colors";
+import { Text, type TextProps } from "metabase/ui";
 
 export const ResetAllFormSubmitButton = styled(FormSubmitButton, {
   shouldForwardProp: prop => prop !== "highlightOnHover",
@@ -16,4 +17,9 @@ export const ResetAllFormSubmitButton = styled(FormSubmitButton, {
           }
         `
       : ""}
+`;
+
+export const ResetAllFormSubmitButtonLabel = styled(Text)<TextProps>`
+  /* Prevents the label from getting cut off vertically */
+  height: 1rem;
 `;

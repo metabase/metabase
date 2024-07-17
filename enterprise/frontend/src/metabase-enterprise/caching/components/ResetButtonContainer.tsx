@@ -5,7 +5,10 @@ import { Form, useFormContext } from "metabase/forms";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { Box, Flex, Group, Icon, Loader, Text } from "metabase/ui";
 
-import { ResetAllFormSubmitButton } from "./ResetButtonContainer.styled";
+import {
+  ResetAllFormSubmitButton,
+  ResetAllFormSubmitButtonLabel,
+} from "./ResetButtonContainer.styled";
 
 export const ResetButtonContainer = () => {
   return (
@@ -48,11 +51,11 @@ const ResetAllToDefaultButtonFormBody = () => {
               return false;
             }}
             label={
-              <Text
+              <ResetAllFormSubmitButtonLabel
                 lh="1"
                 fw="normal"
                 color="error"
-              >{t`Reset all to default`}</Text>
+              >{t`Reset all to default`}</ResetAllFormSubmitButtonLabel>
             }
             activeLabel={<Loader size="xs" />}
             successLabel={

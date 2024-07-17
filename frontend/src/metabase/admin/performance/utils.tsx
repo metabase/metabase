@@ -1,11 +1,9 @@
-import dayjs from "dayjs";
 import { memoize } from "underscore";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
 import {
   Cron,
-  optionNameTranslations,
-  weekdays,
+  getScheduleStrings,
 } from "metabase/components/Schedule/constants";
 import { isNullOrUndefined } from "metabase/lib/types";
 import { PLUGIN_CACHING } from "metabase/plugins";
@@ -22,12 +20,13 @@ import type {
 } from "metabase-types/api";
 
 import { defaultMinDurationMs, rootId } from "./constants/simple";
-import type { StrategyLabel } from "./types";
+import type { StrategyData, StrategyLabel } from "./types";
 
 const AM = 0;
 const PM = 1;
 
 const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
+  const { weekdays } = getScheduleStrings();
   const index = weekdays.findIndex(o => o.value === day);
   if (index === -1) {
     throw new Error(`Invalid day: ${day}`);
@@ -92,6 +91,8 @@ export const cronToScheduleSettings_unmemoized = (
   if (!cron) {
     return defaultSchedule;
   }
+
+  const { weekdays } = getScheduleStrings();
 
   // The Quartz cron library used in the backend distinguishes between 'no specific value' and 'all values',
   // but for simplicity we can treat them as the same here
@@ -161,13 +162,13 @@ export const defaultCron = scheduleSettingsToCron(defaultSchedule);
 const isValidAmPm = (amPm: number) => amPm === AM || amPm === PM;
 
 export const hourToTwelveHourFormat = (hour: number) => hour % 12 || 12;
+
 export const hourTo24HourFormat = (hour: number, amPm: number): number => {
   if (!isValidAmPm(amPm)) {
     amPm = AM;
   }
-  const amPmString = amPm === AM ? "AM" : "PM";
-  const convertedString = dayjs(`${hour} ${amPmString}`, "h A").format("HH");
-  return parseInt(convertedString);
+  const hour24 = amPm === PM ? (hour % 12) + 12 : hour % 12;
+  return hour24 === 24 ? 0 : hour24;
 };
 
 type ErrorWithMessage = { data: { message: string } };
@@ -194,9 +195,10 @@ export const resolveSmoothly = async (
 
 export const getFrequencyFromCron = (cron: string) => {
   const scheduleType = cronToScheduleSettings(cron)?.schedule_type;
+  const { scheduleOptionNames } = getScheduleStrings();
   return isNullOrUndefined(scheduleType)
     ? ""
-    : optionNameTranslations[scheduleType];
+    : scheduleOptionNames[scheduleType];
 };
 
 export const isValidStrategyName = (
@@ -228,11 +230,20 @@ export const getShortStrategyLabel = (
   }
 };
 
+export const getStrategyValidationSchema = (strategyData: StrategyData) => {
+  if (typeof strategyData.validationSchema === "function") {
+    return strategyData.validationSchema();
+  } else {
+    return strategyData.validationSchema;
+  }
+};
+
 export const getFieldsForStrategyType = (strategyType: CacheStrategyType) => {
   const { strategies } = PLUGIN_CACHING;
-  const strategy = strategies[strategyType];
-  const validationSchemaDescription =
-    strategy.validateWith.describe() as SchemaObjectDescription;
+  const strategyData = strategies[strategyType];
+  const validationSchemaDescription = getStrategyValidationSchema(
+    strategyData,
+  ).describe() as SchemaObjectDescription;
   const fieldRecord = validationSchemaDescription.fields;
   const fields = Object.keys(fieldRecord);
   return fields;
