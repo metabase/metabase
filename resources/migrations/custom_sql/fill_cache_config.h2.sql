@@ -3,8 +3,8 @@ WITH root AS (
          0      AS model_id,
          'ttl'  AS strategy,
          json_object(
-           'multiplier' VALUE coalesce((select ("VALUE"::varchar(15))::int from setting where "KEY" = 'query-caching-ttl-ratio'), 10),
-           'min_duration_ms' VALUE coalesce((select ("VALUE"::varchar(15))::int from setting where "KEY" = 'query-caching-min-ttl'), 60000)
+           'multiplier' VALUE coalesce((select ceil(("VALUE"::varchar(15))::float)::int from setting where "KEY" = 'query-caching-ttl-ratio'), 10),
+           'min_duration_ms' VALUE coalesce((select ceil(("VALUE"::varchar(15))::float)::int from setting where "KEY" = 'query-caching-min-ttl'), 60000)
          ) AS config
 ), database AS (
   select 'database' AS model,

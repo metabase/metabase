@@ -1,6 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
+import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
 import { color } from "metabase/lib/colors";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
@@ -144,7 +145,6 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
       left: 0;
       width: 100%;
       z-index: 3;
-
       background-color: ${getParameterPanelBackgroundColor(
         props.embedFrameTheme,
       )};
@@ -155,9 +155,7 @@ export const Footer = styled.footer<{ variant: FooterVariant }>`
   display: flex;
   flex-shrink: 0;
   align-items: center;
-
   ${props => footerVariantStyles[props.variant]}
-
   padding: 0.5rem;
 
   ${breakpointMinMedium} {
@@ -167,4 +165,11 @@ export const Footer = styled.footer<{ variant: FooterVariant }>`
   ${breakpointMinLarge} {
     padding: 1.5rem;
   }
+`;
+
+export const TitleAndButtonsContainer = styled(FixedWidthContainer)`
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
 `;

@@ -18512,7 +18512,7 @@ msgstr "ОШИБКА {0}"
 
 #: metabase/cmd/copy.clj:183
 msgid "copied {0} instances."
-msgstr "скопированные {0} экземпляры."
+msgstr "скопировано {0} экземпляров."
 
 #: metabase/cmd/copy.clj:187
 msgid "Copying instances of {0}..."
@@ -18524,7 +18524,7 @@ msgstr "Ошибочное копирование экземпляров {0}"
 
 #: metabase/cmd/copy.clj:268
 msgid "Temporarily disabling DB constraints..."
-msgstr "Временно отключение ограничений БД..."
+msgstr "Временное отключение ограничений БД..."
 
 #: metabase/cmd/copy.clj:273
 msgid "Re-enabling DB constraints..."
@@ -18574,7 +18574,7 @@ msgstr "Ошибка выполнения запроса"
 
 #: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:156
 msgid "Have your email configured for you."
-msgstr "Настройте вашу электронную почту."
+msgstr "Настройте свою электронную почту."
 
 #: frontend/src/metabase/admin/settings/setup/components/SetupCheckList/SetupCheckList.jsx:157
 msgid "Have your server maintained for you."
@@ -18627,7 +18627,7 @@ msgstr "Недействительный {0}: заданный пробой в �
 
 #: metabase/query_processor/pivot.clj:187
 msgid "Error generating pivot queries"
-msgstr "Ошибка при генерации запросов на шарнир"
+msgstr "Ошибка при создании сводных запросов"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/index.js:318
 msgid "Sync Administrator group"
@@ -19509,10 +19509,11 @@ msgstr "Неверный пользовательский GeoJSON"
 msgid "Invalid custom GeoJSON: does not contain features"
 msgstr "Неверный пользовательский GeoJSON: не содержит характеристик"
 
+#. Misspelling in english text: "misssing"
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:99
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:106
 msgid "Invalid custom GeoJSON: feature is misssing properties"
-msgstr "Недопустимый пользовательский GeoJSON: функция не правильно использует свойства"
+msgstr "Недопустимый пользовательский GeoJSON: отсутствуют свойства у характеристики"
 
 #: frontend/src/metabase/visualizations/components/ChartClickActions.jsx:261
 msgid "Break out by a…"
@@ -19528,7 +19529,7 @@ msgstr "Фильтр по этому значению"
 
 #: metabase/api/geojson.clj:152 metabase/api/geojson.clj:170
 msgid "GeoJSON URL failed to load"
-msgstr "Не удалось загрузить URL-адрес GeoJSON"
+msgstr "Не удалось загрузить URL с GeoJSON"
 
 #: target/classes/metabase/driver/common/parameters/values.clj
 msgid "Error determining value for parameter: {0}"
@@ -21493,7 +21494,7 @@ msgstr "У вас отсутствуют полномочия организац
 #: metabase/models/dashboard.clj:451
 #, fuzzy
 msgid "Dashboard {0} does not have a DashboardCard with ID {1}"
-msgstr "У дашборда {0} нет DashboardCard с ID {1}"
+msgstr "На дашборде {0} нет DashboardCard с ID {1}"
 
 #: metabase/models/database.clj:177
 #, fuzzy
@@ -23153,7 +23154,7 @@ msgstr "Месяцы года..."
 #: frontend/src/metabase/admin/datamodel/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:61
 #, fuzzy
 msgid "Quarters of the year..."
-msgstr "Четверти года..."
+msgstr "Квартал года..."
 
 #: frontend/src/metabase/admin/datamodel/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:68
 #, fuzzy
@@ -34124,25 +34125,25 @@ msgstr "Создано в"
 msgid "Error deleting table"
 msgid_plural "Error deleting tables"
 msgstr[0] "Ошибка при удалении таблицы"
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[1] "Ошибка при удалении таблиц"
+msgstr[2] "Ошибка при удалении таблиц"
+msgstr[3] "Ошибка при удалении таблиц"
 
 #: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:117
 msgid "1 table deleted"
 msgid_plural "{0} tables deleted"
-msgstr[0] "1 стол удален"
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[0] "1 таблица удалена"
+msgstr[1] "{0} таблиц удалено"
+msgstr[2] "{0} таблиц удалено"
+msgstr[3] "{0} таблиц удалено"
 
 #: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:132
 msgid "Selected {0} table"
 msgid_plural "Selected {0} tables"
-msgstr[0] "Выбранная таблица {0}"
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[0] "Выбрана {0} таблица"
+msgstr[1] "Выбрано {0} таблиц"
+msgstr[2] "Выбрано {0} таблиц"
+msgstr[3] "Выбрано {0} таблиц"
 
 #: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:146
 msgid "Manage Uploads"
@@ -34198,17 +34199,17 @@ msgstr "Удалить навсегда"
 msgid "Delete item permanently?"
 msgid_plural "Delete {0} items permanently?"
 msgstr[0] "Удалить элемент навсегда?"
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[1] "Удалить {0} элементов навсегда?"
+msgstr[2] "Удалить {0} элементов навсегда?"
+msgstr[3] "Удалить {0} элементов навсегда?"
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.tsx:80
 msgid "{0} item has been permanently deleted."
 msgid_plural "{0} items have been permanently deleted."
-msgstr[0] "Элемент {0} был удален безвозвратно."
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[0] "Элемент {0} удален безвозвратно."
+msgstr[1] "Элементов {0} удалено безвозвратно."
+msgstr[2] "Элементов {0} удалено безвозвратно."
+msgstr[3] "Элементов {0} удалено безвозвратно."
 
 #: frontend/src/metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner.tsx:59
 #: frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.tsx:105
@@ -34422,10 +34423,10 @@ msgstr "Это может повлиять на модели и вопросы, 
 #: enterprise/frontend/src/metabase-enterprise/upload_management/DeleteConfirmModal.tsx:46
 msgid "Also send all models and questions based on this table to the trash"
 msgid_plural "Also send all models and questions based on these tables to the trash"
-msgstr[0] "Также отправьте все модели и вопросы, основанные на этой таблице, в мусорную корзину"
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[0] "Также отправьте все модели и вопросы, основанные на этой таблице, в корзину"
+msgstr[1] "Также отправьте все модели и вопросы, основанные на этих таблицах, в корзину"
+msgstr[2] "Также отправьте все модели и вопросы, основанные на этих таблицах, в корзину"
+msgstr[3] "Также отправьте все модели и вопросы, основанные на этих таблицах, в корзину"
 
 #: frontend/src/metabase/admin/upsells/UpsellHosting.tsx:18
 msgid "Minimize maintenance"
@@ -34772,7 +34773,7 @@ msgstr "Шестая колонна"
 
 #: frontend/src/metabase/query_builder/components/expressions/CombineColumns/util.ts:32
 msgid "Seventh column"
-msgstr "Седьмая колонна"
+msgstr "Седьмая колонка"
 
 #: frontend/src/metabase/query_builder/components/expressions/CombineColumns/util.ts:35
 msgid "Eighth column"
@@ -34780,16 +34781,16 @@ msgstr "Восьмая колонка"
 
 #: frontend/src/metabase/query_builder/components/expressions/CombineColumns/util.ts:38
 msgid "Ninth column"
-msgstr "Девятая колонна"
+msgstr "Девятая колонка"
 
 #: frontend/src/metabase/query_builder/components/expressions/CombineColumns/util.ts:56
 #: frontend/src/metabase/querying/utils/drills/combine-columns-drill/utils.ts:30
 msgid "space"
-msgstr "космос"
+msgstr "пробел"
 
 #: frontend/src/metabase/query_builder/components/expressions/CombineColumns/util.ts:86
 msgid "Combined {0}"
-msgstr "Комбинированный {0}"
+msgstr "Объединено {0}"
 
 #: frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.ts:456
 msgid "Y-axis must not cross 0 when using log scale."
@@ -34819,7 +34820,7 @@ msgstr "{0} проверил это"
 #: enterprise/frontend/src/metabase-enterprise/moderation/service.ts:151
 msgctxt "{0} is the name of a user"
 msgid "{0} removed verification"
-msgstr "{0} удалена проверка"
+msgstr "{0} отменил проверку"
 
 #: enterprise/frontend/src/metabase-enterprise/moderation/service.ts:154
 msgctxt "{0} is the name of a user, {1} is the status of a review"
@@ -34829,12 +34830,12 @@ msgstr "{0} изменил статус на {1}"
 #: frontend/src/metabase/components/EntityItem/EntityItem.tsx:160
 msgctxt "Verb"
 msgid "Bookmark"
-msgstr "Закладка"
+msgstr "Добавить в закладки"
 
 #: frontend/src/metabase/components/EntityItem/EntityItem.tsx:198
 msgctxt "Verb"
 msgid "Duplicate"
-msgstr "Дубликат"
+msgstr "Дублировать"
 
 #: frontend/src/metabase/components/ItemsTable/Columns.tsx:182
 msgctxt "Precedes the name of a user"
@@ -34849,7 +34850,7 @@ msgstr "Удалено в"
 #: frontend/src/metabase/components/Schedule/Schedule.tsx:180
 msgctxt "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes"
 msgid "{0} {1} at {2} minutes past the hour"
-msgstr "{0} {1} в {2} минуты после часа"
+msgstr "{0} {1} в {2} минут после часа"
 
 #: frontend/src/metabase/components/Schedule/Schedule.tsx:194
 msgctxt "{0} is a verb like 'Send', {1} is an adverb like 'hourly'."
@@ -34884,7 +34885,7 @@ msgstr "{0}:00"
 #: frontend/src/metabase/components/Schedule/constants.ts:33
 msgctxt "adverb"
 msgid "hourly"
-msgstr "почасовая"
+msgstr "ежечасно"
 
 #: frontend/src/metabase/components/Schedule/constants.ts:34
 msgctxt "adverb"
@@ -34894,7 +34895,7 @@ msgstr "ежедневно"
 #: frontend/src/metabase/components/Schedule/constants.ts:35
 msgctxt "adverb"
 msgid "weekly"
-msgstr "Еженедельник"
+msgstr "еженедельно"
 
 #: frontend/src/metabase/components/Schedule/constants.ts:36
 msgctxt "adverb"
@@ -34939,22 +34940,22 @@ msgstr "Удалить {0} таблиц?"
 #: frontend/src/metabase/archive/utils.ts:20
 msgctxt "{0} is the name of the entity being trashed, e.g. My Awesome Dashboard"
 msgid "{0} has been moved to the trash."
-msgstr "{0} был перемещен в корзину."
+msgstr "{0} перемещен в корзину."
 
 #: frontend/src/metabase/archive/utils.ts:23
 msgctxt "{0} is the name of the entity being restored from the trash, e.g. My Awesome Dashboard"
 msgid "{0} has been restored."
-msgstr "{0} был восстановлен."
+msgstr "{0} восстановлен."
 
 #: frontend/src/metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner.tsx:50
 msgctxt "{0} is the entity in the trash, e.g. collection, dashboard, etc."
 msgid "This {0} is in the trash."
-msgstr "Этот {0} отправляется в мусорную корзину."
+msgstr "{0} находится в корзине."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationError.tsx:27
 msgctxt "{0} is an email address"
 msgid "Please try again later, and reach out to us at {0} if you need help."
-msgstr "Пожалуйста, повторите попытку позже и свяжитесь с нами по телефону {0}, если вам нужна помощь."
+msgstr "Пожалуйста, повторите попытку позже и свяжитесь с нами по адресу {0}, если вам нужна помощь."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationSuccess.tsx:42
 msgctxt "{0} is the date and time the snapshot was uploaded"
@@ -34964,7 +34965,7 @@ msgstr "Снимок загружен на {0}."
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:113
 msgctxt "A verb, shown in the sidebar"
 msgid "Browse"
-msgstr "Просмотреть"
+msgstr "Обзор"
 
 #: metabase/api/cache.clj:125
 msgid "Could not find any questions for the criteria you specified."
@@ -34977,18 +34978,18 @@ msgstr "Нет конфигурации кэша для аннулировани
 #: metabase/api/cache.clj:127
 msgid "Cleared a cached result."
 msgid_plural "Cleared {0} cached results."
-msgstr[0] "Очистка кэшированного результата."
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[0] "Кэшированный результат очищен."
+msgstr[1] "Очищено {0} кэшированных результатов."
+msgstr[2] "Очищено {0} кэшированных результатов."
+msgstr[3] "Очищено {0} кэшированных результатов."
 
 #: metabase/api/cache.clj:130
 msgid "Invalidated cache configuration."
 msgid_plural "Invalidated {0} cache configurations."
-msgstr[0] "Неверная конфигурация кэша."
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[0] "Конфигурация кэша аннулирована."
+msgstr[1] "Аннулировано {0} конфигураций кэша."
+msgstr[2] "Аннулировано {0} конфигураций кэша."
+msgstr[3] "Аннулировано {0} конфигураций кэша."
 
 #: metabase/api/cache.clj:126
 msgid "No cached results to clear."
@@ -34996,7 +34997,7 @@ msgstr "Нет кэшированных результатов для очист
 
 #: metabase/api/cache.clj:128
 msgid "Nothing to invalidate."
-msgstr "Ничего, что можно было бы признать недействительным."
+msgstr "Нечего аннулировать."
 
 #: metabase/api/card.clj:447
 msgid "Card of type {0} is invalid, cannot be saved."
@@ -35010,13 +35011,14 @@ msgstr "Получите настраиваемую, гибкую и масшт�
 msgid "Setup embedding"
 msgstr "Настройка встраивания"
 
+#. "extract us week" - is it correct in english? What exactly does it mean?
 #: metabase/driver/snowflake.clj:296
 msgid "Snowflake doesn''t support extract us week"
-msgstr "Снежинка не поддерживает добычу на неделе"
+msgstr "Snowflake не поддерживает добычу на неделе"
 
 #: metabase/driver/sql/query_processor.clj:725
 msgid "Window function requires either breakouts or order by in the query"
-msgstr "Функция окна требует либо разбивки, либо порядка по в запросе"
+msgstr "Оконная функция требует разбивки либо упорядочивания данных в запросе"
 
 #: metabase/embed/settings.clj:56
 msgid "Indicates if at the end of the setup a valid license was active"
@@ -35048,19 +35050,19 @@ msgstr "OFFSET в пользовательском выражении требу
 
 #: metabase/lib/filter.cljc:169
 msgid "{0} contains {1} selections"
-msgstr "{0} содержит {1} выбора"
+msgstr "{0} содержит {1} результатов выбора"
 
 #: metabase/lib/filter.cljc:151
 msgid "{0} starts with {1} selections"
-msgstr "{0} начинается с {1} выбора"
+msgstr "{0} начинается с {1} результатов выбора"
 
 #: metabase/lib/filter.cljc:160
 msgid "{0} ends with {1} selections"
-msgstr "{0} заканчивается выбором {1}"
+msgstr "{0} заканчивается {1} результатами выбора"
 
 #: metabase/lib/filter.cljc:178
 msgid "{0} does not contain {1} selections"
-msgstr "{0} не содержит {1} выбора"
+msgstr "{0} не содержит {1} результатов выбора"
 
 #: metabase/models/cloud_migration.clj:46
 msgid "Dump file for migrations. Internal test use only."
@@ -35096,11 +35098,11 @@ msgstr "Вы не можете редактировать разрешения �
 
 #: metabase/models/revision/diff.clj:46
 msgid "trashed {0}"
-msgstr "выброшен {0}"
+msgstr "помещен в корзину {0}"
 
 #: metabase/models/revision/diff.clj:47
 msgid "untrashed {0}"
-msgstr "нетронутый {0}"
+msgstr "восстановлен {0}"
 
 #: metabase/models/user.clj:514
 msgid "User preference for whether the 'Browse models' page should be filtered to show only verified models."
@@ -35140,7 +35142,7 @@ msgstr "Параметры отображения иллюстрации при 
 
 #: metabase/public_settings.clj:900
 msgid "The ID of the example dashboard."
-msgstr "Идентификатор примера приборной панели."
+msgstr "Идентификатор примера дашборда."
 
 #: metabase/public_settings.clj:453
 msgid "Options for displaying the illustration on the login page."
@@ -35172,7 +35174,7 @@ msgstr "{0} не поддерживается драйвером {1}."
 
 #: metabase/query_processor/middleware/expand_macros.clj:89
 msgid "Segment {0} does not exist, belongs to a different Database, or is invalid."
-msgstr "Сегмент {0} не существует, принадлежит другой базе данных или является недействительным."
+msgstr "Сегмент {0} не существует, относится к другой Базе данных или является недействительным."
 
 #: metabase/server/middleware/log.clj:200
 msgid "Whether to log health check requests from session middleware."

@@ -1,4 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   type StructuredQuestionDetails,
   createNativeQuestion,
@@ -26,8 +27,21 @@ import {
   undoToast,
   visitModel,
   visualize,
+  questionInfoButton,
+  visitDashboard,
+  editDashboard,
+  setFilter,
+  setDropdownFilterType,
+  sidebar,
+  describeEE,
+  setTokenFeatures,
+  getPinnedSection,
+  summarize,
+  rightSidebar,
+  assertQueryBuilderRowCount,
+  navigationSidebar,
 } from "e2e/support/helpers";
-import type { FieldReference } from "metabase-types/api";
+import type { CardId, FieldReference } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -666,5 +680,309 @@ describe("issue 39749", () => {
     cy.findByLabelText("Description").should("have.text", "A");
     tableHeaderClick("Sum of Total");
     cy.findByLabelText("Description").should("have.text", "B");
+  });
+});
+
+describe("issue 25885", () => {
+  const mbqlModelDetails: StructuredQuestionDetails = {
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+      fields: [["field", ORDERS.ID, { "base-type": "type/BigInteger" }]],
+      joins: [
+        {
+          fields: [
+            [
+              "field",
+              ORDERS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Orders" },
+            ],
+          ],
+          strategy: "left-join",
+          alias: "Orders",
+          condition: [
+            "=",
+            ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+            [
+              "field",
+              ORDERS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Orders" },
+            ],
+          ],
+          "source-table": ORDERS_ID,
+        },
+        {
+          fields: [
+            [
+              "field",
+              ORDERS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Orders_2" },
+            ],
+          ],
+          strategy: "left-join",
+          alias: "Orders_2",
+          condition: [
+            "=",
+            ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+            [
+              "field",
+              ORDERS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Orders_2" },
+            ],
+          ],
+          "source-table": ORDERS_ID,
+        },
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/*").as("updateModel");
+  });
+
+  function setColumnName(oldName: string, newName: string) {
+    tableHeaderClick(oldName);
+    cy.findByLabelText("Display name")
+      .should("have.value", oldName)
+      .clear()
+      .type(newName);
+  }
+
+  function verifyColumnName(name: string) {
+    tableHeaderClick(name);
+    cy.findByLabelText("Display name").should("have.value", name);
+  }
+
+  it("should allow to edit metadata for mbql models with self joins columns (metabase#25885)", () => {
+    createQuestion(mbqlModelDetails).then(({ body: card }) =>
+      visitModel(card.id),
+    );
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    setColumnName("ID", "ID1");
+    setColumnName("Orders → ID", "ID2");
+    setColumnName("Orders_2 → ID", "ID3");
+    verifyColumnName("ID1");
+    verifyColumnName("ID2");
+    verifyColumnName("ID3");
+  });
+});
+
+describeEE("issue 43088", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should be able to create ad-hoc questions based on instance analytics models (metabase#43088)", () => {
+    cy.visit("/");
+    navigationSidebar().findByText("Metabase analytics").click();
+    getPinnedSection().findByText("People").scrollIntoView().click();
+    cy.wait("@dataset");
+    summarize();
+    rightSidebar().button("Done").click();
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(1);
+  });
+});
+
+describe("issue 39993", () => {
+  const columnName = "Exp";
+
+  const modelDetails: StructuredQuestionDetails = {
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+      fields: [
+        ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+        ["expression", columnName, { "base-type": "type/Integer" }],
+      ],
+      expressions: { [columnName]: ["+", 1, 1] },
+    },
+  };
+
+  function dragAndDrop(column: string, distance: number) {
+    cy.findAllByTestId("header-cell")
+      .contains(column)
+      .then(element => {
+        const rect = element[0].getBoundingClientRect();
+        cy.wrap(element)
+          .trigger("mousedown")
+          .trigger("mousemove", { clientX: rect.x + distance, clientY: rect.y })
+          .trigger("mouseup");
+      });
+  }
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/*").as("updateModel");
+  });
+
+  it("should preserve viz settings for models with custom expressions (metabase#39993)", () => {
+    createQuestion(modelDetails).then(({ body: card }) => visitModel(card.id));
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    cy.log("drag & drop the custom column 100 px to the left");
+    dragAndDrop(columnName, -100);
+    cy.button("Save changes").click();
+    cy.wait("@updateModel");
+    cy.findAllByTestId("header-cell").eq(0).should("have.text", "Exp");
+    cy.findAllByTestId("header-cell").eq(1).should("have.text", "ID");
+  });
+});
+
+describe("issue 34574", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should accept markdown for model description and render it properly (metabase#34574)", () => {
+    const modelDetails: StructuredQuestionDetails = {
+      name: "34574",
+      type: "model",
+      query: {
+        "source-table": PRODUCTS_ID,
+        limit: 2,
+      },
+    };
+    createQuestion(modelDetails).then(({ body: { id: modelId } }) =>
+      visitModel(modelId),
+    );
+
+    cy.findByTestId("qb-header-action-panel").within(() => {
+      // make sure the model fully loaded
+      cy.findByTestId("run-button").should("exist");
+      questionInfoButton().click();
+    });
+
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.log("Set the model description to a markdown text");
+      cy.intercept("GET", "/api/card/*/query_metadata").as("metadata");
+      cy.findByPlaceholderText("Add description").type(
+        "# Hello{enter}## World{enter}This is an **important** description!",
+      );
+      cy.realPress("Tab");
+      cy.wait("@metadata");
+
+      cy.log("Make sure we immediately render the proper markdown");
+      cy.findByTestId("editable-text").within(assertMarkdownPreview);
+    });
+
+    cy.log(
+      "Make sure the markdown is properly preserved in the model details page",
+    );
+    cy.findByRole("link", { name: "Model details" }).click();
+    cy.findByLabelText("Description").within(assertMarkdownPreview);
+
+    cy.log(
+      "Make sure the description is present in the collection entry tooltip",
+    );
+    cy.findByTestId("app-bar").findByText("Our analytics").click();
+    cy.location("pathname").should("eq", "/collection/root");
+    cy.findAllByTestId("collection-entry-name")
+      .filter(`:contains(${modelDetails.name})`)
+      .icon("info")
+      .realHover();
+    cy.findByRole("tooltip")
+      .should("contain", "Hello")
+      .and("contain", "World")
+      .and("contain", "This is an important description!");
+  });
+
+  function assertMarkdownPreview() {
+    cy.findByRole("heading", { level: 1, name: "Hello" }).should("be.visible");
+    cy.findByRole("heading", { level: 2, name: "World" }).should("be.visible");
+    cy.get("strong").should("be.visible").and("have.text", "important");
+  }
+});
+
+describe("issue 34517", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not change the url when reloading the page while editing a model (metabase#34517)", () => {
+    startNewModel();
+    cy.location("pathname").should("eq", "/model/query");
+
+    // wait for the model editor to be fully loaded
+    entityPickerModal().should("exist");
+    cy.reload();
+
+    // wait for the model editor to be fully loaded
+    entityPickerModal().should("exist");
+    cy.location("pathname").should("eq", "/model/query");
+  });
+});
+
+describe("issue 35840", () => {
+  const modelName = "M1";
+  const questionName = "Q1";
+
+  const modelDetails: StructuredQuestionDetails = {
+    type: "model",
+    name: modelName,
+    query: {
+      "source-table": PRODUCTS_ID,
+      expressions: {
+        Category: ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+      },
+    },
+  };
+
+  const getQuestionDetails = (modelId: CardId): StructuredQuestionDetails => ({
+    type: "question",
+    name: questionName,
+    query: {
+      "source-table": `card__${modelId}`,
+    },
+  });
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  function checkColumnMapping(entityTab: string, entityName: string) {
+    entityPickerModal().within(() => {
+      entityPickerModalTab(entityTab).click();
+      cy.findByText(entityName).click();
+    });
+    modal().findByText("Pick a column…").click();
+    popover().findAllByText("Category").eq(0).click();
+    modal().within(() => {
+      cy.findByText("Category").should("be.visible");
+      cy.findByText("Category, Category").should("not.exist");
+    });
+  }
+
+  it("should not confuse a model field with an expression that has the same name in dashboard parameter sources (metabase#35840)", () => {
+    cy.log("Setup dashboard");
+    createQuestion(modelDetails).then(({ body: model }) =>
+      createQuestion(getQuestionDetails(model.id)),
+    );
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+    setFilter("Text or Category", "Is");
+    setDropdownFilterType();
+    sidebar().findByText("Edit").click();
+
+    cy.log("Use model for dropdown source");
+    modal().within(() => {
+      cy.findByText("From another model or question").click();
+      cy.findByText("Pick a model or question…").click();
+    });
+    checkColumnMapping("Models", modelName);
+
+    cy.log("Use model-based question for dropdown source");
+    modal().findByText(modelName).click();
+    checkColumnMapping("Questions", questionName);
   });
 });

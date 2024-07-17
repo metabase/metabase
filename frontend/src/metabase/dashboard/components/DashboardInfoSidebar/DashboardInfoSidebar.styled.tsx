@@ -13,15 +13,13 @@ export const DashboardInfoSidebarRoot = styled.aside`
   background: var(--mb-color-bg-white);
   border-left: 1px solid var(--mb-color-border);
   align-self: stretch;
-  // FIXME: ensure that removing this style is OK
-  // overflow-y: auto;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
 
   ${breakpointMaxSmall} {
     position: absolute;
-    right: 0px;
+    right: 0;
     z-index: 2;
     height: auto;
     border-bottom: 1px solid var(--mb-color-border);

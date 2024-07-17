@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupFieldsValuesEndpoints,
-  setupFieldSearchValuesEndpoints,
+  setupFieldSearchValuesEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -94,14 +94,6 @@ async function setOperator(operator: string) {
 }
 
 describe("StringFilterPicker", () => {
-  beforeAll(() => {
-    jest.useFakeTimers({ advanceTimers: true });
-  });
-
-  afterAll(() => {
-    jest.useRealTimers();
-  });
-
   describe("new filter", () => {
     it("should render a blank editor", () => {
       setup();
@@ -156,7 +148,7 @@ describe("StringFilterPicker", () => {
     });
 
     it("should handle fields with searchable values", async () => {
-      setupFieldSearchValuesEndpoints(PEOPLE.EMAIL, "t", [
+      setupFieldSearchValuesEndpoint(PEOPLE.EMAIL, PEOPLE.EMAIL, "t", [
         ["test@metabase.test"],
       ]);
       const query = createQuery();
@@ -170,7 +162,6 @@ describe("StringFilterPicker", () => {
       await userEvent.click(screen.getByDisplayValue("Contains"));
       await userEvent.click(screen.getByText("Is"));
       await userEvent.type(screen.getByPlaceholderText("Search by Email"), "t");
-      jest.advanceTimersByTime(500);
       await userEvent.click(await screen.findByText("test@metabase.test"));
 
       await userEvent.click(screen.getByText("Add filter"));

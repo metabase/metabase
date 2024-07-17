@@ -20,6 +20,7 @@ import { useSelector, useStore } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
@@ -84,6 +85,8 @@ export interface DashCardProps {
   ) => void;
   showClickBehaviorSidebar: (dashcardId: DashCardId | null) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
+
+  downloadsEnabled: boolean;
 }
 
 function DashCardInner({
@@ -111,10 +114,12 @@ function DashCardInner({
   onChangeLocation,
   onUpdateVisualizationSettings,
   onReplaceAllVisualizationSettings,
+  downloadsEnabled,
 }: DashCardProps) {
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
   );
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const store = useStore();
   const getHref = useCallback(
     () => getDashcardHref(store.getState(), dashcard.id),
@@ -180,7 +185,7 @@ function DashCardInner({
   );
 
   const isAction = isActionCard(mainCard);
-  const isEmbed = isJWT(dashcard.dashboard_id);
+  const isEmbed = isEmbeddingSdk || isJWT(dashcard.dashboard_id);
 
   const { expectedDuration, isSlow } = useMemo(() => {
     const expectedDuration = Math.max(
@@ -350,6 +355,7 @@ function DashCardInner({
             navigateToNewCardFromDashboard ? changeCardAndRunHandler : null
           }
           onChangeLocation={onChangeLocation}
+          downloadsEnabled={downloadsEnabled}
         />
       </DashCardRoot>
     </ErrorBoundary>

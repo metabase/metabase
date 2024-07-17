@@ -98,7 +98,7 @@
   Snowflake driver expects a java.security.PrivateKey instance."
   [{:keys [user password account private-key-path]
     :as   details}]
-  (let [base-details (apply dissoc details (vals (secret/get-sub-props "private-key")))]
+  (let [base-details (apply dissoc details (vals (secret/->sub-props "private-key")))]
     (cond
       password
       details

@@ -17,6 +17,7 @@ type Appearance = {
   theme: DisplayTheme;
   font: "instance" | "custom";
   hide_download_button: boolean | null;
+  // TODO: implement `downloads` parameter in the analytics event
 };
 
 export const trackStaticEmbedDiscarded = ({
@@ -112,7 +113,8 @@ function normalizeAppearance(
     bordered: displayOptions.bordered,
     theme: displayOptions.theme ?? "light",
     font: displayOptions.font ? "custom" : "instance",
-    hide_download_button: displayOptions.hide_download_button,
+    // TODO: replace with `downloads` when it's implemented
+    hide_download_button: displayOptions.hide_download_button ?? null,
   };
 }
 

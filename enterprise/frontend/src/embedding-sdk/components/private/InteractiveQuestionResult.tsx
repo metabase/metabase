@@ -21,10 +21,9 @@ import {
   QuestionVisualization,
 } from "embedding-sdk/components/public/InteractiveQuestion/components";
 import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Group, Stack } from "metabase/ui";
-
-import { useInteractiveQuestionData } from "../public/InteractiveQuestion/hooks";
 
 interface InteractiveQuestionResultProps {
   height?: string | number;
@@ -70,14 +69,15 @@ export const InteractiveQuestionResult = ({
   const [questionView, setQuestionView] =
     useState<QuestionView>("visualization");
 
-  const { isQuestionLoading } = useInteractiveQuestionContext();
+  const { question, queryResults, isQuestionLoading } =
+    useInteractiveQuestionContext();
 
-  const { defaultHeight, isQueryRunning, queryResults, question } =
-    useInteractiveQuestionData();
+  const card = question?.card();
+  const defaultHeight = card ? getDefaultVizHeight(card.display) : undefined;
 
   let content;
 
-  if (isQuestionLoading || isQueryRunning) {
+  if (isQuestionLoading) {
     content = <SdkLoader />;
   } else if (!question || !queryResults) {
     content = <SdkError message={t`Question not found`} />;

@@ -1,14 +1,17 @@
 (ns metabase.task.backfill-query-fields-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models :refer [Card]]
-   [metabase.native-query-analyzer :as query-analyzer]
+   [metabase.query-analysis :as query-analysis]
    [metabase.task.backfill-query-fields :as backfill]
    [metabase.test :as mt]
+   [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
+
 
 (deftest backfill-query-field-test
   (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -16,6 +19,7 @@
         venues-name       (lib.metadata/field metadata-provider (mt/id :venues :name))
         mlv2-query        (-> (lib/query metadata-provider venues)
                               (lib/aggregate (lib/distinct venues-name)))]
+
     (mt/with-temp [Card c1   {:query_type    "native"
                               :dataset_query (mt/native-query {:query "SELECT id FROM venues"})}
                    Card c2   {:query_type    "native"
@@ -32,27 +36,31 @@
                               :query_type    "native"
                               :dataset_query (mt/native-query {:query "SELECT id FROM venues"})}]
 
-      ;; emulate "cards created before QueryField existed"
+      ;; Make sure there is no existing analysis for the relevant cards
       (t2/delete! :model/QueryField :card_id [:in (map :id [c1 c2 c3 c4 arch])])
 
-      ;; `(first (vals %))` is necessary since h2 generates `:count(id)` as a name for the column
-      (let [get-count #(t2/select-one-fn (comp first vals) [:model/QueryField [[:count :id]]] :card_id %)]
-        (testing "QueryField is empty - queries weren't analyzed"
-          (is (zero? (get-count (:id c1))))
-          (is (zero? (get-count (:id c2))))
-          (is (zero? (get-count (:id c3))))
-          (is (zero? (get-count (:id c4))))
-          (is (zero? (get-count (:id arch)))))
-        (binding [query-analyzer/*parse-queries-in-test?* true]
-          (#'backfill/backfill-query-fields!))
-        (testing "QueryField is filled now"
-          (testing "for a native query"
-            (is (pos? (get-count (:id c1)))))
-          (testing "for a native query with template tags"
-            (is (pos? (get-count (:id c2)))))
-          (testing "for an MBQL"
-            (is (pos? (get-count (:id c3)))))
-          (testing "for an MLv2"
-            (is (pos? (get-count (:id c4)))))
-          (testing "but not for an archived card"
-            (is (zero? (get-count (:id arch))))))))))
+      ;; Make sure some other card has analysis
+      (testing "There is at least one card with existing analysis"
+        (query-analysis/analyze-card! (:id c3))
+        (is (pos? (count (t2/select :model/QueryField :card_id (:id c3))))))
+
+      (let [queued-ids   (atom #{})
+            expected-ids (into #{} (map :id) [c1 c2 c4])]
+
+        ;; Run the backfill with a mocked out publisher
+        (#'backfill/backfill-missing-query-fields!
+         #(swap! queued-ids conj (:id %)))
+
+        (testing "The expected cards were all sent to the analyzer"
+          (is (= expected-ids (set/intersection expected-ids @queued-ids))))
+
+        (testing "The card with existing analysis was not sent to the analyzer again"
+          (is (not (@queued-ids (:id c3)))))))))
+
+
+(comment
+  (set! *warn-on-reflection* true)
+  (queue/clear! @#'query-analysis/queue)
+  (.-queued-set @#'query-analysis/queue)
+  (.peek (.-async-queue @#'query-analysis/queue))
+  (.peek (.-sync-queue @#'query-analysis/queue)))

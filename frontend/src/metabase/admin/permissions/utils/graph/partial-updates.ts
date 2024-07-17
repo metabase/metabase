@@ -1,6 +1,9 @@
 import _ from "underscore";
 
-import type { GroupsPermissions } from "metabase-types/api";
+import type {
+  CollectionPermissions,
+  GroupsPermissions,
+} from "metabase-types/api";
 
 // utils for dealing with partial graph updates
 
@@ -48,4 +51,17 @@ export function mergeGroupsPermissionsUpdates(
   });
 
   return Object.fromEntries(latestPermissionsEntries);
+}
+
+export function getModifiedCollectionPermissionsGraphParts(
+  originalCollectionPermissions: CollectionPermissions,
+  collectionPermissions: CollectionPermissions,
+) {
+  const groupIds = Object.keys(collectionPermissions);
+  const modifiedGroupIds = groupIds.filter(groupId => {
+    const originalPerms = originalCollectionPermissions[groupId];
+    const currPerms = collectionPermissions[groupId];
+    return !_.isEqual(currPerms, originalPerms);
+  });
+  return _.pick(collectionPermissions, modifiedGroupIds);
 }

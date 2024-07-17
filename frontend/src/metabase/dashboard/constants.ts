@@ -32,7 +32,9 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
     startTime: null,
     endTime: null,
   },
-  loadingControls: {},
+  loadingControls: {
+    isLoading: false,
+  },
   isAddParameterPopoverOpen: false,
   isNavigatingBackToDashboard: false,
   slowCards: {},
@@ -55,8 +57,8 @@ export const DEFAULT_DASHBOARD_DISPLAY_OPTIONS: EmbedDisplayParams = {
   bordered: false,
   titled: true,
   cardTitled: true,
-  hideDownloadButton: null,
   hideParameters: null,
   font: null,
   theme: "light",
+  downloadsEnabled: true,
 };

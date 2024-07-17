@@ -1,4 +1,6 @@
+export * from "./auto-translate";
 export * from "./backports";
+export * from "./flakes";
 export * from "./github";
 export * from "./linked-issues";
 export * from "./milestones";

@@ -20,7 +20,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { DashCardMenuConnected } from "./DashCardMenu";
+import { DashCardMenu } from "./DashCardMenu";
 
 const TEST_CARD = createMockCard({
   can_write: true,
@@ -93,7 +93,7 @@ const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
       <Route
         path="dashboard/:slug"
         component={() => (
-          <DashCardMenuConnected question={question} result={result} />
+          <DashCardMenu question={question} result={result} downloadsEnabled />
         )}
       />
       <Route path="question/:slug" component={() => <div />} />
