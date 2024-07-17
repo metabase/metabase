@@ -14,7 +14,6 @@
    [mb.hawk.parallel]
    [metabase.audit :as audit]
    [metabase.config :as config]
-   [metabase.db.query :as mdb.query]
    [metabase.models
     :refer [Card
             Dimension
