@@ -32,7 +32,7 @@ Features planned:
 
 # Prerequisites
 
-- You have an application using React 17 or higher
+- You have an application using React 18
 - You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
 - You have a running Metabase instance using a compatible version of the enterprise binary. v1.50.x are the only supported versions at this time.
 
