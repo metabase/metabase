@@ -146,18 +146,9 @@
    (not-any? change-types-requiring-preconditions (mapcat keys changes))
    (contains? change-set :preConditions)))
 
-(defn- disallow-delete-cascade-with-add-column
-  "Returns false if addColumn changeSet uses deleteCascade. See Metabase issue #14321"
-  [{:keys [changes]}]
-  (let [[change-type {:keys [columns]}] (ffirst changes)]
-    (if (= :addColumn change-type)
-      (not-any? #(-> % :column :constraints :deleteCascade) columns)
-      true)))
-
 (s/def ::change-set
   (s/and
    rollback-present-when-required?
    precondition-present-when-required?
-   disallow-delete-cascade-with-add-column
    (s/keys :req-un [::id ::author ::changes ::comment]
            :opt-un [::preConditions])))
