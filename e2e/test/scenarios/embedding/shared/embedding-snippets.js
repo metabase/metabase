@@ -1,7 +1,7 @@
 export const getEmbeddingJsCode = ({
   type,
   id,
-  hideDownloadButton,
+  downloads,
   theme,
   // Match the actual default value (metabase#43838)
   background = true,
@@ -24,7 +24,7 @@ var iframeUrl = METABASE_SITE_URL + "/embed/${type}/" + token +
   "#${getThemeParameter(theme)}${getBackgroundParameter(
       background,
     )}bordered=true&titled=true${getParameter({
-      hideDownloadButton,
+      downloads,
     })}";`
       .split("\n")
       .join("")
@@ -56,11 +56,11 @@ function getBackgroundParameter(background) {
   return !background ? "background=false&" : "";
 }
 
-function getParameter({ hideDownloadButton }) {
+function getParameter({ downloads }) {
   let parameter = "";
 
-  if (hideDownloadButton) {
-    parameter += "&hide_download_button=true";
+  if (downloads !== undefined) {
+    parameter += `&downloads=${downloads}`;
   }
 
   return parameter;

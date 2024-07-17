@@ -24,13 +24,8 @@ export const useDashboardUrlParams = ({
 }) => {
   const { font, setFont } = useEmbedFont();
 
-  const {
-    background,
-    bordered,
-    titled,
-    hide_parameters,
-    hide_download_button,
-  } = useEmbedFrameOptions({ location });
+  const { background, bordered, titled, hide_parameters, downloadsEnabled } =
+    useEmbedFrameOptions({ location });
 
   const {
     hasNightModeToggle,
@@ -90,6 +85,6 @@ export const useDashboardUrlParams = ({
     theme,
     setTheme,
     hideParameters: hide_parameters,
-    hideDownloadButton: hide_download_button,
+    downloadsEnabled,
   };
 };

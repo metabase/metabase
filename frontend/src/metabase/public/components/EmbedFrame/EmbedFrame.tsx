@@ -2,6 +2,7 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useMount } from "react-use";
+import { t } from "ttag";
 import _ from "underscore";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
@@ -10,6 +11,7 @@ import {
   FixedWidthContainer,
   ParametersFixedWidthContainer,
 } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
+import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
@@ -20,6 +22,12 @@ import {
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
+import { Box, Button, Icon } from "metabase/ui";
+import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib/save-chart-image";
+import {
+  getExportTabAsPdfButtonText,
+  saveDashboardPdf,
+} from "metabase/visualizations/lib/save-dashboard-pdf";
 import type Question from "metabase-lib/v1/Question";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -44,6 +52,7 @@ import {
   ParametersWidgetContainer,
   Root,
   Separator,
+  TitleAndButtonsContainer,
   TitleAndDescriptionContainer,
 } from "./EmbedFrame.styled";
 import { LogoBadge } from "./LogoBadge";
@@ -65,6 +74,7 @@ export type EmbedFrameBaseProps = Partial<{
   setParameterValueToDefault: (id: ParameterId) => void;
   children: ReactNode;
   dashboardTabs: ReactNode;
+  downloadsEnabled: boolean;
 }>;
 
 type WithRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
@@ -107,7 +117,7 @@ export const EmbedFrame = ({
   titled,
   theme,
   hide_parameters,
-  hide_download_button,
+  downloadsEnabled = true,
 }: EmbedFrameProps) => {
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const hasEmbedBranding = useSelector(
@@ -130,8 +140,7 @@ export const EmbedFrame = ({
     .filter(Boolean)
     .join(",");
 
-  const showFooter =
-    hasEmbedBranding || (!hide_download_button && actionButtons);
+  const showFooter = hasEmbedBranding || (downloadsEnabled && actionButtons);
 
   const finalName = titled ? name : null;
 
@@ -141,9 +150,20 @@ export const EmbedFrame = ({
     : [];
   const hasVisibleParameters = visibleParameters.length > 0;
 
-  const hasHeader = Boolean(finalName || dashboardTabs);
+  const hasHeader = Boolean(finalName || dashboardTabs) || downloadsEnabled;
   const canParameterPanelSticky =
     !!dashboard && isParametersWidgetContainersSticky(visibleParameters.length);
+
+  const saveAsPDF = async () => {
+    const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
+    await saveDashboardPdf(
+      cardNodeSelector,
+      name ?? t`Exported dashboard`,
+    ).then(() => {
+      // TODO: tracking
+      // trackExportDashboardToPDF(dashboard.id);
+    });
+  };
 
   return (
     <Root
@@ -160,24 +180,43 @@ export const EmbedFrame = ({
       data-testid="embed-frame"
       data-embed-theme={theme}
     >
-      <ContentContainer>
+      <ContentContainer
+        id={DASHBOARD_PDF_EXPORT_ROOT_ID}
+        className={EmbedFrameS.WithThemeBackground}
+      >
         {hasHeader && (
           <Header
-            className={EmbedFrameS.EmbedFrameHeader}
+            className={cx(
+              EmbedFrameS.EmbedFrameHeader,
+              SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS,
+            )}
             data-testid="embed-frame-header"
           >
-            {finalName && (
+            {(finalName || downloadsEnabled) && (
               <TitleAndDescriptionContainer>
-                <FixedWidthContainer
+                <TitleAndButtonsContainer
                   data-testid="fixed-width-dashboard-header"
                   isFixedWidth={dashboard?.width === "fixed"}
                 >
-                  <TitleAndDescription
-                    title={finalName}
-                    description={description}
-                    className={CS.my2}
-                  />
-                </FixedWidthContainer>
+                  {finalName && (
+                    <TitleAndDescription
+                      title={finalName}
+                      description={description}
+                      className={CS.my2}
+                    />
+                  )}
+                  <Box style={{ flex: 1 }} />
+                  {dashboard && downloadsEnabled && (
+                    <Button
+                      variant="subtle"
+                      leftIcon={<Icon name="document" />}
+                      color="text-dark"
+                      onClick={saveAsPDF}
+                    >
+                      {getExportTabAsPdfButtonText(dashboard.tabs)}
+                    </Button>
+                  )}
+                </TitleAndButtonsContainer>
               </TitleAndDescriptionContainer>
             )}
             {dashboardTabs && (

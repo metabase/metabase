@@ -19,7 +19,6 @@ import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
-  EmbedHideDownloadButton,
   EmbedHideParameters,
   EmbedNightModeControls,
 } from "metabase/dashboard/types";
@@ -64,10 +63,10 @@ export function PublicOrEmbeddedDashboardView({
   titled,
   theme,
   hideParameters,
-  hideDownloadButton,
   navigateToNewCardFromDashboard,
   slowCards,
   cardTitled,
+  downloadsEnabled,
 }: {
   dashboard: Dashboard | null;
   selectedTabId: SelectedTabId;
@@ -86,12 +85,12 @@ export function PublicOrEmbeddedDashboardView({
   titled: boolean;
   theme: DisplayTheme;
   hideParameters: EmbedHideParameters;
-  hideDownloadButton: EmbedHideDownloadButton;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
   slowCards: Record<number, boolean>;
   cardTitled: boolean;
+  downloadsEnabled: boolean;
 } & DashboardRefreshPeriodControls &
   EmbedNightModeControls &
   DashboardFullscreenControls) {
@@ -154,7 +153,7 @@ export function PublicOrEmbeddedDashboardView({
       titled={titled}
       theme={normalizedTheme}
       hide_parameters={hideParameters}
-      hide_download_button={hideDownloadButton}
+      downloadsEnabled={downloadsEnabled}
     >
       <LoadingAndErrorWrapper
         className={cx({
@@ -194,6 +193,7 @@ export function PublicOrEmbeddedDashboardView({
                 withCardTitle={cardTitled}
                 clickBehaviorSidebarDashcard={null}
                 navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
+                downloadsEnabled={downloadsEnabled}
               />
             </DashboardContainer>
           );

@@ -151,7 +151,6 @@ const InteractiveDashboardInner = ({
           <PublicOrEmbeddedDashboard
             dashboardId={dashboardId}
             parameterQueryParams={initialParameterValues}
-            hideDownloadButton={displayOptions.hideDownloadButton}
             hideParameters={displayOptions.hideParameters}
             background={displayOptions.background}
             titled={displayOptions.titled}
@@ -169,6 +168,7 @@ const InteractiveDashboardInner = ({
             }
             onLoad={onLoad}
             onLoadWithoutCards={onLoadWithoutCards}
+            downloadsEnabled={withDownloads}
             isNightMode={false}
             onNightModeChange={_.noop}
             hasNightModeToggle={false}

@@ -59,7 +59,7 @@ export const ServerEmbedCodePane = ({
   );
 
   const canWhitelabel = useSelector(getCanWhitelabel);
-  const shouldShowDownloadData = canWhitelabel && resourceType === "question";
+  const shouldShowDownloadData = canWhitelabel;
 
   if (!selectedServerCodeOption) {
     return null;

@@ -27,7 +27,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
     background,
     bordered,
     hasNightModeToggle,
-    hideDownloadButton,
+    downloadsEnabled,
     hideParameters,
     isFullscreen,
     isNightMode,
@@ -61,7 +61,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         onRefreshPeriodChange={onRefreshPeriodChange}
         background={background}
         bordered={bordered}
-        hideDownloadButton={hideDownloadButton}
+        downloadsEnabled={downloadsEnabled}
         theme={theme}
         titled={titled}
         font={font}

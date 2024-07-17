@@ -18,7 +18,7 @@
                     :card_id card-id))
 
 (defn- do-with-test-setup [f]
-  (binding [query-analysis/*parse-queries-in-test?* true]
+  (query-analysis/with-immediate-analysis
     (let [table-id (mt/id :orders)
           tax-id   (mt/id :orders :tax)
           total-id (mt/id :orders :total)]
@@ -41,12 +41,10 @@
 
 (defn- trigger-parse!
   "Update the card to an arbitrary query; defaults to querying the two columns that do exist: TAX and TOTAL"
-  ([card-id]
-   (trigger-parse! card-id "SELECT TAX, TOTAL FROM orders"))
-  ([card-id query]
-   (if (string? query)
-     (t2/update! :model/Card card-id {:dataset_query (mt/native-query {:query query})})
-     (t2/update! :model/Card card-id {:dataset_query query}))))
+  [card-id query]
+  (if (string? query)
+    (t2/update! :model/Card card-id {:dataset_query (mt/native-query {:query query})})
+    (t2/update! :model/Card card-id {:dataset_query query})))
 
 ;;;;
 ;;;; Actual tests
@@ -54,11 +52,11 @@
 
 (deftest query-fields-created-by-queries-test
   (with-test-setup
-    (let [total-qf {:card_id          card-id
-                    :field_id         total-id
+    (let [total-qf {:card_id            card-id
+                    :field_id           total-id
                     :explicit_reference true}
-          tax-qf   {:card_id          card-id
-                    :field_id         tax-id
+          tax-qf   {:card_id            card-id
+                    :field_id           tax-id
                     :explicit_reference true}]
 
       (testing "A freshly created card has relevant corresponding QueryFields"
@@ -66,7 +64,7 @@
                (query-fields-for-card card-id))))
 
       (testing "Adding new columns to the query also adds the QueryFields"
-        (trigger-parse! card-id)
+        (trigger-parse! card-id "SELECT tax, total FROM orders")
         (is (= #{tax-qf total-qf}
                (query-fields-for-card card-id))))
 
@@ -77,7 +75,7 @@
 
       (testing "Columns referenced via field filters are still found"
         (trigger-parse! card-id
-                        (mt/native-query {:query "SELECT tax FROM orders WHERE {{adequate_total}}"
+                        (mt/native-query {:query         "SELECT tax FROM orders WHERE {{adequate_total}}"
                                           :template-tags {"adequate_total"
                                                           {:type         :dimension
                                                            :name         "adequate_total"

@@ -515,6 +515,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         isEmbed: true,
         logResults: true,
         downloadUrl: "/api/embed/dashboard/*/dashcard/*/card/*/csv*",
+        downloadMethod: "GET",
       },
       sheet => {
         expect(sheet["A1"].v).to.eq("ID");
