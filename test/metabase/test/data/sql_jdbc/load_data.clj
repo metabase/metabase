@@ -264,8 +264,7 @@
                       (:table-definitions dbdef)))
           num-rows (fn [table-name]
                      (transduce
-                      (keep (fn [chunk]
-                              (count chunk)))
+                      (keep count)
                       +
                       0
                       (reducible-chunks driver dbdef (tabledef table-name))))]
