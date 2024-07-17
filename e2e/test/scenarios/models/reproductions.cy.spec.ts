@@ -986,3 +986,34 @@ describe("issue 35840", () => {
     checkColumnMapping("Questions", questionName);
   });
 });
+
+describe("issue 34514", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow browser history navigation between tabs (metabase#34514)", () => {
+    startNewModel();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    cy.findByTestId("run-button").click();
+    cy.findByTestId("editor-tabs-metadata-name").click();
+
+    cy.go("back");
+
+    entityPickerModal().should("not.exist");
+    getNotebookStep("data").findByText("Orders").should("be.visible");
+    cy.findByTestId("TableInteractive-root")
+      .findByText("39.72")
+      .should("be.visible");
+  });
+
+  // TODO
+  // it.skip("should not make network request with invalid query (metabase#34514)", () => {
+  //   startNewModel();
+  //   entityPickerModal().findByText("Orders").click();
+  // });
+});
