@@ -338,7 +338,7 @@
                                         (u/the-id (:db_id table))
                                         (#'upload/table-identifier table))))))))))))
 
-(defn do-with-uploads-enabled
+(defn do-with-uploads-enabled!
   "Set uploads_enabled to true the current database, and as an admin user, run the thunk"
   [thunk]
   (mt/with-discard-model-updates [:model/Database]
@@ -347,10 +347,10 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (thunk))))
 
-(defmacro with-uploads-enabled [& body]
-  `(do-with-uploads-enabled (fn [] ~@body)))
+(defmacro with-uploads-enabled! [& body]
+  `(do-with-uploads-enabled! (fn [] ~@body)))
 
-(defn do-with-uploads-disabled
+(defn do-with-uploads-disabled!
   "Set uploads_enabled to false the current database, and as an admin user, run the thunk"
   [thunk]
   (mt/with-discard-model-updates [:model/Database]
@@ -358,8 +358,8 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (thunk))))
 
-(defmacro with-uploads-disabled [& body]
-  `(do-with-uploads-disabled (fn [] ~@body)))
+(defmacro with-uploads-disabled! [& body]
+  `(do-with-uploads-disabled! (fn [] ~@body)))
 
 (defn do-with-upload-table! [table thunk]
   (try (thunk table)
@@ -386,7 +386,7 @@
       ...)"
   {:style/indent :defn}
   [[table-binding create-table-expr] & body]
-  `(with-uploads-enabled
+  `(with-uploads-enabled!
      (mt/with-model-cleanup [:model/Table]
        (do-with-upload-table! ~create-table-expr (fn [~table-binding] ~@body)))))
 
@@ -1344,7 +1344,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
-        (with-uploads-enabled
+        (with-uploads-enabled!
           (testing "Append should fail only if there are missing columns in the CSV file"
             (doseq [[csv-rows error-message]
                     {[""]
@@ -1464,7 +1464,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
-        (with-uploads-enabled
+        (with-uploads-enabled!
           (testing "Append should succeed with a CSV with only the header"
             (let [csv-rows ["name"]]
               (with-upload-table!
@@ -1806,7 +1806,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
-        (with-uploads-enabled
+        (with-uploads-enabled!
           (testing "Append should handle new columns being added in the latest CSV"
             (with-upload-table! [table (create-upload-table!)]
              ;; Reorder as well for good measure

@@ -187,7 +187,7 @@
                                                                    {:name     (tx/database-display-name-for-driver driver database-name)
                                                                     :engine   driver
                                                                     :details  connection-details
-                                                                    :settings {:database-source-dataset-name  database-name}})))]
+                                                                    :settings {:database-source-dataset-name database-name}})))]
     (sync-newly-created-database! driver database-definition connection-details db)
     (set-test-db-permissions! (u/the-id db))
     ;; make sure we're returing an up-to-date copy of the DB
