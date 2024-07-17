@@ -1,6 +1,6 @@
 (ns metabase.query-processor.streaming.csv
   (:require
-   [clojure.data.csv :as csv]
+   [clojure.data.csv]
    [java-time.api :as t]
    [metabase.formatter :as formatter]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
@@ -36,6 +36,38 @@
   Disabled by default and should remain disabled until Issue #44556 is resolved and a clear plan is made."
   false)
 
+(defn- write-csv
+  "Custom implementation of `clojure.data.csv/write-csv` with a more efficient quote? predicate and no support for
+  options (we don't use them)."
+  [writer data]
+  (let [separator \,
+        quote \"
+        quote? (fn [^String s]
+                 (let [n (.length s)]
+                   (loop [i 0]
+                     (if (>= i n) false
+                         (let [ch (.charAt s (unchecked-int i))]
+                           (if (or (= ch \,) ;; separator
+                                   (= ch \") ;; quote
+                                   (= ch \return)
+                                   (= ch \newline))
+                             true
+                             (recur (unchecked-inc i))))))))
+        newline "\n"]
+    (#'clojure.data.csv/write-csv* writer data separator quote quote? newline)))
+
+;; Rebind write-cell to avoid using clojure.core/escape. Instead, use String.replace with known arguments (we never
+;; change quote symbol anyway).
+(.bindRoot #'clojure.data.csv/write-cell
+           (fn [^java.io.Writer writer obj _ _ quote?]
+             (let [^String string (str obj)
+                   must-quote (quote? string)]
+               (when must-quote (.write writer "\""))
+               (.write writer (if must-quote
+                                (.replace string "\"" "\"\"")
+                                string))
+               (when must-quote (.write writer "\"")))))
+
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
@@ -59,7 +91,7 @@
                      (vec (repeat (count ordered-cols) identity))))
           ;; write the column names for non-pivot tables
           (when col-names
-            (csv/write-csv writer [col-names])
+            (write-csv writer [col-names])
             (.flush writer))))
 
       (write-row! [_ row _row-num _ {:keys [output-order]}]
@@ -75,7 +107,7 @@
             ;; so that we can post process the full set of results in finish!
             (swap! rows! conj xf-row)
             (do
-              (csv/write-csv writer [xf-row])
+              (write-csv writer [xf-row])
               (.flush writer)))))
 
       (finish! [_ _]
@@ -83,7 +115,7 @@
         (when @pivot-options
           (let [pivot-table-rows (qp.pivot.postprocess/pivot-builder @rows! @pivot-options)]
             (doseq [xf-row pivot-table-rows]
-              (csv/write-csv writer [xf-row]))))
+              (write-csv writer [xf-row]))))
         (.flush writer)
         (.flush os)
         (.close writer)))))
