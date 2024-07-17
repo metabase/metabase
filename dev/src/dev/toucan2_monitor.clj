@@ -55,6 +55,8 @@
   "Start tracking queries."
   []
   (tu.log/set-ns-log-level! *ns* :debug)
+  (when-let [f @log-future]
+    (future-cancel f))
   (reset! log-future (future
                       (while true
                         (let [{:keys [total-queries total-execution-time]} (summary)]
