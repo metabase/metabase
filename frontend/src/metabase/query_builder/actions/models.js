@@ -14,7 +14,9 @@ import { runDirtyQuestionQuery, runQuestionQuery } from "./querying";
 import { setQueryBuilderMode } from "./ui";
 
 export const setDatasetEditorTab = datasetEditorTab => dispatch => {
-  dispatch(setQueryBuilderMode("dataset", { datasetEditorTab }));
+  dispatch(
+    setQueryBuilderMode("dataset", { datasetEditorTab, replaceState: false }),
+  );
   dispatch(runDirtyQuestionQuery());
 };
 
