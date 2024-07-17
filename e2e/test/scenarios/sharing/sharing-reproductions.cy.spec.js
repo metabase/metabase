@@ -630,7 +630,7 @@ describeEE("issue 26988", () => {
     });
 
     openStaticEmbeddingModal({
-      activeTab: "appearance",
+      activeTab: "lookAndFeel",
       previewMode: "preview",
       acceptTerms: false,
     });
@@ -638,7 +638,7 @@ describeEE("issue 26988", () => {
     cy.wait("@previewDashboard");
     getIframeBody().should("have.css", "font-family", "Lato, sans-serif");
 
-    cy.findByLabelText("Playing with appearance options")
+    cy.findByLabelText("Customizing look and feel")
       .findByLabelText("Font")
       .as("font-control")
       .click();
