@@ -142,7 +142,7 @@ const WIDGET_TEST_CASES: WidgetTestCase[] = [
     { columnName: "Time", pickerId: "time-filter-picker" },
   ],
   [
-    "fallback",
+    "default",
     createQueryWithDefaultFilter(),
     { columnName: "Array", pickerId: "default-filter-picker" },
   ],
