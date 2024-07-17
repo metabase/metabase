@@ -163,7 +163,7 @@ Syntax: `Median(column)`.
 
 Example: `Median([Age])` would find the midpoint age where half of the ages are older, and half of the ages are younger.
 
-Databases that don't support `median`: SQLite, Vertica, SQL server, MySQL. Presto only provides approximate results.
+Databases that don't support `median`: MariaDB, MySQL, SQLite, Vertica, and SQL Server. Presto only provides approximate results.
 
 Related: [Min](#min), [Max](#max), [Average](#average).
 
@@ -185,7 +185,7 @@ Syntax: `Percentile(column, percentile-value)`
 
 Example: `Percentile([Score], 0.9)` would return the value at the 90th percentile for all values in that column.
 
-Databases that don't support `percentile`: H2, MySQL, SQL Server, SQLite, Vertica. Presto only provides approximate results.
+Databases that don't support `percentile`: H2, MariaDB, MySQL, SQL Server, SQLite, Vertica. Presto only provides approximate results.
 
 ### Share
 
@@ -761,7 +761,7 @@ See [Offset](./expressions/offset.md).
   case(contains([Title], 'Wallet'), true, false)
   ```
 
-### Database limitations
+## Database limitations
 
 Limitations are noted for each aggregation and function above, and here there are in summary:
 
@@ -771,7 +771,9 @@ Limitations are noted for each aggregation and function above, and here there ar
 
 **MongoDB**: `regexextract`
 
-**MySQL/MariaDB**: `Median`, `Percentile`.
+**MariaDB**: `Median`, `Percentile`.
+
+**MySQL**: `Median`, `Percentile`.
 
 **Presto**: Only provides _approximate_ results for `Median` and `Percentile`.
 

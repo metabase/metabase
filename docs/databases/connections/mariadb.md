@@ -4,6 +4,8 @@ title: MariaDB
 
 # MariaDB
 
+> We recommend using MariaDB version 10.4 or higher.
+
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
 MariaDB shares a driver with MySQL, so select the **MySQL** driver.
