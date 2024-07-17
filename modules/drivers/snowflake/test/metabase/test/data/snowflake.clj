@@ -185,10 +185,10 @@
 ;; For reasons I don't understand the Snowflake JDBC driver doesn't seem to work when trying to use parameterized
 ;; INSERT statements, even though the documentation suggests it should. Just go ahead and deparameterize all the
 ;; statements for now.
-(defmethod ddl/insert-rows-ddl-statements :snowflake
+(defmethod ddl/insert-rows-dml-statements :snowflake
   [driver table-identifier rows]
   (binding [driver/*compile-with-inline-parameters* true]
-    ((get-method ddl/insert-rows-ddl-statements :sql-jdbc/test-extensions) driver table-identifier rows)))
+    ((get-method ddl/insert-rows-dml-statements :sql-jdbc/test-extensions) driver table-identifier rows)))
 
 (defmethod execute/execute-sql! :snowflake
   [& args]

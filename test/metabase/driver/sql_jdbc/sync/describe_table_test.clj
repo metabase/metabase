@@ -487,30 +487,29 @@
           (when-not (mysql/mariadb? (mt/db))
             (sync/sync-database! (mt/db))
             (testing "if table has an pk, we fetch both first and last rows thus detect the change in type"
-              (is (= #{{:name              "json_col → int_turn_string"
-                        :database-type     "text"
-                        :base-type         :type/Text
-                        :database-position 0
-                        :json-unfolding    false
-                        :visibility-type   :normal
-                        :nfc-path          [:json_col "int_turn_string"]}}
-                     (sql-jdbc.sync/describe-nested-field-columns
-                      driver/*driver*
-                      (mt/db)
-                      (t2/select-one Table :db_id (mt/id) :name "json_with_pk"))))
-
+              (is (= [{:name              "json_col → int_turn_string"
+                       :database-type     "text"
+                       :base-type         :type/Text
+                       :database-position 0
+                       :json-unfolding    false
+                       :visibility-type   :normal
+                       :nfc-path          [:json_col "int_turn_string"]}]
+                     (into [] (sql-jdbc.sync/describe-nested-field-columns
+                               driver/*driver*
+                               (mt/db)
+                               (t2/select-one Table :db_id (mt/id) :name "json_with_pk")))))
               (testing "if table doesn't have pk, we fail to detect the change in type but it still syncable"
-                (is (= #{{:name              "json_col → int_turn_string"
-                          :database-type     "bigint"
-                          :base-type         :type/Integer
-                          :database-position 0
-                          :json-unfolding    false
-                          :visibility-type   :normal
-                          :nfc-path          [:json_col "int_turn_string"]}}
-                       (sql-jdbc.sync/describe-nested-field-columns
-                        driver/*driver*
-                        (mt/db)
-                        (t2/select-one Table :db_id (mt/id) :name "json_without_pk"))))))))))))
+                (is (= [{:name              "json_col → int_turn_string"
+                         :database-type     "bigint"
+                         :base-type         :type/Integer
+                         :database-position 0
+                         :json-unfolding    false
+                         :visibility-type   :normal
+                         :nfc-path          [:json_col "int_turn_string"]}]
+                       (into [] (sql-jdbc.sync/describe-nested-field-columns
+                                 driver/*driver*
+                                 (mt/db)
+                                 (t2/select-one Table :db_id (mt/id) :name "json_without_pk")))))))))))))
 
 (deftest describe-table-indexes-test
   (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info)

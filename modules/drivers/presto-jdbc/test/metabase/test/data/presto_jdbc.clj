@@ -102,11 +102,11 @@
   [_driver _dbdef _tabledef]
   (load-data/add-ids-xform))
 
-(defmethod ddl/insert-rows-ddl-statements :presto-jdbc
+(defmethod ddl/insert-rows-dml-statements :presto-jdbc
   [driver table-identifier rows]
   (def %rows rows)
   (binding [driver/*compile-with-inline-parameters* true]
-    ((get-method ddl/insert-rows-ddl-statements :sql-jdbc/test-extensions) driver table-identifier rows)))
+    ((get-method ddl/insert-rows-dml-statements :sql-jdbc/test-extensions) driver table-identifier rows)))
 
 ;;; it seems to be significantly faster to load rows in batches of 500 in parallel than to try to load all the rows in
 ;;; a few giant SQL statement. It seems like batch size = 5000 is a working limit here but
@@ -115,7 +115,7 @@
   (dorun
    (pmap
     (fn [rows]
-      (let [statements (ddl/insert-rows-ddl-statements driver table-identifier rows)]
+      (let [statements (ddl/insert-rows-dml-statements driver table-identifier rows)]
         (doseq [[^String sql & params] statements]
           (assert (empty? params))
           (try

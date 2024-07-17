@@ -94,11 +94,15 @@ title: Driver interface changelog
     created automatically and passed in in the calling code. Update your method implementations and usages
     accordingly.
 
-- Added method `metabase.test.data.interface/dataset-already-loaded?` to check if a test dataset has already been
-  loaded. JDBC-based drivers have a default implementation that checks whether we can connect to the database; you may
-  need to override this for drivers that don't actually physically create new databases in tests. You can check
-  whether your JDBC-based driver works correctly using the default implementation by running the test
-  `metabase.test.data.sql-jdbc-test/dataset-already-loaded?-test`.
+  - Added method `metabase.test.data.interface/dataset-already-loaded?` to check if a test dataset has already been
+    loaded. JDBC-based drivers have a default implementation that checks whether we can connect to the database; you
+    may need to override this for drivers that don't actually physically create new databases in tests. You can check
+    whether your JDBC-based driver works correctly using the default implementation by running the test
+    `metabase.test.data.sql-jdbc-test/dataset-already-loaded?-test`.
+
+  - `metabase.test.data.sql.ddl/insert-rows-ddl-statements` has been renamed to
+    `metabase.test.data.sql.ddl/insert-rows-dml-statements`, since `INSERT` is DML, not DDL. Please update your method
+    implementations accordingly.
 
 ## Metabase 0.50.0
 

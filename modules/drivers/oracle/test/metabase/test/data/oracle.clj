@@ -169,9 +169,6 @@
                       (u/one-or-many row-or-rows))])
 
 ;;; see also [[metabase.driver.oracle-test/insert-rows-ddl-test]]
-(defn x []
-  #t "2014-04-01T08:30")
-
 (deftest ^:parallel insert-all-test
   (let [rows [{:name "Plato Yeshua", :t #t "2014-04-01T08:30", :password 1, :active true}
               {:name "Felipinho Asklepios", :t #t "2014-12-05T15:15", :password 2, :active false}]

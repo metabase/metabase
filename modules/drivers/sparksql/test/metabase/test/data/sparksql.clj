@@ -89,7 +89,7 @@
 
 (defmethod load-data/do-insert! :sparksql
   [driver ^java.sql.Connection conn table-identifier rows]
-  (let [statements (ddl/insert-rows-ddl-statements driver table-identifier rows)]
+  (let [statements (ddl/insert-rows-dml-statements driver table-identifier rows)]
     (try
       (.setAutoCommit conn true)
       (doseq [sql+args statements]

@@ -183,7 +183,7 @@
    ^java.sql.Connection conn :- (lib.schema.common/instance-of-class java.sql.Connection)
    table-identifier
    rows]
-  (let [statements (ddl/insert-rows-ddl-statements driver table-identifier rows)]
+  (let [statements (ddl/insert-rows-dml-statements driver table-identifier rows)]
     ;; `set-parameters` might try to look at DB timezone; we don't want to do that while loading the data because the
     ;; DB hasn't been synced yet
     (when-let [set-timezone-format-string #_{:clj-kondo/ignore [:deprecated-var]} (sql-jdbc.execute/set-timezone-sql driver)]
