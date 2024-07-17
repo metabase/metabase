@@ -8423,6 +8423,13 @@ databaseChangeLog:
       id: v51.2024-07-08T10:00:02
       author: qnkhuat
       comment: Add fk constraint to pulse_channel.channel_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_pulse_channel_channel_id
+                foreignKyeTableName: pulse_channel
+
       changes:
         - addForeignKeyConstraint:
             baseTableName: pulse_channel
