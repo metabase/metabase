@@ -94,7 +94,7 @@ export const getSelectInputOverrides = (
     },
     rightSection: {
       ref: getStylesRef("rightSection"),
-      color: theme.fn.themeColor("text-dark"),
+      color: "var(--mb-color-text-primary)",
 
       svg: {
         color: "inherit !important",

@@ -70,6 +70,11 @@ export const getMultiSelectOverrides =
           "&[data-with-icon]": {
             paddingLeft: theme.spacing.lg,
           },
+          background: "var(--mb-color-background)",
+          color: "var(--mb-color-text-primary)",
+          "&::placeholder": {
+            color: "var(--mb-color-text-secondary)",
+          },
         },
         icon: {
           width: theme.spacing.lg,
@@ -101,7 +106,7 @@ export const getMultiSelectOverrides =
           fontSize: getSize({ size, sizes: theme.fontSizes }),
           borderRadius: theme.radius.xs,
           color: theme.fn.themeColor("brand"),
-          backgroundColor: theme.fn.themeColor("bg-medium"),
+          backgroundColor: "var(--mb-color-background-selected)",
         },
         defaultValueRemove: {
           color: theme.fn.themeColor("brand"),

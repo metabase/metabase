@@ -198,19 +198,47 @@ const createDefaultArgs = (args: ArgType = {}): ArgType => {
 };
 
 // Light theme
-export const LightThemeDefault = Template.bind({});
-LightThemeDefault.args = createDefaultArgs();
-LightThemeDefault.play = async ({ canvasElement }) => {
+export const LightThemeText = Template.bind({});
+LightThemeText.args = createDefaultArgs();
+LightThemeText.play = async ({ canvasElement }) => {
   const canvas = within(canvasElement);
   const filter = await canvas.findByRole("button", { name: "Category" });
   await userEvent.click(filter);
 };
 
-// Dark theme
-export const DarkThemeDefault = Template.bind({});
-DarkThemeDefault.args = createDefaultArgs({ theme: "night" });
-DarkThemeDefault.play = async ({ canvasElement }) => {
+export const LightThemeTextWithValue = Template.bind({});
+LightThemeTextWithValue.args = createDefaultArgs();
+LightThemeTextWithValue.play = async ({ canvasElement }) => {
   const canvas = within(canvasElement);
   const filter = await canvas.findByRole("button", { name: "Category" });
   await userEvent.click(filter);
+  const documentElement = within(document.documentElement);
+  await userEvent.type(
+    documentElement.getByPlaceholderText("Enter some text"),
+    "filter value",
+  );
+  await userEvent.tab();
+};
+
+// Dark theme
+export const DarkThemeText = Template.bind({});
+DarkThemeText.args = createDefaultArgs({ theme: "night" });
+DarkThemeText.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", { name: "Category" });
+  await userEvent.click(filter);
+};
+
+export const DarkThemeTextWithValue = Template.bind({});
+DarkThemeTextWithValue.args = createDefaultArgs({ theme: "night" });
+DarkThemeTextWithValue.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", { name: "Category" });
+  await userEvent.click(filter);
+  const documentElement = within(document.documentElement);
+  await userEvent.type(
+    documentElement.getByPlaceholderText("Enter some text"),
+    "filter value",
+  );
+  await userEvent.tab();
 };
