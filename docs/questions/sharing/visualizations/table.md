@@ -72,7 +72,7 @@ Grab the domain or host from a URL or email. So if you have `https://www.example
 - Domain: `example`
 - Subdomain: `www`
 
-> Extracting domain and host from a URL or email is unavailable for MongoDB, SQLite, and SQL Server. For Druid, extracting domain and host only available for the Druid-JDBC driver.
+> Extracting domain and host from a URL or email is unavailable for MongoDB, SQLite, and SQL Server. For Druid, extracting domain and host is only available for the Druid-JDBC driver.
 
 ### Sum over time
 
