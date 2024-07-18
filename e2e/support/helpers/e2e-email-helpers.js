@@ -109,11 +109,6 @@ export const emailSubscriptionRecipients = () => {
   clickSend();
 };
 
-export const sendSubscriptionsEmail = recipient => {
-  openAndAddEmailsToSubscriptions([recipient]);
-  clickSend();
-};
-
 export function sendEmailAndAssert(callback) {
   clickSend();
 
