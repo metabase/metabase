@@ -54,7 +54,9 @@
   ([stop-after]
    (analyzer-loop* stop-after query-analysis/next-card-id!))
   ([stop-after queue]
-   (analyzer-loop* stop-after (partial query-analysis/next-card-id! queue))))
+   (analyzer-loop! stop-after queue Long/MAX_VALUE))
+  ([stop-after queue timeout]
+   (analyzer-loop* stop-after (partial query-analysis/next-card-id! queue timeout))))
 
 (jobs/defjob ^{DisallowConcurrentExecution true
                :doc                        "Analyze "}
