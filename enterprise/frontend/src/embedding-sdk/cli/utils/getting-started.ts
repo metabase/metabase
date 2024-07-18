@@ -45,7 +45,9 @@ export async function showGettingStartedGuide(port: number) {
   const instanceUrl = `http://localhost:${port}`;
 
   const codeSample = getCodeSample(instanceUrl);
-  console.log("\n" + codeSample.trim() + "\n");
+  console.log("\n" + codeSample.trim());
+
+  printInfo("Please paste the code above in your application.\n");
 
   await confirm({ message: "Have you pasted the code?" });
 
