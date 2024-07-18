@@ -154,7 +154,13 @@ export const CleanupCollectionModal = ({
             )}
           </DelayedLoadingAndErrorWrapper>
         </Modal.Body>
-        <Flex px="2.5rem" pb="2rem" justify="end" className={CS.modalFooter}>
+        <Flex
+          px="2.5rem"
+          pb="2rem"
+          mih="4rem"
+          justify="end"
+          className={CS.modalFooter}
+        >
           <PaginationControls
             showTotal
             itemsLength={items.length}

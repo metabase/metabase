@@ -12,7 +12,6 @@ export type ItemRendererProps = {
   item: CollectionItem;
   isSelected?: boolean;
   isPinned?: boolean;
-  isLink?: boolean;
   onToggleSelected?: OnToggleSelectedWithItem;
   collection?: Collection;
   draggable?: boolean;
@@ -26,7 +25,6 @@ export const DefaultItemRenderer = ({
   item,
   isSelected,
   isPinned,
-  isLink,
   onToggleSelected,
   collection,
   onCopy,
@@ -71,7 +69,6 @@ export const DefaultItemRenderer = ({
         item={item}
         testIdPrefix={testIdPrefix}
         onClick={onClick}
-        isLink={isLink}
       />
       <Columns.LastEditedBy.Cell item={item} testIdPrefix={testIdPrefix} />
       <Columns.LastEditedAt.Cell item={item} testIdPrefix={testIdPrefix} />

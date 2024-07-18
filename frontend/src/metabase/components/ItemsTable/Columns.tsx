@@ -35,19 +35,17 @@ import {
 
 type HeaderProps = Omit<SortableColumnHeaderProps, "name">;
 
-const ItemNameComponent = ({
+const ItemLinkComponent = ({
   onClick,
   item,
   children,
-  isLink = true,
 }: PropsWithChildren<{
   item: CollectionItem;
   onClick?: (item: CollectionItem) => void;
-  isLink?: boolean;
 }>) => {
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
 
-  if (!isLink || isEmbeddingSdk) {
+  if (isEmbeddingSdk) {
     return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
   }
   return (
@@ -155,17 +153,15 @@ export const Columns = {
       item,
       testIdPrefix = "table",
       includeDescription = true,
-      isLink = true,
       onClick,
     }: {
       item: CollectionItem;
       testIdPrefix?: string;
       includeDescription?: boolean;
-      isLink?: boolean;
       onClick?: (item: CollectionItem) => void;
     }) => (
       <ItemNameCell data-testid={`${testIdPrefix}-name`}>
-        <ItemNameComponent isLink={isLink} onClick={onClick} item={item}>
+        <ItemLinkComponent onClick={onClick} item={item}>
           <EntityItem.Name name={item.name} variant="list" />
           <PLUGIN_MODERATION.ModerationStatusIcon
             size={16}
@@ -182,7 +178,7 @@ export const Columns = {
               }
             />
           )}
-        </ItemNameComponent>
+        </ItemLinkComponent>
       </ItemNameCell>
     ),
   },
