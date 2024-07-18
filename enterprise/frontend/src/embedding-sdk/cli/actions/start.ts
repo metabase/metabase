@@ -10,7 +10,7 @@ import { printError } from "../utils/print";
 
 const START_MESSAGE = `
   This command will help you bootstrap a local Metabase instance and embed
-  analytics into your React app using the Metabase embedding SDK for React.
+  analytics into your React app using the Metabase Embedding SDK.
 `;
 
 const DOCKER_NOT_RUNNING_MESSAGE = `
