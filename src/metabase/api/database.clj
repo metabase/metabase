@@ -780,6 +780,60 @@
               (assoc :valid false))
       details)))
 
+(defmulti private-key-path->value
+  "In a clustered setup, there's no way to read from the local file, but if we treat the local file path option the
+  same as a file upload, then the secret will be stored in the db, and hence be accessible to all instances."
+  (fn [engine _details] (keyword engine)))
+
+(defmethod private-key-path->value :default [_engine details] details)
+
+(defmethod private-key-path->value :snowflake
+  [_engine details]
+  (if-let [path (:private-key-path details)]
+    (if-let [value (slurp path)]
+      (-> details
+          (dissoc :private-key-path)
+          (assoc :private-key-value (str "data:application/octet-stream;base64," (u/encode-base64 value))))
+      details)
+    details)
+  details)
+
+(defn- create-database! [{:keys [engine details name is_full_sync is_on_demand cache_ttl schedules
+                                 auto_run_queries connection_source]}]
+  (let [details          (private-key-path->value engine details)
+        details-or-error (test-connection-details engine details)
+        valid?           (not= (:valid details-or-error) false)]
+    (if valid?
+      ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
+      ;; Throw a 500 if nothing is inserted
+      (u/prog1 (api/check-500 (first (t2/insert-returning-instances!
+                                      :model/Database
+                                      (merge {:name         name
+                                              :engine       engine
+                                              :details      details-or-error
+                                              :is_full_sync is_full_sync
+                                              :is_on_demand is_on_demand
+                                              :cache_ttl    cache_ttl
+                                              :creator_id   api/*current-user-id*}
+                                             (when schedules
+                                               (sync.schedules/schedule-map->cron-strings schedules))
+                                             (when (some? auto_run_queries)
+                                               {:auto_run_queries auto_run_queries})))))
+        (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
+        (snowplow/track-event! ::snowplow/database-connection-successful
+                               api/*current-user-id*
+                               {:database     engine
+                                :database-id  (u/the-id <>)
+                                :source       connection_source
+                                :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
+      ;; failed to connect, return error
+      (do
+        (snowplow/track-event! ::snowplow/database-connection-failed
+                               api/*current-user-id*
+                               {:database engine :source connection_source})
+        {:status 400
+         :body   (dissoc details-or-error :valid)}))))
+
 (api/defendpoint POST "/"
   "Add a new `Database`."
   [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]} :body}]
@@ -797,39 +851,16 @@
     (api/check (premium-features/enable-cache-granular-controls?)
                [402 (tru (str "The cache TTL database setting is only enabled if you have a premium token with the "
                               "cache granular controls feature."))]))
-  (let [details-or-error (test-connection-details engine details)
-        valid?           (not= (:valid details-or-error) false)]
-    (if valid?
-      ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
-      ;; Throw a 500 if nothing is inserted
-      (u/prog1 (api/check-500 (first (t2/insert-returning-instances!
-                                      Database
-                                      (merge
-                                       {:name         name
-                                        :engine       engine
-                                        :details      details-or-error
-                                        :is_full_sync is_full_sync
-                                        :is_on_demand is_on_demand
-                                        :cache_ttl    cache_ttl
-                                        :creator_id   api/*current-user-id*}
-                                       (when schedules
-                                         (sync.schedules/schedule-map->cron-strings schedules))
-                                       (when (some? auto_run_queries)
-                                         {:auto_run_queries auto_run_queries})))))
-        (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
-        (snowplow/track-event! ::snowplow/database-connection-successful
-                               api/*current-user-id*
-                               {:database     engine
-                                :database-id  (u/the-id <>)
-                                :source       connection_source
-                                :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
-      ;; failed to connect, return error
-      (do
-        (snowplow/track-event! ::snowplow/database-connection-failed
-                               api/*current-user-id*
-                               {:database engine :source connection_source})
-        {:status 400
-         :body   (dissoc details-or-error :valid)}))))
+  (create-database!
+   {:engine engine
+    :details details
+    :name name
+    :is_full_sync is_full_sync
+    :is_on_demand is_on_demand
+    :cache_ttl cache_ttl
+    :schedules schedules
+    :auto_run_queries auto_run_queries
+    :connection_source connection_source}))
 
 (api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."
