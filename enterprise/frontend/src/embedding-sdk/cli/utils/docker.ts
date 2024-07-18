@@ -3,6 +3,8 @@ import { exec as execCallback } from "child_process";
 import chalk from "chalk";
 import { promisify } from "util";
 
+import { getCurrentDockerPort } from "../utils/get-current-docker-port";
+import { checkIsPortTaken } from "../utils/is-port-taken";
 import { printError } from "../utils/print";
 
 const exec = promisify(execCallback);
@@ -16,13 +18,13 @@ const CONTAINER_NAME = "metabase-embedding-sdk-react";
  */
 const DEFAULT_PORT = 3366;
 
-const MESSAGE_CONTAINER_ALREADY_RUNNING = `
-  Your local Metabase instance is already running.
+const messageContainerRunning = (port: number) => `
+  Your local Metabase instance is already running on port ${port}.
   Use the "docker ps" command to see the Docker container's status.
 `;
 
-const MESSAGE_CONTAINER_STARTED = `
-  Your local Metabase instance has been started.
+const messageContainerStarted = (port: number) => `
+  Your local Metabase instance has been started on port ${port}.
   Use the "docker ps" command to see the Docker container's status.
 `;
 
@@ -47,7 +49,8 @@ interface ContainerInfo {
   ID: string;
   Image: string;
   Names: string;
-  Ports: string;
+  Ports: string; // e.g. "0.0.0.0:3366->3000/tcp"
+  Port: number | null; // parsed from Ports, e.g. 3366
   State: "running" | "exited";
 }
 
@@ -66,7 +69,9 @@ export async function getLocalMetabaseContainer(): Promise<ContainerInfo | null>
     return null;
   }
 
-  return JSON.parse(stdout) as ContainerInfo;
+  const info = JSON.parse(stdout) as ContainerInfo;
+
+  return { ...info, Port: getCurrentDockerPort(info.Ports) };
 }
 
 export async function stopLocalMetabaseContainer(): Promise<boolean> {
@@ -81,15 +86,22 @@ export async function stopLocalMetabaseContainer(): Promise<boolean> {
   return true;
 }
 
+const randInt = (min: number, max: number) =>
+  Math.floor(Math.random() * (max - min + 1) + min);
+
 export async function startLocalMetabaseContainer(): Promise<boolean> {
-  const port = DEFAULT_PORT;
+  let port = DEFAULT_PORT;
 
   const container = await getLocalMetabaseContainer();
 
   if (container) {
+    if (container.Port) {
+      port = container.Port;
+    }
+
     // if the container is already running, we should just print a message.
     if (container.State === "running") {
-      console.log(chalk.green(MESSAGE_CONTAINER_ALREADY_RUNNING));
+      console.log(chalk.green(messageContainerRunning(port)));
       return true;
     }
 
@@ -104,7 +116,7 @@ export async function startLocalMetabaseContainer(): Promise<boolean> {
       }
 
       if (stdout.trim().includes(CONTAINER_NAME)) {
-        console.log(chalk.green(MESSAGE_CONTAINER_STARTED));
+        console.log(chalk.green(messageContainerStarted(port)));
         return true;
       }
 
@@ -114,6 +126,15 @@ export async function startLocalMetabaseContainer(): Promise<boolean> {
 
   // if the container has never been run before, we should run it.
   try {
+    // If the port is already taken, we should try another port.
+    while (await checkIsPortTaken(port)) {
+      console.log(
+        chalk.yellow(`Port ${port} is already taken. Trying another port...`),
+      );
+
+      port = randInt(3000, 3500);
+    }
+
     const { stderr, stdout } = await exec(
       `docker run --detach -p ${port}:3000 --name ${CONTAINER_NAME} ${IMAGE_NAME}`,
     );
@@ -125,7 +146,7 @@ export async function startLocalMetabaseContainer(): Promise<boolean> {
     }
 
     if (stdout) {
-      console.log(chalk.green(MESSAGE_CONTAINER_STARTED));
+      console.log(chalk.green(messageContainerStarted(port)));
       return true;
     }
 
