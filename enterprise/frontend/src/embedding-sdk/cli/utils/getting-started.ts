@@ -31,6 +31,18 @@ const DOCS_MESSAGE = `
   Thank you for trying out Metabase Embedding SDK for React.
 `;
 
+/**
+ * If the user answers "no" to the prompt, they will be asked again.
+ * Hitting "Enter" will confirm by default.
+ **/
+const confirmStep = async (message: string) => {
+  let confirmed = false;
+
+  do {
+    confirmed = await confirm({ message });
+  } while (!confirmed);
+};
+
 export async function showGettingStartedGuide(port: number) {
   const isSdkInPackageJson = await checkHasSdkInPackageJson();
 
@@ -38,7 +50,7 @@ export async function showGettingStartedGuide(port: number) {
     printInfo(INSTALL_SDK_MESSAGE);
   }
 
-  await confirm({ message: "Have you installed the SDK?" });
+  await confirmStep("Have you installed the SDK?");
 
   printInfo(`Next, paste the following code into your React application:`);
 
@@ -49,15 +61,15 @@ export async function showGettingStartedGuide(port: number) {
 
   printInfo("Please paste the code above in your application.\n");
 
-  await confirm({ message: "Have you pasted the code?" });
+  await confirmStep("Have you pasted the code?");
 
   printInfo(completeSetupMessage(instanceUrl));
 
-  await confirm({ message: "Have you completed the Metabase setup?" });
+  await confirmStep("Have you completed the Metabase setup?");
 
   printInfo(afterInstallStepsMessage(instanceUrl));
 
-  await confirm({ message: "Have you updated the Metabase settings?" });
+  await confirmStep("Have you updated the Metabase settings?");
 
   printInfo(DOCS_MESSAGE);
 }
