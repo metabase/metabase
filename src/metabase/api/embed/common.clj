@@ -26,7 +26,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- valid-param?
+(defn- valid-param-value?
   "Is V a valid param value? (If it is a String, is it non-blank?)"
   [v]
   (or (not (string? v))
@@ -164,10 +164,15 @@
    token-params            :- [:map-of :keyword :any]
    user-params             :- [:map-of :keyword :any]]
   (check-param-sets object-embedding-params
-                    (set (keys (m/filter-vals valid-param? token-params)))
-                    (set (keys (m/filter-vals valid-param? user-params))))
-  ;; ok, everything checks out, now return the merged params map
-  (merge user-params token-params))
+                    (set (keys (m/filter-vals valid-param-value? token-params)))
+                    (set (keys (m/filter-vals valid-param-value? user-params))))
+  ;; ok, everything checks out, now return the merged params map,
+  ;; but first turn empty lists into nil
+  (-> (merge user-params token-params)
+      (update-vals (fn [v]
+                     (if (and (not (string? v)) (seqable? v))
+                       (seq v)
+                       v)))))
 
 (mu/defn ^:private param-values-merged-params :- [:map-of ms/NonBlankString :any]
   [id->slug slug->id embedding-params token-params id-query-params]
@@ -183,7 +188,7 @@
         slug-query-params  (normalize-query-params slug-query-params)
         merged-slug->value (validate-and-merge-params embedding-params token-params slug-query-params)]
     (into {} (for [[slug value] merged-slug->value
-                   :when        (seq value)]
+                   :when        value]
                 [(get slug->id (name slug)) value]))))
 
 

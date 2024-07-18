@@ -1699,9 +1699,16 @@
                                                                    {:parameter_id "7ef6f58c"
                                                                     :card_id      card-id
                                                                     :target       [:dimension [:field (mt/id :products :title) {:base-type :type/Text}]]}]}]
+          (testing "Locked filter is not set in the token, so requests should fail."
+            (let [token        (dash-token dashboard-id {:params {}})]
+              (is (= "You must specify a value for :category in the JWT."
+                     (mt/user-http-request :crowberto :get 400
+                                           (format "embed/dashboard/%s/dashcard/%s/card/%s" token dashcard-id card-id))))
+              (is (= "You must specify a value for :category in the JWT."
+                     (mt/user-http-request :crowberto :get 400
+                                                         (format "embed/dashboard/%s/params/%s/values" token "7ef6f58c"))))))
           (doseq [{:keys [test-str params expected-row-count expected-values-count]}
-                  [#_[{} "Locked filter is not set in the token."]
-                   {:test-str              "Locked filter is set to a list of values in the token."
+                  [{:test-str              "Locked filter is set to a list of values in the token."
                     :params                {:category ["Widget"]}
                     :expected-row-count    54
                     :expected-values-count 54}
