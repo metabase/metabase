@@ -944,6 +944,10 @@ describe("issue 34514", () => {
     cy.findByTestId("editor-tabs-metadata-name").click();
     assertMetadataTabState();
 
+    // Close the TabHinToast component.
+    // This isn't a part of the test scenario but it helps with flakiness.
+    cy.icon("close").click();
+
     cy.go("back");
     cy.wait(["@dataset", "@fetchDatabase"]); // This should be removed when (metabase#45787) is fixed
     assertQueryTabState();
