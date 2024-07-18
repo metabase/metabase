@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.presto-jdbc :as presto-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
