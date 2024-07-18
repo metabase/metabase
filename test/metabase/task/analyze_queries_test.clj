@@ -17,7 +17,7 @@
       ;; Make sure there is *no* pre-existing analysis.
       (t2/delete! :model/QueryField :card_id [:in card-ids])
 
-      (let [get-count #(t2/select-one-fn :cnt [:model/QueryField [[:count :id] :cnt]] :card_id %)]
+      (let [get-count #(t2/count :model/QueryField :card_id %)]
         (testing "QueryField is empty - queries weren't analyzed"
           (is (every? zero? (map get-count card-ids))))
 
