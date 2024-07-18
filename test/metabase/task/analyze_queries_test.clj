@@ -5,7 +5,6 @@
    [metabase.task.analyze-queries :as task.analyze-queries]
    [metabase.task.setup.query-analysis-setup :as setup]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
 
@@ -23,7 +22,6 @@
         (testing "QueryField is empty - queries weren't analyzed"
           (is (every? zero? (map get-count card-ids))))
 
-        (log/error 'the-cards card-ids)
         ;; queue the cards
         (query-analysis/with-queued-analysis
           (run! (partial query-analysis/analyze-async! queue)

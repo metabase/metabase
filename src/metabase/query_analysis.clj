@@ -171,7 +171,6 @@
    (queue/blocking-take! queue)))
 
 (defn- queue-or-analyze! [queue offer-fn! card-or-id]
-  (log/error (execution) card-or-id)
   (case (execution)
     ::immediate (analyze-card! (u/the-id card-or-id))
     ::queued    (offer-fn! queue (u/the-id card-or-id))
