@@ -4,7 +4,6 @@
    [metabase.query-analysis :as query-analysis]
    [metabase.task.analyze-queries :as task.analyze-queries]
    [metabase.task.setup.query-analysis-setup :as setup]
-   [metabase.util :as u]
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
 
@@ -27,9 +26,8 @@
           (run! (partial query-analysis/analyze-async! queue)
                 card-ids))
 
-        ;; process the queue
-        (u/with-timeout 10000
-          (#'task.analyze-queries/analyzer-loop! (count card-ids) queue))
+        ;; process the queue - spending at most 100ms blocking for a message
+        (#'task.analyze-queries/analyzer-loop! (count card-ids) queue 100)
 
         (testing "QueryField is filled now"
           (testing "for a native query"

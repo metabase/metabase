@@ -19,7 +19,7 @@
 
 (def ^:private realtime-queue-capacity 1000)
 
-(defonce ^:private worker-queue (queue/bounded-transfer-queue realtime-queue-capacity {:dedupe? false}))
+(def ^:private worker-queue (queue/bounded-transfer-queue realtime-queue-capacity {:dedupe? false}))
 
 (def ^:dynamic *analyze-execution-in-dev?*
   "Managing a background thread in the REPL is likely to confound and infuriate, especially when we're using it to run
@@ -168,12 +168,14 @@
   ([]
    (next-card-id! worker-queue))
   ([queue]
-   (queue/blocking-take! queue)))
+   (next-card-id! queue Long/MAX_VALUE))
+  ([queue timeout]
+   (queue/blocking-take! queue timeout)))
 
-(defn- queue-or-analyze! [queue offer-fn! card-or-id]
+(defn- queue-or-analyze! [offer-fn! card-or-id]
   (case (execution)
     ::immediate (analyze-card! (u/the-id card-or-id))
-    ::queued    (offer-fn! queue (u/the-id card-or-id))
+    ::queued    (offer-fn! (u/the-id card-or-id))
     ::disabled  nil))
 
 (defn analyze-async!
@@ -181,11 +183,13 @@
   ([card-or-id]
    (analyze-async! worker-queue card-or-id))
   ([queue card-or-id]
-   (queue-or-analyze! queue queue/maybe-put! card-or-id)))
+   (queue-or-analyze! (partial queue/maybe-put! queue) card-or-id)))
 
 (defn analyze-sync!
   "Synchronously hand-off the given card for analysis, at a low priority. May block indefinitely, relies on consumer."
   ([card-or-id]
    (analyze-sync! card-or-id worker-queue))
   ([card-or-id queue]
-   (queue-or-analyze! queue queue/blocking-put! card-or-id)))
+   (analyze-sync! card-or-id queue Long/MAX_VALUE))
+  ([card-or-id queue timeout]
+   (queue-or-analyze! (partial queue/blocking-put! queue timeout) card-or-id)))
