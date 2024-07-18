@@ -15,7 +15,7 @@
    [:cutoff-date [:time/local-date {:doc "The cutoff date for stale content."}]]
    [:limit  [:maybe {:doc "The limit for pagination."} :int]]
    [:offset [:maybe {:doc "The offset for pagination."} :int]]
-   [:sort-column  [:enum {:doc "The column to sort by."} :name :last_viewed_at :last_viewed_by]]
+   [:sort-column  [:enum {:doc "The column to sort by."} :name :last_viewed_at]]
    [:sort-direction  [:enum {:doc "The direction to sort by."} :asc :desc]]])
 
 (defmulti ^:private find-stale-query

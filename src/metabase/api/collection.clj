@@ -1039,7 +1039,7 @@
   {id             [:or ms/PositiveInt [:= :root]]
    before_date    [:maybe :string]
    is_recursive   [:boolean {:default false}]
-   sort_column    [:maybe {:default :name} (into [:enum] (map keyword valid-sort-columns))]
+   sort_column    [:maybe {:default :name} [:enum :name :last_viewed_at]]
    sort_direction [:maybe {:default :asc} (into [:enum] (map keyword valid-sort-directions))]}
   (premium-features/assert-has-feature :stale (tru "Stale"))
   (let [before-date    (if before_date
