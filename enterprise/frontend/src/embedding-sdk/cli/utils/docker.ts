@@ -3,14 +3,14 @@ import { exec as execCallback } from "child_process";
 import chalk from "chalk";
 import { promisify } from "util";
 
-import { getCurrentDockerPort } from "../utils/get-current-docker-port";
-import { checkIsPortTaken } from "../utils/is-port-taken";
-import { printError, printSuccess } from "../utils/print";
+import { getCurrentDockerPort } from "./get-current-docker-port";
+import { checkIsPortTaken } from "./is-port-taken";
+import { printError, printSuccess } from "./print";
 
 const exec = promisify(execCallback);
 
 const IMAGE_NAME = "metabase/metabase-enterprise:latest";
-const CONTAINER_NAME = "metabase-embedding-sdk-react";
+export const CONTAINER_NAME = "metabase-embedding-sdk-react";
 
 /**
  * Default port for the local Metabase instance.

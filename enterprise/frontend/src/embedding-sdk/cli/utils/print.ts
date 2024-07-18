@@ -7,4 +7,4 @@ export const printSuccess = (message: string) =>
   console.log("\n  " + chalk.green(message.trim()));
 
 export const printInfo = (message: string) =>
-  console.log("\n  " + message.trim());
+  console.log("\n  " + message.trim() + "\n");

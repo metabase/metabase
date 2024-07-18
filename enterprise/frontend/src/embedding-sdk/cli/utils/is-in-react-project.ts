@@ -2,7 +2,7 @@ import fs from "fs/promises";
 
 import semver from "semver";
 
-import { printError } from "../utils/print";
+import { printError } from "./print";
 
 const PACKAGE_JSON_NOT_FOUND_MESSAGE = `
   Could not find a package.json file in the current directory.
