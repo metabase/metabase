@@ -186,8 +186,7 @@ export function getQuestionSteps(
   // strip empty source queries
   query = Lib.dropEmptyStages(query);
 
-  const database = metadata.database(Lib.databaseID(query));
-  const allowsNesting = Boolean(database?.hasFeature("nested-queries"));
+  const allowsNesting = question.type() !== "metric";
   const hasBreakouts = Lib.breakouts(query, -1).length > 0;
 
   // add a level of nesting, if valid

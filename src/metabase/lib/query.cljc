@@ -234,20 +234,22 @@
 (defn- metric-query
   [metadata-providerable card-metadata]
   (let [card-id (u/the-id card-metadata)
-        base-query (query-with-stages metadata-providerable
-                                      [{:lib/type :mbql.stage/mbql
-                                        :source-card card-id}])
-        metric-breakouts (-> (query metadata-providerable (:dataset-query card-metadata))
-                             (lib.util/query-stage -1)
-                             :breakout)
-        base-query (reduce
-                    #(lib.util/add-summary-clause %1 0 :breakout %2)
-                    base-query
-                    metric-breakouts)]
-    (-> base-query
+        card-query (query metadata-providerable (:dataset-query card-metadata))
+        source-table-id (lib.util/source-table-id card-query)
+        source-card-id (lib.util/source-card-id card-query)
+        source-query (query-with-stages metadata-providerable
+                                        [(merge {:lib/type :mbql.stage/mbql}
+                                                (when source-card-id
+                                                  {:source-card source-card-id})
+                                                (when source-table-id
+                                                  {:source-table source-table-id}))])]
+    (-> (reduce
+          #(lib.util/add-summary-clause %1 0 :breakout %2)
+          source-query
+          (-> card-query (lib.util/query-stage 0) :breakout))
         (lib.util/add-summary-clause
-         0 :aggregation
-         (lib.options/ensure-uuid [:metric {} card-id])))))
+          0 :aggregation
+          (lib.options/ensure-uuid [:metric {} card-id])))))
 
 (defmethod query-method :metadata/card
   [metadata-providerable card-metadata]
