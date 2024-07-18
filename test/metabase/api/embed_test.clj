@@ -1699,18 +1699,31 @@
                                                                    {:parameter_id "7ef6f58c"
                                                                     :card_id      card-id
                                                                     :target       [:dimension [:field (mt/id :products :title) {:base-type :type/Text}]]}]}]
-          (doseq [[params test-str] [#_[{} "Locked filter is not set in the token."]
-                                     [{:category ["Widget"]} "Locked filter is set to a list of values in the token."]
-                                     [{:category []}         "Locked filter is set to an empty list in the token."]
-                                     [{:category nil}        "Locked filter is set to `nil` (null in js code) in the token."]]]
+          (doseq [{:keys [test-str params expected-row-count expected-values-count]}
+                  [#_[{} "Locked filter is not set in the token."]
+                   {:test-str              "Locked filter is set to a list of values in the token."
+                    :params                {:category ["Widget"]}
+                    :expected-row-count    54
+                    :expected-values-count 54}
+                   {:test-str              "Locked filter is set to an empty list in the token."
+                    :params                {:category []}
+                    :expected-row-count    200
+                    :expected-values-count 199}
+                   {:test-str              "Locked filter is set to `nil` (null in js code) in the token."
+                    :params                {:category nil}
+                    :expected-row-count    200
+                    :expected-values-count 199}]]
             (testing test-str
-              (let [token     (dash-token dashboard-id {:params params})
-                    row-count (-> (mt/user-http-request :crowberto :get 202
-                                                        (format "embed/dashboard/%s/dashcard/%s/card/%s" token dashcard-id card-id))
-                                  (get-in [:data :rows])
-                                  count)]
-                (is (= row-count
-                       (-> (mt/user-http-request :crowberto :get 200
-                                               (format "embed/dashboard/%s/params/%s/values" token "7ef6f58c"))
-                         :values
-                         count)))))))))))
+              (let [token        (dash-token dashboard-id {:params params})
+                    row-count    (-> (mt/user-http-request :crowberto :get 202
+                                                           (format "embed/dashboard/%s/dashcard/%s/card/%s" token dashcard-id card-id))
+                                     (get-in [:data :rows])
+                                     count)
+                    values-count (-> (mt/user-http-request :crowberto :get 200
+                                                           (format "embed/dashboard/%s/params/%s/values" token "7ef6f58c"))
+                                     :values
+                                     count)]
+                (testing "query has the expected results"
+                  (is (= expected-row-count row-count)))
+                (testing "the correct amount of filter values are returned"
+                  (is (= expected-values-count values-count)))))))))))

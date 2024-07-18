@@ -182,8 +182,9 @@
                                     v]))
         slug-query-params  (normalize-query-params slug-query-params)
         merged-slug->value (validate-and-merge-params embedding-params token-params slug-query-params)]
-    (into {} (for [[slug value] merged-slug->value]
-               [(get slug->id (name slug)) value]))))
+    (into {} (for [[slug value] merged-slug->value
+                   :when        (seq value)]
+                [(get slug->id (name slug)) value]))))
 
 
 
