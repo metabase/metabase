@@ -9,7 +9,11 @@ import {
 
 const METABASE_INSTANCE_URL = "http://localhost:3000";
 const METABASE_JWT_SHARED_SECRET =
-  "22deae6889764757e93ed6473313ab2a266d51be7c55fd0163ba219a31300d6e";
+  (window as any).JWT_SHARED_SECRET || "0".repeat(64);
+
+// eslint-disable-next-line no-console
+console.log(METABASE_JWT_SHARED_SECRET, (window as any).JWT_SHARED_SECRET);
+
 const secret = new TextEncoder().encode(METABASE_JWT_SHARED_SECRET);
 
 const user = {
