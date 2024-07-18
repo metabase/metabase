@@ -40,6 +40,7 @@ import {
   rightSidebar,
   assertQueryBuilderRowCount,
   navigationSidebar,
+  newButton,
 } from "e2e/support/helpers";
 import type { CardId, FieldReference } from "metabase-types/api";
 
@@ -895,4 +896,97 @@ describe("issue 35840", () => {
     modal().findByText(modelName).click();
     checkColumnMapping("Questions", questionName);
   });
+});
+
+describe("issue 34514", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/database/*/schema/*").as("fetchTables");
+    cy.intercept("GET", "/api/database/*").as("fetchDatabase");
+
+    cy.visit("/");
+    // It's important to navigate via UI so that there are
+    // enough entries in the browser history to go back to.
+    newButton("Model").click();
+    cy.findByTestId("new-model-options")
+      .findByText("Use the notebook editor")
+      .click();
+  });
+
+  it("should not make network request with invalid query (metabase#34514)", () => {
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.wait("@fetchTables");
+      cy.findByText("Orders").click();
+    });
+
+    cy.findByTestId("run-button").click();
+    cy.wait("@dataset");
+    assertQueryTabState();
+
+    cy.go("back");
+    assertBackToEmptyState();
+  });
+
+  it("should allow browser history navigation between tabs (metabase#34514)", () => {
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.wait("@fetchTables");
+      cy.findByText("Orders").click();
+    });
+
+    cy.findByTestId("run-button").click();
+    cy.wait("@dataset");
+    assertQueryTabState();
+
+    cy.findByTestId("editor-tabs-metadata-name").click();
+    assertMetadataTabState();
+
+    // Close the TabHinToast component.
+    // This isn't a part of the test scenario but it helps with flakiness.
+    cy.icon("close").click();
+
+    cy.go("back");
+    cy.wait(["@dataset", "@fetchDatabase"]); // This should be removed when (metabase#45787) is fixed
+    assertQueryTabState();
+
+    cy.go("back");
+    assertBackToEmptyState();
+  });
+
+  function assertQueryTabState() {
+    entityPickerModal().should("not.exist");
+    cy.button("Save").should("be.enabled");
+    getNotebookStep("data").findByText("Orders").should("be.visible");
+    cy.findByTestId("TableInteractive-root")
+      .findByText("39.72")
+      .should("be.visible");
+  }
+
+  function assertMetadataTabState() {
+    cy.findByLabelText("Description")
+      .should("be.visible")
+      .and("include.value", "This is a unique ID for the product.");
+    cy.button("Save").should("be.enabled");
+  }
+
+  function assertBackToEmptyState() {
+    entityPickerModal().should("be.visible");
+    entityPickerModal().button("Close").click();
+
+    cy.findByTestId("editor-tabs-metadata").should("be.disabled");
+    cy.button("Save").should("be.disabled");
+    getNotebookStep("data")
+      .findByText("Pick your starting data")
+      .should("be.visible");
+    cy.findByTestId("TableInteractive-root").should("not.exist");
+    cy.findByTestId("query-visualization-root").within(() => {
+      cy.findByText("We're experiencing server issues").should("not.exist");
+      cy.findByText("Here's where your results will appear").should(
+        "be.visible",
+      );
+    });
+  }
 });
