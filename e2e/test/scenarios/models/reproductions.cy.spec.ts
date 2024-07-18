@@ -937,6 +937,7 @@ describe("issue 34514", () => {
     cy.findByTestId("editor-tabs-metadata-name").click();
     assertMetadataTabState();
 
+    cy.findByLabelText("Description").realHover(); // move cursor out of Metadata button to fix a flaking test
     cy.go("back");
     assertQueryTabState();
 
