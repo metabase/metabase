@@ -22,6 +22,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
    [throttle.core :as throttle]
    [toucan2.core :as t2]
@@ -712,6 +713,20 @@
             (is (= [[100]]
                    (mt/rows
                     (mt/user-http-request :rasta :get 202 (dashcard-url dash card dashcard)))))))))))
+
+(deftest execute-public-dashcard-updates-last-viewed-at
+  (testing "GET /api/public/dashboard/:uuid/card/:card-id"
+    (testing "Dashboard's last_viewed_at should be updated when a public DashCard is viewed"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (binding [tu.thread-local/*thread-local* false]
+          (t2.with-temp/with-temp [Collection {collection-id :id}]
+            (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
+            (with-temp-public-dashboard-and-card [dash {card-id :id, :as card} dashcard]
+              (let [original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard (:id dash))]
+                (t2/update! Card card-id {:collection_id collection-id})
+                (mt/with-temporary-setting-values [synchronous-batch-updates true]
+                  (mt/user-http-request :rasta :get 202 (dashcard-url dash card dashcard)))
+                (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id (:id dash))))))))))))
 
 (deftest execute-public-dashcard-params-validation-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id"

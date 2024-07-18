@@ -55,6 +55,7 @@
    [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
@@ -4743,3 +4744,18 @@
       ;; If we need more for _some reason_, this test should be updated accordingly.
       (testing "At most 1 db call should be executed for :metadata/tables"
         (is (= @cached-calls-count 1))))))
+
+(deftest querying-a-dashboard-dashcard-updates-last-viewed-at
+  (binding [tu.thread-local/*thread-local* false]
+    (mt/dataset test-data
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {:last_viewed_at #t "2000-01-01"}
+                     :model/Card {card-id :id} {:dataset_query (mt/native-query
+                                                                 {:query "SELECT COUNT(*) FROM \"ORDERS\""
+                                                                  :template-tags {}})}
+                     :model/DashboardCard {dashcard-id :id} {:card_id card-id
+                                                             :dashboard_id dashboard-id}]
+        (let [original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id)]
+          (mt/with-temporary-setting-values [synchronous-batch-updates true]
+            (mt/user-http-request :crowberto :post 202
+                                  (format "dashboard/%s/dashcard/%s/card/%s/query" dashboard-id dashcard-id card-id)))
+          (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))
