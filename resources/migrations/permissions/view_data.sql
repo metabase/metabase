@@ -65,8 +65,8 @@ SELECT
 FROM
   data_permissions dp
 WHERE
+  dp.table_id IS NOT NULL;
   dp.perm_type = 'perms/data-access'
-  AND dp.table_id IS NOT NULL;
 
 
 -- If all tables in a DB have the same view-data permission, insert a DB-level view-data permission instead
@@ -88,8 +88,8 @@ WITH
     FROM
       data_permissions
     WHERE
-      perm_type = 'perms/view-data'
-      AND table_id IS NOT NULL
+      table_id IS NOT NULL
+      AND perm_type = 'perms/view-data'
     GROUP BY
       group_id,
       db_id
