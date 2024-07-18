@@ -13,7 +13,8 @@
 ;; Perhaps we should fix that...
 (deftest ^:synchronized analyzer-loop-test
   (setup/with-test-setup! [c1 c2 c3 c4 arch]
-    (let [card-ids (map :id [c1 c2 c3 c4 arch])]
+    (let [card-ids (map :id [c1 c2 c3 c4 arch])
+          queue    (queue/bounded-transfer-queue 100)]
 
       ;; Make sure there is *no* pre-existing analysis.
       (t2/delete! :model/QueryField :card_id [:in card-ids])
@@ -22,18 +23,15 @@
         (testing "QueryField is empty - queries weren't analyzed"
           (is (every? zero? (map get-count card-ids))))
 
-        ;; the queue should already be empty - but trust noone!
-        (queue/clear! @#'query-analysis/queue)
-
         (log/error 'the-cards card-ids)
-
         ;; queue the cards
         (query-analysis/with-queued-analysis
-          (run! query-analysis/analyze-async! card-ids))
+          (run! (partial query-analysis/analyze-async! queue)
+                card-ids))
 
         ;; process the queue
         (u/with-timeout 10000
-          (#'task.analyze-queries/analyzer-loop! (count card-ids)))
+          (#'task.analyze-queries/analyzer-loop! (count card-ids) queue))
 
         (testing "QueryField is filled now"
           (testing "for a native query"

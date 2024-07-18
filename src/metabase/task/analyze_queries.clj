@@ -33,24 +33,29 @@
 (defn- wait-fail ^long [time-taken-ms]
   (max fail-wait-ms (wait-proportional time-taken-ms)))
 
+(defn- analyzer-loop* [stop-after next-card-id-fn]
+  (loop [remaining stop-after]
+    (when (public-settings/query-analysis-enabled)
+      (let [card-id (next-card-id-fn)
+            timer   (u/start-timer)]
+        (log/error 'analyze (.threadId (Thread/currentThread)) card-id)
+        (try
+          (query-analysis/analyze-card! card-id)
+          (Thread/sleep (wait-proportional (u/since-ms timer)))
+          (catch Exception e
+            (log/errorf e "Error analysing and updating query for Card %" card-id)
+            (Thread/sleep (wait-fail (u/since-ms timer)))))
+        (cond
+          (nil? remaining) (recur nil)
+          (> remaining 1) (recur (dec remaining)))))))
+
 (defn- analyzer-loop!
   ([]
    (analyzer-loop! nil))
   ([stop-after]
-   (loop [remaining stop-after]
-     (when (public-settings/query-analysis-enabled)
-       (let [card-id (query-analysis/next-card-id!)
-             timer   (u/start-timer)]
-         (log/error 'analyze (.threadId (Thread/currentThread)) card-id)
-         (try
-           (query-analysis/analyze-card! card-id)
-           (Thread/sleep (wait-proportional (u/since-ms timer)))
-           (catch Exception e
-             (log/errorf e "Error analysing and updating query for Card %" card-id)
-             (Thread/sleep (wait-fail (u/since-ms timer)))))
-         (cond
-           (nil? remaining) (recur nil)
-           (> remaining 1) (recur (dec remaining))))))))
+   (analyzer-loop* stop-after query-analysis/next-card-id!))
+  ([stop-after queue]
+   (analyzer-loop* stop-after (partial query-analysis/next-card-id! queue))))
 
 (jobs/defjob ^{DisallowConcurrentExecution true
                :doc                        "Analyze "}
