@@ -88,13 +88,12 @@
                    (version-properties/generate-version-properties-file! edition version))
    :translations (fn [_]
                    (i18n/create-all-artifacts!))
-   :parallel     (fn [{:keys [edition]}]
-                   (let [frontend-future (future (build-frontend! edition))
-                         drivers-future (future (build-drivers/build-drivers! edition))]
-                     @frontend-future
-                     @drivers-future))
+   :frontend     (fn [{:keys [edition]}]
+                   (build-frontend! edition))
    :licenses     (fn [{:keys [edition]}]
                    (build-licenses! edition))
+   :drivers      (fn [{:keys [edition]}]
+                   (build-drivers/build-drivers! edition))
    :uberjar      (fn [{:keys [edition]}]
                    (build-uberjar! edition))))
 
