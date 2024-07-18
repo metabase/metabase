@@ -161,6 +161,5 @@ serdes/meta:
   label: questions_in_this_dashboard
   model: Card
 initially_published_at: null
-last_used_at: null
 metabase_version: null
 type: question

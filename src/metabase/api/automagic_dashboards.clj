@@ -69,7 +69,7 @@
   [query]
   (api/check-403
    (query-perms/check-data-perms (:dataset_query query)
-                                 (query-perms/required-perms (:dataset_query query))
+                                 (query-perms/required-perms-for-query (:dataset_query query))
                                  :throw-exceptions? false))
   query)
 

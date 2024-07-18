@@ -10,7 +10,6 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -697,34 +696,34 @@
 ;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions
 ;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/datetime_functions
 
-(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk String]
+(defmethod sql.qp/inline-value [:bigquery-cloud-sdk String]
   [_ s]
   ;; escape single-quotes like Cam's String -> Cam\'s String
   (str \' (str/replace s "'" "\\\\'") \'))
 
-(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk LocalTime]
+(defmethod sql.qp/inline-value [:bigquery-cloud-sdk LocalTime]
   [_ t]
   (format "time \"%s\"" (u.date/format-sql t)))
 
-(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk LocalDate]
+(defmethod sql.qp/inline-value [:bigquery-cloud-sdk LocalDate]
   [_ t]
   (format "date \"%s\"" (u.date/format-sql t)))
 
-(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk LocalDateTime]
+(defmethod sql.qp/inline-value [:bigquery-cloud-sdk LocalDateTime]
   [_ t]
   (format "datetime \"%s\"" (u.date/format-sql t)))
 
-(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk OffsetTime]
+(defmethod sql.qp/inline-value [:bigquery-cloud-sdk OffsetTime]
   [_ t]
   ;; convert to a LocalTime in UTC
   (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
     (format "time \"%s\"" (u.date/format-sql local-time))))
 
-(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk OffsetDateTime]
+(defmethod sql.qp/inline-value [:bigquery-cloud-sdk OffsetDateTime]
   [_ t]
   (format "timestamp \"%s\"" (u.date/format-sql t)))
 
-(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk ZonedDateTime]
+(defmethod sql.qp/inline-value [:bigquery-cloud-sdk ZonedDateTime]
   [_ t]
   (format "timestamp \"%s %s\"" (u.date/format-sql (t/local-date-time t)) (.getId (t/zone-id t))))
 
@@ -936,10 +935,25 @@
         result              (parent-method driver field-filter)]
     (cond-> result
       field-temporal-type (update :prepared-statement-args (fn [args]
-                                                             (for [arg args]
-                                                               (if (instance? java.time.temporal.Temporal arg)
-                                                                 (->temporal-type field-temporal-type arg)
-                                                                 arg)))))))
+                                                             (let [request-time-zone-id (qp.timezone/requested-timezone-id)]
+                                                               (map (fn [arg]
+                                                                      (if (instance? java.time.temporal.Temporal arg)
+                                                                        ;; Since we add the zone as part of the
+                                                                        ;; LHS of the filter, we need to add the zone to
+                                                                        ;; the RHS as well.
+                                                                        (let [result (->temporal-type field-temporal-type arg)]
+                                                                          (cond
+                                                                            (or (not request-time-zone-id)
+                                                                                (not= :type/DateTimeWithLocalTZ (:base-type field)))
+                                                                            result
+
+                                                                            (instance? java.time.ZonedDateTime result)
+                                                                            (t/with-zone-same-instant result request-time-zone-id)
+
+                                                                            (instance? java.time.OffsetDateTime result)
+                                                                            (t/with-zone-same-instant (t/zoned-date-time result) request-time-zone-id)))
+                                                                        arg))
+                                                                    args)))))))
 
 (defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]

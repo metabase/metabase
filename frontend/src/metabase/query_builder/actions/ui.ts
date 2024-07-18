@@ -19,7 +19,15 @@ export const resetUIControls = createAction(RESET_UI_CONTROLS);
 export const setQueryBuilderMode =
   (
     queryBuilderMode: QueryBuilderMode,
-    { shouldUpdateUrl = true, datasetEditorTab = "query" } = {},
+    {
+      shouldUpdateUrl = true,
+      datasetEditorTab = "query",
+      replaceState,
+    }: {
+      shouldUpdateUrl?: boolean;
+      datasetEditorTab?: "query" | "metadata";
+      replaceState?: boolean;
+    } = {},
   ) =>
   async (dispatch: Dispatch) => {
     await dispatch(
@@ -30,7 +38,9 @@ export const setQueryBuilderMode =
       }),
     );
     if (shouldUpdateUrl) {
-      await dispatch(updateUrl(null, { queryBuilderMode, datasetEditorTab }));
+      await dispatch(
+        updateUrl(null, { queryBuilderMode, datasetEditorTab, replaceState }),
+      );
     }
     if (queryBuilderMode === "notebook") {
       dispatch(cancelQuery());

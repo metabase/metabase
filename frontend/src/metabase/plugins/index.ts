@@ -117,7 +117,7 @@ export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION = {
 export const PLUGIN_DATA_PERMISSIONS: {
   permissionsPayloadExtraSelectors: ((
     state: State,
-  ) => Record<string, unknown>)[];
+  ) => [Record<string, undefined | { group_id: string }[]>, string[]])[];
   hasChanges: ((state: State) => boolean)[];
   shouldRestrictNativeQueryPermissions: (
     permissions: GroupsPermissions,
@@ -478,4 +478,14 @@ export const PLUGIN_UPLOAD_MANAGEMENT = {
 
 export const PLUGIN_IS_EE_BUILD = {
   isEEBuild: () => false,
+};
+
+export const PLUGIN_RESOURCE_DOWNLOADS = {
+  /**
+   * Returns if 'download results' on cards and pdf exports are enabled in public and embedded contexts.
+   */
+  areDownloadsEnabled: (_args: {
+    hide_download_button?: boolean | null;
+    downloads?: boolean | null;
+  }) => true,
 };

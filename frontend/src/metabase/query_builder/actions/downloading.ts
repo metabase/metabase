@@ -31,7 +31,7 @@ interface DownloadQueryResultsParams {
   method: string;
   url: string;
   body?: Record<string, unknown>;
-  params?: URLSearchParams;
+  params?: URLSearchParams | string;
 }
 
 export const downloadQueryResults =
@@ -43,9 +43,15 @@ export const downloadQueryResults =
     }
   };
 
-const downloadChart = async ({ question }: DownloadQueryResultsOpts) => {
+const downloadChart = async ({
+  question,
+  dashcardId,
+}: DownloadQueryResultsOpts) => {
   const fileName = getChartFileName(question);
-  const chartSelector = `[data-card-key='${getCardKey(question.id())}']`;
+  const chartSelector =
+    dashcardId != null
+      ? `[data-dashcard-key='${dashcardId}']`
+      : `[data-card-key='${getCardKey(question.id())}']`;
   await saveChartImage(chartSelector, fileName);
 };
 
@@ -70,16 +76,28 @@ const getDatasetParams = ({
   visualizationSettings,
 }: DownloadQueryResultsOpts): DownloadQueryResultsParams => {
   const cardId = question.id();
-  const isSecureDashboardEmbedding = dashcardId != null && token != null;
+  const isQuestionInStaticEmbedDashboard = dashcardId != null && token != null;
 
   // Formatting is always enabled for Excel
   const format_rows = enableFormatting && type !== "xlsx" ? "true" : "false";
 
-  if (isSecureDashboardEmbedding) {
+  if (isQuestionInStaticEmbedDashboard) {
     return {
       method: "GET",
       url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
       params: Urls.getEncodedUrlSearchParams({ ...params, format_rows }),
+    };
+  }
+
+  const isQuestionInPublicDashboard = dashboardId != null && uuid != null;
+  if (isQuestionInPublicDashboard) {
+    return {
+      method: "POST",
+      url: `/api/public/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/${type}`,
+      params: new URLSearchParams({ format_rows }),
+      body: {
+        parameters: result?.json_query?.parameters ?? [],
+      },
     };
   }
 
@@ -143,7 +161,10 @@ const getDatasetParams = ({
   };
 };
 
-export function getDatasetDownloadUrl(url: string, params?: URLSearchParams) {
+export function getDatasetDownloadUrl(
+  url: string,
+  params?: URLSearchParams | string,
+) {
   url = url.replace(api.basename, ""); // make url relative if it's not
   if (params) {
     url += `?${params.toString()}`;

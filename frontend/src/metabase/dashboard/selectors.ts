@@ -8,14 +8,20 @@ import {
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import * as Urls from "metabase/lib/urls";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
+import { getIsWebApp } from "metabase/selectors/web-app";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 import Question from "metabase-lib/v1/Question";
-import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
+import {
+  getParameterValuesBySlug,
+  getValuePopulatedParameters as _getValuePopulatedParameters,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
   CardId,
@@ -87,9 +93,9 @@ export const getFavicon = (state: State) =>
     ? LOAD_COMPLETE_FAVICON
     : null;
 
-export const getIsRunning = (state: State) =>
+export const getIsDashCardsRunning = (state: State) =>
   state.dashboard.loadingDashCards.loadingStatus === "running";
-export const getIsLoadingComplete = (state: State) =>
+export const getIsDashCardsLoadingComplete = (state: State) =>
   state.dashboard.loadingDashCards.loadingStatus === "complete";
 
 export const getLoadingStartTime = (state: State) =>
@@ -107,6 +113,12 @@ export const getIsSlowDashboard = createSelector(
     }
   },
 );
+
+export const getIsLoadingWithoutCards = (state: State) =>
+  state.dashboard.loadingControls.isLoading;
+
+export const getIsLoading = (state: State) =>
+  getIsLoadingWithoutCards(state) || !getIsDashCardsLoadingComplete(state);
 
 export const getIsAddParameterPopoverOpen = (state: State) =>
   state.dashboard.isAddParameterPopoverOpen;
@@ -414,6 +426,21 @@ export const getParameters = createSelector(
   },
 );
 
+export const getValuePopulatedParameters = createSelector(
+  [
+    getParameters,
+    getParameterValues,
+    getDraftParameterValues,
+    getIsAutoApplyFilters,
+  ],
+  (parameters, parameterValues, draftParameterValues, isAutoApplyFilters) => {
+    return _getValuePopulatedParameters({
+      parameters,
+      values: isAutoApplyFilters ? parameterValues : draftParameterValues,
+    });
+  },
+);
+
 export const getMissingRequiredParameters = createSelector(
   [getParameters],
   parameters =>
@@ -479,17 +506,54 @@ export const getTabs = createSelector([getDashboard], dashboard => {
 });
 
 export const getSelectedTabId = createSelector(
-  [getDashboard, state => state.dashboard.selectedTabId],
-  (dashboard, selectedTabId) => {
+  [
+    getIsWebApp,
+    state => getSetting(state, "site-url"),
+    getDashboard,
+    state => state.dashboard.selectedTabId,
+  ],
+  (isWebApp, siteUrl, dashboard, selectedTabId) => {
     if (dashboard && selectedTabId === null) {
-      return getInitialSelectedTabId(dashboard);
+      return getInitialSelectedTabId(dashboard, siteUrl, isWebApp);
     }
 
     return selectedTabId;
   },
 );
 
-export function getInitialSelectedTabId(dashboard: Dashboard | StoreDashboard) {
+export const getSelectedTab = createSelector(
+  [getDashboard, getSelectedTabId],
+  (dashboard, selectedTabId) => {
+    if (!dashboard || selectedTabId === null) {
+      return null;
+    }
+    return dashboard.tabs?.find(tab => tab.id === selectedTabId) || null;
+  },
+);
+
+export function getInitialSelectedTabId(
+  dashboard: Dashboard | StoreDashboard,
+  siteUrl: string,
+  isWebApp: boolean,
+) {
+  const pathname = window.location.pathname.replace(siteUrl, "");
+  const isDashboardUrl = pathname.includes("/dashboard/");
+
+  if (isDashboardUrl) {
+    const dashboardSlug = pathname.replace("/dashboard/", "");
+    const dashboardUrlId = Urls.extractEntityId(dashboardSlug);
+    const isNavigationInProgress = dashboardUrlId !== dashboard.id;
+    if (!isNavigationInProgress || !isWebApp) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const tabParam = searchParams.get("tab");
+      const tabId = tabParam ? parseInt(tabParam, 10) : null;
+      const hasTab = dashboard.tabs?.find?.(tab => tab.id === tabId);
+      if (hasTab) {
+        return tabId;
+      }
+    }
+  }
+
   return dashboard.tabs?.[0]?.id || null;
 }
 

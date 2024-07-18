@@ -10863,7 +10863,7 @@ msgstr "10 maiores países em vendas nos últimos 30 dias"
 
 #: resources/automagic_dashboards/field/DateTime.yaml
 msgid "[[this]] by month of the year"
-msgstr "[[this]] por mês do ano"
+msgstr "Este por mês do ano"
 
 #: resources/automagic_dashboards/table/TransactionTable/Seasonality.yaml
 msgid "Transactions per day of the week"
@@ -10942,7 +10942,7 @@ msgstr "Média de renda por transação"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "[[this]] per country"
-msgstr "[[this]] por estado"
+msgstr "Este por país"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 msgid "Income per state"
@@ -11006,7 +11006,7 @@ msgstr "Total de pedidos por fonte"
 
 #: resources/automagic_dashboards/field/DateTime.yaml
 msgid "[[this]] by quarter of the year"
-msgstr "[[this]] por trimestre"
+msgstr "Este trimestre"
 
 #: resources/automagic_dashboards/table/EventTable.yaml
 msgid "Events per [[GenericCategoryMedium]]"
@@ -11150,7 +11150,7 @@ msgstr "Métricas geradas automaticamente sobre [[GenericTable]]"
 
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "[[this]] per day of the month"
-msgstr "[[this]] por dia do mês"
+msgstr " por dia do mês"
 
 #: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 msgid "Total sessions in each country"
@@ -11192,11 +11192,11 @@ msgstr "Como eles se comparam através das localizações"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByProduct.yaml
 msgid "[[this]] per product"
-msgstr "[[this]] por produto"
+msgstr " por produto"
 
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "[[this]] per month of the year"
-msgstr "[[this]] por mês do ano"
+msgstr "por mês do ano"
 
 #: resources/automagic_dashboards/table/UserTable.yaml
 msgid "Per country"
@@ -11321,7 +11321,7 @@ msgstr "Aqui uma visão detalhada sobre os seus [[this]] por produtos"
 
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "[[this]] per quarter of the year"
-msgstr "[[this]] por trimestre"
+msgstr " por trimestre"
 
 #: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 msgid "Heres an overview of your [[this]] data from Google Analytics"
@@ -11495,7 +11495,7 @@ msgstr "Vendas x classificação"
 
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "[[this]] per hour of the day"
-msgstr "[[this]] por hora do dia"
+msgstr "por hora do dia"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "Where your [[this.short-name]] are"
@@ -11861,7 +11861,7 @@ msgstr "O número de [[GenericTable]] por estado, e como cada país é represent
 
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "[[this]] per day of the week"
-msgstr "[[this] por dia da semana"
+msgstr " por dia da semana"
 
 #: resources/automagic_dashboards/table/TransactionTable/BySource.yaml
 msgid "Average qunatity per source"
@@ -15940,7 +15940,7 @@ msgstr "A sequência deve ser um idioma ISO válido de duas letras ou um código
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTable.jsx:116
 msgid "Rows {0}-{1}"
-msgstr "Registros {0}-{1}"
+msgstr "Linhas{0}-{1}"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/index.js:20
 #: enterprise/frontend/src/metabase-enterprise/audit_app/routes.jsx:78
@@ -33740,14 +33740,14 @@ msgstr "Excluir permanentemente"
 #: frontend/src/metabase/archive/components/BulkDeleteConfirmModal.tsx:24
 msgid "Delete item permanently?"
 msgid_plural "Delete {0} items permanently?"
-msgstr[0] "Excluir um item permanentemente?"
-msgstr[1] ""
+msgstr[0] "Excluir item permanentemente?"
+msgstr[1] "Excluir {0} itens permanentemente?"
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.tsx:80
 msgid "{0} item has been permanently deleted."
 msgid_plural "{0} items have been permanently deleted."
 msgstr[0] "O item {0} foi excluído permanentemente."
-msgstr[1] ""
+msgstr[1] "Os itens {0} foram excluídos permanentemente."
 
 #: frontend/src/metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner.tsx:59
 #: frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.tsx:105
@@ -33962,7 +33962,7 @@ msgstr "Isso pode afetar os modelos e as perguntas que usam a(s) tabela(s) como 
 msgid "Also send all models and questions based on this table to the trash"
 msgid_plural "Also send all models and questions based on these tables to the trash"
 msgstr[0] "Envie também todos os modelos e perguntas baseados nessa tabela para a lixeira"
-msgstr[1] ""
+msgstr[1] "Envie também todos os modelos e perguntas baseados nessa tabela para a lixeira"
 
 #: frontend/src/metabase/admin/upsells/UpsellHosting.tsx:18
 msgid "Minimize maintenance"
@@ -34515,13 +34515,13 @@ msgstr "Não há configuração de cache a ser invalidada."
 msgid "Cleared a cached result."
 msgid_plural "Cleared {0} cached results."
 msgstr[0] "Limpou um resultado armazenado em cache."
-msgstr[1] ""
+msgstr[1] "Limpou {0} resultados armazenados em cache."
 
 #: metabase/api/cache.clj:130
 msgid "Invalidated cache configuration."
 msgid_plural "Invalidated {0} cache configurations."
-msgstr[0] "Configuração de cache invalidada."
-msgstr[1] ""
+msgstr[0] "Invalidada configuração de cache."
+msgstr[1] "Invalidadas {0} configurações de cache."
 
 #: metabase/api/cache.clj:126
 msgid "No cached results to clear."

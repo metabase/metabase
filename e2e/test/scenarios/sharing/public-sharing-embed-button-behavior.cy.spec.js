@@ -416,10 +416,12 @@ describe("#39152 sharing an unsaved question", () => {
             location: "code_overview",
             code: "backend",
             appearance: {
+              background: true,
               bordered: true,
               titled: true,
               font: "instance",
               theme: "light",
+              // TODO: change to expect the correct value of  `downloads`
               hide_download_button: null,
             },
           });
@@ -434,10 +436,12 @@ describe("#39152 sharing an unsaved question", () => {
             location: "code_overview",
             code: "view",
             appearance: {
+              background: true,
               bordered: true,
               titled: true,
               font: "instance",
               theme: "light",
+              // TODO: change to expect the correct value of  `downloads`
               hide_download_button: null,
             },
           });
@@ -459,17 +463,19 @@ describe("#39152 sharing an unsaved question", () => {
             location: "code_params",
             code: "backend",
             appearance: {
+              background: true,
               bordered: true,
               titled: true,
               font: "instance",
               theme: "light",
+              // TODO: change to expect the correct value of  `downloads`
               hide_download_button: null,
             },
           });
 
           cy.log("Assert copying code in Appearance tab");
           modal().within(() => {
-            cy.findByRole("tab", { name: "Appearance" }).click();
+            cy.findByRole("tab", { name: "Look and Feel" }).click();
 
             cy.findByText("Ruby").click();
           });
@@ -480,11 +486,12 @@ describe("#39152 sharing an unsaved question", () => {
             cy.findByLabelText("Dark").click({ force: true });
             if (resource === "dashboard") {
               cy.findByLabelText("Dashboard title").click({ force: true });
+              cy.findByLabelText("Dashboard border").click({ force: true });
             }
             if (resource === "question") {
               cy.findByLabelText("Question title").click({ force: true });
+              cy.findByLabelText("Question border").click({ force: true });
             }
-            cy.findByLabelText("Border").click({ force: true });
           });
 
           cy.findByTestId("embed-backend")
@@ -497,13 +504,39 @@ describe("#39152 sharing an unsaved question", () => {
             location: "code_appearance",
             code: "backend",
             appearance: {
+              background: true,
               bordered: false,
               titled: false,
               font: "instance",
               theme: "night",
+              // TODO: change to expect the correct value of  `downloads`
               hide_download_button: null,
             },
           });
+
+          // Question don't have an option to disable background (metabase#43838)
+          if (resource === "dashboard") {
+            cy.findByLabelText("Dashboard background").click({ force: true });
+
+            cy.findByTestId("embed-backend")
+              .findByTestId("copy-button")
+              .realClick();
+            expectGoodSnowplowEvent({
+              event: "static_embed_code_copied",
+              artifact: resource,
+              language: "python",
+              location: "code_appearance",
+              code: "backend",
+              appearance: {
+                background: false,
+                bordered: false,
+                titled: false,
+                font: "instance",
+                theme: "night",
+                hide_download_button: null,
+              },
+            });
+          }
         });
 
         describeEE("Pro/EE instances", () => {
@@ -528,11 +561,13 @@ describe("#39152 sharing an unsaved question", () => {
               location: "code_overview",
               code: "backend",
               appearance: {
+                background: true,
                 bordered: true,
                 titled: true,
                 font: "instance",
                 theme: "light",
-                hide_download_button: resource === "question" ? false : null,
+                // TODO: change to expect the correct value of  `downloads`
+                hide_download_button: null,
               },
             });
 
@@ -546,11 +581,13 @@ describe("#39152 sharing an unsaved question", () => {
               location: "code_overview",
               code: "view",
               appearance: {
+                background: true,
                 bordered: true,
                 titled: true,
                 font: "instance",
                 theme: "light",
-                hide_download_button: resource === "question" ? false : null,
+                // TODO: change to expect the correct value of  `downloads`
+                hide_download_button: null,
               },
             });
 
@@ -571,17 +608,19 @@ describe("#39152 sharing an unsaved question", () => {
               location: "code_params",
               code: "backend",
               appearance: {
+                background: true,
                 bordered: true,
                 titled: true,
                 font: "instance",
                 theme: "light",
-                hide_download_button: resource === "question" ? false : null,
+                // TODO: change to expect the correct value of  `downloads`
+                hide_download_button: null,
               },
             });
 
             cy.log("Assert copying code in Appearance tab");
             modal().within(() => {
-              cy.findByRole("tab", { name: "Appearance" }).click();
+              cy.findByRole("tab", { name: "Look and Feel" }).click();
 
               cy.findByText("Ruby").click();
             });
@@ -592,11 +631,12 @@ describe("#39152 sharing an unsaved question", () => {
               cy.findByLabelText("Dark").click({ force: true });
               if (resource === "dashboard") {
                 cy.findByLabelText("Dashboard title").click({ force: true });
+                cy.findByLabelText("Dashboard border").click({ force: true });
               }
               if (resource === "question") {
                 cy.findByLabelText("Question title").click({ force: true });
+                cy.findByLabelText("Question border").click({ force: true });
               }
-              cy.findByLabelText("Border").click({ force: true });
               cy.findByLabelText("Font").click();
             });
 
@@ -616,11 +656,13 @@ describe("#39152 sharing an unsaved question", () => {
               location: "code_appearance",
               code: "backend",
               appearance: {
+                background: true,
                 bordered: false,
                 titled: false,
                 font: "custom",
                 theme: "night",
-                hide_download_button: resource === "question" ? true : null,
+                // TODO: change to expect the correct value of  `downloads`
+                hide_download_button: null,
               },
             });
           });

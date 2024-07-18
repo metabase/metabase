@@ -1,3 +1,4 @@
+import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   runQuestionQuery,
@@ -10,14 +11,13 @@ import {
   getIsRunnable,
 } from "metabase/query_builder/selectors";
 import { getSetting } from "metabase/selectors/settings";
+import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-
-import { useInteractiveQuestionData } from "../hooks";
 
 type NotebookProps = { onApply?: () => void };
 
 export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
-  const { question } = useInteractiveQuestionData();
+  const { question } = useInteractiveQuestionContext();
 
   const isDirty = useSelector(getIsDirty);
   const isRunnable = useSelector(getIsRunnable);
@@ -30,20 +30,22 @@ export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
 
   return (
     question && (
-      <QBNotebook
-        question={question}
-        isDirty={isDirty}
-        isRunnable={isRunnable}
-        isResultDirty={Boolean(isResultDirty)}
-        reportTimezone={reportTimezone}
-        readOnly={false}
-        updateQuestion={(question: Question) =>
-          dispatch(updateQuestion(question))
-        }
-        runQuestionQuery={() => dispatch(runQuestionQuery())}
-        setQueryBuilderMode={onApply}
-        hasVisualizeButton={true}
-      />
+      <Box w="100%" h="100%">
+        <QBNotebook
+          question={question}
+          isDirty={isDirty}
+          isRunnable={isRunnable}
+          isResultDirty={Boolean(isResultDirty)}
+          reportTimezone={reportTimezone}
+          readOnly={false}
+          updateQuestion={(question: Question) =>
+            dispatch(updateQuestion(question))
+          }
+          runQuestionQuery={() => dispatch(runQuestionQuery())}
+          setQueryBuilderMode={onApply}
+          hasVisualizeButton={true}
+        />
+      </Box>
     )
   );
 };

@@ -787,15 +787,16 @@
 (mu/defn ^:private remapped-field :- [:maybe ::lib.schema.metadata/column]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column]
-  (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
-    (lib.metadata/field metadata-providerable remap-field-id)))
+  (when (lib.types.isa/foreign-key? column)
+    (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
+      (lib.metadata/field metadata-providerable remap-field-id))))
 
 (mu/defn ^:private search-field :- [:maybe ::lib.schema.metadata/column]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column]
-  ;; ignore remappings for PK columns.
   (let [col (or (when (lib.types.isa/primary-key? column)
-                  column)
+                  (when-let [name-field (:name-field column)]
+                    (lib.metadata/field metadata-providerable (u/the-id name-field))))
                 (remapped-field metadata-providerable column)
                 column)]
     (when (lib.types.isa/searchable? col)

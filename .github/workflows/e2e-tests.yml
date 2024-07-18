@@ -251,3 +251,11 @@ jobs:
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
+
+  pr-env:
+    needs: [build]
+    if: |
+      !cancelled() &&
+      contains(github.event.pull_request.labels.*.name, 'PR-Env')
+    uses: ./.github/workflows/pr-env.yml
+    secrets: inherit

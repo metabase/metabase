@@ -20,7 +20,8 @@ export const InputContainer = styled.div<InputContainerProps>`
   border-radius: 8px;
 
   &:hover {
-    padding-left: calc(0.75rem - 1px); // adjust for border on hover
+    /* adjust for border on hover */
+    padding-left: calc(0.75rem - 1px);
   }
 
   .${DashboardS.DashCard}:hover &,
@@ -36,7 +37,7 @@ export const InputContainer = styled.div<InputContainerProps>`
     (!isPreviewing || isEmpty) &&
     css`
       padding-left: calc(0.75rem - 1px);
-    `} // adjust for border on preview/no entered content
+    `} /* adjust for border on preview/no entered content */
   ${({ isEmpty }) =>
     isEmpty &&
     css`

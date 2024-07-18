@@ -2,16 +2,15 @@ import { useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { EmbeddingSessionToken } from "embedding-sdk";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
   getOrRefreshSession,
+  setFetchRefreshTokenFn,
   setLoginStatus,
 } from "embedding-sdk/store/reducer";
 import { getLoginStatus } from "embedding-sdk/store/selectors";
-import type {
-  EmbeddingSessionTokenState,
-  SdkDispatch,
-} from "embedding-sdk/store/types";
+import type { SdkDispatch } from "embedding-sdk/store/types";
 import type { SDKConfig } from "embedding-sdk/types";
 import api from "metabase/lib/api";
 import { refreshSiteSettings } from "metabase/redux/settings";
@@ -32,9 +31,7 @@ const setupJwtAuth = (config: SDKConfig, dispatch: SdkDispatch) => {
       getOrRefreshSession(config.jwtProviderUri),
     );
 
-    api.sessionToken = (
-      tokenState.payload as EmbeddingSessionTokenState["token"]
-    )?.id;
+    api.sessionToken = (tokenState.payload as EmbeddingSessionToken | null)?.id;
   };
 };
 
@@ -46,6 +43,10 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
   useEffect(() => {
     registerVisualizationsOnce();
   }, [dispatch]);
+
+  useEffect(() => {
+    dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));
+  }, [dispatch, config.fetchRequestToken]);
 
   useEffect(() => {
     if (loginStatus.status === "uninitialized") {

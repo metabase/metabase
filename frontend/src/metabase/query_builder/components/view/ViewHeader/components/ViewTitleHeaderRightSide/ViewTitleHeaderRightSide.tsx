@@ -59,7 +59,7 @@ interface ViewTitleHeaderRightSideProps {
       datasetEditorTab?: DatasetEditorTab;
     },
   ) => void;
-  turnDatasetIntoQuestion: () => void;
+  turnModelIntoQuestion: () => void;
   areFiltersExpanded: boolean;
   onExpandFilters: () => void;
   onCollapseFilters: () => void;
@@ -91,7 +91,7 @@ export function ViewTitleHeaderRightSide({
   onEditSummary,
   onCloseSummary,
   setQueryBuilderMode,
-  turnDatasetIntoQuestion,
+  turnModelIntoQuestion,
   areFiltersExpanded,
   onExpandFilters,
   onCollapseFilters,
@@ -210,13 +210,13 @@ export function ViewTitleHeaderRightSide({
       )}
       {isSaved && (
         <QuestionActions
-          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
-          isBookmarked={isBookmarked}
-          handleBookmark={toggleBookmark}
-          onOpenModal={onOpenModal}
           question={question}
-          setQueryBuilderMode={setQueryBuilderMode}
-          turnDatasetIntoQuestion={turnDatasetIntoQuestion}
+          isBookmarked={isBookmarked}
+          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
+          onOpenModal={onOpenModal}
+          onToggleBookmark={toggleBookmark}
+          onSetQueryBuilderMode={setQueryBuilderMode}
+          onTurnModelIntoQuestion={turnModelIntoQuestion}
           onInfoClick={handleInfoClick}
           onModelPersistenceChange={onModelPersistenceChange}
         />

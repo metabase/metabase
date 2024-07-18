@@ -170,7 +170,7 @@
 (defn- query-dependents
   [metadata-providerable query-or-join]
   (let [base-stage (first (:stages query-or-join))
-        database-id (:database query-or-join -1)]
+        database-id (or (:database query-or-join) -1)]
     (concat
      (when (pos? database-id)
        [{:type :database, :id database-id}

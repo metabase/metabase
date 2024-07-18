@@ -127,6 +127,10 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
+(t2/define-after-select :model/Field
+  [field]
+  (dissoc field :is_defective_duplicate :unique_field_helper))
+
 (t2/define-before-insert :model/Field
   [field]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
@@ -138,6 +142,13 @@
     (when (false? (:active <>))
       (t2/update! :model/Field {:fk_target_field_id (:id field)} {:semantic_type      nil
                                                                   :fk_target_field_id nil}))))
+
+(t2/define-before-delete :model/Field
+  [field]
+  ; Cascading deletes through parent_id cannot be done with foreign key constraints in the database
+  ; because parent_id constributes to a generated column, and MySQL doesn't support columns with cascade delete
+  ;; foreign key constraints in generated columns. #44866
+  (t2/delete! :model/Field :parent_id (:id field)))
 
 (defn- field->db-id
   [{table-id :table_id, {db-id :db_id} :table}]

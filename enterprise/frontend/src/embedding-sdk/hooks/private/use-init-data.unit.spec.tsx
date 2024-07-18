@@ -12,6 +12,7 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { useInitData } from "embedding-sdk/hooks";
 import { sdkReducers, useSdkSelector } from "embedding-sdk/store";
+import { refreshTokenAsync } from "embedding-sdk/store/reducer";
 import { getIsLoggedIn, getLoginStatus } from "embedding-sdk/store/selectors";
 import type { LoginStatusError } from "embedding-sdk/store/types";
 import { createMockConfig } from "embedding-sdk/test/mocks/config";
@@ -21,6 +22,7 @@ import {
 } from "embedding-sdk/test/mocks/state";
 import type { SDKConfig } from "embedding-sdk/types";
 import { GET } from "metabase/lib/api";
+import { useDispatch } from "metabase/lib/redux";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -31,6 +33,8 @@ import { createMockState } from "metabase-types/store/mocks";
 const TEST_USER = createMockUser();
 
 const TestComponent = ({ config }: { config: SDKConfig }) => {
+  const dispatch = useDispatch();
+
   const loginStatus = useSdkSelector(getLoginStatus);
   const isLoggedIn = useSdkSelector(getIsLoggedIn);
 
@@ -40,6 +44,9 @@ const TestComponent = ({ config }: { config: SDKConfig }) => {
       metabaseInstanceUrl: "http://localhost",
     } as SDKConfig,
   });
+
+  const refreshToken = () =>
+    dispatch(refreshTokenAsync("http://TEST_URI/sso/metabase"));
 
   const handleClick = () => {
     GET("/api/some/url")();
@@ -53,6 +60,7 @@ const TestComponent = ({ config }: { config: SDKConfig }) => {
       data-error-message={(loginStatus as LoginStatusError).error?.message}
     >
       Test Component
+      <button onClick={refreshToken}>Refresh Token</button>
       <button onClick={handleClick}>Send test request</button>
     </div>
   );
@@ -109,9 +117,10 @@ const setup = ({
 
   const config = createMockConfig({
     jwtProviderUri: isValidConfig ? "http://TEST_URI/sso/metabase" : "",
+    ...configOpts,
   });
 
-  renderWithProviders(<TestComponent config={config} {...configOpts} />, {
+  return renderWithProviders(<TestComponent config={config} />, {
     storeInitialState: state,
     customReducers: sdkReducers,
   });
@@ -199,6 +208,30 @@ describe("useInitData hook", () => {
       expect(lastCallRequest?.headers.get("X-Metabase-Session")).toEqual(
         "TEST_JWT_TOKEN",
       );
+    });
+
+    it("should use a custom fetchRefreshToken function when specified", async () => {
+      let fetchRequestToken = jest.fn(async () => ({ id: "foo", exp: 10 }));
+
+      const { rerender } = setup({ isValidConfig: true, fetchRequestToken });
+
+      expect(await screen.findByText("Test Component")).toBeInTheDocument();
+      expect(fetchRequestToken).toHaveBeenCalledTimes(1);
+
+      // Pass in a new fetchRequestToken function
+      // We expect the new function to be called when the "Refresh Token" button is clicked
+      fetchRequestToken = jest.fn(async () => ({ id: "bar", exp: 10 }));
+
+      const config = createMockConfig({
+        jwtProviderUri: "http://TEST_URI/sso/metabase",
+        fetchRequestToken,
+      });
+
+      rerender(<TestComponent config={config} />);
+
+      await userEvent.click(screen.getByText("Refresh Token"));
+
+      expect(fetchRequestToken).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -222,7 +222,8 @@
                                                                 :display_name  "Count"
                                                                 :source        :aggregation
                                                                 :field_ref     [:aggregation 0]}]
-                   ::query-perms/perms                        {:gtaps {:perms/view-data :unrestricted
+                   ::query-perms/perms                        {:gtaps {:perms/view-data      {(mt/id :checkins) :unrestricted
+                                                                                              (mt/id :venues) :unrestricted}
                                                                        :perms/create-queries {(mt/id :checkins) :query-builder
                                                                                               (mt/id :venues) :query-builder}}}})
                 (apply-row-level-permissions
@@ -417,9 +418,8 @@
   not normally have FK tests ran for it. Excludes Presto JDBC, because that driver does NOT support fetching foreign
   keys from the JDBC metadata, even though we enable the feature in the UI."
   []
-  (cond-> (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
-    (@tx.env/test-drivers :bigquery-cloud-sdk) (conj :bigquery-cloud-sdk)
-    true                                       (disj :presto-jdbc)))
+  (cond-> (mt/normal-drivers-with-feature :nested-queries :foreign-keys :metadata/key-constraints)
+    (@tx.env/test-drivers :bigquery-cloud-sdk) (conj :bigquery-cloud-sdk)))
 
 (deftest e2e-fks-test
   (mt/test-drivers (row-level-restrictions-fk-drivers)
@@ -1009,11 +1009,9 @@
                          (mt/rows (mt/run-mbql-query orders {:limit 1})))))))))))))
 
 (deftest pivot-query-test
-  (mt/test-drivers (disj
-                    (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)
-                    ;; this test relies on a FK relation between $product_id->products.category, so skip for Presto
-                    ;; JDBC, because that driver doesn't support resolving FKs from the JDBC metadata
-                    :presto-jdbc)
+  ;; This test relies on a FK relation between $product_id->products.category, hence the requirement on
+  ;; :metadata/key-constraints.
+  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join :metadata/key-constraints)
     (testing "Pivot table queries should work with sandboxed users (#14969)"
       (mt/dataset test-data
         (met/with-gtaps! {:gtaps      (mt/$ids
@@ -1139,3 +1137,36 @@
             (qp/process-query (qp/userland-query query))
             (is (=? {:is_sandboxed true}
                     (qe)))))))))
+
+(deftest sandbox-join-permissions-test
+  (testing "Sandboxed query fails when sandboxed table is joined to a table that the current user doesn't have access to"
+    (met/with-gtaps! (mt/$ids orders
+                              {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
+                               :attributes {"user_id" 1}})
+      (data-perms/set-table-permission! &group (mt/id :products) :perms/view-data :legacy-no-self-service)
+      (data-perms/set-table-permission! &group (mt/id :products) :perms/create-queries :no)
+      (let [query (mt/mbql-query orders
+                                 {:limit 5
+                                  :aggregation [:count]
+                                  :joins [{:source-table $$products
+                                           :fields       :all
+                                           :alias        "Products"
+                                           :condition    [:= $product_id &Products.products.id]}]})]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You do not have permissions to run this query"
+             (qp/process-query query))))
+
+      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query products)}]
+        (let [query (mt/mbql-query orders
+                                   {:limit 5
+                                    :aggregation [:count]
+                                    :joins [{:source-table (str "card__" (:id card))
+                                             :fields       :all
+                                             :strategy     :left-join
+                                             :alias        "Products"
+                                             :condition    [:= $product_id &Products.products.id]}]})]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"You do not have permissions to run this query"
+               (qp/process-query query))))))))

@@ -6,32 +6,37 @@ import {
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  join,
-  type StructuredQuestionDetails,
+  createCollection,
   createQuestion,
   entityPickerModal,
   entityPickerModalItem,
   entityPickerModalLevel,
   entityPickerModalTab,
+  join,
+  navigationSidebar,
+  newButton,
+  onlyOnOSS,
   openNotebook,
+  openOrdersTable,
   openQuestionActions,
   openReviewsTable,
   popover,
+  queryBuilderMain,
   resetTestTable,
   restore,
   resyncDatabase,
   saveQuestion,
-  onlyOnOSS,
-  startNewQuestion,
   shouldDisplayTabs,
+  startNewQuestion,
   tabsShouldBe,
   visitModel,
   visitQuestion,
   visualize,
+  type StructuredQuestionDetails,
 } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 
-const { REVIEWS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > notebook > data source", () => {
   describe("empty app db", () => {
@@ -393,6 +398,29 @@ describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
   });
 });
 
+describe("issue 34350", { tags: "@external" }, () => {
+  beforeEach(() => {
+    restore("postgres-12");
+    cy.signInAsAdmin();
+  });
+
+  it("works after changing question's source table to a one from a different database (metabase#34350)", () => {
+    openOrdersTable({ mode: "notebook" });
+    openDataSelector();
+    entityPickerModal().within(() => {
+      cy.findByText("QA Postgres12").click();
+      cy.findByText("Orders").click();
+    });
+
+    visualize();
+
+    queryBuilderMain()
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+    cy.findAllByTestId("cell-data").should("contain", "37.65");
+  });
+});
+
 describe("issue 28106", () => {
   beforeEach(() => {
     const dialect = "postgres";
@@ -417,22 +445,22 @@ describe("issue 28106", () => {
           .findByTestId("scroll-container")
           .as("schemasList");
 
-        // the list is virtualized and the scrollbar height changes during scrolling (metabase#44966)
-        // that's why we need to scroll twice and wait
-        cy.get("@schemasList").scrollTo("bottom");
-        cy.wait(100);
-        cy.get("@schemasList").scrollTo("bottom");
+        // The list is virtualized and the scrollbar height changes during scrolling (metabase#44966)
+        // that's why we need to scroll and wait multiple times.
+        // Test is flaky because of this - that's why there are 3 attempts.
+        for (let i = 0; i < 3; ++i) {
+          cy.get("@schemasList").scrollTo("bottom");
+          cy.wait(100);
+        }
 
         // assert scrolling worked and the last item is visible
         entityPickerModalItem(1, "Public").should("be.visible");
 
         // simulate scrolling up using mouse wheel 3 times
-        cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
-        cy.wait(100);
-        cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
-        cy.wait(100);
-        cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
-        cy.wait(100);
+        for (let i = 0; i < 3; ++i) {
+          cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
+          cy.wait(100);
+        }
 
         // assert first item does not exist - this means the list has not been scrolled to the top
         cy.findByText("Domestic").should("not.exist");
@@ -442,6 +470,86 @@ describe("issue 28106", () => {
       });
     },
   );
+});
+
+describe("issue 32252", () => {
+  beforeEach(() => {
+    restore("setup");
+    cy.signInAsAdmin();
+
+    createCollection({ name: "My collection" }).then(({ body: collection }) => {
+      if (typeof collection.id !== "number") {
+        throw new Error("collection.id is not a number");
+      }
+
+      createQuestion({
+        name: "My question",
+        collection_id: collection.id,
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      });
+    });
+  });
+
+  it("refreshes data picker sources after archiving a collection (metabase#32252)", () => {
+    cy.visit("/");
+
+    newButton("Question").click();
+    entityPickerModal().within(() => {
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findByText("Recents").should("not.exist");
+      cy.findByText("Saved questions").should("be.visible");
+      cy.button("Close").click();
+    });
+
+    cy.findByTestId("sidebar-toggle").click();
+    navigationSidebar().findByText("Our analytics").click();
+
+    cy.button("Actions").click();
+    popover().findByText("Move to trash").click();
+    cy.findByTestId("toast-undo")
+      .findByText("Trashed collection")
+      .should("be.visible");
+
+    newButton("Question").click();
+    entityPickerModal().within(() => {
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findByText("Recents").should("not.exist");
+      cy.findByText("Saved questions").should("not.exist");
+      cy.findByText("Orders").should("be.visible");
+    });
+  });
+
+  it("refreshes data picker sources after archiving a question (metabase#32252)", () => {
+    cy.visit("/");
+
+    newButton("Question").click();
+    entityPickerModal().within(() => {
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findByText("Recents").should("not.exist");
+      cy.findByText("Saved questions").should("be.visible");
+      cy.button("Close").click();
+    });
+
+    cy.findByTestId("sidebar-toggle").click();
+    navigationSidebar().findByText("Our analytics").click();
+
+    cy.findByTestId("collection-entry-name").click();
+    cy.button("Actions").click();
+    popover().findByText("Move to trash").click();
+    cy.findByTestId("toast-undo")
+      .findByText("Trashed question")
+      .should("be.visible");
+
+    newButton("Question").click();
+    entityPickerModal().within(() => {
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findByText("Recents").should("not.exist");
+      cy.findByText("Saved questions").should("not.exist");
+      cy.findByText("Orders").should("be.visible");
+    });
+  });
 });
 
 function moveToCollection(collection: string) {
