@@ -55,12 +55,12 @@ SELECT
     ELSE 'no'
   END AS perm_value
 FROM data_permissions dp
-  WHERE
-    dp.perm_type = 'perms/data-access'
-    AND dp.table_id IS NOT NULL
-  AND NOT EXISTS
-    (SELECT 1
-     FROM data_permissions dp2
-     WHERE dp2.group_id = dp.group_id
-       AND dp2.db_id = dp.db_id
-       AND dp2.perm_type = 'perms/create-queries' );
+WHERE
+  dp.perm_type = 'perms/data-access'
+  AND dp.table_id IS NOT NULL
+AND NOT EXISTS
+  (SELECT 1
+   FROM data_permissions dp2
+   WHERE dp2.group_id = dp.group_id
+     AND dp2.db_id = dp.db_id
+     AND dp2.perm_type = 'perms/create-queries' );
