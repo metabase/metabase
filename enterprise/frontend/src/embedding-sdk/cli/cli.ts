@@ -1,7 +1,16 @@
-/* eslint-disable no-console */
+import { Command } from "commander";
 
-export const cli = () => {
-  console.log("Hello World!");
-};
+import { start } from "./actions/start";
 
-cli();
+const program = new Command();
+
+program
+  .name("metabase-embedding-sdk-cli")
+  .description("Metabase Embedding SDK CLI");
+
+program
+  .command("start")
+  .description("downloads and starts a local Metabase instance")
+  .action(start);
+
+program.parse();
