@@ -30,7 +30,10 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
     });
 
     cy.wait("@getUser").then(({ response }) => {
-      expect(response.statusCode).to.equal(200);
+      // eslint-disable-next-line no-console
+      console.log("@getUser", { response });
+
+      expect(response?.statusCode).to.equal(200);
     });
 
     cy.wait("@getDashboard");
