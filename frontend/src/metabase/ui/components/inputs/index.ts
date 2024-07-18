@@ -1,6 +1,7 @@
 export * from "./Autocomplete";
 export * from "./Calendar";
 export * from "./Checkbox";
+export * from "./Chip";
 export * from "./DateInput";
 export * from "./DatePicker";
 export * from "./FileInput";
