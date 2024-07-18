@@ -15,6 +15,7 @@
 
 ;; TODO: It seems that foreign keys sync does not work on sqlite. The [[metabase.driver-test/describe-table-fks-test]]
 ;;       is failing. Resolve that and re-enable feature!
+;;       Tracked by: https://github.com/metabase/metabase/issues/45788
 (defmethod driver/database-supports? [:sqlite :metadata/key-constraints] [_driver _feature _db] (not config/is-test?))
 
 (defn- db-file-name [dbdef]
