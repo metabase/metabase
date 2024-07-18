@@ -678,6 +678,9 @@
     ;; Does the driver support identifiers for tables and columns that contain spaces. Defaults to `false`.
     :identifiers-with-spaces
 
+    ;; Does this driver support UUID type
+    :uuid-type
+
     ;; Does this driver support window functions like cumulative count and cumulative sum? (default: false)
     :window-functions/cumulative
 
